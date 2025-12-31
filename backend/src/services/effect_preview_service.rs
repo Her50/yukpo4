@@ -432,6 +432,29 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
         },
     );
 
+    // ✅ CORRIGÉ: Ajouter effet "effet miroir" (mirror effect)
+    m.insert(
+        "effet miroir",
+        EffectDefinition {
+            ffmpeg_filter: "hflip".to_string(),
+            description: "Effet miroir horizontal pour symétrie visuelle".to_string(),
+        },
+    );
+    m.insert(
+        "miroir",
+        EffectDefinition {
+            ffmpeg_filter: "hflip".to_string(),
+            description: "Effet miroir horizontal pour symétrie visuelle".to_string(),
+        },
+    );
+    m.insert(
+        "mirror",
+        EffectDefinition {
+            ffmpeg_filter: "hflip".to_string(),
+            description: "Effet miroir horizontal pour symétrie visuelle".to_string(),
+        },
+    );
+
     m
 }
 
@@ -469,6 +492,9 @@ fn normalize_effect_name(effect_name: &str) -> String {
         ("glitch", "glitch"),
         ("overlay élégant", "overlay élégant"),
         ("overlay", "overlay"),
+        ("effet miroir", "effet miroir"),
+        ("miroir", "effet miroir"),
+        ("mirror", "effet miroir"),
     ]
     .iter()
     .cloned()

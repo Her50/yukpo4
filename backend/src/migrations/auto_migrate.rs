@@ -3206,9 +3206,9 @@ pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(),
     
     info!("✅ Migration audio search cache optimization appliquée");
     
-    // ✅ CORRIGÉ 2025-12-30: Fix de la fonction run_audio_cache_cleanup
-    // Corrige l'erreur "record result has no field deleted_count"
-    info!("🔧 Correction de la fonction run_audio_cache_cleanup...");
+    // ✅ CORRIGÉ 2025-12-31: Fix de la fonction run_audio_cache_cleanup avec gestion NULL
+    // Corrige l'erreur UnexpectedNullError en gérant les valeurs NULL
+    info!("🔧 Correction de la fonction run_audio_cache_cleanup avec gestion NULL...");
     sqlx::query(
         r#"
         DROP FUNCTION IF EXISTS run_audio_cache_cleanup();
@@ -3221,30 +3221,40 @@ pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(),
             total_after INTEGER
         ) AS $$
         DECLARE
-            deleted_count_var INTEGER;
-            kept_count_var INTEGER;
-            total_before_var INTEGER;
-            total_after_var INTEGER;
+            deleted_count_var INTEGER := 0;
+            kept_count_var INTEGER := 0;
+            total_before_var INTEGER := 0;
+            total_after_var INTEGER := 0;
         BEGIN
-            -- Exécuter le nettoyage et récupérer les résultats dans des variables explicites
-            SELECT 
-                deleted_count,
-                kept_count,
-                total_before,
-                total_after
-            INTO 
-                deleted_count_var,
-                kept_count_var,
-                total_before_var,
-                total_after_var
-            FROM cleanup_old_audio_transcriptions()
-            LIMIT 1;
+            -- Vérifier si la fonction cleanup_old_audio_transcriptions existe
+            IF EXISTS (
+                SELECT 1 FROM pg_proc 
+                WHERE proname = 'cleanup_old_audio_transcriptions'
+            ) THEN
+                -- Exécuter le nettoyage et récupérer les résultats dans des variables explicites
+                -- Utiliser COALESCE pour garantir des valeurs non-NULL
+                SELECT 
+                    COALESCE(deleted_count, 0),
+                    COALESCE(kept_count, 0),
+                    COALESCE(total_before, 0),
+                    COALESCE(total_after, 0)
+                INTO 
+                    deleted_count_var,
+                    kept_count_var,
+                    total_before_var,
+                    total_after_var
+                FROM cleanup_old_audio_transcriptions()
+                LIMIT 1;
+            ELSE
+                -- Si la fonction n'existe pas, retourner des valeurs par défaut (0)
+                RAISE NOTICE 'Fonction cleanup_old_audio_transcriptions non trouvée, retour de valeurs par défaut';
+            END IF;
             
             -- Log (peut être envoyé à un système de monitoring)
             RAISE NOTICE 'Audio cache cleanup: deleted %, kept %, total before %, after %', 
                 deleted_count_var, kept_count_var, total_before_var, total_after_var;
             
-            -- Retourner les résultats comme une table
+            -- Retourner les résultats comme une table (toujours des valeurs non-NULL)
             RETURN QUERY SELECT deleted_count_var, kept_count_var, total_before_var, total_after_var;
         END;
         $$ LANGUAGE plpgsql;
@@ -3253,7 +3263,7 @@ pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(),
     .execute(pool)
     .await?;
     
-    info!("✅ Fonction run_audio_cache_cleanup corrigée");
+    info!("✅ Fonction run_audio_cache_cleanup corrigée avec gestion NULL");
     Ok(())
 }
 

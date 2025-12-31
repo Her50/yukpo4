@@ -1166,20 +1166,24 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         const allImageUrls = [...existingImageUrls, ...uploadedImageUrls].filter((url, index, self) => self.indexOf(url) === index); // Dédupliquer
                                         
                                         if (allImageUrls.length > 0) {
-                                            // ✅ CORRIGÉ : Utiliser base64_image avec URLs (format attendu par backend)
-                                            nouveauProduit.base64_image = allImageUrls;
-                                            // ✅ CORRIGÉ : Supprimer images (base64) pour éviter duplication
-                                            delete nouveauProduit.images;
-                                            // Garder imageUrls pour compatibilité
+                                            // ✅ CORRIGÉ : Utiliser SEULEMENT imageUrls (pas base64_image qui est nettoyé par le backend)
                                             nouveauProduit.imageUrls = allImageUrls;
+                                            // ✅ CRITIQUE : Supprimer base64_image et images pour éviter que le backend les traite comme base64
+                                            delete nouveauProduit.base64_image;
+                                            delete nouveauProduit.images;
+                                            delete nouveauProduit.images_base64;
+                                            delete nouveauProduit.image_base64;
                                             console.log('[AjouterProduitSimple] ✅ Images produit finales (URLs existantes + uploadées):', {
                                                 existantes: existingImageUrls.length,
                                                 uploadées: uploadedImageUrls.length,
                                                 total: allImageUrls.length
                                             });
                                         } else {
-                                            // ⚠️ Aucune URL valide, supprimer quand même images pour éviter base64
+                                            // ⚠️ Aucune URL valide, supprimer tous les champs médias base64
                                             delete nouveauProduit.images;
+                                            delete nouveauProduit.base64_image;
+                                            delete nouveauProduit.images_base64;
+                                            delete nouveauProduit.image_base64;
                                             console.warn('[AjouterProduitSimple] ⚠️ Aucune URL valide pour images, suppression base64');
                                         }
 
@@ -1193,40 +1197,46 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         const allVideoUrls = [...existingVideoUrls, ...uploadedVideoUrls].filter((url, index, self) => self.indexOf(url) === index); // Dédupliquer
                                         
                                         if (allVideoUrls.length > 0) {
-                                            // ✅ CORRIGÉ : Utiliser video_base64 avec URLs (format attendu par backend)
-                                            nouveauProduit.video_base64 = allVideoUrls;
-                                            // ✅ CORRIGÉ : Supprimer videos (base64) pour éviter duplication
-                                            delete nouveauProduit.videos;
-                                            // Garder videoUrls pour compatibilité
+                                            // ✅ CORRIGÉ : Utiliser SEULEMENT videoUrls (pas video_base64 qui est nettoyé par le backend)
                                             nouveauProduit.videoUrls = allVideoUrls;
+                                            // ✅ CRITIQUE : Supprimer video_base64 et videos pour éviter que le backend les traite comme base64
+                                            delete nouveauProduit.video_base64;
+                                            delete nouveauProduit.videos;
                                             console.log('[AjouterProduitSimple] ✅ Vidéos produit finales (URLs existantes + uploadées):', {
                                                 existantes: existingVideoUrls.length,
                                                 uploadées: uploadedVideoUrls.length,
                                                 total: allVideoUrls.length
                                             });
                                         } else {
-                                            // ⚠️ Aucune URL valide, supprimer quand même videos pour éviter base64
+                                            // ⚠️ Aucune URL valide, supprimer tous les champs médias base64
                                             delete nouveauProduit.videos;
+                                            delete nouveauProduit.video_base64;
                                             console.warn('[AjouterProduitSimple] ⚠️ Aucune URL valide pour vidéos, suppression base64');
                                         }
                                     } else {
                                         console.log('[AjouterProduitSimple] ℹ️ Aucun média à uploader pour nouveau produit (déjà URLs ou vide)');
                                         
-                                        // ✅ CORRIGÉ : Utiliser les URLs existantes collectées
+                                        // ✅ CORRIGÉ : Utiliser SEULEMENT imageUrls/videoUrls (pas base64_image/video_base64)
                                         if (existingImageUrls.length > 0) {
-                                            nouveauProduit.base64_image = existingImageUrls;
-                                            delete nouveauProduit.images;
                                             nouveauProduit.imageUrls = existingImageUrls;
+                                            // ✅ CRITIQUE : Supprimer tous les champs base64 pour éviter traitement par backend
+                                            delete nouveauProduit.images;
+                                            delete nouveauProduit.base64_image;
+                                            delete nouveauProduit.images_base64;
+                                            delete nouveauProduit.image_base64;
                                             console.log('[AjouterProduitSimple] ✅ Utilisation URLs images existantes:', existingImageUrls.length);
                                         } else if (!nouveauProduit.images || nouveauProduit.images.length === 0) {
                                             delete nouveauProduit.images;
                                             delete nouveauProduit.base64_image;
+                                            delete nouveauProduit.images_base64;
+                                            delete nouveauProduit.image_base64;
                                         }
                                         
                                         if (existingVideoUrls.length > 0) {
-                                            nouveauProduit.video_base64 = existingVideoUrls;
-                                            delete nouveauProduit.videos;
                                             nouveauProduit.videoUrls = existingVideoUrls;
+                                            // ✅ CRITIQUE : Supprimer tous les champs base64 pour éviter traitement par backend
+                                            delete nouveauProduit.videos;
+                                            delete nouveauProduit.video_base64;
                                             console.log('[AjouterProduitSimple] ✅ Utilisation URLs vidéos existantes:', existingVideoUrls.length);
                                         } else if (!nouveauProduit.videos || nouveauProduit.videos.length === 0) {
                                             delete nouveauProduit.videos;

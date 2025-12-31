@@ -43,10 +43,11 @@ async fn run_cleanup(pool: &PgPool) -> Result<(), sqlx::Error> {
     .fetch_one(pool)
     .await?;
 
-    let deleted_count: i32 = result.get("deleted_count");
-    let kept_count: i32 = result.get("kept_count");
-    let total_before: i32 = result.get("total_before");
-    let total_after: i32 = result.get("total_after");
+    // Gérer les valeurs NULL avec Option<i32> puis unwrap_or(0)
+    let deleted_count: i32 = result.get::<Option<i32>, _>("deleted_count").unwrap_or(0);
+    let kept_count: i32 = result.get::<Option<i32>, _>("kept_count").unwrap_or(0);
+    let total_before: i32 = result.get::<Option<i32>, _>("total_before").unwrap_or(0);
+    let total_after: i32 = result.get::<Option<i32>, _>("total_after").unwrap_or(0);
 
     log::info!(
         "📊 [Cron] Cache audio nettoyé: {} supprimés, {} gardés, total: {} -> {}",

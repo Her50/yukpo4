@@ -2,8 +2,9 @@
 // ✅ Phase 7 & 10: Optimisé avec GPU et cache pour <100ms
 
 use crate::core::types::{AppError, AppResult};
-use crate::services::app_ia::VideoTimeline;
+use crate::services::app_ia::{TimelineScene, VideoTimeline};
 use crate::services::gpu_render_service::GPURenderService;
+use crate::services::immersive_timeline::{ImmersiveScene, ImmersiveTimeline};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
@@ -23,6 +24,69 @@ pub struct QuickPreviewResponse {
     pub quality: String,
     pub processing_time_ms: u64,
     pub thumbnail_url: Option<String>,
+}
+
+/// ✅ NOUVEAU: Convertit ImmersiveTimeline en VideoTimeline en extrayant les media_url depuis assets
+pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> VideoTimeline {
+    let fps = immersive.fps;
+    let mut current_time = 0.0;
+    
+    let scenes: Vec<TimelineScene> = immersive
+        .scenes
+        .iter()
+        .map(|scene| {
+            let duration_seconds = scene.duration_in_frames as f64 / fps as f64;
+            
+            // ✅ CORRIGÉ: Extraire media_url depuis assets.video_url ou assets.background_url ou assets.product_image_url
+            let media_url = scene
+                .assets
+                .video_url
+                .clone()
+                .or_else(|| scene.assets.background_url.clone())
+                .or_else(|| scene.assets.product_image_url.clone());
+            
+            let scene_index = scene.id
+                .replace("scene_", "")
+                .parse::<usize>()
+                .unwrap_or(0);
+            
+            let start_time = current_time;
+            current_time += duration_seconds;
+            
+            // Convertir les effets depuis le template et transition
+            let mut effects = Vec::new();
+            let template_name = format!("{:?}", scene.template).to_lowercase();
+            if template_name.contains("zoom") || template_name.contains("ken") {
+                effects.push("zoom".to_string());
+            }
+            if template_name.contains("glow") {
+                effects.push("glow".to_string());
+            }
+            
+            TimelineScene {
+                scene_index,
+                start_time,
+                duration: duration_seconds,
+                media_id: None,
+                media_url,
+                text: scene.assets.body.clone(),
+                text_position: Some("center".to_string()),
+                transition: Some(format!("{:?}", scene.transition.r#type).to_lowercase()),
+                effects,
+                audio_cue: None,
+            }
+        })
+        .collect();
+    
+    let total_duration = scenes
+        .iter()
+        .map(|s| s.start_time + s.duration)
+        .fold(0.0, f64::max);
+    
+    VideoTimeline {
+        total_duration,
+        scenes,
+    }
 }
 
 /// Génère un preview rapide (low quality) de la timeline
@@ -72,9 +136,31 @@ pub async fn generate_quick_preview(
         .count();
     
     if media_count == 0 {
+        let scene_details: Vec<String> = preview_scenes
+            .iter()
+            .enumerate()
+            .map(|(idx, scene)| {
+                format!(
+                    "Scène {}: start_time={:.2}s, duration={:.2}s, media_url={:?}, effects={:?}",
+                    idx,
+                    scene.start_time,
+                    scene.duration,
+                    scene.media_url,
+                    scene.effects
+                )
+            })
+            .collect();
+        
+        error!(
+            "[QuickPreview] ❌ Aucun média trouvé dans la timeline. Scènes: {}, Médias trouvés: {}. Détails: {}",
+            preview_scenes.len(),
+            media_count,
+            scene_details.join(" | ")
+        );
+        
         return Err(AppError::Internal(
             format!(
-                "Aucun média trouvé dans la timeline pour générer le preview. Scènes: {}, Médias trouvés: {}",
+                "Aucun média trouvé dans la timeline pour générer le preview. Scènes: {}, Médias trouvés: {}. Veuillez vous assurer que chaque scène a un media_url défini (URL d'image ou vidéo).",
                 preview_scenes.len(),
                 media_count
             ),

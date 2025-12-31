@@ -1,16 +1,5 @@
--- Migration: Correction fonction run_audio_cache_cleanup
--- Date: 2025-12-30
--- Description: Corrige l'erreur "record result has no field deleted_count" 
---              en changeant le retour de JSONB à TABLE avec variables explicites
-
--- =====================================================
--- Correction de la fonction run_audio_cache_cleanup
--- =====================================================
-
--- ✅ CORRIGÉ 2025-12-30: Retourne une TABLE pour correspondre au code Rust
--- Le problème était que RECORD ne permettait pas d'accéder aux champs de manière fiable
--- La solution: utiliser des variables explicites et retourner une TABLE
-DROP FUNCTION IF EXISTS run_audio_cache_cleanup();
+-- Migration directe pour corriger run_audio_cache_cleanup
+-- À exécuter directement sur la base de données
 
 CREATE OR REPLACE FUNCTION run_audio_cache_cleanup()
 RETURNS TABLE(
@@ -67,6 +56,6 @@ BEGIN
         RAISE EXCEPTION 'Fonction run_audio_cache_cleanup non créée';
     END IF;
     
-    RAISE NOTICE '✅ Fonction run_audio_cache_cleanup corrigée avec succès';
+    RAISE NOTICE '✅ Fonction run_audio_cache_cleanup corrigée avec gestion NULL';
 END $$;
 

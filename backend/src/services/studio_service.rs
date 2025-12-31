@@ -659,8 +659,12 @@ impl StudioService {
 
         let session = self.get_session(session_id, user_id).await?;
         if session.timeline.is_empty() {
+            log::warn!(
+                "[StudioService] ⚠️ Timeline vide pour session {} - user_id: {}",
+                session_id, user_id
+            );
             return Err(AppError::BadRequest(
-                "Impossible de générer un aperçu sans timeline.".into(),
+                "Impossible de générer un aperçu sans timeline. Veuillez d'abord sauvegarder une timeline avec des clips en utilisant POST /api/studio/sessions/{session_id}/timeline.".into(),
             ));
         }
 
@@ -895,6 +899,44 @@ fn default_json_array() -> Value {
 }
 
 impl StudioService {
+    /// Convertit ImmersiveTimeline en Vec<TimelineClipPayload> pour sauvegarde
+    pub fn convert_immersive_timeline_to_clips(
+        &self,
+        timeline: &ImmersiveTimeline,
+    ) -> AppResult<Vec<TimelineClipPayload>> {
+        fn template_name(template: &ImmersiveTemplate) -> &'static str {
+            match template {
+                ImmersiveTemplate::IntroPulse => "IntroPulse",
+                ImmersiveTemplate::ProductShowcase => "ProductShowcase",
+                ImmersiveTemplate::ARHighlight => "ARHighlight",
+                ImmersiveTemplate::GlowCTA => "GlowCTA",
+            }
+        }
+        
+        let fps = timeline.fps;
+        let mut clips = Vec::new();
+        
+        for (idx, scene) in timeline.scenes.iter().enumerate() {
+            let duration_seconds = (scene.duration_in_frames as f64 / fps as f64).ceil() as i32;
+            
+            // Sérialiser la scène en JSON pour le payload
+            let payload = serde_json::to_value(scene).map_err(|e| {
+                AppError::Internal(format!("Erreur sérialisation scène: {}", e))
+            })?;
+            
+            let lane = Some(template_name(&scene.template).to_string());
+            
+            clips.push(TimelineClipPayload {
+                position: idx as i32,
+                lane,
+                duration_seconds,
+                payload,
+            });
+        }
+        
+        Ok(clips)
+    }
+
     async fn record_preview_event(
         &self,
         session_id: Uuid,

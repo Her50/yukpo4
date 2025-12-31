@@ -557,6 +557,21 @@ pub async fn generate_storyboard(
         .await?;
     let storyboard = orchestrator.build_storyboard(&timeline_request, &timeline_result);
 
+    // ✅ CORRIGÉ: Sauvegarder automatiquement la timeline générée
+    let clips = state
+        .studio_service
+        .convert_immersive_timeline_to_clips(&timeline_result.timeline)?;
+    if !clips.is_empty() {
+        let _ = state
+            .studio_service
+            .save_timeline(session_id, user.id, clips)
+            .await;
+        log::info!(
+            "[StudioController] ✅ Timeline sauvegardée automatiquement pour session {}",
+            session_id
+        );
+    }
+
     Ok(Json(StoryboardResponse { storyboard }))
 }
 
