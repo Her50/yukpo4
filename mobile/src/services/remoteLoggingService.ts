@@ -319,25 +319,58 @@ class RemoteLoggingService {
         this.logQueue = [];
 
         try {
-            await apiPost('/api/mobile-logs', {
+            const response = await apiPost('/api/mobile-logs', {
                 logs: logsToSend,
                 batch_id: `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             });
 
-            if (__DEV__) {
-                this.originalConsole?.log(`[RemoteLogging] ✅ ${logsToSend.length} logs envoyés au backend`);
-            }
-        } catch (error) {
-            // En cas d'erreur, remettre les logs dans la queue (sauf si trop nombreux)
-            if (this.logQueue.length < 100) {
-                this.logQueue.unshift(...logsToSend);
+            // ✅ AMÉLIORÉ: Vérifier si la réponse indique un succès
+            if (response.success !== false) {
+                if (__DEV__) {
+                    this.originalConsole?.log(`[RemoteLogging] ✅ ${logsToSend.length} logs envoyés au backend`);
+                }
             } else {
-                // Queue trop pleine, garder seulement les plus récents
-                this.logQueue = logsToSend.slice(-50);
+                // Réponse indique une erreur mais pas d'exception levée
+                // Remettre les logs dans la queue pour retry
+                if (this.logQueue.length < 100) {
+                    this.logQueue.unshift(...logsToSend);
+                } else {
+                    this.logQueue = logsToSend.slice(-50);
+                }
+                
+                if (__DEV__) {
+                    this.originalConsole?.warn(`[RemoteLogging] ⚠️ Échec envoi logs (réponse: ${response.error || 'unknown'})`);
+                }
             }
-
-            if (__DEV__) {
-                this.originalConsole?.error('[RemoteLogging] ❌ Erreur envoi logs:', error);
+        } catch (error: any) {
+            // ✅ AMÉLIORÉ: Gérer différemment selon le type d'erreur
+            const isNetworkError = error?.code === 'NETWORK_ERROR' || 
+                                  error?.code === 'TIMEOUT' ||
+                                  error?.message?.includes('Network request failed') ||
+                                  error?.message?.includes('Failed to fetch') ||
+                                  error?.message?.includes('timeout');
+            
+            // Pour les erreurs réseau/timeout, on peut supposer que le serveur n'a pas reçu les logs
+            // Pour les autres erreurs (500, etc.), le serveur a peut-être reçu les logs mais a retourné une erreur
+            if (isNetworkError) {
+                // Erreur réseau/timeout : remettre dans la queue pour retry
+                if (this.logQueue.length < 100) {
+                    this.logQueue.unshift(...logsToSend);
+                } else {
+                    // Queue trop pleine, garder seulement les plus récents
+                    this.logQueue = logsToSend.slice(-50);
+                }
+                
+                if (__DEV__) {
+                    this.originalConsole?.warn(`[RemoteLogging] ⚠️ Erreur réseau/timeout, ${logsToSend.length} logs remis en queue pour retry`);
+                }
+            } else {
+                // Autre erreur (500, etc.) : le serveur a peut-être reçu les logs
+                // Ne pas remettre dans la queue pour éviter les doublons
+                // Mais logger l'erreur pour diagnostic
+                if (__DEV__) {
+                    this.originalConsole?.warn(`[RemoteLogging] ⚠️ Erreur serveur (${error?.response?.status || 'unknown'}), logs peut-être reçus:`, error);
+                }
             }
         }
     }

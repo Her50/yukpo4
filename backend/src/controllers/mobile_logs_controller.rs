@@ -52,6 +52,7 @@ pub struct MobileLogsResponse {
 
 /// Endpoint pour recevoir les logs mobile
 /// ✅ OPTIMISÉ 2025-12-20: Traitement asynchrone, limite de batch, logs groupés
+/// ✅ CORRIGÉ 2025-12-31: Validation de taille avant traitement pour éviter les timeouts
 pub async fn receive_mobile_logs(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<MobileLogsRequest>,
@@ -59,8 +60,30 @@ pub async fn receive_mobile_logs(
     let batch_id = payload.batch_id.clone();
     let logs_count = payload.logs.len();
 
-    // ✅ OPTIMISATION: Limiter le nombre de logs par batch (max 100)
+    // ✅ NOUVEAU 2025-12-31: Validation de la taille du payload avant traitement
+    // Limiter à 100 logs par batch pour éviter les timeouts et les problèmes de mémoire
     const MAX_LOGS_PER_BATCH: usize = 100;
+    const MAX_PAYLOAD_SIZE_BYTES: usize = 5_000_000; // 5 MB max par batch
+    
+    // Vérifier la taille du payload (estimation)
+    let estimated_size = serde_json::to_string(&payload)
+        .map(|s| s.len())
+        .unwrap_or(0);
+    
+    if estimated_size > MAX_PAYLOAD_SIZE_BYTES {
+        log::warn!(
+            "📱[MOBILE-BATCH] Batch {} trop volumineux ({} bytes, max: {}), rejeté",
+            batch_id,
+            estimated_size,
+            MAX_PAYLOAD_SIZE_BYTES
+        );
+        return Err(AppError::BadRequest(format!(
+            "Payload trop volumineux: {} bytes (max: {} bytes). Réduisez le nombre de logs par batch.",
+            estimated_size,
+            MAX_PAYLOAD_SIZE_BYTES
+        )));
+    }
+
     let logs_to_process = if logs_count > MAX_LOGS_PER_BATCH {
         log::warn!(
             "📱[MOBILE-BATCH] Batch {} contient {} logs (max: {}), traitement limité",
@@ -74,6 +97,7 @@ pub async fn receive_mobile_logs(
     };
 
     // ✅ OPTIMISATION: Traiter les logs en arrière-plan pour ne pas bloquer la réponse
+    // ✅ CRITIQUE 2025-12-31: Cloner les données AVANT de spawner le task pour éviter les problèmes de lifetime
     let logs_clone: Vec<MobileLogEntry> = logs_to_process
         .iter()
         .map(|log| MobileLogEntry {
@@ -89,22 +113,26 @@ pub async fn receive_mobile_logs(
         .collect();
 
     let batch_id_clone = batch_id.clone();
+    let logs_count_to_process = logs_clone.len();
 
     // ✅ OPTIMISATION: Traiter les logs de manière asynchrone dans un task spawn
+    // ✅ CRITIQUE 2025-12-31: Utiliser spawn pour ne pas bloquer la réponse HTTP
+    // La réponse est retournée immédiatement, même si le traitement des logs prend du temps
     tokio::spawn(async move {
         process_mobile_logs_async(logs_clone, batch_id_clone).await;
     });
 
     // ✅ OPTIMISATION: Retourner immédiatement la réponse sans attendre le traitement des logs
+    // Cela évite les timeouts côté client même si le traitement prend du temps
     log::info!(
         "📱[MOBILE-BATCH] Accepté {} logs mobile (batch: {}), traitement en arrière-plan",
-        logs_count,
+        logs_count_to_process,
         batch_id
     );
 
     Ok(Json(MobileLogsResponse {
         success: true,
-        received: logs_count,
+        received: logs_count_to_process,
         batch_id,
     }))
 }

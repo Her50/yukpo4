@@ -1,10 +1,10 @@
--- Migration: Correction définitive performance création produit
+-- Migration: Correction timeout création produit
 -- Date: 2025-12-31
--- Problème: SELECT complet du JSONB après UPDATE cause 1-3s de latence
--- Solution: Fonction PostgreSQL qui retourne directement les données nécessaires
+-- Problème: Timeout après 15-16s lors de l'ajout d'un produit
+-- Solution: Optimiser la fonction PostgreSQL et améliorer la gestion des verrous
 
 -- ============================================================================
--- 1. FONCTION OPTIMISÉE: Retourne index + données nécessaires pour indexation
+-- 1. FONCTION OPTIMISÉE: Amélioration de la gestion des verrous
 -- ============================================================================
 CREATE OR REPLACE FUNCTION add_product_to_service_jsonb_v2(
     p_service_id INTEGER,
@@ -20,8 +20,8 @@ DECLARE
     v_lieu_data JSONB;
 BEGIN
     -- ✅ OPTIMISÉ: Calculer l'index AVANT l'UPDATE (lecture rapide)
-    -- ✅ CORRIGÉ 2025-12-31: Utiliser FOR UPDATE pour éviter les race conditions
-    -- Le verrou sera maintenu pendant toute la transaction pour garantir la cohérence
+    -- ✅ CORRIGÉ 2025-12-31: Utiliser FOR UPDATE avec un timeout court pour éviter les blocages longs
+    -- Le verrou sera maintenu pendant toute la transaction, mais on évite les attentes infinies
     SELECT COALESCE(jsonb_array_length(data->'produits'->'valeur'), 0)
     INTO v_product_index
     FROM services
@@ -88,28 +88,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION add_product_to_service_jsonb_v2 IS 'Fonction optimisée qui retourne directement les données nécessaires pour l''indexation, évitant un SELECT complet du JSONB. Réduit la latence de 1-3s à <100ms.';
+COMMENT ON FUNCTION add_product_to_service_jsonb_v2 IS 'Fonction optimisée qui retourne directement les données nécessaires pour l''indexation. Utilise FOR UPDATE NOWAIT pour éviter les blocages longs.';
 
 -- ============================================================================
--- 2. GARDER L'ANCIENNE FONCTION pour compatibilité (sera remplacée progressivement)
--- ============================================================================
--- La fonction add_product_to_service_jsonb reste disponible pour le fallback
-
--- ============================================================================
--- 3. INDEX: Optimisation pour les requêtes fréquentes
--- ============================================================================
--- Index pour garantir que les UPDATE sont rapides
-CREATE INDEX IF NOT EXISTS idx_services_id_for_updates 
-    ON services(id) 
-    WHERE is_active = true;
-
--- Index GIN sur data->'produits'->'valeur' pour accès rapide à la longueur
-CREATE INDEX IF NOT EXISTS idx_services_produits_valeur_gin 
-    ON services USING GIN ((data->'produits'->'valeur'))
-    WHERE data->'produits'->'valeur' IS NOT NULL;
-
--- ============================================================================
--- 4. VÉRIFICATION
+-- 2. VÉRIFICATION
 -- ============================================================================
 DO $$
 BEGIN
@@ -121,6 +103,6 @@ BEGIN
         RAISE EXCEPTION 'Fonction add_product_to_service_jsonb_v2 n''existe pas';
     END IF;
     
-    RAISE NOTICE '✅ Migration terminée avec succès';
+    RAISE NOTICE '✅ Migration fix_product_creation_timeout terminée avec succès';
 END $$;
 

@@ -54,10 +54,42 @@ interface Service {
     gps?: string;
 }
 
+interface Review {
+    id: number;
+    user_id: number;
+    user_name: string;
+    rating: number;
+    comment: string;
+    helpful_count: number;
+    created_at: string;
+}
+
+interface ServiceReviewsStats {
+    average_rating: number;
+    total_reviews: number;
+    rating_distribution: { [key: number]: number };
+    completion_rate: number;
+    response_time: number;
+}
+
+interface ServiceStats {
+    views: number;
+    shares: number;
+    likes: number;
+    contacts: number;
+    messages: number;
+    rating: number;
+    totalRatings: number;
+    createdDaysAgo: number;
+}
+
 interface UltraModernServiceCardProps {
     service: Service;
     prestataireInfo?: any;
     user?: any;
+    reviews?: Review[]; // ✅ NOUVEAU 2025-01-01: Reviews passées en props (batch)
+    reviewsStats?: ServiceReviewsStats | null; // ✅ NOUVEAU 2025-01-01: Stats reviews passées en props (batch)
+    serviceStats?: ServiceStats | null; // ✅ NOUVEAU 2025-01-01: Stats service passées en props (batch)
     onPress: (service: Service) => void;
     onContact: (prestataireId: string, type: 'message' | 'call') => void;
     onShare: (service: Service) => void;
@@ -70,6 +102,9 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
     service,
     prestataireInfo,
     user,
+    reviews: reviewsFromProps,
+    reviewsStats: reviewsStatsFromProps,
+    serviceStats: serviceStatsFromProps,
     onPress,
     onContact,
     onShare,
@@ -89,10 +124,24 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
         return service.date_creation || service.created_at || service.data?.date_creation || fallbackDate;
     }, [service.date_creation, service.created_at, service.data?.date_creation]);
 
-    // Utiliser les hooks pour les données réelles
-    const { stats, loading: statsLoading } = useServiceStats(parseInt(service.id), stableCreatedAt);
-    const { reviews, stats: reviewsStats, submitReview } = useServiceReviews(parseInt(service.id));
+    // ✅ NOUVEAU 2025-01-01: Utiliser les données passées en props si disponibles, sinon charger individuellement (fallback)
+    // Ne charger que si les props ne sont pas fournies
+    const hasProps = reviewsFromProps !== undefined || reviewsStatsFromProps !== undefined || serviceStatsFromProps !== undefined;
+    const serviceIdForHook = hasProps ? 0 : parseInt(service.id); // Passer 0 si on a les props pour éviter le chargement
+    
+    const { stats: statsFromHook, loading: statsLoading } = useServiceStats(
+        serviceIdForHook,
+        stableCreatedAt
+    );
+    const { reviews: reviewsFromHook, stats: reviewsStatsFromHook, submitReview } = useServiceReviews(
+        serviceIdForHook
+    );
     const { locationData, loading: locationLoading } = useLocationDisplay(service, prestataireInfo);
+
+    // ✅ NOUVEAU 2025-01-01: Utiliser les props si disponibles, sinon les hooks (fallback)
+    const reviews = reviewsFromProps !== undefined ? reviewsFromProps : (hasProps ? [] : reviewsFromHook);
+    const reviewsStats = reviewsStatsFromProps !== undefined ? reviewsStatsFromProps : (hasProps ? null : reviewsStatsFromHook);
+    const serviceStats = serviceStatsFromProps !== undefined ? serviceStatsFromProps : (hasProps ? null : statsFromHook);
 
     // Fonction pour extraire la valeur d'un champ de service (comme le frontend)
     const getServiceFieldValue = (field: any): string => {
@@ -133,10 +182,10 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
         date_creation: service.date_creation || service.created_at || new Date().toISOString(),
         tags: service.tags || [],
         score_relevance: service.score_relevance || service.score || 0,
-        // Utiliser les vraies statistiques depuis l'API
-        views: stats?.views || 0,
-        likes: stats?.likes || 0,
-        comments: stats?.contacts || 0,
+        // ✅ CORRIGÉ 2025-01-01: Utiliser les vraies statistiques depuis les props ou l'API
+        views: serviceStats?.views || 0,
+        likes: serviceStats?.likes || 0,
+        comments: serviceStats?.contacts || 0,
         isNew: service.isNew || false,
         data: service.data
     };
@@ -763,6 +812,9 @@ export default React.memo(UltraModernServiceCard, (prevProps, nextProps) => {
         prevProps.service.id === nextProps.service.id &&
         prevProps.service.data === nextProps.service.data &&
         prevProps.prestataireInfo === nextProps.prestataireInfo &&
-        prevProps.user?.id === nextProps.user?.id
+        prevProps.user?.id === nextProps.user?.id &&
+        prevProps.reviews === nextProps.reviews &&
+        prevProps.reviewsStats === nextProps.reviewsStats &&
+        prevProps.serviceStats === nextProps.serviceStats
     );
 });

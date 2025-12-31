@@ -1403,19 +1403,51 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     name: error?.name,
                                     response: error?.response?.data,
                                     status: error?.response?.status,
+                                    code: error?.code,
                                 });
                                 
-                                // Afficher un message d'erreur plus détaillé
+                                // ✅ AMÉLIORÉ: Afficher un message d'erreur plus détaillé
                                 let errorMessage = 'Impossible d\'ajouter le produit.';
-                                if (error?.response?.status === 500) {
-                                    errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+                                let errorTitle = 'Erreur';
+                                
+                                // Gérer les erreurs selon leur type
+                                if (error?.code === 'TIMEOUT' || error?.message?.includes('timeout') || error?.message?.includes('Timeout')) {
+                                    errorTitle = '⏱️ Timeout';
+                                    errorMessage = 'La requête a pris trop de temps. Cela peut être dû à une connexion lente ou un serveur surchargé.\n\nVeuillez réessayer dans quelques instants.';
+                                } else if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network request failed') || error?.message?.includes('Failed to fetch')) {
+                                    errorTitle = '🌐 Erreur réseau';
+                                    errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.';
+                                } else if (error?.response?.status === 500) {
+                                    errorTitle = '❌ Erreur serveur';
+                                    // ✅ AMÉLIORÉ: Extraire le message d'erreur détaillé du backend
+                                    const backendError = error?.response?.data?.error || error?.error || error?.message;
+                                    if (backendError && typeof backendError === 'string') {
+                                        // Si le message contient des détails utiles, les afficher
+                                        if (backendError.includes('Timeout') || backendError.includes('timeout')) {
+                                            errorMessage = 'Le serveur a mis trop de temps à répondre. Veuillez réessayer dans quelques instants.\n\n' + 
+                                                (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
+                                        } else if (backendError.includes('surchargée') || backendError.includes('surchargé')) {
+                                            errorMessage = 'Le serveur est temporairement surchargé. Veuillez réessayer dans quelques instants.\n\n' + 
+                                                (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
+                                        } else {
+                                            errorMessage = backendError;
+                                        }
+                                    } else {
+                                        errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+                                    }
+                                } else if (error?.response?.status === 400) {
+                                    errorTitle = '⚠️ Erreur de validation';
+                                    errorMessage = error?.response?.data?.error || error?.message || 'Les données envoyées sont invalides. Veuillez vérifier les informations du produit.';
+                                } else if (error?.response?.status === 401) {
+                                    errorTitle = '🔐 Erreur d\'authentification';
+                                    errorMessage = 'Votre session a expiré. Veuillez vous reconnecter.';
                                 } else if (error?.response?.data?.error) {
                                     errorMessage = error.response.data.error;
                                 } else if (error?.message) {
                                     errorMessage = error.message;
                                 }
                                 
-                                Alert.alert('Erreur', errorMessage);
+                                Alert.alert(errorTitle, errorMessage);
                             } finally {
                                 setLoading(false);
                             }
@@ -1430,12 +1462,44 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 name: error?.name,
                 response: error?.response?.data,
                 status: error?.response?.status,
+                code: error?.code,
             });
             
-            // Afficher un message d'erreur plus détaillé
+            // ✅ AMÉLIORÉ: Afficher un message d'erreur plus détaillé
             let errorMessage = 'Impossible d\'ajouter le produit.';
-            if (error?.response?.status === 500) {
-                errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+            let errorTitle = 'Erreur';
+            
+            // Gérer les erreurs selon leur type
+            if (error?.code === 'TIMEOUT' || error?.message?.includes('timeout') || error?.message?.includes('Timeout')) {
+                errorTitle = '⏱️ Timeout';
+                errorMessage = 'La requête a pris trop de temps. Cela peut être dû à une connexion lente ou un serveur surchargé.\n\nVeuillez réessayer dans quelques instants.';
+            } else if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network request failed') || error?.message?.includes('Failed to fetch')) {
+                errorTitle = '🌐 Erreur réseau';
+                errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.';
+            } else if (error?.response?.status === 500) {
+                errorTitle = '❌ Erreur serveur';
+                // ✅ AMÉLIORÉ: Extraire le message d'erreur détaillé du backend
+                const backendError = error?.response?.data?.error || error?.error || error?.message;
+                if (backendError && typeof backendError === 'string') {
+                    // Si le message contient des détails utiles, les afficher
+                    if (backendError.includes('Timeout') || backendError.includes('timeout')) {
+                        errorMessage = 'Le serveur a mis trop de temps à répondre. Veuillez réessayer dans quelques instants.\n\n' + 
+                            (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
+                    } else if (backendError.includes('surchargée') || backendError.includes('surchargé')) {
+                        errorMessage = 'Le serveur est temporairement surchargé. Veuillez réessayer dans quelques instants.\n\n' + 
+                            (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
+                    } else {
+                        errorMessage = backendError;
+                    }
+                } else {
+                    errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+                }
+            } else if (error?.response?.status === 400) {
+                errorTitle = '⚠️ Erreur de validation';
+                errorMessage = error?.response?.data?.error || error?.message || 'Les données envoyées sont invalides. Veuillez vérifier les informations du produit.';
+            } else if (error?.response?.status === 401) {
+                errorTitle = '🔐 Erreur d\'authentification';
+                errorMessage = 'Votre session a expiré. Veuillez vous reconnecter.';
             } else if (error?.response?.data?.error) {
                 errorMessage = error.response.data.error;
             } else if (error?.message) {

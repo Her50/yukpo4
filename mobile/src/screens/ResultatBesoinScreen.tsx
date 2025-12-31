@@ -24,6 +24,7 @@ import UltraModernServiceCard from '../components/UltraModernServiceCard';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
+import { useServicesBatchData } from '../hooks/useServicesBatchData';
 import { apiGet, apiPost } from '../services/api';
 import { theme } from '../theme/theme';
 
@@ -77,6 +78,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [prestataires, setPrestataires] = useState<Map<string, Prestataire>>(new Map());
+    const prestatairesRef = useRef<Map<string, Prestataire>>(new Map()); // ✅ NOUVEAU: Ref pour mémoriser la Map
     const [prestatairesLoaded, setPrestatairesLoaded] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
     const [showGalleryModal, setShowGalleryModal] = useState(false);
@@ -591,7 +593,26 @@ const ResultatBesoinScreen: React.FC = () => {
             });
 
             console.log(`📊 ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
-            setPrestataires(newPrestataires);
+            
+            // ✅ CORRIGÉ 2025-01-01: Mémoriser la Map pour éviter les changements de référence
+            // Ne mettre à jour que si les données ont réellement changé
+            let hasPrestatairesChanges = false;
+            if (prestatairesRef.current.size !== newPrestataires.size) {
+                hasPrestatairesChanges = true;
+            } else {
+                for (const [userId, prestataire] of newPrestataires.entries()) {
+                    const oldPrestataire = prestatairesRef.current.get(userId);
+                    if (!oldPrestataire || oldPrestataire?.userId !== prestataire.userId) {
+                        hasPrestatairesChanges = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (hasPrestatairesChanges) {
+                prestatairesRef.current = newPrestataires;
+                setPrestataires(newPrestataires);
+            }
             
             // ✅ CORRIGÉ 2025-12-30: Mettre à jour les produits avec les informations des prestataires maintenant chargés
             // Vérifier s'il y a réellement des changements avant de mettre à jour pour éviter les re-renders inutiles
@@ -1119,6 +1140,30 @@ const ResultatBesoinScreen: React.FC = () => {
         ...filteredProducts.map(product => ({ type: 'product' as const, data: product }))
     ], [filteredServices, filteredProducts]);
 
+    // ✅ NOUVEAU 2025-01-01: Charger reviews et stats en batch pour tous les services
+    const serviceIdsForBatch = useMemo(() => {
+        return services
+            .map(s => {
+                const id = parseInt(s.id);
+                return isNaN(id) ? null : id;
+            })
+            .filter((id): id is number => id !== null);
+    }, [services]);
+
+    const serviceCreatedAtsMap = useMemo(() => {
+        const map = new Map<number, string>();
+        services.forEach(s => {
+            const id = parseInt(s.id);
+            if (!isNaN(id)) {
+                const createdAt = s.created_at || s.data?.date_creation || s.date_creation || new Date().toISOString();
+                map.set(id, createdAt);
+            }
+        });
+        return map;
+    }, [services]);
+
+    const { data: batchData, loading: batchLoading } = useServicesBatchData(serviceIdsForBatch, serviceCreatedAtsMap);
+
     // ✅ CORRIGÉ 2025-01-01: Fonction pour rendre ProductCard avec les props mémorisées
     const renderProductCard = useCallback((product: any) => {
         const service = product._service;
@@ -1487,12 +1532,18 @@ const ResultatBesoinScreen: React.FC = () => {
                                     // Afficher le service complet
                                     const service = result.data as Service;
                                     const prestataire = prestataires.get(service.user_id);
+                                    const serviceId = parseInt(service.id);
+                                    const serviceBatchData = !isNaN(serviceId) ? batchData[serviceId] : null;
+                                    
                                     return (
                                         <UltraModernServiceCard
                                             key={`service-${service.id}`}
                                             service={service}
                                             prestataireInfo={prestataire}
                                             user={user}
+                                            reviews={serviceBatchData?.reviews.reviews || []}
+                                            reviewsStats={serviceBatchData?.reviews.stats || null}
+                                            serviceStats={serviceBatchData?.stats.stats || null}
                                             onPress={handleServicePress}
                                             onContact={handleContact}
                                             onShare={handleShare}

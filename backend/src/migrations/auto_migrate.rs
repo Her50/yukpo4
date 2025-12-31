@@ -7185,6 +7185,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto fix_product_creation_performance_v2: {}", e),
     }
 
+    // ✅ NOUVEAU 2025-12-31 : Correction timeout création produit
+    match ensure_fix_product_creation_timeout(pool).await {
+        Ok(_) => info!("✅ Migration auto: fix_product_creation_timeout OK"),
+        Err(e) => error!("❌ Erreur migration auto fix_product_creation_timeout: {}", e),
+    }
+
     // ✅ NOUVEAU 2025-12-21 : Optimisation des endpoints lents
     match ensure_optimize_slow_endpoints(pool).await {
         Ok(_) => info!("✅ Migration auto: optimize_slow_endpoints OK"),
@@ -13024,6 +13030,25 @@ pub async fn ensure_fix_product_creation_performance_v2(pool: &PgPool) -> Result
     execute_multiple_sql_commands(pool, migration_sql).await?;
 
     info!("✅ Migration fix_product_creation_performance_v2 appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-31 : Correction timeout création produit
+/// Migration: 20251231_fix_product_creation_timeout.sql
+/// Corrige:
+/// - Timeout après 15-16s lors de l'ajout d'un produit
+/// - Améliore la gestion des verrous dans la fonction PostgreSQL
+/// - Optimise la fonction pour réduire la latence
+pub async fn ensure_fix_product_creation_timeout(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration fix_product_creation_timeout...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251231_fix_product_creation_timeout.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Migration fix_product_creation_timeout appliquée");
     Ok(())
 }
 

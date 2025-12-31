@@ -1,10 +1,10 @@
--- Migration: Correction définitive performance création produit
+-- Migration: Correction blocages (deadlock) dans add_product_to_service_jsonb_v2
 -- Date: 2025-12-31
--- Problème: SELECT complet du JSONB après UPDATE cause 1-3s de latence
--- Solution: Fonction PostgreSQL qui retourne directement les données nécessaires
+-- Problème: FOR UPDATE peut causer des blocages si plusieurs requêtes arrivent en même temps
+-- Solution: Utiliser FOR UPDATE NOWAIT pour éviter les blocages longs, avec retry côté application
 
 -- ============================================================================
--- 1. FONCTION OPTIMISÉE: Retourne index + données nécessaires pour indexation
+-- 1. FONCTION OPTIMISÉE: Utilise FOR UPDATE NOWAIT pour éviter les blocages
 -- ============================================================================
 CREATE OR REPLACE FUNCTION add_product_to_service_jsonb_v2(
     p_service_id INTEGER,
@@ -18,15 +18,25 @@ DECLARE
     v_product_index INTEGER;
     v_produits_data JSONB;
     v_lieu_data JSONB;
+    v_lock_acquired BOOLEAN := FALSE;
 BEGIN
-    -- ✅ OPTIMISÉ: Calculer l'index AVANT l'UPDATE (lecture rapide)
-    -- ✅ CORRIGÉ 2025-12-31: Utiliser FOR UPDATE pour éviter les race conditions
-    -- Le verrou sera maintenu pendant toute la transaction pour garantir la cohérence
-    SELECT COALESCE(jsonb_array_length(data->'produits'->'valeur'), 0)
-    INTO v_product_index
-    FROM services
-    WHERE id = p_service_id
-    FOR UPDATE;  -- Verrouiller pour éviter race conditions
+    -- ✅ CORRIGÉ 2025-12-31: Utiliser FOR UPDATE NOWAIT pour éviter les blocages
+    -- Si le verrou ne peut pas être acquis immédiatement, retourner une erreur
+    -- L'application fera un retry avec backoff
+    BEGIN
+        SELECT COALESCE(jsonb_array_length(data->'produits'->'valeur'), 0)
+        INTO v_product_index
+        FROM services
+        WHERE id = p_service_id
+        FOR UPDATE NOWAIT;  -- ✅ NOUVEAU: NOWAIT évite les blocages longs
+        
+        v_lock_acquired := TRUE;
+    EXCEPTION
+        WHEN lock_not_available THEN
+            -- Le service est verrouillé par une autre transaction
+            -- Retourner une erreur que l'application peut gérer avec un retry
+            RAISE EXCEPTION 'Service % est actuellement verrouillé par une autre transaction. Veuillez réessayer dans quelques instants.', p_service_id;
+    END;
     
     -- Si le service n'existe pas, retourner vide
     IF v_product_index IS NULL THEN
@@ -88,28 +98,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION add_product_to_service_jsonb_v2 IS 'Fonction optimisée qui retourne directement les données nécessaires pour l''indexation, évitant un SELECT complet du JSONB. Réduit la latence de 1-3s à <100ms.';
+COMMENT ON FUNCTION add_product_to_service_jsonb_v2 IS 'Fonction optimisée qui utilise FOR UPDATE NOWAIT pour éviter les blocages. Si le service est verrouillé, retourne une erreur que l''application peut gérer avec un retry.';
 
 -- ============================================================================
--- 2. GARDER L'ANCIENNE FONCTION pour compatibilité (sera remplacée progressivement)
--- ============================================================================
--- La fonction add_product_to_service_jsonb reste disponible pour le fallback
-
--- ============================================================================
--- 3. INDEX: Optimisation pour les requêtes fréquentes
--- ============================================================================
--- Index pour garantir que les UPDATE sont rapides
-CREATE INDEX IF NOT EXISTS idx_services_id_for_updates 
-    ON services(id) 
-    WHERE is_active = true;
-
--- Index GIN sur data->'produits'->'valeur' pour accès rapide à la longueur
-CREATE INDEX IF NOT EXISTS idx_services_produits_valeur_gin 
-    ON services USING GIN ((data->'produits'->'valeur'))
-    WHERE data->'produits'->'valeur' IS NOT NULL;
-
--- ============================================================================
--- 4. VÉRIFICATION
+-- 2. VÉRIFICATION
 -- ============================================================================
 DO $$
 BEGIN

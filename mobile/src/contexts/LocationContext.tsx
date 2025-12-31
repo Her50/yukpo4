@@ -25,6 +25,8 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [locationSubscription, setLocationSubscription] = useState<Location.LocationSubscription | null>(null);
+  // ✅ NOUVEAU 2025-01-01: Ref pour mémoriser la dernière location et éviter les re-renders inutiles
+  const lastLocationRef = React.useRef<Location.LocationObject | null>(null);
 
   const requestLocationPermission = async (): Promise<boolean> => {
     try {
@@ -97,8 +99,8 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       const subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
-          timeInterval: 5000,
-          distanceInterval: 10,
+          timeInterval: 30000, // ✅ OPTIMISÉ 2025-01-01: Augmenter à 30s pour réduire les re-renders
+          distanceInterval: 50, // ✅ OPTIMISÉ 2025-01-01: Augmenter à 50m pour réduire les re-renders
         },
         (newLocation) => {
           // ✅ CORRIGÉ: Validation des coordonnées GPS avant de les utiliser
@@ -111,6 +113,28 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
             newLocation.coords.longitude >= -180 &&
             newLocation.coords.longitude <= 180
           ) {
+            // ✅ OPTIMISÉ 2025-01-01: Ne mettre à jour que si la distance a changé significativement (> 50m)
+            const lastLoc = lastLocationRef.current;
+            if (lastLoc && lastLoc.coords) {
+              const R = 6371; // Rayon de la Terre en kilomètres
+              const dLat = (newLocation.coords.latitude - lastLoc.coords.latitude) * Math.PI / 180;
+              const dLon = (newLocation.coords.longitude - lastLoc.coords.longitude) * Math.PI / 180;
+              const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lastLoc.coords.latitude * Math.PI / 180) * Math.cos(newLocation.coords.latitude * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+              const distanceKm = R * c;
+              const distanceM = distanceKm * 1000;
+              
+              // Ne mettre à jour que si la distance a changé de plus de 50 mètres
+              if (distanceM < 50) {
+                return; // Ignorer cette mise à jour, la distance n'a pas changé significativement
+              }
+            }
+            
+            // Mettre à jour la location
+            lastLocationRef.current = newLocation;
             setLocation(newLocation);
           } else {
             console.warn('[LocationContext] ⚠️ Coordonnées GPS invalides ignorées:', newLocation);

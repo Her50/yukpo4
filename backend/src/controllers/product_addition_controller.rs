@@ -44,7 +44,9 @@ pub async fn add_product_to_service(
 ) -> AppResult<Json<Value>> {
     use crate::utils::log::{log_info, log_error};
     
-    log_info(&format!("[add_product_to_service] 📦 Ajout d'un produit au service {}", service_id));
+    log_info(&format!("[add_product_to_service] 📦 Ajout d'un produit au service {} (user_id: {})", service_id, user.id));
+    
+    let start_time = std::time::Instant::now();
     
     // ✅ Vérification : L'utilisateur est-il le propriétaire du service ? (avec retry)
     let pool = state.pg.clone();
@@ -209,48 +211,109 @@ pub async fn add_product_to_service(
     let product_json_value = serde_json::to_value(&product_data_cleaned)
         .map_err(|e| AppError::Internal(format!("Erreur sérialisation produit: {}", e)))?;
     
-    // ✅ AMÉLIORÉ 2025-12-30: Timeout explicite pour éviter les requêtes trop longues
-    // ✅ RÉDUIT 2025-12-31: 15s pour la fonction PostgreSQL uniquement (le traitement des images sera asynchrone)
-    // Le timeout de 15s est suffisant pour la fonction PostgreSQL, les images seront traitées en arrière-plan
+    // ✅ CORRIGÉ 2025-12-31: Timeout augmenté à 45s pour gérer les retries avec backoff exponentiel
+    // ✅ AMÉLIORÉ 2025-12-31: Retry avec backoff exponentiel pour gérer les blocages (FOR UPDATE NOWAIT)
+    // Le timeout de 45s laisse assez de marge pour les retries avec backoff (max 15s par retry)
     let update_result = tokio::time::timeout(
-        std::time::Duration::from_secs(15),
-        crate::utils::db_retry::retry_query(
-            &pool,
-            || {
+        std::time::Duration::from_secs(45),
+        async {
+            let mut last_error = None;
+            let max_retries = 5; // ✅ AUGMENTÉ: 5 tentatives pour gérer les blocages temporaires
+            
+            for attempt in 0..max_retries {
                 let product_json_clone = product_json_value.clone();
                 let service_id_clone = service_id;
                 let pool_clone = pool.clone();
-                Box::pin(async move {
-                    // ✅ OPTIMISATION CRITIQUE 2025-12-31: Utilise fonction PostgreSQL v2 qui retourne directement
-                    // les données nécessaires pour l'indexation, évitant un SELECT complet du JSONB
-                    // Réduit la latence de 3-6s à <300ms
-                    sqlx::query_as::<_, (i32, Value, Value)>(
-                        "SELECT product_index, produits_data, lieu_data FROM add_product_to_service_jsonb_v2($1, $2)"
-                    )
-                    .bind(service_id_clone)
-                    .bind(&product_json_clone)
-                    .fetch_one(&pool_clone)
-                    .await
-                })
-            },
-            7, // ✅ AUGMENTÉ 2025-12-27: 7 tentatives max pour gérer les erreurs TLS de Render DB
-        )
+                
+                match sqlx::query_as::<_, (i32, Value, Value)>(
+                    "SELECT product_index, produits_data, lieu_data FROM add_product_to_service_jsonb_v2($1, $2)"
+                )
+                .bind(service_id_clone)
+                .bind(&product_json_clone)
+                .fetch_one(&pool_clone)
+                .await {
+                    Ok(result) => return Ok(result),
+                    Err(e) => {
+                        last_error = Some(e);
+                        let error_msg = last_error.as_ref().unwrap().to_string();
+                        
+                        // ✅ NOUVEAU: Si c'est un blocage (lock_not_available), faire un retry avec backoff
+                        if error_msg.contains("verrouillé") || error_msg.contains("locked") || error_msg.contains("lock_not_available") {
+                            if attempt < max_retries - 1 {
+                                // Backoff exponentiel: 100ms, 200ms, 400ms, 800ms
+                                let delay_ms = 100 * (1 << attempt);
+                                log_info(&format!("[add_product_to_service] ⚠️ Service {} verrouillé, retry {}/{} dans {}ms", 
+                                    service_id, attempt + 1, max_retries, delay_ms));
+                                tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                                continue;
+                            }
+                        }
+                        
+                        // Pour les autres erreurs, ne pas retry
+                        break;
+                    }
+                }
+            }
+            
+            match last_error {
+                Some(e) => Err(e),
+                None => Err(sqlx::Error::RowNotFound)
+            }
+        }
     )
     .await;
     
     // ✅ Exécuter l'UPDATE avec la fonction PostgreSQL optimisée
+    let db_time = start_time.elapsed();
+    log_info(&format!("[add_product_to_service] ⏱️ Temps avant UPDATE PostgreSQL: {:?}", db_time));
+    
     let (product_index, produits_data_for_indexation, lieu_data_for_indexation) = match update_result {
         Ok(Ok((index, produits_data, lieu_data))) => {
             let idx = index as usize;
-            log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {})", service_id, idx));
+            let total_time = start_time.elapsed();
+            log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {}) en {:?}", service_id, idx, total_time));
             
             // ✅ OPTIMISÉ 2025-12-31: Les données nécessaires sont déjà retournées par la fonction
             // Plus besoin de faire un SELECT complet du JSONB !
             (idx, produits_data, lieu_data)
         },
         Ok(Err(e)) => {
-            // ✅ Fallback: Essayer avec l'ancienne fonction si v2 n'existe pas
+            // ✅ AMÉLIORÉ 2025-12-31: Gérer spécifiquement les erreurs de blocage
             let error_msg = e.to_string();
+            
+            // Si c'est un blocage (verrouillé), retourner une erreur spécifique
+            if error_msg.contains("verrouillé") || error_msg.contains("locked") || error_msg.contains("lock_not_available") {
+                log_error(&format!("[add_product_to_service] ❌ Service {} verrouillé après {} tentatives", service_id, 5));
+                
+                // ✅ ROLLBACK : Rembourser l'utilisateur en cas de blocage persistant
+                let pool = state.pg.clone();
+                let _ = crate::utils::db_retry::retry_query(
+                    &pool,
+                    || {
+                        let cout_ajout_clone = cout_ajout;
+                        let user_id_clone = user.id;
+                        let pool_clone = pool.clone();
+                        Box::pin(async move {
+                            sqlx::query(
+                                "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
+                            )
+                            .bind(cout_ajout_clone)
+                            .bind(user_id_clone)
+                            .execute(&pool_clone)
+                            .await
+                        })
+                    },
+                    3,
+                )
+                .await;
+                
+                return Err(AppError::Internal(format!(
+                    "Le service est actuellement en cours de modification par une autre opération. Veuillez réessayer dans quelques instants. Votre solde a été remboursé ({} FCFA).",
+                    cout_ajout
+                )));
+            }
+            
+            // ✅ Fallback: Essayer avec l'ancienne fonction si v2 n'existe pas
             if error_msg.contains("does not exist") || error_msg.contains("function") {
                 log_info(&format!("[add_product_to_service] ⚠️ Fonction v2 non disponible, fallback vers v1"));
                 
@@ -309,12 +372,49 @@ pub async fn add_product_to_service(
                         (idx, produits_data, lieu_data)
                     },
                     Err(e) => {
-                        log_error(&format!("[add_product_to_service] Erreur fonction PostgreSQL (fallback): {}", e));
-                        return Err(AppError::Internal(format!("Erreur mise à jour service: {}", e)));
+                        let error_msg = e.to_string();
+                        log_error(&format!("[add_product_to_service] Erreur fonction PostgreSQL (fallback): {}", error_msg));
+                        
+                        // ✅ ROLLBACK : Rembourser l'utilisateur en cas d'échec
+                        let pool = state.pg.clone();
+                        let _ = crate::utils::db_retry::retry_query(
+                            &pool,
+                            || {
+                                let cout_ajout_clone = cout_ajout;
+                                let user_id_clone = user.id;
+                                let pool_clone = pool.clone();
+                                Box::pin(async move {
+                                    sqlx::query(
+                                        "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
+                                    )
+                                    .bind(cout_ajout_clone)
+                                    .bind(user_id_clone)
+                                    .execute(&pool_clone)
+                                    .await
+                                })
+                            },
+                            3,
+                        )
+                        .await;
+                        
+                        // ✅ AMÉLIORÉ: Message d'erreur plus détaillé
+                        let detailed_error = if error_msg.contains("timeout") || error_msg.contains("deadlock") {
+                            format!("La base de données est temporairement surchargée. Veuillez réessayer dans quelques instants. (Erreur: {})", error_msg)
+                        } else if error_msg.contains("constraint") || error_msg.contains("duplicate") {
+                            format!("Erreur de validation des données. Veuillez vérifier les informations du produit. (Erreur: {})", error_msg)
+                        } else {
+                            format!("Erreur lors de l'ajout du produit au service. Veuillez réessayer. Si le problème persiste, contactez le support. (Erreur: {})", error_msg)
+                        };
+                        
+                        return Err(AppError::Internal(detailed_error));
                     }
                 }
             } else {
-                log_error(&format!("[add_product_to_service] Erreur fonction PostgreSQL: {}", e));
+                // Autre erreur PostgreSQL (non-blocage)
+                let error_msg = e.to_string();
+                let error_details = format!("[add_product_to_service] ❌ Erreur fonction PostgreSQL: {} (service_id: {}, user_id: {}, temps écoulé: {:?})", 
+                    error_msg, service_id, user.id, start_time.elapsed());
+                log_error(&error_details);
                 
                 // ✅ ROLLBACK : Rembourser l'utilisateur en cas d'échec
                 let pool = state.pg.clone();
@@ -338,16 +438,28 @@ pub async fn add_product_to_service(
                 )
                 .await;
                 
-                return Err(AppError::Internal(format!("Erreur mise à jour service: {}", e)));
+                // ✅ AMÉLIORÉ: Message d'erreur plus détaillé selon le type d'erreur
+                let detailed_error = if error_msg.contains("timeout") || error_msg.contains("deadlock") {
+                    format!("La base de données est temporairement surchargée. Veuillez réessayer dans quelques instants. (Erreur: {})", error_msg)
+                } else if error_msg.contains("constraint") || error_msg.contains("duplicate") {
+                    format!("Erreur de validation des données. Veuillez vérifier les informations du produit. (Erreur: {})", error_msg)
+                } else if error_msg.contains("does not exist") || error_msg.contains("relation") {
+                    format!("Erreur de configuration de la base de données. Veuillez contacter le support. (Erreur: {})", error_msg)
+                } else {
+                    format!("Erreur lors de l'ajout du produit au service. Veuillez réessayer. Si le problème persiste, contactez le support. (Erreur: {})", error_msg)
+                };
+                
+                return Err(AppError::Internal(detailed_error));
             }
         },
         Err(_) => {
-            // Timeout après 15s
-            log_error(&format!("[add_product_to_service] ⏱️ Timeout après 15s lors de l'ajout du produit (fonction PostgreSQL trop lente)"));
+            // Timeout après 30s
+            let elapsed_time = start_time.elapsed();
+            log_error(&format!("[add_product_to_service] ⏱️ Timeout après 30s lors de l'ajout du produit (fonction PostgreSQL trop lente ou base de données surchargée, temps écoulé: {:?})", elapsed_time));
             
             // ✅ ROLLBACK : Rembourser l'utilisateur en cas de timeout
             let pool = state.pg.clone();
-            let _ = crate::utils::db_retry::retry_query(
+            let refund_result = crate::utils::db_retry::retry_query(
                 &pool,
                 || {
                     let cout_ajout_clone = cout_ajout;
@@ -367,7 +479,17 @@ pub async fn add_product_to_service(
             )
             .await;
             
-            return Err(AppError::Internal("Timeout lors de l'ajout du produit après 15s. La base de données est peut-être surchargée. Veuillez réessayer.".to_string()));
+            if refund_result.is_ok() {
+                log_info(&format!("[add_product_to_service] ✅ Remboursement effectué pour user {} ({} FCFA)", user.id, cout_ajout));
+            } else {
+                log_error(&format!("[add_product_to_service] ⚠️ Échec remboursement pour user {} ({} FCFA)", user.id, cout_ajout));
+            }
+            
+            // ✅ AMÉLIORÉ: Message d'erreur plus détaillé pour timeout
+            return Err(AppError::Internal(format!(
+                "Timeout lors de l'ajout du produit après 30s. La base de données est peut-être temporairement surchargée.\n\nVotre solde a été remboursé ({} FCFA).\n\nVeuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.",
+                cout_ajout
+            )));
         }
     };
     
