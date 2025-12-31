@@ -300,7 +300,7 @@ pub async fn get_services_reviews_batch(
         doc! {
             "$match": {
                 "event_type": "UserAction",
-                "service_id": { "$in": service_ids },
+                "service_id": { "$in": &service_ids },
                 "data.interaction_type": "review"
             }
         },

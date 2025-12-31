@@ -361,10 +361,11 @@ pub async fn get_services_reviews_batch_endpoint(
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Json<Value> {
     // Récupérer les service_ids depuis les query params
+    let default_empty = String::new();
     let service_ids_str = params
         .get("service_ids")
         .or_else(|| params.get("ids"))
-        .unwrap_or(&"".to_string());
+        .unwrap_or(&default_empty);
     
     if service_ids_str.is_empty() {
         return Json(json!({
@@ -432,10 +433,11 @@ pub async fn get_services_stats_batch_endpoint(
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Json<Value> {
     // Récupérer les service_ids depuis les query params
+    let default_empty = String::new();
     let service_ids_str = params
         .get("service_ids")
         .or_else(|| params.get("ids"))
-        .unwrap_or(&"".to_string());
+        .unwrap_or(&default_empty);
     
     if service_ids_str.is_empty() {
         return Json(json!({
