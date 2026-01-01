@@ -37,7 +37,7 @@ where
                     || error_str.contains("TLS close_notify")
                     || error_str.contains("terminating connection")
                     || error_str.contains("crash of another server process")  // ✅ NOUVEAU: Gérer les crashes PostgreSQL
-                    || error_str.contains("error communicating with database")
+                    || error_str.contains("error communicating with database")  // ✅ CORRIGÉ 2026-01-01: Erreur TLS fréquente sur Render
                     || error_str.contains("connection closed")
                     || error_str.contains("broken pipe")
                     || error_str.contains("connection reset")
@@ -53,21 +53,24 @@ where
 
                     // ✅ CORRIGÉ 2025-12-27: Backoff adaptatif selon le type d'erreur
                     // Détection améliorée des erreurs TLS (toutes les variantes)
+                    // ✅ CORRIGÉ 2026-01-01: Inclure "error communicating with database" comme erreur TLS
                     let is_tls_error = error_str.contains("TLS") 
                         || error_str.contains("close_notify") 
                         || error_str.contains("unexpected_eof")
                         || error_str.contains("Unexpected EOF")
-                        || error_str.contains("peer closed connection");
+                        || error_str.contains("peer closed connection")
+                        || error_str.contains("error communicating with database");  // ✅ NOUVEAU: Erreur TLS fréquente sur Render
                     
                     let backoff_ms: u64 = if is_crash_error {
                         // Backoff plus long pour les crashes (500ms, 1000ms, 2000ms, 4000ms, 5000ms max)
                         500 * (1u64 << (attempt - 1)).min(5000)
                     } else if is_tls_error {
-                        // ✅ AMÉLIORÉ 2025-12-30: Backoff encore plus long pour erreurs TLS (2000ms, 3000ms, 4000ms, 5000ms, 6000ms max)
+                        // ✅ CORRIGÉ 2026-01-01: Backoff encore plus long pour erreurs TLS (3000ms, 5000ms, 7000ms, 9000ms, 10000ms max)
                         // Les erreurs TLS nécessitent beaucoup plus de temps pour que Render DB se stabilise
-                        // Minimum 2000ms pour laisser le temps à la connexion de se rétablir complètement
+                        // Minimum 3000ms pour laisser le temps à la connexion de se rétablir complètement
                         // Le pool va créer une nouvelle connexion pendant ce temps
-                        2000 + (1000 * (attempt as u64 - 1)).min(4000)
+                        // Augmenté pour gérer les cas où toutes les tentatives échouent
+                        3000 + (2000 * (attempt as u64 - 1)).min(7000)
                     } else {
                         // Backoff normal pour autres erreurs (200ms, 400ms, 800ms, 1600ms, 2000ms max)
                         200 * (1u64 << (attempt - 1)).min(2000)

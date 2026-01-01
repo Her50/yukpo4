@@ -216,6 +216,9 @@ pub async fn add_product_to_service(
     let db_time = start_time.elapsed();
     log_info(&format!("[add_product_to_service] ⏱️ Temps avant UPDATE PostgreSQL: {:?}", db_time));
     
+    // ✅ CORRIGÉ 2026-01-01: Augmenter à 10 tentatives pour gérer les erreurs TLS persistantes
+    // Les requêtes longues (50s+) sont sujettes aux fermetures de connexion TLS
+    // Avec 10 tentatives et backoff 3-10s, on donne plus de temps pour que la connexion se rétablisse
     let update_result = crate::utils::db_retry::retry_query(
         &pool,
         || {
@@ -232,7 +235,7 @@ pub async fn add_product_to_service(
                 .await
             })
         },
-        5, // 5 tentatives max avec backoff adaptatif pour TLS
+        10, // ✅ CORRIGÉ: 10 tentatives max avec backoff adaptatif pour TLS (3-10s entre tentatives)
     ).await;
     
     let (product_index, produits_data_for_indexation, lieu_data_for_indexation) = match update_result {
@@ -251,7 +254,7 @@ pub async fn add_product_to_service(
             
             // Si c'est un blocage (verrouillé), retourner une erreur spécifique
             if error_msg.contains("verrouillé") || error_msg.contains("locked") || error_msg.contains("lock_not_available") {
-                log_error(&format!("[add_product_to_service] ❌ Service {} verrouillé après {} tentatives", service_id, 5));
+                log_error(&format!("[add_product_to_service] ❌ Service {} verrouillé après {} tentatives", service_id, 10));
                 
                 // ✅ ROLLBACK : Rembourser l'utilisateur en cas de blocage persistant
                 let pool = state.pg.clone();
@@ -285,7 +288,7 @@ pub async fn add_product_to_service(
             if error_msg.contains("does not exist") || error_msg.contains("function") {
                 log_info(&format!("[add_product_to_service] ⚠️ Fonction v2 non disponible, fallback vers v1"));
                 
-                // Utiliser l'ancienne fonction
+                // Utiliser l'ancienne fonction avec plus de tentatives
                 let fallback_result = crate::utils::db_retry::retry_query(
                     &pool,
                     || {
@@ -302,7 +305,7 @@ pub async fn add_product_to_service(
                             .await
                         })
                     },
-                    7,
+                    10, // ✅ CORRIGÉ: Augmenté à 10 tentatives pour fallback aussi
                 ).await;
                 
                 match fallback_result {
