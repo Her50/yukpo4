@@ -693,17 +693,30 @@ impl StudioService {
                 "[StudioService] ❌ Échec génération preview courte session {}: {} (mode={:?}, retryable={})",
                 session_id, err.message, err.mode, err.retryable
             );
-            // ✅ AMÉLIORÉ: Message d'erreur plus informatif selon le type d'erreur
+            // ✅ AMÉLIORÉ: Message d'erreur plus informatif selon le type d'erreur et le mode
+            let error_message = match err.mode {
+                crate::services::video_renderer::RenderExecutionMode::Offline => {
+                    if err.message.contains("npm") || err.message.contains("No such file") {
+                        format!(
+                            "Le service de rendu vidéo local n'est pas configuré correctement. {} Configurez VIDEO_RENDERER_RPC_URL pour utiliser un renderer distant, ou précompilez le worker Remotion avant le déploiement.",
+                            err.message
+                        )
+                    } else {
+                        format!("Erreur lors du rendu vidéo local: {}", err.message)
+                    }
+                }
+                crate::services::video_renderer::RenderExecutionMode::GpuRpc => {
+                    format!("Erreur lors du rendu vidéo distant: {}", err.message)
+                }
+            };
+
             if err.retryable {
                 AppError::BadRequest(format!(
                     "Erreur temporaire lors de la génération de l'aperçu: {}. Veuillez réessayer dans quelques instants.",
-                    err.message
+                    error_message
                 ))
             } else {
-                AppError::Internal(format!(
-                    "Impossible de générer l'aperçu court: {}. Le service de rendu vidéo a rencontré une erreur.",
-                    err.message
-                ))
+                AppError::Internal(error_message)
             }
         })?;
 

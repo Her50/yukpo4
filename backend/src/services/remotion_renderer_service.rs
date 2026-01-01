@@ -59,11 +59,30 @@ impl RemotionRendererService {
         if !self.config.auto_build {
             warn!("[RemotionRenderer] Aucun build trouvé et auto_build désactivé.");
             return Err(AppError::Internal(
-                "Remotion renderer non compilé (dist/src/index.js absent)".to_string(),
+                "Remotion renderer non compilé (dist/src/index.js absent). Configurez VIDEO_RENDERER_AUTO_BUILD=true ou précompilez le worker avant le déploiement.".to_string(),
             ));
         }
 
         info!("[RemotionRenderer] Compilation du worker Remotion en cours...");
+
+        // ✅ AMÉLIORÉ: Vérifier d'abord si npm est disponible avant d'essayer de l'exécuter
+        let npm_check = Command::new("npm")
+            .arg("--version")
+            .output()
+            .await;
+
+        match npm_check {
+            Ok(output) if output.status.success() => {
+                let npm_version = String::from_utf8_lossy(&output.stdout);
+                info!("[RemotionRenderer] npm détecté (version: {})", npm_version.trim());
+            }
+            _ => {
+                warn!("[RemotionRenderer] ⚠️ npm non disponible dans l'environnement. Le build automatique ne peut pas être effectué.");
+                return Err(AppError::Internal(
+                    "npm n'est pas disponible dans l'environnement. Le worker Remotion doit être précompilé avant le déploiement, ou configurez VIDEO_RENDERER_RPC_URL pour utiliser un renderer distant.".to_string(),
+                ));
+            }
+        }
 
         let status = Command::new("npm")
             .arg("run")
@@ -73,7 +92,7 @@ impl RemotionRendererService {
             .await
             .map_err(|err| {
                 AppError::Internal(format!(
-                    "Impossible de lancer npm run build pour Remotion: {err}"
+                    "Impossible de lancer npm run build pour Remotion: {err}. Vérifiez que npm est installé et accessible dans le PATH, ou précompilez le worker avant le déploiement."
                 ))
             })?;
 
@@ -83,7 +102,7 @@ impl RemotionRendererService {
                 status.code()
             );
             return Err(AppError::Internal(
-                "Échec de build du worker Remotion".to_string(),
+                "Échec de build du worker Remotion. Vérifiez les logs npm pour plus de détails.".to_string(),
             ));
         }
 

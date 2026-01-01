@@ -62,10 +62,18 @@ impl VideoRendererConfig {
 
         let node_bin = env::var("VIDEO_RENDERER_NODE_BIN").unwrap_or_else(|_| "node".to_string());
 
+        // ✅ AMÉLIORÉ: Désactiver auto_build par défaut en production (sur Render.com, npm n'est pas disponible)
+        // En production, le worker doit être précompilé ou utiliser un renderer RPC distant
+        let env_prod = env::var("ENVIRONMENT")
+            .ok()
+            .map(|v| v.to_lowercase())
+            .filter(|v| v == "production" || v == "prod")
+            .is_some();
+        
         let auto_build = env::var("VIDEO_RENDERER_AUTO_BUILD")
             .ok()
             .and_then(|raw| raw.parse::<bool>().ok())
-            .unwrap_or(true);
+            .unwrap_or(if env_prod { false } else { true }); // false en prod par défaut, true en dev
 
         let enable_gpu = env::var("VIDEO_RENDERER_ENABLE_GPU")
             .ok()
