@@ -16,9 +16,9 @@ use sqlx::FromRow;
 /// Crée le router pour les routes de gestion des produits
 pub fn products_management_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/api/products/:id", delete(delete_product))
-        .route("/api/products/:id/toggle-status", patch(toggle_product_status))
-        .route("/api/products/:id/update", put(update_product))
+        .route("/api/products/{id}", delete(delete_product))
+        .route("/api/products/{id}/toggle-status", patch(toggle_product_status))
+        .route("/api/products/{id}/update", put(update_product))
         .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }
