@@ -102,6 +102,10 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const [loadingLocations, setLoadingLocations] = useState(false);
     // ✅ NOUVEAU: État pour le modal GPS
     const [showGPSModal, setShowGPSModal] = useState(false);
+    // ✅ NOUVEAU 2026-01-02: État pour le modal de sélection de véhicule
+    const [showVehicleModal, setShowVehicleModal] = useState(false);
+    // ✅ NOUVEAU 2026-01-02: État pour stocker l'adresse du lieu de stock (indépendamment de storage_location_id)
+    const [storageLocationAddress, setStorageLocationAddress] = useState('');
     const [config, setConfig] = useState({
         pickup_address: '',
         pickup_location: null as LocationObject | null, // ✅ NOUVEAU: Objet location complet
@@ -148,25 +152,17 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         }
     };
 
-    // ✅ Phase 9 - Amélioration 32 : Mettre à jour les coordonnées quand un lieu de stock est sélectionné
+    // ✅ CORRIGÉ 2026-01-02: Mettre à jour l'adresse du lieu de stock quand storage_location_id change
     useEffect(() => {
         if (config.storage_location_id && storageLocations.length > 0) {
             const selectedLocation = storageLocations.find(loc => loc.id === config.storage_location_id);
             if (selectedLocation) {
-                const locationObj: LocationObject = {
-                    raw: selectedLocation.address || '',
-                    place_name: selectedLocation.address?.split(',')[0].trim() || '',
-                    components: {},
-                    coordinates: { lat: selectedLocation.latitude, lng: selectedLocation.longitude }
-                };
-                setConfig(prev => ({
-                    ...prev,
-                    pickup_address: selectedLocation.address || '',
-                    pickup_location: locationObj,
-                    pickup_latitude: selectedLocation.latitude,
-                    pickup_longitude: selectedLocation.longitude,
-                }));
+                // ✅ Mettre à jour l'adresse affichée dans LocationSelector
+                setStorageLocationAddress(selectedLocation.address || '');
             }
+        } else if (!config.storage_location_id) {
+            // Si pas de storage_location_id, garder l'adresse si elle a été saisie manuellement
+            // (ne pas la vider si l'utilisateur a sélectionné un lieu qui n'est pas dans storageLocations)
         }
     }, [config.storage_location_id, storageLocations]);
 
@@ -220,12 +216,24 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     }
                     : null;
                 
+                const storageLocationId = (typeof c.storage_location_id === 'number' ? c.storage_location_id : undefined);
+                
+                // ✅ CORRIGÉ 2026-01-02: Récupérer l'adresse du lieu de stock si disponible
+                // Attendre que storageLocations soit chargé (via useEffect)
+                let storageAddr = '';
+                if (storageLocationId && storageLocations.length > 0) {
+                    const foundLocation = storageLocations.find(loc => loc.id === storageLocationId);
+                    storageAddr = foundLocation?.address || '';
+                }
+                
+                setStorageLocationAddress(storageAddr);
+                
                 setConfig({
                     pickup_address: pickupAddr,
                     pickup_location: pickupLocationObj,
                     pickup_latitude: pickupLat,
                     pickup_longitude: pickupLng,
-                    storage_location_id: (typeof c.storage_location_id === 'number' ? c.storage_location_id : undefined), // ✅ Phase 9 - Amélioration 32
+                    storage_location_id: storageLocationId, // ✅ Phase 9 - Amélioration 32
                     required_vehicle_type_id: (typeof c.required_vehicle_type_id === 'number' ? c.required_vehicle_type_id : 0) || 0,
                     preparation_time_minutes: c.preparation_time_minutes ? String(c.preparation_time_minutes) : '0', // ✅ NOUVEAU
                     weight_kg: c.weight_kg ? String(c.weight_kg) : '',
@@ -245,7 +253,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
     const handleSave = async () => {
         // ✅ CORRIGÉ: Validation avec support LocationObject
-        const pickupAddress = config.pickup_location?.raw || (typeof config.pickup_address === 'string' ? config.pickup_address : '');
+        const pickupAddress = config?.pickup_location?.raw || (config && typeof config.pickup_address === 'string' ? config.pickup_address : '');
         if (!pickupAddress.trim()) {
             Alert.alert('Erreur', 'L\'adresse de départ est obligatoire');
             return;
@@ -257,7 +265,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         }
 
         // ✅ NOUVEAU: Valider le temps de préparation
-        const preparationTime = config.preparation_time_minutes.trim() 
+        const preparationTime = (config?.preparation_time_minutes && typeof config.preparation_time_minutes === 'string' && config.preparation_time_minutes.trim()) 
             ? parseInt(config.preparation_time_minutes.trim(), 10) 
             : 0;
         if (preparationTime < 0) {
@@ -267,7 +275,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
         let schedule;
         try {
-            schedule = JSON.parse(config.pickup_availability_schedule);
+            schedule = JSON.parse(config?.pickup_availability_schedule || '{}');
             if (Object.keys(schedule).length === 0) {
                 Alert.alert('Erreur', 'Veuillez définir au moins une plage horaire de récupération');
                 return;
@@ -283,18 +291,18 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 service_id: typeof serviceId === 'number' ? serviceId : 0,
                 product_index: typeof productIndex === 'number' ? productIndex : 0,
                 // ✅ CORRIGÉ: Utiliser l'adresse depuis pickup_location si disponible
-                pickup_address: config.pickup_location?.raw || (typeof config.pickup_address === 'string' ? config.pickup_address : ''),
-                pickup_latitude: config.pickup_location?.coordinates?.lat || (typeof config.pickup_latitude === 'number' ? config.pickup_latitude : 0),
-                pickup_longitude: config.pickup_location?.coordinates?.lng || (typeof config.pickup_longitude === 'number' ? config.pickup_longitude : 0),
-                storage_location_id: typeof config.storage_location_id === 'number' ? config.storage_location_id : null, // ✅ Phase 9 - Amélioration 32
-                required_vehicle_type_id: typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0,
+                pickup_address: config?.pickup_location?.raw || (config && typeof config.pickup_address === 'string' ? config.pickup_address : ''),
+                pickup_latitude: config?.pickup_location?.coordinates?.lat || (config && typeof config.pickup_latitude === 'number' ? config.pickup_latitude : 0),
+                pickup_longitude: config?.pickup_location?.coordinates?.lng || (config && typeof config.pickup_longitude === 'number' ? config.pickup_longitude : 0),
+                storage_location_id: config && typeof config.storage_location_id === 'number' ? config.storage_location_id : null, // ✅ Phase 9 - Amélioration 32
+                required_vehicle_type_id: config && typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0,
                 preparation_time_minutes: preparationTime > 0 ? preparationTime : undefined, // ✅ NOUVEAU
-                weight_kg: (typeof config.weight_kg === 'string' && config.weight_kg.trim()) ? parseFloat(config.weight_kg) : undefined,
-                volume_cm3: (typeof config.volume_cm3 === 'string' && config.volume_cm3.trim()) ? parseFloat(config.volume_cm3) : undefined,
-                requires_isothermal: typeof config.requires_isothermal === 'boolean' ? config.requires_isothermal : false,
-                requires_fragile_handling: typeof config.requires_fragile_handling === 'boolean' ? config.requires_fragile_handling : false,
+                weight_kg: (config && typeof config.weight_kg === 'string' && config.weight_kg.trim()) ? parseFloat(config.weight_kg) : undefined,
+                volume_cm3: (config && typeof config.volume_cm3 === 'string' && config.volume_cm3.trim()) ? parseFloat(config.volume_cm3) : undefined,
+                requires_isothermal: config && typeof config.requires_isothermal === 'boolean' ? config.requires_isothermal : false,
+                requires_fragile_handling: config && typeof config.requires_fragile_handling === 'boolean' ? config.requires_fragile_handling : false,
                 pickup_availability_schedule: schedule,
-                pickup_instructions: (typeof config.pickup_instructions === 'string' && config.pickup_instructions.trim()) ? config.pickup_instructions : undefined,
+                pickup_instructions: (config && typeof config.pickup_instructions === 'string' && config.pickup_instructions.trim()) ? config.pickup_instructions : undefined,
                 billing_mode: typeof config.billing_mode === 'string' ? config.billing_mode : 'standard',
                 billing_partner_label: (typeof config.billing_partner_label === 'string' && config.billing_partner_label.trim()) ? config.billing_partner_label : undefined
             };
@@ -423,18 +431,21 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         </View>
                     )}
 
-                    {/* ✅ CORRIGÉ: Lieu de stock avec LocationSelector (comme l'ancienne adresse de départ) */}
+                    {/* ✅ CORRIGÉ 2026-01-02: Lieu de stock avec LocationSelector - Correction insertion adresse */}
                     <View style={styles.section}>
                         <Text style={styles.label}>Lieu de stock (optionnel)</Text>
                         <LocationSelector
                             label=""
-                            value={config.storage_location_id 
+                            value={storageLocationAddress || (config.storage_location_id 
                                 ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.address || '')
-                                : ''}
+                                : '')}
                             onSelect={(location: LocationObject) => {
-                                // Extraire l'adresse formatée et les coordonnées
+                                // ✅ CORRIGÉ 2026-01-02: Extraire l'adresse formatée et les coordonnées
                                 const address = location.raw || location.place_name || '';
                                 const coords = location.coordinates;
+                                
+                                // ✅ CORRIGÉ 2026-01-02: Toujours mettre à jour l'adresse affichée
+                                setStorageLocationAddress(address);
                                 
                                 // Si un lieu de stock existe avec cette adresse, l'utiliser
                                 const existingLocation = storageLocations.find(loc => 
@@ -447,6 +458,12 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                     storage_location_id: existingLocation?.id,
                                     // Ne pas mettre à jour pickup_address ici, c'est pour le lieu de stock
                                 }));
+                                
+                                console.log('[ProductDeliveryConfigModal] ✅ Lieu de stock sélectionné:', {
+                                    address,
+                                    storage_location_id: existingLocation?.id,
+                                    hasCoordinates: !!coords
+                                });
                             }}
                             placeholder="Ville, quartier, pays..."
                             enrichWithBackend={true}
@@ -464,8 +481,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             style={styles.select}
                             onPress={() => setShowGPSModal(true)}
                         >
-                            <Text style={[styles.selectText, !config.pickup_address && styles.selectPlaceholder]}>
-                                {config.pickup_address || 'Sélectionner la localisation GPS précise...'}
+                            <Text style={[styles.selectText, !config?.pickup_address && styles.selectPlaceholder]}>
+                                {config?.pickup_address || 'Sélectionner la localisation GPS précise...'}
                             </Text>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                         </TouchableOpacity>
@@ -476,24 +493,12 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         )}
                     </View>
 
-                    {/* ✅ CORRIGÉ: Type de véhicule avec VEHICLE_TRANSPORT_OPTIONS */}
+                    {/* ✅ CORRIGÉ 2026-01-02: Type de véhicule avec modal personnalisé (toutes les options) */}
                     <View style={styles.section}>
                         <Text style={styles.label}>Type de véhicule requis *</Text>
                         <TouchableOpacity
                             style={styles.select}
-                            onPress={() => {
-                                // ✅ CORRIGÉ: Utiliser VEHICLE_TRANSPORT_OPTIONS au lieu de parcelTypes
-                                const options: Array<{ text: string; onPress?: () => void; style?: 'cancel' | 'destructive' | 'default' }> = VEHICLE_TRANSPORT_OPTIONS.map(vehicle => ({
-                                    text: `${vehicle.icon} ${vehicle.label}`,
-                                    onPress: () => {
-                                        // Convertir VehicleType en ID numérique
-                                        const vehicleId = getVehicleTypeId(vehicle.value);
-                                        setConfig(prev => ({ ...prev, required_vehicle_type_id: vehicleId }));
-                                    }
-                                }));
-                                options.push({ text: 'Annuler', style: 'cancel' });
-                                Alert.alert('Sélectionner un type de véhicule', '', options);
-                            }}
+                            onPress={() => setShowVehicleModal(true)}
                         >
                             <Text style={[styles.selectText, !config.required_vehicle_type_id && styles.selectPlaceholder]}>
                                 {(() => {
@@ -725,6 +730,58 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 title="Sélectionner l'adresse de départ GPS"
                 allowZoneSelection={false}
             />
+
+            {/* ✅ NOUVEAU 2026-01-02: Modal personnalisé pour sélection du type de véhicule (toutes les options) */}
+            <Modal
+                visible={showVehicleModal}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowVehicleModal(false)}
+            >
+                <View style={styles.vehicleModalOverlay}>
+                    <View style={styles.vehicleModalContent}>
+                        <View style={styles.vehicleModalHeader}>
+                            <Text style={styles.vehicleModalTitle}>Sélectionner un type de véhicule</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowVehicleModal(false)}
+                                style={styles.vehicleModalCloseButton}
+                            >
+                                <SafeIcon name="x" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={styles.vehicleModalList} showsVerticalScrollIndicator={true}>
+                            {VEHICLE_TRANSPORT_OPTIONS.map((vehicle) => {
+                                const vehicleId = getVehicleTypeId(vehicle.value);
+                                const isSelected = config.required_vehicle_type_id === vehicleId;
+                                return (
+                                    <TouchableOpacity
+                                        key={vehicle.value}
+                                        style={[
+                                            styles.vehicleOption,
+                                            isSelected && styles.vehicleOptionSelected
+                                        ]}
+                                        onPress={() => {
+                                            setConfig(prev => ({ ...prev, required_vehicle_type_id: vehicleId }));
+                                            setShowVehicleModal(false);
+                                        }}
+                                    >
+                                        <Text style={styles.vehicleOptionIcon}>{vehicle.icon}</Text>
+                                        <Text style={[
+                                            styles.vehicleOptionLabel,
+                                            isSelected && styles.vehicleOptionLabelSelected
+                                        ]}>
+                                            {vehicle.label}
+                                        </Text>
+                                        {isSelected && (
+                                            <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </Modal>
     );
 };
@@ -892,6 +949,63 @@ const styles = StyleSheet.create({
     },
     actionButton: {
         flex: 1,
+    },
+    // ✅ NOUVEAU 2026-01-02: Styles pour le modal de sélection de véhicule
+    vehicleModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    vehicleModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '70%',
+        paddingBottom: 32,
+    },
+    vehicleModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    vehicleModalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    vehicleModalCloseButton: {
+        padding: 8,
+    },
+    vehicleModalList: {
+        maxHeight: 400,
+    },
+    vehicleOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    vehicleOptionSelected: {
+        backgroundColor: '#F0F9FF',
+    },
+    vehicleOptionIcon: {
+        fontSize: 24,
+        marginRight: 12,
+    },
+    vehicleOptionLabel: {
+        flex: 1,
+        fontSize: 16,
+        color: modernColors.text,
+    },
+    vehicleOptionLabelSelected: {
+        color: modernColors.primary,
+        fontWeight: '600',
     },
 });
 

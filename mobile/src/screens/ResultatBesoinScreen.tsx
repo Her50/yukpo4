@@ -464,7 +464,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             const serviceGPSRealtime = service.gps;
                             const bestGPS = productGPS || serviceGPSFixe || serviceGPSRealtime;
 
-                            // Calculer la distance si GPS disponible
+                            // ✅ CORRIGÉ: Calculer la distance du produit, utiliser service.distance comme fallback
                             let distance = undefined;
                             if (userGPS && bestGPS && location?.coords) {
                                 try {
@@ -479,6 +479,12 @@ const ResultatBesoinScreen: React.FC = () => {
                                 } catch (error) {
                                     console.warn('⚠️ [ResultatBesoinScreen] Erreur calcul distance produit:', error);
                                 }
+                            }
+                            
+                            // ✅ FALLBACK: Utiliser la distance du service si disponible et si la distance du produit n'a pas pu être calculée
+                            if ((distance === undefined || !Number.isFinite(distance)) && service.distance !== undefined && Number.isFinite(service.distance)) {
+                                distance = service.distance;
+                                console.log(`✅ [ResultatBesoinScreen] Distance service utilisée comme fallback: ${distance.toFixed(2)} km (${product.nom || 'produit'})`);
                             }
 
                             // ✅ Calculer le score de priorité pour produits en promotion

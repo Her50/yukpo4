@@ -508,7 +508,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             if (response.success && response.data?.config) {
                 const config = response.data.config;
                 setDeliveryConfig({
-                    pickup_address: config.pickup_address || undefined,
+                    pickup_address: config?.pickup_address || undefined,
                     pickup_latitude: config.pickup_latitude || undefined,
                     pickup_longitude: config.pickup_longitude || undefined,
                     preparation_time_minutes: config.preparation_time_minutes || undefined,

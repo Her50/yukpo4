@@ -270,7 +270,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
     const handleSave = async () => {
         // Validation
-        if (!config.pickup_address.trim()) {
+        if (!config?.pickup_address || typeof config.pickup_address !== 'string' || !config.pickup_address.trim()) {
             Alert.alert('Erreur', 'Veuillez sélectionner ou saisir une adresse de départ');
             return;
         }
@@ -322,7 +322,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
                 return Promise.all((productIndices as number[]).filter(idx => typeof idx === 'number' && !isNaN(idx)).map(productIndex => {
                     return apiPost(`/api/delivery/product-config/${serviceId}/${productIndex}`, {
-                        pickup_address: config.pickup_address,
+                        pickup_address: config?.pickup_address || '',
                         pickup_latitude: config.pickup_latitude,
                         pickup_longitude: config.pickup_longitude,
                         storage_location_id: config.storage_location_id,
@@ -507,7 +507,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                             <View style={styles.addressRow}>
                                 <TextInput
                                     style={[styles.input, styles.addressInput]}
-                                    value={config.pickup_address}
+                                    value={config?.pickup_address || ''}
                                     onChangeText={(text) => setConfig(prev => ({ ...prev, pickup_address: text }))}
                                     placeholder="Rechercher un quartier, une ville, une adresse..."
                                     placeholderTextColor={modernColors.textSecondary}

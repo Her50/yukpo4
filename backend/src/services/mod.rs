@@ -26,6 +26,7 @@ pub mod blood_stock_monitor; // ✅ NOUVEAU: Service monitoring automatique stoc
 pub mod book_exchange_ai_service; // ✅ NOUVEAU: Service IA bourse du livre
 pub mod broll_service;
 pub mod cache_service; // ✅ Phase 10 - Service de cache générique centralisé
+pub mod service_data_cache; // ✅ NOUVEAU 2026-01-02: Cache pour données de service volumineuses
 pub mod captions_service; // ✅ NOUVEAU: Service de génération automatique de sous-titres
 pub mod chat_support_ai;
 pub mod color_grading_service; // ✅ NOUVEAU: Service de color grading automatique

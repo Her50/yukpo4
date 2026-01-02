@@ -48,33 +48,88 @@ pub async fn add_product_to_service(
     let start_time = std::time::Instant::now();
     
     // ✅ Vérification : L'utilisateur est-il le propriétaire du service ? (avec retry)
+    // ✅ NOUVEAU 2026-01-02: Utiliser le cache Redis pour les services volumineux
+    use crate::services::service_data_cache::ServiceDataCache;
+    let service_cache = ServiceDataCache::new(state.cache_service.clone());
     let pool = state.pg.clone();
-    let service_row = crate::utils::db_retry::retry_query(
+    
+    // ✅ Utiliser le cache pour récupérer les données du service (pour diagnostic taille)
+    let (_service_data_value, existing_data_size, from_cache) = service_cache
+        .get_service_data(
+            service_id,
+            async {
+                // Fonction pour récupérer depuis la DB si cache miss
+                let row = crate::utils::db_retry::retry_query(
+                    &pool,
+                    || {
+                        let service_id_clone = service_id;
+                        let pool_clone = pool.clone();
+                        Box::pin(async move {
+                            sqlx::query(
+                                "SELECT data, pg_column_size(data) as data_size FROM services WHERE id = $1 AND is_active = true"
+                            )
+                            .bind(service_id_clone)
+                            .fetch_optional(&pool_clone)
+                            .await
+                        })
+                    },
+                    3,
+                )
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur récupération service: {}", e)))?;
+                
+                match row {
+                    Some(row) => {
+                        let data: serde_json::Value = row.try_get("data")
+                            .map_err(|e| AppError::Internal(format!("Erreur récupération data: {}", e)))?;
+                        let size: i64 = row.try_get("data_size")
+                            .unwrap_or(0);
+                        Ok((data, size))
+                    },
+                    None => Err(AppError::NotFound(format!("Service {} introuvable", service_id)))
+                }
+            },
+        )
+        .await?;
+    
+    // ✅ Récupérer user_id séparément (pas besoin de cache pour ça, c'est rapide)
+    let owner_id: i32 = crate::utils::db_retry::retry_query(
         &pool,
         || {
             let service_id_clone = service_id;
             let pool_clone = pool.clone();
             Box::pin(async move {
-                sqlx::query(
-                    "SELECT user_id, data FROM services WHERE id = $1 AND is_active = true"
+                sqlx::query_scalar::<_, i32>(
+                    "SELECT user_id FROM services WHERE id = $1 AND is_active = true"
                 )
                 .bind(service_id_clone)
                 .fetch_optional(&pool_clone)
                 .await
             })
         },
-        3, // 3 tentatives max
+        3,
     )
     .await
-    .map_err(|e| AppError::Internal(format!("Erreur récupération service: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur récupération user_id: {}", e)))?
+    .ok_or_else(|| AppError::NotFound(format!("Service {} introuvable", service_id)))?;
     
-    let owner_id: i32 = match service_row {
-        Some(row) => row.try_get("user_id").map_err(|e| AppError::Internal(e.to_string()))?,
-        None => {
-            log_error(&format!("[add_product_to_service] Service {} introuvable", service_id));
-            return Err(AppError::NotFound(format!("Service {} introuvable", service_id)));
+    // ✅ NOUVEAU 2026-01-02: Logger la taille du JSONB et si c'était depuis le cache
+    if let Some(size) = Some(existing_data_size) {
+        let size_kb = size as f64 / 1024.0;
+        let size_mb = size_kb / 1024.0;
+        let cache_status = if from_cache { "✅ depuis cache Redis" } else { "📊 depuis DB" };
+        if size_mb > 1.0 {
+            log_warn(&format!(
+                "[add_product_to_service] ⚠️ Service {} a un JSONB volumineux: {:.2} MB ({} KB, {} bytes) - {}",
+                service_id, size_mb, size_kb, size, cache_status
+            ));
+        } else {
+            log_info(&format!(
+                "[add_product_to_service] 📊 Taille JSONB service existant: {:.2} KB ({} bytes) - {}",
+                size_kb, size, cache_status
+            ));
         }
-    };
+    }
     
     // Vérifier que l'utilisateur authentifié est bien le propriétaire
     if owner_id != user.id {
@@ -210,6 +265,25 @@ pub async fn add_product_to_service(
     let product_json_value = serde_json::to_value(&product_data_cleaned)
         .map_err(|e| AppError::Internal(format!("Erreur sérialisation produit: {}", e)))?;
     
+    // ✅ NOUVEAU 2026-01-02: Vérifier la taille du JSON avant l'appel PostgreSQL
+    let json_size_bytes = serde_json::to_string(&product_json_value)
+        .map(|s| s.len())
+        .unwrap_or(0);
+    let json_size_kb = json_size_bytes as f64 / 1024.0;
+    let json_size_mb = json_size_kb / 1024.0;
+    
+    if json_size_mb > 1.0 {
+        log_warn(&format!(
+            "[add_product_to_service] ⚠️ JSON produit volumineux: {:.2} MB ({} KB, {} bytes). Cela peut ralentir l'UPDATE PostgreSQL.",
+            json_size_mb, json_size_kb, json_size_bytes
+        ));
+    } else {
+        log_info(&format!(
+            "[add_product_to_service] 📊 Taille JSON produit: {:.2} KB ({} bytes)",
+            json_size_kb, json_size_bytes
+        ));
+    }
+    
     // ✅ CORRIGÉ 2026-01-01: Utiliser retry_query pour gérer les erreurs TLS correctement
     // retry_query gère automatiquement les erreurs TLS avec backoff adaptatif
     let db_time = start_time.elapsed();
@@ -218,6 +292,7 @@ pub async fn add_product_to_service(
     // ✅ CORRIGÉ 2026-01-01: Augmenter à 10 tentatives pour gérer les erreurs TLS persistantes
     // Les requêtes longues (50s+) sont sujettes aux fermetures de connexion TLS
     // Avec 10 tentatives et backoff 3-10s, on donne plus de temps pour que la connexion se rétablisse
+    // ✅ NOUVEAU 2026-01-02: Utiliser statement_timeout dans une transaction pour éviter les requêtes infinies (180s max)
     let update_result = crate::utils::db_retry::retry_query(
         &pool,
         || {
@@ -225,13 +300,48 @@ pub async fn add_product_to_service(
             let service_id_clone = service_id;
             let pool_clone = pool.clone();
             Box::pin(async move {
-                sqlx::query_as::<_, (i32, Value, Value)>(
+                // ✅ NOUVEAU 2026-01-02: Utiliser une transaction avec statement_timeout pour limiter la durée
+                // Cela évite les requêtes qui prennent trop de temps (> 180s)
+                // SET LOCAL nécessite une transaction, donc on utilise BEGIN/COMMIT
+                let mut tx = pool_clone.begin().await?;
+                
+                // Définir le timeout pour cette transaction uniquement
+                sqlx::query("SET LOCAL statement_timeout = '180s'")
+                    .execute(&mut *tx)
+                    .await?;
+                
+                let query_start = std::time::Instant::now();
+                let result = sqlx::query_as::<_, (i32, Value, Value)>(
                     "SELECT product_index, produits_data, lieu_data FROM add_product_to_service_jsonb_v2($1, $2)"
                 )
                 .bind(service_id_clone)
                 .bind(&product_json_clone)
-                .fetch_one(&pool_clone)
-                .await
+                .fetch_one(&mut *tx)
+                .await;
+                
+                let query_duration = query_start.elapsed();
+                if query_duration.as_secs() > 10 {
+                    log::warn!(
+                        "[add_product_to_service] ⚠️ Requête PostgreSQL lente: {:?} (service_id: {})",
+                        query_duration, service_id_clone
+                    );
+                } else {
+                    log::info!(
+                        "[add_product_to_service] ✅ Requête PostgreSQL terminée en {:?} (service_id: {})",
+                        query_duration, service_id_clone
+                    );
+                }
+                
+                match result {
+                    Ok(r) => {
+                        tx.commit().await?;
+                        Ok(r)
+                    }
+                    Err(e) => {
+                        let _ = tx.rollback().await;
+                        Err(e)
+                    }
+                }
             })
         },
         10, // ✅ CORRIGÉ: 10 tentatives max avec backoff adaptatif pour TLS (3-10s entre tentatives)
@@ -242,6 +352,16 @@ pub async fn add_product_to_service(
             let idx = index as usize;
             let total_time = start_time.elapsed();
             log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {}) en {:?}", service_id, idx, total_time));
+            
+            // ✅ NOUVEAU 2026-01-02: Invalider le cache Redis du service après UPDATE
+            // Cela garantit que les prochaines lectures utiliseront les données à jour
+            let cache_service = state.cache_service.clone();
+            let service_id_for_cache = service_id;
+            tokio::spawn(async move {
+                use crate::services::service_data_cache::ServiceDataCache;
+                let service_cache = ServiceDataCache::new(cache_service);
+                service_cache.invalidate_service(service_id_for_cache).await;
+            });
             
             // ✅ OPTIMISÉ 2025-12-31: Les données nécessaires sont déjà retournées par la fonction
             // Plus besoin de faire un SELECT complet du JSONB !

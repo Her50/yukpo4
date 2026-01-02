@@ -78,6 +78,7 @@ use crate::routes::{
     popular_products_routes::popular_products_routes,
     prestataire_routes::prestataire_routes,
     product_lifecycle_routes::product_lifecycle_routes,
+    products_management::products_management_routes, // ✅ Routes pour gestion des produits (DELETE, PATCH, PUT)
     product_reactions_routes::product_reactions_routes,
     provider_analytics_routes::provider_analytics_routes,
     publicite_ab_testing_routes::publicite_ab_testing_routes, // ✅ NOUVEAU: Routes A/B testing avancé
@@ -240,6 +241,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let flash_promos = flash_promo_routes(state.clone()); // ✅ NOUVEAU: Routes pour flash promotionnels de produits (gratuit)
     let token_packs = token_pack_routes(state.clone());
     let product_lifecycle = product_lifecycle_routes(state.clone());
+    let products_management = products_management_routes(state.clone()); // ✅ NOUVEAU: Routes gestion produits (DELETE, PATCH, PUT)
     let search_history = search_history_routes(state.clone());
     let specialized_services = specialized_services_routes(state.clone());
     let orientation_scolaire = orientation_scolaire_routes(state.clone());
@@ -344,6 +346,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(flash_promos) // ✅ NOUVEAU: Routes pour flash promotionnels de produits (gratuit)
         .merge(token_packs)
         .merge(product_lifecycle)
+        .merge(products_management) // ✅ NOUVEAU: Routes gestion produits (DELETE, PATCH, PUT)
         .merge(search_history)
         .merge(specialized_services)
         .merge(orientation_scolaire)

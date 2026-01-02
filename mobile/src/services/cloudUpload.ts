@@ -147,18 +147,73 @@ export const uploadToCloud = async (
             fileSize: formatFileSize(fileSize)
         });
 
-        const response = await fetch(uploadUrl, {
-            method: 'POST',
-            body: formData,
-            headers
-        });
+        // ✅ AMÉLIORÉ: Gestion d'erreur réseau avec timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes pour les vidéos volumineuses
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[CloudUpload] Erreur serveur:', errorText);
+        let response: Response;
+        try {
+            response = await fetch(uploadUrl, {
+                method: 'POST',
+                body: formData,
+                headers,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+        } catch (fetchError: any) {
+            clearTimeout(timeoutId);
+            
+            // Détecter le type d'erreur
+            if (fetchError.name === 'AbortError') {
+                console.error('[CloudUpload] ❌ Timeout upload (5 minutes dépassés)');
+                return {
+                    success: false,
+                    error: 'Le téléchargement a pris trop de temps. Vérifiez votre connexion internet et réessayez avec un fichier plus petit.'
+                };
+            }
+            
+            if (fetchError.message && fetchError.message.includes('Network request failed')) {
+                console.error('[CloudUpload] ❌ Erreur réseau:', fetchError);
+                return {
+                    success: false,
+                    error: 'Erreur de connexion réseau. Vérifiez votre connexion internet et réessayez.'
+                };
+            }
+            
+            // Autre erreur
+            console.error('[CloudUpload] ❌ Erreur fetch:', fetchError);
             return {
                 success: false,
-                error: `Erreur serveur: ${response.status}`
+                error: fetchError.message || 'Erreur lors du téléchargement. Veuillez réessayer.'
+            };
+        }
+
+        if (!response.ok) {
+            let errorText = '';
+            try {
+                errorText = await response.text();
+            } catch (e) {
+                console.warn('[CloudUpload] Impossible de lire le message d\'erreur');
+            }
+            
+            console.error('[CloudUpload] Erreur serveur:', {
+                status: response.status,
+                statusText: response.statusText,
+                errorText: errorText.substring(0, 200) // Limiter la taille
+            });
+            
+            let errorMessage = `Erreur serveur (${response.status})`;
+            if (response.status === 413) {
+                errorMessage = 'Fichier trop volumineux pour le serveur. Veuillez réduire la taille.';
+            } else if (response.status === 500) {
+                errorMessage = 'Erreur serveur interne. Veuillez réessayer plus tard.';
+            } else if (response.status === 401 || response.status === 403) {
+                errorMessage = 'Vous n\'êtes pas autorisé. Veuillez vous reconnecter.';
+            }
+            
+            return {
+                success: false,
+                error: errorMessage
             };
         }
 

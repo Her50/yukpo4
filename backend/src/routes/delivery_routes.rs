@@ -439,38 +439,78 @@ async fn list_parcel_types(State(state): State<Arc<AppState>>) -> AppResult<Json
 }
 
 /// POST /api/delivery/product-config - Sauvegarder la configuration de livraison d'un produit
+/// ✅ OPTIMISÉ 2026-01-02: Combiner les 2 requêtes SQL en une seule pour améliorer les performances
 async fn save_product_delivery_config(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<ProductDeliveryConfigInput>,
 ) -> AppResult<Json<Value>> {
-    // ✅ 1. Vérifier que l'utilisateur est propriétaire du service
-    let service: Option<ServiceUserIdRow> =
-        sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
-            .bind(payload.service_id)
-            .fetch_optional(&state.pg)
-            .await?;
+    // ✅ OPTIMISÉ 2026-01-02: Utiliser le cache Redis pour les services volumineux
+    use crate::services::service_data_cache::ServiceDataCache;
+    let service_cache = ServiceDataCache::new(state.cache_service.clone());
+    
+    // ✅ Utiliser le cache pour récupérer les données du service
+    let (service_data_value, data_size, from_cache) = service_cache
+        .get_service_data(
+            payload.service_id,
+            async {
+                // Fonction pour récupérer depuis la DB si cache miss
+                let row = sqlx::query(
+                    "SELECT data, pg_column_size(data) as data_size FROM services WHERE id = $1 AND is_active = true"
+                )
+                    .bind(payload.service_id)
+                    .fetch_optional(&state.pg)
+                    .await?;
+                
+                match row {
+                    Some(row) => {
+                        let data: serde_json::Value = row.try_get("data")
+                            .map_err(|e| AppError::Internal(format!("Erreur récupération data: {}", e)))?;
+                        let size: i64 = row.try_get("data_size")
+                            .unwrap_or(0);
+                        Ok((data, size))
+                    },
+                    None => Err(AppError::NotFound("Service non trouvé".into()))
+                }
+            },
+        )
+        .await?;
+    
+    // ✅ Récupérer user_id séparément (pas besoin de cache pour ça, c'est rapide)
+    let service_owner_id: i32 = sqlx::query_scalar(
+        "SELECT user_id FROM services WHERE id = $1 AND is_active = true"
+    )
+        .bind(payload.service_id)
+        .fetch_optional(&state.pg)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
 
-    let service_owner = service.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
-
-    if service_owner.user_id != user.id {
+    // ✅ Vérifier que l'utilisateur est propriétaire du service
+    if service_owner_id != user.id {
         return Err(AppError::Unauthorized(
             "Vous n'êtes pas le propriétaire de ce service".into(),
         ));
     }
 
-    // ✅ 2. Vérifier que le produit existe
-    let service_data: Option<ServiceDataRow> =
-        sqlx::query_as("SELECT data FROM services WHERE id = $1")
-            .bind(payload.service_id)
-            .fetch_optional(&state.pg)
-            .await?;
+    // ✅ NOUVEAU 2026-01-02: Logger la taille du JSONB et si c'était depuis le cache
+    let size_kb = data_size as f64 / 1024.0;
+    let size_mb = size_kb / 1024.0;
+    let cache_status = if from_cache { "✅ depuis cache Redis" } else { "📊 depuis DB" };
+    if size_mb > 1.0 {
+        log::warn!(
+            "[save_product_delivery_config] ⚠️ Service {} a un JSONB volumineux: {:.2} MB ({} KB) - {}",
+            payload.service_id, size_mb, size_kb, cache_status
+        );
+    } else {
+        log::debug!(
+            "[save_product_delivery_config] 📊 Service {} JSONB: {:.2} KB - {}",
+            payload.service_id, size_kb, cache_status
+        );
+    }
 
-    let service_data =
-        service_data.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
+    let service_data = service_data_value;
 
     let products = service_data
-        .data
         .get("produits")
         .and_then(|p| p.get("valeur"))
         .and_then(|v| v.as_array());
