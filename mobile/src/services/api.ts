@@ -307,7 +307,7 @@ const apiCallInternal = async <T>(
         : endpoint.includes('/ia/video/timeline-variants')
           ? 60000  // ✅ 60s pour timeline-variants (génération de variantes peut prendre du temps)
           : endpoint.includes('/services/') && endpoint.includes('/products')
-            ? 90000  // ✅ 90s pour création/modification produit (upload médias)
+            ? 180000  // ✅ AUGMENTÉ: 180s (3min) pour création/modification produit (le backend peut prendre du temps même sans médias)
             : endpoint.includes('/search/direct')
               ? 30000  // ✅ 30s pour recherche par image (analyse IA + recherche SQL peut prendre 20-25s)
             : endpoint.includes('/mobile-logs')
@@ -509,6 +509,8 @@ const apiCallInternal = async <T>(
       let errorMessage = 'La requête a expiré. Vérifiez votre connexion internet.';
       if (endpoint.includes('/services/create')) {
         errorMessage = 'La création du service a pris trop de temps. Cela peut être dû à un grand nombre de médias.\n\nConseils :\n- Réduisez le nombre d\'images par produit\n- Raccourcissez les vidéos\n- Vérifiez votre connexion internet';
+      } else if (endpoint.includes('/services/') && endpoint.includes('/products')) {
+        errorMessage = 'L\'ajout du produit a pris trop de temps (plus de 3 minutes). Cela peut être dû à :\n\n• Un grand nombre de médias\n• Des variants complexes\n• Une connexion internet lente\n• Un serveur temporairement surchargé\n• Des opérations backend lourdes\n\n⚠️ Le produit peut avoir été créé malgré l\'erreur. Vérifiez votre liste de produits avant de réessayer.';
       }
       
       return {

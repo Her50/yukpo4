@@ -357,12 +357,20 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
             pagingEnabled={false}
             directionalLockEnabled={true} // ✅ NOUVEAU: Verrouiller la direction pour éviter les conflits avec scroll vertical
             scrollEventThrottle={16}
-            onScrollBeginDrag={() => onHorizontalScrollStart?.()}
-            onMomentumScrollBegin={() => onHorizontalScrollStart?.()}
-            onTouchStart={() => onHorizontalScrollStart?.()}
-            onScrollEndDrag={() => onHorizontalScrollEnd?.()}
-            onMomentumScrollEnd={() => onHorizontalScrollEnd?.()}
-            onTouchEnd={() => onHorizontalScrollEnd?.()}
+            // ✅ OPTIMISATION: Réduire les événements de scroll pour éviter les re-renders
+            onScrollBeginDrag={() => {
+              onHorizontalScrollStart?.();
+            }}
+            onMomentumScrollBegin={() => {
+              onHorizontalScrollStart?.();
+            }}
+            onScrollEndDrag={() => {
+              onHorizontalScrollEnd?.();
+            }}
+            onMomentumScrollEnd={() => {
+              onHorizontalScrollEnd?.();
+            }}
+            // ✅ OPTIMISATION: Retirer onTouchStart/onTouchEnd qui peuvent causer des conflits
           >
             {images.map((image, index) => (
               <View key={index} style={styles.imageContainer}>

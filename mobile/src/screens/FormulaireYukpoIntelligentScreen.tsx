@@ -2061,6 +2061,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               valeursFormulaire.titre_service,
             ]}
             categoryValue={valeursFormulaire.categorie_produit || valeursFormulaire.category || ''}
+            // ✅ NOUVEAU: Passer productLabels pour garantir l'ordre correct des sous-caractéristiques
+            productLabels={
+              (fieldValue && typeof fieldValue === 'object' && 'product_labels' in fieldValue && Array.isArray(fieldValue.product_labels))
+                ? fieldValue.product_labels.filter((label: any) => typeof label === 'string')
+                : (valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels))
+                  ? valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string')
+                  : undefined
+            }
+            productVector={
+              (fieldValue && typeof fieldValue === 'object' && 'product_vector' in fieldValue && Array.isArray(fieldValue.product_vector))
+                ? fieldValue.product_vector.filter((v: any) => typeof v === 'string')
+                : (valeursFormulaire.product_vector && Array.isArray(valeursFormulaire.product_vector))
+                  ? valeursFormulaire.product_vector.filter((v: any) => typeof v === 'string')
+                  : undefined
+            }
             onChange={(values, updatedSousCaracs) => {
               // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
               if (updatedSousCaracs) {
@@ -2277,6 +2292,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             readonly={isReadonly}
             maxImages={MAX_PRODUCT_IMAGES}
             maxVideos={3}
+            // ✅ OPTIMISATION: Callbacks pour gérer le scroll horizontal et éviter les conflits
+            onHorizontalScrollStart={() => {
+              // Bloquer temporairement le scroll vertical pendant le scroll horizontal
+              if (mainScrollViewRef.current) {
+                mainScrollViewRef.current.setNativeProps({ scrollEnabled: false });
+              }
+            }}
+            onHorizontalScrollEnd={() => {
+              // Réactiver le scroll vertical après le scroll horizontal
+              if (mainScrollViewRef.current) {
+                mainScrollViewRef.current.setNativeProps({ scrollEnabled: true });
+              }
+            }}
           />
         </View>
       );
@@ -4927,6 +4955,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   keyboardDismissMode="on-drag"
                   nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll horizontal des images dans MediaUploadManager
                   bounces={Platform.OS === 'ios'}
+                  scrollEventThrottle={16} // ✅ OPTIMISATION: Limiter la fréquence des événements de scroll
+                  removeClippedSubviews={true} // ✅ OPTIMISATION: Améliorer les performances
+                  decelerationRate="normal" // ✅ OPTIMISATION: Comportement de scroll plus fluide
                 >
                   {displayedBlocks
                     .filter(({ index: blockIndex }) => blockIndex === currentBlock) // ✅ CRITIQUE: Filtrer pour n'afficher que le bloc actif

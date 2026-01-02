@@ -1,11 +1,11 @@
--- Migration: Correction définitive performance création produit
--- Date: 2025-12-31
--- Problème: SELECT complet du JSONB après UPDATE cause 1-3s de latence
--- Solution: Fonction PostgreSQL qui retourne directement les données nécessaires
--- ✅ MISE À JOUR 2026-01-02: Optimisation supplémentaire pour éviter les verrous longs
+-- Migration: Optimisation critique pour éviter les timeouts même sans médias
+-- Date: 2026-01-02
+-- Problème: FOR UPDATE verrouille la ligne pendant toute la transaction, causant des timeouts
+--           même sans médias si le service a déjà beaucoup de produits (JSONB volumineux)
+-- Solution: Utiliser NOWAIT pour détecter les conflits rapidement, et optimiser l'UPDATE JSONB
 
 -- ============================================================================
--- 1. FONCTION OPTIMISÉE: Retourne index + données nécessaires pour indexation
+-- 1. FONCTION OPTIMISÉE: Évite les verrous longs et optimise l'UPDATE JSONB
 -- ============================================================================
 CREATE OR REPLACE FUNCTION add_product_to_service_jsonb_v2(
     p_service_id INTEGER,
@@ -21,7 +21,7 @@ DECLARE
     v_lieu_data JSONB;
     v_current_data JSONB;
 BEGIN
-    -- ✅ OPTIMISÉ 2026-01-02: Lire les données AVANT le verrou (lecture rapide)
+    -- ✅ OPTIMISÉ: Lire les données AVANT le verrou (lecture rapide)
     -- Cela permet de calculer l'index sans verrouiller la ligne
     SELECT 
         COALESCE(jsonb_array_length(data->'produits'->'valeur'), 0),
@@ -35,7 +35,7 @@ BEGIN
         RETURN;
     END IF;
     
-    -- ✅ OPTIMISÉ 2026-01-02: Calculer le nouveau JSONB en mémoire (plus rapide que jsonb_set)
+    -- ✅ OPTIMISÉ: Calculer le nouveau JSONB en mémoire (plus rapide que jsonb_set)
     -- Construire directement le nouveau tableau produits.valeur
     DECLARE
         v_new_produits_valeur JSONB;
@@ -74,7 +74,7 @@ BEGIN
             );
         END IF;
         
-        -- ✅ OPTIMISÉ 2026-01-02: UPDATE atomique sans verrou long
+        -- ✅ OPTIMISÉ: UPDATE atomique sans verrou long
         -- On construit le JSONB en mémoire avant l'UPDATE, ce qui est plus rapide
         -- et évite de verrouiller la ligne pendant le calcul
         UPDATE services
@@ -106,12 +106,7 @@ $$ LANGUAGE plpgsql;
 COMMENT ON FUNCTION add_product_to_service_jsonb_v2 IS 'Fonction optimisée qui évite les verrous longs. Lit les données AVANT le verrou, construit le nouveau JSONB en mémoire, puis fait un UPDATE atomique rapide. Réduit significativement le temps d''exécution même pour les services avec beaucoup de produits.';
 
 -- ============================================================================
--- 2. GARDER L'ANCIENNE FONCTION pour compatibilité (sera remplacée progressivement)
--- ============================================================================
--- La fonction add_product_to_service_jsonb reste disponible pour le fallback
-
--- ============================================================================
--- 3. INDEX: Optimisation pour les requêtes fréquentes
+-- 2. INDEX: S'assurer que les index existent pour les performances
 -- ============================================================================
 -- Index pour garantir que les UPDATE sont rapides
 CREATE INDEX IF NOT EXISTS idx_services_id_for_updates 
@@ -123,7 +118,7 @@ CREATE INDEX IF NOT EXISTS idx_services_produits_valeur_gin
     ON services USING GIN ((data->'produits'->'valeur'))
     WHERE data->'produits'->'valeur' IS NOT NULL;
 
--- ✅ NOUVEAU 2026-01-02: Index partiel pour les services avec beaucoup de produits
+-- ✅ NOUVEAU: Index partiel pour les services avec beaucoup de produits
 -- Cela aide PostgreSQL à choisir un plan d'exécution optimal
 CREATE INDEX IF NOT EXISTS idx_services_data_produits_partial
     ON services USING GIN (data)
@@ -132,7 +127,7 @@ CREATE INDEX IF NOT EXISTS idx_services_data_produits_partial
     AND jsonb_array_length(data->'produits'->'valeur') > 0;
 
 -- ============================================================================
--- 4. VÉRIFICATION
+-- 3. VÉRIFICATION
 -- ============================================================================
 DO $$
 BEGIN

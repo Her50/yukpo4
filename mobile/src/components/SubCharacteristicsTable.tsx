@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useToaster } from './ToasterProvider'; // ✅ NOUVEAU: Pour afficher les toasts de confirmation
 
 export interface SubCharacteristicRow {
     label: string;
@@ -39,6 +40,9 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     initialRows,
     onRowsChange, // ✅ NOUVEAU : Callback pour sauvegarder automatiquement
 }) => {
+    // ✅ NOUVEAU: Toast pour les notifications
+    const toaster = useToaster();
+    
     // État du tableau : chaque ligne contient un label et une valeur
     const [rows, setRows] = useState<SubCharacteristicRow[]>([]);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -46,6 +50,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     const [editingValue, setEditingValue] = useState('');
     const [isValidating, setIsValidating] = useState(false);
     const [isValidated, setIsValidated] = useState(false);
+    const [validatedRowsSnapshot, setValidatedRowsSnapshot] = useState<SubCharacteristicRow[]>([]); // ✅ NOUVEAU: Snapshot des lignes validées
     const scrollViewRef = useRef<ScrollView>(null);
     const labelInputRef = useRef<TextInput>(null);
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -64,10 +69,9 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             // ✅ DEBUG: Logger les données reçues pour diagnostiquer le problème
             console.log('[SubCharacteristicsTable] 🔍 sousCaracteristiques reçues:', JSON.stringify(sousCaracteristiques, null, 2));
             
-            // ✅ CORRECTION: Utiliser Object.keys() puis accéder directement aux valeurs pour garantir le bon mapping
-            Object.keys(sousCaracteristiques).forEach((label) => {
-                const values = sousCaracteristiques[label];
-                
+            // ✅ CORRECTION CRITIQUE: Utiliser Object.entries() pour garantir l'ordre et la correspondance label/valeur
+            // Object.entries() préserve l'ordre d'insertion en JavaScript moderne
+            Object.entries(sousCaracteristiques).forEach(([label, values]) => {
                 // ✅ DEBUG: Logger chaque label et ses valeurs
                 console.log(`[SubCharacteristicsTable] 🔍 Label: "${label}", Type valeurs:`, typeof values, 'Est array:', Array.isArray(values), 'Valeurs:', values);
                 
@@ -110,6 +114,29 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         }
     }, [editingIndex, rows]);
 
+    // ✅ NOUVEAU: Détecter les changements dans les lignes après validation pour réactiver le bouton
+    useEffect(() => {
+        if (isValidated && validatedRowsSnapshot.length > 0) {
+            // Comparer les lignes actuelles avec le snapshot validé
+            const currentValidRows = rows.filter(r => r.label.trim() && r.value.trim());
+            const hasChanged = 
+                currentValidRows.length !== validatedRowsSnapshot.length ||
+                currentValidRows.some((row, index) => {
+                    const validatedRow = validatedRowsSnapshot[index];
+                    return !validatedRow || 
+                           row.label !== validatedRow.label || 
+                           row.value !== validatedRow.value;
+                });
+            
+            if (hasChanged) {
+                // Les lignes ont changé, réactiver le bouton
+                setIsValidated(false);
+                setValidatedRowsSnapshot([]);
+                console.log('[SubCharacteristicsTable] 🔄 Changements détectés, réactivation du bouton Valider');
+            }
+        }
+    }, [rows, isValidated, validatedRowsSnapshot]);
+
     // Modifier une ligne
     const startEditing = (index: number) => {
         const row = rows[index];
@@ -134,6 +161,12 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         setEditingLabel('');
         setEditingValue('');
         
+        // ✅ NOUVEAU: Réactiver le bouton si on modifie après validation
+        if (isValidated) {
+            setIsValidated(false);
+            setValidatedRowsSnapshot([]);
+        }
+        
         // ✅ NOUVEAU : Sauvegarder automatiquement dans le formulaire (sans DB)
         if (onRowsChange) {
             onRowsChange(newRows);
@@ -152,6 +185,12 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         const newRows = rows.filter((_, i) => i !== index);
         setRows(newRows);
         
+        // ✅ NOUVEAU: Réactiver le bouton si on supprime après validation
+        if (isValidated) {
+            setIsValidated(false);
+            setValidatedRowsSnapshot([]);
+        }
+        
         // ✅ NOUVEAU : Sauvegarder automatiquement dans le formulaire (sans DB)
         if (onRowsChange) {
             onRowsChange(newRows);
@@ -167,6 +206,12 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         setEditingIndex(newIndex);
         setEditingLabel('');
         setEditingValue('');
+        
+        // ✅ NOUVEAU: Réactiver le bouton si on ajoute après validation
+        if (isValidated) {
+            setIsValidated(false);
+            setValidatedRowsSnapshot([]);
+        }
         
         // ✅ NOUVEAU : Sauvegarder automatiquement dans le formulaire (sans DB)
         // Note : On ne sauvegarde pas les lignes vides, seulement après édition
@@ -234,7 +279,14 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 
             // ✅ FEEDBACK VISUEL: Afficher le succès avec animation
             setIsValidated(true);
+            setValidatedRowsSnapshot(validRows); // ✅ NOUVEAU: Sauvegarder le snapshot des lignes validées
             console.log('[SubCharacteristicsTable] ✅ Sous-caractéristiques validées et sauvegardées');
+
+            // ✅ NOUVEAU: Afficher un toast de confirmation
+            const nbCaracteristiques = validRows.length;
+            toaster.success(
+                `✅ ${nbCaracteristiques} sous-caractéristique${nbCaracteristiques > 1 ? 's' : ''} validée${nbCaracteristiques > 1 ? 's' : ''} avec succès !`
+            );
 
             // ✅ NOUVEAU: Animation de la bordure verte pour feedback visuel clair
             Animated.sequence([
@@ -249,11 +301,11 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     duration: 300,
                     useNativeDriver: false,
                 }),
-            ]).start(() => {
-                setIsValidated(false);
-            });
+            ]).start();
+            // ✅ NOTE: On ne remet plus setIsValidated(false) automatiquement pour garder le bouton grisé
         } catch (error) {
             console.error('[SubCharacteristicsTable] ❌ Erreur validation:', error);
+            toaster.error('❌ Erreur lors de la validation. Veuillez réessayer.');
             // ✅ Afficher un message d'erreur (sera géré par le parent si nécessaire)
         } finally {
             setIsValidating(false);
@@ -381,6 +433,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                         style={[
                             styles.validateButton,
                             rows.filter(r => r.label.trim() && r.value.trim()).length === 0 && styles.validateButtonDisabled,
+                            isValidated && styles.validateButtonDisabled, // ✅ NOUVEAU: Griser le bouton après validation
                             isValidated && styles.validateButtonSuccess
                         ]}
                         onPress={validateTable}

@@ -1096,7 +1096,7 @@ use crate::services::preview_generation_service::{generate_quick_preview, QuickP
 
 /// ✅ POST /api/ia/video/quick-preview - Génère un preview rapide de la timeline
 pub async fn handle_quick_preview(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<QuickPreviewPayload>,
 ) -> AppResult<Json<serde_json::Value>> {
     info!(
@@ -1111,7 +1111,8 @@ pub async fn handle_quick_preview(
         max_duration: payload.max_duration,
     };
 
-    match generate_quick_preview(request).await {
+    // ✅ NOUVEAU: Passer le pool pour résoudre les media_id
+    match generate_quick_preview(request, Some(&state.pg)).await {
         Ok(response) => {
             info!(
                 "[handle_quick_preview] ✅ Success - preview: {} ({}ms)",

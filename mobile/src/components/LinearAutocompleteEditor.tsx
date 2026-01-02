@@ -56,6 +56,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     placeholder,
     allowCustomModality = true,
     filtrable = true,
+    productLabels, // ✅ AJOUT: Pour garantir l'ordre correct des labels
 }) => {
     const [selectedModalities, setSelectedModalities] = useState<string[]>(value || []);
     const [searchQuery, setSearchQuery] = useState('');
@@ -280,8 +281,34 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // ✅ NOUVEAU: Callback pour valider le tableau (maintenant async pour gérer les erreurs)
     const handleTableValidate = useCallback(async (rows: SubCharacteristicRow[]) => {
         try {
-            // Convertir les lignes du tableau en modalité concaténée
-            const modality = rows.map(row => row.value).join(separateur);
+            // ✅ CORRECTION CRITIQUE: Construire la modalité en respectant l'ordre correct des labels
+            // Priorité 1: Utiliser productLabels si disponible (ordre garanti)
+            // Priorité 2: Utiliser l'ordre des clés de sousCaracteristiques (ordre d'insertion préservé en JS moderne)
+            const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
+                ? productLabels.filter(label => label && typeof label === 'string')
+                : Object.keys(sousCaracteristiques);
+            
+            const modalityParts: string[] = [];
+            
+            // Parcourir les labels dans l'ordre garanti
+            orderedLabels.forEach(label => {
+                // Trouver la ligne correspondante dans le tableau
+                const matchingRow = rows.find(row => row.label === label);
+                if (matchingRow && matchingRow.value) {
+                    modalityParts.push(matchingRow.value);
+                } else {
+                    // Si pas de ligne correspondante, utiliser la première valeur de sousCaracteristiques
+                    const defaultValue = Array.isArray(sousCaracteristiques[label]) && sousCaracteristiques[label].length > 0
+                        ? sousCaracteristiques[label][0]
+                        : '';
+                    if (defaultValue) {
+                        modalityParts.push(defaultValue);
+                    }
+                }
+            });
+            
+            // Construire la modalité concaténée dans l'ordre correct
+            const modality = modalityParts.join(separateur);
             
             // Mettre à jour les modalités sélectionnées
             const newModalities = [modality];
@@ -325,7 +352,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             // ✅ Les modifications sont déjà dans le formulaire via onChange, donc on continue
             // La sauvegarde DB sera réessayée lors de la sauvegarde du produit/service
         }
-    }, [separateur, onChange, identifiantBase]);
+    }, [separateur, onChange, identifiantBase, sousCaracteristiques, productLabels]); // ✅ AJOUT: Ajouter productLabels aux dépendances
 
     // Générer un texte d'aide dynamique
     const getHelperText = () => {

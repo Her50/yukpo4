@@ -5,8 +5,10 @@ use crate::core::types::{AppError, AppResult};
 use crate::services::app_ia::{TimelineScene, VideoTimeline};
 use crate::services::gpu_render_service::GPURenderService;
 use crate::services::immersive_timeline::ImmersiveTimeline;
-use log::{error, info};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use std::env;
 use tokio::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,10 +91,109 @@ pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> Vid
     }
 }
 
+/// ✅ NOUVEAU: Résout un media_id en media_url depuis la base de données
+async fn resolve_media_url(pool: &PgPool, media_id: i32) -> AppResult<Option<String>> {
+    let row = sqlx::query!(
+        "SELECT path FROM media WHERE id = $1",
+        media_id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        error!("[QuickPreview] Erreur DB pour media_id {}: {}", media_id, e);
+        AppError::Internal(format!("Erreur récupération média {}: {}", media_id, e))
+    })?;
+
+    if let Some(row) = row {
+        let path = row.path;
+        // Construire l'URL complète
+        let api_base_url = env::var("API_BASE_URL")
+            .unwrap_or_else(|_| env::var("UPLOAD_BASE_URL")
+                .unwrap_or_else(|_| "http://localhost:3000".to_string()));
+        
+        let clean_path = path.trim_start_matches('/');
+        let media_url = if path.starts_with("http://") || path.starts_with("https://") {
+            path
+        } else {
+            format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path)
+        };
+        
+        Ok(Some(media_url))
+    } else {
+        warn!("[QuickPreview] Media ID {} non trouvé dans la DB", media_id);
+        Ok(None)
+    }
+}
+
+/// ✅ NOUVEAU: Enrichit la timeline en résolvant les media_id en media_url
+async fn enrich_timeline_with_media_urls(
+    timeline: VideoTimeline,
+    pool: Option<&PgPool>,
+) -> AppResult<VideoTimeline> {
+    if pool.is_none() {
+        // Si pas de pool, retourner la timeline telle quelle
+        return Ok(timeline);
+    }
+    let pool = pool.unwrap();
+
+    let mut enriched_scenes = Vec::new();
+    
+    for scene in timeline.scenes {
+        // Si la scène a déjà un media_url, on la garde telle quelle
+        if scene.media_url.is_some() {
+            enriched_scenes.push(scene);
+            continue;
+        }
+
+        // Si la scène a un media_id, résoudre en media_url
+        if let Some(media_id_str) = &scene.media_id {
+            // Convertir la chaîne en i32
+            match media_id_str.parse::<i32>() {
+                Ok(media_id) => {
+                    match resolve_media_url(pool, media_id).await {
+                        Ok(Some(media_url)) => {
+                            info!("[QuickPreview] ✅ Résolu media_id {} -> {}", media_id, media_url);
+                            enriched_scenes.push(TimelineScene {
+                                media_url: Some(media_url),
+                                ..scene
+                            });
+                        }
+                        Ok(None) => {
+                            warn!("[QuickPreview] ⚠️ Media ID {} non trouvé, scène ignorée", media_id);
+                            // On garde la scène mais sans media_url (sera filtrée plus tard)
+                            enriched_scenes.push(scene);
+                        }
+                        Err(e) => {
+                            error!("[QuickPreview] ❌ Erreur résolution media_id {}: {:?}", media_id, e);
+                            // On garde la scène mais sans media_url (sera filtrée plus tard)
+                            enriched_scenes.push(scene);
+                        }
+                    }
+                }
+                Err(_) => {
+                    warn!("[QuickPreview] ⚠️ Media ID invalide (non numérique): '{}', scène ignorée", media_id_str);
+                    // On garde la scène mais sans media_url (sera filtrée plus tard)
+                    enriched_scenes.push(scene);
+                }
+            }
+        } else {
+            // Pas de media_id ni media_url, on garde la scène telle quelle
+            enriched_scenes.push(scene);
+        }
+    }
+
+    Ok(VideoTimeline {
+        scenes: enriched_scenes,
+        total_duration: timeline.total_duration,
+    })
+}
+
 /// Génère un preview rapide (low quality) de la timeline
 /// ✅ Phase 7 & 10: Optimisé avec GPU et cache pour <100ms
+/// ✅ NOUVEAU: Résout automatiquement les media_id en media_url depuis la DB
 pub async fn generate_quick_preview(
     request: QuickPreviewRequest,
+    pool: Option<&PgPool>,
 ) -> AppResult<QuickPreviewResponse> {
     let start_time = std::time::Instant::now();
 
@@ -106,12 +207,14 @@ pub async fn generate_quick_preview(
         request.quality
     );
 
+    // ✅ NOUVEAU: Enrichir la timeline en résolvant les media_id
+    let enriched_timeline = enrich_timeline_with_media_urls(request.timeline, pool).await?;
+    
     let quality = request.quality.as_deref().unwrap_or("low");
     let max_duration = request.max_duration.unwrap_or(10.0);
 
     // Pour un preview rapide, on prend seulement les premières scènes
-    let preview_scenes: Vec<_> = request
-        .timeline
+    let preview_scenes: Vec<_> = enriched_timeline
         .scenes
         .iter()
         .take_while(|scene| scene.start_time + scene.duration <= max_duration)

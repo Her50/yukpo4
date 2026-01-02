@@ -8,6 +8,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     DeviceEventEmitter,
     KeyboardAvoidingView,
@@ -24,6 +25,7 @@ import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeD
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 import SafeIcon from '../components/SafeIcon';
+import { useToaster } from '../components/ToasterProvider'; // ✅ NOUVEAU: Pour les toasts de confirmation
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -35,6 +37,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const toaster = useToaster(); // ✅ NOUVEAU: Pour les toasts de confirmation
 
     // Récupérer les paramètres
     const params = (route.params as any) || {};
@@ -52,6 +55,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const prefill = params.prefill || {};
 
     const [loading, setLoading] = useState(false);
+    const [isAddingProductLoading, setIsAddingProductLoading] = useState(false); // ✅ NOUVEAU: État de loading spécifique pour l'ajout de produit
     // ✅ NOUVEAU: États pour le modal de configuration de livraison
     const [showProductDeliveryConfig, setShowProductDeliveryConfig] = useState(false);
     const [productDeliveryConfigData, setProductDeliveryConfigData] = useState<{
@@ -536,8 +540,15 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
     // ✅ NOUVEAU 2025-11-21: Charger les combinaisons préférées par l'IA via session_id
     // ✅ CORRIGÉ: Charger aussi si sous_caracteristiques est vide (pour afficher les caractéristiques)
+    // ✅ OPTIMISATION: Utiliser useRef pour éviter les re-renders en boucle
+    const hasLoadedCombinations = React.useRef(false);
     React.useEffect(() => {
         const loadAIPreferredCombinations = async () => {
+            // ✅ OPTIMISATION: Ne charger qu'une seule fois pour éviter les re-renders en boucle
+            if (hasLoadedCombinations.current) {
+                return;
+            }
+            
             // Vérifier si on a un session_id et que produits OU sous_caracteristiques sont vides
             const sessionId = suggestionIA?.session_id || suggestionIA?.data?.session_id;
             const hasProduits = formValues.produits && Array.isArray(formValues.produits) && formValues.produits.length > 0;
@@ -545,6 +556,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
             // ✅ CORRIGÉ: Charger si session_id existe ET (produits vide OU sous_caracteristiques vide)
             if (sessionId && (!hasProduits || !hasSousCaracs)) {
+                hasLoadedCombinations.current = true; // ✅ Marquer comme chargé pour éviter les re-renders
                 try {
                     const combinationsResponse = await apiGet(`/api/combinations/session/${sessionId}`);
                     if (combinationsResponse?.combinations && Array.isArray(combinationsResponse.combinations)) {
@@ -657,7 +669,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         };
 
         loadAIPreferredCombinations();
-    }, [suggestionIA?.session_id, suggestionIA?.data?.session_id, formValues.produits, formValues.sous_caracteristiques]);
+    }, [suggestionIA?.session_id, suggestionIA?.data?.session_id]); // ✅ OPTIMISATION: Retirer formValues des dépendances pour éviter les re-renders en boucle
 
     const currentModalites = Array.isArray(formValues.variabilite_prix?.modalites)
         ? formValues.variabilite_prix.modalites
@@ -718,8 +730,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             ? 'Une copie complète a été générée. Personnalisez-la avant validation.'
             : 'Ajoutez un nouveau produit à votre service existant.';
 
-    const submitLabel = loading
-        ? (isEditing ? '⏳ Mise à jour...' : isDuplicate ? '⏳ Duplication...' : '⏳ Ajout en cours...')
+    const submitLabel = (loading || isAddingProductLoading)
+        ? (isAddingProductLoading ? '⏳ Création du produit...' : isEditing ? '⏳ Mise à jour...' : isDuplicate ? '⏳ Duplication...' : '⏳ Ajout en cours...')
         : (isEditing ? 'Enregistrer les modifications' : isDuplicate ? 'Dupliquer le produit' : 'Ajouter le produit');
 
     // Gérer changement de champ
@@ -1056,205 +1068,128 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     }
                                 }
 
-                                // ✅ CORRECTION CRITIQUE: Compresser les médias AVANT upload pour accélérer
-                                console.log('[AjouterProduitSimple] 🔄 Compression des médias avant upload...');
+                                // ✅ OPTIMISATION CRITIQUE: Vérifier AVANT l'import s'il y a des médias à compresser
+                                // Évite l'import dynamique coûteux et les opérations inutiles si pas de médias
                                 let compressedMedia: any = null;
-                                try {
-                                    const { compressAllMedia } = await import('../utils/mediaCompression');
+                                
+                                // Vérifier rapidement s'il y a des médias base64/file à compresser
+                                const hasImagesToCompress = nouveauProduit.images && Array.isArray(nouveauProduit.images) && 
+                                    nouveauProduit.images.some((img: string) => img && (img.startsWith('data:') || img.startsWith('file://')));
+                                const hasVideosToCompress = nouveauProduit.videos && Array.isArray(nouveauProduit.videos) && 
+                                    nouveauProduit.videos.some((vid: string) => vid && (vid.startsWith('data:') || vid.startsWith('file://')));
+                                
+                                if (hasImagesToCompress || hasVideosToCompress) {
+                                    // ✅ SEULEMENT si on a des médias à compresser, importer et compresser
+                                    console.log('[AjouterProduitSimple] 🔄 Compression des médias avant envoi...');
+                                    try {
+                                        const { compressAllMedia } = await import('../utils/mediaCompression');
 
-                                    // Préparer les médias pour compression
-                                    const mediaForCompression = {
-                                        images: nouveauProduit.images && Array.isArray(nouveauProduit.images)
-                                            ? nouveauProduit.images.filter((img: string) => img && (img.startsWith('data:') || img.startsWith('file://')))
-                                            : [],
-                                        videos: nouveauProduit.videos && Array.isArray(nouveauProduit.videos)
-                                            ? nouveauProduit.videos.filter((vid: string) => vid && (vid.startsWith('data:') || vid.startsWith('file://')))
-                                            : [],
-                                    };
+                                        // Séparer les médias base64/file des URLs existantes
+                                        const imagesBase64: string[] = [];
+                                        const videosBase64: string[] = [];
+                                        const existingImageUrls: string[] = [];
+                                        const existingVideoUrls: string[] = [];
 
-                                    if (mediaForCompression.images.length > 0 || mediaForCompression.videos.length > 0) {
-                                        compressedMedia = await compressAllMedia(mediaForCompression);
-                                        console.log('[AjouterProduitSimple] ✅ Médias compressés:', {
-                                            before: `${(compressedMedia.totalSizeBefore / (1024 * 1024)).toFixed(2)} MB`,
-                                            after: `${(compressedMedia.totalSizeAfter / (1024 * 1024)).toFixed(2)} MB`,
-                                            saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
-                                        });
-
-                                        // ✅ Remplacer les médias originaux par les versions compressées
-                                        if (compressedMedia.images.length > 0) {
-                                            nouveauProduit.images = compressedMedia.images;
+                                        // Images : séparer base64/file des URLs
+                                        if (nouveauProduit.images && Array.isArray(nouveauProduit.images)) {
+                                            nouveauProduit.images.forEach((img: string) => {
+                                                if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
+                                                    imagesBase64.push(img);
+                                                } else if (img && (img.startsWith('http://') || img.startsWith('https://'))) {
+                                                    existingImageUrls.push(img);
+                                                }
+                                            });
                                         }
-                                        if (compressedMedia.videos.length > 0) {
-                                            nouveauProduit.videos = compressedMedia.videos;
+
+                                        // Vidéos : séparer base64/file des URLs
+                                        if (nouveauProduit.videos && Array.isArray(nouveauProduit.videos)) {
+                                            nouveauProduit.videos.forEach((vid: string) => {
+                                                if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
+                                                    videosBase64.push(vid);
+                                                } else if (vid && (vid.startsWith('http://') || vid.startsWith('https://'))) {
+                                                    existingVideoUrls.push(vid);
+                                                }
+                                            });
                                         }
+
+                                        // Compresser uniquement les médias base64/file
+                                        if (imagesBase64.length > 0 || videosBase64.length > 0) {
+                                            const mediaForCompression = {
+                                                images: imagesBase64,
+                                                videos: videosBase64,
+                                            };
+
+                                            compressedMedia = await compressAllMedia(mediaForCompression);
+                                            console.log('[AjouterProduitSimple] ✅ Médias compressés:', {
+                                                before: `${(compressedMedia.totalSizeBefore / (1024 * 1024)).toFixed(2)} MB`,
+                                                after: `${(compressedMedia.totalSizeAfter / (1024 * 1024)).toFixed(2)} MB`,
+                                                saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
+                                            });
+
+                                            // ✅ Fusionner médias compressés + URLs existantes (comme FormulaireYukpoIntelligentScreen)
+                                            if (compressedMedia.images.length > 0 || existingImageUrls.length > 0) {
+                                                nouveauProduit.images = [...compressedMedia.images, ...existingImageUrls];
+                                                nouveauProduit.base64_image = compressedMedia.images; // Pour compatibilité backend
+                                            }
+
+                                            if (compressedMedia.videos.length > 0 || existingVideoUrls.length > 0) {
+                                                nouveauProduit.videos = [...compressedMedia.videos, ...existingVideoUrls];
+                                                nouveauProduit.video_base64 = compressedMedia.videos; // Pour compatibilité backend
+                                            }
+                                        } else if (existingImageUrls.length > 0 || existingVideoUrls.length > 0) {
+                                            // Seulement des URLs existantes, pas de compression nécessaire
+                                            if (existingImageUrls.length > 0) {
+                                                nouveauProduit.images = existingImageUrls;
+                                            }
+                                            if (existingVideoUrls.length > 0) {
+                                                nouveauProduit.videos = existingVideoUrls;
+                                            }
+                                        }
+                                    } catch (compressionError: any) {
+                                        console.warn('[AjouterProduitSimple] ⚠️ Erreur compression médias, continuation sans compression:', compressionError.message);
+                                        // Continuer sans compression si erreur - le backend gérera
                                     }
-                                } catch (compressionError: any) {
-                                    console.warn('[AjouterProduitSimple] ⚠️ Erreur compression médias, continuation sans compression:', compressionError.message);
-                                    // Continuer sans compression si erreur
-                                }
-
-                                // ✅ NOUVEAU: Upload préalable des médias (compressés) pour éviter payload trop volumineux
-                                console.log('[AjouterProduitSimple] 📤 Début upload préalable des médias pour nouveau produit...');
-                                try {
-                                    const { uploadFiles } = await import('../services/uploadApi');
-
-                                    // Collecter tous les médias du produit à uploader (après compression)
-                                    const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
-                                    
-                                    // ✅ CORRIGÉ : Collecter aussi les URLs existantes pour les préserver
+                                } else {
+                                    // ✅ OPTIMISATION: Pas de médias à compresser, traitement rapide
+                                    // Vérifier s'il y a des URLs existantes à préserver
                                     const existingImageUrls: string[] = [];
                                     const existingVideoUrls: string[] = [];
-
-                                    // Images produit (utiliser versions compressées si disponibles)
-                                    const imagesToUpload = compressedMedia?.images || nouveauProduit.images || [];
-                                    if (Array.isArray(imagesToUpload)) {
-                                        imagesToUpload.forEach((img: string, idx: number) => {
-                                            if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
-                                                const mimeType = img.startsWith('data:')
-                                                    ? img.split(',')[0].split(':')[1].split(';')[0]
-                                                    : 'image/jpeg';
-                                                filesToUpload.push({
-                                                    uri: img,
-                                                    type: mimeType,
-                                                    name: `prod_image_${idx}.jpg`
-                                                });
-                                            }
-                                            // ✅ CORRIGÉ : Si c'est déjà une URL (http/https), la préserver
-                                            else if (img && (img.startsWith('http://') || img.startsWith('https://'))) {
+                                    
+                                    if (nouveauProduit.images && Array.isArray(nouveauProduit.images)) {
+                                        nouveauProduit.images.forEach((img: string) => {
+                                            if (img && (img.startsWith('http://') || img.startsWith('https://'))) {
                                                 existingImageUrls.push(img);
-                                                console.log(`[AjouterProduitSimple] ℹ️ Image ${idx} est déjà une URL, préservation:`, img.substring(0, 50) + '...');
                                             }
                                         });
-                                    }
-
-                                    // Vidéos produit (utiliser versions compressées si disponibles)
-                                    const videosToUpload = compressedMedia?.videos || nouveauProduit.videos || [];
-                                    if (Array.isArray(videosToUpload)) {
-                                        videosToUpload.forEach((vid: string, idx: number) => {
-                                            if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
-                                                const mimeType = vid.startsWith('data:')
-                                                    ? vid.split(',')[0].split(':')[1].split(';')[0]
-                                                    : 'video/mp4';
-                                                filesToUpload.push({
-                                                    uri: vid,
-                                                    type: mimeType,
-                                                    name: `prod_video_${idx}.mp4`
-                                                });
-                                            }
-                                            // ✅ CORRIGÉ : Si c'est déjà une URL (http/https), la préserver
-                                            else if (vid && (vid.startsWith('http://') || vid.startsWith('https://'))) {
-                                                existingVideoUrls.push(vid);
-                                                console.log(`[AjouterProduitSimple] ℹ️ Vidéo ${idx} est déjà une URL, préservation:`, vid.substring(0, 50) + '...');
-                                            }
-                                        });
-                                    }
-
-                                    // Uploader tous les fichiers
-                                    if (filesToUpload.length > 0) {
-                                        console.log(`[AjouterProduitSimple] 📤 Upload de ${filesToUpload.length} fichier(s) pour nouveau produit...`);
-                                        const uploadedFiles = await uploadFiles(filesToUpload);
-                                        console.log('[AjouterProduitSimple] ✅ Upload réussi pour produit:', uploadedFiles.length, 'fichier(s)');
-
-                                        // ✅ CORRIGÉ : Fusionner URLs uploadées avec URLs existantes
-                                        // Images produit
-                                        const uploadedImageUrls = uploadedFiles
-                                            .filter(f => f.media_type === 'image')
-                                            .map(f => f.url)
-                                            .filter((url: string) => url && url.length > 0 && !url.startsWith('data:')); // ✅ Vérifier que ce sont bien des URLs
-                                        
-                                        // ✅ CORRIGÉ : Fusionner URLs uploadées + URLs existantes
-                                        const allImageUrls = [...existingImageUrls, ...uploadedImageUrls].filter((url, index, self) => self.indexOf(url) === index); // Dédupliquer
-                                        
-                                        if (allImageUrls.length > 0) {
-                                            // ✅ CORRIGÉ : Utiliser SEULEMENT imageUrls (pas base64_image qui est nettoyé par le backend)
-                                            nouveauProduit.imageUrls = allImageUrls;
-                                            // ✅ CRITIQUE : Supprimer base64_image et images pour éviter que le backend les traite comme base64
-                                            delete nouveauProduit.base64_image;
-                                            delete nouveauProduit.images;
-                                            delete nouveauProduit.images_base64;
-                                            delete nouveauProduit.image_base64;
-                                            console.log('[AjouterProduitSimple] ✅ Images produit finales (URLs existantes + uploadées):', {
-                                                existantes: existingImageUrls.length,
-                                                uploadées: uploadedImageUrls.length,
-                                                total: allImageUrls.length
-                                            });
-                                        } else {
-                                            // ⚠️ Aucune URL valide, supprimer tous les champs médias base64
-                                            delete nouveauProduit.images;
-                                            delete nouveauProduit.base64_image;
-                                            delete nouveauProduit.images_base64;
-                                            delete nouveauProduit.image_base64;
-                                            console.warn('[AjouterProduitSimple] ⚠️ Aucune URL valide pour images, suppression base64');
-                                        }
-
-                                        // Vidéos produit
-                                        const uploadedVideoUrls = uploadedFiles
-                                            .filter(f => f.media_type === 'video')
-                                            .map(f => f.url)
-                                            .filter((url: string) => url && url.length > 0 && !url.startsWith('data:')); // ✅ Vérifier que ce sont bien des URLs
-                                        
-                                        // ✅ CORRIGÉ : Fusionner URLs uploadées + URLs existantes
-                                        const allVideoUrls = [...existingVideoUrls, ...uploadedVideoUrls].filter((url, index, self) => self.indexOf(url) === index); // Dédupliquer
-                                        
-                                        if (allVideoUrls.length > 0) {
-                                            // ✅ CORRIGÉ : Utiliser SEULEMENT videoUrls (pas video_base64 qui est nettoyé par le backend)
-                                            nouveauProduit.videoUrls = allVideoUrls;
-                                            // ✅ CRITIQUE : Supprimer video_base64 et videos pour éviter que le backend les traite comme base64
-                                            delete nouveauProduit.video_base64;
-                                            delete nouveauProduit.videos;
-                                            console.log('[AjouterProduitSimple] ✅ Vidéos produit finales (URLs existantes + uploadées):', {
-                                                existantes: existingVideoUrls.length,
-                                                uploadées: uploadedVideoUrls.length,
-                                                total: allVideoUrls.length
-                                            });
-                                        } else {
-                                            // ⚠️ Aucune URL valide, supprimer tous les champs médias base64
-                                            delete nouveauProduit.videos;
-                                            delete nouveauProduit.video_base64;
-                                            console.warn('[AjouterProduitSimple] ⚠️ Aucune URL valide pour vidéos, suppression base64');
-                                        }
-                                    } else {
-                                        console.log('[AjouterProduitSimple] ℹ️ Aucun média à uploader pour nouveau produit (déjà URLs ou vide)');
-                                        
-                                        // ✅ CORRIGÉ : Utiliser SEULEMENT imageUrls/videoUrls (pas base64_image/video_base64)
                                         if (existingImageUrls.length > 0) {
-                                            nouveauProduit.imageUrls = existingImageUrls;
-                                            // ✅ CRITIQUE : Supprimer tous les champs base64 pour éviter traitement par backend
+                                            nouveauProduit.images = existingImageUrls;
+                                        } else {
+                                            // Pas de médias du tout, supprimer les champs vides
                                             delete nouveauProduit.images;
-                                            delete nouveauProduit.base64_image;
-                                            delete nouveauProduit.images_base64;
-                                            delete nouveauProduit.image_base64;
-                                            console.log('[AjouterProduitSimple] ✅ Utilisation URLs images existantes:', existingImageUrls.length);
-                                        } else if (!nouveauProduit.images || nouveauProduit.images.length === 0) {
-                                            delete nouveauProduit.images;
-                                            delete nouveauProduit.base64_image;
-                                            delete nouveauProduit.images_base64;
-                                            delete nouveauProduit.image_base64;
-                                        }
-                                        
-                                        if (existingVideoUrls.length > 0) {
-                                            nouveauProduit.videoUrls = existingVideoUrls;
-                                            // ✅ CRITIQUE : Supprimer tous les champs base64 pour éviter traitement par backend
-                                            delete nouveauProduit.videos;
-                                            delete nouveauProduit.video_base64;
-                                            console.log('[AjouterProduitSimple] ✅ Utilisation URLs vidéos existantes:', existingVideoUrls.length);
-                                        } else if (!nouveauProduit.videos || nouveauProduit.videos.length === 0) {
-                                            delete nouveauProduit.videos;
-                                            delete nouveauProduit.video_base64;
                                         }
                                     }
-                                } catch (uploadError: any) {
-                                    console.error('[AjouterProduitSimple] ❌ Erreur upload préalable produit:', uploadError);
-                                    // ✅ CORRIGÉ : Ne pas fallback automatiquement vers base64
-                                    // L'utilisateur sera averti et pourra réessayer
-                                    // Le fallback base64 se fera seulement si vraiment nécessaire
-                                    // Mais on log l'erreur pour déboguer
+                                    
+                                    if (nouveauProduit.videos && Array.isArray(nouveauProduit.videos)) {
+                                        nouveauProduit.videos.forEach((vid: string) => {
+                                            if (vid && (vid.startsWith('http://') || vid.startsWith('https://'))) {
+                                                existingVideoUrls.push(vid);
+                                            }
+                                        });
+                                        if (existingVideoUrls.length > 0) {
+                                            nouveauProduit.videos = existingVideoUrls;
+                                        } else {
+                                            // Pas de médias du tout, supprimer les champs vides
+                                            delete nouveauProduit.videos;
+                                        }
+                                    }
+                                    
+                                    console.log('[AjouterProduitSimple] ✅ Pas de médias à compresser, traitement rapide');
                                 }
 
                                 console.log('[AjouterProduitSimple] 📦 Données du nouveau produit (complètes):', {
                                     ...nouveauProduit,
-                                    images: nouveauProduit.images ? `${nouveauProduit.images.length} image(s)` : 'aucune',
-                                    videos: nouveauProduit.videos ? `${nouveauProduit.videos.length} vidéo(s)` : 'aucune',
+                                    images: compressedMedia?.images?.length || (nouveauProduit.images ? nouveauProduit.images.length : 0),
+                                    videos: compressedMedia?.videos?.length || (nouveauProduit.videos ? nouveauProduit.videos.length : 0),
                                     has_variant: nouveauProduit.has_variant,
                                     variants_count: nouveauProduit.variants ? nouveauProduit.variants.length : 0
                                 });
@@ -1298,64 +1233,64 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     throw new Error('ID service invalide');
                                 }
 
+                                // ✅ NOUVEAU: Activer le loading spécifique pour l'ajout de produit
+                                setIsAddingProductLoading(true);
+                                
+                                // ✅ NOUVEAU: Calculer et logger la taille du payload pour diagnostic
+                                const payload = {
+                                    user_id: userId,
+                                    product_data: nouveauProduit
+                                };
+                                const payloadJson = JSON.stringify(payload);
+                                // ✅ Approximation: chaque caractère UTF-16 = 2 bytes (pour JSON simple)
+                                // Pour base64, c'est ~4/3 de la taille de la string
+                                const payloadSizeBytes = payloadJson.length * 2; // Approximation conservative
+                                const payloadSizeMB = (payloadSizeBytes / (1024 * 1024)).toFixed(2);
+                                
                                 console.log('[AjouterProduitSimple] 📤 Appel API création produit:', {
                                     url: `/api/services/${serviceId}/products`,
                                     userId,
                                     serviceId,
-                                    productDataKeys: Object.keys(nouveauProduit)
+                                    productDataKeys: Object.keys(nouveauProduit),
+                                    payloadSize: `${payloadSizeMB} MB (${payloadSizeBytes} bytes)`,
+                                    hasImages: !!(nouveauProduit.images && nouveauProduit.images.length > 0),
+                                    hasVideos: !!(nouveauProduit.videos && nouveauProduit.videos.length > 0),
+                                    hasVariants: !!(nouveauProduit.variants && nouveauProduit.variants.length > 0),
+                                    variantsCount: nouveauProduit.variants ? nouveauProduit.variants.length : 0
                                 });
-
-                                // ✅ AMÉLIORATION: Retry logic pour les erreurs réseau
-                                let response;
-                                let lastError: any = null;
-                                const maxRetries = 3;
                                 
-                                for (let attempt = 1; attempt <= maxRetries; attempt++) {
-                                    try {
-                                        console.log(`[AjouterProduitSimple] 📤 Tentative ${attempt}/${maxRetries} d'ajout produit...`);
-                                        
-                                        response = await apiPost(`/api/services/${serviceId}/products`, {
-                                            user_id: userId,
-                                            product_data: nouveauProduit
-                                        });
-
-                                        console.log('[AjouterProduitSimple] 📥 Réponse API création produit:', {
-                                            success: response.success,
-                                            hasData: !!response.data,
-                                            error: response.error,
-                                            message: response.message
-                                        });
-
-                                        if (!response.success) {
-                                            throw new Error(response.error || response.message || 'Erreur lors de l\'ajout du produit');
-                                        }
-
-                                        // ✅ Succès, sortir de la boucle
-                                        break;
-                                    } catch (error: any) {
-                                        lastError = error;
-                                        const isNetworkError = error?.message?.includes('Network request failed') || 
-                                                             error?.message?.includes('fetch') ||
-                                                             error?.name === 'TypeError';
-                                        
-                                        if (isNetworkError && attempt < maxRetries) {
-                                            // Attendre avant de réessayer (backoff exponentiel)
-                                            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-                                            console.warn(`[AjouterProduitSimple] ⚠️ Erreur réseau, nouvelle tentative dans ${delay}ms...`);
-                                            await new Promise(resolve => setTimeout(resolve, delay));
-                                            continue;
-                                        }
-                                        
-                                        // Si ce n'est pas une erreur réseau ou dernière tentative, propager l'erreur
-                                        throw error;
-                                    }
+                                // ✅ NOUVEAU: Avertir si le payload est très volumineux
+                                if (payloadSizeBytes > 10 * 1024 * 1024) { // > 10 MB
+                                    console.warn('[AjouterProduitSimple] ⚠️ Payload très volumineux:', payloadSizeMB, 'MB');
                                 }
 
-                                if (!response || !response.success) {
-                                    throw lastError || new Error('Erreur lors de l\'ajout du produit');
+                                // ✅ SIMPLIFIÉ: Appel direct sans retry (le timeout de 180s devrait suffire)
+                                // Les retries peuvent causer des timeouts cumulatifs qui dépassent le timeout
+                                console.log(`[AjouterProduitSimple] 📤 Appel API création produit (timeout: 180s)...`);
+                                
+                                const startTime = Date.now();
+                                const response = await apiPost(`/api/services/${serviceId}/products`, {
+                                    user_id: userId,
+                                    product_data: nouveauProduit
+                                });
+                                const duration = Date.now() - startTime;
+                                
+                                console.log('[AjouterProduitSimple] 📥 Réponse API création produit:', {
+                                    success: response.success,
+                                    hasData: !!response.data,
+                                    error: response.error,
+                                    message: response.message,
+                                    duration: `${(duration / 1000).toFixed(2)}s`
+                                });
+
+                                if (!response.success) {
+                                    throw new Error(response.error || response.message || 'Erreur lors de l\'ajout du produit');
                                 }
 
                                 console.log('[AjouterProduitSimple] ✅ Produit ajouté avec succès:', response);
+                                
+                                // ✅ NOUVEAU: Afficher un toast de succès
+                                toaster.success('✅ Produit créé avec succès !');
 
                                 // ✅ ÉTAPE 5 : Afficher le résultat (IDENTIQUE AU GRAND FORMULAIRE)
                                 const responseData: any = response.data ?? {};
@@ -1385,6 +1320,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     
                                     // Ne pas afficher l'Alert de succès ici, le modal s'ouvrira directement
                                     DeviceEventEmitter.emit('service:refresh');
+                                    setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading
                                     return;
                                 }
                                 
@@ -1406,6 +1342,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         }
                                     ]
                                 );
+                                setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading après succès
                             } catch (error: any) {
                                 console.error('[AjouterProduitSimple] ❌ Erreur:', {
                                     message: error?.message,
@@ -1416,19 +1353,40 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     code: error?.code,
                                 });
                                 
+                                setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading en cas d'erreur
+                                
                                 // ✅ AMÉLIORÉ: Afficher un message d'erreur plus détaillé
                                 let errorMessage = 'Impossible d\'ajouter le produit.';
                                 let errorTitle = 'Erreur';
                                 
                                 // Gérer les erreurs selon leur type
-                                if (error?.code === 'TIMEOUT' || error?.message?.includes('timeout') || error?.message?.includes('Timeout')) {
+                                if (error?.code === 'TIMEOUT' || error?.message?.includes('timeout') || error?.message?.includes('Timeout') || error?.name === 'AbortError' || error?.message === 'Aborted') {
                                     errorTitle = '⏱️ Timeout';
-                                    errorMessage = 'La requête a pris trop de temps. Cela peut être dû à une connexion lente ou un serveur surchargé.\n\nVeuillez réessayer dans quelques instants.';
+                                    errorMessage = 'L\'ajout du produit a pris trop de temps (plus de 3 minutes). Cela peut être dû à :\n\n• Un grand nombre de médias\n• Des variants complexes\n• Une connexion internet lente\n• Un serveur temporairement surchargé\n• Des opérations backend lourdes\n\n⚠️ Le produit peut avoir été créé malgré l\'erreur. Vérifiez votre liste de produits avant de réessayer.';
+                                    
+                                    // ✅ NOUVEAU: Afficher un toast d'erreur
+                                    toaster.error('⏱️ Timeout lors de la création du produit');
+                                    
+                                    Alert.alert(
+                                        errorTitle,
+                                        errorMessage,
+                                        [
+                                            { text: 'Vérifier mes produits', onPress: () => {
+                                                DeviceEventEmitter.emit('service:refresh');
+                                                (navigation as any).navigate('Main', { screen: 'Services' });
+                                            }},
+                                            { text: 'Réessayer', onPress: () => soumettreFormulaire() }
+                                        ]
+                                    );
+                                    return;
                                 } else if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network request failed') || error?.message?.includes('Failed to fetch')) {
                                     errorTitle = '🌐 Erreur réseau';
                                     errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.';
+                                    toaster.error('🌐 Erreur réseau lors de la création du produit');
                                 } else if (error?.response?.status === 500) {
                                     errorTitle = '❌ Erreur serveur';
+                                    errorMessage = 'Une erreur est survenue côté serveur. Veuillez réessayer plus tard.';
+                                    toaster.error('❌ Erreur serveur lors de la création du produit');
                                     // ✅ AMÉLIORÉ: Extraire le message d'erreur détaillé du backend
                                     const backendError = error?.response?.data?.error || error?.error || error?.message;
                                     if (backendError && typeof backendError === 'string') {
@@ -1448,13 +1406,19 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 } else if (error?.response?.status === 400) {
                                     errorTitle = '⚠️ Erreur de validation';
                                     errorMessage = error?.response?.data?.error || error?.message || 'Les données envoyées sont invalides. Veuillez vérifier les informations du produit.';
+                                    toaster.error('⚠️ Erreur de validation');
                                 } else if (error?.response?.status === 401) {
                                     errorTitle = '🔐 Erreur d\'authentification';
                                     errorMessage = 'Votre session a expiré. Veuillez vous reconnecter.';
+                                    toaster.error('🔐 Session expirée');
                                 } else if (error?.response?.data?.error) {
                                     errorMessage = error.response.data.error;
+                                    toaster.error('❌ Erreur lors de la création du produit');
                                 } else if (error?.message) {
                                     errorMessage = error.message;
+                                    toaster.error(`❌ ${errorMessage}`);
+                                } else {
+                                    toaster.error('❌ Erreur lors de la création du produit');
                                 }
                                 
                                 Alert.alert(errorTitle, errorMessage);
@@ -1543,6 +1507,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll horizontal des images dans MediaUploadManager
+                    keyboardShouldPersistTaps="handled" // ✅ OPTIMISATION: Éviter les conflits de clavier
+                    scrollEventThrottle={16} // ✅ OPTIMISATION: Limiter la fréquence des événements de scroll
+                    removeClippedSubviews={true} // ✅ OPTIMISATION: Améliorer les performances
                 >
                     {/* Carte principale */}
                     <NativeCard style={styles.mainCard}>
@@ -1864,7 +1831,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         <NativeButton
                             title={submitLabel}
                             onPress={handleSubmit}
-                            disabled={loading}
+                            disabled={loading || isAddingProductLoading}
                             variant="primary"
                             style={styles.submitButton}
                         />

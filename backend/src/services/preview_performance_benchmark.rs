@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for i in 1..=iterations {
         let start = Instant::now();
         
-        match generate_quick_preview(request.clone()).await {
+        match generate_quick_preview(request.clone(), None).await {
             Ok(response) => {
                 let elapsed = start.elapsed();
                 let elapsed_ms = elapsed.as_millis() as u64;

@@ -15,8 +15,9 @@ use crate::{
             ImmersiveTimeline,
         },
         media_storage_service::MediaStorageService,
+        preview_generation_service::{convert_immersive_to_video_timeline, generate_quick_preview, QuickPreviewRequest},
         preview_monitoring::PreviewMonitoring,
-        video_renderer::{RenderJobRequest, VideoRenderDispatcher},
+        video_renderer::{RenderError, RenderExecutionMode, RenderJobRequest, VideoRenderDispatcher},
     },
 };
 
@@ -688,35 +689,108 @@ impl StudioService {
             timeline: Arc::new(timeline_model.clone()),
         };
 
-        let result = renderer.render(&request).await.map_err(|err| {
-            error!(
-                "[StudioService] ❌ Échec génération preview courte session {}: {} (mode={:?}, retryable={})",
-                session_id, err.message, err.mode, err.retryable
-            );
-            // ✅ AMÉLIORÉ: Message d'erreur plus informatif selon le type d'erreur et le mode
-            let error_message = match err.mode {
-                crate::services::video_renderer::RenderExecutionMode::Offline => {
-                    if err.message.contains("npm") || err.message.contains("No such file") {
-                        format!(
-                            "Le service de rendu vidéo local n'est pas configuré correctement. {} Configurez VIDEO_RENDERER_RPC_URL pour utiliser un renderer distant, ou précompilez le worker Remotion avant le déploiement.",
-                            err.message
-                        )
-                    } else {
-                        format!("Erreur lors du rendu vidéo local: {}", err.message)
+        // ✅ NOUVEAU: Essayer le renderer Remotion, avec fallback vers quick preview si échec non-retryable
+        let result = match renderer.render(&request).await {
+            Ok(r) => Ok(r),
+            Err(err) => {
+                error!(
+                    "[StudioService] ❌ Échec génération preview Remotion session {}: {} (mode={:?}, retryable={})",
+                    session_id, err.message, err.mode, err.retryable
+                );
+                
+                // Si l'erreur est non-retryable (ex: renderer non compilé), utiliser quick preview comme fallback
+                if !err.retryable && (err.message.contains("non compilé") || err.message.contains("npm") || err.message.contains("dist/src/index.js")) {
+                    warn!(
+                        "[StudioService] ⚠️ Renderer Remotion indisponible, utilisation du quick preview comme fallback pour session {}",
+                        session_id
+                    );
+                    
+                    // Convertir ImmersiveTimeline en VideoTimeline
+                    let video_timeline = convert_immersive_to_video_timeline(&timeline_model);
+                    
+                    // Utiliser le quick preview avec le pool de base de données
+                    let quick_preview_request = QuickPreviewRequest {
+                        timeline: video_timeline,
+                        quality: Some("low".to_string()),
+                        max_duration: Some(5.0), // Max 5 secondes pour preview court
+                    };
+                    
+                    match generate_quick_preview(quick_preview_request, Some(&self.pool)).await {
+                        Ok(quick_result) => {
+                            info!(
+                                "[StudioService] ✅ Quick preview généré avec succès (fallback) pour session {}",
+                                session_id
+                            );
+                            
+                            // Convertir QuickPreviewResponse en RenderJobResponse
+                            let preview_path = std::path::PathBuf::from(&quick_result.preview_url);
+                            Ok(crate::services::video_renderer::RenderJobResponse {
+                                job_id: Uuid::new_v4().to_string(),
+                                mode: crate::services::video_renderer::RenderExecutionMode::Offline,
+                                master_video: preview_path.clone(),
+                                timeline_json: preview_path.clone(),
+                                output_dir: preview_path.parent().unwrap_or(&std::path::PathBuf::from(".")).to_path_buf(),
+                                warnings: vec![format!(
+                                    "Preview généré avec quick preview (fallback) - qualité: {}",
+                                    quick_result.quality
+                                )],
+                                storage_key: None,
+                                storage_path: quick_result.thumbnail_url,
+                                public_url: Some(quick_result.preview_url),
+                                content_length: None,
+                                timeline_storage_key: None,
+                                timeline_storage_path: None,
+                                timeline_public_url: None,
+                                timeline_content_length: None,
+                            })
+                        }
+                        Err(quick_err) => {
+                            error!(
+                                "[StudioService] ❌ Échec quick preview (fallback) pour session {}: {:?}",
+                                session_id, quick_err
+                            );
+                            // Retourner l'erreur originale du renderer Remotion
+                            Err(RenderError::new(
+                                err.mode,
+                                format!("Échec renderer Remotion et fallback quick preview: {} | Quick preview error: {}", err.message, quick_err),
+                                false,
+                            ))
+                        }
                     }
-                }
-                crate::services::video_renderer::RenderExecutionMode::GpuRpc => {
-                    format!("Erreur lors du rendu vidéo distant: {}", err.message)
-                }
-            };
+                } else {
+                    // Erreur retryable ou autre, retourner l'erreur telle quelle
+                    let error_message = match err.mode {
+                        RenderExecutionMode::Offline => {
+                            if err.message.contains("npm") || err.message.contains("No such file") {
+                                format!(
+                                    "Le service de rendu vidéo local n'est pas configuré correctement. {} Configurez VIDEO_RENDERER_RPC_URL pour utiliser un renderer distant, ou précompilez le worker Remotion avant le déploiement.",
+                                    err.message
+                                )
+                            } else {
+                                format!("Erreur lors du rendu vidéo local: {}", err.message)
+                            }
+                        }
+                        RenderExecutionMode::GpuRpc => {
+                            format!("Erreur lors du rendu vidéo distant: {}", err.message)
+                        }
+                    };
 
+                    Err(RenderError::new(
+                        err.mode,
+                        error_message,
+                        err.retryable,
+                    ))
+                }
+            }
+        }.map_err(|err: RenderError| {
+            // Convertir RenderError en AppError
             if err.retryable {
                 AppError::BadRequest(format!(
                     "Erreur temporaire lors de la génération de l'aperçu: {}. Veuillez réessayer dans quelques instants.",
-                    error_message
+                    err.message
                 ))
             } else {
-                AppError::Internal(error_message)
+                AppError::Internal(err.message)
             }
         })?;
 

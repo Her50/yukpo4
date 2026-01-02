@@ -15,6 +15,9 @@ use crate::controllers::{
         delete_media, get_effect, get_effects_by_category, get_template, get_templates_by_industry,
         list_effects, list_templates, serve_example_video, upload_media,
     },
+    product_video_controller::{
+        estimate_video_cost_for_product, generate_video_for_product,
+    },
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -66,6 +69,15 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/templates/industry/{industry}",
             get(get_templates_by_industry),
+        )
+        // ✅ NOUVEAU: Routes pour génération vidéo produit
+        .route(
+            "/api/media/product/{service_id}/{product_index}/generate-video",
+            post(generate_video_for_product),
+        )
+        .route(
+            "/api/media/product/{service_id}/{product_index}/estimate-video",
+            post(estimate_video_cost_for_product),
         )
         .layer(axum::middleware::from_fn(jwt_auth))
         // Les layers globaux CORS/TraceLayer sont appliqués dans lib.rs uniquement
