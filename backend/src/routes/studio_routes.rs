@@ -14,6 +14,11 @@ use crate::{
 };
 
 pub fn studio_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+    // ✅ CORRECTION RACINE: Timeout augmenté pour les routes preview (120s = 2min)
+    // La génération de preview peut prendre 60-90s avec Remotion ou quick preview
+    // Note: Le timeout est géré par Nginx (120s) et côté client mobile (120s)
+    // Le timeout Axum par défaut est suffisant car Nginx gère déjà le timeout
+    
     Router::new()
         .route("/api/studio/sessions", post(create_session).get(list_sessions))
         .route("/api/studio/sessions/{session_id}", get(get_session).put(update_session))
@@ -23,15 +28,17 @@ pub fn studio_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/studio/sessions/{session_id}/storyboard", post(generate_storyboard))
         .route(
             "/api/studio/sessions/{session_id}/preview",
-            post(trigger_preview).layer(
-                axum::extract::DefaultBodyLimit::max(200_000_000), // ✅ 200 MB pour previews vidéo
-            ),
+            post(trigger_preview)
+                .layer(
+                    axum::extract::DefaultBodyLimit::max(200_000_000), // ✅ 200 MB pour previews vidéo
+                ),
         )
         .route(
             "/api/studio/sessions/{session_id}/preview/short",
-            post(trigger_short_preview).layer(
-                axum::extract::DefaultBodyLimit::max(200_000_000), // ✅ 200 MB pour previews courtes
-            ),
+            post(trigger_short_preview)
+                .layer(
+                    axum::extract::DefaultBodyLimit::max(200_000_000), // ✅ 200 MB pour previews courtes
+                ),
         )
         .route("/api/studio/sessions/{session_id}/publish", post(publish_session))
         .layer(axum::middleware::from_fn_with_state(

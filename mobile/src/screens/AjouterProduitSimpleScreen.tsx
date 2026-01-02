@@ -1345,15 +1345,144 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     throw new Error(response.error || response.message || 'Erreur lors de l\'ajout du produit');
                                 }
 
-                                console.log('[AjouterProduitSimple] ✅ Produit ajouté avec succès:', response);
+                                const responseData: any = response.data ?? {};
+                                const costPaid = Number(responseData.cost ?? COUT_AJOUT_PRODUIT);
+                                const newBalanceValue = Number(responseData.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT));
+                                
+                                // ✅ NOUVEAU 2026-01-02: Vérifier si c'est une queue asynchrone (job_id présent)
+                                const jobId = responseData.job_id;
+                                
+                                if (jobId) {
+                                    // ✅ NOUVEAU: Le backend utilise une queue asynchrone, il faut interroger le statut
+                                    console.log('[AjouterProduitSimple] 🔄 Job créé, interrogation du statut (job_id:', jobId, ')');
+                                    toaster.info('⏳ Création du produit en cours...');
+                                    
+                                    // Fonction pour interroger le statut du job
+                                    const pollJobStatus = async (): Promise<{ productIndex: number | null; error: string | null }> => {
+                                        const maxAttempts = 60; // 60 tentatives max (5 minutes avec intervalle de 5s)
+                                        const pollInterval = 5000; // 5 secondes entre chaque tentative
+                                        
+                                        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                                            try {
+                                                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                                                
+                                                const statusResponse = await apiGet(`/api/services/${serviceId}/products/queue/${jobId}`);
+                                                
+                                                if (!statusResponse.success) {
+                                                    console.warn('[AjouterProduitSimple] ⚠️ Erreur récupération statut job:', statusResponse.error);
+                                                    continue;
+                                                }
+                                                
+                                                const statusData: any = statusResponse.data ?? {};
+                                                const jobStatus = statusData.status;
+                                                
+                                                console.log('[AjouterProduitSimple] 📊 Statut job:', jobStatus, '(tentative', attempt + 1, '/', maxAttempts, ')');
+                                                
+                                                if (jobStatus === 'completed') {
+                                                    // Job terminé avec succès, extraire product_index depuis result_data
+                                                    const resultData = statusData.result;
+                                                    if (resultData && typeof resultData === 'object') {
+                                                        const productIndex = resultData.product_index ?? resultData.data?.product_index;
+                                                        if (typeof productIndex === 'number') {
+                                                            console.log('[AjouterProduitSimple] ✅ Job terminé, product_index:', productIndex);
+                                                            return { productIndex, error: null };
+                                                        }
+                                                    }
+                                                    // Si pas de product_index dans result, essayer de le calculer depuis produits_data
+                                                    console.warn('[AjouterProduitSimple] ⚠️ product_index non trouvé dans result_data, tentative extraction depuis produits_data');
+                                                    return { productIndex: null, error: null }; // On continuera sans product_index
+                                                } else if (jobStatus === 'failed') {
+                                                    const errorMsg = statusData.error_message || 'Erreur lors de la création du produit';
+                                                    console.error('[AjouterProduitSimple] ❌ Job échoué:', errorMsg);
+                                                    return { productIndex: null, error: errorMsg };
+                                                } else if (jobStatus === 'pending' || jobStatus === 'processing') {
+                                                    // Continuer à interroger
+                                                    continue;
+                                                } else {
+                                                    console.warn('[AjouterProduitSimple] ⚠️ Statut job inattendu:', jobStatus);
+                                                    continue;
+                                                }
+                                            } catch (error: any) {
+                                                console.error('[AjouterProduitSimple] ❌ Erreur interrogation statut job:', error);
+                                                // Continuer à interroger malgré l'erreur
+                                                continue;
+                                            }
+                                        }
+                                        
+                                        // Timeout après maxAttempts
+                                        return { productIndex: null, error: 'Timeout: La création du produit a pris trop de temps' };
+                                    };
+                                    
+                                    // Interroger le statut du job
+                                    const jobResult = await pollJobStatus();
+                                    
+                                    if (jobResult.error) {
+                                        throw new Error(jobResult.error);
+                                    }
+                                    
+                                    // ✅ NOUVEAU: Afficher un toast de succès
+                                    toaster.success('✅ Produit créé avec succès !');
+                                    
+                                    // Rafraîchir la liste des services pour afficher le nouveau produit
+                                    DeviceEventEmitter.emit('service:refresh');
+                                    
+                                    // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
+                                    const typeOffre = formValues.type_offre || 'produit';
+                                    const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+                                    
+                                    if (!isPrestation && jobResult.productIndex !== null && serviceId) {
+                                        // C'est un produit, ouvrir le modal de configuration de livraison
+                                        const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
+                                        const finalProductIndex = jobResult.productIndex;
+                                        const productName = formValues.nom_produit || 'Nouveau produit';
+                                        
+                                        console.log('[AjouterProduitSimple] 🚚 Ouverture automatique du modal de configuration de livraison:', {
+                                            serviceId: finalServiceId,
+                                            productIndex: finalProductIndex,
+                                            productName: productName
+                                        });
+                                        
+                                        // Ouvrir le modal de configuration de livraison
+                                        setShowProductDeliveryConfig(true);
+                                        setProductDeliveryConfigData({
+                                            serviceId: finalServiceId,
+                                            productIndex: finalProductIndex,
+                                            productName: productName,
+                                        });
+                                        
+                                        setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading
+                                        return;
+                                    }
+                                    
+                                    // Pour les prestations ou si productIndex n'est pas disponible, afficher l'Alert normal
+                                    Alert.alert(
+                                        isDuplicate ? '✅ Produit dupliqué' : '✅ Produit créé',
+                                        `${isDuplicate ? 'Votre produit dupliqué' : 'Votre nouveau produit'} a été ajouté au service avec succès !\n\n` +
+                                        `💰 Coût: ${costPaid.toLocaleString('fr-FR')} FCFA\n` +
+                                        `💳 Nouveau solde: ${newBalanceValue.toLocaleString('fr-FR')} FCFA\n` +
+                                        `📦 Index produit: ${jobResult.productIndex ?? 'non communiqué'}`,
+                                        [
+                                            {
+                                                text: 'OK',
+                                                onPress: () => {
+                                                    // Retour vers gestion des services
+                                                    DeviceEventEmitter.emit('service:refresh');
+                                                    (navigation as any).navigate('Main', { screen: 'Services' });
+                                                }
+                                            }
+                                        ]
+                                    );
+                                    setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading après succès
+                                    return;
+                                }
+                                
+                                // ✅ ANCIEN CODE: Si pas de job_id, traitement synchrone (ancien format)
+                                console.log('[AjouterProduitSimple] ✅ Produit ajouté avec succès (format synchrone):', response);
                                 
                                 // ✅ NOUVEAU: Afficher un toast de succès
                                 toaster.success('✅ Produit créé avec succès !');
 
                                 // ✅ ÉTAPE 5 : Afficher le résultat (IDENTIQUE AU GRAND FORMULAIRE)
-                                const responseData: any = response.data ?? {};
-                                const costPaid = Number(responseData.cost ?? COUT_AJOUT_PRODUIT);
-                                const newBalanceValue = Number(responseData.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT));
                                 const productIndexResult =
                                     responseData.product_index ??
                                     (typeof responseData === 'object' && responseData.data ? responseData.data.product_index : undefined);

@@ -268,8 +268,20 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const isPopular = usageCount >= 5;
   const isTrending = usageCount >= 10;
 
-  const images = product.images || service?.images || [];
-  const videos = product.videos || service?.videos || [];
+  // ✅ CORRIGÉ: Extraire les images et vidéos depuis product/service avec fallbacks multiples
+  const images = Array.isArray(product.images) ? product.images 
+    : Array.isArray(service?.images) ? service.images
+    : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
+    : Array.isArray(service?.data?.images) ? service.data.images
+    : Array.isArray(product.data?.images) ? product.data.images
+    : [];
+  
+  const videos = Array.isArray(product.videos) ? product.videos
+    : Array.isArray(service?.videos) ? service.videos
+    : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
+    : Array.isArray(service?.data?.videos) ? service.data.videos
+    : Array.isArray(product.data?.videos) ? product.data.videos
+    : [];
 
   const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
     ? variants[selectedVariantIndex]
@@ -473,19 +485,25 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     try {
       setLoadingReactions(true);
       const response = await apiGet(`/api/products/${serviceId}/${resolvedProductId}/reactions`);
-      if (response.success && response.data) {
+      // ✅ CORRIGÉ: Vérifier que response existe et que response.data est un tableau
+      if (response && response.success && response.data) {
         const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
-        const reactionsArray = response.data as any[];
+        // ✅ CORRIGÉ: S'assurer que response.data est un tableau avant d'appeler forEach
+        const reactionsArray = Array.isArray(response.data) ? response.data : [];
         reactionsArray.forEach((r: any) => {
-          reactionsMap[r.reaction_type] = {
-            count: r.count,
-            hasReacted: r.has_reacted
-          };
+          if (r && r.reaction_type) {
+            reactionsMap[r.reaction_type] = {
+              count: r.count || 0,
+              hasReacted: r.has_reacted || false
+            };
+          }
         });
         setReactions(reactionsMap);
       }
     } catch (error) {
       console.error('[ProductCard] Erreur chargement réactions:', error);
+      // ✅ CORRIGÉ: Initialiser avec un objet vide en cas d'erreur
+      setReactions({});
     } finally {
       setLoadingReactions(false);
     }
@@ -609,6 +627,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   </View>
                 )}
 
+                {/* ✅ CORRIGÉ: Afficher la distance même sans médias */}
                 {hasDistance && distanceKm !== undefined && (
                   <View style={styles.distanceBadge}>
                     <SafeIcon name="navigation" size={12} color="#FFF" />
@@ -638,6 +657,18 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
             )}
 
             <View style={[styles.content, !hasMedia && styles.contentCompact]}>
+              {/* ✅ CORRIGÉ: Afficher la distance en haut si pas de médias */}
+              {!hasMedia && hasDistance && distanceKm !== undefined && (
+                <View style={styles.distanceBadgeInline}>
+                  <SafeIcon name="navigation" size={14} color="#6366F1" />
+                  <Text style={styles.distanceTextInline}>
+                    {distanceKm < 1
+                      ? `${Math.round(distanceKm * 1000)}m`
+                      : `${distanceKm.toFixed(1)}km`}
+                  </Text>
+                </View>
+              )}
+
               {topStatsData.length > 0 && (
                 <View style={styles.topStatsRow}>
                   {topStatsData.map((stat) => (
@@ -999,13 +1030,26 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     </>
   );
 }, (prevProps, nextProps) => {
-  // ✅ CORRIGÉ 2025-01-01: Comparaison personnalisée pour éviter les re-renders inutiles
-  // Ne re-render que si les props importantes changent
+  // ✅ CORRIGÉ 2025-01-02: Comparaison personnalisée optimisée pour éviter les re-renders inutiles
+  // Comparer les IDs et valeurs clés plutôt que les objets entiers
+  const prevProductId = prevProps.product?._serviceId || prevProps.product?.service_id || prevProps.product?.id;
+  const nextProductId = nextProps.product?._serviceId || nextProps.product?.service_id || nextProps.product?.id;
+  
+  const prevServiceId = prevProps.service?.id;
+  const nextServiceId = nextProps.service?.id;
+  
+  const prevPrestataireId = prevProps.prestataire?.user_id || prevProps.prestataire?.userId || prevProps.prestataire?.id;
+  const nextPrestataireId = nextProps.prestataire?.user_id || nextProps.prestataire?.userId || nextProps.prestataire?.id;
+  
+  const prevLocation = prevProps.userLocation ? `${prevProps.userLocation.latitude},${prevProps.userLocation.longitude}` : null;
+  const nextLocation = nextProps.userLocation ? `${nextProps.userLocation.latitude},${nextProps.userLocation.longitude}` : null;
+  
+  // ✅ Ne re-render que si les valeurs clés changent
   return (
-    prevProps.product === nextProps.product &&
-    prevProps.service === nextProps.service &&
-    prevProps.prestataire === nextProps.prestataire &&
-    prevProps.userLocation === nextProps.userLocation &&
+    prevProductId === nextProductId &&
+    prevServiceId === nextServiceId &&
+    prevPrestataireId === nextPrestataireId &&
+    prevLocation === nextLocation &&
     prevProps.onPress === nextProps.onPress &&
     prevProps.onChatPress === nextProps.onChatPress
   );
@@ -1070,6 +1114,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFF',
+  },
+  distanceBadgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  distanceTextInline: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6366F1',
   },
   trendingBadge: {
     position: 'absolute',

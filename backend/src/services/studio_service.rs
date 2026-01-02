@@ -735,103 +735,93 @@ impl StudioService {
         // ✅ CORRECTION RACINE: Charger les assets dynamiques pour enrichir les scènes sans médias
         let session_assets = self.load_assets(session_id).await.unwrap_or_default();
         let timeline_model = build_preview_timeline(&short_clips, &session_assets)?;
-        let request = RenderJobRequest {
-            job_id: None,
-            timeline: Arc::new(timeline_model.clone()),
+        
+        // ✅ OPTIMISATION RACINE: Pour les previews courtes, utiliser quick preview en priorité (plus rapide)
+        // Quick preview est optimisé pour les previews courtes (< 5s) et est généralement plus rapide que Remotion
+        let video_timeline = convert_immersive_to_video_timeline(&timeline_model);
+        let quick_preview_request = QuickPreviewRequest {
+            timeline: video_timeline.clone(),
+            quality: Some("low".to_string()),
+            max_duration: Some(5.0), // Max 5 secondes pour preview court
         };
-
-        // ✅ NOUVEAU: Essayer le renderer Remotion, avec fallback vers quick preview si échec non-retryable
-        let result = match renderer.render(&request).await {
-            Ok(r) => Ok(r),
-            Err(err) => {
-                error!(
-                    "[StudioService] ❌ Échec génération preview Remotion session {}: {} (mode={:?}, retryable={})",
-                    session_id, err.message, err.mode, err.retryable
+        
+        // ✅ Fonction helper pour convertir QuickPreviewResponse en RenderJobResponse
+        let convert_quick_to_render = |quick_result: crate::services::preview_generation_service::QuickPreviewResponse, label: &str| {
+            let preview_path = std::path::PathBuf::from(&quick_result.preview_url);
+            crate::services::video_renderer::RenderJobResponse {
+                job_id: Uuid::new_v4().to_string(),
+                mode: crate::services::video_renderer::RenderExecutionMode::Offline,
+                master_video: preview_path.clone(),
+                timeline_json: preview_path.clone(),
+                output_dir: preview_path.parent().unwrap_or(&std::path::PathBuf::from(".")).to_path_buf(),
+                warnings: vec![format!(
+                    "Preview généré avec quick preview ({}) - qualité: {}",
+                    label, quick_result.quality
+                )],
+                storage_key: None,
+                storage_path: quick_result.thumbnail_url,
+                public_url: Some(quick_result.preview_url),
+                content_length: None,
+                timeline_storage_key: None,
+                timeline_storage_path: None,
+                timeline_public_url: None,
+                timeline_content_length: None,
+            }
+        };
+        
+        // ✅ Essayer quick preview d'abord (plus rapide pour previews courtes)
+        let result = match generate_quick_preview(quick_preview_request, Some(&self.pool)).await {
+            Ok(quick_result) => {
+                info!(
+                    "[StudioService] ✅ Quick preview généré avec succès (priorité) pour session {}",
+                    session_id
+                );
+                Ok(convert_quick_to_render(quick_result, "priorité"))
+            }
+            Err(quick_err) => {
+                warn!(
+                    "[StudioService] ⚠️ Quick preview échoué, fallback vers Remotion pour session {}: {:?}",
+                    session_id, quick_err
                 );
                 
-                // Si l'erreur est non-retryable (ex: renderer non compilé), utiliser quick preview comme fallback
-                if !err.retryable && (err.message.contains("non compilé") || err.message.contains("npm") || err.message.contains("dist/src/index.js")) {
-                    warn!(
-                        "[StudioService] ⚠️ Renderer Remotion indisponible, utilisation du quick preview comme fallback pour session {}",
-                        session_id
-                    );
-                    
-                    // ✅ NOTE: L'enrichissement avec les assets dynamiques est déjà fait dans build_preview_timeline
-                    // Convertir ImmersiveTimeline en VideoTimeline
-                    let video_timeline = convert_immersive_to_video_timeline(&timeline_model);
-                    
-                    // Utiliser le quick preview avec le pool de base de données
-                    let quick_preview_request = QuickPreviewRequest {
-                        timeline: video_timeline,
-                        quality: Some("low".to_string()),
-                        max_duration: Some(5.0), // Max 5 secondes pour preview court
-                    };
-                    
-                    match generate_quick_preview(quick_preview_request, Some(&self.pool)).await {
-                        Ok(quick_result) => {
-                            info!(
-                                "[StudioService] ✅ Quick preview généré avec succès (fallback) pour session {}",
-                                session_id
-                            );
-                            
-                            // Convertir QuickPreviewResponse en RenderJobResponse
-                            let preview_path = std::path::PathBuf::from(&quick_result.preview_url);
-                            Ok(crate::services::video_renderer::RenderJobResponse {
-                                job_id: Uuid::new_v4().to_string(),
-                                mode: crate::services::video_renderer::RenderExecutionMode::Offline,
-                                master_video: preview_path.clone(),
-                                timeline_json: preview_path.clone(),
-                                output_dir: preview_path.parent().unwrap_or(&std::path::PathBuf::from(".")).to_path_buf(),
-                                warnings: vec![format!(
-                                    "Preview généré avec quick preview (fallback) - qualité: {}",
-                                    quick_result.quality
-                                )],
-                                storage_key: None,
-                                storage_path: quick_result.thumbnail_url,
-                                public_url: Some(quick_result.preview_url),
-                                content_length: None,
-                                timeline_storage_key: None,
-                                timeline_storage_path: None,
-                                timeline_public_url: None,
-                                timeline_content_length: None,
-                            })
-                        }
-                        Err(quick_err) => {
-                            error!(
-                                "[StudioService] ❌ Échec quick preview (fallback) pour session {}: {:?}",
-                                session_id, quick_err
-                            );
-                            // Retourner l'erreur originale du renderer Remotion
-                            Err(RenderError::new(
-                                err.mode,
-                                format!("Échec renderer Remotion et fallback quick preview: {} | Quick preview error: {}", err.message, quick_err),
-                                false,
-                            ))
-                        }
-                    }
-                } else {
-                    // Erreur retryable ou autre, retourner l'erreur telle quelle
-                    let error_message = match err.mode {
-                        RenderExecutionMode::Offline => {
-                            if err.message.contains("npm") || err.message.contains("No such file") {
-                                format!(
-                                    "Le service de rendu vidéo local n'est pas configuré correctement. {} Configurez VIDEO_RENDERER_RPC_URL pour utiliser un renderer distant, ou précompilez le worker Remotion avant le déploiement.",
-                                    err.message
-                                )
-                            } else {
-                                format!("Erreur lors du rendu vidéo local: {}", err.message)
+                // Fallback vers Remotion si quick preview échoue
+                let request = RenderJobRequest {
+                    job_id: None,
+                    timeline: Arc::new(timeline_model.clone()),
+                };
+                
+                // ✅ Essayer le renderer Remotion
+                match renderer.render(&request).await {
+                    Ok(r) => Ok(r),
+                    Err(err) => {
+                        error!(
+                            "[StudioService] ❌ Échec génération preview Remotion session {}: {} (mode={:?}, retryable={})",
+                            session_id, err.message, err.mode, err.retryable
+                        );
+                        
+                        // Si l'erreur est non-retryable, retourner l'erreur
+                        let error_message = match err.mode {
+                            RenderExecutionMode::Offline => {
+                                if err.message.contains("npm") || err.message.contains("No such file") {
+                                    format!(
+                                        "Le service de rendu vidéo local n'est pas configuré correctement. {} Configurez VIDEO_RENDERER_RPC_URL pour utiliser un renderer distant, ou précompilez le worker Remotion avant le déploiement.",
+                                        err.message
+                                    )
+                                } else {
+                                    format!("Erreur lors du rendu vidéo local: {}", err.message)
+                                }
                             }
-                        }
-                        RenderExecutionMode::GpuRpc => {
-                            format!("Erreur lors du rendu vidéo distant: {}", err.message)
-                        }
-                    };
+                            RenderExecutionMode::GpuRpc => {
+                                format!("Erreur lors du rendu vidéo distant: {}", err.message)
+                            }
+                        };
 
-                    Err(RenderError::new(
-                        err.mode,
-                        error_message,
-                        err.retryable,
-                    ))
+                        Err(RenderError::new(
+                            err.mode,
+                            format!("Échec quick preview et Remotion: {} | Remotion error: {}", quick_err, error_message),
+                            err.retryable,
+                        ))
+                    }
                 }
             }
         }.map_err(|err: RenderError| {
@@ -1113,7 +1103,7 @@ fn build_preview_timeline(clips: &[StudioTimelineClipRecord], session_assets: &[
             }
         };
 
-        // ✅ CORRECTION RACINE: Si la scène n'a pas de médias, essayer d'extraire media_url du payload
+        // ✅ CORRECTION RACINE: Si la scène n'a pas de médias, essayer d'extraire depuis le payload
         if scene.assets.video_url.is_none() 
             && scene.assets.background_url.is_none() 
             && scene.assets.product_image_url.is_none() {
@@ -1125,35 +1115,90 @@ fn build_preview_timeline(clips: &[StudioTimelineClipRecord], session_assets: &[
                     payload_obj.keys().collect::<Vec<_>>()
                 );
                 
-                if let Some(media_url_str) = payload_obj.get("media_url")
-                    .or_else(|| payload_obj.get("mediaUrl"))
-                    .and_then(|v| v.as_str())
-                    .filter(|s| !s.trim().is_empty()) {
-                    let media_url = media_url_str.to_string();
-                    
-                    // Déterminer si c'est une vidéo ou une image selon l'URL
-                    let is_video = media_url.contains(".mp4") 
-                        || media_url.contains(".mov") 
-                        || media_url.contains(".webm") 
-                        || media_url.contains("video")
-                        || media_url.contains("/video/");
-                    
-                    if is_video {
-                        scene.assets.video_url = Some(media_url.clone());
+                // ✅ CORRECTION RACINE: Chercher dans assets.videoUrl, assets.backgroundUrl, etc.
+                let mut found_media = false;
+                
+                // 1. Chercher dans assets.videoUrl
+                if let Some(assets_obj) = payload_obj.get("assets")
+                    .and_then(|v| v.as_object()) {
+                    if let Some(video_url_str) = assets_obj.get("videoUrl")
+                        .or_else(|| assets_obj.get("video_url"))
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.trim().is_empty()) {
+                        scene.assets.video_url = Some(video_url_str.to_string());
                         info!(
-                            "[build_preview_timeline] ✅ media_url extrait du payload et assigné à video_url pour scène {}: {}",
-                            scene.id, media_url
+                            "[build_preview_timeline] ✅ videoUrl extrait depuis assets.videoUrl pour scène {}: {}",
+                            scene.id, video_url_str
                         );
-                    } else {
-                        scene.assets.product_image_url = Some(media_url.clone());
-                        info!(
-                            "[build_preview_timeline] ✅ media_url extrait du payload et assigné à product_image_url pour scène {}: {}",
-                            scene.id, media_url
-                        );
+                        found_media = true;
                     }
-                } else {
+                    
+                    // 2. Chercher dans assets.backgroundUrl
+                    if scene.assets.background_url.is_none() {
+                        if let Some(bg_url_str) = assets_obj.get("backgroundUrl")
+                            .or_else(|| assets_obj.get("background_url"))
+                            .and_then(|v| v.as_str())
+                            .filter(|s| !s.trim().is_empty()) {
+                            scene.assets.background_url = Some(bg_url_str.to_string());
+                            info!(
+                                "[build_preview_timeline] ✅ backgroundUrl extrait depuis assets.backgroundUrl pour scène {}: {}",
+                                scene.id, bg_url_str
+                            );
+                            found_media = true;
+                        }
+                    }
+                    
+                    // 3. Chercher dans assets.productImageUrl
+                    if scene.assets.product_image_url.is_none() {
+                        if let Some(img_url_str) = assets_obj.get("productImageUrl")
+                            .or_else(|| assets_obj.get("product_image_url"))
+                            .and_then(|v| v.as_str())
+                            .filter(|s| !s.trim().is_empty()) {
+                            scene.assets.product_image_url = Some(img_url_str.to_string());
+                            info!(
+                                "[build_preview_timeline] ✅ productImageUrl extrait depuis assets.productImageUrl pour scène {}: {}",
+                                scene.id, img_url_str
+                            );
+                            found_media = true;
+                        }
+                    }
+                }
+                
+                // 4. Fallback: chercher media_url/mediaUrl au niveau racine
+                if !found_media {
+                    if let Some(media_url_str) = payload_obj.get("media_url")
+                        .or_else(|| payload_obj.get("mediaUrl"))
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.trim().is_empty()) {
+                        let media_url = media_url_str.to_string();
+                        
+                        // Déterminer si c'est une vidéo ou une image selon l'URL
+                        let is_video = media_url.contains(".mp4") 
+                            || media_url.contains(".mov") 
+                            || media_url.contains(".webm") 
+                            || media_url.contains("video")
+                            || media_url.contains("/video/");
+                        
+                        if is_video {
+                            scene.assets.video_url = Some(media_url.clone());
+                            info!(
+                                "[build_preview_timeline] ✅ media_url extrait du payload (racine) et assigné à video_url pour scène {}: {}",
+                                scene.id, media_url
+                            );
+                        } else {
+                            scene.assets.product_image_url = Some(media_url.clone());
+                            info!(
+                                "[build_preview_timeline] ✅ media_url extrait du payload (racine) et assigné à product_image_url pour scène {}: {}",
+                                scene.id, media_url
+                            );
+                        }
+                        found_media = true;
+                    }
+                }
+                
+                if !found_media {
                     warn!(
-                        "[build_preview_timeline] ⚠️ Scène {} sans médias et media_url non trouvé dans payload. Payload: {}",
+                        "[build_preview_timeline] ⚠️ Scène {} sans médias et aucun media_url trouvé dans payload. Payload: {}",
                         scene.id,
                         serde_json::to_string(payload_obj).unwrap_or_else(|_| "{}".to_string())
                     );

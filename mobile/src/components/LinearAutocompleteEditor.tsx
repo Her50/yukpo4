@@ -403,6 +403,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         separateur={separateur}
                         onValidate={handleTableValidate}
                         initialRows={tableRows.length > 0 ? tableRows : undefined}
+                        valeur={value && value.length > 0 ? value[0] : undefined} // ✅ NOUVEAU : Passer la valeur parsée
+                        productLabels={productLabels} // ✅ NOUVEAU : Passer l'ordre garanti des labels
                         onRowsChange={(rows) => {
                             // ✅ NOUVEAU : Sauvegarder automatiquement les modifications dans le formulaire (sans DB)
                             // Cela garantit que les modifications sont sauvegardées même si l'utilisateur ne clique pas "validé"

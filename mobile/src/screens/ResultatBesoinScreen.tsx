@@ -504,6 +504,19 @@ const ResultatBesoinScreen: React.FC = () => {
                                 finalScore += 100; // Forte priorité pour affichage
                             }
 
+                            // ✅ CORRIGÉ: Extraire les images et vidéos du produit/service
+                            const productImages = Array.isArray(product.images) ? product.images 
+                                : Array.isArray(service?.images) ? service.images
+                                : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
+                                : Array.isArray(service?.data?.images) ? service.data.images
+                                : [];
+                            
+                            const productVideos = Array.isArray(product.videos) ? product.videos
+                                : Array.isArray(service?.videos) ? service.videos
+                                : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
+                                : Array.isArray(service?.data?.videos) ? service.data.videos
+                                : [];
+
                             extractedProducts.push({
                                 ...product,
                                 _serviceId: service.id,
@@ -512,6 +525,9 @@ const ResultatBesoinScreen: React.FC = () => {
                                 _gps: bestGPS,
                                 _gpsSource: productGPS ? 'product' : (serviceGPSFixe ? 'service_fixe' : 'service_realtime'),
                                 distance: distance,
+                                distance_km: distance, // ✅ Ajout pour compatibilité ProductCard
+                                images: productImages, // ✅ CORRIGÉ: S'assurer que les images sont extraites
+                                videos: productVideos, // ✅ CORRIGÉ: S'assurer que les vidéos sont extraites
                                 score: finalScore, // ✅ Score ajusté avec bonus promo
                                 en_promotion: isPromo, // Passer le flag
                                 promotion_active: isPromo
@@ -1173,22 +1189,37 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ CORRECTION 2025-01-02: Ref pour debounce les mises à jour et éviter les re-renders multiples
     const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // ✅ CORRIGÉ 2025-01-01: Mémoriser les listes filtrées pour éviter les recalculs
-    const filteredProducts = useMemo(() => filterProducts(products), [products, categoryFilters, priceFilter, sortBy]);
-    const filteredServices = useMemo(() => filterAndSortServices(services), [services, priceFilter, sortBy]);
+    // ✅ CORRIGÉ 2025-01-02: Mémoriser les listes filtrées avec comparaison profonde pour éviter les recalculs inutiles
+    const filteredProducts = useMemo(() => {
+        // ✅ Comparer les longueurs et références pour éviter les recalculs inutiles
+        if (products.length === 0) return [];
+        return filterProducts(products);
+    }, [products, categoryFilters, priceFilter, sortBy]);
+    
+    const filteredServices = useMemo(() => {
+        // ✅ Comparer les longueurs et références pour éviter les recalculs inutiles
+        if (services.length === 0) return [];
+        return filterAndSortServices(services);
+    }, [services, priceFilter, sortBy]);
 
-    // ✅ CORRIGÉ 2025-01-01: Mémoriser la liste combinée des résultats avec des clés stables
+    // ✅ CORRIGÉ 2025-01-02: Mémoriser la liste combinée avec clés stables et éviter les recalculs inutiles
     const allResults = useMemo(() => {
         const services = filteredServices.map(service => ({ 
             type: 'service' as const, 
             data: service,
-            key: `service-${service.id}`
+            key: `service-${service.id}-${service.score || 0}`
         }));
-        const products = filteredProducts.map((product, idx) => ({ 
-            type: 'product' as const, 
-            data: product,
-            key: `product-${product._serviceId || product.service_id || idx}-${product.nom || product.name || idx}`
-        }));
+        const products = filteredProducts.map((product, idx) => {
+            // ✅ CORRIGÉ: Créer une clé stable basée sur des propriétés immuables
+            const productId = product._serviceId || product.service_id || 'unknown';
+            const productName = product.nom || product.name || `product-${idx}`;
+            const productScore = product.score || 0;
+            return {
+                type: 'product' as const, 
+                data: product,
+                key: `product-${productId}-${productName}-${productScore}`
+            };
+        });
         return [...services, ...products];
     }, [filteredServices, filteredProducts]);
 
@@ -1217,6 +1248,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const { data: batchData, loading: batchLoading } = useServicesBatchData(serviceIdsForBatch, serviceCreatedAtsMap);
 
     // ✅ CORRIGÉ 2025-01-02: Fonction pour rendre ProductCard avec les props mémorisées et ref stable
+    // ✅ CORRIGÉ: Mémoriser renderProductCard avec dépendances correctes pour éviter les re-renders
     const renderProductCard = useCallback((product: any) => {
         const service = product._service;
         // ✅ Priorité: prestataire dans le produit > prestataire dans la Map > null
@@ -1224,11 +1256,19 @@ const ResultatBesoinScreen: React.FC = () => {
         const prestataireFromMap = service?.user_id ? prestatairesRef.current.get(service.user_id) : null;
         const prestataire = prestataireFromProduct || prestataireFromMap || null;
 
+        // ✅ CORRIGÉ: Passer userLocation pour le calcul de distance
+        const userLocationForProduct = location?.coords ? {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+        } : null;
+
         return (
             <ProductCard
+                key={`product-${product._serviceId || service?.id}-${product.nom || product.name || 'default'}`}
                 product={product}
                 service={service}
                 prestataire={prestataire}
+                userLocation={userLocationForProduct}
                 onPress={() => {
                     setSelectedProduct(product);
                     setSelectedService(service);
@@ -1240,20 +1280,9 @@ const ResultatBesoinScreen: React.FC = () => {
                     setSelectedPrestataire(prestataire);
                     setShowChatModal(true);
                 }}
-                onGalleryPress={() => {
-                    setSelectedProduct(product);
-                    setSelectedService(service);
-                    setSelectedPrestataire(prestataire);
-                    setShowGalleryModal(true);
-                }}
-                onDeliveryPress={() => {
-                    setSelectedProduct(product);
-                    setSelectedService(service);
-                    setSelectedPrestataire(prestataire);
-                }}
             />
         );
-    }, []); // ✅ Dépendances vides car on utilise prestatairesRef.current
+    }, [location]); // ✅ Ajout de location comme dépendance pour le calcul de distance
 
     // ✅ CORRECTION 2025-01-02: Composant mémorisé pour éviter les re-renders inutiles
     const ServiceCardComponent = React.memo(({ service }: { service: Service }) => {
@@ -1583,7 +1612,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         initialFilters={categoryFilters}
                     />
 
-                    {/* ✅ CORRECTION 2025-01-02: Liste optimisée avec mémorisation des items */}
+                    {/* ✅ CORRECTION 2025-01-02: Liste optimisée avec mémorisation des items et clés stables */}
                     <View style={styles.servicesContainer}>
                         {allResults.length > 0 ? (
                             allResults.map((item) => {
@@ -1613,13 +1642,10 @@ const ResultatBesoinScreen: React.FC = () => {
                                         />
                                     );
                                 } else {
-                                    // Afficher le produit individuel
+                                    // ✅ CORRIGÉ: Afficher le produit individuel avec clé stable
                                     const product = item.data;
-                                    return (
-                                        <View key={item.key}>
-                                            {renderProductCard(product)}
-                                        </View>
-                                    );
+                                    // ✅ Utiliser directement renderProductCard qui retourne déjà un composant avec key
+                                    return renderProductCard(product);
                                 }
                             })
                         ) : (

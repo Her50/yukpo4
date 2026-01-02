@@ -132,6 +132,38 @@ async fn detect_scenes_with_ia(
         video_url
     );
 
+    // ✅ CORRECTION RACINE: Vérifier si l'URL est accessible avant d'appeler ffprobe
+    // Si c'est une URL HTTP/HTTPS, vérifier qu'elle est accessible
+    if video_url.starts_with("http://") || video_url.starts_with("https://") {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .map_err(|e| AppError::Internal(format!("Erreur création client HTTP: {}", e)))?;
+        
+        let response = client.head(video_url).send().await;
+        match response {
+            Ok(resp) if resp.status().is_success() => {
+                info!("[VideoAnalysis] URL accessible: {}", video_url);
+            }
+            Ok(resp) => {
+                let status = resp.status();
+                warn!("[VideoAnalysis] URL non accessible (status {}): {}", status, video_url);
+                return Err(AppError::Internal(format!(
+                    "Vidéo non accessible (HTTP {}): {}", 
+                    status, 
+                    video_url
+                )));
+            }
+            Err(e) => {
+                warn!("[VideoAnalysis] Erreur vérification URL {}: {}", video_url, e);
+                return Err(AppError::Internal(format!(
+                    "Impossible d'accéder à la vidéo: {}", 
+                    e
+                )));
+            }
+        }
+    }
+
     // Obtenir métadonnées vidéo avec FFprobe
     let duration_output = Command::new("ffprobe")
         .args(&[
@@ -145,7 +177,24 @@ async fn detect_scenes_with_ia(
         ])
         .output()
         .await
-        .map_err(|e| AppError::Internal(format!("Erreur ffprobe: {}", e)))?;
+        .map_err(|e| {
+            let error_msg = format!("Erreur exécution ffprobe: {}", e);
+            warn!("[VideoAnalysis] {}", error_msg);
+            AppError::Internal(error_msg)
+        })?;
+
+    // ✅ CORRECTION RACINE: Vérifier le code de retour et stderr de ffprobe
+    if !duration_output.status.success() {
+        let stderr = String::from_utf8_lossy(&duration_output.stderr);
+        let error_msg = format!(
+            "ffprobe a échoué (code {}): {}. URL: {}", 
+            duration_output.status.code().unwrap_or(-1),
+            stderr.trim(),
+            video_url
+        );
+        warn!("[VideoAnalysis] {}", error_msg);
+        return Err(AppError::Internal(error_msg));
+    }
 
     let total_duration: f64 = String::from_utf8_lossy(&duration_output.stdout)
         .trim()
@@ -153,10 +202,18 @@ async fn detect_scenes_with_ia(
         .unwrap_or(0.0);
 
     if total_duration == 0.0 {
-        return Err(AppError::Internal(
-            "Impossible de déterminer la durée".to_string(),
-        ));
+        let stderr = String::from_utf8_lossy(&duration_output.stderr);
+        let error_msg = format!(
+            "Impossible de déterminer la durée de la vidéo. ffprobe stdout: '{}', stderr: '{}'. URL: {}", 
+            String::from_utf8_lossy(&duration_output.stdout).trim(),
+            stderr.trim(),
+            video_url
+        );
+        warn!("[VideoAnalysis] {}", error_msg);
+        return Err(AppError::Internal(error_msg));
     }
+    
+    info!("[VideoAnalysis] Durée vidéo déterminée: {} secondes", total_duration);
 
     // Construire le prompt IA pour analyse intelligente
     let prompt = format!(

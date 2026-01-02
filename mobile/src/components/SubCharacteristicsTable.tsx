@@ -31,6 +31,8 @@ interface SubCharacteristicsTableProps {
     onValidate: (rows: SubCharacteristicRow[]) => void; // Callback avec les lignes validées
     initialRows?: SubCharacteristicRow[]; // Lignes initiales si déjà validées
     onRowsChange?: (rows: SubCharacteristicRow[]) => void; // ✅ NOUVEAU : Callback pour sauvegarder automatiquement les modifications
+    valeur?: string; // ✅ NOUVEAU : Valeur parsée de la chaîne séparée par virgules (ex: "Renault,Clio,2019,Essence")
+    productLabels?: string[]; // ✅ NOUVEAU : Ordre garanti des labels (ex: ["marque", "modele", "annee", "carburant"])
 }
 
 export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = ({
@@ -39,6 +41,8 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     onValidate,
     initialRows,
     onRowsChange, // ✅ NOUVEAU : Callback pour sauvegarder automatiquement
+    valeur, // ✅ NOUVEAU : Valeur parsée
+    productLabels, // ✅ NOUVEAU : Ordre garanti des labels
 }) => {
     // ✅ NOUVEAU: Toast pour les notifications
     const toaster = useToaster();
@@ -62,45 +66,96 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             // Si on a des lignes initiales (déjà validées), les utiliser
             setRows(initialRows);
         } else if (sousCaracteristiques && Object.keys(sousCaracteristiques).length > 0) {
-            // Sinon, construire depuis les sous-caractéristiques préférées de l'IA
-            // Les valeurs préférées sont les premières valeurs de chaque tableau
+            // ✅ CORRECTION CRITIQUE: Utiliser la valeur parsée si disponible pour garantir l'alignement correct
             const initialRowsFromIA: SubCharacteristicRow[] = [];
             
             // ✅ DEBUG: Logger les données reçues pour diagnostiquer le problème
             console.log('[SubCharacteristicsTable] 🔍 sousCaracteristiques reçues:', JSON.stringify(sousCaracteristiques, null, 2));
+            console.log('[SubCharacteristicsTable] 🔍 valeur parsée:', valeur);
+            console.log('[SubCharacteristicsTable] 🔍 productLabels:', productLabels);
             
-            // ✅ CORRECTION CRITIQUE: Utiliser Object.entries() pour garantir l'ordre et la correspondance label/valeur
-            // Object.entries() préserve l'ordre d'insertion en JavaScript moderne
-            Object.entries(sousCaracteristiques).forEach(([label, values]) => {
-                // ✅ DEBUG: Logger chaque label et ses valeurs
-                console.log(`[SubCharacteristicsTable] 🔍 Label: "${label}", Type valeurs:`, typeof values, 'Est array:', Array.isArray(values), 'Valeurs:', values);
+            // ✅ NOUVEAU: Si on a une valeur parsée, l'utiliser pour mapper correctement les labels et valeurs
+            if (valeur && valeur.trim().length > 0) {
+                // Parser la valeur en utilisant le séparateur
+                const parsedValues = valeur.split(separateur).map(v => v.trim()).filter(v => v.length > 0);
+                console.log('[SubCharacteristicsTable] 🔍 Valeurs parsées:', parsedValues);
                 
-                if (Array.isArray(values) && values.length > 0) {
-                    // ✅ CRITIQUE: Prendre la première valeur (préférée par l'IA) de ce label spécifique
-                    // Ne pas utiliser d'index global, mais directement values[0] pour ce label
-                    const preferredValue = values[0];
-                    console.log(`[SubCharacteristicsTable] 🔍 Label "${label}" - Première valeur extraite: "${preferredValue}"`);
-                    
-                    if (preferredValue && typeof preferredValue === 'string' && preferredValue.trim().length > 0) {
+                // Déterminer l'ordre des labels
+                // Priorité 1: productLabels (ordre garanti depuis l'IA)
+                // Priorité 2: Ordre des clés dans sousCaracteristiques
+                const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
+                    ? productLabels.filter(label => label && typeof label === 'string' && sousCaracteristiques[label])
+                    : Object.keys(sousCaracteristiques);
+                
+                console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés:', orderedLabels);
+                
+                // Mapper chaque valeur parsée à son label correspondant
+                parsedValues.forEach((parsedValue, index) => {
+                    if (index < orderedLabels.length) {
+                        const label = orderedLabels[index];
                         const row = {
                             label: label.trim(),
-                            value: preferredValue.trim(),
+                            value: parsedValue.trim(),
                         };
-                        console.log(`[SubCharacteristicsTable] ✅ Ligne créée: ${row.label} = ${row.value}`);
+                        console.log(`[SubCharacteristicsTable] ✅ Ligne créée depuis valeur parsée: ${row.label} = ${row.value}`);
                         initialRowsFromIA.push(row);
                     } else {
-                        console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" - Première valeur invalide:`, preferredValue);
+                        console.warn(`[SubCharacteristicsTable] ⚠️ Index ${index} hors limites pour valeur "${parsedValue}"`);
                     }
-                } else {
-                    console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" - Valeurs non valides ou vides:`, values);
-                }
-            });
+                });
+                
+                // Ajouter les labels manquants (qui n'ont pas de valeur dans la chaîne parsée)
+                orderedLabels.forEach((label, index) => {
+                    if (index >= parsedValues.length) {
+                        // Ce label n'a pas de valeur dans la chaîne parsée, utiliser la première valeur du tableau
+                        const values = sousCaracteristiques[label];
+                        if (Array.isArray(values) && values.length > 0) {
+                            const defaultValue = values[0];
+                            if (defaultValue && typeof defaultValue === 'string' && defaultValue.trim().length > 0) {
+                                const row = {
+                                    label: label.trim(),
+                                    value: defaultValue.trim(),
+                                };
+                                console.log(`[SubCharacteristicsTable] ✅ Ligne créée depuis sousCaracteristiques (label manquant): ${row.label} = ${row.value}`);
+                                initialRowsFromIA.push(row);
+                            }
+                        }
+                    }
+                });
+            } else {
+                // ✅ FALLBACK: Si pas de valeur parsée, utiliser l'ancienne méthode (première valeur de chaque tableau)
+                // Mais utiliser productLabels pour l'ordre si disponible
+                const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
+                    ? productLabels.filter(label => label && typeof label === 'string' && sousCaracteristiques[label])
+                    : Object.keys(sousCaracteristiques);
+                
+                orderedLabels.forEach((label) => {
+                    const values = sousCaracteristiques[label];
+                    if (Array.isArray(values) && values.length > 0) {
+                        const preferredValue = values[0];
+                        console.log(`[SubCharacteristicsTable] 🔍 Label "${label}" - Première valeur extraite: "${preferredValue}"`);
+                        
+                        if (preferredValue && typeof preferredValue === 'string' && preferredValue.trim().length > 0) {
+                            const row = {
+                                label: label.trim(),
+                                value: preferredValue.trim(),
+                            };
+                            console.log(`[SubCharacteristicsTable] ✅ Ligne créée: ${row.label} = ${row.value}`);
+                            initialRowsFromIA.push(row);
+                        } else {
+                            console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" - Première valeur invalide:`, preferredValue);
+                        }
+                    } else {
+                        console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" - Valeurs non valides ou vides:`, values);
+                    }
+                });
+            }
             
             console.log('[SubCharacteristicsTable] ✅ Tableau final initialisé avec', initialRowsFromIA.length, 'lignes:', 
                 initialRowsFromIA.map(r => `${r.label}: ${r.value}`).join(', '));
             setRows(initialRowsFromIA);
         }
-    }, [sousCaracteristiques, initialRows]);
+    }, [sousCaracteristiques, initialRows, valeur, separateur, productLabels]);
 
     // Focus automatique sur le premier input quand une nouvelle ligne est ajoutée
     useEffect(() => {

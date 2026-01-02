@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  DeviceEventEmitter,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -48,6 +49,72 @@ interface ServiceData {
   serviceId?: string;
   cout?: number;
 }
+
+// ✅ NOUVEAU 2026-01-02: Fonction utilitaire pour interroger le statut d'un job de création de produit
+const pollProductCreationJobStatus = async (
+  serviceId: number,
+  jobId: number,
+  onProgress?: (status: string, attempt: number) => void
+): Promise<{ productIndex: number | null; error: string | null }> => {
+  const maxAttempts = 60; // 60 tentatives max (5 minutes avec intervalle de 5s)
+  const pollInterval = 5000; // 5 secondes entre chaque tentative
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      if (attempt > 0) {
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+      
+      const statusResponse = await apiGet(`/api/services/${serviceId}/products/queue/${jobId}`);
+      
+      if (!statusResponse.success) {
+        console.warn('[pollProductCreationJobStatus] ⚠️ Erreur récupération statut job:', statusResponse.error);
+        continue;
+      }
+      
+      const statusData: any = statusResponse.data ?? {};
+      const jobStatus = statusData.status;
+      
+      if (onProgress) {
+        onProgress(jobStatus, attempt + 1);
+      }
+      
+      console.log('[pollProductCreationJobStatus] 📊 Statut job:', jobStatus, '(tentative', attempt + 1, '/', maxAttempts, ')');
+      
+      if (jobStatus === 'completed') {
+        // Job terminé avec succès, extraire product_index depuis result_data
+        const resultData = statusData.result;
+        if (resultData && typeof resultData === 'object') {
+          const productIndex = resultData.product_index ?? resultData.data?.product_index;
+          if (typeof productIndex === 'number') {
+            console.log('[pollProductCreationJobStatus] ✅ Job terminé, product_index:', productIndex);
+            return { productIndex, error: null };
+          }
+        }
+        // Si pas de product_index dans result, essayer de le calculer depuis produits_data
+        console.warn('[pollProductCreationJobStatus] ⚠️ product_index non trouvé dans result_data');
+        return { productIndex: null, error: null }; // On continuera sans product_index
+      } else if (jobStatus === 'failed') {
+        const errorMsg = statusData.error_message || 'Erreur lors de la création du produit';
+        console.error('[pollProductCreationJobStatus] ❌ Job échoué:', errorMsg);
+        return { productIndex: null, error: errorMsg };
+      } else if (jobStatus === 'pending' || jobStatus === 'processing') {
+        // Continuer à interroger
+        continue;
+      } else {
+        console.warn('[pollProductCreationJobStatus] ⚠️ Statut job inattendu:', jobStatus);
+        continue;
+      }
+    } catch (error: any) {
+      console.error('[pollProductCreationJobStatus] ❌ Erreur interrogation statut job:', error);
+      // Continuer à interroger malgré l'erreur
+      continue;
+    }
+  }
+  
+  // Timeout après maxAttempts
+  return { productIndex: null, error: 'Timeout: La création du produit a pris trop de temps' };
+};
 
 interface MediaFiles {
   images: any[];
@@ -3149,19 +3216,52 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     throw new Error(response.error || 'Erreur lors de l\'ajout du produit');
                   }
 
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', response);
-
                   const responseData: any = response.data ?? {};
                   const costPaid = Number(responseData.cost ?? response.cost ?? COUT_AJOUT_PRODUIT);
                   const newBalanceValue = Number(
                     responseData.new_balance ?? response.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT)
                   );
-                  const productIndexResult =
-                    responseData.product_index ??
-                    response.product_index ??
-                    (typeof responseData === 'object' && responseData.data
-                      ? responseData.data.product_index
-                      : undefined);
+                  
+                  // ✅ NOUVEAU 2026-01-02: Vérifier si c'est une queue asynchrone (job_id présent)
+                  const jobId = responseData.job_id;
+                  
+                  let productIndexResult: number | undefined = undefined;
+                  
+                  if (jobId) {
+                    // ✅ NOUVEAU: Le backend utilise une queue asynchrone, il faut interroger le statut
+                    console.log('[FormulaireYukpoIntelligentScreen] 🔄 Job créé, interrogation du statut (job_id:', jobId, ')');
+                    
+                    const jobResult = await pollProductCreationJobStatus(
+                      typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
+                      jobId,
+                      (status, attempt) => {
+                        console.log(`[FormulaireYukpoIntelligentScreen] 📊 Job status: ${status} (tentative ${attempt})`);
+                      }
+                    );
+                    
+                    if (jobResult.error) {
+                      throw new Error(jobResult.error);
+                    }
+                    
+                    productIndexResult = jobResult.productIndex ?? undefined;
+                    
+                    // Rafraîchir la liste des services pour afficher le nouveau produit
+                    DeviceEventEmitter.emit('service:refresh');
+                  } else {
+                    // ✅ ANCIEN CODE: Si pas de job_id, traitement synchrone (ancien format)
+                    productIndexResult =
+                      responseData.product_index ??
+                      response.product_index ??
+                      (typeof responseData === 'object' && responseData.data
+                        ? responseData.data.product_index
+                        : undefined);
+                  }
+
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', {
+                    productIndex: productIndexResult,
+                    cost: costPaid,
+                    newBalance: newBalanceValue
+                  });
 
                   // ✅ NOUVEAU: Ouvrir automatiquement le modal de configuration de livraison
                   if (productIndexResult !== undefined && serviceId) {
@@ -3756,7 +3856,39 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             throw new Error(response.error || 'Erreur ajout produit');
           }
 
-          const { cost, new_balance, product_index } = response.data;
+          const responseData: any = response.data ?? {};
+          const cost = responseData.cost ?? COUT_AJOUT_PRODUIT;
+          const new_balance = responseData.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT);
+          
+          // ✅ NOUVEAU 2026-01-02: Vérifier si c'est une queue asynchrone (job_id présent)
+          const jobId = responseData.job_id;
+          
+          let product_index: number | undefined = undefined;
+          
+          if (jobId) {
+            // ✅ NOUVEAU: Le backend utilise une queue asynchrone, il faut interroger le statut
+            console.log('[FormulaireYukpoIntelligentScreen] 🔄 Job créé, interrogation du statut (job_id:', jobId, ')');
+            
+            const jobResult = await pollProductCreationJobStatus(
+              typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
+              jobId,
+              (status, attempt) => {
+                console.log(`[FormulaireYukpoIntelligentScreen] 📊 Job status: ${status} (tentative ${attempt})`);
+              }
+            );
+            
+            if (jobResult.error) {
+              throw new Error(jobResult.error);
+            }
+            
+            product_index = jobResult.productIndex ?? undefined;
+            
+            // Rafraîchir la liste des services pour afficher le nouveau produit
+            DeviceEventEmitter.emit('service:refresh');
+          } else {
+            // ✅ ANCIEN CODE: Si pas de job_id, traitement synchrone (ancien format)
+            product_index = responseData.product_index;
+          }
 
           console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', {
             cost,

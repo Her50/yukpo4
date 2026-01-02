@@ -3318,9 +3318,38 @@ fn build_ffmpeg_filter(
         }
     }
 
+    // ✅ CORRECTION RACINE: Séparer les filtres drawtext avec des points-virgules
+    // FFmpeg ne peut pas avoir plusieurs filtres drawtext séparés par des virgules dans le même filtre complexe
+    // Il faut utiliser des points-virgules pour séparer les filtres complexes
     // Note: format=yuv420p n'est pas nécessaire ici car -pix_fmt yuv420p est déjà spécifié
     // dans les arguments FFmpeg. L'ajouter ici cause une erreur de parsing FFmpeg.
-    filter_parts.join(",")
+    
+    // Séparer les filtres non-drawtext (avec virgules) et les filtres drawtext (avec points-virgules)
+    let mut result_parts: Vec<String> = Vec::new();
+    let mut current_chain: Vec<String> = Vec::new();
+    
+    for part in filter_parts {
+        if part.starts_with("drawtext=") {
+            // Si on a des filtres non-drawtext en attente, les joindre avec des virgules
+            if !current_chain.is_empty() {
+                result_parts.push(current_chain.join(","));
+                current_chain.clear();
+            }
+            // Ajouter le drawtext directement (sera joint avec des points-virgules)
+            result_parts.push(part);
+        } else {
+            // Accumuler les filtres non-drawtext
+            current_chain.push(part);
+        }
+    }
+    
+    // Ajouter les filtres non-drawtext restants
+    if !current_chain.is_empty() {
+        result_parts.push(current_chain.join(","));
+    }
+    
+    // Joindre tous les filtres avec des points-virgules
+    result_parts.join(";")
 }
 
 async fn append_video_to_service_data(
@@ -4348,10 +4377,16 @@ fn locate_font_file() -> Option<PathBuf> {
 }
 
 fn sanitize_drawtext_text(text: &str) -> String {
-    text.replace('\\', "\\\\")
-        .replace(':', "\\:")
-        .replace('\'', "\\'")
-        .replace('\n', "\\n")
+    // ✅ CORRECTION RACINE: Échapper correctement tous les caractères spéciaux pour drawtext
+    // FFmpeg drawtext nécessite un échappement spécifique pour éviter les erreurs de parsing
+    text.replace('\\', "\\\\")  // Échapper les backslashes en premier
+        .replace(':', "\\:")    // Échapper les deux-points
+        .replace('\'', "\\'")    // Échapper les apostrophes
+        .replace('"', "\\\"")    // Échapper les guillemets doubles
+        .replace('[', "\\[")     // Échapper les crochets ouverts
+        .replace(']', "\\]")     // Échapper les crochets fermés
+        .replace('\n', "\\n")    // Échapper les retours à la ligne
+        .replace('\r', "")       // Supprimer les retours chariot
 }
 
 fn derive_product_identifier(product: &Value, service_id: i32, product_index: i32) -> String {

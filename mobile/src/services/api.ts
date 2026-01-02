@@ -300,6 +300,7 @@ const apiCallInternal = async <T>(
     // ✅ CORRIGÉ 2025-12-23: 30s pour /api/search/direct (recherche par image peut prendre 20-25s avec analyse IA)
     // ✅ CORRIGÉ 2025-12-23: 30s pour /api/mobile-logs (traitement batch peut prendre du temps)
     // ✅ CORRIGÉ 2025-12-23: 30s pour /api/services/*/reviews et /stats (peuvent être lents)
+    // ✅ CORRIGÉ 2026-01-02: 120s (2min) pour preview/short (génération vidéo peut prendre 60-90s)
     const timeoutDuration = endpoint.includes('/services/create')
       ? 180000
       : endpoint.includes('/ia/creation-service')
@@ -308,6 +309,8 @@ const apiCallInternal = async <T>(
           ? 60000  // ✅ 60s pour timeline-variants (génération de variantes peut prendre du temps)
           : endpoint.includes('/services/') && endpoint.includes('/products')
             ? 180000  // ✅ AUGMENTÉ: 180s (3min) pour création/modification produit (le backend peut prendre du temps même sans médias)
+            : endpoint.includes('/preview') || endpoint.includes('/preview/short')
+              ? 120000  // ✅ CORRIGÉ 2026-01-02: 120s (2min) pour preview (génération vidéo peut prendre 60-90s)
             : endpoint.includes('/search/direct')
               ? 30000  // ✅ 30s pour recherche par image (analyse IA + recherche SQL peut prendre 20-25s)
             : endpoint.includes('/mobile-logs')

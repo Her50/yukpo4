@@ -1083,32 +1083,53 @@ async fn serve_media_file(
         return Err(StatusCode::BAD_REQUEST);
     }
     
-    // Construire le chemin complet
-    let full_path = format!("uploads/services/{}", file_path);
-    info!("[serve_media_file] Chemin complet: {}", full_path);
+    // ✅ CORRECTION RACINE: Normaliser le chemin pour éviter les duplications
+    // Le file_path peut être:
+    // - "files/uploads/services/158/videos/video.mp4" (avec préfixe)
+    // - "uploads/services/158/videos/video.mp4" (déjà avec uploads)
+    // - "158/videos/video.mp4" (juste le chemin relatif)
+    let normalized_path = if file_path.starts_with("http://") || file_path.starts_with("https://") {
+        // URL complète (CDN/S3) - ne pas servir localement
+        warn!("[serve_media_file] URL complète fournie (CDN/S3), redirection nécessaire: {}", file_path);
+        return Err(StatusCode::BAD_REQUEST);
+    } else if file_path.starts_with("uploads/services/") {
+        // Déjà avec le préfixe complet
+        file_path
+    } else if file_path.starts_with("files/uploads/services/") {
+        // Préfixe "files/" à retirer
+        file_path.strip_prefix("files/").unwrap_or(&file_path).to_string()
+    } else if file_path.starts_with("uploads/") {
+        // Déjà avec uploads/
+        file_path
+    } else {
+        // Chemin relatif simple, ajouter le préfixe
+        format!("uploads/services/{}", file_path)
+    };
+    
+    info!("[serve_media_file] Chemin normalisé: {}", normalized_path);
     
     // Lire le fichier
-    match File::open(&full_path).await {
+    match File::open(&normalized_path).await {
         Ok(mut file) => {
             let mut contents = Vec::new();
             match file.read_to_end(&mut contents).await {
                 Ok(_) => {
                     // Déterminer le type MIME
-                    let content_type = if file_path.ends_with(".jpg") || file_path.ends_with(".jpeg") {
+                    let content_type = if normalized_path.ends_with(".jpg") || normalized_path.ends_with(".jpeg") {
                         "image/jpeg"
-                    } else if file_path.ends_with(".png") {
+                    } else if normalized_path.ends_with(".png") {
                         "image/png"
-                    } else if file_path.ends_with(".gif") {
+                    } else if normalized_path.ends_with(".gif") {
                         "image/gif"
-                    } else if file_path.ends_with(".mp4") {
+                    } else if normalized_path.ends_with(".mp4") {
                         "video/mp4"
-                    } else if file_path.ends_with(".webm") {
+                    } else if normalized_path.ends_with(".webm") {
                         "video/webm"
-                    } else if file_path.ends_with(".wav") {
+                    } else if normalized_path.ends_with(".wav") {
                         "audio/wav"
-                    } else if file_path.ends_with(".mp3") {
+                    } else if normalized_path.ends_with(".mp3") {
                         "audio/mpeg"
-                    } else if file_path.ends_with(".pdf") {
+                    } else if normalized_path.ends_with(".pdf") {
                         "application/pdf"
                     } else {
                         "application/octet-stream"
@@ -1124,17 +1145,17 @@ async fn serve_media_file(
                         .body(Body::from(contents))
                         .unwrap();
                         
-                    info!("[serve_media_file] Fichier servi: {} ({} bytes)", file_path, file_size);
+                    info!("[serve_media_file] Fichier servi: {} ({} bytes)", normalized_path, file_size);
                     Ok(response)
                 },
                 Err(e) => {
-                    error!("[serve_media_file] Erreur lecture fichier {}: {:?}", full_path, e);
+                    error!("[serve_media_file] Erreur lecture fichier {}: {:?}", normalized_path, e);
                     Err(StatusCode::INTERNAL_SERVER_ERROR)
                 }
             }
         },
         Err(_) => {
-            warn!("[serve_media_file] Fichier non trouvé: {}", full_path);
+            warn!("[serve_media_file] Fichier non trouvé: {}", normalized_path);
             Err(StatusCode::NOT_FOUND)
         }
     }
