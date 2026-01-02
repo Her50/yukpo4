@@ -6,7 +6,7 @@
 
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -56,6 +56,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [isAddingProductLoading, setIsAddingProductLoading] = useState(false); // ✅ NOUVEAU: État de loading spécifique pour l'ajout de produit
+    // ✅ NOUVEAU: Référence au ScrollView principal pour gérer le scroll horizontal des images
+    const mainScrollViewRef = useRef<ScrollView>(null);
     // ✅ NOUVEAU: États pour le modal de configuration de livraison
     const [showProductDeliveryConfig, setShowProductDeliveryConfig] = useState(false);
     const [productDeliveryConfigData, setProductDeliveryConfigData] = useState<{
@@ -1503,6 +1505,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 />
 
                 <ScrollView
+                    ref={mainScrollViewRef}
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
@@ -1532,9 +1535,6 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 }
                                 value={formValues.nom_produit}
                                 onChangeText={(value) => handleFieldChange('nom_produit', value)}
-                                multiline
-                                minLines={1}
-                                style={styles.autoGrowingInput}
                             />
                         </View>
 
@@ -1545,9 +1545,6 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 placeholder="Ex: Smartphone, Cours particulier, Service de réparation..."
                                 value={formValues.categorie_produit}
                                 onChangeText={(value) => handleFieldChange('categorie_produit', value)}
-                                multiline
-                                minLines={1}
-                                style={styles.autoGrowingInput}
                             />
                         </View>
 
@@ -1824,6 +1821,19 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 onVideosChange={handleVideosChange}
                                 maxImages={MAX_PRODUCT_IMAGES}
                                 maxVideos={2}
+                                // ✅ OPTIMISATION: Callbacks pour gérer le scroll horizontal et éviter les conflits
+                                onHorizontalScrollStart={() => {
+                                    // Bloquer temporairement le scroll vertical pendant le scroll horizontal
+                                    if (mainScrollViewRef.current) {
+                                        mainScrollViewRef.current.setNativeProps({ scrollEnabled: false });
+                                    }
+                                }}
+                                onHorizontalScrollEnd={() => {
+                                    // Réactiver le scroll vertical après le scroll horizontal
+                                    if (mainScrollViewRef.current) {
+                                        mainScrollViewRef.current.setNativeProps({ scrollEnabled: true });
+                                    }
+                                }}
                             />
                         </View>
 

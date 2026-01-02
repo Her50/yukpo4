@@ -551,8 +551,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Nom du produit / prestation',
-          multiline: true,
-          minLines: 1,
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
@@ -563,8 +561,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Catégorie du produit / prestation',
-          multiline: true,
-          minLines: 1,
           required: false,
           placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
         },
@@ -654,8 +650,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Nom du produit / prestation',
-          multiline: true,
-          minLines: 1,
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
@@ -666,8 +660,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Catégorie du produit / prestation',
-          multiline: true,
-          minLines: 1,
           required: false,
           placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
         },
@@ -764,8 +756,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: isPrestation ? 'Nom de la prestation' : 'Nom du produit',
-          multiline: true,
-          minLines: 1,
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de mathématiques, Réparation téléphone, Consultation médicale...'
@@ -778,8 +768,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Catégorie du produit/prestation',
-          multiline: true,
-          minLines: 1,
           required: false,
           placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
         } as DynamicField);
@@ -2493,10 +2481,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               }}
               style={[
                 styles.fieldInput,
-                hasError && styles.fieldInputError,
-                styles.autoGrowingInput,
-                field.name === 'nom_produit' && styles.autoGrowingInputName,
-                field.name === 'categorie_produit' && styles.autoGrowingInputCategory
+                hasError && styles.fieldInputError
               ]}
             />
             {hasError && (
@@ -2524,7 +2509,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               onContentSizeChange={(width, height) => {
                 const lineHeight = 24;
                 const computedLines = Math.max(linesMinimum, Math.ceil(height / lineHeight));
-                const minHeight = Math.max(isProductDescField ? 280 : 200, computedLines * lineHeight + 32);
+                const minHeight = Math.max(isProductDescField ? 320 : 200, computedLines * lineHeight + 32);
                 setDynamicTextareaHeights(prev => ({
                   ...prev,
                   [field.name]: minHeight
@@ -5627,8 +5612,8 @@ const styles = StyleSheet.create({
   },
   // ✅ NOUVEAU: Style amélioré pour description_produit avec hauteur augmentée
   productDescriptionInputEnhanced: {
-    minHeight: 280, // ✅ AUGMENTÉ: 280px au lieu de 240px pour plus d'espace
-    maxHeight: 400, // ✅ NOUVEAU: Hauteur maximale pour éviter que le champ devienne trop grand
+    minHeight: 320, // ✅ AUGMENTÉ: 320px pour plus d'espace de saisie
+    maxHeight: 500, // ✅ AUGMENTÉ: Hauteur maximale augmentée pour permettre plus de contenu
     paddingTop: 14, // ✅ Aligné avec textareaInput
     paddingBottom: 14, // ✅ NOUVEAU: Padding en bas pour meilleur espacement
     paddingVertical: undefined, // ✅ Surcharger paddingVertical de fieldInput pour utiliser paddingTop/Bottom

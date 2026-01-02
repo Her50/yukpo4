@@ -5,12 +5,12 @@ import {
   ActivityIndicator,
   Alert,
   Image as RNImage,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -529,13 +529,18 @@ const styles = StyleSheet.create({
     // ✅ CRITIQUE: S'assurer que le scroll horizontal fonctionne
     flexGrow: 0,
     flexShrink: 1,
+    // ✅ NOUVEAU: Forcer la largeur pour permettre le scroll
+    width: '100%',
+    overflow: 'visible', // ✅ CRITIQUE: Permettre le dépassement du contenu
   },
   mediaScrollContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingRight: 16,
+    // ✅ CRITIQUE: Le contenu doit pouvoir dépasser pour déclencher le scroll
+    minWidth: '100%', // ✅ NOUVEAU: S'assurer que le contenu prend au moins la largeur de l'écran
     // ✅ CORRIGÉ: Le contenu peut dépasser la largeur pour permettre le scroll
-    // Pas de minWidth ni width pour permettre le dépassement
+    // Pas de maxWidth pour permettre le dépassement
   },
   imageContainer: {
     position: 'relative',
@@ -544,6 +549,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     flexShrink: 0, // ✅ CRITIQUE: Empêcher la compression des images
+    flexGrow: 0, // ✅ NOUVEAU: Empêcher l'expansion des images
   },
   imagePreview: {
     position: 'relative',
