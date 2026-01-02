@@ -57,7 +57,7 @@ use crate::{
         distribution_automation_service,
         immersive_orchestrator::{
             ImmersiveOrchestrator, TimelineAnalytics, TimelineBrollAsset, TimelineBusinessContext,
-            TimelineRequest,
+            TimelineMediaItem, TimelineRequest,
         },
         immersive_timeline::ImmersiveTimeline,
         inventory_service::INVENTORY_STALE_THRESHOLD_HOURS,
@@ -1584,7 +1584,7 @@ pub async fn generate_product_video(
     }
 
     // ✅ NOUVEAU: Convertir les MediaSource en TimelineMediaItem avec URLs
-    let available_media: Vec<immersive_orchestrator::TimelineMediaItem> = media_sources
+    let available_media: Vec<TimelineMediaItem> = media_sources
         .iter()
         .filter_map(|source| {
             if let Some(url) = media_source_to_url(source) {
@@ -1615,7 +1615,7 @@ pub async fn generate_product_video(
                     source.id, media_type, url
                 );
                 
-                Some(immersive_orchestrator::TimelineMediaItem {
+                Some(TimelineMediaItem {
                     id: source.id,
                     url,
                     media_type: media_type.to_string(),

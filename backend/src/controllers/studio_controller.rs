@@ -279,6 +279,7 @@ pub async fn recommend_templates(
         style: payload.style.clone(),
         duration_seconds: payload.duration_seconds.unwrap_or(28.0),
         broll_assets: Vec::new(),
+        available_media: Vec::new(), // ✅ NOUVEAU: Médias produits disponibles
         template_id: payload.template_id.clone(),
         business_context: payload.business_context.clone().map(Into::into),
         ai_template_recommendations: payload.ai_hints.clone(),
@@ -546,6 +547,7 @@ pub async fn generate_storyboard(
         style: payload.style.clone(),
         duration_seconds: payload.duration_seconds.unwrap_or(28.0),
         broll_assets: Vec::new(),
+        available_media: Vec::new(), // ✅ NOUVEAU: Médias produits disponibles
         template_id: payload.template_id.clone(),
         business_context: payload.business_context.clone().map(Into::into),
         ai_template_recommendations: payload.ai_hints.clone(),
