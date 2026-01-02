@@ -11,7 +11,6 @@ use sqlx::Row;
 use std::sync::Arc;
 use std::path::PathBuf;
 use chrono::Utc;
-use futures::future::join_all;
 use crate::services::creer_service::{
     save_autocomplete_combination, 
     clean_media_recursive_final,
@@ -422,45 +421,6 @@ pub async fn add_product_to_service(
                 
                 return Err(AppError::Internal(detailed_error));
             }
-        },
-        Err(_) => {
-            // Timeout après 30s
-            let elapsed_time = start_time.elapsed();
-            log_error(&format!("[add_product_to_service] ⏱️ Timeout après 30s lors de l'ajout du produit (fonction PostgreSQL trop lente ou base de données surchargée, temps écoulé: {:?})", elapsed_time));
-            
-            // ✅ ROLLBACK : Rembourser l'utilisateur en cas de timeout
-            let pool = state.pg.clone();
-            let refund_result = crate::utils::db_retry::retry_query(
-                &pool,
-                || {
-                    let cout_ajout_clone = cout_ajout;
-                    let user_id_clone = user.id;
-                    let pool_clone = pool.clone();
-                    Box::pin(async move {
-                        sqlx::query(
-                            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
-                        )
-                        .bind(cout_ajout_clone)
-                        .bind(user_id_clone)
-                        .execute(&pool_clone)
-                        .await
-                    })
-                },
-                3,
-            )
-            .await;
-            
-            if refund_result.is_ok() {
-                log_info(&format!("[add_product_to_service] ✅ Remboursement effectué pour user {} ({} FCFA)", user.id, cout_ajout));
-            } else {
-                log_error(&format!("[add_product_to_service] ⚠️ Échec remboursement pour user {} ({} FCFA)", user.id, cout_ajout));
-            }
-            
-            // ✅ AMÉLIORÉ: Message d'erreur plus détaillé pour timeout
-            return Err(AppError::Internal(format!(
-                "Timeout lors de l'ajout du produit après 30s. La base de données est peut-être temporairement surchargée.\n\nVotre solde a été remboursé ({} FCFA).\n\nVeuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.",
-                cout_ajout
-            )));
         }
     };
     
