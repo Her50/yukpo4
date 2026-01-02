@@ -3311,15 +3311,19 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         // Minimum 2 secondes par scène, maximum 8 secondes
         let duration_per_scene = duration_per_scene.clamp(2.0, 8.0);
 
-        // Construire la liste des médias disponibles
+        // ✅ CORRIGÉ: Construire la liste des médias disponibles avec leurs IDs exacts
         let media_list = if request.available_media.is_empty() {
             "Aucun média disponible - utiliser des images générées IA".to_string()
         } else {
             request
                 .available_media
                 .iter()
-                .enumerate()
-                .map(|(i, m)| format!("{}. {} ({})", i + 1, m.media_type, m.id))
+                .map(|m| {
+                    let url_preview = m.url.as_ref()
+                        .map(|u| if u.len() > 50 { format!("{}...", &u[..50]) } else { u.clone() })
+                        .unwrap_or_else(|| "URL non disponible".to_string());
+                    format!("media_id: '{}' | type: {} | url: {}", m.id, m.media_type, url_preview)
+                })
                 .collect::<Vec<String>>()
                 .join("\n")
         };
@@ -3358,8 +3362,10 @@ Contraintes:
 Script à mettre en scène:
 {script_lines}
 
-Médias disponibles:
+Médias disponibles (UTILISER EXACTEMENT ces media_id, ne pas inventer):
 {media_list}
+
+⚠️ CRITIQUE: Utilise UNIQUEMENT les media_id listés ci-dessus. Ne crée pas de nouveaux IDs comme 'image_1', 'image_2', etc.
 
 Style:
 - Effets: {effects_list}
@@ -3592,7 +3598,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             })
             .collect();
         
-        // Mapper media_id vers media_url pour les scènes qui n'ont pas déjà media_url
+        // ✅ CORRIGÉ: Mapper media_id vers media_url avec fallback intelligent
         for scene in &mut scenes {
             if scene.media_url.is_none() {
                 if let Some(ref media_id) = scene.media_id {
@@ -3609,6 +3615,34 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                             media_id,
                             media_map.len()
                         );
+                        
+                        // ✅ FALLBACK: Utiliser le premier média disponible si media_id non trouvé
+                        if !request.available_media.is_empty() {
+                            if let Some(first_media) = request.available_media.first() {
+                                if let Some(url) = &first_media.url {
+                                    scene.media_url = Some(url.clone());
+                                    log::info!(
+                                        "[AppIA::generate_video_timeline] ✅ Fallback: Utilisé premier média disponible pour media_id '{}' -> '{}'",
+                                        media_id,
+                                        url
+                                    );
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // ✅ FALLBACK: Si pas de media_id, utiliser le premier média disponible
+                    if !request.available_media.is_empty() {
+                        if let Some(first_media) = request.available_media.first() {
+                            if let Some(url) = &first_media.url {
+                                scene.media_url = Some(url.clone());
+                                scene.media_id = Some(first_media.id.clone());
+                                log::info!(
+                                    "[AppIA::generate_video_timeline] ✅ Fallback: Scène sans media_id, utilisé premier média disponible '{}'",
+                                    url
+                                );
+                            }
+                        }
                     }
                 }
             }

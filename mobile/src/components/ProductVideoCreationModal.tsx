@@ -356,6 +356,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [dependencies, setDependencies] = useState<VideoDependency[]>([]);
     const [showVideoChaining, setShowVideoChaining] = useState<boolean>(false);
     const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
+    
+    // ✅ NOUVEAU: États pour le suivi du job de génération vidéo
+    const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+    const [jobStatus, setJobStatus] = useState<'queued' | 'running' | 'completed' | 'failed' | null>(null);
+    const [jobProgress, setJobProgress] = useState<number>(0);
+    const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const completionHandledRef = useRef(false);
 
     // ✅ NOUVEAU: Studio Sessions (depuis Wizard)
     const [studioSessionId, setStudioSessionId] = useState<string | undefined>();
@@ -3522,6 +3529,44 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     };
 
     const renderStep6 = () => {
+        // ✅ NOUVEAU: Afficher la progression du job si un job est en cours
+        if (currentJobId && jobStatus && jobStatus !== 'completed' && jobStatus !== 'failed') {
+            return (
+                <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+                    <View style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>🎬 Génération en cours</Text>
+                        </View>
+                        
+                        <View style={styles.jobProgressContainer}>
+                            <ActivityIndicator size="large" color={modernColors.primary} style={styles.jobProgressSpinner} />
+                            <Text style={styles.jobProgressText}>
+                                {jobStatus === 'queued' ? 'En attente...' : 'Génération de la vidéo...'}
+                            </Text>
+                            <Text style={styles.jobProgressSubtext}>
+                                Job ID: {currentJobId.substring(0, 8)}...
+                            </Text>
+                            
+                            {/* Barre de progression */}
+                            <View style={styles.progressBarContainer}>
+                                <View style={[styles.progressBar, { width: `${jobProgress}%` }]} />
+                            </View>
+                            <Text style={styles.progressPercentage}>{Math.round(jobProgress)}%</Text>
+                        </View>
+                        
+                        <View style={styles.jobInfoContainer}>
+                            <Text style={styles.jobInfoText}>
+                                ⏱️ La génération peut prendre quelques minutes selon la durée et la complexité de la vidéo.
+                            </Text>
+                            <Text style={styles.jobInfoText}>
+                                📱 Vous pouvez fermer cette fenêtre, vous recevrez une notification une fois la vidéo prête.
+                            </Text>
+                        </View>
+                    </View>
+                </ScrollView>
+            );
+        }
+        
         // Étape 6 : Publication et distribution
         if (!selectedProduct) {
             return (
@@ -4615,17 +4660,26 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             if (result.job_id) {
                 console.log('[ProductVideoCreationModal] ✅ Génération démarrée, job_id:', result.job_id);
                 
-                // Afficher un message informatif et fermer le modal
+                // ✅ NOUVEAU: Démarrer le polling pour suivre le statut
+                setCurrentJobId(result.job_id);
+                setJobStatus('queued');
+                setJobProgress(0);
+                completionHandledRef.current = false;
+                
+                // Démarrer le polling
+                startJobPolling(result.job_id);
+                
+                // Afficher un message informatif mais ne pas fermer le modal immédiatement
                 Alert.alert(
                     'Génération en cours',
                     'Votre vidéo est en cours de génération.\n\n' +
-                    'Vous recevrez une notification une fois la vidéo prête.\n\n' +
-                    'Vous pouvez suivre la progression dans la section "Vidéos" de l\'application.',
+                    'Vous pouvez suivre la progression ci-dessous.\n\n' +
+                    'Le modal restera ouvert pour afficher le résultat.',
                     [
                         {
                             text: 'OK',
                             onPress: () => {
-                                onClose();
+                                // Ne pas fermer, continuer à afficher la progression
                             }
                         }
                     ]
@@ -4699,6 +4753,166 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setIsSubmitting(false);
         }
     };
+
+    // ✅ NOUVEAU: Fonction pour démarrer le polling du statut du job
+    const startJobPolling = useCallback((jobId: string) => {
+        // Arrêter le polling précédent s'il existe
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+        }
+
+        const pollStatus = async () => {
+            try {
+                const statusResponse = await mediaApi.getVideoJobStatus(jobId);
+                if (!statusResponse.success || !statusResponse.data) {
+                    console.warn('[ProductVideoCreationModal] ⚠️ Impossible de récupérer le statut du job');
+                    return;
+                }
+
+                const job = statusResponse.data;
+                console.log('[ProductVideoCreationModal] 📊 Statut job:', job.status, 'Progress:', job.progress_steps?.length || 0);
+
+                // Mettre à jour le statut et la progression
+                setJobStatus(job.status as 'queued' | 'running' | 'completed' | 'failed');
+                
+                // Calculer la progression basée sur les steps
+                if (job.progress_steps && Array.isArray(job.progress_steps)) {
+                    const completedSteps = job.progress_steps.filter((step: any) => step.status === 'completed').length;
+                    const totalSteps = job.progress_steps.length;
+                    const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+                    setJobProgress(progress);
+                }
+
+                // Gérer les états terminaux
+                if (job.status === 'completed') {
+                    if (completionHandledRef.current) {
+                        return;
+                    }
+                    completionHandledRef.current = true;
+
+                    // Arrêter le polling
+                    if (pollingIntervalRef.current) {
+                        clearInterval(pollingIntervalRef.current);
+                        pollingIntervalRef.current = null;
+                    }
+
+                    setJobStatus('completed');
+                    setJobProgress(100);
+
+                    // Récupérer le résultat
+                    if (job.result_payload) {
+                        const videoResult = job.result_payload as GeneratedVideoResponse;
+                        Alert.alert(
+                            '✅ Vidéo générée !',
+                            'Votre vidéo a été générée avec succès.\n\n' +
+                            'Vous pouvez maintenant la visualiser et la partager.',
+                            [
+                                {
+                                    text: 'Voir la vidéo',
+                                    onPress: async () => {
+                                        await onSuccess(videoResult);
+                                        onClose();
+                                    }
+                                },
+                                {
+                                    text: 'Fermer',
+                                    onPress: () => {
+                                        onClose();
+                                    }
+                                }
+                            ]
+                        );
+                    } else if (job.result_media_id) {
+                        // Si on a seulement l'ID du média, récupérer les détails
+                        Alert.alert(
+                            '✅ Vidéo générée !',
+                            'Votre vidéo a été générée avec succès.\n\n' +
+                            'ID média: ' + job.result_media_id,
+                            [
+                                {
+                                    text: 'OK',
+                                    onPress: () => {
+                                        onClose();
+                                    }
+                                }
+                            ]
+                        );
+                    } else {
+                        Alert.alert(
+                            '✅ Vidéo générée !',
+                            'Votre vidéo a été générée avec succès.\n\n' +
+                            'Vous pouvez la retrouver dans la section "Vidéos" de l\'application.',
+                            [
+                                {
+                                    text: 'OK',
+                                    onPress: () => {
+                                        onClose();
+                                    }
+                                }
+                            ]
+                        );
+                    }
+
+                    // Réinitialiser les états
+                    setCurrentJobId(null);
+                    setIsSubmitting(false);
+                } else if (job.status === 'failed') {
+                    if (completionHandledRef.current) {
+                        return;
+                    }
+                    completionHandledRef.current = true;
+
+                    // Arrêter le polling
+                    if (pollingIntervalRef.current) {
+                        clearInterval(pollingIntervalRef.current);
+                        pollingIntervalRef.current = null;
+                    }
+
+                    setJobStatus('failed');
+                    const errorMsg = job.error_message || 'Erreur inconnue lors de la génération';
+                    
+                    Alert.alert(
+                        '❌ Génération échouée',
+                        'La génération de la vidéo a échoué.\n\n' +
+                        'Erreur: ' + errorMsg + '\n\n' +
+                        'Veuillez réessayer ou contacter le support si le problème persiste.',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => {
+                                    setCurrentJobId(null);
+                                    setIsSubmitting(false);
+                                }
+                            }
+                        ]
+                    );
+                }
+            } catch (error: any) {
+                console.error('[ProductVideoCreationModal] ❌ Erreur polling job:', error);
+                // Continuer le polling même en cas d'erreur temporaire
+            }
+        };
+
+        // Poller immédiatement puis toutes les 3 secondes
+        pollStatus();
+        pollingIntervalRef.current = setInterval(pollStatus, 3000) as unknown as NodeJS.Timeout;
+    }, [onSuccess, onClose]);
+
+    // ✅ NOUVEAU: Nettoyer le polling quand le modal se ferme
+    useEffect(() => {
+        if (!visible) {
+            // Arrêter le polling
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+            }
+            // Réinitialiser les états
+            setCurrentJobId(null);
+            setJobStatus(null);
+            setJobProgress(0);
+            completionHandledRef.current = false;
+        }
+    }, [visible]);
 
     const renderProductSelection = () => {
         if (selectedProduct) {
@@ -6232,6 +6446,59 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         color: modernColors.textSecondary,
+    },
+    // ✅ NOUVEAU: Styles pour l'affichage de progression du job
+    jobProgressContainer: {
+        alignItems: 'center',
+        paddingVertical: 32,
+        gap: 16,
+    },
+    jobProgressSpinner: {
+        marginBottom: 8,
+    },
+    jobProgressText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: modernColors.text,
+        textAlign: 'center',
+    },
+    jobProgressSubtext: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    },
+    progressBarContainer: {
+        width: '100%',
+        height: 8,
+        backgroundColor: '#E5E7EB',
+        borderRadius: 4,
+        overflow: 'hidden',
+        marginTop: 8,
+    },
+    progressBar: {
+        height: '100%',
+        backgroundColor: modernColors.primary,
+        borderRadius: 4,
+        transition: 'width 0.3s ease',
+    },
+    progressPercentage: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+        marginTop: 4,
+    },
+    jobInfoContainer: {
+        marginTop: 24,
+        padding: 16,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 8,
+        gap: 8,
+    },
+    jobInfoText: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        lineHeight: 18,
     },
     suggestionChipTextSelected: {
         color: modernColors.primary,

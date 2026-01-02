@@ -213,17 +213,28 @@ pub async fn generate_quick_preview(
     let quality = request.quality.as_deref().unwrap_or("low");
     let max_duration = request.max_duration.unwrap_or(10.0);
 
-    // Pour un preview rapide, on prend seulement les premières scènes
+    // ✅ CORRIGÉ: Filtrer les scènes avec media_url valide et prendre seulement les premières
     let preview_scenes: Vec<_> = enriched_timeline
         .scenes
         .iter()
+        .filter(|scene| scene.media_url.is_some() && !scene.media_url.as_ref().unwrap().trim().is_empty())
         .take_while(|scene| scene.start_time + scene.duration <= max_duration)
         .collect();
 
     if preview_scenes.is_empty() {
-        return Err(AppError::Internal(
-            "Aucune scène dans la plage de preview".to_string(),
-        ));
+        // ✅ AMÉLIORÉ: Message d'erreur plus informatif
+        let total_scenes = enriched_timeline.scenes.len();
+        let scenes_with_media = enriched_timeline.scenes.iter()
+            .filter(|s| s.media_url.is_some())
+            .count();
+        let scenes_in_range = enriched_timeline.scenes.iter()
+            .filter(|s| s.start_time + s.duration <= max_duration)
+            .count();
+        
+        return Err(AppError::Internal(format!(
+            "Aucune scène valide dans la plage de preview (max_duration: {:.1}s). Total scènes: {}, Scènes avec média: {}, Scènes dans plage: {}. Veuillez vérifier que les scènes ont des media_url valides.",
+            max_duration, total_scenes, scenes_with_media, scenes_in_range
+        )));
     }
 
     // Déterminer les paramètres selon la qualité

@@ -14,7 +14,9 @@ import { modernColors } from '../../theme/modernTheme';
 import { NativeButton } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
 import LocationSelector, { LocationObject } from '../LocationSelector';
+import ModernGPSModal from '../ModernGPSModal';
 import TimeSlotPicker from './TimeSlotPicker';
+import { VEHICLE_TRANSPORT_OPTIONS, type VehicleType } from '../../config/deliveryConfig';
 
 interface ProductDeliveryConfigModalProps {
     visible: boolean;
@@ -98,6 +100,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         is_active: boolean;
     }>>([]);
     const [loadingLocations, setLoadingLocations] = useState(false);
+    // ✅ NOUVEAU: État pour le modal GPS
+    const [showGPSModal, setShowGPSModal] = useState(false);
     const [config, setConfig] = useState({
         pickup_address: '',
         pickup_location: null as LocationObject | null, // ✅ NOUVEAU: Objet location complet
@@ -178,6 +182,22 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         } catch (error) {
             console.error('Erreur chargement types de colis:', error);
         }
+    };
+
+    // ✅ NOUVEAU: Fonction pour mapper VehicleType vers ID numérique
+    // On utilise l'index + 1 comme ID (1-based) pour correspondre aux IDs de la base
+    const getVehicleTypeId = (vehicleType: VehicleType): number => {
+        const index = VEHICLE_TRANSPORT_OPTIONS.findIndex(v => v.value === vehicleType);
+        return index >= 0 ? index + 1 : 0;
+    };
+
+    // ✅ NOUVEAU: Fonction pour mapper ID numérique vers VehicleType
+    const getVehicleTypeFromId = (id: number): VehicleType | null => {
+        const index = id - 1; // Convertir en 0-based
+        if (index >= 0 && index < VEHICLE_TRANSPORT_OPTIONS.length) {
+            return VEHICLE_TRANSPORT_OPTIONS[index].value;
+        }
+        return null;
     };
 
     const loadExistingConfig = async () => {
@@ -403,115 +423,92 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         </View>
                     )}
 
-                    {/* ✅ Phase 9 - Amélioration 32 : Sélection du lieu de stock */}
+                    {/* ✅ CORRIGÉ: Lieu de stock avec LocationSelector (comme l'ancienne adresse de départ) */}
                     <View style={styles.section}>
                         <Text style={styles.label}>Lieu de stock (optionnel)</Text>
-                        <TouchableOpacity
-                            style={styles.select}
-                            onPress={() => {
-                                // ✅ CORRECTION: S'assurer que storageLocations est un tableau valide
-                                const validLocations = Array.isArray(storageLocations)
-                                    ? storageLocations.filter(loc => loc && loc.is_active)
-                                    : [];
-                                const options: Array<{ text: string; onPress?: () => void; style?: 'cancel' | 'destructive' | 'default' }> = [
-                                    { text: 'Aucun (utiliser adresse manuelle)', onPress: () => setConfig(prev => ({ ...prev, storage_location_id: undefined })) },
-                                    ...validLocations.map(location => ({
-                                        text: `${String(location?.name || 'Lieu')} - ${String(location?.address || 'Adresse inconnue')}`,
-                                        onPress: () => {
-                                            const address = typeof location.address === 'string' ? location.address : '';
-                                            const lat = typeof location.latitude === 'number' ? location.latitude : 0;
-                                            const lng = typeof location.longitude === 'number' ? location.longitude : 0;
-                                            const locationObj: LocationObject = address ? {
-                                                raw: address,
-                                                place_name: address.split(',')[0].trim(),
-                                                components: {},
-                                                coordinates: (lat !== 0 && lng !== 0) ? { lat, lng } : undefined
-                                            } : null;
-                                            
-                                            setConfig(prev => ({
-                                                ...prev,
-                                                storage_location_id: typeof location.id === 'number' ? location.id : undefined,
-                                                pickup_address: address,
-                                                pickup_location: locationObj,
-                                                pickup_latitude: lat,
-                                                pickup_longitude: lng,
-                                            }));
-                                        }
-                                    })),
-                                    { text: 'Annuler', style: 'cancel' }
-                                ];
-                                Alert.alert('Sélectionner un lieu de stock', '', options);
-                            }}
-                        >
-                            <Text style={styles.selectText}>
-                                {(() => {
-                                    // ✅ CORRECTION: S'assurer que storageLocations est un tableau valide avant find()
-                                    if (!config.storage_location_id || !Array.isArray(storageLocations)) {
-                                        return 'Aucun (utiliser adresse manuelle)';
-                                    }
-                                    const found = storageLocations.find(loc => loc && loc.id === config.storage_location_id);
-                                    return String(found?.name || 'Lieu de stock sélectionné');
-                                })()}
-                            </Text>
-                        </TouchableOpacity>
-                        {loadingLocations && (
-                            <Text style={styles.hint}>Chargement des lieux de stock...</Text>
-                        )}
-                    </View>
-
-                    {/* ✅ CORRIGÉ: Adresse de départ avec LocationSelector intelligent */}
-                    <View style={styles.section}>
                         <LocationSelector
-                            label="Adresse de départ"
-                            value={config.pickup_location || config.pickup_address || ''}
+                            label=""
+                            value={config.storage_location_id 
+                                ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.address || '')
+                                : ''}
                             onSelect={(location: LocationObject) => {
                                 // Extraire l'adresse formatée et les coordonnées
                                 const address = location.raw || location.place_name || '';
                                 const coords = location.coordinates;
                                 
+                                // Si un lieu de stock existe avec cette adresse, l'utiliser
+                                const existingLocation = storageLocations.find(loc => 
+                                    loc.address === address || 
+                                    (coords && Math.abs(loc.latitude - coords.lat) < 0.0001 && Math.abs(loc.longitude - coords.lng) < 0.0001)
+                                );
+                                
                                 setConfig(prev => ({
                                     ...prev,
-                                    pickup_address: address,
-                                    pickup_location: location,
-                                    pickup_latitude: coords?.lat || 0,
-                                    pickup_longitude: coords?.lng || 0,
+                                    storage_location_id: existingLocation?.id,
+                                    // Ne pas mettre à jour pickup_address ici, c'est pour le lieu de stock
                                 }));
                             }}
                             placeholder="Ville, quartier, pays..."
                             enrichWithBackend={true}
-                            required
+                            required={false}
                         />
+                        {loadingLocations && (
+                            <Text style={styles.hint}>Chargement des lieux de stock...</Text>
+                        )}
+                    </View>
+
+                    {/* ✅ CORRIGÉ: Adresse de départ avec ModernGPSModal pour sélection GPS précise */}
+                    <View style={styles.section}>
+                        <Text style={styles.label}>Adresse de départ *</Text>
+                        <TouchableOpacity
+                            style={styles.select}
+                            onPress={() => setShowGPSModal(true)}
+                        >
+                            <Text style={[styles.selectText, !config.pickup_address && styles.selectPlaceholder]}>
+                                {config.pickup_address || 'Sélectionner la localisation GPS précise...'}
+                            </Text>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                        </TouchableOpacity>
                         {((typeof config.pickup_latitude === 'number' && config.pickup_latitude !== 0) || (typeof config.pickup_longitude === 'number' && config.pickup_longitude !== 0)) && (
                             <Text style={styles.gpsText}>
-                                {`GPS: ${typeof config.pickup_latitude === 'number' ? config.pickup_latitude.toFixed(6) : '0.000000'}, ${typeof config.pickup_longitude === 'number' ? config.pickup_longitude.toFixed(6) : '0.000000'}`}
+                                📍 GPS: {typeof config.pickup_latitude === 'number' ? config.pickup_latitude.toFixed(6) : '0.000000'}, {typeof config.pickup_longitude === 'number' ? config.pickup_longitude.toFixed(6) : '0.000000'}
                             </Text>
                         )}
                     </View>
 
-                    {/* Type de véhicule */}
+                    {/* ✅ CORRIGÉ: Type de véhicule avec VEHICLE_TRANSPORT_OPTIONS */}
                     <View style={styles.section}>
                         <Text style={styles.label}>Type de véhicule requis *</Text>
                         <TouchableOpacity
                             style={styles.select}
                             onPress={() => {
-                                // ✅ CORRECTION: S'assurer que parcelTypes est un tableau valide
-                                const validParcelTypes = Array.isArray(parcelTypes) ? parcelTypes.filter(t => t && t.id && t.name) : [];
-                                const options: Array<{ text: string; onPress?: () => void; style?: 'cancel' | 'destructive' | 'default' }> = validParcelTypes.map(t => ({
-                                    text: `${String(t?.name || '')}${t?.description ? ` - ${String(t.description)}` : ''}`,
-                                    onPress: () => setConfig(prev => ({ ...prev, required_vehicle_type_id: typeof t.id === 'number' ? t.id : 0 }))
+                                // ✅ CORRIGÉ: Utiliser VEHICLE_TRANSPORT_OPTIONS au lieu de parcelTypes
+                                const options: Array<{ text: string; onPress?: () => void; style?: 'cancel' | 'destructive' | 'default' }> = VEHICLE_TRANSPORT_OPTIONS.map(vehicle => ({
+                                    text: `${vehicle.icon} ${vehicle.label}`,
+                                    onPress: () => {
+                                        // Convertir VehicleType en ID numérique
+                                        const vehicleId = getVehicleTypeId(vehicle.value);
+                                        setConfig(prev => ({ ...prev, required_vehicle_type_id: vehicleId }));
+                                    }
                                 }));
                                 options.push({ text: 'Annuler', style: 'cancel' });
-                                Alert.alert('Sélectionner un type', '', options);
+                                Alert.alert('Sélectionner un type de véhicule', '', options);
                             }}
                         >
                             <Text style={[styles.selectText, !config.required_vehicle_type_id && styles.selectPlaceholder]}>
                                 {(() => {
-                                    // ✅ CORRECTION: S'assurer que parcelTypes est un tableau valide avant find()
-                                    if (!config.required_vehicle_type_id || !Array.isArray(parcelTypes)) {
+                                    if (!config.required_vehicle_type_id) {
                                         return 'Sélectionner...';
                                     }
-                                    const found = parcelTypes.find(t => t && t.id === config.required_vehicle_type_id);
-                                    return String(found?.name || 'Sélectionner...');
+                                    // Convertir l'ID en VehicleType
+                                    const vehicleType = getVehicleTypeFromId(config.required_vehicle_type_id);
+                                    if (vehicleType) {
+                                        const vehicle = VEHICLE_TRANSPORT_OPTIONS.find(v => v.value === vehicleType);
+                                        if (vehicle) {
+                                            return `${vehicle.icon} ${vehicle.label}`;
+                                        }
+                                    }
+                                    return 'Sélectionner...';
                                 })()}
                             </Text>
                             <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
@@ -557,29 +554,51 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         </View>
                     </View>
 
-                    {/* Options spéciales */}
+                    {/* ✅ AMÉLIORÉ: Options spéciales avec meilleur visuel */}
                     <View style={styles.section}>
                         <TouchableOpacity
-                            style={styles.checkboxRow}
+                            style={[styles.checkboxCard, config.requires_isothermal && styles.checkboxCardActive]}
                             onPress={() => setConfig(prev => ({ ...prev, requires_isothermal: !prev.requires_isothermal }))}
                         >
-                            <SafeIcon
-                                name={config.requires_isothermal ? "check-square" : "square"}
-                                size={20}
-                                color={modernColors.primary}
-                            />
-                            <Text style={styles.checkboxLabel}>Isotherme requis</Text>
+                            <View style={styles.checkboxContent}>
+                                <View style={[styles.checkboxIconContainer, config.requires_isothermal && styles.checkboxIconContainerActive]}>
+                                    {config.requires_isothermal ? (
+                                        <SafeIcon name="check" size={18} color="#FFFFFF" />
+                                    ) : (
+                                        <View style={styles.checkboxEmpty} />
+                                    )}
+                                </View>
+                                <View style={styles.checkboxTextContainer}>
+                                    <Text style={[styles.checkboxLabel, config.requires_isothermal && styles.checkboxLabelActive]}>
+                                        ❄️ Isotherme requis
+                                    </Text>
+                                    <Text style={styles.checkboxDescription}>
+                                        Produit nécessitant une température contrôlée
+                                    </Text>
+                                </View>
+                            </View>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={styles.checkboxRow}
+                            style={[styles.checkboxCard, config.requires_fragile_handling && styles.checkboxCardActive]}
                             onPress={() => setConfig(prev => ({ ...prev, requires_fragile_handling: !prev.requires_fragile_handling }))}
                         >
-                            <SafeIcon
-                                name={config.requires_fragile_handling ? "check-square" : "square"}
-                                size={20}
-                                color={modernColors.primary}
-                            />
-                            <Text style={styles.checkboxLabel}>Manipulation fragile</Text>
+                            <View style={styles.checkboxContent}>
+                                <View style={[styles.checkboxIconContainer, config.requires_fragile_handling && styles.checkboxIconContainerActive]}>
+                                    {config.requires_fragile_handling ? (
+                                        <SafeIcon name="check" size={18} color="#FFFFFF" />
+                                    ) : (
+                                        <View style={styles.checkboxEmpty} />
+                                    )}
+                                </View>
+                                <View style={styles.checkboxTextContainer}>
+                                    <Text style={[styles.checkboxLabel, config.requires_fragile_handling && styles.checkboxLabelActive]}>
+                                        🫳 Manipulation fragile
+                                    </Text>
+                                    <Text style={styles.checkboxDescription}>
+                                        Produit nécessitant une manipulation délicate
+                                    </Text>
+                                </View>
+                            </View>
                         </TouchableOpacity>
                     </View>
 
@@ -665,6 +684,47 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     </View>
                 </ScrollView>
             </View>
+
+            {/* ✅ NOUVEAU: Modal GPS pour sélection précise de l'adresse de départ */}
+            <ModernGPSModal
+                visible={showGPSModal}
+                onClose={() => setShowGPSModal(false)}
+                onSelect={(coordinatesString) => {
+                    // Parser les coordonnées depuis le format string "lat,lng"
+                    const firstPoint = coordinatesString.split('|')[0].split(',');
+                    if (firstPoint.length === 2) {
+                        const lat = parseFloat(firstPoint[0]);
+                        const lng = parseFloat(firstPoint[1]);
+                        
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            // Construire un LocationObject avec les coordonnées
+                            const locationObj: LocationObject = {
+                                raw: `${lat}, ${lng}`,
+                                place_name: `GPS: ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                                components: {},
+                                coordinates: { lat, lng }
+                            };
+                            
+                            setConfig(prev => ({
+                                ...prev,
+                                pickup_address: locationObj.raw,
+                                pickup_location: locationObj,
+                                pickup_latitude: lat,
+                                pickup_longitude: lng,
+                            }));
+                            
+                            setShowGPSModal(false);
+                        }
+                    }
+                }}
+                currentLocation={
+                    (config.pickup_latitude !== 0 && config.pickup_longitude !== 0)
+                        ? { lat: config.pickup_latitude, lng: config.pickup_longitude }
+                        : null
+                }
+                title="Sélectionner l'adresse de départ GPS"
+                allowZoneSelection={false}
+            />
         </Modal>
     );
 };
@@ -766,10 +826,58 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12,
     },
+    checkboxCard: {
+        borderWidth: 2,
+        borderColor: '#D1D5DB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        backgroundColor: '#FFFFFF',
+    },
+    checkboxCardActive: {
+        borderColor: modernColors.primary,
+        backgroundColor: '#F0F9FF',
+    },
+    checkboxContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    checkboxIconContainer: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: '#D1D5DB',
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    checkboxIconContainerActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    checkboxEmpty: {
+        width: 12,
+        height: 12,
+        borderRadius: 3,
+        backgroundColor: 'transparent',
+    },
+    checkboxTextContainer: {
+        flex: 1,
+    },
     checkboxLabel: {
-        fontSize: 14,
+        fontSize: 15,
+        fontWeight: '600',
         color: modernColors.text,
-        marginLeft: 8,
+        marginBottom: 4,
+    },
+    checkboxLabelActive: {
+        color: modernColors.primary,
+    },
+    checkboxDescription: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
     },
     gpsText: {
         fontSize: 12,

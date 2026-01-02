@@ -155,6 +155,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     productIndex: number;
     productName: string;
   } | null>(null);
+  // ✅ NOUVEAU: État pour savoir si on vient de créer un service (pour redirection après modal)
+  const [justCreatedService, setJustCreatedService] = useState(false);
   // ✅ SUPPRIMÉ: Duplication produits - Les produits sont maintenant gérés via les champs dynamiques
   const normalizeMediaList = (value: any): any[] => {
     if (!value) {
@@ -2049,7 +2051,84 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           <LinearAutocompleteEditor
             label={field.label}
             identifiantBase={field.identifiantBase || field.name || 'produit'}
-            sousCaracteristiques={currentSousCaracs || {}} // ✅ PROTECTION: Garantir objet valide
+            sousCaracteristiques={(() => {
+              // ✅ CORRIGÉ: Construire les sous-caractéristiques avec alignement correct comme dans AjoutProduitSimpleScreen
+              // PRIORITÉ 1: Utiliser sous_caracteristiques complets si disponibles (contient TOUTES les valeurs)
+              const sousCaracsComplets = (fieldValue && typeof fieldValue === 'object' && 'sous_caracteristiques' in fieldValue)
+                ? fieldValue.sous_caracteristiques
+                : currentSousCaracs
+                || field.sousCaracteristiques
+                || {};
+              
+              if (sousCaracsComplets && typeof sousCaracsComplets === 'object' && Object.keys(sousCaracsComplets).length > 0) {
+                const sousCaracsObj: Record<string, string[]> = {};
+                Object.entries(sousCaracsComplets).forEach(([key, vals]: [string, any]) => {
+                  if (Array.isArray(vals) && vals.length > 0) {
+                    // ✅ Passer TOUTES les valeurs pour permettre l'affichage du tableau complet
+                    const allValues = vals
+                      .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
+                      .map((v: string) => v.trim());
+                    if (allValues.length > 0) {
+                      sousCaracsObj[key] = allValues;
+                    }
+                  }
+                });
+                
+                if (Object.keys(sousCaracsObj).length > 0) {
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Utilisation sous_caracteristiques complets (TOUTES les valeurs):', sousCaracsObj);
+                  return sousCaracsObj;
+                }
+              }
+
+              // ✅ PRIORITÉ 2: Construire depuis product_vector/product_labels pour garantir l'alignement correct
+              const productVector = (fieldValue && typeof fieldValue === 'object' && 'product_vector' in fieldValue && Array.isArray(fieldValue.product_vector))
+                ? fieldValue.product_vector.filter((v: any) => typeof v === 'string')
+                : (valeursFormulaire.product_vector && Array.isArray(valeursFormulaire.product_vector))
+                  ? valeursFormulaire.product_vector.filter((v: any) => typeof v === 'string')
+                  : undefined;
+              
+              const productLabels = (fieldValue && typeof fieldValue === 'object' && 'product_labels' in fieldValue && Array.isArray(fieldValue.product_labels))
+                ? fieldValue.product_labels.filter((label: any) => typeof label === 'string')
+                : (valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels))
+                  ? valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string')
+                  : undefined;
+
+              if (productVector && productLabels && productVector.length > 0 && productVector.length === productLabels.length) {
+                const sousCaracsFromPreferred: Record<string, string[]> = {};
+                
+                console.log('[FormulaireYukpoIntelligentScreen] 🔍 Construction depuis product_vector/product_labels:', {
+                  product_vector: productVector,
+                  product_labels: productLabels,
+                  length_vector: productVector.length,
+                  length_labels: productLabels.length
+                });
+                
+                // ✅ CRITIQUE: Chaque valeur doit être associée à son label correspondant par index
+                productVector.forEach((value: string, index: number) => {
+                  const label = productLabels[index];
+                  
+                  if (label && typeof label === 'string' && value && typeof value === 'string') {
+                    // Si le label existe déjà, ajouter la valeur (cas où même label apparaît plusieurs fois)
+                    if (!sousCaracsFromPreferred[label]) {
+                      sousCaracsFromPreferred[label] = [value];
+                    } else {
+                      const existingValues = sousCaracsFromPreferred[label];
+                      if (!existingValues.includes(value)) {
+                        sousCaracsFromPreferred[label] = [value, ...existingValues];
+                      }
+                    }
+                  }
+                });
+                
+                if (Object.keys(sousCaracsFromPreferred).length > 0) {
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Utilisation sous_caracteristiques depuis product_vector/product_labels (alignement garanti):', sousCaracsFromPreferred);
+                  return sousCaracsFromPreferred;
+                }
+              }
+
+              // Fallback: Utiliser currentSousCaracs
+              return currentSousCaracs || {};
+            })()}
             separateur={safeSeparateur} // ✅ PROTECTION ULTIME: Garantit string valide
             value={currentValues || []} // ✅ PROTECTION: Garantir array de strings valides
             contextValues={[
@@ -3700,6 +3779,38 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             product_index
           });
 
+          // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
+          const typeOffre = valeursFormulaire.type_offre || valeursFormulaire.nature_offre || 'produit';
+          const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+          
+          if (!isPrestation && product_index !== undefined && serviceId) {
+            // C'est un produit, ouvrir le modal de configuration de livraison
+            const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
+            const finalProductIndex = typeof product_index === 'number' ? product_index : parseInt(String(product_index), 10);
+            const productName = valeursFormulaire.nom_produit || 'Nouveau produit';
+            
+            console.log('[FormulaireYukpoIntelligentScreen] 🚚 Ouverture automatique du modal de configuration de livraison (ADD_PRODUCT):', {
+              serviceId: finalServiceId,
+              productIndex: finalProductIndex,
+              productName: productName
+            });
+            
+            // Ouvrir le modal de configuration de livraison
+            setShowProductDeliveryConfig(true);
+            setProductDeliveryConfigData({
+              serviceId: finalServiceId,
+              productIndex: finalProductIndex,
+              productName: productName,
+            });
+            
+            setSuccessData({ serviceId, cout: cost });
+            setShowSuccessToast(true);
+            
+            // Ne pas afficher l'Alert de succès ici, le modal s'ouvrira directement
+            return;
+          }
+
+          // Pour les prestations ou si product_index n'est pas disponible, afficher l'Alert normal
           Alert.alert(
             '✅ Produit ajouté',
             `Votre produit a été ajouté avec succès au service.\n\n💰 Coût: ${cost.toLocaleString()} FCFA\n💳 Nouveau solde: ${new_balance.toLocaleString()} FCFA`,
@@ -4624,21 +4735,59 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // ✅ SUPPRIMÉ: Vérification tickets de voyage - Géré maintenant via les champs dynamiques
                 // Les tickets de voyage sont gérés via les champs autocomplete et date dans le formulaire
 
-                setSuccessData({ serviceId: result?.id || result?.service_id || 'nouveau', cout: coutReel });
+                const createdServiceId = result?.id || result?.service_id;
+                setSuccessData({ serviceId: createdServiceId || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);
+
+                // ✅ NOUVEAU: Vérifier si c'est un produit (pas une prestation) et ouvrir la configuration de livraison
+                const typeOffre = valeursFormulaire.type_offre || valeursFormulaire.nature_offre || 'produit';
+                const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+                const hasProducts = hasAtLeastOneProduct();
+
+                // Si c'est un produit (pas une prestation) ET qu'il y a des produits, ouvrir le modal de configuration de livraison
+                if (!isPrestation && hasProducts && createdServiceId) {
+                  const finalServiceId = typeof createdServiceId === 'string' ? parseInt(createdServiceId, 10) : createdServiceId;
+                  
+                  // Pour un service nouvellement créé, le premier produit est à l'index 0
+                  const firstProductIndex = 0;
+                  
+                  // Récupérer le nom du produit depuis le formulaire
+                  const productName = valeursFormulaire.nom_produit || 
+                    (finalServiceData.produits?.valeur?.[0]?.nom) || 
+                    (finalServiceData.titre_service?.valeur) || 
+                    'Nouveau produit';
+                  
+                  console.log('[FormulaireYukpoIntelligentScreen] 🚚 Ouverture automatique du modal de configuration de livraison:', {
+                    serviceId: finalServiceId,
+                    productIndex: firstProductIndex,
+                    productName: productName
+                  });
+                  
+                  // Ouvrir le modal de configuration de livraison
+                  setJustCreatedService(true); // Marquer qu'on vient de créer un service
+                  setShowProductDeliveryConfig(true);
+                  setProductDeliveryConfigData({
+                    serviceId: finalServiceId,
+                    productIndex: firstProductIndex,
+                    productName: productName,
+                  });
+                  
+                  // Ne pas rediriger immédiatement, le modal s'ouvrira
+                  // La redirection se fera après la fermeture du modal
+                } else {
+                  // Pour les prestations ou si pas de produits, redirection normale après 3 secondes
+                  setTimeout(() => {
+                    if (fromMesServices) {
+                      (navigation as any).navigate('MesServices');
+                    } else {
+                      (navigation as any).navigate('Home');
+                    }
+                  }, 3000);
+                }
 
                 // ✅ Marquer la soumission comme terminée
                 setIsSubmitting(false);
                 setLoading(false);
-
-                // Redirection après 3 secondes
-                setTimeout(() => {
-                  if (fromMesServices) {
-                    (navigation as any).navigate('MesServices');
-                  } else {
-                    (navigation as any).navigate('Home');
-                  }
-                }, 3000);
 
               } catch (innerError: any) {
                 console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur création:', innerError);
@@ -5115,10 +5264,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           onClose={() => {
             setShowProductDeliveryConfig(false);
             setProductDeliveryConfigData(null);
-            // Après fermeture, retourner vers l'écran précédent
-            setTimeout(() => {
-              navigation.goBack();
-            }, 300);
+            
+            // ✅ NOUVEAU: Si on vient de créer un service, rediriger vers MesServices ou Home
+            // Sinon, retourner vers l'écran précédent
+            if (justCreatedService) {
+              setJustCreatedService(false); // Réinitialiser l'état
+              setTimeout(() => {
+                if (fromMesServices) {
+                  (navigation as any).navigate('MesServices');
+                } else {
+                  (navigation as any).navigate('Home');
+                }
+              }, 300);
+            } else {
+              // Après fermeture, retourner vers l'écran précédent
+              setTimeout(() => {
+                navigation.goBack();
+              }, 300);
+            }
           }}
           serviceId={productDeliveryConfigData.serviceId}
           productIndex={productDeliveryConfigData.productIndex}
@@ -5127,12 +5290,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // Configuration sauvegardée avec succès
             setShowProductDeliveryConfig(false);
             setProductDeliveryConfigData(null);
-            Alert.alert(
-              '✅ Configuration terminée',
-              'Votre produit a été configuré avec succès !',
-              [
-                {
-                  text: 'OK',
+            
+            // ✅ NOUVEAU: Si on vient de créer un service, rediriger vers MesServices ou Home
+            if (justCreatedService) {
+              setJustCreatedService(false); // Réinitialiser l'état
+              Alert.alert(
+                '✅ Configuration terminée',
+                'Votre produit a été configuré avec succès !',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      if (fromMesServices) {
+                        (navigation as any).navigate('MesServices');
+                      } else {
+                        (navigation as any).navigate('Home');
+                      }
+                    }
+                  }
+                ]
+              );
+            } else {
+              Alert.alert(
+                '✅ Configuration terminée',
+                'Votre produit a été configuré avec succès !',
+                [
+                  {
+                    text: 'OK',
                   onPress: () => {
                     navigation.goBack();
                   }
