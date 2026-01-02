@@ -7,7 +7,7 @@ use crate::state::AppState;
 use axum::{Extension, Json, extract::{Path, State}};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::Row;
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 use std::path::PathBuf;
 use chrono::Utc;
@@ -35,7 +35,7 @@ pub struct AddProductResponse {
 /// ✅ NOUVEAU 2026-01-02: Fonction pour traiter la création de produit (utilisée par le worker)
 /// Cette fonction est appelée par le worker de la queue, pas directement par l'API
 pub async fn process_product_creation(
-    pool: &PgPool,
+    pool: Arc<PgPool>,
     service_id: i32,
     user_id: i32,
     product_data: &Value,
@@ -55,7 +55,7 @@ pub async fn process_product_creation(
     
     // Utiliser la fonction PostgreSQL optimisée
     let (product_index, produits_data, lieu_data) = crate::utils::db_retry::retry_query(
-        pool,
+        &*pool,
         || {
             let product_json_clone = product_json_value.clone();
             let service_id_clone = service_id;
@@ -273,7 +273,7 @@ pub async fn add_product_to_service(
     // ✅ NOUVEAU 2026-01-02: Utiliser la queue asynchrone au lieu de traiter directement
     // Cela évite les timeouts et erreurs TLS en traitant les créations en arrière-plan
     use crate::services::product_creation_queue::ProductCreationQueueService;
-    let queue_service = ProductCreationQueueService::new(state.pg.clone());
+    let queue_service = ProductCreationQueueService::new(Arc::new(state.pg.clone()));
     
     // Extraire les images du produit AVANT nettoyage
     // Les médias doivent être uploadés vers Wasabi et stockés dans la table media, PAS dans services.data
@@ -362,7 +362,7 @@ pub async fn get_product_creation_status(
     use crate::utils::log::log_info;
     use crate::services::product_creation_queue::ProductCreationQueueService;
     
-    let queue_service = ProductCreationQueueService::new(state.pg.clone());
+    let queue_service = ProductCreationQueueService::new(Arc::new(state.pg.clone()));
     
     match queue_service.get_job_status(job_id).await? {
         Some(job) => {
@@ -434,370 +434,19 @@ async fn _old_add_product_logic(
     
     match update_result {
         Ok((index, produits_data, lieu_data)) => {
-            // ✅ AMÉLIORÉ 2025-12-31: Gérer spécifiquement les erreurs de blocage
+            // Code mort - fonction remplacée par la queue
+            Ok(json!({
+                "product_index": index,
+                "produits_data": produits_data,
+                "lieu_data": lieu_data,
+            }))
+        }
+        Err(e) => {
+            use crate::utils::log::log_error;
             let error_msg = e.to_string();
-            
-            // Si c'est un blocage (verrouillé), retourner une erreur spécifique
-            if error_msg.contains("verrouillé") || error_msg.contains("locked") || error_msg.contains("lock_not_available") {
-                log_error(&format!("[add_product_to_service] ❌ Service {} verrouillé après {} tentatives", service_id, 10));
-                
-                // ✅ ROLLBACK : Rembourser l'utilisateur en cas de blocage persistant
-                let pool = state.pg.clone();
-                let _ = crate::utils::db_retry::retry_query(
-                    &pool,
-                    || {
-                        let cout_ajout_clone = cout_ajout;
-                        let user_id_clone = user.id;
-                        let pool_clone = pool.clone();
-                        Box::pin(async move {
-                            sqlx::query(
-                                "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
-                            )
-                            .bind(cout_ajout_clone)
-                            .bind(user_id_clone)
-                            .execute(&pool_clone)
-                            .await
-                        })
-                    },
-                    3,
-                )
-                .await;
-                
-                return Err(AppError::Internal(format!(
-                    "Le service est actuellement en cours de modification par une autre opération. Veuillez réessayer dans quelques instants. Votre solde a été remboursé ({} FCFA).",
-                    cout_ajout
-                )));
-            }
-            
-            // ✅ Fallback: Essayer avec l'ancienne fonction si v2 n'existe pas
-            if error_msg.contains("does not exist") || error_msg.contains("function") {
-                log_info(&format!("[add_product_to_service] ⚠️ Fonction v2 non disponible, fallback vers v1"));
-                
-                // Utiliser l'ancienne fonction avec plus de tentatives
-                let fallback_result = crate::utils::db_retry::retry_query(
-                    &pool,
-                    || {
-                        let product_json_clone = product_json_value.clone();
-                        let service_id_clone = service_id;
-                        let pool_clone = pool.clone();
-                        Box::pin(async move {
-                            sqlx::query_scalar::<_, i32>(
-                                "SELECT add_product_to_service_jsonb($1, $2)"
-                            )
-                            .bind(service_id_clone)
-                            .bind(&product_json_clone)
-                            .fetch_one(&pool_clone)
-                            .await
-                        })
-                    },
-                    10, // ✅ CORRIGÉ: Augmenté à 10 tentatives pour fallback aussi
-                ).await;
-                
-                match fallback_result {
-                    Ok(index) => {
-                        let idx = index as usize;
-                        log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {}) via fallback", service_id, idx));
-                        
-                        // ⚠️ Fallback: Récupérer les données pour indexation (plus lent mais fonctionne)
-                        let service_data_result = crate::utils::db_retry::retry_query(
-                            &pool,
-                            || {
-                                let service_id_clone = service_id;
-                                let pool_clone = pool.clone();
-                                Box::pin(async move {
-                                    sqlx::query("SELECT data->'produits' as produits, data->'lieu_produit' as lieu FROM services WHERE id = $1")
-                                        .bind(service_id_clone)
-                                        .fetch_one(&pool_clone)
-                                        .await
-                                })
-                            },
-                            3,
-                        ).await;
-                        
-                        let (produits_data, lieu_data) = match service_data_result {
-                            Ok(row) => (
-                                row.try_get::<Value, _>("produits").unwrap_or(serde_json::json!({})),
-                                row.try_get::<Value, _>("lieu").unwrap_or(serde_json::json!({}))
-                            ),
-                            Err(e) => {
-                                log_error(&format!("[add_product_to_service] ⚠️ Erreur récupération données pour indexation (fallback): {}", e));
-                                (serde_json::json!({}), serde_json::json!({}))
-                            }
-                        };
-                        
-                        (idx, produits_data, lieu_data)
-                    },
-                    Err(e) => {
-                        let error_msg = e.to_string();
-                        log_error(&format!("[add_product_to_service] Erreur fonction PostgreSQL (fallback): {}", error_msg));
-                        
-                        // ✅ ROLLBACK : Rembourser l'utilisateur en cas d'échec
-                        let pool = state.pg.clone();
-                        let _ = crate::utils::db_retry::retry_query(
-                            &pool,
-                            || {
-                                let cout_ajout_clone = cout_ajout;
-                                let user_id_clone = user.id;
-                                let pool_clone = pool.clone();
-                                Box::pin(async move {
-                                    sqlx::query(
-                                        "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
-                                    )
-                                    .bind(cout_ajout_clone)
-                                    .bind(user_id_clone)
-                                    .execute(&pool_clone)
-                                    .await
-                                })
-                            },
-                            3,
-                        )
-                        .await;
-                        
-                        // ✅ AMÉLIORÉ: Message d'erreur plus détaillé
-                        let detailed_error = if error_msg.contains("timeout") || error_msg.contains("deadlock") {
-                            format!("La base de données est temporairement surchargée. Veuillez réessayer dans quelques instants. (Erreur: {})", error_msg)
-                        } else if error_msg.contains("constraint") || error_msg.contains("duplicate") {
-                            format!("Erreur de validation des données. Veuillez vérifier les informations du produit. (Erreur: {})", error_msg)
-                        } else {
-                            format!("Erreur lors de l'ajout du produit au service. Veuillez réessayer. Si le problème persiste, contactez le support. (Erreur: {})", error_msg)
-                        };
-                        
-                        return Err(AppError::Internal(detailed_error));
-                    }
-                }
-            } else {
-                // Autre erreur PostgreSQL (non-blocage)
-                let error_msg = e.to_string();
-                let error_details = format!("[add_product_to_service] ❌ Erreur fonction PostgreSQL: {} (service_id: {}, user_id: {}, temps écoulé: {:?})", 
-                    error_msg, service_id, user.id, start_time.elapsed());
-                log_error(&error_details);
-                
-                // ✅ ROLLBACK : Rembourser l'utilisateur en cas d'échec
-                let pool = state.pg.clone();
-                let _ = crate::utils::db_retry::retry_query(
-                    &pool,
-                    || {
-                        let cout_ajout_clone = cout_ajout;
-                        let user_id_clone = user.id;
-                        let pool_clone = pool.clone();
-                        Box::pin(async move {
-                            sqlx::query(
-                                "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
-                            )
-                            .bind(cout_ajout_clone)
-                            .bind(user_id_clone)
-                            .execute(&pool_clone)
-                            .await
-                        })
-                    },
-                    3,
-                )
-                .await;
-                
-                // ✅ AMÉLIORÉ: Message d'erreur plus détaillé selon le type d'erreur
-                let detailed_error = if error_msg.contains("timeout") || error_msg.contains("deadlock") {
-                    format!("La base de données est temporairement surchargée. Veuillez réessayer dans quelques instants. (Erreur: {})", error_msg)
-                } else if error_msg.contains("constraint") || error_msg.contains("duplicate") {
-                    format!("Erreur de validation des données. Veuillez vérifier les informations du produit. (Erreur: {})", error_msg)
-                } else if error_msg.contains("does not exist") || error_msg.contains("relation") {
-                    format!("Erreur de configuration de la base de données. Veuillez contacter le support. (Erreur: {})", error_msg)
-                } else {
-                    format!("Erreur lors de l'ajout du produit au service. Veuillez réessayer. Si le problème persiste, contactez le support. (Erreur: {})", error_msg)
-                };
-                
-                return Err(AppError::Internal(detailed_error));
-            }
-        }
-    };
-    
-    // ✅ CRITIQUE 2025-12-31: Traiter les médias du produit EN ARRIÈRE-PLAN (asynchrone)
-    // Le traitement des images peut prendre 20-40s (upload Wasabi), donc on le fait après avoir retourné la réponse
-    // Cela évite les timeouts de 60s+ et améliore l'expérience utilisateur
-    // ✅ CORRIGÉ 2026-01-01: Séparer URLs déjà uploadées (sauvegarde directe) des base64 (traitement)
-    if !images_to_process.is_empty() {
-        let images_to_process_clone = images_to_process.clone();
-        let product_data_cleaned_clone = product_data_cleaned.clone();
-        let service_id_clone = service_id;
-        let product_index_clone = product_index;
-        let pool_clone = pool.clone();
-        let media_storage_clone = state.media_storage.clone();
-        let storage_root = std::env::var("UPLOAD_STORAGE_PATH")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("uploads"));
-        let storage_root_clone = storage_root.clone();
-        
-        // ✅ NOUVEAU: Traiter les images en arrière-plan (tokio::spawn)
-        tokio::spawn(async move {
-            use crate::services::creer_service::{is_url, is_probable_base64};
-            
-            log_info(&format!("[add_product_to_service] 🖼️ [ASYNC] Traitement de {} image(s) pour le produit (index: {})", images_to_process_clone.len(), product_index_clone));
-            
-            let product_id = product_data_cleaned_clone
-                .as_object()
-                .and_then(|obj| obj.get("id"))
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| format!("prod_{}", product_index_clone));
-            
-            // ✅ CORRIGÉ 2026-01-01: Séparer URLs (sauvegarde directe) et base64 (traitement)
-            for (image_index, image_data) in images_to_process_clone.iter().enumerate() {
-                if image_data.is_empty() {
-                    continue;
-                }
-                
-                let is_main = image_index == 0;
-                let image_data_clone = image_data.clone();
-                let storage_root_clone = storage_root_clone.clone();
-                let product_id_clone = product_id.clone();
-                let media_storage_clone = media_storage_clone.clone();
-                
-                // Si c'est une URL déjà uploadée, sauvegarder directement dans la table media
-                if is_url(&image_data_clone) {
-                    log_info(&format!("[add_product_to_service] 🔗 [ASYNC] Image {} est une URL, sauvegarde directe dans media: {}", image_index, image_data_clone));
-                    
-                    // Sauvegarder l'URL directement dans la table media
-                    if let Err(e) = sqlx::query(
-                        r#"
-                        INSERT INTO media (
-                            service_id, product_id, product_index, type, path,
-                            is_main_image, display_order, uploaded_at
-                        )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                        ON CONFLICT DO NOTHING
-                        "#
-                    )
-                    .bind(service_id_clone)
-                    .bind(&product_id_clone)
-                    .bind(product_index_clone as i32)
-                    .bind("image")
-                    .bind(&image_data_clone) // ✅ URL directement comme path
-                    .bind(is_main)
-                    .bind(image_index as i32)
-                    .bind(Utc::now().naive_utc())
-                    .execute(&pool_clone)
-                    .await {
-                        log_error(&format!("[add_product_to_service] ❌ [ASYNC] Erreur insertion URL media produit {} (index {}): {}", product_id_clone, product_index_clone, e));
-                    } else {
-                        log_info(&format!("[add_product_to_service] ✅ [ASYNC] URL image {} sauvegardée pour produit {} (index: {})", image_index, product_id_clone, product_index_clone));
-                    }
-                } else if is_probable_base64(&image_data_clone) {
-                    // Base64: traiter normalement avec upload/téléchargement
-                    log_info(&format!("[add_product_to_service] 📦 [ASYNC] Image {} est base64, traitement avec upload...", image_index));
-                    
-                    match process_single_image_for_product(
-                        &storage_root_clone,
-                        service_id_clone,
-                        &product_id_clone,
-                        product_index_clone,
-                        image_index,
-                        &image_data_clone,
-                        media_storage_clone,
-                    ).await {
-                        Ok(Some(processed)) => {
-                            // Insérer dans la table media
-                            if let Err(e) = sqlx::query(
-                                r#"
-                                INSERT INTO media (
-                                    service_id, product_id, product_index, type, path,
-                                    is_main_image, display_order, uploaded_at,
-                                    image_signature, image_hash, image_metadata
-                                )
-                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                                ON CONFLICT DO NOTHING
-                                "#
-                            )
-                            .bind(service_id_clone)
-                            .bind(&product_id_clone)
-                            .bind(product_index_clone as i32)
-                            .bind("image")
-                            .bind(&processed.file_path)
-                            .bind(is_main)
-                            .bind(image_index as i32)
-                            .bind(Utc::now().naive_utc())
-                            .bind(&processed.image_signature)
-                            .bind(&processed.image_hash)
-                            .bind(&processed.image_metadata)
-                            .execute(&pool_clone)
-                            .await {
-                                log_error(&format!("[add_product_to_service] ❌ [ASYNC] Erreur insertion media produit {} (index {}): {}", product_id_clone, product_index_clone, e));
-                            } else {
-                                log_info(&format!("[add_product_to_service] ✅ [ASYNC] Image {} sauvegardée pour produit {} (index: {})", image_index, product_id_clone, product_index_clone));
-                            }
-                        }
-                        Ok(None) => {
-                            log_info(&format!("[add_product_to_service] ⚠️ [ASYNC] Image {} ignorée pour produit {} (format non supporté)", image_index, product_id_clone));
-                        }
-                        Err(e) => {
-                            log_error(&format!("[add_product_to_service] ❌ [ASYNC] Erreur traitement image {} pour produit {}: {}", image_index, product_id_clone, e));
-                        }
-                    }
-                } else {
-                    log_warn(&format!("[add_product_to_service] ⚠️ [ASYNC] Image {} ignorée (ni URL ni base64 valide): {}", image_index, image_data_clone));
-                }
-            }
-            
-            log_info(&format!("[add_product_to_service] ✅ [ASYNC] Traitement des images terminé pour produit {} (index: {})", product_id, product_index_clone));
-        });
-        
-        log_info(&format!("[add_product_to_service] ✅ Traitement de {} image(s) lancé en arrière-plan pour le produit (index: {})", images_to_process.len(), product_index));
-    }
-    
-    // ✅ OPTIMISÉ 2025-12-31: Construire service_data minimal pour indexation
-    // Les données nécessaires sont déjà retournées par la fonction PostgreSQL v2
-    // Plus besoin de faire un SELECT complet du JSONB (gain de 1-3 secondes !)
-    let service_data_for_autocomplete = json!({
-        "produits": produits_data_for_indexation,
-        "lieu_produit": lieu_data_for_indexation
-    });
-    
-    // ✅ CRITIQUE 2025-12-23: Mettre à jour autocomplete_characteristics SYNCHRONEMENT pour garantir l'indexation
-    // La recherche utilise autocomplete_characteristics, donc si on ne met pas à jour cette table, le produit ne sera pas trouvé !
-    // PROBLÈME IDENTIFIÉ: L'indexation asynchrone (tokio::spawn) peut échouer silencieusement, rendant les produits introuvables
-    // SOLUTION: Indexation synchrone avec timeout pour éviter de bloquer trop longtemps
-    // ✅ OPTIMISÉ 2025-12-31: Indexation avec timeout réduit (max 3s) car données déjà préparées
-    // Si l'indexation échoue, on log l'erreur mais on ne fait pas échouer la requête (le produit est déjà dans services.data)
-    let pool_for_autocomplete = state.pg.clone();
-    let indexation_result = tokio::time::timeout(
-        std::time::Duration::from_secs(3),  // ✅ RÉDUIT de 5s à 3s car données déjà préparées
-        save_autocomplete_combination(&pool_for_autocomplete, service_id, &service_data_for_autocomplete)
-    ).await;
-        
-    match indexation_result {
-        Ok(Ok(_)) => {
-            log_info(&format!("[add_product_to_service] ✅ autocomplete_characteristics mis à jour pour service {} (produit indexé pour recherche)", service_id));
-        }
-        Ok(Err(e)) => {
-            log_error(&format!("[add_product_to_service] ⚠️ Erreur mise à jour autocomplete_characteristics (produit toujours dans services.data mais non indexé): {}", e));
-            // Ne pas faire échouer la requête si autocomplete échoue, le produit est déjà dans services.data
-            // MAIS il ne sera pas trouvable dans la recherche jusqu'à ce que autocomplete soit mis à jour
-        }
-        Err(_) => {
-            log_error(&format!("[add_product_to_service] ⚠️ Timeout indexation autocomplete_characteristics pour service {} (produit toujours dans services.data mais non indexé)", service_id));
-            // Timeout après 5s - on continue quand même car le produit est déjà dans services.data
+            log_error(&format!("[old_add_product_logic] Erreur: {}", error_msg));
+            Err(AppError::Internal(format!("Erreur ajout produit: {}", error_msg)))
         }
     }
-    
-    // ✅ Créer notification
-    let _ = crate::services::notification_service::create_notification(
-        &state.pg,
-        user.id,
-        crate::services::notification_service::NotificationType::ProductAdded,
-        "✅ Produit ajouté".to_string(),
-        format!("Votre produit #{} a été ajouté avec succès (coût: {} FCFA).", product_index + 1, cout_ajout),
-        Some(json!({
-            "service_id": service_id,
-            "product_index": product_index,
-            "cost": cout_ajout
-        }))
-    ).await;
-    
-    Ok(Json(json!({
-        "success": true,
-        "service_id": service_id,
-        "product_index": product_index,
-        "cost": cout_ajout,
-        "message": format!("Produit ajouté avec succès (coût: {} FCFA)", cout_ajout),
-        "new_balance": new_balance
-    })))
 }
 

@@ -2498,21 +2498,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <Text style={styles.fieldLabel}>
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
-            {/* ✅ CORRIGÉ 2025-01-02: Utiliser NativeInput pour description_produit avec style amélioré pour retours à la ligne */}
+            {/* ✅ CORRIGÉ: Utiliser NativeInput pour description_produit comme les autres textarea pour permettre les retours à la ligne */}
             <NativeInput
               placeholder={field.placeholder || (isProductDescField ? "Décrivez votre produit/prestation en détail...\n\nVous pouvez utiliser plusieurs lignes pour une description complète." : field.placeholder)}
               value={valeursFormulaire[field.name] || ''}
               onChangeText={(text) => handleFieldChange(field.name, text)}
-              multiline={true}
+              multiline
               minLines={linesMinimum}
-              inputStyle={isProductDescField ? {
-                ...styles.productDescriptionText,
-                textAlignVertical: 'top', // ✅ CRITIQUE: Assure les retours à la ligne (début en haut)
-              } : (multiline ? { textAlignVertical: 'top' } : undefined)}
+              inputStyle={isProductDescField ? styles.productDescriptionText : undefined}
               onContentSizeChange={(width, height) => {
                 const lineHeight = 24;
                 const computedLines = Math.max(linesMinimum, Math.ceil(height / lineHeight));
-                const minHeight = Math.max(isProductDescField ? 200 : 200, computedLines * lineHeight + 32);
+                const minHeight = Math.max(isProductDescField ? 320 : 200, computedLines * lineHeight + 32);
                 setDynamicTextareaHeights(prev => ({
                   ...prev,
                   [field.name]: minHeight
@@ -2521,13 +2518,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               style={[
                 styles.fieldInput,
                 styles.textareaInput,
-                // ✅ CORRIGÉ 2025-01-02: Appliquer productDescriptionInputEnhanced en dernier pour qu'il écrase les autres styles
                 isProductDescField && styles.productDescriptionInputEnhanced,
-                // ✅ Appliquer la hauteur dynamique en dernier pour qu'elle soit prioritaire
-                dynamicTextareaHeights[field.name] ? { 
-                  minHeight: Math.max(200, dynamicTextareaHeights[field.name]), // ✅ Minimum 200px
-                  maxHeight: 500 // ✅ Limiter la hauteur maximale
-                } : null
+                dynamicTextareaHeights[field.name] ? { minHeight: dynamicTextareaHeights[field.name] } : null
               ]}
             />
           </View>
@@ -5614,20 +5606,22 @@ const styles = StyleSheet.create({
   textareaInput: {
     minHeight: 200,
     paddingTop: 14,
-    textAlignVertical: 'top', // ✅ CORRECTION: Assure les retours à la ligne
   },
   productDescriptionInput: {
     minHeight: 240,
     lineHeight: 22,
   },
-  // ✅ CORRIGÉ 2025-01-02: Style amélioré pour description_produit avec hauteur suffisante
+  // ✅ NOUVEAU: Style amélioré pour description_produit avec hauteur augmentée
   productDescriptionInputEnhanced: {
-    minHeight: 200, // ✅ Hauteur minimale pour afficher plusieurs lignes (identique à textareaInput)
-    maxHeight: 500, // ✅ Hauteur maximale pour limiter la croissance
-    paddingTop: 14, // ✅ Padding en haut
-    paddingBottom: 14, // ✅ Padding en bas
-    paddingVertical: 0, // ✅ CORRIGÉ: Annuler le paddingVertical de fieldInput pour utiliser paddingTop/Bottom
-    // Note: textAlignVertical doit être dans inputStyle (pas dans style du conteneur)
+    minHeight: 320, // ✅ AUGMENTÉ: 320px pour plus d'espace de saisie
+    maxHeight: 500, // ✅ AUGMENTÉ: Hauteur maximale augmentée pour permettre plus de contenu
+    paddingTop: 14, // ✅ Aligné avec textareaInput
+    paddingBottom: 14, // ✅ NOUVEAU: Padding en bas pour meilleur espacement
+    paddingVertical: undefined, // ✅ Surcharger paddingVertical de fieldInput pour utiliser paddingTop/Bottom
+    // ✅ Note: paddingHorizontal hérité de fieldInput (16px)
+    textAlignVertical: 'top', // ✅ Assure que le texte commence en haut
+    lineHeight: 24, // ✅ AUGMENTÉ: Espacement entre les lignes pour meilleure lisibilité
+    fontSize: 15, // ✅ Légèrement plus grand pour meilleure lisibilité
   },
   productDescriptionText: {
     lineHeight: 24, // ✅ AUGMENTÉ: Aligné avec productDescriptionInputEnhanced

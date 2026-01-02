@@ -139,7 +139,7 @@ impl ProductCreationQueueService {
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération jobs: {}", e)))?;
 
-        let jobs: Result<Vec<_>, _> = rows
+        let jobs: Result<Vec<ProductCreationJob>, sqlx::Error> = rows
             .into_iter()
             .map(|row| {
                 Ok(ProductCreationJob {
@@ -161,7 +161,7 @@ impl ProductCreationQueueService {
             })
             .collect();
 
-        Ok(jobs?)
+        Ok(jobs.map_err(|e| AppError::Internal(format!("Erreur parsing jobs: {}", e)))?)
     }
 
     /// Marque un job comme en cours de traitement
@@ -250,7 +250,7 @@ impl ProductCreationQueueService {
 
         // Traiter le job
         match process_product_creation(
-            &*self.pool,
+            self.pool.clone(),
             job.service_id,
             job.user_id,
             &job.product_data,
