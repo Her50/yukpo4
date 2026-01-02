@@ -607,7 +607,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ 2025-12-30: Créer les index MongoDB pour optimiser les requêtes /api/services/{id}/stats et /api/services/{id}/reviews
     // ✅ NOUVEAU 2026-01-02: Optimisation critique add_product_to_service_jsonb_v2
-    match yukpomnang_backend::migrations::auto_migrate::ensure_add_product_optimization(&pg_pool).await {
+    match yukpomnang_backend::migrations::auto_migrate::ensure_add_product_optimization(&app_state.pg).await {
         Ok(_) => {
             log::info!("✅ Optimisation add_product_to_service_jsonb_v2 appliquée");
         }
