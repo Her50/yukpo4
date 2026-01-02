@@ -9,12 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
-use std::path::PathBuf;
-use chrono::Utc;
 use crate::services::creer_service::{
-    save_autocomplete_combination, 
     clean_media_recursive_final,
-    process_single_image_for_product,
 };
 
 #[derive(Debug, Deserialize)]
@@ -39,9 +35,9 @@ pub async fn process_product_creation(
     service_id: i32,
     user_id: i32,
     product_data: &Value,
-    images_to_process: &[String],
+    _images_to_process: &[String],
 ) -> AppResult<Value> {
-    use crate::utils::log::{log_info, log_error};
+    use crate::utils::log::log_info;
     
     log_info(&format!("[process_product_creation] 🔄 Traitement produit pour service {} (user_id: {})", service_id, user_id));
     
@@ -104,8 +100,6 @@ pub async fn add_product_to_service(
     use crate::utils::log::{log_info, log_error, log_warn};
     
     log_info(&format!("[add_product_to_service] 📦 Ajout d'un produit au service {} (user_id: {})", service_id, user.id));
-    
-    let start_time = std::time::Instant::now();
     
     // ✅ Vérification : L'utilisateur est-il le propriétaire du service ? (avec retry)
     // ✅ NOUVEAU 2026-01-02: Utiliser le cache Redis pour les services volumineux
@@ -359,7 +353,6 @@ pub async fn get_product_creation_status(
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
     Path((service_id, job_id)): Path<(i32, i64)>,
 ) -> AppResult<Json<Value>> {
-    use crate::utils::log::log_info;
     use crate::services::product_creation_queue::ProductCreationQueueService;
     
     let queue_service = ProductCreationQueueService::new(Arc::new(state.pg.clone()));
@@ -397,9 +390,9 @@ pub async fn get_product_creation_status(
 async fn _old_add_product_logic(
     state: Arc<AppState>,
     service_id: i32,
-    user_id: i32,
+    _user_id: i32,
     product_data: Value,
-    images_to_process: Vec<String>,
+    _images_to_process: Vec<String>,
 ) -> AppResult<Value> {
     let pool = state.pg.clone();
     let product_json_value = serde_json::to_value(&product_data)

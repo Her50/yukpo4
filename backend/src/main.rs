@@ -701,7 +701,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ NOUVEAU 2026-01-02: Démarrer le worker de la queue de création de produits
     use yukpomnang_backend::services::product_creation_queue::ProductCreationQueueService;
-    let queue_service = Arc::new(ProductCreationQueueService::new(app_state.pg.clone()));
+    let queue_service = Arc::new(ProductCreationQueueService::new(Arc::new(app_state.pg.clone())));
     queue_service.clone().start_worker();
     log::info!("✅ Worker de création de produits démarré");
 
