@@ -213,15 +213,6 @@ impl ImmersiveOrchestrator {
         scenes.push(intro_scene);
         increment_template(&mut template_breakdown, "IntroPulse");
 
-        // ✅ NOUVEAU: Itérateur pour les médias produits disponibles
-        let mut media_iter = request.available_media.iter().cycle();
-        let mut media_used = 0usize;
-        
-        info!(
-            "[ImmersiveOrchestrator] 📊 Médias disponibles pour timeline: {} média(x)",
-            request.available_media.len()
-        );
-
         // Content scenes
         for (idx, line) in request.script_outline.iter().enumerate() {
             let scene_index = idx + 1;
@@ -410,6 +401,9 @@ impl ImmersiveOrchestrator {
             current_frame += scene.duration_in_frames;
         }
 
+        // ✅ CORRIGÉ: Cloner scenes avant de le passer à ImmersiveTimeline pour éviter l'erreur de borrow
+        let scenes_clone = scenes.clone();
+        
         let timeline = ImmersiveTimeline {
             fps,
             width: 1080,
@@ -434,7 +428,7 @@ impl ImmersiveOrchestrator {
         );
         
         // ✅ NOUVEAU: Validation - vérifier que toutes les scènes ont au moins un média
-        let scenes_with_media = scenes.iter()
+        let scenes_with_media = scenes_clone.iter()
             .filter(|scene| {
                 scene.assets.video_url.is_some() 
                     || scene.assets.background_url.is_some() 
@@ -442,11 +436,11 @@ impl ImmersiveOrchestrator {
             })
             .count();
         
-        if scenes_with_media < scenes.len() {
-            let missing_count = scenes.len() - scenes_with_media;
+        if scenes_with_media < scenes_clone.len() {
+            let missing_count = scenes_clone.len() - scenes_with_media;
             warn!(
                 "[ImmersiveOrchestrator] ⚠️ {} scène(s) sans média sur {} total",
-                missing_count, scenes.len()
+                missing_count, scenes_clone.len()
             );
             warnings.push(format!(
                 "{} scène(s) générée(s) sans média. Veuillez ajouter des images/vidéos au produit.",
@@ -455,7 +449,7 @@ impl ImmersiveOrchestrator {
         } else {
             info!(
                 "[ImmersiveOrchestrator] ✅ Toutes les {} scènes ont au moins un média assigné",
-                scenes.len()
+                scenes_clone.len()
             );
         }
 

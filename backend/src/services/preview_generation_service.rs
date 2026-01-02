@@ -181,28 +181,12 @@ async fn enrich_timeline_with_media_urls(
                         }
                         Ok(None) => {
                             warn!("[QuickPreview] ⚠️ Media ID {} non trouvé dans la DB, scène ignorée", media_id);
-                            // ✅ CORRIGÉ: Si media_id n'existe pas, essayer de trouver un média par défaut ou utiliser assets
-                            // Vérifier si la scène a des assets avec des URLs
-                            if let Some(assets) = &scene.assets {
-                                if let Some(video_url) = &assets.video_url {
-                                    if !video_url.trim().is_empty() {
-                                        info!("[QuickPreview] ✅ Utilisation assets.video_url pour media_id {} manquant", media_id);
-                                        enriched_scenes.push(TimelineScene {
-                                            media_url: Some(video_url.clone()),
-                                            ..scene
-                                        });
-                                        continue;
-                                    }
-                                }
-                                if let Some(image_url) = &assets.image_url {
-                                    if !image_url.trim().is_empty() {
-                                        info!("[QuickPreview] ✅ Utilisation assets.image_url pour media_id {} manquant", media_id);
-                                        enriched_scenes.push(TimelineScene {
-                                            media_url: Some(image_url.clone()),
-                                            ..scene
-                                        });
-                                        continue;
-                                    }
+                            // ✅ CORRIGÉ: Si media_id n'existe pas, utiliser media_url directement s'il est disponible
+                            if let Some(media_url) = &scene.media_url {
+                                if !media_url.trim().is_empty() {
+                                    info!("[QuickPreview] ✅ Utilisation media_url existant pour media_id {} manquant", media_id);
+                                    enriched_scenes.push(scene);
+                                    continue;
                                 }
                             }
                             // Si aucun fallback, on garde la scène mais sans media_url (sera filtrée plus tard)
