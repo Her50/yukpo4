@@ -489,3 +489,4 @@ for service in services_without_index {
 
 **Action immédiate** : Vérifier et ré-indexer les produits manquants, puis implémenter l'index inversé.
 
+

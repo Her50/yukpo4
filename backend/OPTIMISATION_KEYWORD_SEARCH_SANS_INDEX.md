@@ -362,3 +362,4 @@ LIMIT 50
 
 Dans `backend/src/services/native_search_service.rs`, remplacer la requête SQL ligne 1112-1342 par la version optimisée ci-dessus.
 
+

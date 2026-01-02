@@ -132,3 +132,4 @@ services.forEach(service => {
 
 Aucune migration nécessaire ! Les hooks existants continuent de fonctionner exactement comme avant. Vous pouvez progressivement adopter `useServicesBatchData` dans les écrans qui affichent plusieurs services (comme `ResultatBesoinScreen`).
 
+

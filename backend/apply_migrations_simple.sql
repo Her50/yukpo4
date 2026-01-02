@@ -9,3 +9,4 @@
 
 \echo '✅ Toutes les migrations appliquées!'
 
+

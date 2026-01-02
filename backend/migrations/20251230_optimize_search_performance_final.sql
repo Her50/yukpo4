@@ -50,3 +50,4 @@ BEGIN
     RAISE NOTICE '✅ Migration optimisation performance recherche appliquée avec succès';
 END $$;
 
+

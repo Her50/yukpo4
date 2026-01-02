@@ -413,3 +413,4 @@ L'approche recommandée :
 
 Cette approche est **optimale pour des centaines de millions de produits** car elle utilise les index GIN de PostgreSQL de manière efficace.
 
+

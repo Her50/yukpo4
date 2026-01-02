@@ -252,3 +252,4 @@ const attachMediaField = (fieldName: string, values: any[], options: { typeDonne
 3. **Ordre des opérations** : Upload doit se faire AVANT la construction du payload final
 4. **Types de médias** : Gérer tous les types (images, vidéos, audios, documents, excel, logo, banner)
 
+

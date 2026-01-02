@@ -455,6 +455,190 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
         },
     );
 
+    // ✅ NOUVEAU 2026-01-02: Ajouter effet "spin" (rotation 360°)
+    m.insert(
+        "spin",
+        EffectDefinition {
+            ffmpeg_filter: "rotate=PI*2*t/3:fillcolor=black@0:ow=iw:oh=ih".to_string(),
+            description: "Rotation complète 360° pour effet dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "rotation",
+        EffectDefinition {
+            ffmpeg_filter: "rotate=PI*2*t/3:fillcolor=black@0:ow=iw:oh=ih".to_string(),
+            description: "Rotation complète 360° pour effet dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "tourner",
+        EffectDefinition {
+            ffmpeg_filter: "rotate=PI*2*t/3:fillcolor=black@0:ow=iw:oh=ih".to_string(),
+            description: "Rotation complète 360° pour effet dynamique".to_string(),
+        },
+    );
+
+    // ✅ NOUVEAU 2026-01-02: Ajouter effet "shake" (tremblement)
+    m.insert(
+        "shake",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw-20:ih-20:'20*sin(10*t)':'20*cos(10*t)'".to_string(),
+            description: "Tremblement pour effet d'impact ou d'urgence".to_string(),
+        },
+    );
+    m.insert(
+        "tremblement",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw-20:ih-20:'20*sin(10*t)':'20*cos(10*t)'".to_string(),
+            description: "Tremblement pour effet d'impact ou d'urgence".to_string(),
+        },
+    );
+    m.insert(
+        "vibration",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw-20:ih-20:'20*sin(10*t)':'20*cos(10*t)'".to_string(),
+            description: "Tremblement pour effet d'impact ou d'urgence".to_string(),
+        },
+    );
+
+    // ✅ NOUVEAU 2026-01-02: Ajouter effet "sepia" (photo ancienne)
+    m.insert(
+        "sepia",
+        EffectDefinition {
+            ffmpeg_filter: "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131".to_string(),
+            description: "Effet sépia pour ambiance vintage et nostalgique".to_string(),
+        },
+    );
+    m.insert(
+        "sépia",
+        EffectDefinition {
+            ffmpeg_filter: "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131".to_string(),
+            description: "Effet sépia pour ambiance vintage et nostalgique".to_string(),
+        },
+    );
+    m.insert(
+        "ancien",
+        EffectDefinition {
+            ffmpeg_filter: "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131".to_string(),
+            description: "Effet sépia pour ambiance vintage et nostalgique".to_string(),
+        },
+    );
+
+    // ✅ NOUVEAU 2026-01-02: Ajouter effet "hdr" (contraste élevé)
+    m.insert(
+        "hdr",
+        EffectDefinition {
+            ffmpeg_filter: "eq=contrast=1.3:brightness=0.05:saturation=1.2".to_string(),
+            description: "Effet HDR avec contraste et saturation élevés".to_string(),
+        },
+    );
+    m.insert(
+        "high contrast",
+        EffectDefinition {
+            ffmpeg_filter: "eq=contrast=1.3:brightness=0.05:saturation=1.2".to_string(),
+            description: "Effet HDR avec contraste et saturation élevés".to_string(),
+        },
+    );
+    m.insert(
+        "contraste élevé",
+        EffectDefinition {
+            ffmpeg_filter: "eq=contrast=1.3:brightness=0.05:saturation=1.2".to_string(),
+            description: "Effet HDR avec contraste et saturation élevés".to_string(),
+        },
+    );
+
+    // ✅ NOUVEAU 2026-01-02: Ajouter effet "fisheye" (lentille grand angle)
+    m.insert(
+        "fisheye",
+        EffectDefinition {
+            ffmpeg_filter: "vignette=angle=PI/2".to_string(),
+            description: "Effet fisheye pour perspective déformée et créative".to_string(),
+        },
+    );
+    m.insert(
+        "grand angle",
+        EffectDefinition {
+            ffmpeg_filter: "vignette=angle=PI/2".to_string(),
+            description: "Effet fisheye pour perspective déformée et créative".to_string(),
+        },
+    );
+    m.insert(
+        "lentille",
+        EffectDefinition {
+            ffmpeg_filter: "vignette=angle=PI/2".to_string(),
+            description: "Effet fisheye pour perspective déformée et créative".to_string(),
+        },
+    );
+
+    // ✅ NOUVEAU 2026-01-02: Ajouter effet "pulse zoom" (zoom pulsant)
+    m.insert(
+        "pulse zoom",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='1+0.3*sin(2*PI*t/2)':d=60".to_string(),
+            description: "Zoom pulsant pour effet rythmé et dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "pulsezoom",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='1+0.3*sin(2*PI*t/2)':d=60".to_string(),
+            description: "Zoom pulsant pour effet rythmé et dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "zoom pulsant",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='1+0.3*sin(2*PI*t/2)':d=60".to_string(),
+            description: "Zoom pulsant pour effet rythmé et dynamique".to_string(),
+        },
+    );
+
+    // ✅ NOUVEAU 2026-01-02: Ajouter effet "high contrast bw" (noir & blanc avec contraste)
+    m.insert(
+        "high contrast bw",
+        EffectDefinition {
+            ffmpeg_filter: "hue=s=0,eq=contrast=1.5".to_string(),
+            description: "Noir et blanc avec contraste élevé pour effet dramatique".to_string(),
+        },
+    );
+    m.insert(
+        "highcontrastbw",
+        EffectDefinition {
+            ffmpeg_filter: "hue=s=0,eq=contrast=1.5".to_string(),
+            description: "Noir et blanc avec contraste élevé pour effet dramatique".to_string(),
+        },
+    );
+    m.insert(
+        "noir blanc contraste",
+        EffectDefinition {
+            ffmpeg_filter: "hue=s=0,eq=contrast=1.5".to_string(),
+            description: "Noir et blanc avec contraste élevé pour effet dramatique".to_string(),
+        },
+    );
+
+    // ✅ NOUVEAU 2026-01-02: Ajouter effet "vertical mirror" (miroir vertical)
+    m.insert(
+        "vertical mirror",
+        EffectDefinition {
+            ffmpeg_filter: "vflip".to_string(),
+            description: "Effet miroir vertical pour symétrie visuelle".to_string(),
+        },
+    );
+    m.insert(
+        "verticalmirror",
+        EffectDefinition {
+            ffmpeg_filter: "vflip".to_string(),
+            description: "Effet miroir vertical pour symétrie visuelle".to_string(),
+        },
+    );
+    m.insert(
+        "miroir vertical",
+        EffectDefinition {
+            ffmpeg_filter: "vflip".to_string(),
+            description: "Effet miroir vertical pour symétrie visuelle".to_string(),
+        },
+    );
+
     m
 }
 
@@ -470,6 +654,7 @@ fn normalize_effect_name(effect_name: &str) -> String {
         ("zoom rapide", "zoom rapide"),
         ("zoom dynamique", "zoom dynamique"),
         ("ralenti", "slow"),
+        ("ralenti sur mouvement", "slow motion"), // ✅ CORRIGÉ: Ajout mapping "ralenti sur mouvement"
         ("slow motion", "slow motion"),
         ("slowmotion", "slow motion"),
         ("ralenti dramatique", "ralenti dramatique"),
@@ -489,12 +674,38 @@ fn normalize_effect_name(effect_name: &str) -> String {
         ("speed-ramp", "speed ramp"),
         ("speedramp", "speed ramp"),
         ("glitch effect", "glitch"),
+        ("effet glitch", "glitch"), // ✅ CORRIGÉ: Ajout mapping "effet glitch"
         ("glitch", "glitch"),
         ("overlay élégant", "overlay élégant"),
         ("overlay", "overlay"),
         ("effet miroir", "effet miroir"),
         ("miroir", "effet miroir"),
         ("mirror", "effet miroir"),
+        // ✅ NOUVEAU 2026-01-02: Mappings pour les nouveaux effets
+        ("spin", "spin"),
+        ("rotation", "spin"),
+        ("tourner", "spin"),
+        ("shake", "shake"),
+        ("tremblement", "shake"),
+        ("vibration", "shake"),
+        ("sepia", "sepia"),
+        ("sépia", "sepia"),
+        ("ancien", "sepia"),
+        ("hdr", "hdr"),
+        ("high contrast", "hdr"),
+        ("contraste élevé", "hdr"),
+        ("fisheye", "fisheye"),
+        ("grand angle", "fisheye"),
+        ("lentille", "fisheye"),
+        ("pulse zoom", "pulse zoom"),
+        ("pulsezoom", "pulse zoom"),
+        ("zoom pulsant", "pulse zoom"),
+        ("high contrast bw", "high contrast bw"),
+        ("highcontrastbw", "high contrast bw"),
+        ("noir blanc contraste", "high contrast bw"),
+        ("vertical mirror", "vertical mirror"),
+        ("verticalmirror", "vertical mirror"),
+        ("miroir vertical", "vertical mirror"),
     ]
     .iter()
     .cloned()

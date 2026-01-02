@@ -239,3 +239,4 @@ ORDER BY pg_relation_size(indexrelid) DESC;
 **Auteur** : Auto (Cursor AI)  
 **Impact** : Critique - Performance recherche produits
 
+

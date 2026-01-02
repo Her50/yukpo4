@@ -64,6 +64,8 @@ mobile/web-build/
 
 # Additional build artifacts
 **/dist/
+# ✅ EXCEPTION: video-renderer/dist/ DOIT être commité pour déploiement Render.com
+!video-renderer/dist/
 **/build/
 **/.expo/
 **/.expo-shared/

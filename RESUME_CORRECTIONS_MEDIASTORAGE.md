@@ -139,3 +139,4 @@ SELECT path FROM media WHERE service_id = <id>;
 **Date** : 27 Décembre 2025  
 **Statut** : ✅ Corrections appliquées, tests à effectuer
 
+

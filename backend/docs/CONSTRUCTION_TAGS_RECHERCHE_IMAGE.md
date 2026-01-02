@@ -284,3 +284,4 @@ Si moins de 3 tags sont extraits, un warning est généré :
 4. **Déduplication** : Éviter les doublons dans le tableau de tags
 5. **Validation** : Vérifier que les tags ne sont pas vides avant la recherche SQL
 
+

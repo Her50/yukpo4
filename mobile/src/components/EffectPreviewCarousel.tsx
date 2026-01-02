@@ -31,6 +31,18 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
     const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
 
     useEffect(() => {
+        // ✅ CORRIGÉ: Valider sampleMediaUrl avant de générer les previews
+        if (!sampleMediaUrl || sampleMediaUrl.trim() === '') {
+            console.warn('[EffectPreviewCarousel] ⚠️ sampleMediaUrl est vide, impossible de générer les previews');
+            return;
+        }
+
+        // ✅ CORRIGÉ: Vérifier que l'URL est valide
+        if (!sampleMediaUrl.startsWith('http://') && !sampleMediaUrl.startsWith('https://') && !sampleMediaUrl.startsWith('data:')) {
+            console.warn('[EffectPreviewCarousel] ⚠️ sampleMediaUrl invalide:', sampleMediaUrl);
+            return;
+        }
+
         // Générer les previews pour tous les effets
         const generatePreviews = async () => {
             for (const effectName of effectNames) {
@@ -50,10 +62,11 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
                         const errorStatus = error?.status || error?.response?.status;
                         const errorMessage = error?.message || error?.response?.data?.error || 'Erreur inconnue';
                         
-                        console.error(`[EffectPreviewCarousel] Erreur preview ${effectName}:`, {
+                        console.error(`[EffectPreviewCarousel] ❌ Erreur preview ${effectName}:`, {
                             message: errorMessage,
                             status: errorStatus,
                             response: error?.response?.data,
+                            sampleMediaUrl: sampleMediaUrl.substring(0, 100), // Logger les 100 premiers caractères pour debug
                         });
                         
                         // ✅ NOUVEAU: Logger spécifiquement les erreurs 413 pour diagnostic
@@ -61,7 +74,13 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
                             console.error(`[EffectPreviewCarousel] ❌ Erreur 413 (Payload Too Large) pour ${effectName}. Le fichier média est peut-être trop volumineux.`);
                         }
                         
+                        // ✅ NOUVEAU: Logger spécifiquement les erreurs 500 pour diagnostic
+                        if (errorStatus === 500) {
+                            console.error(`[EffectPreviewCarousel] ❌ Erreur 500 (Serveur) pour ${effectName}. Vérifiez les logs backend.`);
+                        }
+                        
                         // Ne pas bloquer l'interface, juste logger l'erreur
+                        // L'erreur sera affichée dans l'UI via le bloc `!preview`
                     } finally {
                         setLoading(prev => {
                             const newSet = new Set(prev);
@@ -74,6 +93,8 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
         };
 
         generatePreviews();
+        // ✅ NOTE: previews et loading ne sont pas dans les dépendances car ils sont mis à jour dans le useEffect
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [effectNames, sampleMediaUrl]);
 
     return (

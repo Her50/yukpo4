@@ -194,3 +194,4 @@ Si la recherche est toujours lente après simplification :
 **Approche** : Simplification au lieu d'ajouter des index  
 **Résultat attendu** : 18s → <500ms (97% plus rapide)
 
+

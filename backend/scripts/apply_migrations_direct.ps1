@@ -115,3 +115,4 @@ Write-Host "`n💡 Utilisation des fonctions existantes du backend..." -Foregrou
 Write-Host "`n✅ Les migrations seront appliquées au prochain démarrage du backend" -ForegroundColor Green
 Write-Host "   OU vous pouvez les appliquer manuellement avec psql" -ForegroundColor Yellow
 
+

@@ -289,3 +289,4 @@ WHERE p.is_on_duty_now = true
 **Migration**: `20251224_optimize_slow_queries_critical.sql`
 
 
+

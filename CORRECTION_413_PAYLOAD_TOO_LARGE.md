@@ -47,3 +47,4 @@ Le payload de 2.6 MB devrait maintenant passer sans problème. Si l'erreur persi
 2. La configuration du serveur web (si derrière un proxy)
 3. Les logs pour voir si c'est Axum ou un autre composant qui rejette
 
+

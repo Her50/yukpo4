@@ -42,7 +42,7 @@ pub async fn add_product_to_service(
     Path(service_id): Path<i32>,
     Json(request): Json<AddProductRequest>,
 ) -> AppResult<Json<Value>> {
-    use crate::utils::log::{log_info, log_error};
+    use crate::utils::log::{log_info, log_error, log_warn};
     
     log_info(&format!("[add_product_to_service] 📦 Ajout d'un produit au service {} (user_id: {})", service_id, user.id));
     
@@ -467,6 +467,7 @@ pub async fn add_product_to_service(
     // ✅ CRITIQUE 2025-12-31: Traiter les médias du produit EN ARRIÈRE-PLAN (asynchrone)
     // Le traitement des images peut prendre 20-40s (upload Wasabi), donc on le fait après avoir retourné la réponse
     // Cela évite les timeouts de 60s+ et améliore l'expérience utilisateur
+    // ✅ CORRIGÉ 2026-01-01: Séparer URLs déjà uploadées (sauvegarde directe) des base64 (traitement)
     if !images_to_process.is_empty() {
         let images_to_process_clone = images_to_process.clone();
         let product_data_cleaned_clone = product_data_cleaned.clone();
@@ -481,6 +482,8 @@ pub async fn add_product_to_service(
         
         // ✅ NOUVEAU: Traiter les images en arrière-plan (tokio::spawn)
         tokio::spawn(async move {
+            use crate::services::creer_service::{is_url, is_probable_base64};
+            
             log_info(&format!("[add_product_to_service] 🖼️ [ASYNC] Traitement de {} image(s) pour le produit (index: {})", images_to_process_clone.len(), product_index_clone));
             
             let product_id = product_data_cleaned_clone
@@ -490,73 +493,100 @@ pub async fn add_product_to_service(
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| format!("prod_{}", product_index_clone));
             
-            // ✅ OPTIMISÉ 2025-12-30: Traiter les images EN PARALLÈLE au lieu de séquentiellement
-            let image_processing_futures: Vec<_> = images_to_process_clone.iter()
-                .enumerate()
-                .filter(|(_, image_data)| !image_data.is_empty())
-                .map(|(image_index, image_data)| {
-                    let storage_root_clone = storage_root_clone.clone();
-                    let product_id_clone = product_id.clone();
-                    let media_storage_clone = media_storage_clone.clone();
+            // ✅ CORRIGÉ 2026-01-01: Séparer URLs (sauvegarde directe) et base64 (traitement)
+            for (image_index, image_data) in images_to_process_clone.iter().enumerate() {
+                if image_data.is_empty() {
+                    continue;
+                }
+                
+                let is_main = image_index == 0;
+                let image_data_clone = image_data.clone();
+                let storage_root_clone = storage_root_clone.clone();
+                let product_id_clone = product_id.clone();
+                let media_storage_clone = media_storage_clone.clone();
+                
+                // Si c'est une URL déjà uploadée, sauvegarder directement dans la table media
+                if is_url(&image_data_clone) {
+                    log_info(&format!("[add_product_to_service] 🔗 [ASYNC] Image {} est une URL, sauvegarde directe dans media: {}", image_index, image_data_clone));
                     
-                    async move {
-                        let result = process_single_image_for_product(
-                            &storage_root_clone,
-                            service_id_clone,
-                            &product_id_clone,
-                            product_index_clone,
-                            image_index,
-                            image_data,
-                            media_storage_clone,
-                        ).await;
-                        
-                        (image_index, result)
-                    }
-                })
-                .collect();
-            
-            // Traiter toutes les images en parallèle
-            let processing_results = join_all(image_processing_futures).await;
-            
-            // Insérer les résultats dans la DB
-            for (image_index, result) in processing_results {
-                match result {
-                    Ok(Some(processed)) => {
-                        // Insérer dans la table media
-                        if let Err(e) = sqlx::query(
-                            r#"
-                            INSERT INTO media (
-                                service_id, product_id, product_index, type, path,
-                                is_main_image, display_order, uploaded_at,
-                                image_signature, image_hash, image_metadata
-                            )
-                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                            "#
+                    // Sauvegarder l'URL directement dans la table media
+                    if let Err(e) = sqlx::query(
+                        r#"
+                        INSERT INTO media (
+                            service_id, product_id, product_index, type, path,
+                            is_main_image, display_order, uploaded_at
                         )
-                        .bind(service_id_clone)
-                        .bind(&product_id)
-                        .bind(product_index_clone as i32)
-                        .bind("image")
-                        .bind(&processed.file_path)
-                        .bind(image_index == 0)
-                        .bind(image_index as i32)
-                        .bind(Utc::now().naive_utc())
-                        .bind(&processed.image_signature)
-                        .bind(&processed.image_hash)
-                        .bind(&processed.image_metadata)
-                        .execute(&pool_clone)
-                        .await {
-                            log_error(&format!("[add_product_to_service] ❌ [ASYNC] Erreur insertion media produit {} (index {}): {}", product_id, product_index_clone, e));
-                        } else {
-                            log_info(&format!("[add_product_to_service] ✅ [ASYNC] Image {} sauvegardée pour produit {} (index: {})", image_index, product_id, product_index_clone));
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        ON CONFLICT DO NOTHING
+                        "#
+                    )
+                    .bind(service_id_clone)
+                    .bind(&product_id_clone)
+                    .bind(product_index_clone as i32)
+                    .bind("image")
+                    .bind(&image_data_clone) // ✅ URL directement comme path
+                    .bind(is_main)
+                    .bind(image_index as i32)
+                    .bind(Utc::now().naive_utc())
+                    .execute(&pool_clone)
+                    .await {
+                        log_error(&format!("[add_product_to_service] ❌ [ASYNC] Erreur insertion URL media produit {} (index {}): {}", product_id_clone, product_index_clone, e));
+                    } else {
+                        log_info(&format!("[add_product_to_service] ✅ [ASYNC] URL image {} sauvegardée pour produit {} (index: {})", image_index, product_id_clone, product_index_clone));
+                    }
+                } else if is_probable_base64(&image_data_clone) {
+                    // Base64: traiter normalement avec upload/téléchargement
+                    log_info(&format!("[add_product_to_service] 📦 [ASYNC] Image {} est base64, traitement avec upload...", image_index));
+                    
+                    match process_single_image_for_product(
+                        &storage_root_clone,
+                        service_id_clone,
+                        &product_id_clone,
+                        product_index_clone,
+                        image_index,
+                        &image_data_clone,
+                        media_storage_clone,
+                    ).await {
+                        Ok(Some(processed)) => {
+                            // Insérer dans la table media
+                            if let Err(e) = sqlx::query(
+                                r#"
+                                INSERT INTO media (
+                                    service_id, product_id, product_index, type, path,
+                                    is_main_image, display_order, uploaded_at,
+                                    image_signature, image_hash, image_metadata
+                                )
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                                ON CONFLICT DO NOTHING
+                                "#
+                            )
+                            .bind(service_id_clone)
+                            .bind(&product_id_clone)
+                            .bind(product_index_clone as i32)
+                            .bind("image")
+                            .bind(&processed.file_path)
+                            .bind(is_main)
+                            .bind(image_index as i32)
+                            .bind(Utc::now().naive_utc())
+                            .bind(&processed.image_signature)
+                            .bind(&processed.image_hash)
+                            .bind(&processed.image_metadata)
+                            .execute(&pool_clone)
+                            .await {
+                                log_error(&format!("[add_product_to_service] ❌ [ASYNC] Erreur insertion media produit {} (index {}): {}", product_id_clone, product_index_clone, e));
+                            } else {
+                                log_info(&format!("[add_product_to_service] ✅ [ASYNC] Image {} sauvegardée pour produit {} (index: {})", image_index, product_id_clone, product_index_clone));
+                            }
+                        }
+                        Ok(None) => {
+                            log_info(&format!("[add_product_to_service] ⚠️ [ASYNC] Image {} ignorée pour produit {} (format non supporté)", image_index, product_id_clone));
+                        }
+                        Err(e) => {
+                            log_error(&format!("[add_product_to_service] ❌ [ASYNC] Erreur traitement image {} pour produit {}: {}", image_index, product_id_clone, e));
                         }
                     }
-                    Ok(None) => {
-                        log_info(&format!("[add_product_to_service] ⚠️ [ASYNC] Image {} ignorée pour produit {} (format non supporté)", image_index, product_id));
-                    }
-                    Err(e) => {
-                        log_error(&format!("[add_product_to_service] ❌ [ASYNC] Erreur traitement image {} pour produit {}: {}", image_index, product_id, e));
-                    }
+                } else {
+                    log_warn(&format!("[add_product_to_service] ⚠️ [ASYNC] Image {} ignorée (ni URL ni base64 valide): {}", image_index, image_data_clone));
                 }
             }
             

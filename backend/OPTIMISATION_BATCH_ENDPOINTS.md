@@ -208,3 +208,4 @@ curl "http://localhost:3000/api/services/batch/stats?service_ids=58,157"
 - **Meilleure scalabilité** : Performance constante même avec 10+ services
 - **Expérience utilisateur améliorée** : Chargement presque instantané
 
+

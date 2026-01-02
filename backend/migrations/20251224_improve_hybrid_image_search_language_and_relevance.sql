@@ -312,3 +312,4 @@ $$ LANGUAGE plpgsql STABLE;
 COMMENT ON FUNCTION hybrid_image_search IS 'Recherche hybride améliorée avec langue dynamique et scoring priorisant ILIKE (gestion accents) - 2025-12-24';
 
 
+

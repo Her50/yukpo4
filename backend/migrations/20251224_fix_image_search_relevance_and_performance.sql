@@ -338,3 +338,4 @@ $$ LANGUAGE plpgsql STABLE;
 COMMENT ON FUNCTION hybrid_image_search IS 'Recherche hybride améliorée avec seuil strict (150.0) et scoring priorisant correspondances exactes - 2025-12-24';
 
 
+

@@ -53,3 +53,4 @@ END $$;
 ANALYZE services;
 ANALYZE autocomplete_characteristics;
 
+

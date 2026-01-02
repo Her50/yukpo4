@@ -111,3 +111,4 @@ FROM pg_indexes
 WHERE tablename = 'autocomplete_characteristics'
 AND indexdef LIKE '%to_tsvector%';
 
+

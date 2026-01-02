@@ -184,3 +184,4 @@ Le problème principal est le **pattern N+1** où chaque service déclenche 2 re
 
 **Gain estimé** : Réduction de **12.46s à 1.8s** (85% d'amélioration) pour 3 services.
 
+

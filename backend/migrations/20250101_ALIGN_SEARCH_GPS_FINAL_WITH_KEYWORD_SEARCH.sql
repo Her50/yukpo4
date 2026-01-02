@@ -378,3 +378,4 @@ COMMENT ON FUNCTION search_services_gps_final IS
 '✅ ALIGNÉ 2025-01-01: Utilise la même logique que keyword_search_with_gps (autocomplete, produits, unaccent, similarity).
 Inclut recherche dans produits et sous-caractéristiques. Gère accents, erreurs de saisie, troncature.';
 
+

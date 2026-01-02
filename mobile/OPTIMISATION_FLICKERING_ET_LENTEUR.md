@@ -100,3 +100,4 @@ interface UltraModernServiceCardProps {
 3. Vérifier que les re-renders sont réduits (utiliser React DevTools Profiler)
 4. Vérifier que la location ne se met à jour que toutes les 30s ou si la distance change de > 50m
 
+

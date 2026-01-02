@@ -6,7 +6,7 @@ import {
   useVideoConfig
 } from 'remotion';
 
-import { ImmersiveScene } from '../types/index.js';
+import { ImmersiveScene, LocalAudioCue } from '../types/index.js';
 import { getColorGradeStyle } from '../utils/color.js';
 import { StickerLayer } from './StickerLayer.js';
 

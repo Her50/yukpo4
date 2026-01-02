@@ -6,12 +6,7 @@ import {
   useVideoConfig
 } from 'remotion';
 
-import { ImmersiveScene } from '../types/index.js';
-
-type LocalAudioCue = {
-  frameOffset: number;
-  cueType: 'impact' | 'glitch' | 'riser' | 'beat';
-};
+import { ImmersiveScene, LocalAudioCue } from '../types/index.js';
 
 type StickerLayerProps = {
   scene: ImmersiveScene;

@@ -2264,7 +2264,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // ✅ NOUVEAU 2025-11-02: Gestionnaire de média produit avec upload complet
     if (field.name === '_product_media_manager') {
       return (
-        <View key={field.name} style={styles.fieldContainer}>
+        <View key={field.name} style={[styles.fieldContainer, { overflow: 'visible' }]}>
           <Text style={styles.fieldLabel}>{field.label || '📸 Médias du produit'}</Text>
           <Text style={styles.helperText}>
             Ajoutez des photos et vidéos pour illustrer votre produit/prestation

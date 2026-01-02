@@ -250,3 +250,4 @@ La requête vectorielle prend seulement **12.4ms** mais retourne 0 résultats. S
 
 **Solution immédiate** : Implémenter les Solutions 1 et 3 pour réduire de **4.46s à ~1s**.
 
+

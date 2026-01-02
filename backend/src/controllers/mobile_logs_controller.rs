@@ -50,6 +50,82 @@ pub struct MobileLogsResponse {
     pub batch_id: String,
 }
 
+/// ✅ NOUVEAU 2026-01-02: Estimer la taille d'un payload de logs
+fn estimate_payload_size(logs: &[MobileLogEntry]) -> usize {
+    // Estimation rapide: taille JSON approximative
+    // On utilise une estimation conservatrice basée sur la taille moyenne des logs
+    logs.iter()
+        .map(|log| {
+            let message_size = log.message.len();
+            let component_size = log.component.as_ref().map(|s| s.len()).unwrap_or(0);
+            let data_size = log.data.as_ref()
+                .and_then(|d| serde_json::to_string(d).ok())
+                .map(|s| s.len())
+                .unwrap_or(0);
+            let stack_size = log.stack.as_ref().map(|s| s.len()).unwrap_or(0);
+            let timestamp_size = log.timestamp.len();
+            let user_id_size = log.user_id.as_ref().map(|s| s.len()).unwrap_or(0);
+            let device_info_size = log.device_info.as_ref()
+                .and_then(|d| serde_json::to_string(d).ok())
+                .map(|s| s.len())
+                .unwrap_or(0);
+            
+            // Taille de base pour la structure JSON (~200 bytes par log)
+            200 + message_size + component_size + data_size + stack_size 
+                + timestamp_size + user_id_size + device_info_size
+        })
+        .sum()
+}
+
+/// ✅ NOUVEAU 2026-01-02: Trouver le nombre maximal de logs qui rentrent dans la limite de taille
+/// Retourne une slice des logs qui peuvent être acceptés sans dépasser la limite
+fn find_max_logs_fitting_size(
+    logs: &[MobileLogEntry],
+    max_size_bytes: usize,
+    max_logs: usize,
+) -> &[MobileLogEntry] {
+    // Limiter d'abord par le nombre de logs
+    let logs_to_check = if logs.len() > max_logs {
+        &logs[..max_logs]
+    } else {
+        logs
+    };
+    
+    // Trouver le nombre maximal de logs qui rentrent dans la limite de taille
+    // On utilise une approche binaire pour optimiser
+    let mut left = 0;
+    let mut right = logs_to_check.len();
+    let mut best = 0;
+    
+    while left <= right {
+        let mid = (left + right) / 2;
+        let test_logs = &logs_to_check[..mid];
+        
+        // Estimation de la taille avec batch_id (on ajoute ~100 bytes pour le batch_id et la structure)
+        let estimated_size = estimate_payload_size(test_logs) + 100;
+        
+        if estimated_size <= max_size_bytes {
+            best = mid;
+            left = mid + 1;
+        } else {
+            if mid == 0 {
+                break;
+            }
+            right = mid - 1;
+        }
+    }
+    
+    // Si aucun log ne rentre, on essaie quand même les premiers logs individuels
+    // (parfois l'estimation est trop conservatrice)
+    if best == 0 && !logs_to_check.is_empty() {
+        // Accepter au moins quelques logs même si l'estimation dépasse
+        // (la taille réelle peut être inférieure à l'estimation)
+        best = logs_to_check.len().min(10);
+    }
+    
+    &logs_to_check[..best]
+}
+
 /// Endpoint pour recevoir les logs mobile
 /// ✅ OPTIMISÉ 2025-12-20: Traitement asynchrone, limite de batch, logs groupés
 /// ✅ CORRIGÉ 2025-12-31: Validation de taille avant traitement pour éviter les timeouts
@@ -65,36 +141,19 @@ pub async fn receive_mobile_logs(
     const MAX_LOGS_PER_BATCH: usize = 100;
     const MAX_PAYLOAD_SIZE_BYTES: usize = 5_000_000; // 5 MB max par batch
     
-    // Vérifier la taille du payload (estimation)
-    let estimated_size = serde_json::to_string(&payload)
-        .map(|s| s.len())
-        .unwrap_or(0);
+    // ✅ AMÉLIORÉ 2026-01-02: Trouver le nombre maximal de logs qui rentrent dans la limite de taille
+    // Au lieu de rejeter complètement les batches trop volumineux, on accepte partiellement
+    let logs_to_process = find_max_logs_fitting_size(&payload.logs, MAX_PAYLOAD_SIZE_BYTES, MAX_LOGS_PER_BATCH);
     
-    if estimated_size > MAX_PAYLOAD_SIZE_BYTES {
+    if logs_to_process.len() < logs_count {
         log::warn!(
-            "📱[MOBILE-BATCH] Batch {} trop volumineux ({} bytes, max: {}), rejeté",
-            batch_id,
-            estimated_size,
-            MAX_PAYLOAD_SIZE_BYTES
-        );
-        return Err(AppError::BadRequest(format!(
-            "Payload trop volumineux: {} bytes (max: {} bytes). Réduisez le nombre de logs par batch.",
-            estimated_size,
-            MAX_PAYLOAD_SIZE_BYTES
-        )));
-    }
-
-    let logs_to_process = if logs_count > MAX_LOGS_PER_BATCH {
-        log::warn!(
-            "📱[MOBILE-BATCH] Batch {} contient {} logs (max: {}), traitement limité",
+            "📱[MOBILE-BATCH] Batch {} trop volumineux ({} logs, {} bytes estimés), acceptation partielle ({} logs)",
             batch_id,
             logs_count,
-            MAX_LOGS_PER_BATCH
+            estimate_payload_size(&payload.logs),
+            logs_to_process.len()
         );
-        &payload.logs[..MAX_LOGS_PER_BATCH]
-    } else {
-        &payload.logs[..]
-    };
+    }
 
     // ✅ OPTIMISATION: Traiter les logs en arrière-plan pour ne pas bloquer la réponse
     // ✅ CRITIQUE 2025-12-31: Cloner les données AVANT de spawner le task pour éviter les problèmes de lifetime

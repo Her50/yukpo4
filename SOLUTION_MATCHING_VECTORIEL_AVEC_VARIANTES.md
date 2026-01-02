@@ -580,3 +580,4 @@ LIMIT 100
 
 Cette approche combine **performance** (matching vectoriel optimisé) et **robustesse** (gestion des variantes).
 
+

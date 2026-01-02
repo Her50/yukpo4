@@ -717,3 +717,4 @@ GREATEST(
 
 **Recommandation** : **Garder cette fonction** mais l'optimiser avec les Solutions 1, 2, 3 pour réduire de **4.46s à ~1s**.
 
+

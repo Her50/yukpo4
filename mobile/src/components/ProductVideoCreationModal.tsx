@@ -795,9 +795,45 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 });
                 setAvailableAudioTracks(audioTracks);
 
+                // ✅ AMÉLIORÉ: Sélection intelligente - Prioriser les vidéos (surtout AR)
                 const defaultIds = new Set<number>();
-                productMediaItems.slice(0, 4).forEach((item) => defaultIds.add(item.id));
+                
+                // 1. D'abord sélectionner toutes les vidéos (priorité aux vidéos AR qui ont "AR" dans la description)
+                const videos = productMediaItems.filter(item => 
+                    (item.type === 'video' || item.media_type === 'video')
+                );
+                const arVideos = videos.filter(item => 
+                    item.ai_description?.toLowerCase().includes('ar') || 
+                    item.ai_description?.toLowerCase().includes('immersive')
+                );
+                
+                // Sélectionner d'abord les vidéos AR, puis les autres vidéos
+                [...arVideos, ...videos.filter(v => !arVideos.includes(v))].forEach(item => {
+                    defaultIds.add(item.id);
+                });
+                
+                // 2. Ensuite compléter avec des images si on n'a pas encore 4 médias
+                if (defaultIds.size < 4) {
+                    const images = productMediaItems.filter(item => 
+                        item.type !== 'video' && item.media_type !== 'video'
+                    );
+                    images.slice(0, 4 - defaultIds.size).forEach(item => {
+                        defaultIds.add(item.id);
+                    });
+                }
+                
+                // 3. Si aucune vidéo n'est disponible, sélectionner les 4 premiers médias (comportement par défaut)
+                if (defaultIds.size === 0) {
+                    productMediaItems.slice(0, 4).forEach((item) => defaultIds.add(item.id));
+                }
+                
                 setSelectedMediaIds(defaultIds);
+                console.log('[ProductVideoCreationModal] ✅ Sélection automatique:', {
+                    total: defaultIds.size,
+                    videos: videos.length,
+                    arVideos: arVideos.length,
+                    selectedIds: Array.from(defaultIds),
+                });
 
                 return audioTracks;
             } catch (error) {
@@ -881,8 +917,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             ];
                             
                             setProductMedia(fallbackItems);
+                            // ✅ AMÉLIORÉ: Même logique de sélection intelligente pour le fallback
                             const defaultIds = new Set<number>();
-                            fallbackItems.slice(0, 4).forEach((item) => defaultIds.add(item.id));
+                            const videos = fallbackItems.filter(item => 
+                                (item.type === 'video' || item.media_type === 'video')
+                            );
+                            [...videos, ...fallbackItems.filter(v => !videos.includes(v))].slice(0, 4).forEach((item) => {
+                                defaultIds.add(item.id);
+                            });
                             setSelectedMediaIds(defaultIds);
                             console.log('[ProductVideoCreationModal] ✅ Fallback appliqué:', fallbackItems.length, 'médias');
                             return [];
@@ -1891,6 +1933,31 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             void refreshMedia(selectedProduct);
         }
     }, [visible, selectedProduct, activeStep, refreshMedia]);
+
+    // ✅ NOUVEAU: Analyse automatique des médias sélectionnés (images et vidéos)
+    useEffect(() => {
+        // Analyser automatiquement quand des médias sont sélectionnés et qu'on est à l'étape 2
+        if (visible && selectedProduct && activeStep === 2 && selectedMediaIds.size > 0 && productMedia.length > 0) {
+            // Attendre un peu pour éviter les analyses multiples lors du chargement initial
+            const timeoutId = setTimeout(() => {
+                // Vérifier qu'il y a des médias avec des descriptions IA à analyser
+                const hasMediaWithDescriptions = [...productMedia, ...serviceMedia].some(item => 
+                    item.ai_description && item.ai_description.trim() !== ''
+                );
+                
+                // Analyser seulement si on n'a pas déjà une analyse récente
+                if (hasMediaWithDescriptions && Object.keys(mediaAnalysis).length === 0) {
+                    console.log('[ProductVideoCreationModal] 🔍 Analyse automatique des médias sélectionnés');
+                    handleAnalyzeMedia().catch(error => {
+                        console.warn('[ProductVideoCreationModal] ⚠️ Erreur analyse automatique:', error);
+                        // Ne pas bloquer l'utilisateur si l'analyse automatique échoue
+                    });
+                }
+            }, 2000); // Attendre 2 secondes après la sélection
+
+            return () => clearTimeout(timeoutId);
+        }
+    }, [visible, selectedProduct, activeStep, selectedMediaIds, productMedia, serviceMedia, mediaAnalysis, handleAnalyzeMedia]);
 
     useEffect(() => {
         if (!visible) {
@@ -3051,37 +3118,103 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </NativeCard>
                 )}
 
-                {/* ✅ NOUVEAU: Auto-cut intelligent */}
-                {generatedTimeline && !isEditingTimeline && generatedTimeline.scenes.length > 0 && (
-                    <AutoCutPanel
-                        videoUrl={generatedTimeline.scenes[0]?.media_url || ''}
-                        videoId={undefined}
-                        onScenesSelected={(scenes) => {
-                            console.log('[ProductVideoCreationModal] Scènes sélectionnées:', scenes);
-                            // Appliquer les scènes sélectionnées à la timeline
-                            if (scenes.length > 0 && generatedTimeline) {
-                                const updatedScenes = generatedTimeline.scenes.map((originalScene, idx) => {
-                                    const matchingScene = scenes.find(s =>
-                                        Math.abs(s.start_time - originalScene.start_time) < 0.5
-                                    );
-                                    if (matchingScene) {
-                                        return {
-                                            ...originalScene,
-                                            start_time: matchingScene.start_time,
-                                            duration: matchingScene.duration,
-                                        };
-                                    }
-                                    return originalScene;
-                                });
-                                setGeneratedTimeline({
-                                    ...generatedTimeline,
-                                    scenes: updatedScenes,
-                                    total_duration: scenes.reduce((sum, s) => sum + s.duration, 0),
-                                });
+                {/* ✅ NOUVEAU: Auto-cut intelligent - CORRIGÉ: Utiliser les vidéos sélectionnées, fallback sur timeline générée */}
+                {(() => {
+                    let videoUrl = '';
+                    let videoId: number | undefined = undefined;
+
+                    // ✅ ÉTAPE 1: Essayer d'utiliser les vidéos sélectionnées
+                    if (selectedMediaIds.size > 0) {
+                        const selectedVideoIds = Array.from(selectedMediaIds).filter(id => {
+                            const media = productMedia.find(m => m.id === id) || serviceMedia.find(m => m.id === id);
+                            return media && (media.type === 'video' || media.media_type === 'video');
+                        });
+
+                        if (selectedVideoIds.length > 0) {
+                            const firstVideoId = selectedVideoIds[0];
+                            const firstVideo = productMedia.find(m => m.id === firstVideoId) || 
+                                              serviceMedia.find(m => m.id === firstVideoId);
+                            const url = firstVideo ? buildMediaUrl(firstVideo.path) : '';
+                            
+                            if (url) {
+                                videoUrl = url;
+                                videoId = firstVideoId;
+                                console.log('[ProductVideoCreationModal] AutoCutPanel: Utilisation vidéo sélectionnée, videoId:', videoId);
                             }
-                        }}
-                    />
-                )}
+                        }
+                    }
+
+                    // ✅ ÉTAPE 2: Fallback - Utiliser la timeline générée si elle contient des vidéos
+                    if (!videoUrl && generatedTimeline && generatedTimeline.scenes.length > 0) {
+                        // Chercher la première scène avec un media_url valide (vidéo)
+                        for (const scene of generatedTimeline.scenes) {
+                            if (scene.media_url && scene.media_url.trim() !== '') {
+                                // Vérifier si c'est une vidéo (extension .mp4, .mov, etc. ou contient 'video' dans l'URL)
+                                const urlLower = scene.media_url.toLowerCase();
+                                const hasVideoExtension = /\.(mp4|mov|avi|mkv|webm|m4v|flv|wmv|3gp)(\?|$)/i.test(scene.media_url);
+                                const containsVideo = urlLower.includes('video') || urlLower.includes('/videos/');
+                                
+                                // Si c'est clairement une vidéo, l'utiliser
+                                if (hasVideoExtension || containsVideo) {
+                                    videoUrl = scene.media_url;
+                                    console.log('[ProductVideoCreationModal] AutoCutPanel: Utilisation timeline générée (fallback), media_url:', videoUrl.substring(0, 100));
+                                    break;
+                                }
+                                // ✅ Si aucune vidéo n'a été trouvée mais qu'il y a un media_url, 
+                                // on peut quand même l'essayer (peut être une vidéo sans extension visible)
+                                // mais on préfère chercher d'abord une vraie vidéo
+                            }
+                        }
+                        
+                        // ✅ Si toujours aucune vidéo trouvée mais qu'il y a au moins une scène avec media_url,
+                        // utiliser la première scène avec media_url (peut être une vidéo)
+                        if (!videoUrl) {
+                            for (const scene of generatedTimeline.scenes) {
+                                if (scene.media_url && scene.media_url.trim() !== '') {
+                                    videoUrl = scene.media_url;
+                                    console.log('[ProductVideoCreationModal] AutoCutPanel: Utilisation timeline générée (fallback - première scène avec media_url)');
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // ✅ Ne pas afficher si aucune vidéo n'est disponible
+                    if (!videoUrl) {
+                        return null;
+                    }
+
+                    return (
+                        <AutoCutPanel
+                            videoUrl={videoUrl}
+                            videoId={videoId}
+                            onScenesSelected={(scenes) => {
+                                console.log('[ProductVideoCreationModal] Scènes sélectionnées:', scenes);
+                                // Appliquer les scènes sélectionnées à la timeline si elle existe
+                                if (scenes.length > 0 && generatedTimeline) {
+                                    const updatedScenes = generatedTimeline.scenes.map((originalScene, idx) => {
+                                        const matchingScene = scenes.find(s =>
+                                            Math.abs(s.start_time - originalScene.start_time) < 0.5
+                                        );
+                                        if (matchingScene) {
+                                            return {
+                                                ...originalScene,
+                                                start_time: matchingScene.start_time,
+                                                duration: matchingScene.duration,
+                                            };
+                                        }
+                                        return originalScene;
+                                    });
+                                    setGeneratedTimeline({
+                                        ...generatedTimeline,
+                                        scenes: updatedScenes,
+                                        total_duration: scenes.reduce((sum, s) => sum + s.duration, 0),
+                                    });
+                                }
+                            }}
+                        />
+                    );
+                })()}
 
                 {/* ✅ NOUVEAU: Color grading automatique */}
                 {selectedMediaIds.size > 0 && Array.from(selectedMediaIds).length > 0 && (() => {
@@ -4815,6 +4948,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     </View>
                                 )}
                                 <View style={styles.mediaOverlay}>
+                                    {/* ✅ AMÉLIORÉ: Badge visible pour les vidéos */}
+                                    {(item.type || item.media_type)?.toLowerCase().includes('video') && (
+                                        <View style={styles.mediaVideoBadge}>
+                                            <SafeIcon name="video" size={12} color="#FFFFFF" />
+                                            <Text style={styles.mediaVideoBadgeText}>VIDÉO</Text>
+                                        </View>
+                                    )}
                                     <SafeIcon name={iconName as any} size={14} color="#FFFFFF" />
                                     {item.ai_description ? (
                                         <Text style={styles.mediaCaption} numberOfLines={2}>
@@ -5752,6 +5892,23 @@ const styles = StyleSheet.create({
     mediaCaption: {
         fontSize: 11,
         color: '#FFFFFF',
+    },
+    mediaVideoBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(239, 68, 68, 0.85)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        alignSelf: 'flex-start',
+        marginBottom: 4,
+    },
+    mediaVideoBadgeText: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
     mediaSelectedBadge: {
         position: 'absolute',

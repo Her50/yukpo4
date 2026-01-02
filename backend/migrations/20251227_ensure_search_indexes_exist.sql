@@ -127,3 +127,4 @@ BEGIN
     RAISE NOTICE '✅ Migration terminée - Tous les index nécessaires sont en place';
 END $$;
 
+

@@ -152,3 +152,4 @@ Le backend utilise bien `MediaStorageService` pour uploader vers S3/Wasabi :
 - [ ] Les URLs retournées sont bien des URLs CDN (pas des chemins locaux)
 - [ ] Le payload final ne contient pas de base64 si les URLs sont disponibles
 
+

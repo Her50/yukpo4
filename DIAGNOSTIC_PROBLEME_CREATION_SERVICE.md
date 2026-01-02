@@ -136,3 +136,4 @@ Mais malgré cela, le pool est saturé, indiquant soit :
 - `mobile/src/services/api.ts` : Client API mobile
 - `mobile/src/screens/FormulaireYukpoIntelligentScreen.tsx` : Formulaire de création
 
+

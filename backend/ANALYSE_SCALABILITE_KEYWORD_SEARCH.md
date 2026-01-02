@@ -158,3 +158,4 @@ WHERE unaccent(...) % unaccent($1)
 
 **Implémenter les 3 solutions** pour garantir une performance < 0.5s même avec 10M produits.
 
+

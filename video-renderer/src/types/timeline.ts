@@ -72,4 +72,9 @@ export type AudioCue = {
   cueType: 'impact' | 'glitch' | 'riser' | 'beat';
 };
 
+export type LocalAudioCue = {
+  frameOffset: number;
+  cueType: AudioCue['cueType'];
+};
+
 

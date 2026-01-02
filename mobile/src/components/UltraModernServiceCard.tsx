@@ -128,7 +128,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
     // Ne charger que si les props ne sont pas fournies
     const hasProps = reviewsFromProps !== undefined || reviewsStatsFromProps !== undefined || serviceStatsFromProps !== undefined;
     const serviceIdForHook = hasProps ? 0 : parseInt(service.id); // Passer 0 si on a les props pour éviter le chargement
-    
+
     const { stats: statsFromHook, loading: statsLoading } = useServiceStats(
         serviceIdForHook,
         stableCreatedAt
@@ -406,36 +406,36 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
                                 // Parser les coordonnées GPS
                                 const gpsString = service.gps || '';
                                 const coords = gpsString.split(',').map(c => parseFloat(c.trim()));
-                                
+
                                 if (coords.length >= 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
                                     const [lat, lng] = coords;
-                                    
+
                                     // Essayer d'ouvrir Google Maps d'abord, puis Apple Maps, puis l'app par défaut
                                     const googleMapsUrl = `google.navigation:q=${lat},${lng}`;
                                     const appleMapsUrl = `maps://?q=${lat},${lng}`;
                                     const geoUrl = `geo:${lat},${lng}`;
-                                    
+
                                     // Essayer Google Maps
                                     const canOpenGoogle = await Linking.canOpenURL(googleMapsUrl);
                                     if (canOpenGoogle) {
                                         await Linking.openURL(googleMapsUrl);
                                         return;
                                     }
-                                    
+
                                     // Essayer Apple Maps
                                     const canOpenApple = await Linking.canOpenURL(appleMapsUrl);
                                     if (canOpenApple) {
                                         await Linking.openURL(appleMapsUrl);
                                         return;
                                     }
-                                    
+
                                     // Essayer l'URL géographique générique
                                     const canOpenGeo = await Linking.canOpenURL(geoUrl);
                                     if (canOpenGeo) {
                                         await Linking.openURL(geoUrl);
                                         return;
                                     }
-                                    
+
                                     // Fallback : afficher les coordonnées
                                     Alert.alert(
                                         'Navigation',
@@ -450,9 +450,9 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
                                 Alert.alert('Erreur', 'Impossible d\'ouvrir l\'application de navigation');
                             }
                         };
-                        
+
                         return (
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.gpsContainer}
                                 onPress={handleNavigation}
                                 activeOpacity={0.7}

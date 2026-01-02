@@ -463,3 +463,4 @@ L'implémentation du matching vectoriel d'inclusion améliorerait :
 - 🎯 **Précision** : Match exact sur chaque mot-clé
 - 🔧 **Robustesse** : Gère mieux les mots manquants
 
+

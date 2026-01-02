@@ -417,3 +417,4 @@ COMMENT ON FUNCTION hybrid_image_search IS
 '✅ OPTIMISÉ 2025-01-01: Utilise unaccent() et similarity() comme keyword_search_with_gps.
 Gère accents, erreurs de saisie, troncature. Aligné avec la nouvelle approche optimisée.';
 
+

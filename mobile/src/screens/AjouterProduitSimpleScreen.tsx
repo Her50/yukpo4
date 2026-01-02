@@ -1846,7 +1846,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         )}
 
                         {/* Photos et vidéos */}
-                        <View style={styles.fieldGroup}>
+                        <View style={[styles.fieldGroup, { overflow: 'visible' }]}>
                             <Text style={styles.label}>Photos et vidéos</Text>
                             <MediaUploadManager
                                 images={formValues.images || []}

@@ -6,15 +6,10 @@ import {
     IntroPulseScene,
     ProductShowcaseScene
 } from '../templates/index.js';
-import type { AudioCue, ImmersiveTimeline } from '../types/index.js';
+import type { AudioCue, ImmersiveTimeline, LocalAudioCue } from '../types/index.js';
 import { resolveTransitionWrapper } from '../utils/transitions.js';
 
 type ImmersiveVideoProps = ImmersiveTimeline;
-
-type LocalAudioCue = {
-    frameOffset: number;
-    cueType: AudioCue['cueType'];
-};
 
 export const ImmersiveVideo: React.FC<ImmersiveVideoProps> = ({
     scenes,

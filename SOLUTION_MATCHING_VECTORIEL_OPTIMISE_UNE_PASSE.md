@@ -511,3 +511,4 @@ let results = sqlx::query(&sql)
 
 Cette approche est **2-5x plus rapide** et **scalable** pour des centaines de millions de produits.
 
+

@@ -388,3 +388,4 @@ AND EXISTS (
 GROUP BY search_term
 ORDER BY count_results DESC;
 
+

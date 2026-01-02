@@ -57,3 +57,4 @@ if ($databaseUrl -match "postgresql://([^:]+):([^@]+)@([^:]+):?(\d+)?/(.+)") {
 
 Write-Host "`n✅ Correction appliquée avec succès!" -ForegroundColor Green
 
+

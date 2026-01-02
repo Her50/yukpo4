@@ -489,3 +489,4 @@ let media_map: HashMap<i32, Vec<Media>> = sqlx::query(
 
 **Solution long terme** : Implémenter Phase 3 pour atteindre **< 1s** (niveau géants).
 
+

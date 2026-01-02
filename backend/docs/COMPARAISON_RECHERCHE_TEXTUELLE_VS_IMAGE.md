@@ -260,3 +260,4 @@ Pour les produits génériques, l'IA doit extraire des tags **génériques** :
 4. **Réduire le poids des tags spécifiques** (marque/couleur) dans le scoring
 5. **Augmenter le poids de `search_query_semantic`** pour matching sémantique
 
+

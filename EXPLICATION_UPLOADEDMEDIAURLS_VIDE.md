@@ -166,3 +166,4 @@ if (uploadFailed && values && Array.isArray(values) && values.length > 0) {
 
 Les corrections ci-dessus résolvent ces problèmes.
 
+

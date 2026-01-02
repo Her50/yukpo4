@@ -189,3 +189,4 @@ Considérer l'utilisation d'un pool externe (PgBouncer) si :
 
 **Résultat attendu** : Réduction de **95%** des erreurs TLS et **85-90%** d'amélioration des performances.
 
+

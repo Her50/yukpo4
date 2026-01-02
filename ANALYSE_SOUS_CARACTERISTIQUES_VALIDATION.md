@@ -283,3 +283,4 @@ La fonction `save_autocomplete_combination` est déjà appelée lors de la sauve
 - Afficher un indicateur si le tableau a été modifié mais pas validé
 - Avertir l'utilisateur avant de quitter la page
 
+

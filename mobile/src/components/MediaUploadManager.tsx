@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -16,
     paddingHorizontal: 16,
     maxHeight: 140,
-    // ✅ AMÉLIORÉ: S'assurer que le scroll horizontal fonctionne
+    // ✅ CRITIQUE: S'assurer que le scroll horizontal fonctionne
     flexGrow: 0,
     flexShrink: 1,
   },
@@ -526,9 +526,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingRight: 16,
-    // ✅ NOUVEAU: S'assurer que le contenu peut dépasser la largeur de l'écran
-    minWidth: '100%',
-    flexGrow: 0,
+    // ✅ CORRIGÉ: Le contenu peut dépasser la largeur pour permettre le scroll
+    // Pas de minWidth ni width pour permettre le dépassement
   },
   imageContainer: {
     position: 'relative',

@@ -173,3 +173,4 @@ CREATE INDEX ON popular_search_results (search_term, score DESC);
 4. ✅ Tester avec EXPLAIN ANALYZE
 5. ✅ Mesurer amélioration
 
+

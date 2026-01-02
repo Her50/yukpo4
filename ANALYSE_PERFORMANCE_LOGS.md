@@ -135,3 +135,4 @@ for log in &payload.logs {
 4. ✅ **Ajouter cache Redis pour autocomplete**
 
 
+

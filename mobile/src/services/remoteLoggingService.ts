@@ -310,7 +310,81 @@ class RemoteLoggingService {
     }
 
     /**
+     * ✅ NOUVEAU 2026-01-02: Estimer la taille d'un batch de logs (en bytes)
+     */
+    private estimateBatchSize(logs: LogEntry[]): number {
+        // Estimation conservatrice de la taille JSON
+        return logs.reduce((size, log) => {
+            const messageSize = log.message?.length || 0;
+            const componentSize = log.component?.length || 0;
+            const dataSize = log.data ? JSON.stringify(log.data).length : 0;
+            const stackSize = log.stack?.length || 0;
+            const timestampSize = log.timestamp?.length || 0;
+            const userIdSize = log.userId?.length || 0;
+            const deviceInfoSize = log.deviceInfo ? JSON.stringify(log.deviceInfo).length : 0;
+            
+            // Taille de base pour la structure JSON (~200 bytes par log)
+            return size + 200 + messageSize + componentSize + dataSize + stackSize 
+                + timestampSize + userIdSize + deviceInfoSize;
+        }, 100); // +100 bytes pour batch_id et structure wrapper
+    }
+
+    /**
+     * ✅ NOUVEAU 2026-01-02: Diviser les logs en chunks qui respectent la limite de taille
+     */
+    private splitLogsIntoChunks(logs: LogEntry[], maxSizeBytes: number): LogEntry[][] {
+        const chunks: LogEntry[][] = [];
+        const MAX_LOGS_PER_BATCH = 100; // Limite par nombre de logs aussi
+        const maxSize = Math.min(maxSizeBytes, 5_000_000); // 5 MB max
+        
+        let currentChunk: LogEntry[] = [];
+        let currentSize = 100; // Taille de base pour batch_id et structure
+        
+        for (const log of logs) {
+            const logSize = this.estimateLogSize(log);
+            const newSize = currentSize + logSize;
+            
+            // Si ajouter ce log dépasserait la limite OU si on a atteint la limite de logs
+            // (sauf si c'est le premier log du chunk), finaliser le chunk actuel
+            if (currentChunk.length > 0 && (newSize > maxSize || currentChunk.length >= MAX_LOGS_PER_BATCH)) {
+                chunks.push(currentChunk);
+                currentChunk = [];
+                currentSize = 100; // Réinitialiser pour le nouveau chunk
+            }
+            
+            // Ajouter le log au chunk actuel (même s'il dépasse la limite individuelle)
+            // Cela évite de perdre des logs très volumineux
+            currentChunk.push(log);
+            currentSize = newSize;
+        }
+        
+        // Ajouter le dernier chunk s'il n'est pas vide
+        if (currentChunk.length > 0) {
+            chunks.push(currentChunk);
+        }
+        
+        return chunks;
+    }
+
+    /**
+     * ✅ NOUVEAU 2026-01-02: Estimer la taille d'un log individuel
+     */
+    private estimateLogSize(log: LogEntry): number {
+        const messageSize = log.message?.length || 0;
+        const componentSize = log.component?.length || 0;
+        const dataSize = log.data ? JSON.stringify(log.data).length : 0;
+        const stackSize = log.stack?.length || 0;
+        const timestampSize = log.timestamp?.length || 0;
+        const userIdSize = log.userId?.length || 0;
+        const deviceInfoSize = log.deviceInfo ? JSON.stringify(log.deviceInfo).length : 0;
+        
+        return 200 + messageSize + componentSize + dataSize + stackSize 
+            + timestampSize + userIdSize + deviceInfoSize;
+    }
+
+    /**
      * Envoyer les logs au backend
+     * ✅ AMÉLIORÉ 2026-01-02: Divise automatiquement les batches trop volumineux
      */
     async flush(): Promise<void> {
         if (this.logQueue.length === 0) return;
@@ -318,58 +392,77 @@ class RemoteLoggingService {
         const logsToSend = [...this.logQueue];
         this.logQueue = [];
 
-        try {
-            const response = await apiPost('/api/mobile-logs', {
-                logs: logsToSend,
-                batch_id: `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            });
-
-            // ✅ AMÉLIORÉ: Vérifier si la réponse indique un succès
-            if (response.success !== false) {
-                if (__DEV__) {
-                    this.originalConsole?.log(`[RemoteLogging] ✅ ${logsToSend.length} logs envoyés au backend`);
-                }
-            } else {
-                // Réponse indique une erreur mais pas d'exception levée
-                // Remettre les logs dans la queue pour retry
-                if (this.logQueue.length < 100) {
-                    this.logQueue.unshift(...logsToSend);
-                } else {
-                    this.logQueue = logsToSend.slice(-50);
-                }
-                
-                if (__DEV__) {
-                    this.originalConsole?.warn(`[RemoteLogging] ⚠️ Échec envoi logs (réponse: ${response.error || 'unknown'})`);
-                }
+        // ✅ NOUVEAU 2026-01-02: Diviser les logs en chunks si nécessaire
+        const MAX_BATCH_SIZE_BYTES = 4_500_000; // 4.5 MB (légèrement sous 5MB pour sécurité)
+        const estimatedSize = this.estimateBatchSize(logsToSend);
+        
+        let chunks: LogEntry[][];
+        if (estimatedSize > MAX_BATCH_SIZE_BYTES) {
+            if (__DEV__) {
+                this.originalConsole?.warn(
+                    `[RemoteLogging] ⚠️ Batch trop volumineux (${estimatedSize} bytes), division en chunks`
+                );
             }
-        } catch (error: any) {
-            // ✅ AMÉLIORÉ: Gérer différemment selon le type d'erreur
-            const isNetworkError = error?.code === 'NETWORK_ERROR' || 
-                                  error?.code === 'TIMEOUT' ||
-                                  error?.message?.includes('Network request failed') ||
-                                  error?.message?.includes('Failed to fetch') ||
-                                  error?.message?.includes('timeout');
-            
-            // Pour les erreurs réseau/timeout, on peut supposer que le serveur n'a pas reçu les logs
-            // Pour les autres erreurs (500, etc.), le serveur a peut-être reçu les logs mais a retourné une erreur
-            if (isNetworkError) {
-                // Erreur réseau/timeout : remettre dans la queue pour retry
-                if (this.logQueue.length < 100) {
-                    this.logQueue.unshift(...logsToSend);
+            chunks = this.splitLogsIntoChunks(logsToSend, MAX_BATCH_SIZE_BYTES);
+        } else {
+            chunks = [logsToSend];
+        }
+
+        // Envoyer chaque chunk séparément
+        for (const chunk of chunks) {
+            try {
+                const response = await apiPost('/api/mobile-logs', {
+                    logs: chunk,
+                    batch_id: `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                });
+
+                // ✅ AMÉLIORÉ: Vérifier si la réponse indique un succès
+                if (response.success !== false) {
+                    if (__DEV__) {
+                        this.originalConsole?.log(`[RemoteLogging] ✅ ${chunk.length} logs envoyés au backend`);
+                    }
                 } else {
-                    // Queue trop pleine, garder seulement les plus récents
-                    this.logQueue = logsToSend.slice(-50);
+                    // Réponse indique une erreur mais pas d'exception levée
+                    // Remettre les logs dans la queue pour retry
+                    if (this.logQueue.length < 100) {
+                        this.logQueue.unshift(...chunk);
+                    } else {
+                        this.logQueue = chunk.slice(-50);
+                    }
+                    
+                    if (__DEV__) {
+                        this.originalConsole?.warn(`[RemoteLogging] ⚠️ Échec envoi logs (réponse: ${response.error || 'unknown'})`);
+                    }
                 }
+            } catch (error: any) {
+                // ✅ AMÉLIORÉ: Gérer différemment selon le type d'erreur
+                const isNetworkError = error?.code === 'NETWORK_ERROR' || 
+                                      error?.code === 'TIMEOUT' ||
+                                      error?.message?.includes('Network request failed') ||
+                                      error?.message?.includes('Failed to fetch') ||
+                                      error?.message?.includes('timeout');
                 
-                if (__DEV__) {
-                    this.originalConsole?.warn(`[RemoteLogging] ⚠️ Erreur réseau/timeout, ${logsToSend.length} logs remis en queue pour retry`);
-                }
-            } else {
-                // Autre erreur (500, etc.) : le serveur a peut-être reçu les logs
-                // Ne pas remettre dans la queue pour éviter les doublons
-                // Mais logger l'erreur pour diagnostic
-                if (__DEV__) {
-                    this.originalConsole?.warn(`[RemoteLogging] ⚠️ Erreur serveur (${error?.response?.status || 'unknown'}), logs peut-être reçus:`, error);
+                // Pour les erreurs réseau/timeout, on peut supposer que le serveur n'a pas reçu les logs
+                // Pour les autres erreurs (500, etc.), le serveur a peut-être reçu les logs mais a retourné une erreur
+                if (isNetworkError) {
+                    // Erreur réseau/timeout : remettre dans la queue pour retry
+                    if (this.logQueue.length < 100) {
+                        this.logQueue.unshift(...chunk);
+                    } else {
+                        // Queue trop pleine, garder seulement les plus récents
+                        this.logQueue = chunk.slice(-50);
+                    }
+                    
+                    if (__DEV__) {
+                        this.originalConsole?.warn(`[RemoteLogging] ⚠️ Erreur réseau/timeout, ${chunk.length} logs remis en queue pour retry`);
+                    }
+                } else {
+                    // Autre erreur (500, etc.) : le serveur a peut-être reçu les logs
+                    // Ne pas remettre dans la queue pour éviter les doublons
+                    // Mais logger l'erreur pour diagnostic
+                    if (__DEV__) {
+                        this.originalConsole?.warn(`[RemoteLogging] ⚠️ Erreur serveur (${error?.response?.status || 'unknown'}), logs peut-être reçus:`, error);
+                    }
                 }
             }
         }

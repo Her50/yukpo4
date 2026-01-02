@@ -3582,6 +3582,38 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             current_time = start_time + scene_duration;
         }
 
+        // ✅ CORRIGÉ: Mapper media_id vers media_url depuis available_media
+        // Créer un HashMap pour le mapping rapide
+        let media_map: std::collections::HashMap<String, String> = request
+            .available_media
+            .iter()
+            .filter_map(|m| {
+                m.url.as_ref().map(|url| (m.id.clone(), url.clone()))
+            })
+            .collect();
+        
+        // Mapper media_id vers media_url pour les scènes qui n'ont pas déjà media_url
+        for scene in &mut scenes {
+            if scene.media_url.is_none() {
+                if let Some(ref media_id) = scene.media_id {
+                    if let Some(url) = media_map.get(media_id) {
+                        scene.media_url = Some(url.clone());
+                        log::debug!(
+                            "[AppIA::generate_video_timeline] Mapped media_id '{}' -> media_url '{}'",
+                            media_id,
+                            url
+                        );
+                    } else {
+                        log::warn!(
+                            "[AppIA::generate_video_timeline] ⚠️ media_id '{}' not found in available_media ({} items)",
+                            media_id,
+                            media_map.len()
+                        );
+                    }
+                }
+            }
+        }
+
         // Si aucune scène n'a été générée, créer une timeline basique
         if scenes.is_empty() {
             log::warn!(
