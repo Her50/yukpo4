@@ -13285,3 +13285,266 @@ pub async fn ensure_add_product_optimization(pool: &PgPool) -> Result<(), sqlx::
     info!("✅ Optimisation add_product_to_service_jsonb_v2 appliquée avec succès");
     Ok(())
 }
+
+/// ✅ NOUVEAU 2026-01-02: Création de la queue asynchrone pour création de produits
+pub async fn ensure_product_creation_queue(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table product_creation_queue...");
+    
+    // Vérifier si la table existe déjà
+    let table_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'product_creation_queue'
+        )"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if table_exists {
+        info!("✅ Table product_creation_queue existe déjà");
+        return Ok(());
+    }
+    
+    info!("🔄 Création de la table product_creation_queue...");
+    
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS product_creation_queue (
+            id BIGSERIAL PRIMARY KEY,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            product_data JSONB NOT NULL,
+            images_to_process TEXT[] DEFAULT '{}',
+            status VARCHAR(50) NOT NULL DEFAULT 'pending',
+            priority INTEGER NOT NULL DEFAULT 5,
+            attempt_count INTEGER NOT NULL DEFAULT 0,
+            max_attempts INTEGER NOT NULL DEFAULT 3,
+            error_message TEXT,
+            result_data JSONB,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            started_at TIMESTAMP WITH TIME ZONE,
+            completed_at TIMESTAMP WITH TIME ZONE,
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // Créer les index
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_queue_status_priority 
+         ON product_creation_queue(status, priority, created_at) 
+         WHERE status IN ('pending', 'processing')"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_queue_created_at 
+         ON product_creation_queue(created_at) 
+         WHERE status IN ('completed', 'failed')"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_queue_service_id 
+         ON product_creation_queue(service_id) 
+         WHERE status = 'pending'"
+    )
+    .execute(pool)
+    .await?;
+    
+    // Créer la fonction de nettoyage
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION cleanup_old_product_creation_jobs()
+        RETURNS INTEGER AS $$
+        DECLARE
+            deleted_count INTEGER;
+        BEGIN
+            DELETE FROM product_creation_queue
+            WHERE status IN ('completed', 'failed')
+              AND created_at < NOW() - INTERVAL '7 days';
+            
+            GET DIAGNOSTICS deleted_count = ROW_COUNT;
+            RETURN deleted_count;
+        END;
+        $$ LANGUAGE plpgsql
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Table product_creation_queue créée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-01-02: Création de la table de cache PostgreSQL
+pub async fn ensure_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table cache_table...");
+    
+    // Vérifier si la table existe déjà
+    let table_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'cache_table'
+        )"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if table_exists {
+        info!("✅ Table cache_table existe déjà");
+        return Ok(());
+    }
+    
+    info!("🔄 Création de la table cache_table...");
+    
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS cache_table (
+            cache_key VARCHAR(255) PRIMARY KEY,
+            cache_value JSONB NOT NULL,
+            expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            access_count INTEGER NOT NULL DEFAULT 0,
+            last_accessed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // Créer les index
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_cache_expires_at 
+         ON cache_table(expires_at) 
+         WHERE expires_at < NOW()"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_cache_key_pattern 
+         ON cache_table(cache_key text_pattern_ops)"
+    )
+    .execute(pool)
+    .await?;
+    
+    // Créer les fonctions de cache
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION cleanup_expired_cache()
+        RETURNS INTEGER AS $$
+        DECLARE
+            deleted_count INTEGER;
+        BEGIN
+            DELETE FROM cache_table
+            WHERE expires_at < NOW();
+            
+            GET DIAGNOSTICS deleted_count = ROW_COUNT;
+            RETURN deleted_count;
+        END;
+        $$ LANGUAGE plpgsql
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION get_cache(key VARCHAR(255))
+        RETURNS JSONB AS $$
+        DECLARE
+            result JSONB;
+        BEGIN
+            SELECT cache_value INTO result
+            FROM cache_table
+            WHERE cache_key = key
+              AND expires_at > NOW();
+            
+            IF result IS NOT NULL THEN
+                UPDATE cache_table
+                SET access_count = access_count + 1,
+                    last_accessed_at = NOW()
+                WHERE cache_key = key;
+            END IF;
+            
+            RETURN result;
+        END;
+        $$ LANGUAGE plpgsql
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION set_cache(
+            key VARCHAR(255),
+            value JSONB,
+            ttl_seconds INTEGER DEFAULT 3600
+        )
+        RETURNS VOID AS $$
+        BEGIN
+            INSERT INTO cache_table (cache_key, cache_value, expires_at, updated_at)
+            VALUES (key, value, NOW() + (ttl_seconds || ' seconds')::INTERVAL, NOW())
+            ON CONFLICT (cache_key) 
+            DO UPDATE SET
+                cache_value = EXCLUDED.cache_value,
+                expires_at = EXCLUDED.expires_at,
+                updated_at = EXCLUDED.updated_at,
+                access_count = 0;
+        END;
+        $$ LANGUAGE plpgsql
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION delete_cache(key VARCHAR(255))
+        RETURNS BOOLEAN AS $$
+        DECLARE
+            deleted_count INTEGER;
+        BEGIN
+            DELETE FROM cache_table
+            WHERE cache_key = key;
+            
+            GET DIAGNOSTICS deleted_count = ROW_COUNT;
+            RETURN deleted_count > 0;
+        END;
+        $$ LANGUAGE plpgsql
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION delete_cache_pattern(pattern VARCHAR(255))
+        RETURNS INTEGER AS $$
+        DECLARE
+            deleted_count INTEGER;
+        BEGIN
+            DELETE FROM cache_table
+            WHERE cache_key LIKE pattern;
+            
+            GET DIAGNOSTICS deleted_count = ROW_COUNT;
+            RETURN deleted_count;
+        END;
+        $$ LANGUAGE plpgsql
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Table cache_table créée avec succès");
+    Ok(())
+}

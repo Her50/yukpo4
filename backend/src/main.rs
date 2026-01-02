@@ -615,6 +615,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log::warn!("⚠️ Erreur optimisation add_product_to_service_jsonb_v2: {}", e);
         }
     }
+
+    // ✅ NOUVEAU 2026-01-02: Création de la queue asynchrone pour création de produits
+    match yukpomnang_backend::migrations::auto_migrate::ensure_product_creation_queue(&app_state.pg).await {
+        Ok(_) => {
+            log::info!("✅ Table product_creation_queue créée/appliquée");
+        }
+        Err(e) => {
+            log::warn!("⚠️ Erreur création product_creation_queue: {}", e);
+        }
+    }
+
+    // ✅ NOUVEAU 2026-01-02: Création de la table de cache PostgreSQL
+    match yukpomnang_backend::migrations::auto_migrate::ensure_cache_table(&app_state.pg).await {
+        Ok(_) => {
+            log::info!("✅ Table cache_table créée/appliquée");
+        }
+        Err(e) => {
+            log::warn!("⚠️ Erreur création cache_table: {}", e);
+        }
+    }
     
     match yukpomnang_backend::migrations::auto_migrate::ensure_mongodb_indexes(app_state.mongo_history.clone()).await {
         Ok(_) => log::info!("✅ Index MongoDB créés avec succès"),
@@ -678,6 +698,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .await;
     });
+
+    // ✅ NOUVEAU 2026-01-02: Démarrer le worker de la queue de création de produits
+    use yukpomnang_backend::services::product_creation_queue::ProductCreationQueueService;
+    let queue_service = Arc::new(ProductCreationQueueService::new(app_state.pg.clone()));
+    queue_service.clone().start_worker();
+    log::info!("✅ Worker de création de produits démarré");
 
     // ✅ Lancer le nettoyage périodique des rooms/ingress LiveKit/SRS
     tasks::livekit_cleanup::start_livekit_cleanup_task(app_state.clone());

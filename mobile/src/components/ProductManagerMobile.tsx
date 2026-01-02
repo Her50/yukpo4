@@ -5931,7 +5931,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -6609,7 +6609,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -7661,8 +7661,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                numberOfLines={4}
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -12409,8 +12408,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                numberOfLines={4}
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -13050,7 +13048,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -14606,7 +14604,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -14947,7 +14945,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -15291,7 +15289,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -15518,7 +15516,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -15808,7 +15806,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -20393,7 +20391,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
+                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -21331,7 +21329,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'automobile' ? (
@@ -21347,7 +21345,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'chaussure' ? (
@@ -21363,7 +21361,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'vetement' ? (
@@ -21379,7 +21377,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'covoiturage' ? (
@@ -21395,7 +21393,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'ticket_voyage' ? (
@@ -21411,7 +21409,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'decoration' ? (
@@ -21427,7 +21425,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'telephone' ? (
@@ -21443,7 +21441,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'ordinateur' ? (
@@ -21459,7 +21457,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'electricite' ? (
@@ -21475,7 +21473,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'electromenager' ? (
@@ -21491,7 +21489,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'quincaillerie' ? (
@@ -21507,7 +21505,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'carrelage' ? (
@@ -21523,7 +21521,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'ustensiles_cuisine' ? (
@@ -21539,7 +21537,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'electronique' ? (
@@ -21555,7 +21553,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'hopital_clinique' || selectedType === 'laboratoire' || selectedType === 'pharmacie' ? (
@@ -21571,7 +21569,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'immobilier_batiment' || selectedType === 'immobilier_terrain' || selectedType === 'immobilier_location_courte' ? (
@@ -21587,7 +21585,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'livres_fournitures' ? (
@@ -21603,7 +21601,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'mobilier' ? (
@@ -21619,7 +21617,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'plombier' || selectedType === 'electricien' || selectedType === 'electricien_auto' || selectedType === 'menuisier' || selectedType === 'carreleur' || selectedType === 'macon' || selectedType === 'forgerons' || selectedType === 'menuisier_aluminium' || selectedType === 'reparateur_electronique' || selectedType === 'reparateur_electromenager' || selectedType === 'reparateur_frigoriste' || selectedType === 'peintre' || selectedType === 'staffeur' || selectedType === 'reparateur_climatiseur' ? (
@@ -21635,7 +21633,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'soutien_scolaire_repetiteur' ? (
@@ -21651,7 +21649,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'formation_education' ? (
@@ -21667,7 +21665,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType === 'sport_fitness' ? (
@@ -21683,7 +21681,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     ) : selectedType !== 'assurance' && selectedType !== 'evenementiel' && (
@@ -21699,7 +21697,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                style={styles.fieldInput}
                                             />
                                         </View>
                                     )}
@@ -22482,8 +22480,11 @@ const styles = StyleSheet.create({
         color: modernColors.text,
     },
     textareaInput: {
-        minHeight: 80,
+        minHeight: 120,
+        maxHeight: 400,
         textAlignVertical: 'top',
+        paddingTop: 12,
+        paddingBottom: 12,
     },
     pickerContainer: {
         flexDirection: 'row',

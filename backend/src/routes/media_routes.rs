@@ -16,7 +16,7 @@ use crate::controllers::{
         list_effects, list_templates, serve_example_video, upload_media,
     },
     product_video_controller::{
-        estimate_video_cost_for_product, generate_video_for_product,
+        estimate_video_cost_for_product, generate_video_for_product, get_video_generation_job_status,
     },
 };
 use crate::middlewares::jwt::jwt_auth;
@@ -78,6 +78,12 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/media/product/{service_id}/{product_index}/estimate-video",
             post(estimate_video_cost_for_product),
+        )
+        // ✅ CORRIGÉ 2026-01-02: Route pour récupérer le statut d'un job de génération vidéo
+        // IMPORTANT: Cette route doit être AVANT la route générique /api/media/{*file_path}
+        .route(
+            "/api/media/jobs/{job_id}",
+            get(get_video_generation_job_status),
         )
         .layer(axum::middleware::from_fn(jwt_auth))
         // Les layers globaux CORS/TraceLayer sont appliqués dans lib.rs uniquement

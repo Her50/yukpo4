@@ -455,8 +455,16 @@ const ResultatBesoinScreen: React.FC = () => {
                 const userGPS = location?.coords ? `${location.coords.latitude},${location.coords.longitude}` : null;
 
                 validServices.forEach((service) => {
-                    const serviceProduits = service.data?.produits || [];
-                    if (Array.isArray(serviceProduits)) {
+                    // ✅ CORRIGÉ: Gérer la structure produits (peut être un tableau ou un objet avec .valeur)
+                    let serviceProduits: any[] = [];
+                    const produitsData = service.data?.produits;
+                    if (Array.isArray(produitsData)) {
+                        serviceProduits = produitsData;
+                    } else if (produitsData?.valeur && Array.isArray(produitsData.valeur)) {
+                        serviceProduits = produitsData.valeur;
+                    }
+                    
+                    if (serviceProduits.length > 0) {
                         serviceProduits.forEach((product: any) => {
                             // GPS prioritaire : produit > service gps_fixe > service gps
                             const productGPS = product.gps || product.gpsFixe;
@@ -616,26 +624,46 @@ const ResultatBesoinScreen: React.FC = () => {
             
             // ✅ CORRIGÉ 2025-12-30: Mettre à jour les produits avec les informations des prestataires maintenant chargés
             // Vérifier s'il y a réellement des changements avant de mettre à jour pour éviter les re-renders inutiles
-            setProducts(prevProducts => {
-                let hasChanges = false;
-                const updatedProducts = prevProducts.map(product => {
-                    const service = product._service;
-                    if (service && service.user_id) {
-                        const prestataire = newPrestataires.get(service.user_id);
-                        if (prestataire && product._prestataire?.userId !== prestataire.userId) {
-                            hasChanges = true;
-                            return {
-                                ...product,
-                                _prestataire: prestataire
-                            };
+            // ✅ CORRECTION 2025-01-02: Debounce les mises à jour des produits pour éviter les re-renders fréquents
+            // Annuler le timeout précédent s'il existe
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
+            
+            // Créer un timeout pour regrouper les mises à jour
+            updateTimeoutRef.current = setTimeout(() => {
+                setProducts(prevProducts => {
+                    let hasChanges = false;
+                    const updatedProducts = prevProducts.map(product => {
+                        const service = product._service;
+                        if (service && service.user_id) {
+                            const prestataire = newPrestataires.get(service.user_id);
+                            // ✅ Comparaison plus stricte pour éviter les mises à jour inutiles
+                            if (prestataire) {
+                                const currentPrestataireId = product._prestataire?.userId || product._prestataire?.id;
+                                const newPrestataireId = prestataire.userId || prestataire.id;
+                                if (currentPrestataireId !== newPrestataireId) {
+                                    hasChanges = true;
+                                    return {
+                                        ...product,
+                                        _prestataire: prestataire
+                                    };
+                                }
+                            }
                         }
+                        return product;
+                    });
+                    
+                    // Ne retourner un nouveau tableau que s'il y a des changements réels
+                    if (!hasChanges) {
+                        return prevProducts;
                     }
-                    return product;
+                    
+                    // ✅ Utiliser une copie profonde seulement si nécessaire
+                    return updatedProducts;
                 });
-                
-                // Ne retourner un nouveau tableau que s'il y a des changements
-                return hasChanges ? updatedProducts : prevProducts;
-            });
+                updateTimeoutRef.current = null;
+            }, 100); // Debounce de 100ms pour regrouper les mises à jour
             
             setPrestatairesLoaded(true);
         } catch (error) {
@@ -705,7 +733,13 @@ const ResultatBesoinScreen: React.FC = () => {
 
         processResults();
 
-        return () => clearTimeout(timeoutId);
+        return () => {
+            clearTimeout(timeoutId);
+            // ✅ CORRECTION 2025-01-02: Nettoyer le timeout de debounce aussi
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
+        };
     }, [initialResults?.length]); // ✅ CORRECTION: Dépendre seulement de la longueur, pas de l'objet complet
 
     // ✅ CORRECTION: Gestionnaires pour les services
@@ -1130,15 +1164,33 @@ const ResultatBesoinScreen: React.FC = () => {
         return String(field);
     };
 
+    // ✅ CORRECTION 2025-01-02: Fonction utilitaire pour obtenir un prestataire de manière optimisée
+    const getPrestataire = useCallback((userId: string): Prestataire | undefined => {
+        // Priorité: ref (plus rapide, ne déclenche pas de re-render) > state (données à jour)
+        return prestatairesRef.current.get(userId) || prestataires.get(userId);
+    }, [prestataires]);
+
+    // ✅ CORRECTION 2025-01-02: Ref pour debounce les mises à jour et éviter les re-renders multiples
+    const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     // ✅ CORRIGÉ 2025-01-01: Mémoriser les listes filtrées pour éviter les recalculs
     const filteredProducts = useMemo(() => filterProducts(products), [products, categoryFilters, priceFilter, sortBy]);
     const filteredServices = useMemo(() => filterAndSortServices(services), [services, priceFilter, sortBy]);
 
-    // ✅ CORRIGÉ 2025-01-01: Mémoriser la liste combinée des résultats
-    const allResults = useMemo(() => [
-        ...filteredServices.map(service => ({ type: 'service' as const, data: service })),
-        ...filteredProducts.map(product => ({ type: 'product' as const, data: product }))
-    ], [filteredServices, filteredProducts]);
+    // ✅ CORRIGÉ 2025-01-01: Mémoriser la liste combinée des résultats avec des clés stables
+    const allResults = useMemo(() => {
+        const services = filteredServices.map(service => ({ 
+            type: 'service' as const, 
+            data: service,
+            key: `service-${service.id}`
+        }));
+        const products = filteredProducts.map((product, idx) => ({ 
+            type: 'product' as const, 
+            data: product,
+            key: `product-${product._serviceId || product.service_id || idx}-${product.nom || product.name || idx}`
+        }));
+        return [...services, ...products];
+    }, [filteredServices, filteredProducts]);
 
     // ✅ NOUVEAU 2025-01-01: Charger reviews et stats en batch pour tous les services
     const serviceIdsForBatch = useMemo(() => {
@@ -1164,12 +1216,12 @@ const ResultatBesoinScreen: React.FC = () => {
 
     const { data: batchData, loading: batchLoading } = useServicesBatchData(serviceIdsForBatch, serviceCreatedAtsMap);
 
-    // ✅ CORRIGÉ 2025-01-01: Fonction pour rendre ProductCard avec les props mémorisées
+    // ✅ CORRIGÉ 2025-01-02: Fonction pour rendre ProductCard avec les props mémorisées et ref stable
     const renderProductCard = useCallback((product: any) => {
         const service = product._service;
         // ✅ Priorité: prestataire dans le produit > prestataire dans la Map > null
         const prestataireFromProduct = product._prestataire;
-        const prestataireFromMap = service?.user_id ? prestataires.get(service.user_id) : null;
+        const prestataireFromMap = service?.user_id ? prestatairesRef.current.get(service.user_id) : null;
         const prestataire = prestataireFromProduct || prestataireFromMap || null;
 
         return (
@@ -1201,11 +1253,13 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [prestataires]);
+    }, []); // ✅ Dépendances vides car on utilise prestatairesRef.current
 
-    // Composant de rendu pour chaque service
-    const ServiceCardComponent = ({ service }: { service: Service }) => {
-        const prestataire = prestataires.get(service.user_id);
+    // ✅ CORRECTION 2025-01-02: Composant mémorisé pour éviter les re-renders inutiles
+    const ServiceCardComponent = React.memo(({ service }: { service: Service }) => {
+        // ✅ Utiliser ref pour éviter les re-renders lors des changements de prestataires
+        // Note: Utilisation directe de prestatairesRef.current car React.memo isole le composant
+        const prestataire = prestatairesRef.current.get(service.user_id);
         const isOnline = prestataire?.isOnline || false;
         const lastSeen = prestataire?.lastSeen ? new Date(prestataire.lastSeen) : null;
 
@@ -1246,7 +1300,12 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    };
+    }, (prevProps, nextProps) => {
+        // ✅ Comparaison personnalisée pour éviter les re-renders inutiles
+        return prevProps.service.id === nextProps.service.id &&
+               prevProps.service.score === nextProps.service.score &&
+               prevProps.service.distance === nextProps.service.distance;
+    });
 
     if (loading) {
         return (
@@ -1524,20 +1583,21 @@ const ResultatBesoinScreen: React.FC = () => {
                         initialFilters={categoryFilters}
                     />
 
-                    {/* ✅ CORRECTION: Afficher TOUS les résultats (services ET produits) */}
+                    {/* ✅ CORRECTION 2025-01-02: Liste optimisée avec mémorisation des items */}
                     <View style={styles.servicesContainer}>
                         {allResults.length > 0 ? (
-                            allResults.map((result, index) => {
-                                if (result.type === 'service') {
+                            allResults.map((item) => {
+                                if (item.type === 'service') {
                                     // Afficher le service complet
-                                    const service = result.data as Service;
-                                    const prestataire = prestataires.get(service.user_id);
+                                    const service = item.data as Service;
+                                    // ✅ Utiliser fonction optimisée pour éviter les re-renders
+                                    const prestataire = getPrestataire(service.user_id);
                                     const serviceId = parseInt(service.id);
                                     const serviceBatchData = !isNaN(serviceId) ? batchData[serviceId] : null;
                                     
                                     return (
                                         <UltraModernServiceCard
-                                            key={`service-${service.id}`}
+                                            key={item.key}
                                             service={service}
                                             prestataireInfo={prestataire}
                                             user={user}
@@ -1554,11 +1614,11 @@ const ResultatBesoinScreen: React.FC = () => {
                                     );
                                 } else {
                                     // Afficher le produit individuel
-                                    const product = result.data;
+                                    const product = item.data;
                                     return (
-                                        <React.Fragment key={`product-${product._serviceId || product.service_id || index}-${product.nom || product.name || index}`}>
+                                        <View key={item.key}>
                                             {renderProductCard(product)}
-                                        </React.Fragment>
+                                        </View>
                                     );
                                 }
                             })

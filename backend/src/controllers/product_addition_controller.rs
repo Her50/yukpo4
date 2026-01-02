@@ -32,8 +32,68 @@ pub struct AddProductResponse {
     pub message: String,
 }
 
+/// ✅ NOUVEAU 2026-01-02: Fonction pour traiter la création de produit (utilisée par le worker)
+/// Cette fonction est appelée par le worker de la queue, pas directement par l'API
+pub async fn process_product_creation(
+    pool: &PgPool,
+    service_id: i32,
+    user_id: i32,
+    product_data: &Value,
+    images_to_process: &[String],
+) -> AppResult<Value> {
+    use crate::utils::log::{log_info, log_error};
+    
+    log_info(&format!("[process_product_creation] 🔄 Traitement produit pour service {} (user_id: {})", service_id, user_id));
+    
+    // Nettoyer les médias du JSON
+    let mut product_data_cleaned = product_data.clone();
+    let mut removed_count = 0;
+    clean_media_recursive_final(&mut product_data_cleaned, &mut removed_count);
+    
+    let product_json_value = serde_json::to_value(&product_data_cleaned)
+        .map_err(|e| AppError::Internal(format!("Erreur sérialisation produit: {}", e)))?;
+    
+    // Utiliser la fonction PostgreSQL optimisée
+    let (product_index, produits_data, lieu_data) = crate::utils::db_retry::retry_query(
+        pool,
+        || {
+            let product_json_clone = product_json_value.clone();
+            let service_id_clone = service_id;
+            let pool_clone = pool.clone();
+            Box::pin(async move {
+                let mut tx = pool_clone.begin().await?;
+                sqlx::query("SET LOCAL statement_timeout = '180s'")
+                    .execute(&mut *tx)
+                    .await?;
+                
+                let result = sqlx::query_as::<_, (i32, Value, Value)>(
+                    "SELECT product_index, produits_data, lieu_data FROM add_product_to_service_jsonb_v2($1, $2)"
+                )
+                .bind(service_id_clone)
+                .bind(&product_json_clone)
+                .fetch_one(&mut *tx)
+                .await?;
+                
+                tx.commit().await?;
+                Ok(result)
+            })
+        },
+        10,
+    ).await?;
+    
+    // Traiter les images en arrière-plan (déjà fait dans le contrôleur principal)
+    // Ici on retourne juste le résultat
+    
+    Ok(json!({
+        "product_index": product_index,
+        "produits_data": produits_data,
+        "lieu_data": lieu_data,
+    }))
+}
+
 /// Ajouter un nouveau produit à un service existant
 /// Route : POST /api/services/{service_id}/products
+/// ✅ NOUVEAU 2026-01-02: Utilise maintenant une queue asynchrone pour éviter les timeouts
 #[axum::debug_handler]
 pub async fn add_product_to_service(
     State(state): State<Arc<AppState>>,
@@ -210,7 +270,12 @@ pub async fn add_product_to_service(
     log_info(&format!("[add_product_to_service] ✅ Solde débité: {} FCFA (ancien: {}, nouveau: {})", 
         cout_ajout, current_balance, new_balance));
     
-    // ✅ CRITIQUE 2025-12-27: Extraire et sauvegarder les médias AVANT de nettoyer le JSON
+    // ✅ NOUVEAU 2026-01-02: Utiliser la queue asynchrone au lieu de traiter directement
+    // Cela évite les timeouts et erreurs TLS en traitant les créations en arrière-plan
+    use crate::services::product_creation_queue::ProductCreationQueueService;
+    let queue_service = ProductCreationQueueService::new(state.pg.clone());
+    
+    // Extraire les images du produit AVANT nettoyage
     // Les médias doivent être uploadés vers Wasabi et stockés dans la table media, PAS dans services.data
     // Sinon le JSONB devient énorme, causant des UPDATE lents (7-12s) et des timeouts
     
@@ -258,41 +323,88 @@ pub async fn add_product_to_service(
         log_info(&format!("[add_product_to_service] ✅ Nettoyage de {} média(s) base64 du produit (seront sauvegardés dans table media)", removed_count));
     }
     
-    // ✅ OPTIMISÉ 2025-12-27: Utiliser fonction PostgreSQL optimisée pour éviter erreurs 500
-    // Au lieu de lire le JSONB en mémoire puis le réécrire, on utilise une fonction PostgreSQL
-    // qui fait tout en une seule opération atomique, évitant les timeouts et réduisant la latence
+    // Ajouter le job à la queue
+    let job_id = queue_service
+        .enqueue(
+            service_id,
+            user.id,
+            request.product_data.clone(),
+            images_to_process.clone(),
+            Some(5), // Priority normale
+        )
+        .await?;
+    
+    log_info(&format!(
+        "[add_product_to_service] ✅ Job {} ajouté à la queue (sera traité en arrière-plan)",
+        job_id
+    ));
+    
+    // Retourner immédiatement avec le job_id
+    // Le client pourra interroger le statut via GET /api/services/{service_id}/products/queue/{job_id}
+    Ok(Json(json!({
+        "success": true,
+        "job_id": job_id,
+        "status": "pending",
+        "message": "Produit en cours de création. Utilisez le job_id pour vérifier le statut.",
+        "cost": cout_ajout,
+        "new_balance": new_balance
+    })))
+}
+
+/// ✅ NOUVEAU 2026-01-02: Endpoint pour vérifier le statut d'un job de création de produit
+/// Route : GET /api/services/{service_id}/products/queue/{job_id}
+#[axum::debug_handler]
+pub async fn get_product_creation_status(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
+    Path((service_id, job_id)): Path<(i32, i64)>,
+) -> AppResult<Json<Value>> {
+    use crate::utils::log::log_info;
+    use crate::services::product_creation_queue::ProductCreationQueueService;
+    
+    let queue_service = ProductCreationQueueService::new(state.pg.clone());
+    
+    match queue_service.get_job_status(job_id).await? {
+        Some(job) => {
+            // Vérifier que le job appartient au bon service et utilisateur
+            if job.service_id != service_id || job.user_id != user.id {
+                return Err(AppError::Unauthorized(
+                    "Ce job ne vous appartient pas".to_string()
+                ));
+            }
+            
+            let response = json!({
+                "job_id": job.id,
+                "status": job.status,
+                "service_id": job.service_id,
+                "created_at": job.created_at,
+                "started_at": job.started_at,
+                "completed_at": job.completed_at,
+                "attempt_count": job.attempt_count,
+                "max_attempts": job.max_attempts,
+                "error_message": job.error_message,
+                "result": job.result_data,
+            });
+            
+            Ok(Json(response))
+        }
+        None => Err(AppError::NotFound(format!("Job {} introuvable", job_id)))
+    }
+}
+
+// ✅ ANCIEN CODE (gardé pour référence, mais remplacé par la queue)
+#[allow(dead_code)]
+async fn _old_add_product_logic(
+    state: Arc<AppState>,
+    service_id: i32,
+    user_id: i32,
+    product_data: Value,
+    images_to_process: Vec<String>,
+) -> AppResult<Value> {
     let pool = state.pg.clone();
-    let product_json_value = serde_json::to_value(&product_data_cleaned)
+    let product_json_value = serde_json::to_value(&product_data)
         .map_err(|e| AppError::Internal(format!("Erreur sérialisation produit: {}", e)))?;
     
-    // ✅ NOUVEAU 2026-01-02: Vérifier la taille du JSON avant l'appel PostgreSQL
-    let json_size_bytes = serde_json::to_string(&product_json_value)
-        .map(|s| s.len())
-        .unwrap_or(0);
-    let json_size_kb = json_size_bytes as f64 / 1024.0;
-    let json_size_mb = json_size_kb / 1024.0;
-    
-    if json_size_mb > 1.0 {
-        log_warn(&format!(
-            "[add_product_to_service] ⚠️ JSON produit volumineux: {:.2} MB ({} KB, {} bytes). Cela peut ralentir l'UPDATE PostgreSQL.",
-            json_size_mb, json_size_kb, json_size_bytes
-        ));
-    } else {
-        log_info(&format!(
-            "[add_product_to_service] 📊 Taille JSON produit: {:.2} KB ({} bytes)",
-            json_size_kb, json_size_bytes
-        ));
-    }
-    
-    // ✅ CORRIGÉ 2026-01-01: Utiliser retry_query pour gérer les erreurs TLS correctement
-    // retry_query gère automatiquement les erreurs TLS avec backoff adaptatif
-    let db_time = start_time.elapsed();
-    log_info(&format!("[add_product_to_service] ⏱️ Temps avant UPDATE PostgreSQL: {:?}", db_time));
-    
-    // ✅ CORRIGÉ 2026-01-01: Augmenter à 10 tentatives pour gérer les erreurs TLS persistantes
-    // Les requêtes longues (50s+) sont sujettes aux fermetures de connexion TLS
-    // Avec 10 tentatives et backoff 3-10s, on donne plus de temps pour que la connexion se rétablisse
-    // ✅ NOUVEAU 2026-01-02: Utiliser statement_timeout dans une transaction pour éviter les requêtes infinies (180s max)
     let update_result = crate::utils::db_retry::retry_query(
         &pool,
         || {
@@ -300,74 +412,28 @@ pub async fn add_product_to_service(
             let service_id_clone = service_id;
             let pool_clone = pool.clone();
             Box::pin(async move {
-                // ✅ NOUVEAU 2026-01-02: Utiliser une transaction avec statement_timeout pour limiter la durée
-                // Cela évite les requêtes qui prennent trop de temps (> 180s)
-                // SET LOCAL nécessite une transaction, donc on utilise BEGIN/COMMIT
                 let mut tx = pool_clone.begin().await?;
-                
-                // Définir le timeout pour cette transaction uniquement
                 sqlx::query("SET LOCAL statement_timeout = '180s'")
                     .execute(&mut *tx)
                     .await?;
                 
-                let query_start = std::time::Instant::now();
                 let result = sqlx::query_as::<_, (i32, Value, Value)>(
                     "SELECT product_index, produits_data, lieu_data FROM add_product_to_service_jsonb_v2($1, $2)"
                 )
                 .bind(service_id_clone)
                 .bind(&product_json_clone)
                 .fetch_one(&mut *tx)
-                .await;
+                .await?;
                 
-                let query_duration = query_start.elapsed();
-                if query_duration.as_secs() > 10 {
-                    log::warn!(
-                        "[add_product_to_service] ⚠️ Requête PostgreSQL lente: {:?} (service_id: {})",
-                        query_duration, service_id_clone
-                    );
-                } else {
-                    log::info!(
-                        "[add_product_to_service] ✅ Requête PostgreSQL terminée en {:?} (service_id: {})",
-                        query_duration, service_id_clone
-                    );
-                }
-                
-                match result {
-                    Ok(r) => {
-                        tx.commit().await?;
-                        Ok(r)
-                    }
-                    Err(e) => {
-                        let _ = tx.rollback().await;
-                        Err(e)
-                    }
-                }
+                tx.commit().await?;
+                Ok(result)
             })
         },
-        10, // ✅ CORRIGÉ: 10 tentatives max avec backoff adaptatif pour TLS (3-10s entre tentatives)
+        10,
     ).await;
     
-    let (product_index, produits_data_for_indexation, lieu_data_for_indexation) = match update_result {
+    match update_result {
         Ok((index, produits_data, lieu_data)) => {
-            let idx = index as usize;
-            let total_time = start_time.elapsed();
-            log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {}) en {:?}", service_id, idx, total_time));
-            
-            // ✅ NOUVEAU 2026-01-02: Invalider le cache Redis du service après UPDATE
-            // Cela garantit que les prochaines lectures utiliseront les données à jour
-            let cache_service = state.cache_service.clone();
-            let service_id_for_cache = service_id;
-            tokio::spawn(async move {
-                use crate::services::service_data_cache::ServiceDataCache;
-                let service_cache = ServiceDataCache::new(cache_service);
-                service_cache.invalidate_service(service_id_for_cache).await;
-            });
-            
-            // ✅ OPTIMISÉ 2025-12-31: Les données nécessaires sont déjà retournées par la fonction
-            // Plus besoin de faire un SELECT complet du JSONB !
-            (idx, produits_data, lieu_data)
-        },
-        Err(e) => {
             // ✅ AMÉLIORÉ 2025-12-31: Gérer spécifiquement les erreurs de blocage
             let error_msg = e.to_string();
             

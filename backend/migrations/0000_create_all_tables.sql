@@ -5172,3 +5172,155 @@ CREATE INDEX IF NOT EXISTS idx_services_data_produits_partial
     WHERE is_active = true 
     AND data->'produits'->'valeur' IS NOT NULL
     AND jsonb_array_length(data->'produits'->'valeur') > 0;
+
+-- ✅ NOUVEAU 2026-01-02: Queue asynchrone pour création de produits
+-- SOLUTION DÉFINITIVE: Évite les timeouts et les erreurs TLS
+CREATE TABLE IF NOT EXISTS product_creation_queue (
+    id BIGSERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_data JSONB NOT NULL,
+    images_to_process TEXT[] DEFAULT '{}',
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    priority INTEGER NOT NULL DEFAULT 5,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    max_attempts INTEGER NOT NULL DEFAULT 3,
+    error_message TEXT,
+    result_data JSONB,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_queue_status_priority 
+    ON product_creation_queue(status, priority, created_at) 
+    WHERE status IN ('pending', 'processing');
+
+CREATE INDEX IF NOT EXISTS idx_product_queue_created_at 
+    ON product_creation_queue(created_at) 
+    WHERE status IN ('completed', 'failed');
+
+CREATE INDEX IF NOT EXISTS idx_product_queue_service_id 
+    ON product_creation_queue(service_id) 
+    WHERE status = 'pending';
+
+CREATE OR REPLACE FUNCTION cleanup_old_product_creation_jobs()
+RETURNS INTEGER AS $$
+DECLARE
+    deleted_count INTEGER;
+BEGIN
+    DELETE FROM product_creation_queue
+    WHERE status IN ('completed', 'failed')
+      AND created_at < NOW() - INTERVAL '7 days';
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON TABLE product_creation_queue IS 'Queue asynchrone pour création de produits. Évite les timeouts et erreurs TLS en traitant les créations en arrière-plan.';
+COMMENT ON FUNCTION cleanup_old_product_creation_jobs IS 'Nettoie les jobs de création de produits de plus de 7 jours.';
+
+-- ✅ NOUVEAU 2026-01-02: Table de cache PostgreSQL pour remplacer Redis
+-- SOLUTION DÉFINITIVE: Cache basé sur PostgreSQL, plus fiable que Redis
+CREATE TABLE IF NOT EXISTS cache_table (
+    cache_key VARCHAR(255) PRIMARY KEY,
+    cache_value JSONB NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    access_count INTEGER NOT NULL DEFAULT 0,
+    last_accessed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cache_expires_at 
+    ON cache_table(expires_at) 
+    WHERE expires_at < NOW();
+
+CREATE INDEX IF NOT EXISTS idx_cache_key_pattern 
+    ON cache_table(cache_key text_pattern_ops);
+
+CREATE OR REPLACE FUNCTION cleanup_expired_cache()
+RETURNS INTEGER AS $$
+DECLARE
+    deleted_count INTEGER;
+BEGIN
+    DELETE FROM cache_table
+    WHERE expires_at < NOW();
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_cache(key VARCHAR(255))
+RETURNS JSONB AS $$
+DECLARE
+    result JSONB;
+BEGIN
+    SELECT cache_value INTO result
+    FROM cache_table
+    WHERE cache_key = key
+      AND expires_at > NOW();
+    
+    IF result IS NOT NULL THEN
+        UPDATE cache_table
+        SET access_count = access_count + 1,
+            last_accessed_at = NOW()
+        WHERE cache_key = key;
+    END IF;
+    
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION set_cache(
+    key VARCHAR(255),
+    value JSONB,
+    ttl_seconds INTEGER DEFAULT 3600
+)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO cache_table (cache_key, cache_value, expires_at, updated_at)
+    VALUES (key, value, NOW() + (ttl_seconds || ' seconds')::INTERVAL, NOW())
+    ON CONFLICT (cache_key) 
+    DO UPDATE SET
+        cache_value = EXCLUDED.cache_value,
+        expires_at = EXCLUDED.expires_at,
+        updated_at = EXCLUDED.updated_at,
+        access_count = 0;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_cache(key VARCHAR(255))
+RETURNS BOOLEAN AS $$
+DECLARE
+    deleted_count INTEGER;
+BEGIN
+    DELETE FROM cache_table
+    WHERE cache_key = key;
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count > 0;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_cache_pattern(pattern VARCHAR(255))
+RETURNS INTEGER AS $$
+DECLARE
+    deleted_count INTEGER;
+BEGIN
+    DELETE FROM cache_table
+    WHERE cache_key LIKE pattern;
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON TABLE cache_table IS 'Table de cache PostgreSQL pour remplacer Redis. Plus fiable et intégré à la base de données.';
+COMMENT ON FUNCTION get_cache IS 'Récupère une valeur du cache si elle n''est pas expirée.';
+COMMENT ON FUNCTION set_cache IS 'Met une valeur en cache avec un TTL en secondes.';
+COMMENT ON FUNCTION delete_cache IS 'Supprime une clé du cache.';
+COMMENT ON FUNCTION delete_cache_pattern IS 'Supprime les clés du cache correspondant à un pattern.';

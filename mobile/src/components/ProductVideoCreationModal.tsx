@@ -1246,23 +1246,56 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     }
                                     
                                     if (sessionId && responseData.timeline.scenes.length > 0) {
+                                        // ✅ CORRIGÉ: Mapper les médias disponibles pour remplir media_url si manquant
+                                        const allMedia = [...productMedia, ...serviceMedia];
+                                        const mediaMap = new Map<number | string, string>();
+                                        allMedia.forEach(media => {
+                                            if (media.path) {
+                                                const url = buildMediaUrl(media.path);
+                                                if (url) {
+                                                    mediaMap.set(media.id, url);
+                                                }
+                                            }
+                                        });
+                                        
                                         // Convertir les scènes en TimelineClipInput[]
-                                        const clips: import('../services/studioService').TimelineClipInput[] = responseData.timeline.scenes.map((scene) => ({
-                                            position: scene.scene_index,
-                                            lane: null,
-                                            duration_seconds: scene.duration,
-                                            payload: {
-                                                scene_index: scene.scene_index,
-                                                start_time: scene.start_time,
-                                                media_id: scene.media_id,
-                                                media_url: scene.media_url,
-                                                text: scene.text,
-                                                text_position: scene.text_position,
-                                                transition: scene.transition,
-                                                effects: scene.effects,
-                                                audio_cue: scene.audio_cue,
-                                            },
-                                        }));
+                                        const clips: import('../services/studioService').TimelineClipInput[] = responseData.timeline.scenes.map((scene) => {
+                                            // ✅ CORRIGÉ: Remplir media_url si manquant en utilisant media_id
+                                            let mediaUrl = scene.media_url;
+                                            if (!mediaUrl && scene.media_id) {
+                                                const mediaId = typeof scene.media_id === 'string' 
+                                                    ? parseInt(scene.media_id, 10) 
+                                                    : scene.media_id;
+                                                if (!isNaN(mediaId)) {
+                                                    mediaUrl = mediaMap.get(mediaId) || undefined;
+                                                }
+                                            }
+                                            
+                                            // ✅ FALLBACK: Si toujours pas de media_url, utiliser le premier média disponible
+                                            if (!mediaUrl && allMedia.length > 0) {
+                                                const firstMedia = allMedia[0];
+                                                if (firstMedia.path) {
+                                                    mediaUrl = buildMediaUrl(firstMedia.path);
+                                                }
+                                            }
+                                            
+                                            return {
+                                                position: scene.scene_index,
+                                                lane: null,
+                                                duration_seconds: scene.duration,
+                                                payload: {
+                                                    scene_index: scene.scene_index,
+                                                    start_time: scene.start_time,
+                                                    media_id: scene.media_id,
+                                                    media_url: mediaUrl || null,
+                                                    text: scene.text,
+                                                    text_position: scene.text_position,
+                                                    transition: scene.transition,
+                                                    effects: scene.effects,
+                                                    audio_cue: scene.audio_cue,
+                                                },
+                                            };
+                                        });
                                         
                                         console.log('[ProductVideoCreationModal] 💾 Sauvegarde timeline dans session Studio:', {
                                             sessionId,
@@ -2341,11 +2374,38 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 return;
             }
             
-            // ✅ NOUVEAU: Vérifier que la timeline existe avant d'appeler l'API
+            // ✅ NOUVEAU: Vérifier que la timeline existe et attacher les médias manquants
             try {
                 const session = await studioService.getSession(studioSessionId);
                 if (!session || !session.timeline || session.timeline.length === 0) {
                     throw new Error('La timeline est vide. Ajoutez d\'abord des médias à votre timeline.');
+                }
+                
+                // ✅ CORRIGÉ: Attacher les médias disponibles comme assets dynamiques si nécessaire
+                const allMedia = [...productMedia, ...serviceMedia];
+                if (allMedia.length > 0) {
+                    console.log('[ProductVideoCreationModal] 📎 Attachement des médias à la session...');
+                    for (const media of allMedia.slice(0, 10)) { // Limiter à 10 médias
+                        if (media.path) {
+                            const mediaUrl = buildMediaUrl(media.path);
+                            if (mediaUrl) {
+                                try {
+                                    await studioService.attachAsset(studioSessionId, {
+                                        asset_type: (media.type || media.media_type || 'image') === 'video' ? 'video' : 'image',
+                                        public_url: mediaUrl,
+                                        metadata: {
+                                            media_id: media.id,
+                                            product_index: media.product_index,
+                                        },
+                                    });
+                                } catch (attachError: any) {
+                                    console.warn('[ProductVideoCreationModal] ⚠️ Erreur attachement média:', attachError);
+                                    // Continuer même si l'attachement échoue
+                                }
+                            }
+                        }
+                    }
+                    console.log('[ProductVideoCreationModal] ✅ Médias attachés à la session');
                 }
             } catch (checkError: any) {
                 console.warn('[ProductVideoCreationModal] Vérification timeline:', checkError);

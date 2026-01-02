@@ -137,6 +137,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(crate::controllers::product_addition_controller::add_product_to_service)
                 .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // 200 MB
         )
+        // ✅ NOUVEAU 2026-01-02: Route pour vérifier le statut d'un job de création de produit
+        .route("/api/services/{service_id}/products/queue/{job_id}", 
+            get(crate::controllers::product_addition_controller::get_product_creation_status)
+        )
         // Route pour récupérer les informations d'un utilisateur par ID
         .route("/api/users/{user_id}", get(crate::controllers::user_controller::get_user_by_id))
         // Route pour récupérer le dernier service (pour préremplissage contact)

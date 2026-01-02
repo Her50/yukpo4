@@ -143,6 +143,7 @@ pub mod prestataire_service;
 pub mod preview_generation_service; // ✅ NOUVEAU: Service de génération de preview rapide
 pub mod preview_monitoring;
 pub mod product_availability_service; // ✅ NOUVEAU : Vérification disponibilité produits
+pub mod product_creation_queue; // ✅ NOUVEAU 2026-01-02: Queue asynchrone pour création de produits
 pub mod product_enrichment_service; // ✅ NOUVEAU : Enrichissement produits avec disponibilité
 pub mod product_price_service; // ✅ NOUVEAU : Service pour calculer les prix réels avec promotions
 pub mod product_stock_service; // ✅ NOUVEAU : Gestion stock en temps réel
