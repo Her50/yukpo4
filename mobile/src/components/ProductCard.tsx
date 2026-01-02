@@ -320,8 +320,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     
     // ✅ NOUVEAU: Calculer la distance si elle n'est pas fournie et qu'on a les coordonnées GPS
     if ((calculatedDistance === undefined || !Number.isFinite(calculatedDistance)) && effectiveUserLocation && locationCalculateDistance) {
-      // Extraire les coordonnées GPS du produit/service
-      const productGPS = product.gps || product.gps_coords || product.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
+      // Extraire les coordonnées GPS du produit/service (priorité: _gps ajouté dans ResultatBesoinScreen, puis gps direct, puis service)
+      const productGPS = product._gps || product.gps || product.gps_coords || product.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
       
       if (productGPS) {
         let productLat: number | undefined;
@@ -357,7 +357,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     }
     
     return calculatedDistance;
-  }, [product.distance_km, product.distanceKm, product.distance, product.distance_client, product.gps, product.gps_coords, product.gps_fixe, service?.data?.gps_fixe?.valeur, service?.data?.gps?.valeur, effectiveUserLocation, locationCalculateDistance]);
+  }, [product.distance_km, product.distanceKm, product.distance, product.distance_client, product._gps, product.gps, product.gps_coords, product.gps_fixe, service?.data?.gps_fixe?.valeur, service?.data?.gps?.valeur, effectiveUserLocation, locationCalculateDistance]);
   
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm) && distanceKm >= 0;
 

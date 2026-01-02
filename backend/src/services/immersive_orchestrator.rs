@@ -39,6 +39,14 @@ pub struct TimelineBrollAsset {
 }
 
 #[derive(Debug, Clone)]
+pub struct TimelineMediaItem {
+    pub id: Option<i32>,
+    pub url: String,
+    pub media_type: String, // 'image' | 'video'
+    pub ai_description: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub struct TimelineRequest {
     pub script_outline: Vec<String>,
     pub product_name: String,
@@ -47,6 +55,7 @@ pub struct TimelineRequest {
     pub style: Option<String>,
     pub duration_seconds: f32,
     pub broll_assets: Vec<TimelineBrollAsset>,
+    pub available_media: Vec<TimelineMediaItem>, // ✅ NOUVEAU: Médias produits disponibles
     pub template_id: Option<String>,
     pub business_context: Option<TimelineBusinessContext>,
     pub ai_template_recommendations: Vec<String>,
@@ -168,14 +177,50 @@ impl ImmersiveOrchestrator {
         let mut broll_sources: HashMap<String, usize> = HashMap::new();
         let mut broll_iter = request.broll_assets.iter();
         let mut broll_used = 0usize;
+        
+        // ✅ NOUVEAU: Itérateur pour les médias produits disponibles
+        let mut media_iter = request.available_media.iter().cycle();
+        let mut media_used = 0usize;
+        
+        info!(
+            "[ImmersiveOrchestrator] 📊 Médias disponibles pour timeline: {} média(x)",
+            request.available_media.len()
+        );
 
         // Intro scene
-        scenes.push(create_intro_scene(
+        let mut intro_scene = create_intro_scene(
             &request,
             per_scene_frames,
             request.style.clone(),
-        ));
+        );
+        
+        // ✅ NOUVEAU: Assigner un média à la scène intro si disponible
+        if let Some(media) = media_iter.next() {
+            if media.media_type == "video" {
+                intro_scene.assets.video_url = Some(media.url.clone());
+                intro_scene.assets.background_url = Some(media.url.clone());
+            } else {
+                intro_scene.assets.product_image_url = Some(media.url.clone());
+                intro_scene.assets.background_url = Some(media.url.clone());
+            }
+            media_used += 1;
+            info!(
+                "[ImmersiveOrchestrator] ✅ Média assigné à scène intro: media_id={:?}, type={}, url={}",
+                media.id, media.media_type, media.url
+            );
+        }
+        
+        scenes.push(intro_scene);
         increment_template(&mut template_breakdown, "IntroPulse");
+
+        // ✅ NOUVEAU: Itérateur pour les médias produits disponibles
+        let mut media_iter = request.available_media.iter().cycle();
+        let mut media_used = 0usize;
+        
+        info!(
+            "[ImmersiveOrchestrator] 📊 Médias disponibles pour timeline: {} média(x)",
+            request.available_media.len()
+        );
 
         // Content scenes
         for (idx, line) in request.script_outline.iter().enumerate() {
@@ -194,10 +239,48 @@ impl ImmersiveOrchestrator {
                 intensity: 0.55,
             });
 
+            // ✅ NOUVEAU: Assigner un média produit à chaque scène de contenu
+            if let Some(media) = media_iter.next() {
+                // Prioriser les images pour product_image_url, vidéos pour video_url
+                if media.media_type == "video" {
+                    scene_assets.video_url = Some(media.url.clone());
+                    scene_assets.background_url = Some(media.url.clone());
+                    info!(
+                        "[ImmersiveOrchestrator] ✅ Média vidéo assigné à scène {}: media_id={:?}, url={}",
+                        scene_index, media.id, media.url
+                    );
+                } else {
+                    // Image: utiliser pour product_image_url et background_url
+                    scene_assets.product_image_url = Some(media.url.clone());
+                    scene_assets.background_url = Some(media.url.clone());
+                    info!(
+                        "[ImmersiveOrchestrator] ✅ Média image assigné à scène {}: media_id={:?}, url={}",
+                        scene_index, media.id, media.url
+                    );
+                }
+                media_used += 1;
+            } else if !request.available_media.is_empty() {
+                warn!(
+                    "[ImmersiveOrchestrator] ⚠️ Aucun média disponible pour scène {} (tous utilisés)",
+                    scene_index
+                );
+            } else {
+                warn!(
+                    "[ImmersiveOrchestrator] ⚠️ Aucun média produit disponible pour scène {}",
+                    scene_index
+                );
+            }
+
             if plan.should_inject_broll(scene_index) {
                 if let Some(asset) = broll_iter.next() {
-                    scene_assets.video_url = Some(asset.path.clone());
-                    scene_assets.background_url = Some(asset.path.clone());
+                    // Si pas de média produit, utiliser b-roll pour video_url
+                    if scene_assets.video_url.is_none() {
+                        scene_assets.video_url = Some(asset.path.clone());
+                    }
+                    // Toujours utiliser b-roll pour background si disponible
+                    if scene_assets.background_url.is_none() {
+                        scene_assets.background_url = Some(asset.path.clone());
+                    }
                     template = ImmersiveTemplate::ARHighlight;
                     transition.r#type = TransitionType::Orbit3d;
                     color_grade = Some(ImmersiveSceneColorGrade {
@@ -207,6 +290,10 @@ impl ImmersiveOrchestrator {
                     *broll_sources.entry(asset.source.clone()).or_insert(0) += 1;
                     *broll_formats.entry(asset.format.clone()).or_insert(0) += 1;
                     broll_used += 1;
+                    info!(
+                        "[ImmersiveOrchestrator] ✅ B-roll assigné à scène {}: path={}",
+                        scene_index, asset.path
+                    );
                 } else {
                     warnings.push(format!(
                         "Aucun b-roll disponible pour la scène {} (slot planifié).",
@@ -228,7 +315,25 @@ impl ImmersiveOrchestrator {
         }
 
         // CTA scene
-        scenes.push(create_cta_scene(&request, per_scene_frames));
+        let mut cta_scene = create_cta_scene(&request, per_scene_frames);
+        
+        // ✅ NOUVEAU: Assigner un média à la scène CTA si disponible
+        if let Some(media) = media_iter.next() {
+            if media.media_type == "video" {
+                cta_scene.assets.video_url = Some(media.url.clone());
+                cta_scene.assets.background_url = Some(media.url.clone());
+            } else {
+                cta_scene.assets.product_image_url = Some(media.url.clone());
+                cta_scene.assets.background_url = Some(media.url.clone());
+            }
+            media_used += 1;
+            info!(
+                "[ImmersiveOrchestrator] ✅ Média assigné à scène CTA: media_id={:?}, type={}, url={}",
+                media.id, media.media_type, media.url
+            );
+        }
+        
+        scenes.push(cta_scene);
         increment_template(&mut template_breakdown, "GlowCTA");
 
         let mut audio_cues: Vec<ImmersiveAudioCue> = Vec::new();
@@ -324,9 +429,35 @@ impl ImmersiveOrchestrator {
         };
 
         info!(
-            "[ImmersiveOrchestrator] timeline générée (scenes={}, broll={})",
-            analytics.total_scenes, analytics.broll_clips_used
+            "[ImmersiveOrchestrator] ✅ Timeline générée: scenes={}, médias_produits={}, broll={}",
+            analytics.total_scenes, media_used, analytics.broll_clips_used
         );
+        
+        // ✅ NOUVEAU: Validation - vérifier que toutes les scènes ont au moins un média
+        let scenes_with_media = scenes.iter()
+            .filter(|scene| {
+                scene.assets.video_url.is_some() 
+                    || scene.assets.background_url.is_some() 
+                    || scene.assets.product_image_url.is_some()
+            })
+            .count();
+        
+        if scenes_with_media < scenes.len() {
+            let missing_count = scenes.len() - scenes_with_media;
+            warn!(
+                "[ImmersiveOrchestrator] ⚠️ {} scène(s) sans média sur {} total",
+                missing_count, scenes.len()
+            );
+            warnings.push(format!(
+                "{} scène(s) générée(s) sans média. Veuillez ajouter des images/vidéos au produit.",
+                missing_count
+            ));
+        } else {
+            info!(
+                "[ImmersiveOrchestrator] ✅ Toutes les {} scènes ont au moins un média assigné",
+                scenes.len()
+            );
+        }
 
         Ok(TimelineResult {
             plan,

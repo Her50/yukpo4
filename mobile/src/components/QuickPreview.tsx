@@ -46,10 +46,11 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                 }
             }
             
-            // Vérifier media_id
+            // Vérifier media_id (pas un placeholder)
             if (scene.media_id !== null && scene.media_id !== undefined) {
                 const mediaId = typeof scene.media_id === 'string' ? parseInt(scene.media_id, 10) : scene.media_id;
-                if (!isNaN(mediaId) && mediaId > 0) {
+                // ✅ CORRIGÉ: Ignorer les media_id placeholder (>= 10000)
+                if (!isNaN(mediaId) && mediaId > 0 && mediaId < 10000) {
                     return true;
                 }
             }
@@ -75,7 +76,8 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                 if (scene.media_id !== null && scene.media_id !== undefined) {
                     try {
                         const mediaId = typeof scene.media_id === 'string' ? parseInt(scene.media_id, 10) : scene.media_id;
-                        if (!isNaN(mediaId) && mediaId > 0) {
+                        // ✅ CORRIGÉ: Ignorer les media_id invalides ou placeholder (comme "10000")
+                        if (!isNaN(mediaId) && mediaId > 0 && mediaId < 10000) {
                             const response = await apiGet(`/api/media/${mediaId}`);
                             if (response.success && response.data?.path) {
                                 const mediaPath = response.data.path;
@@ -90,11 +92,16 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                                     ...scene,
                                     media_url: mediaUrl,
                                 };
+                            } else {
+                                console.warn(`[QuickPreview] ⚠️ Media ID ${mediaId} non trouvé dans l'API, utilisation des assets si disponibles`);
                             }
+                        } else if (mediaId >= 10000) {
+                            // ✅ CORRIGÉ: Ignorer les media_id placeholder (>= 10000)
+                            console.warn(`[QuickPreview] ⚠️ Media ID ${mediaId} semble être un placeholder, utilisation des assets si disponibles`);
                         }
                     } catch (error) {
                         console.error(`[QuickPreview] Erreur récupération média ${scene.media_id}:`, error);
-                        // En cas d'erreur, on garde la scène telle quelle
+                        // En cas d'erreur, on garde la scène telle quelle et on essaiera les assets
                     }
                 }
 
@@ -156,10 +163,11 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                 }
             }
             
-            // Vérifier media_id (non null, non undefined, nombre valide)
+            // Vérifier media_id (non null, non undefined, nombre valide, pas un placeholder)
             if (scene.media_id !== null && scene.media_id !== undefined) {
                 const mediaId = typeof scene.media_id === 'string' ? parseInt(scene.media_id, 10) : scene.media_id;
-                if (!isNaN(mediaId) && mediaId > 0) {
+                // ✅ CORRIGÉ: Ignorer les media_id placeholder (>= 10000)
+                if (!isNaN(mediaId) && mediaId > 0 && mediaId < 10000) {
                     return true;
                 }
             }

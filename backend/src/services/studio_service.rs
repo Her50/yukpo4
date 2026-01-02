@@ -436,11 +436,58 @@ impl StudioService {
             ));
         }
 
-        for clip in &clips {
+        // ✅ NOUVEAU: Validation que chaque clip a au moins un média
+        for (idx, clip) in clips.iter().enumerate() {
             if clip.duration_seconds <= 0 {
                 return Err(AppError::BadRequest(
-                    "La durée d'un clip doit être positive.".into(),
+                    format!("La durée du clip {} doit être positive.", idx + 1)
                 ));
+            }
+            
+            // ✅ VALIDATION: Vérifier que le clip a au moins un média dans son payload
+            let has_media = if let Some(payload_obj) = clip.payload.as_object() {
+                // Vérifier dans assets
+                let assets_has_media = payload_obj.get("assets")
+                    .and_then(|a| a.as_object())
+                    .map(|a| {
+                        a.get("videoUrl").or_else(|| a.get("video_url"))
+                            .or_else(|| a.get("backgroundUrl")).or_else(|| a.get("background_url"))
+                            .or_else(|| a.get("productImageUrl")).or_else(|| a.get("product_image_url"))
+                            .and_then(|v| v.as_str())
+                            .map(|s| !s.trim().is_empty())
+                            .unwrap_or(false)
+                    })
+                    .unwrap_or(false);
+                
+                // Vérifier directement dans le payload (format alternatif)
+                let direct_has_media = payload_obj.get("video_url").or_else(|| payload_obj.get("videoUrl"))
+                    .or_else(|| payload_obj.get("background_url")).or_else(|| payload_obj.get("backgroundUrl"))
+                    .or_else(|| payload_obj.get("product_image_url")).or_else(|| payload_obj.get("productImageUrl"))
+                    .or_else(|| payload_obj.get("image_url")).or_else(|| payload_obj.get("imageUrl"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| !s.trim().is_empty())
+                    .unwrap_or(false);
+                
+                assets_has_media || direct_has_media
+            } else {
+                // Si le payload n'est pas un objet, essayer de parser comme ImmersiveScene
+                if let Ok(scene) = serde_json::from_value::<ImmersiveScene>(clip.payload.clone()) {
+                    scene.assets.video_url.is_some() 
+                        || scene.assets.background_url.is_some() 
+                        || scene.assets.product_image_url.is_some()
+                } else {
+                    false
+                }
+            };
+            
+            if !has_media {
+                warn!(
+                    "[StudioService] ⚠️ Clip {} (position {}) n'a pas de média valide dans son payload",
+                    idx + 1, clip.position
+                );
+                // ✅ CORRIGÉ: Ne pas rejeter immédiatement, mais avertir
+                // Le clip sera créé mais sans média, ce qui causera une erreur lors du preview
+                // C'est mieux que de rejeter toute la timeline, mais on log l'avertissement
             }
         }
 
@@ -705,8 +752,48 @@ impl StudioService {
                         session_id
                     );
                     
+                    // ✅ AMÉLIORÉ: Charger les assets dynamiques de la session pour enrichir la timeline
+                    let session_assets = self.load_assets(session_id).await.unwrap_or_default();
+                    
+                    // ✅ NOUVEAU: Enrichir les scènes sans médias avec les assets dynamiques
+                    let mut enriched_timeline = timeline_model.clone();
+                    if !session_assets.is_empty() {
+                        let mut asset_index = 0;
+                        for scene in &mut enriched_timeline.scenes {
+                            // Si la scène n'a pas de média, utiliser un asset dynamique comme fallback
+                            if scene.assets.video_url.is_none() 
+                                && scene.assets.background_url.is_none() 
+                                && scene.assets.product_image_url.is_none() {
+                                if let Some(asset) = session_assets.get(asset_index) {
+                                    // Utiliser public_url ou storage_key selon disponibilité
+                                    if let Some(url) = asset.public_url.as_ref() {
+                                        if !url.trim().is_empty() {
+                                            scene.assets.background_url = Some(url.clone());
+                                            info!(
+                                                "[StudioService] ✅ Asset dynamique {} utilisé comme fallback pour scène sans média",
+                                                asset.id
+                                            );
+                                        }
+                                    } else if let Some(storage_key) = asset.storage_key.as_ref() {
+                                        // Construire l'URL depuis storage_key
+                                        let api_base_url = std::env::var("API_BASE_URL")
+                                            .unwrap_or_else(|_| std::env::var("UPLOAD_BASE_URL")
+                                                .unwrap_or_else(|_| "http://localhost:3000".to_string()));
+                                        let media_url = format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), storage_key.trim_start_matches('/'));
+                                        scene.assets.background_url = Some(media_url);
+                                        info!(
+                                            "[StudioService] ✅ Asset dynamique {} (storage_key) utilisé comme fallback pour scène sans média",
+                                            asset.id
+                                        );
+                                    }
+                                    asset_index = (asset_index + 1) % session_assets.len();
+                                }
+                            }
+                        }
+                    }
+                    
                     // Convertir ImmersiveTimeline en VideoTimeline
-                    let video_timeline = convert_immersive_to_video_timeline(&timeline_model);
+                    let video_timeline = convert_immersive_to_video_timeline(&enriched_timeline);
                     
                     // Utiliser le quick preview avec le pool de base de données
                     let quick_preview_request = QuickPreviewRequest {
@@ -925,23 +1012,103 @@ impl StudioService {
     }
 }
 
+/// ✅ AMÉLIORÉ: Construit une timeline avec fallback vers assets dynamiques si les clips n'ont pas de médias
 fn build_preview_timeline(clips: &[StudioTimelineClipRecord]) -> AppResult<ImmersiveTimeline> {
     let mut scenes: Vec<ImmersiveScene> = Vec::with_capacity(clips.len());
 
     for clip in clips {
         let scene = match serde_json::from_value::<ImmersiveScene>(clip.payload.clone()) {
             Ok(scene) => scene,
-            Err(_) => {
+            Err(parse_err) => {
+                // ✅ CORRIGÉ: Si le parsing complet échoue, essayer d'extraire les assets depuis le payload
+                warn!(
+                    "[build_preview_timeline] ⚠️ Parsing ImmersiveScene échoué pour clip {}: {}. Tentative d'extraction partielle des assets.",
+                    clip.id, parse_err
+                );
+                
                 let template = clip
                     .lane
                     .as_deref()
                     .and_then(map_template_name)
                     .unwrap_or(ImmersiveTemplate::ProductShowcase);
+                
+                // ✅ NOUVEAU: Extraire les assets depuis le payload même si le parsing complet échoue
+                let mut assets = ImmersiveSceneAssets::default();
+                
+                if let Some(payload_obj) = clip.payload.as_object() {
+                    // Chercher les assets dans le payload
+                    if let Some(assets_value) = payload_obj.get("assets") {
+                        if let Ok(extracted_assets) = serde_json::from_value::<ImmersiveSceneAssets>(assets_value.clone()) {
+                            assets = extracted_assets;
+                            info!(
+                                "[build_preview_timeline] ✅ Assets extraits depuis payload pour clip {}",
+                                clip.id
+                            );
+                        } else {
+                            // Essayer d'extraire les champs individuellement
+                            if let Some(assets_obj) = assets_value.as_object() {
+                                assets.video_url = assets_obj.get("videoUrl")
+                                    .or_else(|| assets_obj.get("video_url"))
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| s.to_string())
+                                    .filter(|s| !s.trim().is_empty());
+                                
+                                assets.background_url = assets_obj.get("backgroundUrl")
+                                    .or_else(|| assets_obj.get("background_url"))
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| s.to_string())
+                                    .filter(|s| !s.trim().is_empty());
+                                
+                                assets.product_image_url = assets_obj.get("productImageUrl")
+                                    .or_else(|| assets_obj.get("product_image_url"))
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| s.to_string())
+                                    .filter(|s| !s.trim().is_empty());
+                                
+                                if assets.video_url.is_some() || assets.background_url.is_some() || assets.product_image_url.is_some() {
+                                    info!(
+                                        "[build_preview_timeline] ✅ Médias extraits partiellement depuis payload pour clip {}",
+                                        clip.id
+                                    );
+                                } else {
+                                    warn!(
+                                        "[build_preview_timeline] ⚠️ Aucun média trouvé dans assets pour clip {}",
+                                        clip.id
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    
+                    // ✅ NOUVEAU: Chercher aussi directement dans le payload (format alternatif)
+                    if assets.video_url.is_none() && assets.background_url.is_none() && assets.product_image_url.is_none() {
+                        assets.video_url = payload_obj.get("video_url")
+                            .or_else(|| payload_obj.get("videoUrl"))
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                            .filter(|s| !s.trim().is_empty());
+                        
+                        assets.background_url = payload_obj.get("background_url")
+                            .or_else(|| payload_obj.get("backgroundUrl"))
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                            .filter(|s| !s.trim().is_empty());
+                        
+                        assets.product_image_url = payload_obj.get("product_image_url")
+                            .or_else(|| payload_obj.get("productImageUrl"))
+                            .or_else(|| payload_obj.get("image_url"))
+                            .or_else(|| payload_obj.get("imageUrl"))
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                            .filter(|s| !s.trim().is_empty());
+                    }
+                }
+                
                 ImmersiveScene {
                     id: format!("clip-{}", clip.id),
                     template,
                     duration_in_frames: (clip.duration_seconds.max(1) as u32) * 30,
-                    assets: ImmersiveSceneAssets::default(),
+                    assets,
                     transition: ImmersiveSceneTransition::default(),
                     color_grade: None,
                 }
@@ -956,6 +1123,49 @@ fn build_preview_timeline(clips: &[StudioTimelineClipRecord]) -> AppResult<Immer
             "Timeline invalide pour l'aperçu.".into(),
         ));
     }
+
+    // ✅ NOUVEAU: Validation finale - vérifier qu'au moins une scène a un média
+    let scenes_with_media: Vec<_> = scenes.iter()
+        .filter(|scene| {
+            scene.assets.video_url.is_some() 
+                || scene.assets.background_url.is_some() 
+                || scene.assets.product_image_url.is_some()
+        })
+        .collect();
+    
+    if scenes_with_media.is_empty() {
+        let scene_details: Vec<String> = scenes.iter()
+            .enumerate()
+            .map(|(idx, scene)| {
+                format!(
+                    "Scène {} (id: {}): video_url={:?}, background_url={:?}, product_image_url={:?}",
+                    idx,
+                    scene.id,
+                    scene.assets.video_url,
+                    scene.assets.background_url,
+                    scene.assets.product_image_url
+                )
+            })
+            .collect();
+        
+        error!(
+            "[build_preview_timeline] ❌ Aucune scène n'a de média valide. Détails: {}",
+            scene_details.join(" | ")
+        );
+        
+        return Err(AppError::BadRequest(
+            format!(
+                "Aucune scène n'a de média valide (video_url, background_url ou product_image_url). Total scènes: {}. Veuillez ajouter des médias aux clips avant de générer le preview.",
+                scenes.len()
+            )
+        ));
+    }
+    
+    info!(
+        "[build_preview_timeline] ✅ Timeline construite: {} scènes totales, {} scènes avec médias",
+        scenes.len(),
+        scenes_with_media.len()
+    );
 
     Ok(ImmersiveTimeline {
         fps: 30,

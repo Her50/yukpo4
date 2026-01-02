@@ -5302,12 +5302,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 [
                   {
                     text: 'OK',
-                  onPress: () => {
-                    navigation.goBack();
+                    onPress: () => {
+                      navigation.goBack();
+                    }
                   }
-                }
-              ]
-            );
+                ]
+              );
+            }
           }}
         />
       )}

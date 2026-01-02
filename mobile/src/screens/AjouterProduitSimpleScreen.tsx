@@ -1128,15 +1128,27 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                                 saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
                                             });
 
-                                            // ✅ Fusionner médias compressés + URLs existantes (comme FormulaireYukpoIntelligentScreen)
-                                            if (compressedMedia.images.length > 0 || existingImageUrls.length > 0) {
-                                                nouveauProduit.images = [...compressedMedia.images, ...existingImageUrls];
-                                                nouveauProduit.base64_image = compressedMedia.images; // Pour compatibilité backend
+                                            // ✅ CORRIGÉ: Séparer les médias base64 (seront traités par le backend) des URLs
+                                            // Le backend nettoie les base64 et les sauvegarde dans la table media
+                                            // On envoie les base64 dans des champs séparés pour que le backend les traite
+                                            if (compressedMedia.images.length > 0) {
+                                                // Les images base64 compressées seront traitées par le backend
+                                                nouveauProduit.base64_image = compressedMedia.images;
+                                                // Ne pas mettre dans images pour éviter d'envoyer du base64 dans le JSONB
+                                            }
+                                            if (existingImageUrls.length > 0) {
+                                                // Les URLs existantes peuvent être dans images (pas de base64)
+                                                nouveauProduit.images = existingImageUrls;
                                             }
 
-                                            if (compressedMedia.videos.length > 0 || existingVideoUrls.length > 0) {
-                                                nouveauProduit.videos = [...compressedMedia.videos, ...existingVideoUrls];
-                                                nouveauProduit.video_base64 = compressedMedia.videos; // Pour compatibilité backend
+                                            if (compressedMedia.videos.length > 0) {
+                                                // Les vidéos base64 compressées seront traitées par le backend
+                                                nouveauProduit.video_base64 = compressedMedia.videos;
+                                                // Ne pas mettre dans videos pour éviter d'envoyer du base64 dans le JSONB
+                                            }
+                                            if (existingVideoUrls.length > 0) {
+                                                // Les URLs existantes peuvent être dans videos (pas de base64)
+                                                nouveauProduit.videos = existingVideoUrls;
                                             }
                                         } else if (existingImageUrls.length > 0 || existingVideoUrls.length > 0) {
                                             // Seulement des URLs existantes, pas de compression nécessaire
@@ -1238,10 +1250,37 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 // ✅ NOUVEAU: Activer le loading spécifique pour l'ajout de produit
                                 setIsAddingProductLoading(true);
                                 
+                                // ✅ CRITIQUE: Nettoyer les médias base64 AVANT l'envoi pour éviter les timeouts
+                                // Le backend nettoie aussi, mais il vaut mieux le faire côté client pour réduire la taille du payload
+                                // Les médias base64 seront traités séparément par le backend (upload vers Wasabi + table media)
+                                const productDataForAPI = { ...nouveauProduit };
+                                
+                                // Garder seulement les URLs dans images/videos (pas de base64)
+                                // Les base64 sont dans base64_image/video_base64 et seront nettoyés par le backend
+                                if (productDataForAPI.images && Array.isArray(productDataForAPI.images)) {
+                                    // Filtrer pour garder seulement les URLs (pas de base64)
+                                    productDataForAPI.images = productDataForAPI.images.filter((img: string) => 
+                                        img && (img.startsWith('http://') || img.startsWith('https://'))
+                                    );
+                                    if (productDataForAPI.images.length === 0) {
+                                        delete productDataForAPI.images;
+                                    }
+                                }
+                                
+                                if (productDataForAPI.videos && Array.isArray(productDataForAPI.videos)) {
+                                    // Filtrer pour garder seulement les URLs (pas de base64)
+                                    productDataForAPI.videos = productDataForAPI.videos.filter((vid: string) => 
+                                        vid && (vid.startsWith('http://') || vid.startsWith('https://'))
+                                    );
+                                    if (productDataForAPI.videos.length === 0) {
+                                        delete productDataForAPI.videos;
+                                    }
+                                }
+                                
                                 // ✅ NOUVEAU: Calculer et logger la taille du payload pour diagnostic
                                 const payload = {
                                     user_id: userId,
-                                    product_data: nouveauProduit
+                                    product_data: productDataForAPI
                                 };
                                 const payloadJson = JSON.stringify(payload);
                                 // ✅ Approximation: chaque caractère UTF-16 = 2 bytes (pour JSON simple)
@@ -1249,21 +1288,38 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 const payloadSizeBytes = payloadJson.length * 2; // Approximation conservative
                                 const payloadSizeMB = (payloadSizeBytes / (1024 * 1024)).toFixed(2);
                                 
+                                // Calculer la taille des médias base64 séparément
+                                const base64ImagesSize = nouveauProduit.base64_image ? 
+                                    (Array.isArray(nouveauProduit.base64_image) ? 
+                                        nouveauProduit.base64_image.reduce((acc: number, img: string) => acc + (img?.length || 0) * 2, 0) : 
+                                        (nouveauProduit.base64_image.length || 0) * 2) : 0;
+                                const base64VideosSize = nouveauProduit.video_base64 ? 
+                                    (Array.isArray(nouveauProduit.video_base64) ? 
+                                        nouveauProduit.video_base64.reduce((acc: number, vid: string) => acc + (vid?.length || 0) * 2, 0) : 
+                                        (nouveauProduit.video_base64.length || 0) * 2) : 0;
+                                const totalBase64SizeMB = ((base64ImagesSize + base64VideosSize) / (1024 * 1024)).toFixed(2);
+                                
                                 console.log('[AjouterProduitSimple] 📤 Appel API création produit:', {
                                     url: `/api/services/${serviceId}/products`,
                                     userId,
                                     serviceId,
-                                    productDataKeys: Object.keys(nouveauProduit),
+                                    productDataKeys: Object.keys(productDataForAPI),
                                     payloadSize: `${payloadSizeMB} MB (${payloadSizeBytes} bytes)`,
-                                    hasImages: !!(nouveauProduit.images && nouveauProduit.images.length > 0),
-                                    hasVideos: !!(nouveauProduit.videos && nouveauProduit.videos.length > 0),
-                                    hasVariants: !!(nouveauProduit.variants && nouveauProduit.variants.length > 0),
-                                    variantsCount: nouveauProduit.variants ? nouveauProduit.variants.length : 0
+                                    base64MediaSize: `${totalBase64SizeMB} MB (sera traité séparément par le backend)`,
+                                    hasImages: !!(productDataForAPI.images && productDataForAPI.images.length > 0),
+                                    hasVideos: !!(productDataForAPI.videos && productDataForAPI.videos.length > 0),
+                                    hasBase64Images: !!(nouveauProduit.base64_image && (Array.isArray(nouveauProduit.base64_image) ? nouveauProduit.base64_image.length > 0 : true)),
+                                    hasBase64Videos: !!(nouveauProduit.video_base64 && (Array.isArray(nouveauProduit.video_base64) ? nouveauProduit.video_base64.length > 0 : true)),
+                                    hasVariants: !!(productDataForAPI.variants && productDataForAPI.variants.length > 0),
+                                    variantsCount: productDataForAPI.variants ? productDataForAPI.variants.length : 0
                                 });
                                 
                                 // ✅ NOUVEAU: Avertir si le payload est très volumineux
                                 if (payloadSizeBytes > 10 * 1024 * 1024) { // > 10 MB
                                     console.warn('[AjouterProduitSimple] ⚠️ Payload très volumineux:', payloadSizeMB, 'MB');
+                                }
+                                if (base64ImagesSize + base64VideosSize > 50 * 1024 * 1024) { // > 50 MB de base64
+                                    console.warn('[AjouterProduitSimple] ⚠️ Médias base64 très volumineux:', totalBase64SizeMB, 'MB - Le backend va les traiter en arrière-plan');
                                 }
 
                                 // ✅ SIMPLIFIÉ: Appel direct sans retry (le timeout de 180s devrait suffire)
@@ -1273,7 +1329,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 const startTime = Date.now();
                                 const response = await apiPost(`/api/services/${serviceId}/products`, {
                                     user_id: userId,
-                                    product_data: nouveauProduit
+                                    product_data: productDataForAPI // ✅ Utiliser les données nettoyées (sans base64 dans images/videos)
                                 });
                                 const duration = Date.now() - startTime;
                                 

@@ -36,21 +36,42 @@ pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> Vid
     let scenes: Vec<TimelineScene> = immersive
         .scenes
         .iter()
-        .map(|scene| {
+        .enumerate()
+        .map(|(idx, scene)| {
             let duration_seconds = scene.duration_in_frames as f64 / fps as f64;
             
-            // ✅ CORRIGÉ: Extraire media_url depuis assets.video_url ou assets.background_url ou assets.product_image_url
+            // ✅ CORRIGÉ: Extraire media_url depuis assets avec vérification de validité
+            // Essayer dans l'ordre: video_url > background_url > product_image_url
             let media_url = scene
                 .assets
                 .video_url
                 .clone()
-                .or_else(|| scene.assets.background_url.clone())
-                .or_else(|| scene.assets.product_image_url.clone());
+                .filter(|url| !url.trim().is_empty())
+                .or_else(|| {
+                    scene.assets.background_url.clone()
+                        .filter(|url| !url.trim().is_empty())
+                })
+                .or_else(|| {
+                    scene.assets.product_image_url.clone()
+                        .filter(|url| !url.trim().is_empty())
+                });
+            
+            // ✅ NOUVEAU: Log si aucune URL n'est trouvée pour diagnostic
+            if media_url.is_none() {
+                warn!(
+                    "[convert_immersive_to_video_timeline] ⚠️ Scène {} (id: {}) n'a pas de media_url valide. Assets: video_url={:?}, background_url={:?}, product_image_url={:?}",
+                    idx,
+                    scene.id,
+                    scene.assets.video_url,
+                    scene.assets.background_url,
+                    scene.assets.product_image_url
+                );
+            }
             
             let scene_index = scene.id
                 .replace("scene_", "")
                 .parse::<usize>()
-                .unwrap_or(0);
+                .unwrap_or(idx);
             
             let start_time = current_time;
             current_time += duration_seconds;
@@ -159,8 +180,32 @@ async fn enrich_timeline_with_media_urls(
                             });
                         }
                         Ok(None) => {
-                            warn!("[QuickPreview] ⚠️ Media ID {} non trouvé, scène ignorée", media_id);
-                            // On garde la scène mais sans media_url (sera filtrée plus tard)
+                            warn!("[QuickPreview] ⚠️ Media ID {} non trouvé dans la DB, scène ignorée", media_id);
+                            // ✅ CORRIGÉ: Si media_id n'existe pas, essayer de trouver un média par défaut ou utiliser assets
+                            // Vérifier si la scène a des assets avec des URLs
+                            if let Some(assets) = &scene.assets {
+                                if let Some(video_url) = &assets.video_url {
+                                    if !video_url.trim().is_empty() {
+                                        info!("[QuickPreview] ✅ Utilisation assets.video_url pour media_id {} manquant", media_id);
+                                        enriched_scenes.push(TimelineScene {
+                                            media_url: Some(video_url.clone()),
+                                            ..scene
+                                        });
+                                        continue;
+                                    }
+                                }
+                                if let Some(image_url) = &assets.image_url {
+                                    if !image_url.trim().is_empty() {
+                                        info!("[QuickPreview] ✅ Utilisation assets.image_url pour media_id {} manquant", media_id);
+                                        enriched_scenes.push(TimelineScene {
+                                            media_url: Some(image_url.clone()),
+                                            ..scene
+                                        });
+                                        continue;
+                                    }
+                                }
+                            }
+                            // Si aucun fallback, on garde la scène mais sans media_url (sera filtrée plus tard)
                             enriched_scenes.push(scene);
                         }
                         Err(e) => {

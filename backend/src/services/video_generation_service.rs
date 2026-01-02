@@ -37,6 +37,10 @@ struct MediaRow {
     #[sqlx(rename = "type")]
     _media_type: String,
     ai_description: Option<String>,
+    #[sqlx(default)]
+    product_index: Option<i32>, // ✅ NOUVEAU: Pour logging et validation
+    #[sqlx(default)]
+    media_type: Option<String>, // ✅ NOUVEAU: Pour logging et validation
 }
 
 use crate::{
@@ -1012,9 +1016,20 @@ pub async fn generate_product_video(
     })?;
     
     info!(
-        "[VideoGeneration] ✅ {} média(x) collecté(s) pour la génération",
-        media_sources.len()
+        "[VideoGeneration] ✅ {} média(x) collecté(s) pour la génération (service_id={}, product_index={})",
+        media_sources.len(), service_id, product_index
     );
+    
+    // ✅ NOUVEAU: Logs détaillés pour chaque média collecté
+    for (idx, source) in media_sources.iter().enumerate() {
+        let path_str = source.path.to_string_lossy();
+        let exists = source.path.exists();
+        let is_url = path_str.starts_with("http://") || path_str.starts_with("https://");
+        info!(
+            "[VideoGeneration] 📸 Média {}: id={:?}, path={:?}, exists={}, is_url={}, description={:?}",
+            idx + 1, source.id, path_str, exists, is_url, source.ai_description.as_ref().map(|d| d.chars().take(50).collect::<String>())
+        );
+    }
 
     // ✅ PRIORITÉ 2 : Si pas d'images locales et génération IA activée, générer des images
     if media_sources.is_empty() && payload.auto_generate_images.unwrap_or(false) {
@@ -1568,6 +1583,59 @@ pub async fn generate_product_video(
         }
     }
 
+    // ✅ NOUVEAU: Convertir les MediaSource en TimelineMediaItem avec URLs
+    let available_media: Vec<immersive_orchestrator::TimelineMediaItem> = media_sources
+        .iter()
+        .filter_map(|source| {
+            if let Some(url) = media_source_to_url(source) {
+                // Déterminer le type de média depuis l'extension
+                let media_type = source.path
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| {
+                        let ext_lower = ext.to_lowercase();
+                        if matches!(ext_lower.as_str(), "mp4" | "mov" | "avi" | "mkv" | "webm" | "m4v") {
+                            "video"
+                        } else {
+                            "image"
+                        }
+                    })
+                    .unwrap_or_else(|| {
+                        // Fallback: vérifier dans le path
+                        let path_str = source.path.to_string_lossy().to_lowercase();
+                        if path_str.contains("video") || path_str.contains(".mp4") || path_str.contains(".mov") {
+                            "video"
+                        } else {
+                            "image"
+                        }
+                    });
+                
+                info!(
+                    "[VideoGeneration] ✅ Média converti en TimelineMediaItem: media_id={:?}, type={}, url={}",
+                    source.id, media_type, url
+                );
+                
+                Some(immersive_orchestrator::TimelineMediaItem {
+                    id: source.id,
+                    url,
+                    media_type: media_type.to_string(),
+                    ai_description: source.ai_description.clone(),
+                })
+            } else {
+                warn!(
+                    "[VideoGeneration] ⚠️ Impossible de convertir MediaSource en URL: media_id={:?}, path={:?}",
+                    source.id, source.path
+                );
+                None
+            }
+        })
+        .collect();
+    
+    info!(
+        "[VideoGeneration] 📊 {} média(x) converti(s) en TimelineMediaItem pour la timeline immersive",
+        available_media.len()
+    );
+
     let timeline_request = TimelineRequest {
         script_outline: script_outline.clone(),
         product_name: product_name.clone(),
@@ -1576,6 +1644,7 @@ pub async fn generate_product_video(
         style: payload.style.clone(),
         duration_seconds: duration_seconds as f32,
         broll_assets: timeline_broll_assets,
+        available_media, // ✅ NOUVEAU: Passer les médias convertis
         template_id: payload.story_template_id.clone(),
         business_context: Some(timeline_context),
         ai_template_recommendations,
@@ -2587,7 +2656,7 @@ async fn gather_media_sources(
     if let Some(ids) = selected_media_ids.as_ref() {
         if !ids.is_empty() {
             let rows: Vec<MediaRow> = sqlx::query_as(
-                "SELECT id, path, type, ai_description
+                "SELECT id, path, type, ai_description, product_index, media_type
                  FROM media
                  WHERE service_id = $1
                  AND id = ANY($2)",
@@ -2601,6 +2670,11 @@ async fn gather_media_sources(
                 AppError::from(err)
             })?;
 
+            info!(
+                "[VideoGeneration] 📊 {} média(x) sélectionné(s) trouvé(s) en base (service_id={})",
+                rows.len(), service_id
+            );
+            
             for row in rows {
                 let ai_description = row.ai_description.clone();
                 if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
@@ -2611,25 +2685,39 @@ async fn gather_media_sources(
                         seen_ids.insert(id);
                     }
                     collected.push(source);
+                    info!(
+                        "[VideoGeneration] ✅ Média sélectionné ajouté: id={}, path={:?}, product_index={:?}, media_type={:?}, type={}",
+                        row.id, row.path, row.product_index, row.media_type, row._media_type
+                    );
+                } else {
+                    warn!(
+                        "[VideoGeneration] ⚠️ Média sélectionné ignoré (fichier introuvable): id={}, path={:?}",
+                        row.id, row.path
+                    );
                 }
             }
+            
+            info!(
+                "[VideoGeneration] 📦 Total médias collectés après sélection manuelle: {}",
+                collected.len()
+            );
         }
     }
 
     if collected.is_empty() && use_product_gallery {
-        // ✅ CORRIGÉ: Inclure images ET vidéos, être plus permissif sur product_index
+        // ✅ CORRIGÉ: Récupérer les médias spécifiques au produit (product_index exact)
+        // Si aucun média spécifique, fallback vers médias généraux du service (product_index IS NULL)
         info!(
             "[VideoGeneration] 🔍 Recherche médias produit - service_id={}, product_index={}",
             service_id, product_index
         );
+        
+        // ✅ NOUVEAU: D'abord chercher les médias spécifiques au produit
         let rows: Vec<MediaRow> = sqlx::query_as(
-            "SELECT id, path, type, ai_description
+            "SELECT id, path, type, ai_description, product_index, media_type
              FROM media
              WHERE service_id = $1
-             AND (
-                 product_index = $2 
-                 OR product_index IS NULL
-             )
+             AND product_index = $2
              AND (media_type IN ('image', 'video') OR (media_type IS NULL AND type IN ('image', 'video')))
              ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC
              LIMIT 16",
@@ -2644,11 +2732,41 @@ async fn gather_media_sources(
         })?;
 
         info!(
-            "[VideoGeneration] 📊 {} média(x) trouvé(s) en base pour le produit (service_id={}, product_index={})",
+            "[VideoGeneration] 📊 {} média(x) trouvé(s) en base pour le produit spécifique (service_id={}, product_index={})",
             rows.len(), service_id, product_index
         );
+        
+        // ✅ NOUVEAU: Si aucun média spécifique au produit, fallback vers médias généraux du service
+        let mut final_rows = rows;
+        if final_rows.is_empty() {
+            info!(
+                "[VideoGeneration] ⚠️ Aucun média spécifique au produit, recherche médias généraux du service (product_index IS NULL)"
+            );
+            let fallback_rows: Vec<MediaRow> = sqlx::query_as(
+                "SELECT id, path, type, ai_description, product_index, media_type
+                 FROM media
+                 WHERE service_id = $1
+                 AND product_index IS NULL
+                 AND (media_type IN ('image', 'video') OR (media_type IS NULL AND type IN ('image', 'video')))
+                 ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, uploaded_at DESC
+                 LIMIT 16",
+            )
+            .bind(service_id)
+            .fetch_all(&state.pg)
+            .await
+            .map_err(|err| {
+                error!("[VideoGeneration] Erreur récupération médias généraux service: {err:?}");
+                AppError::from(err)
+            })?;
+            
+            info!(
+                "[VideoGeneration] 📊 {} média(x) généraux trouvé(s) en fallback pour le service (service_id={})",
+                fallback_rows.len(), service_id
+            );
+            final_rows = fallback_rows;
+        }
 
-        for row in rows {
+        for row in final_rows {
             let ai_description = row.ai_description.clone();
             if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
                 if let Some(id) = source.id {
@@ -2659,8 +2777,8 @@ async fn gather_media_sources(
                 }
                 collected.push(source);
                 info!(
-                    "[VideoGeneration] ✅ Média ajouté: id={}, path={:?}",
-                    row.id, row.path
+                    "[VideoGeneration] ✅ Média ajouté: id={}, path={:?}, product_index={:?}, media_type={:?}, type={}",
+                    row.id, row.path, row.product_index, row.media_type, row._media_type
                 );
             } else {
                 warn!(
@@ -2683,7 +2801,7 @@ async fn gather_media_sources(
             service_id
         );
         let rows: Vec<MediaRow> = sqlx::query_as(
-            "SELECT id, path, type, ai_description
+            "SELECT id, path, type, ai_description, product_index, media_type
              FROM media
              WHERE service_id = $1
              AND (product_index IS NULL OR product_index != $2)
@@ -2716,12 +2834,12 @@ async fn gather_media_sources(
                 }
                 collected.push(source);
                 info!(
-                    "[VideoGeneration] ✅ Média ajouté: id={}, path={:?}",
-                    row.id, row.path
+                    "[VideoGeneration] ✅ Média médiathèque ajouté: id={}, path={:?}, product_index={:?}, media_type={:?}, type={}",
+                    row.id, row.path, row.product_index, row.media_type, row._media_type
                 );
             } else {
                 warn!(
-                    "[VideoGeneration] ⚠️ Média ignoré (fichier introuvable): id={}, path={:?}",
+                    "[VideoGeneration] ⚠️ Média médiathèque ignoré (fichier introuvable): id={}, path={:?}",
                     row.id, row.path
                 );
             }
@@ -2735,7 +2853,7 @@ async fn gather_media_sources(
 
     if include_publicite_assets {
         let rows: Vec<MediaRow> = sqlx::query_as(
-            "SELECT id, path, type, ai_description
+            "SELECT id, path, type, ai_description, product_index, media_type
              FROM media
              WHERE service_id = $1
              AND (
@@ -2765,15 +2883,103 @@ async fn gather_media_sources(
                     seen_ids.insert(id);
                 }
                 collected.push(source);
+                info!(
+                    "[VideoGeneration] ✅ Asset publicité ajouté: id={}, path={:?}, product_index={:?}, media_type={:?}",
+                    row.id, row.path, row.product_index, row.media_type
+                );
+            } else {
+                warn!(
+                    "[VideoGeneration] ⚠️ Asset publicité ignoré (fichier introuvable): id={}, path={:?}",
+                    row.id, row.path
+                );
             }
         }
+        
+        info!(
+            "[VideoGeneration] 📦 Total médias collectés après assets publicité: {}",
+            collected.len()
+        );
     }
 
+    info!(
+        "[VideoGeneration] ✅ Récupération médias terminée: {} média(x) collecté(s) au total (service_id={}, product_index={})",
+        collected.len(), service_id, product_index
+    );
+    
     collected.truncate(18);
     Ok(collected)
 }
 
+/// ✅ NOUVEAU: Convertit un MediaSource en URL accessible
+/// Gère trois cas :
+/// 1. URLs S3/CDN déjà complètes (http://, https://) → retournées telles quelles
+/// 2. Chemins locaux relatifs → convertis en {API_BASE_URL}/api/media/files/{path}
+/// 3. Chemins locaux absolus → convertis en {API_BASE_URL}/api/media/files/{path_relatif}
+fn media_source_to_url(media_source: &MediaSource) -> Option<String> {
+    let path_str = media_source.path.to_string_lossy();
+    
+    // ✅ CAS 1: Si c'est déjà une URL HTTP/HTTPS (S3/CDN), la retourner telle quelle
+    // Les médias sauvegardés avec MediaStorageService ont leur storage_path CDN dans la DB
+    if path_str.starts_with("http://") || path_str.starts_with("https://") {
+        info!(
+            "[media_source_to_url] ✅ Média S3/CDN (URL complète): media_id={:?}, url={}",
+            media_source.id, path_str
+        );
+        return Some(path_str.to_string());
+    }
+    
+    // ✅ CAS 2 & 3: Chemins locaux (relatifs ou absolus) → convertir en URL API
+    
+    // Construire l'URL depuis le path local
+    let api_base_url = std::env::var("API_BASE_URL")
+        .unwrap_or_else(|_| std::env::var("UPLOAD_BASE_URL")
+            .unwrap_or_else(|_| "http://localhost:3000".to_string()));
+    
+    // Extraire le chemin relatif depuis le path
+    let storage_root = upload_storage_root();
+    let relative_path = if let Ok(stripped) = media_source.path.strip_prefix(&storage_root) {
+        stripped
+    } else if let Ok(stripped) = media_source.path.strip_prefix("uploads") {
+        stripped
+    } else {
+        // Si le path ne commence pas par storage_root ou "uploads", utiliser le path tel quel
+        &media_source.path
+    };
+    
+    // Nettoyer le chemin (enlever les backslashes, normaliser)
+    let clean_path = relative_path.to_string_lossy()
+        .replace('\\', "/")
+        .trim_start_matches('/')
+        .to_string();
+    
+    let media_url = format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path);
+    
+    info!(
+        "[media_source_to_url] ✅ URL construite: media_id={:?}, path_db={:?}, url={}",
+        media_source.id, path_str, media_url
+    );
+    
+    Some(media_url)
+}
+
 fn row_to_media_source(id: i32, path: &str, ai_description: Option<String>) -> Option<MediaSource> {
+    // ✅ CORRIGÉ: Détecter les URLs S3/CDN dès le départ
+    // Les médias sauvegardés avec MediaStorageService ont leur storage_path CDN dans la DB
+    if path.starts_with("http://") || path.starts_with("https://") {
+        info!(
+            "[VideoGeneration] ✅ Média S3/CDN détecté: media_id={}, url={}",
+            id, path
+        );
+        // Pour les URLs S3/CDN, créer directement le MediaSource avec l'URL
+        // media_source_to_url() la retournera telle quelle
+        return Some(MediaSource {
+            id: Some(id),
+            path: PathBuf::from(path), // Garder l'URL originale (sera convertie en string par media_source_to_url)
+            ai_description,
+        });
+    }
+    
+    // Pour les chemins locaux, construire le chemin absolu
     let absolute = {
         let p = PathBuf::from(path);
         if p.is_absolute() {
@@ -2796,20 +3002,7 @@ fn row_to_media_source(id: i32, path: &str, ai_description: Option<String>) -> O
             absolute,
             upload_storage_root()
         );
-        // ✅ AMÉLIORÉ: Vérifier si c'est un fichier S3/remote qui n'est pas encore téléchargé
-        if path.starts_with("http://") || path.starts_with("https://") {
-            warn!(
-                "[VideoGeneration] ⚠️ Média est une URL distante (S3/CDN): {} - Le fichier sera téléchargé lors du rendu",
-                path
-            );
-            // Pour les URLs distantes, on peut quand même créer le MediaSource
-            // Le rendu devra gérer le téléchargement
-            return Some(MediaSource {
-                id: Some(id),
-                path: PathBuf::from(path), // Garder l'URL originale
-                ai_description,
-            });
-        }
+        // ⚠️ Si le fichier local n'existe pas et ce n'est pas une URL, on ne peut pas l'utiliser
         return None;
     }
 
@@ -3200,15 +3393,32 @@ async fn append_video_to_service_data(
         }
     }
 
-    sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
-        .bind(serde_json::Value::clone(service_data))
-        .bind(service_id)
-        .execute(&state.pg)
-        .await
-        .map_err(|err| {
-            error!("[VideoGeneration] Erreur mise à jour service: {err:?}");
-            AppError::from(err)
-        })?;
+    // ✅ CORRIGÉ: Utiliser retry_query pour gérer les erreurs TLS
+    let service_data_clone = serde_json::Value::clone(service_data);
+    let service_id_clone = service_id;
+    let pool = state.pg.clone();
+    
+    crate::utils::db_retry::retry_query(
+        &pool,
+        || {
+            let service_data_clone = service_data_clone.clone();
+            let service_id_clone = service_id_clone;
+            let pool_clone = pool.clone();
+            Box::pin(async move {
+                sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
+                    .bind(service_data_clone)
+                    .bind(service_id_clone)
+                    .execute(&pool_clone)
+                    .await
+            })
+        },
+        10, // 10 tentatives max avec backoff adaptatif pour TLS
+    )
+    .await
+    .map_err(|err| {
+        error!("[VideoGeneration] Erreur mise à jour service (après retries): {err:?}");
+        AppError::from(err)
+    })?;
 
     Ok(())
 }
@@ -3252,12 +3462,32 @@ async fn append_video_variants_to_service_data(
         }
     }
 
-    sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
-        .bind(data_value)
-        .bind(service_id)
-        .execute(&state.pg)
-        .await
-        .map_err(|err| AppError::from(err))?;
+    // ✅ CORRIGÉ: Utiliser retry_query pour gérer les erreurs TLS
+    let data_value_clone = data_value.clone();
+    let service_id_clone = service_id;
+    let pool = state.pg.clone();
+    
+    crate::utils::db_retry::retry_query(
+        &pool,
+        || {
+            let data_value_clone = data_value_clone.clone();
+            let service_id_clone = service_id_clone;
+            let pool_clone = pool.clone();
+            Box::pin(async move {
+                sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
+                    .bind(data_value_clone)
+                    .bind(service_id_clone)
+                    .execute(&pool_clone)
+                    .await
+            })
+        },
+        10, // 10 tentatives max avec backoff adaptatif pour TLS
+    )
+    .await
+    .map_err(|err| {
+        error!("[VideoGeneration] Erreur mise à jour service avec variants (après retries): {err:?}");
+        AppError::from(err)
+    })?;
 
     Ok(())
 }

@@ -377,15 +377,8 @@ const ResultatBesoinScreen: React.FC = () => {
             setLoading(true);
             setError(null);
 
-            // Fonction helper pour calculer la distance GPS
-            const calculateDistance = (gps1: string, gps2: string): number => {
-                if (!gps1 || !gps2) return 0;
-
-                const [lat1, lon1] = gps1.split(',').map(Number);
-                const [lat2, lon2] = gps2.split(',').map(Number);
-
-                if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) return 0;
-
+            // Fonction helper pour calculer la distance GPS (utilise la même formule que calculateDistance globale)
+            const calculateDistanceFromCoords = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
                 const R = 6371; // Rayon de la Terre en km
                 const dLat = (lat2 - lat1) * Math.PI / 180;
                 const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -480,7 +473,8 @@ const ResultatBesoinScreen: React.FC = () => {
                                     const [productLat, productLon] = bestGPS.split(',').map(Number);
                                     
                                     if (!isNaN(userLat) && !isNaN(userLon) && !isNaN(productLat) && !isNaN(productLon)) {
-                                        distance = calculateDistance(userLat, userLon, productLat, productLon);
+                                        distance = calculateDistanceFromCoords(userLat, userLon, productLat, productLon);
+                                        console.log(`✅ [ResultatBesoinScreen] Distance produit calculée: ${distance.toFixed(2)} km (${product.nom || 'produit'})`);
                                     }
                                 } catch (error) {
                                     console.warn('⚠️ [ResultatBesoinScreen] Erreur calcul distance produit:', error);
