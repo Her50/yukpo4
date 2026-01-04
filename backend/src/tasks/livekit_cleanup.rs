@@ -73,12 +73,22 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
                     config.livekit_api_key.as_ref(),
                     config.livekit_api_secret.as_ref(),
                 ) {
-                    log::warn!("🔍 Exécution du diagnostic LiveKit complet...");
+                    // ✅ CORRIGÉ: Logger le diagnostic en debug au lieu de warn (service optionnel)
+                    log::debug!("🔍 Exécution du diagnostic LiveKit complet...");
                     let diagnostic =
                         diagnose_livekit_connection(api_url, Some(api_key), Some(api_secret)).await;
 
-                    log::warn!("📊 Résultat du diagnostic LiveKit:");
-                    log::warn!(
+                    // ✅ CORRIGÉ: Logger seulement un résumé en info, détails en debug
+                    if !diagnostic.server_reachable || !diagnostic.authentication_working {
+                        log::info!("ℹ️ LiveKit non accessible (service optionnel) - Serveur: {}, Auth: {}", 
+                            if diagnostic.server_reachable { "✅" } else { "❌" },
+                            if diagnostic.authentication_working { "✅" } else { "❌" }
+                        );
+                    }
+                    
+                    // Détails complets en debug seulement
+                    log::debug!("📊 Résultat du diagnostic LiveKit:");
+                    log::debug!(
                         "   - Serveur accessible: {}",
                         if diagnostic.server_reachable {
                             "✅"
@@ -86,7 +96,7 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
                             "❌"
                         }
                     );
-                    log::warn!(
+                    log::debug!(
                         "   - Endpoint API accessible: {}",
                         if diagnostic.api_endpoint_accessible {
                             "✅"
@@ -94,7 +104,7 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
                             "❌"
                         }
                     );
-                    log::warn!(
+                    log::debug!(
                         "   - Authentification: {}",
                         if diagnostic.authentication_working {
                             "✅"
@@ -102,7 +112,7 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
                             "❌"
                         }
                     );
-                    log::warn!(
+                    log::debug!(
                         "   - API Key configurée: {}",
                         if diagnostic.api_key_configured {
                             "✅"
@@ -110,7 +120,7 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
                             "❌"
                         }
                     );
-                    log::warn!(
+                    log::debug!(
                         "   - API Secret configurée: {}",
                         if diagnostic.api_secret_configured {
                             "✅"
@@ -119,35 +129,35 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
                         }
                     );
 
-                    // ✅ NOUVEAU: Afficher les vérifications automatiques
+                    // ✅ NOUVEAU: Afficher les vérifications automatiques en debug
                     if let Some(ref ip) = diagnostic.ip_address {
-                        log::warn!("   - IP: {}", ip);
+                        log::debug!("   - IP: {}", ip);
                     }
                     if let Some(is_public) = diagnostic.ip_is_public {
-                        log::warn!(
+                        log::debug!(
                             "   - IP publique: {}",
                             if is_public { "✅" } else { "❌ (privée)" }
                         );
                     }
                     if let Some(ref status) = diagnostic.server_status {
-                        log::warn!("   - Statut serveur: {}", status);
+                        log::debug!("   - Statut serveur: {}", status);
                     }
                     if let Some(ref firewall) = diagnostic.firewall_check {
-                        log::warn!("   - Firewall: {}", firewall);
+                        log::debug!("   - Firewall: {}", firewall);
                     }
 
                     if let Some(time_ms) = diagnostic.connection_time_ms {
-                        log::warn!("   - Temps de connexion: {}ms", time_ms);
+                        log::debug!("   - Temps de connexion: {}ms", time_ms);
                     }
 
                     if let Some(ref err_msg) = diagnostic.error_message {
-                        log::warn!("   - Erreur: {}", err_msg);
+                        log::debug!("   - Erreur: {}", err_msg);
                     }
 
                     if !diagnostic.suggestions.is_empty() {
-                        log::warn!("   💡 Suggestions:");
+                        log::debug!("   💡 Suggestions:");
                         for suggestion in &diagnostic.suggestions {
-                            log::warn!("      {}", suggestion);
+                            log::debug!("      {}", suggestion);
                         }
                     }
 
@@ -213,7 +223,13 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
                     // Ignorer les erreurs de connexion répétées (déjà loggé une fois)
                     continue;
                 } else {
-                    log::warn!("LiveKit cleanup failed: {err:?}");
+                    // ✅ Ne logger que si ce n'est pas un timeout (les timeouts sont normaux si le service est indisponible)
+                    let err_msg = format!("{err:?}");
+                    if !err_msg.contains("timeout") && !err_msg.contains("timed out") {
+                        log::warn!("LiveKit cleanup failed: {err:?}");
+                    } else {
+                        log::debug!("LiveKit timeout (service peut être indisponible): {err:?}");
+                    }
                 }
             } else {
                 // Si la connexion réussit après une erreur, réinitialiser le flag
@@ -263,7 +279,7 @@ async fn cleanup_rooms(client: &Client, config: &LiveStreamingConfig) -> Result<
         .post(&list_endpoint)
         .bearer_auth(token)
         .json(&json!({}))
-        .timeout(Duration::from_secs(10)) // ✅ Augmenté de 5s à 10s pour laisser plus de temps
+        .timeout(Duration::from_secs(30)) // ✅ Augmenté à 30s pour les connexions lentes
         .send()
         .await
         .map_err(|e| {
@@ -272,7 +288,8 @@ async fn cleanup_rooms(client: &Client, config: &LiveStreamingConfig) -> Result<
             if err_msg.contains("Connection refused") || err_msg.contains("tcp connect error") {
                 anyhow!("LiveKit service non disponible: connexion refusée à {}. Vérifiez que le serveur est démarré et accessible depuis Render.", base_url)
             } else if err_msg.contains("timeout") {
-                anyhow!("LiveKit service timeout: le serveur {} ne répond pas dans les 10 secondes. Vérifiez la connectivité réseau.", base_url)
+                // ✅ Ne pas logger comme erreur si c'est juste un timeout (service peut être temporairement indisponible)
+                anyhow!("LiveKit service timeout: le serveur {} ne répond pas dans les 30 secondes. Service peut être temporairement indisponible.", base_url)
             } else {
                 anyhow!(e).context(format!("appel ListRooms sur {}", base_url))
             }

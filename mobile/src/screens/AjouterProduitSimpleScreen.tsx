@@ -112,7 +112,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
     // ✅ CORRECTION : Extraire données depuis suggestionIA avec priorité sur service_data.data
     // La structure peut être : suggestionIA.data OU suggestionIA.service_data.data OU suggestionIA directement
+    console.log('[AjouterProduitSimple] 🔍 suggestionIA reçu:', JSON.stringify(suggestionIA, null, 2));
+    console.log('[AjouterProduitSimple] 🔍 suggestionIA.service_data présent?', !!suggestionIA?.service_data);
+    console.log('[AjouterProduitSimple] 🔍 suggestionIA.service_data.data présent?', !!suggestionIA?.service_data?.data);
+    console.log('[AjouterProduitSimple] 🔍 suggestionIA.data présent?', !!suggestionIA?.data);
+    
     const suggestionData = suggestionIA?.service_data?.data || suggestionIA?.data || suggestionIA || {};
+    console.log('[AjouterProduitSimple] 🔍 suggestionData extrait:', JSON.stringify(suggestionData, null, 2));
+    console.log('[AjouterProduitSimple] 🔍 suggestionData a des données produit?', !!(suggestionData.nom_produit || suggestionData.prix_produit || suggestionData.produits || suggestionData.variabilite_prix));
 
     const normalizeMediaList = (value: any): any[] => {
         if (!value) {
@@ -490,6 +497,17 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         product_labels: prefill.product_labels ?? (suggestionData.produits?.product_labels && Array.isArray(suggestionData.produits.product_labels) ? suggestionData.produits.product_labels : undefined),
     };
 
+    // ✅ DEBUG: Logger les valeurs initiales pour diagnostiquer le problème
+    console.log('[AjouterProduitSimple] 📝 Valeurs initiales extraites depuis IA:', {
+        nom_produit: nom_produit || 'VIDE',
+        categorie_produit: categorie_produit || 'VIDE',
+        description_produit: description_produit || 'VIDE',
+        prix_produit: prix_produit || 'VIDE',
+        devise_produit: devise_produit || 'VIDE',
+        hasProductData: hasProductData,
+        typeOffre: typeOffre,
+    });
+
     // ✅ DEBUG: Logger le prefill pour vérifier qu'il contient bien les données
     React.useEffect(() => {
         if (isEditing || isDuplicate) {
@@ -535,6 +553,21 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 audios_count: Array.isArray(initialFormValues.audios) ? initialFormValues.audios.length : 0,
                 documents_count: Array.isArray(initialFormValues.documents) ? initialFormValues.documents.length : 0,
             });
+        } else {
+            // ✅ DEBUG: Logger aussi en mode création pour diagnostiquer
+            console.log('[AjouterProduitSimple] 📝 Mode création - Valeurs initiales formValues:', {
+                nom_produit: initialFormValues.nom_produit || 'VIDE',
+                categorie_produit: initialFormValues.categorie_produit || 'VIDE',
+                description_produit: initialFormValues.description_produit || 'VIDE',
+                prix_produit: initialFormValues.prix_produit || 'VIDE',
+                devise_produit: initialFormValues.devise_produit || 'VIDE',
+                lieu_produit: initialFormValues.lieu_produit || 'VIDE',
+                produits_count: Array.isArray(initialFormValues.produits) ? initialFormValues.produits.length : 0,
+                has_sous_caracteristiques: initialFormValues.sous_caracteristiques && typeof initialFormValues.sous_caracteristiques === 'object'
+                    ? Object.keys(initialFormValues.sous_caracteristiques).length
+                    : 0,
+                images_count: Array.isArray(initialFormValues.images) ? initialFormValues.images.length : 0,
+            });
         }
     }, [mode, prefill, initialFormValues]);
 
@@ -552,7 +585,19 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             }
             
             // Vérifier si on a un session_id et que produits OU sous_caracteristiques sont vides
-            const sessionId = suggestionIA?.session_id || suggestionIA?.data?.session_id;
+            // ✅ CORRIGÉ: Extraire session_id depuis toutes les sources possibles
+            const sessionId = suggestionIA?.session_id 
+                || suggestionIA?.data?.session_id 
+                || suggestionIA?.service_data?.session_id
+                || suggestionIA?.service_data?.data?.session_id;
+            
+            console.log('[AjouterProduitSimple] 🔍 Extraction session_id:', {
+                sessionId,
+                from_suggestionIA_session_id: !!suggestionIA?.session_id,
+                from_suggestionIA_data_session_id: !!suggestionIA?.data?.session_id,
+                from_service_data_session_id: !!suggestionIA?.service_data?.session_id,
+                from_service_data_data_session_id: !!suggestionIA?.service_data?.data?.session_id,
+            });
             const hasProduits = formValues.produits && Array.isArray(formValues.produits) && formValues.produits.length > 0;
             const hasSousCaracs = formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object' && Object.keys(formValues.sous_caracteristiques).length > 0;
 
@@ -561,9 +606,21 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 hasLoadedCombinations.current = true; // ✅ Marquer comme chargé pour éviter les re-renders
                 try {
                     const combinationsResponse = await apiGet(`/api/combinations/session/${sessionId}`);
-                    if (combinationsResponse?.combinations && Array.isArray(combinationsResponse.combinations)) {
+                    console.log('[AjouterProduitSimple] 🔍 Réponse API combinations:', {
+                        success: combinationsResponse?.success,
+                        hasData: !!combinationsResponse?.data,
+                        dataType: Array.isArray(combinationsResponse?.data) ? 'array' : typeof combinationsResponse?.data,
+                        dataLength: Array.isArray(combinationsResponse?.data) ? combinationsResponse.data.length : 0,
+                        count: combinationsResponse?.count,
+                        fullResponse: combinationsResponse
+                    });
+                    
+                    // ✅ CORRIGÉ: L'API backend retourne { success: true, data: combinations[], count: number }
+                    // Donc on doit utiliser combinationsResponse?.data au lieu de combinationsResponse?.combinations
+                    const combinations = combinationsResponse?.data || combinationsResponse?.combinations || [];
+                    if (Array.isArray(combinations) && combinations.length > 0) {
                         // Trouver la combinaison préférée par l'IA (is_ai_preferred = true)
-                        const preferred = combinationsResponse.combinations.find((c: any) => c.is_ai_preferred);
+                        const preferred = combinations.find((c: any) => c.is_ai_preferred);
 
                         if (preferred && preferred.product_vector && Array.isArray(preferred.product_vector) && preferred.product_vector.length > 0) {
                             // Construire la valeur au format attendu (string concaténée avec séparateur)
@@ -623,8 +680,17 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     try {
                         await new Promise(resolve => setTimeout(resolve, 2000));
                         const retryResponse = await apiGet(`/api/combinations/session/${sessionId}`);
-                        if (retryResponse?.combinations && Array.isArray(retryResponse.combinations)) {
-                            const preferred = retryResponse.combinations.find((c: any) => c.is_ai_preferred);
+                        console.log('[AjouterProduitSimple] 🔍 Retry réponse API combinations:', {
+                            success: retryResponse?.success,
+                            hasData: !!retryResponse?.data,
+                            dataType: Array.isArray(retryResponse?.data) ? 'array' : typeof retryResponse?.data,
+                            dataLength: Array.isArray(retryResponse?.data) ? retryResponse.data.length : 0,
+                        });
+                        
+                        // ✅ CORRIGÉ: Utiliser retryResponse?.data au lieu de retryResponse?.combinations
+                        const retryCombinations = retryResponse?.data || retryResponse?.combinations || [];
+                        if (Array.isArray(retryCombinations) && retryCombinations.length > 0) {
+                            const preferred = retryCombinations.find((c: any) => c.is_ai_preferred);
                             if (preferred && preferred.product_vector && Array.isArray(preferred.product_vector) && preferred.product_vector.length > 0) {
                                 const separateur = preferred.separateur || ',';
                                 const combinationString = preferred.product_vector.join(separateur);

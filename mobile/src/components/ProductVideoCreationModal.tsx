@@ -386,6 +386,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     // ✅ NOUVEAU Phase 3.2: État pour l'éditeur AR
     const [showAREditor, setShowAREditor] = useState<boolean>(false);
+    // ✅ NOUVEAU: Stocker le produit courant au moment de l'ouverture de l'éditeur AR
+    const [arEditorProduct, setArEditorProduct] = useState<ManagedProduct | null>(null);
     const [isUploadingARVideo, setIsUploadingARVideo] = useState<boolean>(false);
 
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -395,21 +397,57 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     // ✅ NOUVEAU Phase 3.2: Gérer la vidéo AR capturée
     const handleARVideoCaptured = useCallback(async (videoUri: string) => {
-        if (!selectedProduct || typeof selectedProduct.product_index !== 'number') {
-            Alert.alert('Erreur', 'Produit non sélectionné');
-            setShowAREditor(false);
+        // ✅ CORRIGÉ: Utiliser le produit stocké au moment de l'ouverture de l'éditeur AR
+        // Cela garantit que la vidéo AR est liée au produit qui était sélectionné lors de l'ouverture de l'éditeur
+        const productToUse = arEditorProduct || selectedProduct || primaryProduct;
+        
+        if (!productToUse) {
+            Alert.alert(
+                'Produit requis',
+                'Aucun produit n\'est sélectionné. Veuillez sélectionner un produit avant de sauvegarder la vidéo AR.',
+                [{ text: 'OK', onPress: () => setShowAREditor(false) }]
+            );
             return;
+        }
+
+        if (typeof productToUse.product_index !== 'number' || productToUse.product_index < 0) {
+            Alert.alert(
+                'Produit invalide',
+                'Le produit sélectionné n\'a pas d\'index valide. Veuillez sélectionner un autre produit.',
+                [{ text: 'OK', onPress: () => setShowAREditor(false) }]
+            );
+            return;
+        }
+
+        if (!productToUse.serviceId) {
+            Alert.alert(
+                'Service invalide',
+                'Le produit sélectionné n\'a pas de service associé. Veuillez sélectionner un autre produit.',
+                [{ text: 'OK', onPress: () => setShowAREditor(false) }]
+            );
+            return;
+        }
+
+        // ✅ S'assurer que selectedProduct est mis à jour si on utilise primaryProduct
+        if (!selectedProduct && productToUse) {
+            setSelectedProduct(productToUse);
         }
 
         setIsUploadingARVideo(true);
         try {
-            const serviceId = Number(selectedProduct.serviceId);
-            const productIndex = selectedProduct.product_index;
+            // ✅ Utiliser productToUse au lieu de selectedProduct pour garantir la cohérence
+            const serviceId = Number(productToUse.serviceId);
+            const productIndex = productToUse.product_index;
 
             console.log('[ProductVideoCreationModal] 📤 Début upload vidéo AR:', {
                 serviceId,
                 productIndex,
+                product_name: productToUse.nom || productToUse.titre,
                 videoUri: videoUri.substring(0, 50) + '...',
+                arEditorProduct: arEditorProduct ? {
+                    serviceId: arEditorProduct.serviceId,
+                    product_index: arEditorProduct.product_index
+                } : null,
             });
 
             // Upload vers le cloud
@@ -449,15 +487,22 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             console.log('[ProductVideoCreationModal] ✅ Vidéo AR ajoutée avec succès, fermeture du modal');
             setShowAREditor(false);
             
+            // ✅ NOUVEAU: Réinitialiser le produit stocké pour l'éditeur AR
+            setArEditorProduct(null);
+            
             // ✅ NOUVEAU: Afficher l'alerte après la fermeture du modal pour éviter les conflits
             setTimeout(() => {
-                Alert.alert('Succès', 'Vidéo AR ajoutée à votre médiathèque');
+                Alert.alert('Succès', `Vidéo AR ajoutée à la médiathèque du produit "${productToUse.nom || productToUse.titre || 'sélectionné'}"`);
             }, 300);
 
             // Rafraëchir les médias pour obtenir l'ID réel depuis le serveur
+            // ✅ CORRIGÉ: Utiliser productToUse au lieu de selectedProduct pour garantir la cohérence
             try {
-                await refreshMedia(selectedProduct);
-                console.log('[ProductVideoCreationModal] ✅ Médias rafraëchis après upload AR');
+                await refreshMedia(productToUse);
+                console.log('[ProductVideoCreationModal] ✅ Médias rafraëchis après upload AR pour le produit:', {
+                    serviceId: productToUse.serviceId,
+                    product_index: productToUse.product_index
+                });
             } catch (refreshError: any) {
                 console.warn('[ProductVideoCreationModal] ⚠️ Erreur rafraîchissement médias:', refreshError);
                 // Ne pas bloquer l'utilisateur si le rafraîchissement échoue
@@ -474,6 +519,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             // ✅ CORRIGÉ: Fermer le modal même en cas d'erreur pour permettre à l'utilisateur de réessayer
             setShowAREditor(false);
             
+            // ✅ NOUVEAU: Réinitialiser le produit stocké même en cas d'erreur
+            setArEditorProduct(null);
+            
             // Afficher un message d'erreur plus détaillé
             let errorMessage = 'Impossible d\'ajouter la vidéo AR. Réessayez plus tard.';
             if (error?.response?.status === 500) {
@@ -489,7 +537,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         } finally {
             setIsUploadingARVideo(false);
         }
-    }, [selectedProduct]);
+    }, [arEditorProduct, selectedProduct, primaryProduct, uploadToCloud, refreshMedia]);
 
     // ✅ Fonction pour charger la configuration de livraison
     const loadDeliveryConfig = useCallback(async (serviceId: number, productIndex: number) => {
@@ -2628,10 +2676,46 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         onPress={async () => {
                             // ✅ CORRIGÉ 2025-12-24: Vérifier les permissions avant d'ouvrir AR avec gestion d'erreur robuste
                             try {
-                                if (!selectedProduct) {
-                                    Alert.alert('Erreur', 'Veuillez d\'abord sélectionner un produit');
+                                // ✅ CORRIGÉ: Utiliser primaryProduct comme fallback si selectedProduct n'est pas défini
+                                const productToUse = selectedProduct || primaryProduct;
+                                
+                                if (!productToUse) {
+                                    Alert.alert(
+                                        'Produit requis',
+                                        'Veuillez d\'abord sélectionner un produit avant d\'ouvrir l\'éditeur AR.'
+                                    );
                                     return;
                                 }
+
+                                if (typeof productToUse.product_index !== 'number' || productToUse.product_index < 0) {
+                                    Alert.alert(
+                                        'Produit invalide',
+                                        'Le produit sélectionné n\'a pas d\'index valide. Veuillez sélectionner un autre produit.'
+                                    );
+                                    return;
+                                }
+
+                                if (!productToUse.serviceId) {
+                                    Alert.alert(
+                                        'Service invalide',
+                                        'Le produit sélectionné n\'a pas de service associé. Veuillez sélectionner un autre produit.'
+                                    );
+                                    return;
+                                }
+
+                                // ✅ S'assurer que selectedProduct est mis à jour si on utilise primaryProduct
+                                if (!selectedProduct && productToUse) {
+                                    setSelectedProduct(productToUse);
+                                }
+                                
+                                // ✅ NOUVEAU: Stocker le produit courant au moment de l'ouverture de l'éditeur AR
+                                // Cela garantit que la vidéo AR sera liée au bon produit même si selectedProduct change
+                                setArEditorProduct(productToUse);
+                                console.log('[ProductVideoCreationModal] 📌 Produit stocké pour AR:', {
+                                    serviceId: productToUse.serviceId,
+                                    product_index: productToUse.product_index,
+                                    product_name: productToUse.nom || productToUse.titre
+                                });
                                 
                                 // ✅ CORRIGÉ: Vérifier que react-native-vision-camera est disponible avec try-catch robuste
                                 let CameraModule: any = null;

@@ -52,7 +52,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         return null;
       }
 
-      // ✅ CORRIGÉ: Ajout d'un timeout pour éviter les blocages GPS
+      // ✅ CORRIGÉ: Timeout réduit à 10 secondes et meilleure gestion d'erreur
       const locationPromise = Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
         timeInterval: 1000,
@@ -60,7 +60,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       });
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('GPS timeout')), 15000)
+        setTimeout(() => reject(new Error('GPS timeout')), 10000) // ✅ Réduit à 10s
       );
 
       const currentLocation = await Promise.race([locationPromise, timeoutPromise]);
@@ -78,11 +78,28 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         throw new Error('Coordonnées GPS invalides');
       }
 
+      // ✅ NOUVEAU: Mémoriser la dernière position valide
+      lastLocationRef.current = currentLocation;
       setLocation(currentLocation);
       return currentLocation;
     } catch (error: any) {
-      console.error('[LocationContext] ❌ Erreur récupération localisation:', error);
-      setErrorMsg(error?.message || 'Erreur lors de la récupération de la localisation');
+      // ✅ CORRIGÉ: Ne pas logger les timeouts GPS comme des erreurs critiques
+      // Les timeouts GPS sont normaux et ne doivent pas être envoyés au backend comme erreurs
+      if (error?.message === 'GPS timeout') {
+        console.warn('[LocationContext] ⚠️ GPS timeout (normal si GPS lent ou indisponible)');
+        setErrorMsg('La localisation prend du temps. Réessayez plus tard.');
+      } else {
+        // Seules les vraies erreurs sont loggées comme erreurs
+        console.error('[LocationContext] ❌ Erreur récupération localisation:', error);
+        setErrorMsg(error?.message || 'Erreur lors de la récupération de la localisation');
+      }
+      
+      // ✅ NOUVEAU: Retourner la dernière position connue si disponible en cas de timeout
+      if (error?.message === 'GPS timeout' && lastLocationRef.current) {
+        console.log('[LocationContext] ✅ Utilisation de la dernière position connue');
+        return lastLocationRef.current;
+      }
+      
       return null;
     } finally {
       setIsLoading(false);

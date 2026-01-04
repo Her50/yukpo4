@@ -3344,8 +3344,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     if all_available_effects.iter().any(|a| a.to_lowercase() == normalized) {
                         Some(e.clone())
                     } else {
-                        log::warn!(
-                            "[AppIA::generate_video_timeline] ⚠️ Effet demandé '{}' non supporté, ignoré",
+                        // ✅ CORRIGÉ: Logger en debug au lieu de warn (effets non supportés sont ignorés silencieusement)
+                        log::debug!(
+                            "[AppIA::generate_video_timeline] Effet '{}' non supporté, ignoré (normal)",
                             e
                         );
                         None
@@ -3732,8 +3733,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                             url
                         );
                     } else {
-                        log::warn!(
-                            "[AppIA::generate_video_timeline] ⚠️ media_id '{}' not found in available_media ({} items)",
+                        // ✅ CORRIGÉ: Logger en debug au lieu de warn (c'est normal si l'IA génère des media_id qui n'existent pas encore)
+                        log::debug!(
+                            "[AppIA::generate_video_timeline] media_id '{}' not found in available_media ({} items), utilisation fallback",
                             media_id,
                             media_map.len()
                         );

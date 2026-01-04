@@ -5012,7 +5012,7 @@ pub async fn brouillon_service(data: &serde_json::Value) -> Result<serde_json::V
 
 /// Sauvegarde les combinaisons IA dans autocomplete_combinations (avec vérification doublon)
 /// Utilisé lors de la réception du JSON IA pour construire la liste de suggestions
-async fn save_ia_combinations_to_db(
+pub async fn save_ia_combinations_to_db(
     pool: &PgPool,
     produits_field: &serde_json::Value,
     session_id: Option<&str>,

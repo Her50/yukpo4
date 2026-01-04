@@ -256,8 +256,9 @@ impl ImmersiveOrchestrator {
                     scene_index
                 );
             } else {
-                warn!(
-                    "[ImmersiveOrchestrator] ⚠️ Aucun média produit disponible pour scène {}",
+                // ✅ CORRIGÉ: Logger en debug au lieu de warn (normal si médias en cours de génération)
+                log::debug!(
+                    "[ImmersiveOrchestrator] Aucun média produit disponible pour scène {} (médias peuvent être en cours de génération)",
                     scene_index
                 );
             }
@@ -438,10 +439,19 @@ impl ImmersiveOrchestrator {
         
         if scenes_with_media < scenes_clone.len() {
             let missing_count = scenes_clone.len() - scenes_with_media;
-            warn!(
-                "[ImmersiveOrchestrator] ⚠️ {} scène(s) sans média sur {} total",
-                missing_count, scenes_clone.len()
-            );
+            // ✅ CORRIGÉ: Logger en debug au lieu de warn si moins de 50% des scènes ont des médias
+            // Sinon logger en warn seulement si aucune scène n'a de média
+            if scenes_with_media == 0 {
+                warn!(
+                    "[ImmersiveOrchestrator] ⚠️ Aucune scène n'a de média sur {} total (problème critique)",
+                    scenes_clone.len()
+                );
+            } else {
+                log::debug!(
+                    "[ImmersiveOrchestrator] {} scène(s) sans média sur {} total (normal si médias en cours de génération)",
+                    missing_count, scenes_clone.len()
+                );
+            }
             warnings.push(format!(
                 "{} scène(s) générée(s) sans média. Veuillez ajouter des images/vidéos au produit.",
                 missing_count

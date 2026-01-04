@@ -12,6 +12,7 @@ use log::{info, error, warn};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use crate::utils::log::log_error;
+use uuid::Uuid;
 
 use crate::{
     controllers::{
@@ -909,8 +910,30 @@ Format JSON attendu :
     
     log::info!("[handle_creation_service_direct] JSON parsé avec succès: {}", data);
     
+    // ✅ NOUVEAU: Générer un session_id unique pour cette session de création
+    // Ce session_id sera utilisé pour récupérer les combinaisons préférées par l'IA
+    let session_id = Uuid::new_v4().to_string();
+    log::info!("[handle_creation_service_direct] Session ID généré: {}", session_id);
+    
     // ?? NOUVEAU : Extraire les données du service sans les créer dans la base
     let service_data = data.get("data").unwrap_or(&data);
+    
+    // ✅ NOUVEAU: Sauvegarder les combinaisons IA si présentes dans les données
+    // Cela permet de les récupérer plus tard via /api/combinations/session/{session_id}
+    if let Some(produits_field) = service_data.get("produits") {
+        // Créer un objet temporaire avec session_id pour la sauvegarde
+        let mut produits_with_session = produits_field.clone();
+        if let Some(produits_obj) = produits_with_session.as_object_mut() {
+            produits_obj.insert("session_id".to_string(), json!(session_id));
+        }
+        
+        // Sauvegarder les combinaisons avec le session_id
+        if let Err(e) = creer_service::save_ia_combinations_to_db(&state.pg, &produits_with_session, Some(&session_id)).await {
+            log::warn!("[handle_creation_service_direct] ⚠️ Erreur sauvegarde combinaisons IA: {} (non bloquant)", e);
+        } else {
+            log::info!("[handle_creation_service_direct] ✅ Combinaisons IA sauvegardées avec session_id: {}", session_id);
+        }
+    }
     
     // ?? NOUVEAU : Préparer les données pour le formulaire (sans création en base)
     let service_request_data = json!({
@@ -921,7 +944,8 @@ Format JSON attendu :
         "doc_base64": input.doc_base64, // Documents
         "excel_base64": input.excel_base64, // Excel
         "tokens_consumed": tokens_consumed,
-        "ia_model_used": model_name
+        "ia_model_used": model_name,
+        "session_id": session_id // ✅ NOUVEAU: Inclure session_id dans service_data
     });
     
     log::info!("[handle_creation_service_direct] Données préparées pour le formulaire avec {} types de fichiers...", total_files);
@@ -933,6 +957,7 @@ Format JSON attendu :
     let final_response = json!({
         "status": "success",
         "intention": "creation_service",
+        "session_id": session_id, // ✅ NOUVEAU: Inclure session_id dans la réponse
         "data": {
             "titre_service": {
                 "type_donnee": "string",

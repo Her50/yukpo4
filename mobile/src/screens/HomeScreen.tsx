@@ -313,18 +313,17 @@ const HomeScreen: React.FC = () => {
                 console.log('[HomeScreen] Résultat génération suggestions:', JSON.stringify(result, null, 2));
 
                 if (result && result.data) {
-                    // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
-                    const suggestionData = result.data.service_data?.data || result.data.data || result.data;
-                    // ✅ Passer aussi toute la réponse pour avoir accès à service_data.base64_image, etc.
-                    const fullSuggestionIA = {
-                        ...result.data,
-                        data: suggestionData,
-                    };
+                    // ✅ CORRECTION : Passer toute la réponse complète pour préserver service_data
+                    // La structure attendue : result.data contient { data: {...}, service_data: { data: {...}, base64_image: [...] } }
+                    // On passe result.data tel quel pour que AjouterProduitSimpleScreen puisse extraire depuis service_data.data
+                    console.log('[HomeScreen] Structure complète de result.data:', JSON.stringify(result.data, null, 2));
+                    console.log('[HomeScreen] service_data présent?', !!result.data.service_data);
+                    console.log('[HomeScreen] service_data.data présent?', !!result.data.service_data?.data);
 
                     navigate('AjouterProduitSimple', {
                         serviceId: foundServiceId,
                         mode: 'create',
-                        suggestionIA: fullSuggestionIA,
+                        suggestionIA: result.data, // ✅ Passer result.data tel quel pour préserver service_data
                         mediaData: {
                             base64_image: input.base64_image || [],
                             video_base64: input.video_base64 || [],

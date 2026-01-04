@@ -123,6 +123,15 @@ class RemoteLoggingService {
                 return;
             }
 
+            // ✅ NOUVEAU: Filtrer les erreurs GPS timeout (non-bloquantes, normales)
+            if (this.isGPSTimeoutError(message, error)) {
+                // Les timeouts GPS sont normaux et ne doivent pas être envoyés au backend comme erreurs critiques
+                if (__DEV__) {
+                    this.originalConsole?.warn('[RemoteLogging] ⚠️ Erreur GPS timeout filtrée (normal):', message);
+                }
+                return;
+            }
+
             // ✅ CORRECTION 1: Filtrer les erreurs liées à /api/mobile-logs pour éviter la boucle infinie
             if (this.isLoggingError(message, error)) {
                 // Ne pas logger les erreurs de logging pour éviter la boucle infinie
@@ -195,6 +204,28 @@ class RemoteLoggingService {
     }
 
     /**
+     * ✅ NOUVEAU: Vérifie si une erreur est un timeout GPS (non-bloquant, normal)
+     * Les timeouts GPS sont normaux et ne doivent pas être envoyés au backend comme erreurs critiques
+     */
+    private isGPSTimeoutError(message: string, error: any): boolean {
+        const errorMsg = error?.message || message || '';
+        const errorName = error?.name || '';
+        
+        return (
+            errorMsg.includes('GPS timeout') ||
+            errorMsg.includes('gps timeout') ||
+            errorMsg.includes('GPS Timeout') ||
+            (errorMsg.includes('timeout') && (errorMsg.includes('GPS') || errorMsg.includes('Location') || errorMsg.includes('localisation'))) ||
+            (errorName === 'Error' && errorMsg.includes('GPS timeout')) ||
+            // Vérifier aussi dans le stack trace
+            (error?.stack && (
+                error.stack.includes('GPS timeout') ||
+                error.stack.includes('LocationContext') && error.stack.includes('timeout')
+            ))
+        );
+    }
+
+    /**
      * ✅ CORRECTION 1: Vérifie si une erreur est liée au logging pour éviter la boucle infinie
      */
     private isLoggingError(message: string, error: any): boolean {
@@ -228,6 +259,17 @@ class RemoteLoggingService {
                     // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
                     if (this.isAsyncStorageError(error)) {
                         // Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+                        if (originalHandler) {
+                            originalHandler(error, isFatal);
+                        }
+                        return;
+                    }
+
+                    // ✅ NOUVEAU: Filtrer les erreurs GPS timeout (non-bloquantes, normales)
+                    if (this.isGPSTimeoutError(error.message, error)) {
+                        if (__DEV__) {
+                            this.originalConsole?.warn('[RemoteLogging] ⚠️ Erreur GPS timeout filtrée (ErrorUtils):', error.message);
+                        }
                         if (originalHandler) {
                             originalHandler(error, isFatal);
                         }
@@ -272,6 +314,14 @@ class RemoteLoggingService {
                     // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
                     if (this.isAsyncStorageError(reason)) {
                         // Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+                        return originalReject(reason);
+                    }
+
+                    // ✅ NOUVEAU: Filtrer les erreurs GPS timeout (non-bloquantes, normales)
+                    if (this.isGPSTimeoutError(reason?.message || String(reason), reason)) {
+                        if (__DEV__) {
+                            this.originalConsole?.warn('[RemoteLogging] ⚠️ Erreur GPS timeout filtrée (Promise rejection):', reason?.message || String(reason));
+                        }
                         return originalReject(reason);
                     }
 
@@ -579,6 +629,14 @@ class RemoteLoggingService {
         // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
         if (this.isAsyncStorageError(error || message)) {
             // Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+            return;
+        }
+
+        // ✅ NOUVEAU: Filtrer les erreurs GPS timeout (non-bloquantes, normales)
+        if (this.isGPSTimeoutError(message, error)) {
+            if (__DEV__) {
+                this.originalConsole?.warn('[RemoteLogging] ⚠️ Erreur GPS timeout filtrée (méthode error):', message);
+            }
             return;
         }
 

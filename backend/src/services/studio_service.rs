@@ -481,8 +481,9 @@ impl StudioService {
             };
             
             if !has_media {
-                warn!(
-                    "[StudioService] ⚠️ Clip {} (position {}) n'a pas de média valide dans son payload",
+                // ✅ CORRIGÉ: Logger en debug au lieu de warn (c'est normal si les médias ne sont pas encore disponibles)
+                log::debug!(
+                    "[StudioService] Clip {} (position {}) n'a pas de média valide dans son payload (normal si médias en cours de génération)",
                     idx + 1, clip.position
                 );
                 // ✅ CORRIGÉ: Ne pas rejeter immédiatement, mais avertir
@@ -1197,8 +1198,9 @@ fn build_preview_timeline(clips: &[StudioTimelineClipRecord], session_assets: &[
                 }
                 
                 if !found_media {
-                    warn!(
-                        "[build_preview_timeline] ⚠️ Scène {} sans médias et aucun media_url trouvé dans payload. Payload: {}",
+                    // ✅ CORRIGÉ: Logger en debug au lieu de warn (normal si médias en cours de génération)
+                    log::debug!(
+                        "[build_preview_timeline] Scène {} sans médias (médias peuvent être en cours de génération). Payload: {}",
                         scene.id,
                         serde_json::to_string(payload_obj).unwrap_or_else(|_| "{}".to_string())
                     );
