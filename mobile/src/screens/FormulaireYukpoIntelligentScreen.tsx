@@ -1244,8 +1244,74 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               website: formValues.website
             });
 
-            // ✅ SUPPRIMÉ: Chargement produits - Les produits sont maintenant gérés via les champs dynamiques du formulaire
-            // Les produits existants seront chargés automatiquement via les valeurs du formulaire
+            // ✅ NOUVEAU 2026-01-04: Extraire les produits depuis serviceData.data.produits.valeur
+            // Les produits sont maintenant chargés depuis service_products et ajoutés dans data.produits.valeur
+            if (serviceData?.data?.produits) {
+              const produitsData = serviceData.data.produits;
+              // Extraire le tableau de produits (peut être dans .valeur ou directement)
+              const produitsArray = Array.isArray(produitsData?.valeur) 
+                ? produitsData.valeur 
+                : Array.isArray(produitsData) 
+                  ? produitsData 
+                  : [];
+              
+              // Si on a au moins un produit, extraire ses champs pour pré-remplir le formulaire
+              if (produitsArray.length > 0) {
+                const firstProduct = produitsArray[0];
+                if (firstProduct && typeof firstProduct === 'object') {
+                  // Extraire les champs du premier produit
+                  if (firstProduct.nom_produit !== undefined) {
+                    formValues.nom_produit = typeof firstProduct.nom_produit === 'object' && 'valeur' in firstProduct.nom_produit
+                      ? firstProduct.nom_produit.valeur
+                      : firstProduct.nom_produit;
+                  }
+                  if (firstProduct.categorie_produit !== undefined) {
+                    formValues.categorie_produit = typeof firstProduct.categorie_produit === 'object' && 'valeur' in firstProduct.categorie_produit
+                      ? firstProduct.categorie_produit.valeur
+                      : firstProduct.categorie_produit;
+                  }
+                  if (firstProduct.description_produit !== undefined) {
+                    formValues.description_produit = typeof firstProduct.description_produit === 'object' && 'valeur' in firstProduct.description_produit
+                      ? firstProduct.description_produit.valeur
+                      : firstProduct.description_produit;
+                  }
+                  if (firstProduct.prix_produit !== undefined) {
+                    formValues.prix_produit = typeof firstProduct.prix_produit === 'object' && 'valeur' in firstProduct.prix_produit
+                      ? firstProduct.prix_produit.valeur
+                      : firstProduct.prix_produit;
+                  }
+                  if (firstProduct.devise_produit !== undefined) {
+                    formValues.devise_produit = typeof firstProduct.devise_produit === 'object' && 'valeur' in firstProduct.devise_produit
+                      ? firstProduct.devise_produit.valeur
+                      : firstProduct.devise_produit;
+                  }
+                  // ✅ NOUVEAU 2026-01-04: Extraire variabilite_prix depuis le premier produit
+                  if (firstProduct.variabilite_prix !== undefined || firstProduct.price_variant !== undefined) {
+                    const variantRaw = firstProduct.variabilite_prix || firstProduct.price_variant;
+                    if (variantRaw) {
+                      // Si c'est un objet avec 'valeur', extraire la valeur
+                      const variantValue = typeof variantRaw === 'object' && 'valeur' in variantRaw
+                        ? variantRaw.valeur
+                        : variantRaw;
+                      if (variantValue) {
+                        formValues.variabilite_prix = variantValue;
+                        formValues.price_variant = variantValue;
+                        console.log('[FormulaireYukpoIntelligentScreen] ✅ variabilite_prix chargé depuis produit:', variantValue);
+                      }
+                    }
+                  }
+                  // Extraire produits (autocomplete) si présent
+                  if (firstProduct.produits !== undefined) {
+                    const produitsValue = typeof firstProduct.produits === 'object' && 'valeur' in firstProduct.produits
+                      ? firstProduct.produits.valeur
+                      : firstProduct.produits;
+                    if (produitsValue) {
+                      formValues.produits = Array.isArray(produitsValue) ? produitsValue : [produitsValue];
+                    }
+                  }
+                }
+              }
+            }
 
             setValeursFormulaire(formValues);
             setActiveStep(2); // Aller directement au formulaire

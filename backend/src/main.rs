@@ -82,19 +82,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     log::info!("🔌 Connexion à la base de données PostgreSQL...");
 
-    // ✅ OPTIMISÉ 2025-01-14: Pool augmenté pour améliorer performance autocomplete
-    // Le problème: Requêtes autocomplete prennent 3-5s à cause de la saturation du pool
-    // Solution: Augmenter à 50 max (Render PostgreSQL supporte jusqu'à 100 sur plan Standard)
+    // ✅ OPTIMISÉ 2026-01-04: Pool augmenté pour résoudre les warnings "time to acquire exceeded"
+    // Le problème: Acquisition de connexions prend >2s (pool saturé)
+    // Solution: Augmenter à 100 max (Render PostgreSQL supporte jusqu'à 100 sur plan Standard)
     // Avec les optimisations SQL, les requêtes seront plus rapides et libéreront les connexions plus vite
     let max_connections: u32 = env::var("DB_POOL_SIZE")
-        .unwrap_or_else(|_| "50".to_string()) // ✅ OPTIMISÉ 2025-01-14: Augmenté de 30 à 50 pour performance
+        .unwrap_or_else(|_| "100".to_string()) // ✅ OPTIMISÉ 2026-01-04: Augmenté de 50 à 100 pour résoudre les warnings
         .parse()
-        .unwrap_or(50);
+        .unwrap_or(100);
 
     let min_connections: u32 = env::var("DB_POOL_MIN_SIZE")
-        .unwrap_or_else(|_| "10".to_string()) // ✅ OPTIMISÉ 2025-01-14: Augmenté de 5 à 10 pour réduire latence
+        .unwrap_or_else(|_| "20".to_string()) // ✅ OPTIMISÉ 2026-01-04: Augmenté de 10 à 20 pour réduire latence d'acquisition
         .parse()
-        .unwrap_or(10);
+        .unwrap_or(20);
 
     let acquire_timeout_secs: u64 = env::var("DB_ACQUIRE_TIMEOUT_SECS")
         .unwrap_or_else(|_| "30".to_string()) // ✅ Phase 1: Augmenté à 30s (était 15s)

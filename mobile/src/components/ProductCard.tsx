@@ -293,7 +293,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const variantImage = selectedVariant?.image || selectedVariant?.images?.[0];
   const hasMedia = (images?.length || 0) + (videos?.length || 0) > 0 || !!variantImage;
 
-  const serviceId = product.service_id || service?.id;
+  // ✅ CORRIGÉ 2026-01-04: Vérifier aussi _serviceId ajouté par ResultatBesoinScreen
+  const serviceId = product._serviceId || product.service_id || service?.id;
   const productIndex =
     typeof product.product_index === 'number'
       ? product.product_index
@@ -305,9 +306,15 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     product.id ||
     (serviceId ? `${serviceId}_${productIndex}` : null);
 
-  const isProduct = productData.type !== 'prestation_service' &&
-    productData.type !== 'service' &&
-    productData.type !== 'service_prestation';
+  // ✅ CORRIGÉ 2026-01-04: Toujours considérer comme produit si c'est dans une liste de produits
+  // Les produits depuis service_products n'ont pas nécessairement un type défini
+  // Si product.product_data existe, c'est probablement un produit depuis service_products
+  const isProduct = product.product_data 
+    ? true // ✅ Produit depuis service_products (product_data existe)
+    : (productData.type !== 'prestation_service' &&
+       productData.type !== 'service' &&
+       productData.type !== 'service_prestation' &&
+       (productData.type === undefined || productData.type === null || productData.type === ''));
 
   // ✅ RESTAURÉ: Conditions strictes pour l'affichage du bouton "Me livrer"
   // Le bouton s'affiche uniquement si la livraison est explicitement activée
@@ -326,8 +333,11 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const devise = productData.devise || variants[0]?.devise || 'XAF';
 
   // ✅ CORRIGÉ 2025-01-01: Mémoriser le calcul de distance pour éviter les recalculs à chaque render
+  // ✅ CORRIGÉ 2026-01-04: Vérifier aussi dans product directement (pas seulement productData)
+  // Dans ResultatBesoinScreen, distance et distance_km sont ajoutés directement dans product
   const distanceKm = useMemo(() => {
-    const rawDistance = productData.distance_km ?? productData.distanceKm ?? productData.distance ?? productData.distance_client;
+    const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance 
+      ?? productData.distance_km ?? productData.distanceKm ?? productData.distance ?? productData.distance_client;
     let calculatedDistance = typeof rawDistance === 'string'
       ? parseFloat(rawDistance)
       : typeof rawDistance === 'number'
@@ -337,7 +347,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     // ✅ NOUVEAU: Calculer la distance si elle n'est pas fournie et qu'on a les coordonnées GPS
     if ((calculatedDistance === undefined || !Number.isFinite(calculatedDistance)) && effectiveUserLocation && locationCalculateDistance) {
       // Extraire les coordonnées GPS du produit/service (priorité: _gps ajouté dans ResultatBesoinScreen, puis gps direct, puis service)
-      const productGPS = productData._gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
+      // ✅ CORRIGÉ 2026-01-04: Vérifier aussi dans product directement (pas seulement productData)
+      const productGPS = product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
       
       if (productGPS) {
         let productLat: number | undefined;
@@ -373,7 +384,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     }
     
     return calculatedDistance;
-  }, [productData.distance_km, productData.distanceKm, productData.distance, productData.distance_client, productData._gps, productData.gps, productData.gps_coords, productData.gps_fixe, service?.data?.gps_fixe?.valeur, service?.data?.gps?.valeur, effectiveUserLocation, locationCalculateDistance]);
+  }, [product.distance_km, product.distanceKm, product.distance, product._gps, product.gps, productData.distance_km, productData.distanceKm, productData.distance, productData.distance_client, productData._gps, productData.gps, productData.gps_coords, productData.gps_fixe, service?.data?.gps_fixe?.valeur, service?.data?.gps?.valeur, effectiveUserLocation, locationCalculateDistance]);
   
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm) && distanceKm >= 0;
 

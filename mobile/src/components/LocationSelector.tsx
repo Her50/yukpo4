@@ -4,6 +4,8 @@ import { apiGet } from '../services/api';
 import { PlaceScope, placesService, PlaceResult } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import ENVIRONMENT from '../config/environment';
+import { useLocation } from '../contexts/LocationContext';
 
 // ✅ AMÉLIORÉ: Parser string location en composants (gère établissements, "Pays - Ville", "Quartier, Ville, Pays", "Pays" seul)
 const parseLocationString = (locationStr: string): LocationObject => {
@@ -437,6 +439,9 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     required = false,
     enrichWithBackend = false,
 }) => {
+    // ✅ NOUVEAU 2026-01-04: Utiliser useLocation pour obtenir la localisation de l'utilisateur
+    const { location: userLocation } = useLocation();
+
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
@@ -453,14 +458,75 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     useEffect(() => {
         let cancelled = false;
         const run = async () => {
+            if (!debouncedQuery || debouncedQuery.length < 2) {
+                setOptionsEnriched([]);
+                setOptions([]);
+                return;
+            }
+
             setLoading(true);
             try {
-                // ✅ AMÉLIORÉ: Utiliser autocompleteEnriched pour obtenir les types Google Places
-                const scopeParam = scope === 'all' ? undefined : scope as PlaceScope;
-                const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeParam, cityContext);
+                // ✅ NOUVEAU 2026-01-04: Utiliser directement Google Places Autocomplete API avec locationBias
+                // Comme dans ModernGPSModal pour rechercher dans la zone géographique de l'utilisateur
+                const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
+
+                if (GOOGLE_MAPS_API_KEY) {
+                    // ✅ Utiliser la localisation GPS de l'utilisateur en priorité pour locationBias
+                    let locationBias: { lat: number; lng: number };
+                    if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
+                        locationBias = {
+                            lat: userLocation.coords.latitude,
+                            lng: userLocation.coords.longitude
+                        };
+                    } else {
+                        // Fallback sur Douala, Cameroun
+                        locationBias = { lat: 4.031716, lng: 9.817201 };
+                    }
+
+                    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(debouncedQuery)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
+
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    if (!cancelled && data.status === 'OK' && data.predictions) {
+                        // Convertir les résultats Google Places en format PlaceResult
+                        const resultsEnriched: PlaceResult[] = data.predictions.map((prediction: any) => ({
+                            description: prediction.description,
+                            place_id: prediction.place_id,
+                            types: prediction.types || []
+                        }));
+                        setOptionsEnriched(resultsEnriched);
+                        setOptions(resultsEnriched.map(r => r.description)); // Pour compatibilité
+                    } else if (!cancelled) {
+                        // Fallback sur placesService si Google Places API échoue
+                        const scopeParam = scope === 'all' ? undefined : scope as PlaceScope;
+                        const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeParam, cityContext);
+                        setOptionsEnriched(resultsEnriched);
+                        setOptions(resultsEnriched.map(r => r.description));
+                    }
+                } else {
+                    // ✅ Fallback: Utiliser placesService si clé API non configurée
+                    const scopeParam = scope === 'all' ? undefined : scope as PlaceScope;
+                    const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeParam, cityContext);
+                    if (!cancelled) {
+                        setOptionsEnriched(resultsEnriched);
+                        setOptions(resultsEnriched.map(r => r.description));
+                    }
+                }
+            } catch (error) {
+                console.error('[LocationSelector] Erreur autocomplete:', error);
                 if (!cancelled) {
-                    setOptionsEnriched(resultsEnriched);
-                    setOptions(resultsEnriched.map(r => r.description)); // Pour compatibilité
+                    // Fallback sur placesService en cas d'erreur
+                    try {
+                        const scopeParam = scope === 'all' ? undefined : scope as PlaceScope;
+                        const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeParam, cityContext);
+                        setOptionsEnriched(resultsEnriched);
+                        setOptions(resultsEnriched.map(r => r.description));
+                    } catch (fallbackError) {
+                        console.error('[LocationSelector] Erreur fallback:', fallbackError);
+                        setOptionsEnriched([]);
+                        setOptions([]);
+                    }
                 }
             } finally {
                 if (!cancelled) setLoading(false);
@@ -468,7 +534,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         };
         run();
         return () => { cancelled = true; };
-    }, [debouncedQuery, scope, cityContext]);
+    }, [debouncedQuery, scope, cityContext, userLocation]);
 
     return (
         <View style={styles.container}>

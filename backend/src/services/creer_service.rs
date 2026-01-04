@@ -5515,6 +5515,10 @@ pub async fn save_autocomplete_combination(
                     // Vecteur produit avec variation (sans lieu)
                     let mut variant_product_vector = product_vector.clone();
                     variant_product_vector.push(variant_value.to_string());
+                    
+                    // ✅ CORRIGÉ: Mettre à jour product_labels pour correspondre à variant_product_vector
+                    let mut variant_product_labels = product_labels.clone();
+                    variant_product_labels.push(variant_dimension.to_string());
 
                     // Vecteur complet (produit + variation + lieu)
                     let mut variant_full_vector = variant_product_vector.clone();
@@ -5526,6 +5530,8 @@ pub async fn save_autocomplete_combination(
                     let variant_product_id = product_id.clone();
 
                     // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
+                    // ✅ CORRIGÉ: Supprimer ON CONFLICT car la contrainte unique n'existe pas sur (service_id, product_id, characteristic_vector)
+                    // On utilise INSERT directement (les doublons seront gérés par la logique métier)
                     let result_char = sqlx::query(
                         r#"INSERT INTO autocomplete_characteristics 
                            (identifiant_base, service_id, product_id, 
@@ -5533,17 +5539,12 @@ pub async fn save_autocomplete_combination(
                             chosen_location, chosen_location_geoname_id,
                             is_real_product, origine_champs, usage_count,
                             sous_caracteristique, valeur)
-                           VALUES ('produits', $1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'formulaire', 1, 'vector', $9)
-                           ON CONFLICT (service_id, product_id, characteristic_vector) 
-                           DO UPDATE SET 
-                               location_vector = EXCLUDED.location_vector,
-                               full_vector = EXCLUDED.full_vector,
-                               updated_at = NOW()"#
+                           VALUES ('produits', $1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'formulaire', 1, 'vector', $9)"#
                     )
                     .bind(service_id)
                     .bind(&variant_product_id)
                     .bind(&variant_product_vector)
-                    .bind(&product_labels)
+                    .bind(&variant_product_labels)
                     .bind(&location_vector)
                     .bind(&variant_full_vector)
                     .bind(chosen_location.as_deref())
@@ -5564,17 +5565,19 @@ pub async fn save_autocomplete_combination(
                     }
 
                     // ✅ AUSSI sauvegarder dans autocomplete_combinations (POPULARITÉ - doublons OK)
+                    // ✅ CORRIGÉ: Utiliser variant_full_vector pour ON CONFLICT (la contrainte unique est sur full_vector)
                     let result_comb = sqlx::query(
                         r#"INSERT INTO autocomplete_combinations 
                            (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
                             has_variant, variant_dimension, variant_value, prix, devise, stock, usage_count)
-                           VALUES ($1, $2, $3, '{}', '{}', $2, true, $4, $5, $6, $7, $8, 1)
+                           VALUES ($1, $2, $3, '{}', '{}', $4, true, $5, $6, $7, $8, $9, 1)
                            ON CONFLICT (full_vector)
                            DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
                     )
                     .bind(service_id)
                     .bind(&variant_product_vector)
-                    .bind(&product_labels)
+                    .bind(&variant_product_labels)
+                    .bind(&variant_full_vector)
                     .bind(variant_dimension)
                     .bind(variant_value)
                     .bind(prix)
@@ -5615,7 +5618,24 @@ pub async fn save_autocomplete_combination(
                 0.0
             };
 
+            // ✅ CORRIGÉ: S'assurer que product_labels a la même longueur que product_vector
+            // Si product_labels est vide ou de longueur différente, créer des labels par défaut
+            let mut final_product_labels = product_labels.clone();
+            if final_product_labels.len() != product_vector.len() {
+                log::warn!(
+                    "[save_autocomplete_combination] Product labels ({}) et product vector ({}) ont des longueurs différentes. Création de labels par défaut.",
+                    final_product_labels.len(),
+                    product_vector.len()
+                );
+                // Créer des labels par défaut pour correspondre à la longueur du vecteur
+                final_product_labels = (0..product_vector.len())
+                    .map(|i| format!("caracteristique_{}", i))
+                    .collect();
+            }
+            
             // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
+            // ✅ CORRIGÉ: Supprimer ON CONFLICT car la contrainte unique n'existe pas sur (service_id, product_id, characteristic_vector)
+            // On utilise INSERT directement (les doublons seront gérés par la logique métier)
             let result_char = sqlx::query(
                 r#"INSERT INTO autocomplete_characteristics 
                    (identifiant_base, service_id, product_id,
@@ -5623,17 +5643,12 @@ pub async fn save_autocomplete_combination(
                     chosen_location, chosen_location_geoname_id,
                     is_real_product, origine_champs, usage_count,
                     sous_caracteristique, valeur)
-                   VALUES ('produits', $1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'formulaire', 1, 'vector', $9)
-                   ON CONFLICT (service_id, product_id, characteristic_vector) 
-                   DO UPDATE SET 
-                       location_vector = EXCLUDED.location_vector,
-                       full_vector = EXCLUDED.full_vector,
-                       updated_at = NOW()"#
+                   VALUES ('produits', $1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'formulaire', 1, 'vector', $9)"#
             )
             .bind(service_id)
             .bind(&product_id)
             .bind(&product_vector)
-            .bind(&product_labels)
+            .bind(&final_product_labels)
             .bind(&location_vector)
             .bind(&full_vector)
             .bind(chosen_location.as_deref())
@@ -5654,17 +5669,19 @@ pub async fn save_autocomplete_combination(
             }
 
             // ✅ AUSSI sauvegarder dans autocomplete_combinations (POPULARITÉ - doublons OK)
+            // ✅ CORRIGÉ: Utiliser full_vector pour ON CONFLICT (la contrainte unique est sur full_vector, pas product_vector)
             let result_comb = sqlx::query(
                 r#"INSERT INTO autocomplete_combinations 
                    (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
                     has_variant, prix, usage_count)
-                   VALUES ($1, $2, $3, '{}', '{}', $2, false, $4, 1)
-                   ON CONFLICT (product_vector)
+                   VALUES ($1, $2, $3, '{}', '{}', $4, false, $5, 1)
+                   ON CONFLICT (full_vector)
                    DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
             )
             .bind(service_id)
             .bind(&product_vector)
-            .bind(&product_labels)
+            .bind(&final_product_labels)
+            .bind(&full_vector)
             .bind(prix)
             .execute(pool).await;
 

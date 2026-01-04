@@ -28,6 +28,7 @@ impl ProductStockService {
 
     /// Récupère le stock disponible pour un produit
     /// Le stock peut être dans:
+    /// - product_stock_locations (priorité 0: somme des quantités par lieu de stockage)
     /// - produits[index].stock (stock global)
     /// - produits[index].variants[].stock (stock par variante)
     /// - autocomplete_combinations.stock (fallback)
@@ -36,6 +37,39 @@ impl ProductStockService {
         service_id: i32,
         product_index: i32,
     ) -> AppResult<Option<i32>> {
+        // ✅ NOUVEAU 2026-01-04: PRIORITÉ 0: Vérifier le stock depuis product_stock_locations (somme des quantités par lieu)
+        // Récupérer le product_delivery_config_id pour ce service/product_index
+        let config_id: Option<i32> = sqlx::query_scalar(
+            r#"
+            SELECT id
+            FROM product_delivery_config
+            WHERE service_id = $1 AND product_index = $2
+            "#
+        )
+        .bind(service_id)
+        .bind(product_index)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(config_id_val) = config_id {
+            let stock_from_locations: Option<i32> = sqlx::query_scalar(
+                r#"
+                SELECT SUM(quantity_available)
+                FROM product_stock_locations
+                WHERE product_delivery_config_id = $1 AND is_available = TRUE
+                "#
+            )
+            .bind(config_id_val)
+            .fetch_optional(&self.pool)
+            .await?;
+
+            if let Some(total_stock) = stock_from_locations {
+                if total_stock > 0 {
+                    return Ok(Some(total_stock));
+                }
+            }
+        }
+
         // 1. Vérifier depuis services.data JSON
         let service_data: Option<Value> =
             sqlx::query_scalar("SELECT data FROM services WHERE id = $1")
@@ -126,7 +160,47 @@ impl ProductStockService {
         product_index: i32,
         quantity: i32,
     ) -> AppResult<()> {
-        // Récupérer le service data
+        // ✅ NOUVEAU 2026-01-04: PRIORITÉ 0: Décrémenter depuis product_stock_locations (si configuré)
+        // Récupérer le product_delivery_config_id pour ce service/product_index
+        let config_id: Option<i32> = sqlx::query_scalar(
+            r#"
+            SELECT id
+            FROM product_delivery_config
+            WHERE service_id = $1 AND product_index = $2
+            "#
+        )
+        .bind(service_id)
+        .bind(product_index)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(config_id_val) = config_id {
+            // Décrémenter depuis product_stock_locations (décrémenter quantity_available)
+            // On décrémente depuis le lieu de stockage le plus proche ou le premier disponible
+            let decremented = sqlx::query(
+                r#"
+                UPDATE product_stock_locations
+                SET quantity_available = GREATEST(0, quantity_available - $1),
+                    updated_at = NOW()
+                WHERE product_delivery_config_id = $2 
+                    AND is_available = TRUE 
+                    AND quantity_available >= $1
+                ORDER BY quantity_available DESC
+                LIMIT 1
+                "#
+            )
+            .bind(quantity)
+            .bind(config_id_val)
+            .execute(&self.pool)
+            .await?;
+
+            if decremented.rows_affected() > 0 {
+                // ✅ Stock décrémenté depuis product_stock_locations, on peut retourner
+                return Ok(());
+            }
+        }
+
+        // Récupérer le service data (fallback vers JSONB)
         let service_data: Option<Value> =
             sqlx::query_scalar("SELECT data FROM services WHERE id = $1")
                 .bind(service_id)

@@ -60,6 +60,26 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
         },
     }), []);
 
+    // ✅ NOUVEAU 2026-01-04: Repositionner automatiquement la carte quand selectedLocation change
+    useEffect(() => {
+        if (selectedLocation && selectedLocation.lat != null && selectedLocation.lng != null) {
+            const newRegion: Region = {
+                latitude: selectedLocation.lat,
+                longitude: selectedLocation.lng,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+            };
+            
+            // Mettre à jour mapRegion pour que la carte se repositionne
+            setMapRegion(newRegion);
+            
+            // Animer la carte vers le nouveau lieu si la carte est prête
+            if (mapReady && mapRef.current) {
+                mapRef.current.animateToRegion(newRegion, 500);
+            }
+        }
+    }, [selectedLocation, mapReady]);
+
     // ✅ CORRECTION CRASH: Timeout pour le chargement de la carte
     useEffect(() => {
         const timeout = setTimeout(() => {

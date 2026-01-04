@@ -466,8 +466,8 @@ async fn save_product_delivery_config(
     use crate::services::service_data_cache::ServiceDataCache;
     let service_cache = ServiceDataCache::new(state.cache_service.clone());
     
-    // ✅ Utiliser le cache pour récupérer les données du service
-    let (service_data_value, data_size, from_cache) = service_cache
+    // ✅ Utiliser le cache pour récupérer les données du service (mais on n'en a plus besoin après vérification)
+    let (_service_data_value, data_size, from_cache) = service_cache
         .get_service_data(
             payload.service_id,
             async {
@@ -525,16 +525,20 @@ async fn save_product_delivery_config(
         );
     }
 
-    let service_data = service_data_value;
-
-    let products = service_data
-        .get("produits")
-        .and_then(|p| p.get("valeur"))
-        .and_then(|v| v.as_array());
-
-    let _product = products
-        .and_then(|arr| arr.get(payload.product_index as usize))
-        .ok_or_else(|| AppError::BadRequest("Produit non trouvé".into()))?;
+    // ✅ CORRIGÉ 2026-01-04: Utiliser service_products au lieu de JSONB pour vérifier l'existence du produit
+    // Vérifier que le produit existe dans service_products
+    let product_exists = state.products_service
+        .get_products_by_service(payload.service_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération produits: {}", e)))?
+        .into_iter()
+        .any(|p| p.product_index == payload.product_index as i32);
+    
+    if !product_exists {
+        return Err(AppError::BadRequest(
+            format!("Produit {} non trouvé pour le service {}", payload.product_index, payload.service_id)
+        ));
+    }
 
     // ✅ 3. Valider les champs obligatoires
     if payload.pickup_address.trim().is_empty() {
@@ -644,6 +648,50 @@ async fn save_product_delivery_config(
 
     let config_id = config_row.get::<i32, _>("id");
     let config_is_configured = config_row.get::<bool, _>("is_configured");
+
+    // ✅ NOUVEAU 2026-01-04: Sauvegarder les lieux de stockage et leurs quantités dans product_stock_locations
+    if let Some(storage_location_ids) = &payload.storage_location_ids {
+        // Supprimer les anciennes entrées pour cette configuration
+        sqlx::query(
+            "DELETE FROM product_stock_locations WHERE product_delivery_config_id = $1"
+        )
+        .bind(config_id)
+        .execute(&state.pg)
+        .await?;
+
+        // Insérer les nouveaux lieux de stockage avec leurs quantités
+        for storage_location_id in storage_location_ids {
+            // Extraire la quantité pour ce lieu depuis storage_location_quantities
+            let quantity = payload.storage_location_quantities
+                .as_ref()
+                .and_then(|q| q.get(storage_location_id.to_string()))
+                .and_then(|v| v.as_i64())
+                .map(|q| q as i32)
+                .unwrap_or(0);
+
+            sqlx::query(
+                r#"
+                INSERT INTO product_stock_locations (
+                    product_delivery_config_id, storage_location_id,
+                    quantity_available, is_available, updated_by
+                )
+                VALUES ($1, $2, $3, TRUE, $4)
+                ON CONFLICT (product_delivery_config_id, storage_location_id)
+                DO UPDATE SET
+                    quantity_available = EXCLUDED.quantity_available,
+                    is_available = TRUE,
+                    updated_at = NOW(),
+                    updated_by = EXCLUDED.updated_by
+                "#
+            )
+            .bind(config_id)
+            .bind(storage_location_id)
+            .bind(quantity)
+            .bind(user.id)
+            .execute(&state.pg)
+            .await?;
+        }
+    }
 
     // ✅ Phase 2 - Amélioration 6 : Vérifier si la configuration est complète et notifier si nécessaire
     if !config_is_configured {
@@ -998,9 +1046,32 @@ async fn get_product_delivery_config(
     .await?;
 
     if let Some(config) = config_row {
+        let config_id = config.get::<i32, _>("id");
+        
+        // ✅ NOUVEAU 2026-01-04: Charger les lieux de stockage et leurs quantités depuis product_stock_locations
+        let stock_locations: Vec<(i32, i32)> = sqlx::query_as::<_, (i32, i32)>(
+            r#"
+            SELECT storage_location_id, quantity_available
+            FROM product_stock_locations
+            WHERE product_delivery_config_id = $1 AND is_available = TRUE
+            ORDER BY storage_location_id
+            "#
+        )
+        .bind(config_id)
+        .fetch_all(&state.pg)
+        .await
+        .unwrap_or_default();
+
+        let storage_location_ids: Vec<i32> = stock_locations.iter().map(|(id, _)| *id).collect();
+        let storage_location_quantities: serde_json::Value = stock_locations
+            .iter()
+            .map(|(id, qty)| (id.to_string(), serde_json::json!(qty)))
+            .collect::<serde_json::Map<String, serde_json::Value>>()
+            .into();
+
         Ok(Json(serde_json::json!({
             "config": {
-            "id": config.get::<i32, _>("id"),
+            "id": config_id,
             "service_id": config.get::<i32, _>("service_id"),
                 "product_index": config.get::<i32, _>("product_index"),
                 "pickup_address": config.get::<String, _>("pickup_address"),
@@ -1018,6 +1089,8 @@ async fn get_product_delivery_config(
                 "billing_partner_label": config.try_get::<Option<String>, _>("billing_partner_label")?,
                 "is_configured": config.get::<bool, _>("is_configured"),
                 "configured_at": config.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("configured_at")?,
+                "storage_location_ids": storage_location_ids,
+                "storage_location_quantities": storage_location_quantities,
             }
         })))
     } else {

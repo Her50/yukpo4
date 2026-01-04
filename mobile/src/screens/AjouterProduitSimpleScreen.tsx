@@ -284,6 +284,36 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         }
     }
     
+    // ✅ NOUVEAU 2026-01-04: Extraire variabilite_prix depuis suggestionData.produits.valeur[0] si présent
+    // Les produits sont maintenant chargés depuis service_products et ajoutés dans data.produits.valeur
+    if (!iaPriceVariant && suggestionData?.produits) {
+        const produitsData = suggestionData.produits;
+        // Extraire le tableau de produits (peut être dans .valeur ou directement)
+        const produitsArray = Array.isArray(produitsData?.valeur)
+            ? produitsData.valeur
+            : Array.isArray(produitsData)
+                ? produitsData
+                : [];
+        
+        // Si on a au moins un produit, extraire variabilite_prix depuis le premier produit
+        if (produitsArray.length > 0) {
+            const firstProduct = produitsArray[0];
+            if (firstProduct && typeof firstProduct === 'object') {
+                const variantRaw = firstProduct.variabilite_prix || firstProduct.price_variant || firstProduct.variation_prix;
+                if (variantRaw) {
+                    // Si c'est un objet avec 'valeur', extraire la valeur
+                    const variantValue = typeof variantRaw === 'object' && 'valeur' in variantRaw
+                        ? variantRaw.valeur
+                        : variantRaw;
+                    if (variantValue && typeof variantValue === 'object' && 'modalites' in variantValue) {
+                        iaPriceVariant = variantValue;
+                        console.log('[AjouterProduitSimple] ✅ variabilite_prix extrait depuis suggestionData.produits.valeur[0]:', iaPriceVariant.modalites?.length || 0, 'modalités');
+                    }
+                }
+            }
+        }
+    }
+    
     const prefillPriceVariant =
         extractPriceVariant(prefill.variabilite_prix || prefill.price_variant) ||
         extractPriceVariant(prefill.produits);
@@ -1294,11 +1324,17 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                             throw new Error(response.error || response.message || 'Impossible de mettre à jour le produit');
                                         }
 
-                                        Alert.alert(
-                                            '✅ Produit mis à jour',
-                                            'Les modifications ont été enregistrées avec succès.',
-                                            [{ text: 'OK', onPress: () => navigation.goBack() }]
-                                        );
+                                        // ✅ NOUVEAU 2026-01-04: Ouvrir automatiquement l'écran de configuration de livraison après modification
+                                        const finalServiceId = typeof serviceId === 'number' ? serviceId : parseInt(String(serviceId), 10);
+                                        const finalProductIndex = productIndex ?? 0;
+                                        const productName = formValues.nom_produit || 'Produit';
+
+                                        setShowProductDeliveryConfig(true);
+                                        setProductDeliveryConfigData({
+                                            serviceId: finalServiceId,
+                                            productIndex: finalProductIndex,
+                                            productName: productName
+                                        });
                                     } catch (error: any) {
                                         console.error('[AjouterProduitSimple] Erreur mise à jour produit:', error);
                                         Alert.alert('Erreur', error.message || 'Impossible de mettre à jour le produit');

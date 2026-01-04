@@ -544,8 +544,14 @@ pub struct ProductDeliveryConfigInput {
     pub pickup_latitude: f64,
     pub pickup_longitude: f64,
 
-    // ✅ Phase 9 - Amélioration 32 : Référence vers un lieu de stock
+    // ✅ Phase 9 - Amélioration 32 : Référence vers un lieu de stock (backward compatible)
     pub storage_location_id: Option<i32>,
+    
+    // ✅ NOUVEAU 2026-01-04: Array de lieux de stock
+    pub storage_location_ids: Option<Vec<i32>>,
+    
+    // ✅ NOUVEAU 2026-01-04: Quantités par lieu de stock (JSON object: { storage_location_id: quantity })
+    pub storage_location_quantities: Option<Value>,
 
     // Type véhicule
     pub required_vehicle_type_id: i32,

@@ -105,14 +105,22 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const [showGPSModal, setShowGPSModal] = useState(false);
     // ✅ NOUVEAU 2026-01-02: État pour le modal de sélection de véhicule
     const [showVehicleModal, setShowVehicleModal] = useState(false);
-    // ✅ NOUVEAU 2026-01-02: État pour stocker l'adresse du lieu de stock (indépendamment de storage_location_id)
-    const [storageLocationAddress, setStorageLocationAddress] = useState('');
+    // ✅ NOUVEAU 2026-01-04: État pour stocker plusieurs lieux de stockage avec bouton +
+    const [storageLocationsList, setStorageLocationsList] = useState<Array<{
+        id: string; // ID temporaire unique pour React key
+        address: string;
+        location: LocationObject | null;
+        storage_location_id?: number;
+        latitude?: number;
+        longitude?: number;
+        quantity?: number; // ✅ NOUVEAU 2026-01-04: Quantité de stock disponible à ce lieu
+    }>>([]);
     const [config, setConfig] = useState({
         pickup_address: '',
         pickup_location: null as LocationObject | null, // ✅ NOUVEAU: Objet location complet
         pickup_latitude: 0,
         pickup_longitude: 0,
-        storage_location_id: undefined as number | undefined, // ✅ Phase 9 - Amélioration 32
+        storage_location_ids: [] as number[], // ✅ NOUVEAU 2026-01-04: Array de storage_location_id
         required_vehicle_type_id: 0,
         preparation_time_minutes: '', // ✅ NOUVEAU: Temps de préparation en minutes
         weight_kg: '',
@@ -154,6 +162,33 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         }
     }, [visible, serviceId, productIndex]);
 
+    // ✅ NOUVEAU 2026-01-04: Mettre à jour les adresses des lieux de stockage quand storageLocations est chargé
+    useEffect(() => {
+        if (storageLocations.length > 0 && storageLocationsList.length > 0) {
+            setStorageLocationsList(prev => prev.map(loc => {
+                if (loc.storage_location_id) {
+                    const foundLocation = storageLocations.find(sl => sl.id === loc.storage_location_id);
+                    if (foundLocation && (!loc.address || loc.address === '')) {
+                        const locationObj: LocationObject | null = {
+                            raw: foundLocation.address || '',
+                            place_name: foundLocation.name || foundLocation.address || '',
+                            components: {},
+                            coordinates: { lat: foundLocation.latitude, lng: foundLocation.longitude }
+                        };
+                        return {
+                            ...loc,
+                            address: foundLocation.address || '',
+                            location: locationObj,
+                            latitude: foundLocation.latitude,
+                            longitude: foundLocation.longitude,
+                        };
+                    }
+                }
+                return loc;
+            }));
+        }
+    }, [storageLocations]);
+
     // ✅ Phase 9 - Amélioration 32 : Charger les lieux de stock
     const loadStorageLocations = async () => {
         setLoadingLocations(true);
@@ -172,19 +207,31 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         }
     };
 
-    // ✅ CORRIGÉ 2026-01-02: Mettre à jour l'adresse du lieu de stock quand storage_location_id change
-    useEffect(() => {
-        if (config.storage_location_id && storageLocations.length > 0) {
-            const selectedLocation = storageLocations.find(loc => loc.id === config.storage_location_id);
-            if (selectedLocation) {
-                // ✅ Mettre à jour l'adresse affichée dans LocationSelector
-                setStorageLocationAddress(selectedLocation.address || '');
-            }
-        } else if (!config.storage_location_id) {
-            // Si pas de storage_location_id, garder l'adresse si elle a été saisie manuellement
-            // (ne pas la vider si l'utilisateur a sélectionné un lieu qui n'est pas dans storageLocations)
-        }
-    }, [config.storage_location_id, storageLocations]);
+    // ✅ NOUVEAU 2026-01-04: Fonction pour ajouter un nouveau lieu de stockage
+    const handleAddStorageLocation = () => {
+        const newId = `storage_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        setStorageLocationsList(prev => [...prev, {
+            id: newId,
+            address: '',
+            location: null,
+            storage_location_id: undefined,
+            latitude: undefined,
+            longitude: undefined,
+            quantity: undefined, // ✅ NOUVEAU 2026-01-04: Quantité initiale non définie
+        }]);
+    };
+
+    // ✅ NOUVEAU 2026-01-04: Fonction pour supprimer un lieu de stockage
+    const handleRemoveStorageLocation = (id: string) => {
+        setStorageLocationsList(prev => prev.filter(loc => loc.id !== id));
+    };
+
+    // ✅ NOUVEAU 2026-01-04: Fonction pour mettre à jour un lieu de stockage
+    const handleUpdateStorageLocation = (id: string, updates: Partial<typeof storageLocationsList[0]>) => {
+        setStorageLocationsList(prev => prev.map(loc => 
+            loc.id === id ? { ...loc, ...updates } : loc
+        ));
+    };
 
     const loadParcelTypes = async () => {
         try {
@@ -236,24 +283,51 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     }
                     : null;
                 
-                const storageLocationId = (typeof c.storage_location_id === 'number' ? c.storage_location_id : undefined);
+                // ✅ NOUVEAU 2026-01-04: Charger plusieurs lieux de stockage
+                // Support backward compatible: storage_location_id (single) ou storage_location_ids (array)
+                const storageLocationIds: number[] = Array.isArray(c.storage_location_ids) 
+                    ? c.storage_location_ids.filter((id: any) => typeof id === 'number').map((id: number) => id)
+                    : (typeof c.storage_location_id === 'number' ? [c.storage_location_id] : []);
                 
-                // ✅ CORRIGÉ 2026-01-02: Récupérer l'adresse du lieu de stock si disponible
-                // Attendre que storageLocations soit chargé (via useEffect)
-                let storageAddr = '';
-                if (storageLocationId && storageLocations.length > 0) {
-                    const foundLocation = storageLocations.find(loc => loc.id === storageLocationId);
-                    storageAddr = foundLocation?.address || '';
-                }
+                // ✅ Construire la liste des lieux de stockage depuis les IDs et quantités
+                // Note: storageLocations peut ne pas être encore chargé, on le fera dans un useEffect
+                const storageLocationQuantities = c.storage_location_quantities || {};
+                const storageLocationsListFromConfig = storageLocationIds.map((id, index) => {
+                    const foundLocation = storageLocations.find(loc => loc.id === id);
+                    const locationObj: LocationObject | null = foundLocation ? {
+                        raw: foundLocation.address || '',
+                        place_name: foundLocation.name || foundLocation.address || '',
+                        components: {},
+                        coordinates: { lat: foundLocation.latitude, lng: foundLocation.longitude }
+                    } : null;
+                    
+                    // ✅ NOUVEAU 2026-01-04: Extraire la quantité depuis storage_location_quantities
+                    const quantity = storageLocationQuantities[id] 
+                        ? (typeof storageLocationQuantities[id] === 'number' 
+                            ? String(storageLocationQuantities[id]) 
+                            : String(storageLocationQuantities[id]))
+                        : undefined;
+                    
+                    return {
+                        id: `storage_${id}_${index}`,
+                        address: foundLocation?.address || '',
+                        location: locationObj,
+                        storage_location_id: id,
+                        latitude: foundLocation?.latitude,
+                        longitude: foundLocation?.longitude,
+                        quantity: quantity, // ✅ NOUVEAU: Charger la quantité
+                    };
+                });
                 
-                setStorageLocationAddress(storageAddr);
+                // ✅ Charger la liste des lieux de stockage (sera complétée quand storageLocations sera chargé)
+                setStorageLocationsList(storageLocationsListFromConfig);
                 
                 setConfig({
                     pickup_address: pickupAddr,
                     pickup_location: pickupLocationObj,
                     pickup_latitude: pickupLat,
                     pickup_longitude: pickupLng,
-                    storage_location_id: storageLocationId, // ✅ Phase 9 - Amélioration 32
+                    storage_location_ids: storageLocationIds, // ✅ NOUVEAU 2026-01-04: Array
                     required_vehicle_type_id: (typeof c.required_vehicle_type_id === 'number' ? c.required_vehicle_type_id : 0) || 0,
                     preparation_time_minutes: c.preparation_time_minutes ? String(c.preparation_time_minutes) : '0', // ✅ NOUVEAU
                     weight_kg: c.weight_kg ? String(c.weight_kg) : '',
@@ -307,6 +381,21 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
         setLoading(true);
         try {
+            // ✅ NOUVEAU 2026-01-04: Construire storage_location_ids et storage_location_quantities depuis storageLocationsList
+            const storageLocationIds = storageLocationsList
+                .filter(loc => loc.storage_location_id !== undefined)
+                .map(loc => loc.storage_location_id!);
+            
+            const storageLocationQuantities = storageLocationsList.reduce((acc, loc) => {
+                if (loc.storage_location_id && loc.quantity !== undefined && loc.quantity !== '') {
+                    const qty = parseInt(loc.quantity, 10);
+                    if (!isNaN(qty) && qty > 0) {
+                        acc[loc.storage_location_id] = qty;
+                    }
+                }
+                return acc;
+            }, {} as Record<number, number>);
+
             const payload = {
                 service_id: typeof serviceId === 'number' ? serviceId : 0,
                 product_index: typeof productIndex === 'number' ? productIndex : 0,
@@ -314,7 +403,9 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 pickup_address: config?.pickup_location?.raw || (config && typeof config.pickup_address === 'string' ? config.pickup_address : ''),
                 pickup_latitude: config?.pickup_location?.coordinates?.lat || (config && typeof config.pickup_latitude === 'number' ? config.pickup_latitude : 0),
                 pickup_longitude: config?.pickup_location?.coordinates?.lng || (config && typeof config.pickup_longitude === 'number' ? config.pickup_longitude : 0),
-                storage_location_id: config && typeof config.storage_location_id === 'number' ? config.storage_location_id : null, // ✅ Phase 9 - Amélioration 32
+                storage_location_id: config && typeof config.storage_location_id === 'number' ? config.storage_location_id : null, // ✅ Phase 9 - Amélioration 32 (backward compatible)
+                storage_location_ids: storageLocationIds.length > 0 ? storageLocationIds : undefined, // ✅ NOUVEAU 2026-01-04: Array de lieux de stock
+                storage_location_quantities: Object.keys(storageLocationQuantities).length > 0 ? storageLocationQuantities : undefined, // ✅ NOUVEAU 2026-01-04: Quantités par lieu
                 required_vehicle_type_id: config && typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0,
                 preparation_time_minutes: preparationTime > 0 ? preparationTime : undefined, // ✅ NOUVEAU
                 weight_kg: (config && typeof config.weight_kg === 'string' && config.weight_kg.trim()) ? parseFloat(config.weight_kg) : undefined,
@@ -451,44 +542,93 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         </View>
                     )}
 
-                    {/* ✅ CORRIGÉ 2026-01-02: Lieu de stock avec LocationSelector - Correction insertion adresse */}
+                    {/* ✅ NOUVEAU 2026-01-04: Plusieurs lieux de stockage avec bouton + */}
                     <View style={styles.section}>
-                        <Text style={styles.label}>Lieu de stock (optionnel)</Text>
-                        <LocationSelector
-                            label=""
-                            value={storageLocationAddress || (config.storage_location_id 
-                                ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.address || '')
-                                : '')}
-                            onSelect={(location: LocationObject) => {
-                                // ✅ CORRIGÉ 2026-01-02: Extraire l'adresse formatée et les coordonnées
-                                const address = location.raw || location.place_name || '';
-                                const coords = location.coordinates;
-                                
-                                // ✅ CORRIGÉ 2026-01-02: Toujours mettre à jour l'adresse affichée
-                                setStorageLocationAddress(address);
-                                
-                                // Si un lieu de stock existe avec cette adresse, l'utiliser
-                                const existingLocation = storageLocations.find(loc => 
-                                    loc.address === address || 
-                                    (coords && Math.abs(loc.latitude - coords.lat) < 0.0001 && Math.abs(loc.longitude - coords.lng) < 0.0001)
-                                );
-                                
-                                setConfig(prev => ({
-                                    ...prev,
-                                    storage_location_id: existingLocation?.id,
-                                    // Ne pas mettre à jour pickup_address ici, c'est pour le lieu de stock
-                                }));
-                                
-                                console.log('[ProductDeliveryConfigModal] ✅ Lieu de stock sélectionné:', {
-                                    address,
-                                    storage_location_id: existingLocation?.id,
-                                    hasCoordinates: !!coords
-                                });
-                            }}
-                            placeholder="Ville, quartier, pays..."
-                            enrichWithBackend={true}
-                            required={false}
-                        />
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.label}>Lieux de stockage (optionnel)</Text>
+                            <TouchableOpacity
+                                style={styles.addButton}
+                                onPress={handleAddStorageLocation}
+                            >
+                                <SafeIcon name="plus" size={20} color={modernColors.primary} />
+                                <Text style={styles.addButtonText}>Ajouter</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.hint}>
+                            Lieux où le coursier peut récupérer le produit
+                        </Text>
+                        
+                        {storageLocationsList.length === 0 && (
+                            <TouchableOpacity
+                                style={styles.emptyStorageLocationButton}
+                                onPress={handleAddStorageLocation}
+                            >
+                                <SafeIcon name="plus" size={20} color={modernColors.textSecondary} />
+                                <Text style={styles.emptyStorageLocationText}>Ajouter un lieu de stockage</Text>
+                            </TouchableOpacity>
+                        )}
+                        
+                        {storageLocationsList.map((storageLoc, index) => (
+                            <View key={storageLoc.id} style={styles.storageLocationItem}>
+                                <View style={styles.storageLocationHeader}>
+                                    <Text style={styles.storageLocationLabel}>
+                                        Lieu {index + 1}
+                                    </Text>
+                                    {storageLocationsList.length > 0 && (
+                                        <TouchableOpacity
+                                            style={styles.removeButton}
+                                            onPress={() => handleRemoveStorageLocation(storageLoc.id)}
+                                        >
+                                            <SafeIcon name="x" size={18} color={modernColors.danger || '#EF4444'} />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                                <LocationSelector
+                                    label=""
+                                    value={storageLoc.address}
+                                    onSelect={(location: LocationObject) => {
+                                        const address = location.raw || location.place_name || '';
+                                        const coords = location.coordinates;
+                                        
+                                        // Si un lieu de stock existe avec cette adresse, l'utiliser
+                                        const existingLocation = storageLocations.find(loc => 
+                                            loc.address === address || 
+                                            (coords && Math.abs(loc.latitude - coords.lat) < 0.0001 && Math.abs(loc.longitude - coords.lng) < 0.0001)
+                                        );
+                                        
+                                        handleUpdateStorageLocation(storageLoc.id, {
+                                            address,
+                                            location,
+                                            storage_location_id: existingLocation?.id,
+                                            latitude: coords?.lat,
+                                            longitude: coords?.lng,
+                                            // ✅ Préserver la quantité existante lors de la mise à jour du lieu
+                                            quantity: storageLoc.quantity,
+                                        });
+                                    }}
+                                    placeholder="Ville, quartier, pays..."
+                                    enrichWithBackend={true}
+                                    required={false}
+                                />
+                                {/* ✅ NOUVEAU 2026-01-04: Champ quantité de stock pour ce lieu */}
+                                <View style={styles.quantityInputContainer}>
+                                    <Text style={styles.quantityLabel}>Quantité disponible</Text>
+                                    <TextInput
+                                        style={styles.quantityInput}
+                                        value={storageLoc.quantity !== undefined ? String(storageLoc.quantity) : ''}
+                                        onChangeText={(text) => {
+                                            const quantity = text.trim() === '' ? undefined : parseInt(text.replace(/[^0-9]/g, ''), 10);
+                                            handleUpdateStorageLocation(storageLoc.id, {
+                                                quantity: isNaN(quantity as number) ? undefined : quantity,
+                                            });
+                                        }}
+                                        placeholder="0"
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                            </View>
+                        ))}
+                        
                         {loadingLocations && (
                             <Text style={styles.hint}>Chargement des lieux de stock...</Text>
                         )}
@@ -1026,6 +1166,67 @@ const styles = StyleSheet.create({
     vehicleOptionLabelSelected: {
         color: modernColors.primary,
         fontWeight: '600',
+    },
+    // ✅ NOUVEAU 2026-01-04: Styles pour plusieurs lieux de stockage
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    addButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: '#F0F9FF',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    addButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+        marginLeft: 4,
+    },
+    emptyStorageLocationButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        borderWidth: 2,
+        borderColor: '#D1D5DB',
+        borderStyle: 'dashed',
+        borderRadius: 8,
+        backgroundColor: '#F9FAFB',
+    },
+    emptyStorageLocationText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        marginLeft: 8,
+    },
+    storageLocationItem: {
+        marginBottom: 12,
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    storageLocationHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    storageLocationLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    removeButton: {
+        padding: 4,
     },
 });
 

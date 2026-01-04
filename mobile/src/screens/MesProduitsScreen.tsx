@@ -1800,17 +1800,33 @@ const MesProduitsScreen: React.FC = () => {
             prefill.sous_caracteristiques = {};
         }
 
-        // ✅ CORRECTION CRITIQUE: Extraire variabilite_prix depuis objets structurés
+        // ✅ CORRECTION CRITIQUE 2026-01-04: Extraire variabilite_prix depuis productData (qui vient de ...productData)
         // Ne pas écraser si déjà présent dans prefill
         if (!prefill.variabilite_prix && !prefill.price_variant) {
+            // Chercher dans product directement (déjà copié depuis ...productData)
             const variantRaw = product.variabilite_prix || product.price_variant || product.variation_prix;
-            const variantValue = extractValue(variantRaw);
+            
+            // Si variantRaw est un objet avec 'valeur', extraire la valeur
+            let variantValue = variantRaw;
+            if (variantRaw && typeof variantRaw === 'object' && 'valeur' in variantRaw) {
+                variantValue = variantRaw.valeur;
+            }
+            
+            // Si variantValue est valide, l'assigner
             if (variantValue !== undefined && variantValue !== null) {
-                prefill.variabilite_prix = variantValue;
-                prefill.price_variant = variantValue;
-            } else if (variantRaw !== undefined && variantRaw !== null) {
-                prefill.variabilite_prix = variantRaw;
-                prefill.price_variant = variantRaw;
+                // Si variantValue est déjà un objet avec modalites, l'utiliser tel quel
+                if (typeof variantValue === 'object' && 'modalites' in variantValue) {
+                    prefill.variabilite_prix = variantValue;
+                    prefill.price_variant = variantValue;
+                } else if (variantRaw && typeof variantRaw === 'object' && !('valeur' in variantRaw)) {
+                    // Si variantRaw est un objet direct (pas avec valeur), l'utiliser tel quel
+                    prefill.variabilite_prix = variantRaw;
+                    prefill.price_variant = variantRaw;
+                } else {
+                    // Sinon, utiliser variantValue tel quel
+                    prefill.variabilite_prix = variantValue;
+                    prefill.price_variant = variantValue;
+                }
             }
         }
 
