@@ -18,29 +18,29 @@ pub fn products_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // GET /api/services/{service_id}/products - Récupérer tous les produits d'un service
         .route(
-            "/api/services/:service_id/products",
+            "/api/services/{service_id}/products",
             get(get_products_by_service),
         )
         // GET /api/services/{service_id}/products/{product_index} - Récupérer un produit spécifique
         .route(
-            "/api/services/:service_id/products/:product_index",
+            "/api/services/{service_id}/products/{product_index}",
             get(get_product),
         )
         // PATCH /api/services/{service_id}/products/{product_index} - Mettre à jour un produit
         .route(
-            "/api/services/:service_id/products/:product_index",
+            "/api/services/{service_id}/products/{product_index}",
             patch(update_product)
                 .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
         )
         // DELETE /api/services/{service_id}/products/{product_index} - Supprimer un produit
         .route(
-            "/api/services/:service_id/products/:product_index",
+            "/api/services/{service_id}/products/{product_index}",
             delete(delete_product)
                 .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
         )
         // POST /api/services/{service_id}/products/{product_index}/duplicate - Dupliquer un produit
         .route(
-            "/api/services/:service_id/products/:product_index/duplicate",
+            "/api/services/{service_id}/products/{product_index}/duplicate",
             post(duplicate_product)
                 .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
         )
