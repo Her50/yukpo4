@@ -116,10 +116,18 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     console.log('[AjouterProduitSimple] 🔍 suggestionIA.service_data présent?', !!suggestionIA?.service_data);
     console.log('[AjouterProduitSimple] 🔍 suggestionIA.service_data.data présent?', !!suggestionIA?.service_data?.data);
     console.log('[AjouterProduitSimple] 🔍 suggestionIA.data présent?', !!suggestionIA?.data);
+    console.log('[AjouterProduitSimple] 🔍 suggestionIA.service_data complet:', JSON.stringify(suggestionIA?.service_data, null, 2));
     
+    // ✅ CORRIGÉ: Extraire suggestionData avec toutes les sources possibles
+    // 1. service_data.data (données complètes avec produits si présents)
+    // 2. data (données de base du service)
+    // 3. suggestionIA directement (fallback)
     const suggestionData = suggestionIA?.service_data?.data || suggestionIA?.data || suggestionIA || {};
     console.log('[AjouterProduitSimple] 🔍 suggestionData extrait:', JSON.stringify(suggestionData, null, 2));
     console.log('[AjouterProduitSimple] 🔍 suggestionData a des données produit?', !!(suggestionData.nom_produit || suggestionData.prix_produit || suggestionData.produits || suggestionData.variabilite_prix));
+    console.log('[AjouterProduitSimple] 🔍 suggestionData.titre_service:', suggestionData.titre_service);
+    console.log('[AjouterProduitSimple] 🔍 suggestionData.category:', suggestionData.category);
+    console.log('[AjouterProduitSimple] 🔍 suggestionData.description:', suggestionData.description);
 
     const normalizeMediaList = (value: any): any[] => {
         if (!value) {
@@ -200,26 +208,26 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const typeOffre = extractValue(suggestionData.type_offre) || 'produit';
     const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
 
-    // ✅ Détecter si l'IA a généré des données produit
+    // ✅ Détecter si l'IA a généré des données produit spécifiques
     const hasProductData = suggestionData.nom_produit || suggestionData.prix_produit || suggestionData.produits || suggestionData.variabilite_prix;
 
-    // ✅ Nom produit avec fallback sur titre_service
+    // ✅ CORRIGÉ: Nom produit avec fallback sur titre_service (TOUJOURS utiliser le fallback si nom_produit est vide)
     let nom_produit = extractValue(suggestionData.nom_produit) || '';
-    if (!nom_produit && hasProductData && suggestionData.titre_service) {
+    if (!nom_produit && suggestionData.titre_service) {
         nom_produit = extractValue(suggestionData.titre_service);
         console.log('[AjouterProduitSimple] ✅ nom_produit fallback depuis titre_service:', nom_produit);
     }
 
-    // ✅ Catégorie produit avec fallback sur category
+    // ✅ CORRIGÉ: Catégorie produit avec fallback sur category (TOUJOURS utiliser le fallback si categorie_produit est vide)
     let categorie_produit = extractValue(suggestionData.categorie_produit) || '';
-    if (!categorie_produit && hasProductData && suggestionData.category) {
+    if (!categorie_produit && suggestionData.category) {
         categorie_produit = extractValue(suggestionData.category);
         console.log('[AjouterProduitSimple] ✅ categorie_produit fallback depuis category:', categorie_produit);
     }
 
-    // ✅ Description produit avec fallback sur description
+    // ✅ CORRIGÉ: Description produit avec fallback sur description (TOUJOURS utiliser le fallback si description_produit est vide)
     let description_produit = extractValue(suggestionData.description_produit) || '';
-    if (!description_produit && hasProductData && suggestionData.description) {
+    if (!description_produit && suggestionData.description) {
         description_produit = extractValue(suggestionData.description);
         console.log('[AjouterProduitSimple] ✅ description_produit fallback depuis description:', description_produit);
     }

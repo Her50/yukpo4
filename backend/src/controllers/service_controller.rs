@@ -868,6 +868,7 @@ pub async fn toggle_service_status(
 }
 
 /// R?cup?re un service par ID pour affichage public
+/// ✅ NOUVEAU 2026-01-03: Inclut les produits depuis service_products
 pub async fn get_service_by_id(
     State(state): State<Arc<AppState>>,
     Path(service_id): Path<i32>,
@@ -887,10 +888,41 @@ pub async fn get_service_by_id(
         Ok(Some(service)) => {
             info!("[get_service_by_id] Service trouv?");
             let id: i32 = service.try_get("id").unwrap_or_default();
-            let data: Value = service.try_get("data").unwrap_or(Value::Null);
+            let mut data: Value = service.try_get("data").unwrap_or(Value::Null);
             let is_active: bool = service.try_get("is_active").unwrap_or(false);
             let created_at = service.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok();
             let user_id_val: i32 = service.try_get("user_id").unwrap_or_default();
+            
+            // ✅ NOUVEAU 2026-01-03: Charger les produits depuis service_products
+            let products_service = &state.products_service;
+            match products_service.get_products_by_service(service_id).await {
+                Ok(products) => {
+                    if !products.is_empty() {
+                        info!("[get_service_by_id] {} produits trouvés pour le service {}", products.len(), service_id);
+                        
+                        // Convertir les produits en format JSONB compatible avec l'ancien format
+                        let produits_array: Vec<Value> = products
+                            .into_iter()
+                            .map(|p| p.product_data)
+                            .collect();
+                        
+                        // Ajouter les produits dans data.produits pour compatibilité
+                        if let Some(data_obj) = data.as_object_mut() {
+                            data_obj.insert("produits".to_string(), json!({
+                                "type_donnee": "array",
+                                "valeur": produits_array
+                            }));
+                        }
+                    } else {
+                        info!("[get_service_by_id] Aucun produit trouvé pour le service {}", service_id);
+                    }
+                },
+                Err(e) => {
+                    warn!("[get_service_by_id] Erreur lors du chargement des produits: {}", e);
+                    // Continuer sans produits en cas d'erreur
+                }
+            }
+            
             (StatusCode::OK, Json(json!({
                 "id": id,
                 "data": data,
