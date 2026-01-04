@@ -14,6 +14,7 @@ import {
     View
 } from 'react-native';
 import ENVIRONMENT from '../config/environment';
+import { useLocation } from '../contexts/LocationContext';
 import { modernColors } from '../theme/modernTheme';
 import ErrorBoundary from './ErrorBoundary';
 import InteractiveMapView from './InteractiveMapView';
@@ -38,6 +39,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     title = 'Sélection de localisation GPS',
     allowZoneSelection = true
 }) => {
+    const { location: userLocation } = useLocation();
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
     const [selectedPolygon, setSelectedPolygon] = useState<{ lat: number; lng: number }[]>([]);
     const [loading, setLoading] = useState(false);
@@ -161,7 +163,21 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                 return;
             }
 
-            const locationBias = selectedLocation || currentLocation || { lat: 4.031716, lng: 9.817201 }; // Douala par défaut
+            // ✅ CORRIGÉ: Utiliser la localisation GPS réelle de l'utilisateur en priorité
+            let locationBias: { lat: number; lng: number };
+            if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
+                locationBias = {
+                    lat: userLocation.coords.latitude,
+                    lng: userLocation.coords.longitude
+                };
+            } else if (selectedLocation) {
+                locationBias = selectedLocation;
+            } else if (currentLocation) {
+                locationBias = currentLocation;
+            } else {
+                // Fallback sur Douala, Cameroun
+                locationBias = { lat: 4.031716, lng: 9.817201 };
+            }
 
             const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
 
@@ -382,7 +398,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     </View>
 
                     {/* Recherche d'adresse - AGRANDIE AVEC AUTOCOMPLETE */}
-                    <View style={[styles.topControlSection, { flex: 2.5, zIndex: 100 }]}>
+                    <View style={[styles.topControlSection, { flex: 2.5 }]}>
                         <View style={styles.controlHeader}>
                             <SafeIcon name="search" size={10} color={modernColors.success} />
                             <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">RECHERCHE DE LIEU</Text>
@@ -410,40 +426,6 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 <SafeIcon name="search" size={14} color="#FFFFFF" />
                             </TouchableOpacity>
                         </View>
-
-                        {/* ✅ NOUVEAU: Liste de suggestions autocomplete */}
-                        {showSuggestions && placeSuggestions.length > 0 && (
-                            <View style={styles.suggestionsContainer}>
-                                <ScrollView
-                                    style={styles.suggestionsScrollView}
-                                    nestedScrollEnabled={true}
-                                    keyboardShouldPersistTaps="handled"
-                                >
-                                    {placeSuggestions.slice(0, 5).map((suggestion, index) => (
-                                        <TouchableOpacity
-                                            key={suggestion.place_id || index}
-                                            style={[
-                                                styles.suggestionItem,
-                                                index === placeSuggestions.slice(0, 5).length - 1 && styles.suggestionItemLast
-                                            ]}
-                                            onPress={() => handleSelectSuggestion(suggestion.place_id, suggestion.description)}
-                                        >
-                                            <SafeIcon name="map-pin" size={14} color={modernColors.textSecondary} />
-                                            <View style={styles.suggestionTextContainer}>
-                                                <Text style={styles.suggestionMainText} numberOfLines={1}>
-                                                    {suggestion.structured_formatting?.main_text || suggestion.description}
-                                                </Text>
-                                                {suggestion.structured_formatting?.secondary_text && (
-                                                    <Text style={styles.suggestionSecondaryText} numberOfLines={1}>
-                                                        {suggestion.structured_formatting.secondary_text}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </View>
-                        )}
                     </View>
 
                     {/* Ma position GPS - SIMPLIFIÉ ET CLAIR */}
@@ -477,6 +459,45 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         )}
                     </View>
                 </View>
+
+                {/* ✅ NOUVEAU: Suggestions autocomplete au-dessus de tout (y compris la carte) */}
+                {showSuggestions && placeSuggestions.length > 0 && (
+                    <View style={styles.suggestionsOverlay}>
+                        <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
+                            <View style={styles.suggestionsBackdrop} />
+                        </TouchableWithoutFeedback>
+                        <View style={styles.suggestionsContainer}>
+                            <ScrollView
+                                style={styles.suggestionsScrollView}
+                                nestedScrollEnabled={true}
+                                keyboardShouldPersistTaps="handled"
+                            >
+                                {placeSuggestions.slice(0, 5).map((suggestion, index) => (
+                                    <TouchableOpacity
+                                        key={suggestion.place_id || index}
+                                        style={[
+                                            styles.suggestionItem,
+                                            index === placeSuggestions.slice(0, 5).length - 1 && styles.suggestionItemLast
+                                        ]}
+                                        onPress={() => handleSelectSuggestion(suggestion.place_id, suggestion.description)}
+                                    >
+                                        <SafeIcon name="map-pin" size={14} color={modernColors.textSecondary} />
+                                        <View style={styles.suggestionTextContainer}>
+                                            <Text style={styles.suggestionMainText} numberOfLines={1}>
+                                                {suggestion.structured_formatting?.main_text || suggestion.description}
+                                            </Text>
+                                            {suggestion.structured_formatting?.secondary_text && (
+                                                <Text style={styles.suggestionSecondaryText} numberOfLines={1}>
+                                                    {suggestion.structured_formatting.secondary_text}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    </View>
+                )}
 
                 <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
                     <View style={styles.content}>
@@ -800,22 +821,39 @@ const styles = StyleSheet.create({
         shadowRadius: 3,
         elevation: 3,
     },
+    // ✅ NOUVEAU: Overlay pour les suggestions (au-dessus de tout)
+    suggestionsOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        elevation: 9999,
+        pointerEvents: 'box-none', // Permet les clics à travers le backdrop
+    },
+    suggestionsBackdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    },
     // ✅ NOUVEAU: Styles pour l'autocomplete Google Places
     suggestionsContainer: {
         position: 'absolute',
-        top: '100%',
-        left: 0,
-        right: 0,
+        top: 140, // Position sous la barre de recherche et coordonnées
+        left: 12,
+        right: 12,
         backgroundColor: '#FFFFFF',
         borderRadius: 8,
-        marginTop: 4,
-        maxHeight: 200,
+        maxHeight: 250,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 6,
-        zIndex: 1000,
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+        elevation: 10,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         overflow: 'hidden',

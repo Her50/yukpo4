@@ -437,7 +437,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         >
                             <SafeIcon
                                 name={type.icon}
-                                size={18}
+                                size={16}
                                 color={parcelType === type.id ? '#FFFFFF' : modernColors.text}
                             />
                             <Text
@@ -1364,13 +1364,13 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        padding: 10,
+        gap: 4,
+        padding: 8,
         backgroundColor: modernColors.surfaceVariant,
-        borderRadius: 10,
-        borderWidth: 2,
+        borderRadius: 8,
+        borderWidth: 1.5,
         borderColor: modernColors.border,
-        minHeight: 70,
+        minHeight: 55,
     },
     typeButton: {
         flex: 1,
@@ -1390,7 +1390,7 @@ const styles = StyleSheet.create({
         borderColor: modernColors.primary,
     },
     typeButtonTextGrid: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         color: modernColors.text,
         textAlign: 'center',

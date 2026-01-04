@@ -488,7 +488,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                         { key: 'document', label: 'Document', icon: 'file-text' },
                                         { key: 'package', label: 'Paquet', icon: 'package' },
                                         { key: 'moving', label: 'Déménagement', icon: 'truck' },
-                                        { key: 'cake', label: 'Gâteau', icon: 'gift' },
+                                        { key: 'cake', label: 'Gâteau', icon: 'cake' },
                                         { key: 'other', label: 'Autres', icon: 'box' },
                                     ] as const).map(({ key, label, icon }) => (
                                         <TouchableOpacity
@@ -501,7 +501,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                         >
                                             <SafeIcon
                                                 name={icon}
-                                                size={18}
+                                                size={16}
                                                 color={parcelType === key ? '#FFFFFF' : modernColors.primary}
                                             />
                                             <Text
@@ -1266,19 +1266,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        padding: 8,
+        gap: 5,
+        padding: 6,
         backgroundColor: '#F9FAFB',
-        borderWidth: 2,
+        borderWidth: 1.5,
         borderColor: '#E5E7EB',
-        borderRadius: 10,
+        borderRadius: 8,
     },
     typeButtonActive: {
         backgroundColor: modernColors.primary,
         borderColor: modernColors.primary,
     },
     typeButtonText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '500',
         color: modernColors.primary,
     },

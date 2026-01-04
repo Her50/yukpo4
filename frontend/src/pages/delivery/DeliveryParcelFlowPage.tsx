@@ -567,7 +567,7 @@ const DeliveryParcelFlowPage: React.FC = () => {
                         <Package className="h-5 w-5 text-primary" />
                         <h2 className="text-lg font-semibold text-slate-900">Type de colis *</h2>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2">
                         {([
                             { id: 'document', label: 'Document', icon: 'file-text' },
                             { id: 'package', label: 'Colis', icon: 'package' },
@@ -578,21 +578,21 @@ const DeliveryParcelFlowPage: React.FC = () => {
                                 key={type.id}
                                 type="button"
                                 onClick={() => setParcelType(type.id)}
-                                className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-2.5 transition-all min-h-[70px] ${parcelType === type.id
+                                className={`flex flex-col items-center gap-1 rounded-lg border p-2 transition-all min-h-[55px] ${parcelType === type.id
                                     ? 'border-primary bg-primary/5'
                                     : 'border-slate-200 hover:border-slate-300'
                                     }`}
                             >
                                 {type.id === 'document' ? (
-                                    <AlertCircle className="h-4 w-4 text-primary" />
+                                    <AlertCircle className="h-3.5 w-3.5 text-primary" />
                                 ) : type.id === 'package' ? (
-                                    <Package className="h-4 w-4 text-primary" />
+                                    <Package className="h-3.5 w-3.5 text-primary" />
                                 ) : type.id === 'moving' ? (
-                                    <Truck className="h-4 w-4 text-primary" />
+                                    <Truck className="h-3.5 w-3.5 text-primary" />
                                 ) : (
-                                    <span className="text-lg">🎂</span>
+                                    <span className="text-base">🎂</span>
                                 )}
-                                <span className={`text-xs font-medium text-center whitespace-nowrap ${parcelType === type.id ? 'text-primary' : 'text-slate-700'}`}>
+                                <span className={`text-[11px] font-medium text-center whitespace-nowrap ${parcelType === type.id ? 'text-primary' : 'text-slate-700'}`}>
                                     {type.label}
                                 </span>
                             </button>
