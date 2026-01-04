@@ -1243,7 +1243,7 @@ async fn create_delivery(
         // Estimer la durée (similaire à l'aller, ou utiliser la même estimation)
         let return_duration = payload.estimated_duration_seconds;
 
-        let mut metadata_retour = json!({
+        let metadata_retour = json!({
             "kind": "parcel",
             "is_round_trip": true,
             "outbound_delivery_id": summary_aller.id,

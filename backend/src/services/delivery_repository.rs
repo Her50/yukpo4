@@ -242,12 +242,19 @@ struct DeliverySummaryRow {
     // ✅ Aller-retour
     is_round_trip: Option<bool>,
     return_delivery_id: Option<Uuid>,
+    #[allow(dead_code)] // Réservé pour usage futur (données retour)
     return_pickup_lat: Option<f64>,
+    #[allow(dead_code)] // Réservé pour usage futur (données retour)
     return_pickup_lng: Option<f64>,
+    #[allow(dead_code)] // Réservé pour usage futur (données retour)
     return_dropoff_lat: Option<f64>,
+    #[allow(dead_code)] // Réservé pour usage futur (données retour)
     return_dropoff_lng: Option<f64>,
+    #[allow(dead_code)] // Réservé pour usage futur (données retour)
     return_pickup_address: Option<String>,
+    #[allow(dead_code)] // Réservé pour usage futur (données retour)
     return_dropoff_address: Option<String>,
+    #[allow(dead_code)] // Réservé pour usage futur (données retour)
     return_distance_meters: Option<i32>,
     round_trip_discount_percent: Option<i32>,
 }
@@ -1453,6 +1460,11 @@ impl DeliveryRepository {
             },
             shopping_required: delivery_row.shopping_required,
             metadata: delivery_row.metadata.clone(),
+            // ✅ Aller-retour
+            is_round_trip: None, // Pas de données aller-retour dans cette fonction
+            return_delivery_id: None, // Pas de données aller-retour dans cette fonction
+            return_delivery: None, // Pas de données aller-retour dans cette fonction
+            round_trip_discount_percent: None, // Pas de données aller-retour dans cette fonction
         };
 
         Ok(summary)
@@ -2014,8 +2026,11 @@ impl DeliveryRepository {
             });
 
             // ✅ Récupérer la livraison retour si elle existe
+            // Note: Utilisation de Box::pin pour éviter la récursion infinie dans async fn
             let return_delivery: Option<Box<DeliverySummary>> = if let Some(return_delivery_id) = row.return_delivery_id {
-                if let Ok(Some(ret)) = self.get_delivery_summary(return_delivery_id).await {
+                // Utiliser Box::pin pour l'appel récursif
+                let future = Box::pin(self.get_delivery_summary(return_delivery_id));
+                if let Ok(Some(ret)) = future.await {
                     Some(Box::new(ret))
                 } else {
                     None
@@ -2060,7 +2075,7 @@ impl DeliveryRepository {
                 is_round_trip: Some(row.is_round_trip.unwrap_or(false)),
                 return_delivery_id: row.return_delivery_id,
                 return_delivery,
-                round_trip_discount_percent: Some(row.round_trip_discount_percent),
+                round_trip_discount_percent: row.round_trip_discount_percent,
             }));
         }
 

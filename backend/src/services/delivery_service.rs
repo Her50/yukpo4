@@ -1370,6 +1370,9 @@ impl DeliveryService {
         // Créer un nouveau parcel avec le type_id final
         let mut final_parcel = parcel;
         final_parcel.type_id = Some(final_type_id);
+        
+        // ✅ Extraire type_id avant le move
+        let parcel_type_id = final_parcel.type_id;
 
         let mut request = NewDeliveryRequest {
             creator_id,
@@ -1418,7 +1421,7 @@ impl DeliveryService {
         }
         
         // ✅ Ajouter parcel_type_id dans les métadonnées pour le matching
-        if let Some(type_id) = final_parcel.type_id {
+        if let Some(type_id) = parcel_type_id {
             request.metadata["parcel_type_id"] = json!(type_id);
         }
 
@@ -3959,7 +3962,7 @@ impl DeliveryService {
         };
         
         // Récupérer aussi les contraintes du colis pour détecter déménagement/gâteau
-        let parcel_constraints: Option<Value> = sqlx::query_scalar::<_, Option<Value>>(
+        let parcel_constraints: Option<Value> = sqlx::query_scalar::<_, Value>(
             "SELECT constraints FROM delivery_parcels WHERE id = (SELECT parcel_id FROM deliveries WHERE id = $1)"
         )
         .bind(summary.id)
