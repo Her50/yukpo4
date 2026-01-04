@@ -243,19 +243,14 @@ pub async fn get_my_videos(
             m.ai_metadata,
             COALESCE(m.uploaded_at, s.created_at) as created_at,
             s.data->>'titre' as service_title,
+            -- ✅ PHASE 3: Récupérer le nom du produit depuis service_products
             (
-                SELECT (array_agg(elem->>'nom'))[1]
-                FROM jsonb_array_elements(
-                    CASE 
-                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                            THEN s.data->'produits'
-                        WHEN jsonb_typeof(s.data->'produits') = 'object' 
-                            AND jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                            THEN s.data->'produits'->'valeur'
-                        ELSE '[]'::jsonb
-                    END
-                ) WITH ORDINALITY AS t(elem, idx)
-                WHERE idx - 1 = m.product_index
+                SELECT p.product_name
+                FROM service_products p
+                WHERE p.service_id = s.id
+                AND p.product_index = m.product_index
+                AND p.is_active = true
+                LIMIT 1
             ) as product_name
         FROM media m
         INNER JOIN services s ON s.id = m.service_id

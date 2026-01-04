@@ -204,10 +204,10 @@ impl SchedulingSearchService {
                     s.data->'titre_service'->>'valeur' as service_title,
                     COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0) as latitude,
                     COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0) as longitude,
-                    product->'prestationsMedicales' as available_services,
-                    product->'planningHebdomadaire' as current_schedule,
-                    (product->'planningHebdomadaire'->>'permanent')::boolean as is_24h,
-                    (product->>'banqueSang')::boolean as has_blood_bank,
+                    p.product_data->'prestationsMedicales' as available_services,
+                    p.product_data->'planningHebdomadaire' as current_schedule,
+                    (p.product_data->'planningHebdomadaire'->>'permanent')::boolean as is_24h,
+                    (p.product_data->>'banqueSang')::boolean as has_blood_bank,
                     ST_Distance(
                         ST_Point($3, $2)::geography,
                         ST_Point(
@@ -215,21 +215,15 @@ impl SchedulingSearchService {
                             COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
                         )::geography
                     ) / 1000.0 as distance_km
-                FROM services s,
-                LATERAL jsonb_array_elements(
-                    CASE 
-                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                        THEN s.data->'produits'
-                        ELSE '[]'::jsonb
-                    END
-                ) AS product
+                FROM services s
+                INNER JOIN service_products p ON p.service_id = s.id AND p.is_active = true
                 WHERE 
                     s.is_active = true 
                     AND s.gps IS NOT NULL
                     AND s.gps != ''
                     AND s.gps ~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
-                    AND product->>'type' = 'hopital_clinique'
-                    AND is_medical_service_available(product, $4, $1)
+                    AND p.product_data->>'type' = 'hopital_clinique'
+                    AND is_medical_service_available(p.product_data, $4, $1)
                     AND ST_DWithin(
                         ST_Point($3, $2)::geography,
                         ST_Point(
@@ -248,23 +242,17 @@ impl SchedulingSearchService {
                     s.data->'titre_service'->>'valeur' as service_title,
                     COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0) as latitude,
                     COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0) as longitude,
-                    product->'prestationsMedicales' as available_services,
-                    product->'planningHebdomadaire' as current_schedule,
-                    (product->'planningHebdomadaire'->>'permanent')::boolean as is_24h,
-                    (product->>'banqueSang')::boolean as has_blood_bank,
+                    p.product_data->'prestationsMedicales' as available_services,
+                    p.product_data->'planningHebdomadaire' as current_schedule,
+                    (p.product_data->'planningHebdomadaire'->>'permanent')::boolean as is_24h,
+                    (p.product_data->>'banqueSang')::boolean as has_blood_bank,
                     0.0 as distance_km
-                FROM services s,
-                LATERAL jsonb_array_elements(
-                    CASE 
-                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                        THEN s.data->'produits'
-                        ELSE '[]'::jsonb
-                    END
-                ) AS product
+                FROM services s
+                INNER JOIN service_products p ON p.service_id = s.id AND p.is_active = true
                 WHERE 
                     s.is_active = true 
-                    AND product->>'type' = 'hopital_clinique'
-                    AND is_medical_service_available(product, $2, $1)
+                    AND p.product_data->>'type' = 'hopital_clinique'
+                    AND is_medical_service_available(p.product_data, $2, $1)
                 ORDER BY service_title
                 LIMIT 20
             "#

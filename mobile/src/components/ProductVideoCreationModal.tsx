@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { config } from '../config/environment';
 import { iaApi, mediaApi, apiGet, apiPost } from '../services/api';
+import { productsService } from '../services/productsService';
 import ProductDeliveryConfigModal from './delivery/ProductDeliveryConfigModal';
 import { uploadToCloud } from '../services/cloudUpload';
 import { studioService, type VideoDependency } from '../services/studioService';

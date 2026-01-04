@@ -16,6 +16,7 @@ use crate::{
         TimelineBriefInput, TimelineMediaItem, TimelineRequest, TimelineStyleInput,
         VideoBriefRequest, VideoStyleRequest, VideoStyleSuggestion, VideoTimeline,
     },
+    services::effect_preview_service::get_available_effect_names,
     state::AppState,
 };
 
@@ -1125,4 +1126,85 @@ pub async fn handle_quick_preview(
             Err(e)
         }
     }
+}
+
+// ✅ NOUVEAU 2026-01-04: Système de métriques pour effets non supportés
+use std::collections::HashMap;
+use tokio::sync::RwLock;
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct EffectMetrics {
+    pub total_unsupported_effects: u64,
+    pub unsupported_effects_by_name: HashMap<String, u64>,
+    pub total_timeline_generations: u64,
+    pub total_effects_validated: u64,
+    pub last_updated: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+lazy_static::lazy_static! {
+    static ref EFFECT_METRICS: Arc<RwLock<EffectMetrics>> = Arc::new(RwLock::new(EffectMetrics::default()));
+}
+
+/// ✅ NOUVEAU 2026-01-04: Enregistrer un effet non supporté
+pub async fn record_unsupported_effect(effect_name: &str) {
+    let mut metrics = EFFECT_METRICS.write().await;
+    metrics.total_unsupported_effects += 1;
+    *metrics.unsupported_effects_by_name
+        .entry(effect_name.to_string())
+        .or_insert(0) += 1;
+    metrics.last_updated = Some(chrono::Utc::now());
+}
+
+/// ✅ NOUVEAU 2026-01-04: Enregistrer une génération de timeline
+pub async fn record_timeline_generation(effects_count: usize) {
+    let mut metrics = EFFECT_METRICS.write().await;
+    metrics.total_timeline_generations += 1;
+    metrics.total_effects_validated += effects_count as u64;
+    metrics.last_updated = Some(chrono::Utc::now());
+}
+
+/// ✅ GET /api/video/effects - Récupère la liste complète des effets disponibles
+pub async fn get_available_effects(
+    _state: State<Arc<AppState>>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!("[get_available_effects] Called");
+    
+    let effects = get_available_effect_names();
+    
+    Ok(Json(json!({
+        "success": true,
+        "effects": effects,
+        "count": effects.len(),
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    })))
+}
+
+/// ✅ GET /api/video/effects/metrics - Récupère les métriques des effets
+pub async fn get_effect_metrics(
+    _state: State<Arc<AppState>>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!("[get_effect_metrics] Called");
+    
+    let metrics = EFFECT_METRICS.read().await;
+    
+    // Trier les effets non supportés par fréquence
+    let mut unsupported_sorted: Vec<_> = metrics.unsupported_effects_by_name
+        .iter()
+        .map(|(name, count)| (name.clone(), *count))
+        .collect();
+    unsupported_sorted.sort_by(|a, b| b.1.cmp(&a.1));
+    
+    Ok(Json(json!({
+        "success": true,
+        "metrics": {
+            "total_unsupported_effects": metrics.total_unsupported_effects,
+            "total_timeline_generations": metrics.total_timeline_generations,
+            "total_effects_validated": metrics.total_effects_validated,
+            "unsupported_effects_by_name": unsupported_sorted,
+            "last_updated": metrics.last_updated
+                .map(|dt| dt.to_rfc3339())
+                .unwrap_or_else(|| "never".to_string()),
+        },
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    })))
 }

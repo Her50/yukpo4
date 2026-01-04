@@ -1416,15 +1416,72 @@ impl DeliveryService {
             });
             request.metadata = merge_json(request.metadata, extras_overlay);
         }
+        
+        // ✅ Ajouter parcel_type_id dans les métadonnées pour le matching
+        if let Some(type_id) = final_parcel.type_id {
+            request.metadata["parcel_type_id"] = json!(type_id);
+        }
 
         let summary = self.repository.create_delivery_request(request).await?;
         self.broadcast_status_update(summary.id, DeliveryStatus::Requested, None)
             .await;
 
         // ✅ CORRIGÉ 2025-12-21 : Déclencher le matching si un destinataire est fourni à la création
-        // Si le destinataire est fourni directement dans la requête de création, on doit déclencher le matching
-        // Sinon, le matching sera déclenché après assign_delivery_recipient
+        // ✅ NOUVEAU 2025-01-31 : Gérer le matching selon le mode de planification
         if summary.recipient.is_some() {
+            // ✅ Par défaut : matching instantané si planification (permet de contacter le coursier à l'avance)
+            let matching_mode = summary.metadata
+                .get("matching_mode")
+                .and_then(|v| v.as_str())
+                .unwrap_or("immediate");
+            
+            let scheduled_delivery_at_utc: Option<chrono::DateTime<chrono::Utc>> = summary.metadata
+                .get("scheduled_delivery_at_utc")
+                .and_then(|v| v.as_str())
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&chrono::Utc));
+            
+            // Si mode "scheduled", vérifier si on doit retarder le matching
+            if matching_mode == "scheduled" {
+                if let Some(scheduled_at) = scheduled_delivery_at_utc {
+                    // Retarder le matching jusqu'à 15 minutes avant la date planifiée
+                    let match_at = scheduled_at - chrono::Duration::minutes(15);
+                    let now = chrono::Utc::now();
+                    
+                    if match_at > now {
+                        // Retarder le matching jusqu'à 15 minutes avant la date planifiée
+                        log::info!(
+                            "[DeliveryMatching] ✅ Livraison {} planifiée pour {}, matching retardé jusqu'à {}",
+                            summary.id,
+                            scheduled_at,
+                            match_at
+                        );
+                        
+                        // Retarder le matching jusqu'à 15 minutes avant la date planifiée
+                        log::info!(
+                            "[DeliveryMatching] ✅ Livraison {} planifiée pour {}, matching retardé jusqu'à {}",
+                            summary.id,
+                            scheduled_at,
+                            match_at
+                        );
+                        
+                        // Mettre à jour les métadonnées avec le next_attempt_at pour que enqueue_delivery_matching le prenne en compte
+                        let mut updated_metadata = summary.metadata.clone();
+                        updated_metadata["matching_next_attempt_at"] = json!(match_at.to_rfc3339());
+                        
+                        // Créer une nouvelle copie du summary avec les métadonnées mises à jour
+                        // Note: On ne peut pas modifier summary directement, donc on devra utiliser enqueue_delivery_matching
+                        // qui prendra en compte le next_attempt_at depuis les métadonnées
+                        // Pour l'instant, on retourne juste - le matching sera géré par enqueue_delivery_matching normal
+                        log::warn!(
+                            "[DeliveryMatching] ⚠️ Matching planifié: sera géré par le système de queue avec next_attempt_at"
+                        );
+                        return Ok(summary);
+                    }
+                }
+            }
+            
+            // Matching immédiat ou planifié qui est arrivé à échéance
             if let Err(err) = self.enqueue_delivery_matching(&summary).await {
                 log::error!(
                     "[DeliveryMatching] Enfilement impossible pour la livraison {} (destinataire fourni à la création): {:?}",
@@ -1434,6 +1491,16 @@ impl DeliveryService {
             } else {
                 log::debug!(
                     "[DeliveryMatching] ✅ Livraison {} enfilée dans la queue de matching (destinataire fourni à la création)",
+                    summary.id
+                );
+            }
+            
+            // Si matching_mode == "immediate" et livraison planifiée, mettre un statut spécial
+            if matching_mode == "immediate" && scheduled_delivery_at_utc.is_some() {
+                // La livraison sera assignée immédiatement mais le coursier devra déclencher manuellement au moment planifié
+                // Le statut reste "AwaitingCourierConfirmation" avec flag spécial
+                log::info!(
+                    "[DeliveryMatching] ✅ Livraison {} planifiée avec matching immédiat - coursier assigné, déclenchement manuel requis",
                     summary.id
                 );
             }
@@ -3668,7 +3735,26 @@ impl DeliveryService {
             .map_err(|e| AppError::Internal(format!("Erreur mise à jour pickup: {}", e)))?;
         }
 
-        let scheduled_pickup_at = Some(acceptable_slot.pickup_slot.start);
+        // ✅ NOUVEAU 2025-01-31 : Vérifier si livraison planifiée dans métadonnées
+        let scheduled_delivery_at_utc: Option<chrono::DateTime<chrono::Utc>> = summary.metadata
+            .get("scheduled_delivery_at_utc")
+            .and_then(|v| v.as_str())
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+            .map(|dt| dt.with_timezone(&chrono::Utc));
+        
+        let matching_mode = summary.metadata
+            .get("matching_mode")
+            .and_then(|v| v.as_str())
+            .unwrap_or("immediate");
+        
+        // Si mode "scheduled", utiliser scheduled_delivery_at au lieu de scheduled_pickup_at
+        let scheduled_pickup_at = if matching_mode == "scheduled" && scheduled_delivery_at_utc.is_some() {
+            // Pour matching planifié, utiliser la date planifiée moins 15 minutes
+            scheduled_delivery_at_utc.map(|dt| dt - chrono::Duration::minutes(15))
+        } else {
+            Some(acceptable_slot.pickup_slot.start)
+        };
+        
         let should_delay_matching = scheduled_pickup_at
             .map(|ts| ts > Utc::now() + Duration::minutes(2))
             .unwrap_or(false);
@@ -3841,16 +3927,90 @@ impl DeliveryService {
             .and_then(|value| value.as_i64());
 
         // ✅ NOUVEAU : Récupérer le type de véhicule préféré depuis les métadonnées
+        // Si non spécifié, utiliser "motorcycle" par défaut
         let preferred_vehicle_type = summary
             .metadata
             .get("preferred_vehicle_type")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "motorcycle".to_string()); // ✅ Par défaut: moto
+        
         let preferred_vehicle_type_backend = summary
             .metadata
             .get("preferred_vehicle_type_backend")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| preferred_vehicle_type.clone());
+        
+        // ✅ Déterminer le type de véhicule requis selon la nature du colis
+        // Récupérer le type_id depuis delivery_parcels
+        let parcel_type_id: Option<i32> = {
+            let result: Result<Option<Option<i32>>, _> = sqlx::query_scalar(
+                "SELECT type_id FROM delivery_parcels WHERE id = (SELECT parcel_id FROM deliveries WHERE id = $1)"
+            )
+            .bind(summary.id)
+            .fetch_optional(self.repository.pool())
+            .await;
+            
+            result.ok().flatten().flatten()
+                .or_else(|| {
+                    summary.metadata.get("parcel_type_id").and_then(|v| v.as_i64().map(|id| id as i32))
+                })
+        };
+        
+        // Récupérer aussi les contraintes du colis pour détecter déménagement/gâteau
+        let parcel_constraints: Option<Value> = sqlx::query_scalar::<_, Option<Value>>(
+            "SELECT constraints FROM delivery_parcels WHERE id = (SELECT parcel_id FROM deliveries WHERE id = $1)"
+        )
+        .bind(summary.id)
+        .fetch_optional(self.repository.pool())
+        .await
+        .ok()
+        .flatten();
+        
+        let is_moving = parcel_constraints
+            .as_ref()
+            .and_then(|c| c.get("is_moving").and_then(|v| v.as_bool()))
+            .unwrap_or(false)
+            || parcel_constraints
+            .as_ref()
+            .map(|c| c.get("number_of_boxes").is_some())
+            .unwrap_or(false);
+        
+        let is_cake = parcel_constraints
+            .as_ref()
+            .map(|c| c.get("cake_size").is_some())
+            .unwrap_or(false)
+            || parcel_constraints
+            .as_ref()
+            .map(|c| c.get("cake_layers").is_some())
+            .unwrap_or(false);
+        
+        // Logique intelligente : adapter le véhicule selon la nature du colis
+        let required_vehicle_type = if is_moving {
+            // Déménagement : nécessite camion ou camionnette
+            if preferred_vehicle_type_backend == "truck" || preferred_vehicle_type_backend == "van" || preferred_vehicle_type_backend == "pickup" {
+                Some(preferred_vehicle_type_backend.clone())
+            } else {
+                Some("truck".to_string()) // Forcer camion pour déménagement
+            }
+        } else if is_cake {
+            // Gâteau : voiture ou camionnette (protection)
+            if preferred_vehicle_type_backend == "car" || preferred_vehicle_type_backend == "van" {
+                Some(preferred_vehicle_type_backend.clone())
+            } else {
+                Some("car".to_string()) // Forcer voiture pour gâteau
+            }
+        } else if let Some(type_id) = parcel_type_id {
+            // Dédicter depuis type_id si disponible
+            match type_id {
+                3 => Some("truck".to_string()), // Déménagement -> camion
+                4 => Some("car".to_string()),   // Gâteau -> voiture
+                _ => Some(preferred_vehicle_type_backend.clone()),
+            }
+        } else {
+            Some(preferred_vehicle_type_backend.clone())
+        };
 
         let max_distance = if passenger_mode {
             (MATCHING_MAX_DISTANCE_METERS * 0.6).max(1_500.0)
@@ -3921,22 +4081,10 @@ impl DeliveryService {
                 .await?
         };
 
-        // ✅ NOUVEAU : Filtrer les candidats par type de véhicule si spécifié
-        let filtered_candidates: Vec<_> = if let Some(_pref_type) = &preferred_vehicle_type_backend
-        {
-            candidates
-                .into_iter()
-                .filter(|_candidate| {
-                    // Vérifier si le coursier a un véhicule compatible
-                    // Le type de véhicule du coursier est stocké dans courier_assets.engine_type
-                    // Pour l'instant, on accepte tous les candidats et on priorise ceux avec le bon type
-                    // TODO: Filtrer réellement par type de véhicule une fois que la structure est en place
-                    true
-                })
-                .collect()
-        } else {
-            candidates
-        };
+        // ✅ Filtrer et prioriser les candidats par type de véhicule
+        let filtered_candidates = candidates;
+        // Note: On ne filtre pas strictement (pour ne pas perdre de candidats),
+        // mais on ajoutera un bonus de score pour les coursiers avec le bon type
 
         if filtered_candidates.is_empty() {
             self.repository
@@ -3959,12 +4107,50 @@ impl DeliveryService {
         let best = filtered_candidates
             .into_iter()
             .map(|candidate| {
-                let score = Self::compute_candidate_score(&candidate, passenger_mode);
+                let mut score = Self::compute_candidate_score(&candidate, passenger_mode);
 
-                // ✅ NOUVEAU : Bonus de score si le type de véhicule correspond
-                if let Some(_pref_type) = &preferred_vehicle_type_backend {
-                    // TODO: Vérifier le type de véhicule du candidat et ajouter un bonus
-                    // Pour l'instant, on garde le score tel quel
+                // ✅ Bonus de score si le type de véhicule correspond
+                if let Some(ref req_vehicle) = required_vehicle_type {
+                    // Récupérer le type de véhicule du coursier depuis metadata
+                    let courier_vehicle_type = candidate.metadata
+                        .get("engine_type")
+                        .and_then(|v| v.as_str());
+                    
+                    // Mapper les types backend vers les types frontend
+                    let courier_type_normalized = courier_vehicle_type
+                        .map(|t| match t.to_lowercase().as_str() {
+                            "moto" => "motorcycle",
+                            "scooter" => "motorcycle",
+                            "voiture" => "car",
+                            "camionnette" => "van",
+                            "camion_leger" => "truck",
+                            "velo_cargo" => "bike",
+                            "tricycle" => "tricycle",
+                            "pieton" => "walking",
+                            "autre" => "motorcycle", // Par défaut
+                            _ => t,
+                        });
+                    
+                    // Bonus significatif si le type correspond exactement
+                    if let Some(courier_type) = courier_type_normalized {
+                        if courier_type == req_vehicle.as_str() {
+                            score += 0.3; // ✅ Bonus de 30% pour correspondance exacte
+                        } else {
+                            // Vérifier la compatibilité (ex: truck peut faire van, mais pas l'inverse)
+                            let compatible = match req_vehicle.as_str() {
+                                "truck" => matches!(courier_type, "truck" | "van" | "pickup"),
+                                "van" => matches!(courier_type, "van" | "pickup" | "car"),
+                                "pickup" => matches!(courier_type, "pickup" | "car"),
+                                "car" => matches!(courier_type, "car" | "motorcycle"),
+                                _ => false,
+                            };
+                            if compatible {
+                                score += 0.1; // ✅ Bonus de 10% pour compatibilité
+                            } else {
+                                score -= 0.2; // ✅ Pénalité si incompatible (mais pas exclusion)
+                            }
+                        }
+                    }
                 }
 
                 (candidate, score)

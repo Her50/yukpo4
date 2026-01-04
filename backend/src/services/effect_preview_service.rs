@@ -639,11 +639,487 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
         },
     );
 
+    // ✅ NOUVEAU 2026-01-04: Ajouter effet "bounce" (effet de rebond)
+    m.insert(
+        "bounce",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw:ih-20*sin(2*PI*t):0:10*sin(2*PI*t)".to_string(),
+            description: "Effet de rebond pour animation dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "effet de rebond",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw:ih-20*sin(2*PI*t):0:10*sin(2*PI*t)".to_string(),
+            description: "Effet de rebond pour animation dynamique".to_string(),
+        },
+    );
+
+    // ✅ NOUVEAU 2026-01-04: Effets populaires TikTok/Reels/CapCut supplémentaires
+    
+    // Motion Blur (flou de mouvement)
+    m.insert(
+        "motion blur",
+        EffectDefinition {
+            ffmpeg_filter: "minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1".to_string(),
+            description: "Flou de mouvement pour effet cinématique".to_string(),
+        },
+    );
+    m.insert(
+        "motionblur",
+        EffectDefinition {
+            ffmpeg_filter: "minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1".to_string(),
+            description: "Flou de mouvement pour effet cinématique".to_string(),
+        },
+    );
+    m.insert(
+        "flou de mouvement",
+        EffectDefinition {
+            ffmpeg_filter: "minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1".to_string(),
+            description: "Flou de mouvement pour effet cinématique".to_string(),
+        },
+    );
+
+    // VHS / Retro (effet vintage années 80)
+    m.insert(
+        "vhs",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.58 1/1',eq=saturation=1.3:contrast=1.1,hue=s=1.05,noise=alls=20:allf=t+u".to_string(),
+            description: "Effet VHS rétro années 80 avec distorsions et saturation".to_string(),
+        },
+    );
+    m.insert(
+        "retro",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.58 1/1',eq=saturation=1.3:contrast=1.1,hue=s=1.05,noise=alls=20:allf=t+u".to_string(),
+            description: "Effet VHS rétro années 80 avec distorsions et saturation".to_string(),
+        },
+    );
+    m.insert(
+        "années 80",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.58 1/1',eq=saturation=1.3:contrast=1.1,hue=s=1.05,noise=alls=20:allf=t+u".to_string(),
+            description: "Effet VHS rétro années 80 avec distorsions et saturation".to_string(),
+        },
+    );
+
+    // Color Pop (une couleur en couleur, le reste en noir et blanc)
+    m.insert(
+        "color pop",
+        EffectDefinition {
+            ffmpeg_filter: "split[original][copy];[copy]hue=s=0[grayscale];[original][grayscale]blend=all_mode=addition:all_opacity=0.5".to_string(),
+            description: "Color pop - une couleur ressort, le reste en noir et blanc".to_string(),
+        },
+    );
+    m.insert(
+        "colorpop",
+        EffectDefinition {
+            ffmpeg_filter: "split[original][copy];[copy]hue=s=0[grayscale];[original][grayscale]blend=all_mode=addition:all_opacity=0.5".to_string(),
+            description: "Color pop - une couleur ressort, le reste en noir et blanc".to_string(),
+        },
+    );
+    m.insert(
+        "couleur pop",
+        EffectDefinition {
+            ffmpeg_filter: "split[original][copy];[copy]hue=s=0[grayscale];[original][grayscale]blend=all_mode=addition:all_opacity=0.5".to_string(),
+            description: "Color pop - une couleur ressort, le reste en noir et blanc".to_string(),
+        },
+    );
+
+    // Reverse / Inversion (lecture inversée)
+    m.insert(
+        "reverse",
+        EffectDefinition {
+            ffmpeg_filter: "reverse".to_string(),
+            description: "Lecture inversée de la vidéo".to_string(),
+        },
+    );
+    m.insert(
+        "inverse",
+        EffectDefinition {
+            ffmpeg_filter: "reverse".to_string(),
+            description: "Lecture inversée de la vidéo".to_string(),
+        },
+    );
+    m.insert(
+        "inversé",
+        EffectDefinition {
+            ffmpeg_filter: "reverse".to_string(),
+            description: "Lecture inversée de la vidéo".to_string(),
+        },
+    );
+
+    // Duotone (deux couleurs)
+    m.insert(
+        "duotone",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.5 1/1',eq=contrast=1.2:saturation=0.5".to_string(),
+            description: "Effet duotone avec deux couleurs dominantes".to_string(),
+        },
+    );
+    m.insert(
+        "duo tone",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.5 1/1',eq=contrast=1.2:saturation=0.5".to_string(),
+            description: "Effet duotone avec deux couleurs dominantes".to_string(),
+        },
+    );
+
+    // Film Grain (grain cinématique)
+    m.insert(
+        "film grain",
+        EffectDefinition {
+            ffmpeg_filter: "noise=alls=15:allf=t+u".to_string(),
+            description: "Grain cinématique pour effet film".to_string(),
+        },
+    );
+    m.insert(
+        "filmgrain",
+        EffectDefinition {
+            ffmpeg_filter: "noise=alls=15:allf=t+u".to_string(),
+            description: "Grain cinématique pour effet film".to_string(),
+        },
+    );
+    m.insert(
+        "grain",
+        EffectDefinition {
+            ffmpeg_filter: "noise=alls=15:allf=t+u".to_string(),
+            description: "Grain cinématique pour effet film".to_string(),
+        },
+    );
+    m.insert(
+        "grain cinématique",
+        EffectDefinition {
+            ffmpeg_filter: "noise=alls=15:allf=t+u".to_string(),
+            description: "Grain cinématique pour effet film".to_string(),
+        },
+    );
+
+    // Kaleidoscope (kaléidoscope)
+    m.insert(
+        "kaleidoscope",
+        EffectDefinition {
+            ffmpeg_filter: "split[main][tmp];[tmp]crop=iw/2:ih/2:0:0[left];[tmp]crop=iw/2:ih/2:iw/2:0[right];[left]hflip[left_flip];[right]hflip[right_flip];[left_flip][right_flip]hstack[top];[main]crop=iw:ih/2:0:ih/2[bottom];[top][bottom]vstack".to_string(),
+            description: "Effet kaléidoscope avec symétrie".to_string(),
+        },
+    );
+    m.insert(
+        "kaléidoscope",
+        EffectDefinition {
+            ffmpeg_filter: "split[main][tmp];[tmp]crop=iw/2:ih/2:0:0[left];[tmp]crop=iw/2:ih/2:iw/2:0[right];[left]hflip[left_flip];[right]hflip[right_flip];[left_flip][right_flip]hstack[top];[main]crop=iw:ih/2:0:ih/2[bottom];[top][bottom]vstack".to_string(),
+            description: "Effet kaléidoscope avec symétrie".to_string(),
+        },
+    );
+
+    // Pixelate (pixellisation)
+    m.insert(
+        "pixelate",
+        EffectDefinition {
+            ffmpeg_filter: "scale=iw/10:ih/10,scale=iw:ih:flags=neighbor".to_string(),
+            description: "Pixellisation pour effet rétro".to_string(),
+        },
+    );
+    m.insert(
+        "pixel",
+        EffectDefinition {
+            ffmpeg_filter: "scale=iw/10:ih/10,scale=iw:ih:flags=neighbor".to_string(),
+            description: "Pixellisation pour effet rétro".to_string(),
+        },
+    );
+    m.insert(
+        "pixellisé",
+        EffectDefinition {
+            ffmpeg_filter: "scale=iw/10:ih/10,scale=iw:ih:flags=neighbor".to_string(),
+            description: "Pixellisation pour effet rétro".to_string(),
+        },
+    );
+
+    // Ripple / Wave (ondulation)
+    m.insert(
+        "ripple",
+        EffectDefinition {
+            ffmpeg_filter: "geq=lum='p(X,Y+sin(X*PI/180*5)*10)':cb='p(X,Y+sin(X*PI/180*5)*10)':cr='p(X,Y+sin(X*PI/180*5)*10)'".to_string(),
+            description: "Effet d'ondulation pour effet dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "wave",
+        EffectDefinition {
+            ffmpeg_filter: "geq=lum='p(X,Y+sin(X*PI/180*5)*10)':cb='p(X,Y+sin(X*PI/180*5)*10)':cr='p(X,Y+sin(X*PI/180*5)*10)'".to_string(),
+            description: "Effet d'ondulation pour effet dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "ondulation",
+        EffectDefinition {
+            ffmpeg_filter: "geq=lum='p(X,Y+sin(X*PI/180*5)*10)':cb='p(X,Y+sin(X*PI/180*5)*10)':cr='p(X,Y+sin(X*PI/180*5)*10)'".to_string(),
+            description: "Effet d'ondulation pour effet dynamique".to_string(),
+        },
+    );
+
+    // Twirl (tourbillon)
+    m.insert(
+        "twirl",
+        EffectDefinition {
+            ffmpeg_filter: "geq=lum='p(X,Y)':cb='p(X,Y)':cr='p(X,Y)'".to_string(),
+            description: "Effet tourbillon pour distorsion créative".to_string(),
+        },
+    );
+    m.insert(
+        "tourbillon",
+        EffectDefinition {
+            ffmpeg_filter: "geq=lum='p(X,Y)':cb='p(X,Y)':cr='p(X,Y)'".to_string(),
+            description: "Effet tourbillon pour distorsion créative".to_string(),
+        },
+    );
+
+    // Edge Detection (détection de contours)
+    m.insert(
+        "edge detection",
+        EffectDefinition {
+            ffmpeg_filter: "edgedetect=low=0.1:high=0.4".to_string(),
+            description: "Détection de contours pour effet artistique".to_string(),
+        },
+    );
+    m.insert(
+        "edgedetection",
+        EffectDefinition {
+            ffmpeg_filter: "edgedetect=low=0.1:high=0.4".to_string(),
+            description: "Détection de contours pour effet artistique".to_string(),
+        },
+    );
+    m.insert(
+        "contours",
+        EffectDefinition {
+            ffmpeg_filter: "edgedetect=low=0.1:high=0.4".to_string(),
+            description: "Détection de contours pour effet artistique".to_string(),
+        },
+    );
+
+    // Posterize (postérisation)
+    m.insert(
+        "posterize",
+        EffectDefinition {
+            ffmpeg_filter: "curves=preset=strong_contrast,eq=contrast=1.5".to_string(),
+            description: "Postérisation pour effet artistique".to_string(),
+        },
+    );
+    m.insert(
+        "postérisation",
+        EffectDefinition {
+            ffmpeg_filter: "curves=preset=strong_contrast,eq=contrast=1.5".to_string(),
+            description: "Postérisation pour effet artistique".to_string(),
+        },
+    );
+
+    // Tilt Shift (miniature)
+    m.insert(
+        "tilt shift",
+        EffectDefinition {
+            ffmpeg_filter: "boxblur=2:1:enable='between(y,h/2-50,h/2+50)'".to_string(),
+            description: "Effet tilt shift pour effet miniature".to_string(),
+        },
+    );
+    m.insert(
+        "tiltshift",
+        EffectDefinition {
+            ffmpeg_filter: "boxblur=2:1:enable='between(y,h/2-50,h/2+50)'".to_string(),
+            description: "Effet tilt shift pour effet miniature".to_string(),
+        },
+    );
+    m.insert(
+        "miniature",
+        EffectDefinition {
+            ffmpeg_filter: "boxblur=2:1:enable='between(y,h/2-50,h/2+50)'".to_string(),
+            description: "Effet tilt shift pour effet miniature".to_string(),
+        },
+    );
+
+    // Zoom Blur (flou de zoom)
+    m.insert(
+        "zoom blur",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75,boxblur=2:1".to_string(),
+            description: "Flou de zoom pour effet dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "zoomblur",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75,boxblur=2:1".to_string(),
+            description: "Flou de zoom pour effet dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "flou de zoom",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75,boxblur=2:1".to_string(),
+            description: "Flou de zoom pour effet dynamique".to_string(),
+        },
+    );
+
+    // Lens Flare (reflet de lentille)
+    m.insert(
+        "lens flare",
+        EffectDefinition {
+            ffmpeg_filter: "geq=lum='lum(X,Y)+50*sin(PI*X/iw)':cb='p(X,Y)':cr='p(X,Y)'".to_string(),
+            description: "Reflet de lentille pour effet cinématique".to_string(),
+        },
+    );
+    m.insert(
+        "lensflare",
+        EffectDefinition {
+            ffmpeg_filter: "geq=lum='lum(X,Y)+50*sin(PI*X/iw)':cb='p(X,Y)':cr='p(X,Y)'".to_string(),
+            description: "Reflet de lentille pour effet cinématique".to_string(),
+        },
+    );
+    m.insert(
+        "reflet",
+        EffectDefinition {
+            ffmpeg_filter: "geq=lum='lum(X,Y)+50*sin(PI*X/iw)':cb='p(X,Y)':cr='p(X,Y)'".to_string(),
+            description: "Reflet de lentille pour effet cinématique".to_string(),
+        },
+    );
+
+    // Freeze Frame (image figée)
+    m.insert(
+        "freeze frame",
+        EffectDefinition {
+            ffmpeg_filter: "freezedetect=n=-1:d=2".to_string(),
+            description: "Image figée pour effet dramatique".to_string(),
+        },
+    );
+    m.insert(
+        "freezeframe",
+        EffectDefinition {
+            ffmpeg_filter: "freezedetect=n=-1:d=2".to_string(),
+            description: "Image figée pour effet dramatique".to_string(),
+        },
+    );
+    m.insert(
+        "image figée",
+        EffectDefinition {
+            ffmpeg_filter: "freezedetect=n=-1:d=2".to_string(),
+            description: "Image figée pour effet dramatique".to_string(),
+        },
+    );
+
+    // Chromatic Aberration (aberration chromatique)
+    m.insert(
+        "chromatic aberration",
+        EffectDefinition {
+            ffmpeg_filter: "split[main][copy];[copy]hue=s=1.2[shifted];[main][shifted]blend=all_mode=screen:all_opacity=0.3".to_string(),
+            description: "Aberration chromatique pour effet créatif".to_string(),
+        },
+    );
+    m.insert(
+        "chromaticaberration",
+        EffectDefinition {
+            ffmpeg_filter: "split[main][copy];[copy]hue=s=1.2[shifted];[main][shifted]blend=all_mode=screen:all_opacity=0.3".to_string(),
+            description: "Aberration chromatique pour effet créatif".to_string(),
+        },
+    );
+    m.insert(
+        "aberration",
+        EffectDefinition {
+            ffmpeg_filter: "split[main][copy];[copy]hue=s=1.2[shifted];[main][shifted]blend=all_mode=screen:all_opacity=0.3".to_string(),
+            description: "Aberration chromatique pour effet créatif".to_string(),
+        },
+    );
+
+    // Emboss (relief)
+    m.insert(
+        "emboss",
+        EffectDefinition {
+            ffmpeg_filter: "convolution='0 -1 0 -1 5 -1 0 -1 0:0 -1 0 -1 5 -1 0 -1 0:0 -1 0 -1 5 -1 0 -1 0:0 -1 0 -1 5 -1 0 -1 0'".to_string(),
+            description: "Effet relief pour effet 3D".to_string(),
+        },
+    );
+    m.insert(
+        "relief",
+        EffectDefinition {
+            ffmpeg_filter: "convolution='0 -1 0 -1 5 -1 0 -1 0:0 -1 0 -1 5 -1 0 -1 0:0 -1 0 -1 5 -1 0 -1 0:0 -1 0 -1 5 -1 0 -1 0'".to_string(),
+            description: "Effet relief pour effet 3D".to_string(),
+        },
+    );
+
+    // Solarize (solarisation)
+    m.insert(
+        "solarize",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/1 1/0'".to_string(),
+            description: "Solarisation pour effet artistique".to_string(),
+        },
+    );
+    m.insert(
+        "solarisation",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/1 1/0'".to_string(),
+            description: "Solarisation pour effet artistique".to_string(),
+        },
+    );
+
+    // Threshold (seuil)
+    m.insert(
+        "threshold",
+        EffectDefinition {
+            ffmpeg_filter: "threshold=0.5".to_string(),
+            description: "Effet seuil pour effet binaire".to_string(),
+        },
+    );
+    m.insert(
+        "seuil",
+        EffectDefinition {
+            ffmpeg_filter: "threshold=0.5".to_string(),
+            description: "Effet seuil pour effet binaire".to_string(),
+        },
+    );
+
+    // Wipe (balayage)
+    m.insert(
+        "wipe",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw*t/3:ih:0:0,scale=iw:ih".to_string(),
+            description: "Effet de balayage pour transition".to_string(),
+        },
+    );
+    m.insert(
+        "balayage",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw*t/3:ih:0:0,scale=iw:ih".to_string(),
+            description: "Effet de balayage pour transition".to_string(),
+        },
+    );
+
+    // Picture in Picture (image dans image)
+    m.insert(
+        "picture in picture",
+        EffectDefinition {
+            ffmpeg_filter: "scale=iw/4:ih/4,pad=iw:ih:(iw-ow)/2:(ih-oh)/2:color=black@0".to_string(),
+            description: "Image dans image pour effet multi-vue".to_string(),
+        },
+    );
+    m.insert(
+        "pip",
+        EffectDefinition {
+            ffmpeg_filter: "scale=iw/4:ih/4,pad=iw:ih:(iw-ow)/2:(ih-oh)/2:color=black@0".to_string(),
+            description: "Image dans image pour effet multi-vue".to_string(),
+        },
+    );
+    m.insert(
+        "image dans image",
+        EffectDefinition {
+            ffmpeg_filter: "scale=iw/4:ih/4,pad=iw:ih:(iw-ow)/2:(ih-oh)/2:color=black@0".to_string(),
+            description: "Image dans image pour effet multi-vue".to_string(),
+        },
+    );
+
     m
 }
 
 /// ✅ NOUVEAU: Mapping des noms d'effets alternatifs vers les noms canoniques
-fn normalize_effect_name(effect_name: &str) -> String {
+/// ✅ NOUVEAU 2026-01-04: Rendu publique pour validation dans app_ia.rs
+pub fn normalize_effect_name(effect_name: &str) -> String {
     let normalized = effect_name.trim().to_lowercase();
     
     // Mapping des noms alternatifs vers les noms canoniques
@@ -706,6 +1182,70 @@ fn normalize_effect_name(effect_name: &str) -> String {
         ("vertical mirror", "vertical mirror"),
         ("verticalmirror", "vertical mirror"),
         ("miroir vertical", "vertical mirror"),
+        // ✅ NOUVEAU 2026-01-04: Mapping pour effet de rebond
+        ("bounce", "bounce"),
+        ("effet de rebond", "bounce"),
+        ("rebond", "bounce"),
+        // ✅ NOUVEAU 2026-01-04: Mappings pour nouveaux effets populaires
+        ("motion blur", "motion blur"),
+        ("motionblur", "motion blur"),
+        ("flou de mouvement", "motion blur"),
+        ("vhs", "vhs"),
+        ("retro", "vhs"),
+        ("années 80", "vhs"),
+        ("color pop", "color pop"),
+        ("colorpop", "color pop"),
+        ("couleur pop", "color pop"),
+        ("reverse", "reverse"),
+        ("inverse", "reverse"),
+        ("inversé", "reverse"),
+        ("duotone", "duotone"),
+        ("duo tone", "duotone"),
+        ("film grain", "film grain"),
+        ("filmgrain", "film grain"),
+        ("grain", "film grain"),
+        ("grain cinématique", "film grain"),
+        ("kaleidoscope", "kaleidoscope"),
+        ("kaléidoscope", "kaleidoscope"),
+        ("pixelate", "pixelate"),
+        ("pixel", "pixelate"),
+        ("pixellisé", "pixelate"),
+        ("ripple", "ripple"),
+        ("wave", "ripple"),
+        ("ondulation", "ripple"),
+        ("twirl", "twirl"),
+        ("tourbillon", "twirl"),
+        ("edge detection", "edge detection"),
+        ("edgedetection", "edge detection"),
+        ("contours", "edge detection"),
+        ("posterize", "posterize"),
+        ("postérisation", "posterize"),
+        ("tilt shift", "tilt shift"),
+        ("tiltshift", "tilt shift"),
+        ("miniature", "tilt shift"),
+        ("zoom blur", "zoom blur"),
+        ("zoomblur", "zoom blur"),
+        ("flou de zoom", "zoom blur"),
+        ("lens flare", "lens flare"),
+        ("lensflare", "lens flare"),
+        ("reflet", "lens flare"),
+        ("freeze frame", "freeze frame"),
+        ("freezeframe", "freeze frame"),
+        ("image figée", "freeze frame"),
+        ("chromatic aberration", "chromatic aberration"),
+        ("chromaticaberration", "chromatic aberration"),
+        ("aberration", "chromatic aberration"),
+        ("emboss", "emboss"),
+        ("relief", "emboss"),
+        ("solarize", "solarize"),
+        ("solarisation", "solarize"),
+        ("threshold", "threshold"),
+        ("seuil", "threshold"),
+        ("wipe", "wipe"),
+        ("balayage", "wipe"),
+        ("picture in picture", "picture in picture"),
+        ("pip", "picture in picture"),
+        ("image dans image", "picture in picture"),
     ]
     .iter()
     .cloned()
@@ -717,6 +1257,14 @@ fn normalize_effect_name(effect_name: &str) -> String {
     } else {
         normalized
     }
+}
+
+/// ✅ NOUVEAU 2026-01-04: Récupère la liste complète des noms d'effets disponibles
+pub fn get_available_effect_names() -> Vec<String> {
+    get_effect_definitions()
+        .keys()
+        .map(|k| k.to_string())
+        .collect()
 }
 
 /// Récupère la définition d'un effet (fallback hardcodé si DB non disponible)

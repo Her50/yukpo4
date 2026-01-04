@@ -30,12 +30,13 @@ pub struct AddProductResponse {
 
 /// ✅ NOUVEAU 2026-01-02: Fonction pour traiter la création de produit (utilisée par le worker)
 /// Cette fonction est appelée par le worker de la queue, pas directement par l'API
+/// ✅ CORRIGÉ 2026-01-04: Traite maintenant les médias avec le vrai product_id
 pub async fn process_product_creation(
     pool: Arc<PgPool>,
     service_id: i32,
     user_id: i32,
     product_data: &Value,
-    _images_to_process: &[String],
+    images_to_process: &[String], // ✅ CORRIGÉ: Ne plus ignorer les images
 ) -> AppResult<Value> {
     use crate::utils::log::log_info;
     
@@ -46,45 +47,239 @@ pub async fn process_product_creation(
     let mut removed_count = 0;
     clean_media_recursive_final(&mut product_data_cleaned, &mut removed_count);
     
-    let product_json_value = serde_json::to_value(&product_data_cleaned)
-        .map_err(|e| AppError::Internal(format!("Erreur sérialisation produit: {}", e)))?;
+    // ✅ PHASE 1: Écriture UNIQUEMENT dans table products (JSONB supprimé)
+    // Calculer le product_index depuis le nombre de produits existants
+    use crate::services::products_service::ProductsService;
+    let products_service = ProductsService::new(pool.clone());
     
-    // Utiliser la fonction PostgreSQL optimisée
-    let (product_index, produits_data, lieu_data) = crate::utils::db_retry::retry_query(
-        &*pool,
-        || {
-            let product_json_clone = product_json_value.clone();
-            let service_id_clone = service_id;
-            let pool_clone = pool.clone();
-            Box::pin(async move {
-                let mut tx = pool_clone.begin().await?;
-                sqlx::query("SET LOCAL statement_timeout = '180s'")
-                    .execute(&mut *tx)
-                    .await?;
+    // Récupérer les produits existants pour déterminer le prochain index
+    let existing_products = products_service.get_products_by_service(service_id).await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération produits existants: {}", e)))?;
+    
+    let product_index = existing_products.len() as i32;
+    
+    // Créer le produit dans la table products
+    let product_result = products_service.create_product(
+        service_id,
+        product_index,
+        &product_data_cleaned,
+    ).await;
+    
+    match product_result {
+        Ok(product) => {
+            log::info!(
+                "[process_product_creation] ✅ Produit {} créé dans table products (service_id: {}, product_id: {})",
+                product_index,
+                service_id,
+                product.id
+            );
+            
+            // ✅ NOUVEAU 2026-01-04: Traiter les médias APRÈS création du produit avec le vrai product_id
+            let real_product_id = product.id.to_string();
+            if !images_to_process.is_empty() {
+                log::info!(
+                    "[process_product_creation] 🖼️ Traitement de {} image(s) pour produit {} (product_id: {})",
+                    images_to_process.len(),
+                    product_index,
+                    real_product_id
+                );
                 
-                let result = sqlx::query_as::<_, (i32, Value, Value)>(
-                    "SELECT product_index, produits_data, lieu_data FROM add_product_to_service_jsonb_v2($1, $2)"
-                )
-                .bind(service_id_clone)
-                .bind(&product_json_clone)
-                .fetch_one(&mut *tx)
-                .await?;
+                use crate::services::optimized_media_processor::{
+                    MediaItem, OptimizedMediaProcessor, OptimizedMediaProcessorConfig,
+                };
+                use crate::services::media_storage_service::MediaStorageService;
+                use std::path::PathBuf;
                 
-                tx.commit().await?;
-                Ok(result)
-            })
-        },
-        10,
-    ).await?;
-    
-    // Traiter les images en arrière-plan (déjà fait dans le contrôleur principal)
-    // Ici on retourne juste le résultat
-    
-    Ok(json!({
-        "product_index": product_index,
-        "produits_data": produits_data,
-        "lieu_data": lieu_data,
-    }))
+                // Configuration du processeur de médias
+                let config = OptimizedMediaProcessorConfig {
+                    max_concurrent: 10,
+                    db_batch_size: 20,
+                    generate_thumbnails: true,
+                    adaptive_compression: true,
+                    use_signature_cache: true,
+                };
+                
+                // Créer MediaStorageService (nécessaire pour OptimizedMediaProcessor)
+                let storage_root = PathBuf::from(std::env::var("UPLOAD_STORAGE_ROOT")
+                    .unwrap_or_else(|_| "uploads".to_string()));
+                use crate::config::storage::MediaStorageConfig;
+                let storage_config = MediaStorageConfig::from_env();
+                let media_storage = Arc::new(MediaStorageService::new(storage_config));
+                
+                let processor = OptimizedMediaProcessor::new(
+                    pool.clone(),
+                    storage_root,
+                    media_storage,
+                    config,
+                );
+                
+                // Convertir les images en MediaItem
+                let mut media_items: Vec<MediaItem> = Vec::new();
+                for image_data in images_to_process {
+                    if image_data.is_empty() {
+                        continue;
+                    }
+                    // Vérifier si c'est une URL ou du base64
+                    let is_base64 = !image_data.starts_with("http://") 
+                        && !image_data.starts_with("https://")
+                        && image_data.len() > 100; // Heuristique simple
+                    media_items.push(MediaItem::new_image(image_data.clone(), is_base64));
+                }
+                
+                if !media_items.is_empty() {
+                    // Traiter les médias en batch
+                    match processor.process_media_batch(
+                        service_id,
+                        Some(product_index.try_into().unwrap()),
+                        media_items
+                    ).await {
+                        Ok(processed) => {
+                            // Insérer les médias dans la table media avec le vrai product_id
+                            let mut tx = pool.begin().await
+                                .map_err(|e| AppError::Internal(format!("Erreur début transaction: {}", e)))?;
+                            
+                            for (image_index, media) in processed.iter().enumerate() {
+                                let is_main = image_index == 0;
+                                
+                                if let Err(e) = sqlx::query(
+                                    r#"
+                                    INSERT INTO media (
+                                        service_id, product_id, product_index, type, path,
+                                        is_main_image, display_order, uploaded_at,
+                                        image_signature, image_hash, image_metadata
+                                    )
+                                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                                    "#,
+                                )
+                                .bind(service_id)
+                                .bind(&real_product_id) // ✅ Utiliser le vrai product_id
+                                .bind(product_index)
+                                .bind("image")
+                                .bind(&media.file_path)
+                                .bind(is_main)
+                                .bind(image_index as i32)
+                                .bind(chrono::Utc::now().naive_utc())
+                                .bind(&media.image_signature)
+                                .bind(&media.image_hash)
+                                .bind(&media.image_metadata)
+                                .execute(&mut *tx)
+                                .await
+                                {
+                                    log::error!(
+                                        "[process_product_creation] ❌ Erreur insertion media {} pour produit {}: {}",
+                                        image_index,
+                                        product_index,
+                                        e
+                                    );
+                                } else {
+                                    log::info!(
+                                        "[process_product_creation] ✅ Media {} inséré pour produit {} (product_id: {})",
+                                        image_index,
+                                        product_index,
+                                        real_product_id
+                                    );
+                                }
+                            }
+                            
+                            // Commit la transaction
+                            if let Err(e) = tx.commit().await {
+                                log::error!(
+                                    "[process_product_creation] ❌ Erreur commit transaction médias: {}",
+                                    e
+                                );
+                            } else {
+                                log::info!(
+                                    "[process_product_creation] ✅ {} média(x) sauvegardé(s) pour produit {}",
+                                    processed.len(),
+                                    product_index
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            log::error!(
+                                "[process_product_creation] ❌ Erreur traitement médias: {} (non bloquant)",
+                                e
+                            );
+                            // Ne pas faire échouer la création du produit si les médias échouent
+                        }
+                    }
+                }
+            }
+            
+            // ✅ PHASE 1: Mettre à jour autocomplete_characteristics avec le product_id de la table products
+            // Récupérer les données du service pour save_autocomplete_combination
+            let service_data: Option<serde_json::Value> = sqlx::query_scalar(
+                "SELECT data FROM services WHERE id = $1"
+            )
+            .bind(service_id)
+            .fetch_optional(&*pool)
+            .await
+            .ok()
+            .flatten();
+            
+            if let Some(mut data) = service_data {
+                // Ajouter temporairement le produit dans data pour save_autocomplete_combination
+                // (la fonction lit depuis la table products, mais a besoin de la structure data)
+                if let Some(data_map) = data.as_object_mut() {
+                    // Construire la structure produits pour compatibilité
+                    let produits_structure = json!({
+                        "type_donnee": "listeproduit",
+                        "valeur": [product_data_cleaned.clone()]
+                    });
+                    data_map.insert("produits".to_string(), produits_structure);
+                }
+                
+                // Appeler save_autocomplete_combination avec timeout (non bloquant)
+                let indexation_result = tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    crate::services::creer_service::save_autocomplete_combination(
+                        &pool,
+                        service_id,
+                        &data
+                    )
+                ).await;
+                
+                match indexation_result {
+                    Ok(Ok(_)) => {
+                        log::info!(
+                            "[process_product_creation] ✅ autocomplete_characteristics mis à jour avec product_id {}",
+                            product.id
+                        );
+                    }
+                    Ok(Err(e)) => {
+                        log::warn!(
+                            "[process_product_creation] ⚠️ Erreur mise à jour autocomplete_characteristics: {} (non bloquant)",
+                            e
+                        );
+                    }
+                    Err(_) => {
+                        log::warn!(
+                            "[process_product_creation] ⚠️ Timeout mise à jour autocomplete_characteristics (non bloquant)"
+                        );
+                    }
+                }
+            }
+            
+            // Retourner le résultat (format compatible avec l'ancien code)
+            Ok(json!({
+                "product_index": product_index,
+                "product_id": product.id,
+                "service_id": service_id,
+                "produits_data": json!({
+                    "type_donnee": "listeproduit",
+                    "valeur": [product_data_cleaned]
+                }),
+                "lieu_data": json!(null) // Lieu géré au niveau service
+            }))
+        }
+        Err(e) => {
+            log::error!(
+                "[process_product_creation] ❌ Erreur création produit dans table products: {}",
+                e
+            );
+            Err(AppError::Internal(format!("Erreur création produit: {}", e)))
+        }
+    }
 }
 
 /// Ajouter un nouveau produit à un service existant
@@ -395,43 +590,41 @@ async fn _old_add_product_logic(
     _images_to_process: Vec<String>,
 ) -> AppResult<Value> {
     let pool = state.pg.clone();
-    let product_json_value = serde_json::to_value(&product_data)
+    let _product_json_value = serde_json::to_value(&product_data)
         .map_err(|e| AppError::Internal(format!("Erreur sérialisation produit: {}", e)))?;
     
-    let update_result = crate::utils::db_retry::retry_query(
-        &pool,
-        || {
-            let product_json_clone = product_json_value.clone();
-            let service_id_clone = service_id;
-            let pool_clone = pool.clone();
-            Box::pin(async move {
-                let mut tx = pool_clone.begin().await?;
-                sqlx::query("SET LOCAL statement_timeout = '180s'")
-                    .execute(&mut *tx)
-                    .await?;
-                
-                let result = sqlx::query_as::<_, (i32, Value, Value)>(
-                    "SELECT product_index, produits_data, lieu_data FROM add_product_to_service_jsonb_v2($1, $2)"
-                )
-                .bind(service_id_clone)
-                .bind(&product_json_clone)
-                .fetch_one(&mut *tx)
-                .await?;
-                
-                tx.commit().await?;
-                Ok(result)
-            })
-        },
-        10,
-    ).await;
+    // ✅ PHASE 1: Écriture UNIQUEMENT dans table products (JSONB supprimé)
+    // Cette fonction est du code mort mais on la garde pour compatibilité
+    // Utiliser la même logique que process_product_creation
+    use crate::services::products_service::ProductsService;
+    let products_service = ProductsService::new(Arc::new(pool.clone()));
     
-    match update_result {
-        Ok((index, produits_data, lieu_data)) => {
-            // Code mort - fonction remplacée par la queue
+    // Nettoyer les médias
+    let mut product_data_cleaned = product_data.clone();
+    let mut removed_count = 0;
+    clean_media_recursive_final(&mut product_data_cleaned, &mut removed_count);
+    
+    // Récupérer les produits existants pour déterminer le prochain index
+    let existing_products = products_service.get_products_by_service(service_id).await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération produits existants: {}", e)))?;
+    
+    let product_index = existing_products.len() as i32;
+    
+    // Créer le produit dans la table products
+    match products_service.create_product(
+        service_id,
+        product_index,
+        &product_data_cleaned,
+    ).await {
+        Ok(product) => {
             Ok(json!({
-                "product_index": index,
-                "produits_data": produits_data,
-                "lieu_data": lieu_data,
+                "product_index": product_index,
+                "product_id": product.id,
+                "produits_data": json!({
+                    "type_donnee": "listeproduit",
+                    "valeur": [product_data_cleaned]
+                }),
+                "lieu_data": json!(null)
             }))
         }
         Err(e) => {

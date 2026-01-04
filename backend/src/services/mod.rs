@@ -140,7 +140,9 @@ pub mod pipeline_health_service;
 pub mod plugin_service; // ✅ NOUVEAU Phase 2: Service de gestion des plugins
 pub mod popular_products_service;
 pub mod prestataire_service;
-pub mod preview_generation_service; // ✅ NOUVEAU: Service de génération de preview rapide
+pub mod products_service; // ✅ NOUVEAU 2026-01-03: Service pour table products séparée
+pub mod preview_generation_service;
+pub mod preview_cache_service; // ✅ NOUVEAU 2026-01-04: Cache pour previews // ✅ NOUVEAU: Service de génération de preview rapide
 pub mod preview_monitoring;
 pub mod product_availability_service; // ✅ NOUVEAU : Vérification disponibilité produits
 pub mod product_creation_queue; // ✅ NOUVEAU 2026-01-02: Queue asynchrone pour création de produits

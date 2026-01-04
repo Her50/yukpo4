@@ -328,6 +328,15 @@ pub struct DeliverySummary {
     pub store_location: Option<GeoPoint>,
     pub shopping_required: bool,
     pub metadata: Value,
+    // ✅ Aller-retour
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_round_trip: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub return_delivery_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub return_delivery: Option<Box<DeliverySummary>>, // Livraison retour imbriquée
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub round_trip_discount_percent: Option<i32>,
 }
 
 /// Zone opérationnelle (polygone ou centre + rayon)

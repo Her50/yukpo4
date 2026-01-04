@@ -40,6 +40,7 @@ import { config } from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
+import { productsService } from '../services/productsService';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
@@ -347,44 +348,46 @@ const CreatePubliciteScreen: React.FC = () => {
     const loadMesServicesEtProduits = async () => {
         try {
             setLoading(true);
-            const response = await apiGet('/api/prestataire/services');
+            
+            // ✅ PHASE 5: Utiliser getProductsByUser (plus de fallback JSONB)
+            if (!user?.id) {
+                console.warn('[CreatePubliciteScreen] ⚠️ Utilisateur non connecté');
+                setProduitsList([]);
+                setLoading(false);
+                return;
+            }
 
+            const products = await productsService.getProductsByUser(user.id);
+            console.log('[CreatePubliciteScreen] ✅ Produits récupérés depuis API:', products.length);
+
+            // Convertir les produits de l'API en format ManagedProduct
+            const allProducts: ManagedProduct[] = products.map((product) => {
+                const productData = product.product_data || {};
+                return {
+                    id: `${product.service_id}_${product.product_index}`,
+                    rawProductId: product.id.toString(),
+                    serviceId: product.service_id.toString(),
+                    productIndex: product.product_index,
+                    nom: product.product_name || productData.nom || productData.nom_produit || 'Produit sans nom',
+                    prix: product.product_price || productData.prix || productData.prix_produit || 0,
+                    devise: productData.devise || 'FCFA',
+                    type: product.product_type || productData.type || 'autre',
+                    description: productData.description || productData.desc || '',
+                    images: productData.images || [],
+                    videos: productData.videos || [],
+                    serviceTitre: '', // Pourra être enrichi si nécessaire
+                    is_active: product.is_active,
+                    category_key: productData.categorie_produit || productData.categorie || productData.category,
+                    category_label: productData.categorie_produit || productData.categorie || productData.category,
+                };
+            });
+            
+            setProduitsList(allProducts);
+            
+            // Charger aussi les services pour autres usages
+            const response = await apiGet('/api/prestataire/services');
             if (response.success && response.data) {
                 setMesServices(response.data as any[]);
-
-                // Extraire tous les produits
-                const allProducts: ManagedProduct[] = [];
-                (response.data as any[]).forEach((service: any) => {
-                    if (service.data?.produits && Array.isArray(service.data.produits)) {
-                        service.data.produits.forEach((product: any, index: number) => {
-                            const normalized: ManagedProduct = {
-                                id: `${service.id}_${index}`,
-                                // ✅ CORRECTION: Chercher aussi nom_produit pour les produits créés via AjouterProduitSimpleScreen
-                                nom: product.nom ||
-                                    product.nom_produit ||
-                                    (typeof product.nom_produit === 'object' && product.nom_produit?.valeur) ||
-                                    product.name ||
-                                    product.title ||
-                                    `Produit ${index + 1}`,
-                                type: product.type,
-                                prix: product.prix,
-                                devise: product.devise || service.data?.devise || 'FCFA',
-                                description: product.description,
-                                serviceId: service.id,
-                                serviceTitre: service.data?.titre_service?.valeur || service.titre || 'Service',
-                                images: Array.isArray(product.images) ? product.images : [],
-                                videos: Array.isArray(product.videos) ? product.videos : [],
-                                product_index: index,
-                                category_key: product.category_key,
-                                category_label: product.category_label,
-                                rawProductId: product.id ?? product.productId,
-                                ...product,
-                            };
-                            allProducts.push(normalized);
-                        });
-                    }
-                });
-                setProduitsList(allProducts);
             }
             setLoading(false);
         } catch (error) {

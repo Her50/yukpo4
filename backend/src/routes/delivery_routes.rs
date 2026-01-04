@@ -143,7 +143,7 @@ use crate::{
     services::delivery_service::{
         CourierApplicationInput, CourierAssetInput, CreateDeliveryParams, DeliveryRecipientInput,
         DeliveryService, LocationInput, NewDeliveryParcelInput, PricingInput,
-        PublicDropoffSnapshot, TrackingInput,
+        PublicDropoffSnapshot, TrackingInput, haversine_distance,
     },
     services::product_price_service::ProductPriceService, // ✅ NOUVEAU : Service pour prix avec promotions
     services::product_stock_service::ProductStockService, // ✅ NOUVEAU : Service gestion stock
@@ -169,6 +169,22 @@ struct CreateDeliveryPayload {
     initial_event_payload: Value,
     #[serde(default)]
     recipient: Option<RecipientPayload>,
+    // ✅ Aller-retour
+    #[serde(default)]
+    is_round_trip: Option<bool>,
+    #[serde(default)]
+    return_pickup: Option<LocationPayload>, // Point de collecte retour (généralement = dropoff aller)
+    #[serde(default)]
+    return_dropoff: Option<LocationPayload>, // Point de livraison retour (généralement = pickup aller)
+    #[serde(default)]
+    round_trip_discount_percent: Option<i32>, // Réduction en % pour aller-retour (0-100)
+    #[serde(default)]
+    preferred_vehicle_type: Option<String>, // Type de véhicule souhaité
+    // ✅ Planification
+    #[serde(default)]
+    scheduled_delivery_at: Option<String>, // ISO 8601 datetime (ex: "2025-02-01T14:30:00Z")
+    #[serde(default)]
+    matching_mode: Option<String>, // "immediate" ou "scheduled"
 }
 
 #[derive(Deserialize)]
@@ -392,6 +408,7 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         // ✅ NOUVEAU : Routes pour vérification coursier
         .route("/api/delivery/{id}/verify-courier", post(verify_courier))
+        .route("/api/delivery/{id}/start-scheduled", post(start_scheduled_delivery)) // ✅ NOUVEAU : Déclencher livraison planifiée
         .route(
             "/api/delivery/{id}/verification-code",
             get(get_verification_code),
@@ -1055,42 +1072,268 @@ async fn create_delivery(
         }
     }
 
+    // ✅ Validation aller-retour
+    let is_round_trip = payload.is_round_trip.unwrap_or(false);
+    if is_round_trip {
+        if payload.return_pickup.is_none() || payload.return_dropoff.is_none() {
+            return Err(crate::core::types::AppError::BadRequest(
+                "Pour un aller-retour, return_pickup et return_dropoff sont requis".into(),
+            ));
+        }
+        // Valider les coordonnées de retour
+        if let Some(ref return_pickup) = payload.return_pickup {
+            validate_gps_coordinates(return_pickup.latitude, return_pickup.longitude, "return_pickup")?;
+        }
+        if let Some(ref return_dropoff) = payload.return_dropoff {
+            validate_gps_coordinates(return_dropoff.latitude, return_dropoff.longitude, "return_dropoff")?;
+        }
+    }
+
     let service = delivery_service(&state)?;
 
-    let params = CreateDeliveryParams {
+    // ✅ Créer la livraison aller
+    let mut metadata_aller = payload.metadata.clone();
+    
+    // ✅ Déterminer le type de véhicule préféré : utilisateur ou déduit du type de colis
+    let preferred_vehicle_type = payload.preferred_vehicle_type.clone()
+        .or_else(|| {
+            // Si aucun type spécifié, déduire depuis le type de colis
+            if let Some(type_id) = payload.parcel.type_id {
+                // 1 = document, 2 = package, 3 = moving, 4 = cake (ou autre selon DB)
+                match type_id {
+                    3 => Some("truck".to_string()), // Déménagement -> camion
+                    4 => Some("car".to_string()),   // Gâteau -> voiture (protection)
+                    _ => None, // Document et package standard : pas de préférence
+                }
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| "motorcycle".to_string()); // ✅ Par défaut : moto
+    
+    // Vérifier si c'est un déménagement depuis les contraintes
+    let is_moving = payload.parcel.constraints
+        .get("is_moving")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false) || payload.parcel.constraints
+        .get("number_of_boxes")
+        .is_some();
+    
+    let is_cake = payload.parcel.constraints
+        .get("cake_size")
+        .is_some() || payload.parcel.constraints
+        .get("cake_layers")
+        .is_some();
+    
+    // Ajuster le type de véhicule selon la nature du colis
+    let final_vehicle_type = if is_moving {
+        // Déménagement : nécessite camion ou camionnette
+        if preferred_vehicle_type == "truck" || preferred_vehicle_type == "van" || preferred_vehicle_type == "pickup" {
+            preferred_vehicle_type
+        } else {
+            "truck".to_string() // Forcer camion pour déménagement
+        }
+    } else if is_cake {
+        // Gâteau : voiture ou camionnette (protection)
+        if preferred_vehicle_type == "car" || preferred_vehicle_type == "van" {
+            preferred_vehicle_type
+        } else {
+            "car".to_string() // Forcer voiture pour gâteau
+        }
+    } else {
+        preferred_vehicle_type
+    };
+    
+    metadata_aller["preferred_vehicle_type"] = json!(final_vehicle_type);
+    metadata_aller["preferred_vehicle_type_backend"] = json!(final_vehicle_type);
+    metadata_aller["vehicle_type_source"] = json!(if payload.preferred_vehicle_type.is_some() { "user_selection" } else { "auto_deduced" });
+    
+    // ✅ Planification: Gérer scheduled_delivery_at et matching_mode
+    if let Some(ref scheduled_at) = payload.scheduled_delivery_at {
+        // Valider que la date est dans le futur
+        if let Ok(scheduled_datetime) = chrono::DateTime::parse_from_rfc3339(scheduled_at) {
+            let scheduled_utc = scheduled_datetime.with_timezone(&chrono::Utc);
+            if scheduled_utc <= chrono::Utc::now() {
+                return Err(crate::core::types::AppError::BadRequest(
+                    "La date de livraison planifiée doit être dans le futur".into(),
+                ));
+            }
+            metadata_aller["scheduled_delivery_at"] = json!(scheduled_at);
+            metadata_aller["scheduled_delivery_at_utc"] = json!(scheduled_utc.to_rfc3339());
+            
+            // ✅ Mode de matching: "immediate" ou "scheduled" (par défaut: "immediate" pour matching instantané)
+            let matching_mode = payload.matching_mode.as_deref()
+                .unwrap_or("immediate")
+                .to_string();
+            
+            if matching_mode != "immediate" && matching_mode != "scheduled" {
+                return Err(crate::core::types::AppError::BadRequest(
+                    "matching_mode doit être 'immediate' ou 'scheduled'".into(),
+                ));
+            }
+            
+            metadata_aller["matching_mode"] = json!(matching_mode);
+            
+            if matching_mode == "immediate" {
+                // Matching immédiat: le coursier sera assigné maintenant mais la livraison reste en statut planifié
+                metadata_aller["matching_immediate_for_scheduled"] = json!(true);
+                metadata_aller["delivery_status_override"] = json!("awaiting_scheduled_start");
+            }
+            // Si matching_mode == "scheduled", le matching sera retardé jusqu'à la date planifiée
+        } else {
+            return Err(crate::core::types::AppError::BadRequest(
+                "Format de date invalide. Utilisez le format ISO 8601 (ex: 2025-02-01T14:30:00Z)".into(),
+            ));
+        }
+    }
+    
+    if is_round_trip {
+        metadata_aller["is_round_trip"] = json!(true);
+        metadata_aller["kind"] = json!("parcel");
+        if let Some(discount) = payload.round_trip_discount_percent {
+            metadata_aller["round_trip_discount_percent"] = json!(discount);
+        }
+    }
+
+    let params_aller = CreateDeliveryParams {
         creator_id: user.id,
         parcel: NewDeliveryParcelInput {
             type_id: payload.parcel.type_id,
             weight_kg: payload.parcel.weight_kg.map(dec),
             volume_cm3: payload.parcel.volume_cm3.map(dec),
             declared_value: payload.parcel.declared_value.map(dec),
-            notes: payload.parcel.notes,
-            photos: payload.parcel.photos,
-            constraints: payload.parcel.constraints,
+            notes: payload.parcel.notes.clone(),
+            photos: payload.parcel.photos.clone(),
+            constraints: payload.parcel.constraints.clone(),
         },
         pickup: LocationInput {
             latitude: payload.pickup.latitude,
             longitude: payload.pickup.longitude,
-            address: payload.pickup.address,
+            address: payload.pickup.address.clone(),
         },
         dropoff: LocationInput {
             latitude: payload.dropoff.latitude,
             longitude: payload.dropoff.longitude,
-            address: payload.dropoff.address,
+            address: payload.dropoff.address.clone(),
         },
         recipient: payload.recipient.as_ref().map(DeliveryRecipientInput::from),
         distance_meters: payload.distance_meters,
         estimated_duration_seconds: payload.estimated_duration_seconds,
-        metadata: payload.metadata,
-        initial_event_payload: payload.initial_event_payload,
+        metadata: metadata_aller,
+        initial_event_payload: payload.initial_event_payload.clone(),
     };
 
-    let summary = service.create_delivery_request(params).await
+    let summary_aller = service.create_delivery_request(params_aller).await
         .map_err(|e| {
-            log::error!("[create_delivery] Erreur lors de la création de la livraison: {:?}", e);
+            log::error!("[create_delivery] Erreur lors de la création de la livraison aller: {:?}", e);
             e
         })?;
-    Ok(Json(serde_json::json!({ "delivery": summary })))
+
+    // ✅ Si aller-retour, créer automatiquement la livraison retour
+    if is_round_trip {
+        let return_pickup = payload.return_pickup.as_ref().unwrap();
+        let return_dropoff = payload.return_dropoff.as_ref().unwrap();
+
+        // Calculer distance et durée pour le retour
+        let return_distance = haversine_distance(
+            (return_pickup.latitude, return_pickup.longitude),
+            (return_dropoff.latitude, return_dropoff.longitude),
+        ) as i32;
+
+        // Estimer la durée (similaire à l'aller, ou utiliser la même estimation)
+        let return_duration = payload.estimated_duration_seconds;
+
+        let mut metadata_retour = json!({
+            "kind": "parcel",
+            "is_round_trip": true,
+            "outbound_delivery_id": summary_aller.id,
+            "is_return": true,
+        });
+
+        let params_retour = CreateDeliveryParams {
+            creator_id: user.id,
+            parcel: NewDeliveryParcelInput {
+                type_id: payload.parcel.type_id,
+                weight_kg: payload.parcel.weight_kg.map(dec),
+                volume_cm3: payload.parcel.volume_cm3.map(dec),
+                declared_value: payload.parcel.declared_value.map(dec),
+                notes: payload.parcel.notes,
+                photos: payload.parcel.photos,
+                constraints: payload.parcel.constraints,
+            },
+            pickup: LocationInput {
+                latitude: return_pickup.latitude,
+                longitude: return_pickup.longitude,
+                address: return_pickup.address.clone(),
+            },
+            dropoff: LocationInput {
+                latitude: return_dropoff.latitude,
+                longitude: return_dropoff.longitude,
+                address: return_dropoff.address.clone(),
+            },
+            recipient: payload.recipient.as_ref().map(DeliveryRecipientInput::from),
+            distance_meters: Some(return_distance),
+            estimated_duration_seconds: return_duration,
+            metadata: metadata_retour,
+            initial_event_payload: json!({}),
+        };
+
+        let summary_retour = service.create_delivery_request(params_retour).await
+            .map_err(|e| {
+                log::error!("[create_delivery] Erreur lors de la création de la livraison retour: {:?}", e);
+                e
+            })?;
+
+        // ✅ Lier les deux livraisons dans la base
+        sqlx::query(
+            "UPDATE deliveries 
+             SET is_round_trip = TRUE, return_delivery_id = $1, 
+                 return_pickup_location = ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
+                 return_dropoff_location = ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography,
+                 return_pickup_address = $6, return_dropoff_address = $7,
+                 return_distance_meters = $8, return_estimated_duration_seconds = $9,
+                 round_trip_discount_percent = $10
+             WHERE id = $11"
+        )
+        .bind(summary_retour.id)
+        .bind(return_pickup.longitude)
+        .bind(return_pickup.latitude)
+        .bind(return_dropoff.longitude)
+        .bind(return_dropoff.latitude)
+        .bind(return_pickup.address.as_ref())
+        .bind(return_dropoff.address.as_ref())
+        .bind(return_distance)
+        .bind(return_duration)
+        .bind(payload.round_trip_discount_percent.unwrap_or(0))
+        .bind(summary_aller.id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            log::error!("[create_delivery] Erreur lors de la liaison aller-retour: {:?}", e);
+            crate::core::types::AppError::Internal(e.to_string())
+        })?;
+
+        // ✅ Marquer la livraison retour comme liée
+        sqlx::query(
+            "UPDATE deliveries SET is_round_trip = TRUE WHERE id = $1"
+        )
+        .bind(summary_retour.id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            log::error!("[create_delivery] Erreur lors de la mise à jour livraison retour: {:?}", e);
+            crate::core::types::AppError::Internal(e.to_string())
+        })?;
+
+        // Retourner les deux livraisons
+        Ok(Json(serde_json::json!({ 
+            "delivery": summary_aller,
+            "return_delivery": summary_retour,
+            "is_round_trip": true
+        })))
+    } else {
+        Ok(Json(serde_json::json!({ "delivery": summary_aller })))
+    }
 }
 
 /// POST /api/delivery/client-order - Commande client directe avec auto-remplissage
@@ -4365,6 +4608,110 @@ async fn create_saved_address(
         "success": true,
         "address": address
     })))
+}
+
+/// ✅ NOUVEAU 2025-01-31 : POST /api/delivery/{id}/start-scheduled - Déclencher une livraison planifiée
+/// Permet au coursier de démarrer facilement une livraison qui était en attente de la date planifiée
+async fn start_scheduled_delivery(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let summary = service.get_delivery_summary(delivery_id).await?;
+    
+    // Vérifier que l'utilisateur est le coursier assigné
+    if let Some(courier_id) = summary.courier_id {
+        let courier_user_id: Option<i32> = sqlx::query_scalar(
+            "SELECT user_id FROM couriers WHERE id = $1"
+        )
+        .bind(courier_id)
+        .fetch_optional(&state.pg)
+        .await?;
+        
+        if courier_user_id != Some(user.id) {
+            return Err(AppError::Unauthorized(
+                "Vous n'êtes pas le coursier assigné à cette livraison".to_string(),
+            ));
+        }
+    } else {
+        return Err(AppError::BadRequest(
+            "Aucun coursier assigné à cette livraison".to_string(),
+        ));
+    }
+    
+    // Vérifier que c'est une livraison planifiée
+    let scheduled_delivery_at = summary.metadata
+        .get("scheduled_delivery_at_utc")
+        .and_then(|v| v.as_str())
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&chrono::Utc));
+    
+    if scheduled_delivery_at.is_none() {
+        return Err(AppError::BadRequest(
+            "Cette livraison n'est pas une livraison planifiée".to_string(),
+        ));
+    }
+    
+    // Vérifier que la date planifiée est proche ou passée (max 2h de retard autorisé)
+    if let Some(scheduled_at) = scheduled_delivery_at {
+        let now = chrono::Utc::now();
+        let diff = now - scheduled_at;
+        if diff.num_hours() > 2 {
+            return Err(AppError::BadRequest(
+                format!(
+                    "La date de livraison planifiée est trop ancienne ({}h de retard). Veuillez contacter le support.",
+                    diff.num_hours()
+                )
+            ));
+        }
+        if diff.num_minutes() < -30 {
+            return Err(AppError::BadRequest(
+                "Il est trop tôt pour démarrer cette livraison (30 minutes avant la date planifiée)".to_string(),
+            ));
+        }
+    }
+    
+    // Vérifier le statut actuel
+    match summary.status {
+        DeliveryStatus::AwaitingCourierConfirmation | DeliveryStatus::Accepted => {
+            // Déclencher la livraison : passer à EnRoutePickup
+            service
+                .update_delivery_status(
+                    delivery_id,
+                    DeliveryStatus::EnRoutePickup,
+                    None,
+                    Some(user.id),
+                    Some(json!({
+                        "scheduled_delivery_started_at": chrono::Utc::now().to_rfc3339(),
+                        "started_by": "courier",
+                    })),
+                )
+                .await?;
+            
+            // Mettre à jour les métadonnées via update_delivery_status
+            let updated_summary = service.get_delivery_summary(delivery_id).await?;
+            let mut metadata = updated_summary.metadata.clone();
+            metadata["scheduled_delivery_started"] = json!(true);
+            metadata["scheduled_delivery_started_at"] = json!(chrono::Utc::now().to_rfc3339());
+            
+            // Les métadonnées seront mises à jour via update_delivery_status
+            Ok(Json(json!({
+                "success": true,
+                "message": "Livraison planifiée démarrée avec succès",
+                "delivery_id": delivery_id,
+                "new_status": "en_route_pickup",
+            })))
+        }
+        _ => {
+            Err(AppError::BadRequest(
+                format!(
+                    "Impossible de démarrer la livraison. Statut actuel: {:?}",
+                    summary.status
+                )
+            ))
+        }
+    }
 }
 
 /// GET /api/delivery/saved-addresses/{id} - Récupérer une adresse sauvegardée par ID

@@ -1202,6 +1202,39 @@ fn build_preview_timeline(clips: &[StudioTimelineClipRecord], session_assets: &[
                         scene.id,
                         serde_json::to_string(payload_obj).unwrap_or_else(|_| "{}".to_string())
                     );
+                    // ✅ NOUVEAU 2026-01-04: Essayer d'extraire depuis d'autres champs du payload
+                    // Chercher dans videoUrl, backgroundUrl, productImageUrl au niveau racine
+                    if let Some(video_url) = payload_obj.get("videoUrl")
+                        .or_else(|| payload_obj.get("video_url"))
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.trim().is_empty()) {
+                        scene.assets.video_url = Some(video_url.to_string());
+                        info!(
+                            "[build_preview_timeline] ✅ videoUrl extrait depuis payload racine pour scène {}: {}",
+                            scene.id, video_url
+                        );
+                        let _ = found_media;
+                    } else if let Some(bg_url) = payload_obj.get("backgroundUrl")
+                        .or_else(|| payload_obj.get("background_url"))
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.trim().is_empty()) {
+                        scene.assets.background_url = Some(bg_url.to_string());
+                        info!(
+                            "[build_preview_timeline] ✅ backgroundUrl extrait depuis payload racine pour scène {}: {}",
+                            scene.id, bg_url
+                        );
+                        let _ = found_media;
+                    } else if let Some(img_url) = payload_obj.get("productImageUrl")
+                        .or_else(|| payload_obj.get("product_image_url"))
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.trim().is_empty()) {
+                        scene.assets.product_image_url = Some(img_url.to_string());
+                        info!(
+                            "[build_preview_timeline] ✅ productImageUrl extrait depuis payload racine pour scène {}: {}",
+                            scene.id, img_url
+                        );
+                        let _ = found_media;
+                    }
                 }
             } else {
                 warn!(

@@ -1,14 +1,29 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { apiGet } from '../services/api';
-import { PlaceScope, placesService } from '../services/placesService';
+import { PlaceScope, placesService, PlaceResult } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
-// ✅ Parser string location en composants (gère "Pays - Ville", "Quartier, Ville, Pays", "Pays" seul)
+// ✅ AMÉLIORÉ: Parser string location en composants (gère établissements, "Pays - Ville", "Quartier, Ville, Pays", "Pays" seul)
 const parseLocationString = (locationStr: string): LocationObject => {
     const components: any = {};
     let placeName = locationStr;
+
+    // ✅ AMÉLIORÉ: Liste étendue pour détecter les établissements, sites, bâtiments, boutiques
+    const establishmentKeywords = [
+        'restaurant', 'café', 'cafe', 'hôtel', 'hotel', 'hôpital', 'hopital', 'clinique', 'pharmacie',
+        'école', 'ecole', 'université', 'universite', 'banque', 'supermarché', 'supermarche', 
+        'marché', 'marche', 'gare', 'aéroport', 'aeroport', 'station', 'église', 'eglise', 
+        'mosquée', 'mosquee', 'stade', 'cinéma', 'cinema', 'théâtre', 'theatre', 'musée', 'musee',
+        'bibliothèque', 'bibliotheque', 'parc', 'jardin', 'plage', 'bar', 'discothèque', 'discotheque',
+        'boîte', 'boite', 'magasin', 'boutique', 'centre commercial', 'mall', 'bâtiment', 'batiment',
+        'immeuble', 'tour', 'tower', 'centre', 'center', 'complexe', 'complex', 'siège', 'siege',
+        'bureau', 'office', 'agence', 'poste', 'mairie', 'préfecture', 'prefecture'
+    ];
+    const isEstablishment = establishmentKeywords.some(keyword => 
+        locationStr.toLowerCase().includes(keyword)
+    );
 
     // Format 1 : "Pays - Ville" (retourné par placesService local pour villes)
     if (locationStr.includes(' - ')) {
@@ -19,25 +34,37 @@ const parseLocationString = (locationStr: string): LocationObject => {
             placeName = parts[1]; // Ville est le lieu principal
         }
     }
-    // Format 2 : "Quartier, Ville, Pays" ou "Ville, Région, Pays" (retourné par Google Autocomplete ou quartiers)
+    // Format 2 : "Établissement, Rue, Ville, Pays" ou "Quartier, Ville, Pays" (retourné par Google Autocomplete)
     else if (locationStr.includes(',')) {
         const parts = locationStr.split(',').map(s => s.trim());
         if (parts.length >= 3) {
-            // Détecter si c'est un quartier (premier élément court, souvent un nom de quartier)
-            // ou une ville (premier élément peut être plus long)
-            // Pour simplifier, on assume que 3 parties = "Quartier, Ville, Pays"
-            components.quartier = parts[0];
-            components.ville = parts[1];
-            components.pays = parts[2];
-            placeName = parts[0]; // Quartier est le lieu principal
+            // Si le premier élément est un établissement, c'est "Établissement, Rue, Ville, Pays"
+            if (isEstablishment) {
+                placeName = parts[0]; // Nom de l'établissement
+                if (parts.length >= 3) {
+                    components.ville = parts[parts.length - 2] || parts[parts.length - 1];
+                    components.pays = parts[parts.length - 1];
+                }
+            } else {
+                // Sinon, c'est probablement "Quartier, Ville, Pays"
+                components.quartier = parts[0];
+                components.ville = parts[1];
+                components.pays = parts[2];
+                placeName = parts[0]; // Quartier est le lieu principal
+            }
         } else if (parts.length === 2) {
-            // "Ville, Pays"
-            components.ville = parts[0];
-            components.pays = parts[1];
-            placeName = parts[0];
+            // "Ville, Pays" ou "Établissement, Ville"
+            if (isEstablishment) {
+                placeName = parts[0]; // Nom de l'établissement
+                components.ville = parts[1];
+            } else {
+                components.ville = parts[0];
+                components.pays = parts[1];
+                placeName = parts[0];
+            }
         }
     }
-    // Format 3 : Simple (pays seul ou lieu simple)
+    // Format 3 : Simple (pays seul, établissement seul ou lieu simple)
     else {
         // ✅ NOUVEAU: Vérifier si c'est un pays connu
         const paysConnus = ['Cameroun', 'Côte d\'Ivoire', 'Sénégal', 'Mali', 'Burkina Faso', 
@@ -51,6 +78,9 @@ const parseLocationString = (locationStr: string): LocationObject => {
             components.pays = locationStr;
             placeName = locationStr;
             // Ne pas mettre components.ville car c'est un pays
+        } else if (isEstablishment) {
+            // C'est un établissement seul (sans adresse complète)
+            placeName = locationStr;
         } else {
             // Lieu simple (ville probablement)
             components.ville = locationStr;
@@ -63,6 +93,217 @@ const parseLocationString = (locationStr: string): LocationObject => {
         place_name: placeName,
         components,
     };
+};
+
+// ✅ NOUVEAU: Mapper les types Google Places vers nos types locaux
+const mapGoogleTypesToLocalType = (googleTypes?: string[]): 'city' | 'neighborhood' | 'establishment' | 'country' => {
+    if (!googleTypes || googleTypes.length === 0) {
+        return 'city'; // Par défaut
+    }
+    
+    // Priorité: établissement > quartier > ville > pays
+    // Types Google Places: https://developers.google.com/maps/documentation/places/web-service/autocomplete#place-types
+    
+    // Établissements (establishment, point_of_interest, etc.)
+    const establishmentTypes = [
+        'establishment', 'point_of_interest', 'restaurant', 'food', 'cafe', 'bar', 
+        'hospital', 'pharmacy', 'doctor', 'dentist', 'school', 'university', 
+        'store', 'shopping_mall', 'supermarket', 'bank', 'atm', 'gas_station',
+        'church', 'mosque', 'synagogue', 'hindu_temple', 'stadium', 'movie_theater',
+        'museum', 'library', 'park', 'zoo', 'amusement_park', 'gym', 'spa',
+        'hotel', 'lodging', 'airport', 'train_station', 'bus_station', 'subway_station',
+        'post_office', 'police', 'fire_station', 'courthouse', 'city_hall'
+    ];
+    
+    // Quartiers (sublocality, neighborhood, etc.)
+    const neighborhoodTypes = [
+        'sublocality', 'sublocality_level_1', 'sublocality_level_2', 
+        'neighborhood', 'political'
+    ];
+    
+    // Villes (locality, administrative_area_level_2, etc.)
+    const cityTypes = [
+        'locality', 'administrative_area_level_2', 'administrative_area_level_3'
+    ];
+    
+    // Pays (country, administrative_area_level_1, etc.)
+    const countryTypes = [
+        'country', 'administrative_area_level_1', 'political'
+    ];
+    
+    // Vérifier dans l'ordre de priorité
+    if (googleTypes.some(type => establishmentTypes.includes(type))) {
+        return 'establishment';
+    }
+    if (googleTypes.some(type => neighborhoodTypes.includes(type))) {
+        return 'neighborhood';
+    }
+    if (googleTypes.some(type => cityTypes.includes(type))) {
+        return 'city';
+    }
+    if (googleTypes.some(type => countryTypes.includes(type))) {
+        return 'country';
+    }
+    
+    return 'city'; // Par défaut
+};
+
+// ✅ FALLBACK: Détecter le type de lieu depuis le texte (seulement si types Google non disponibles)
+const detectPlaceTypeFromText = (placeText: string): 'city' | 'neighborhood' | 'establishment' | 'country' => {
+    const text = placeText.toLowerCase();
+    
+    // ✅ LISTE ÉTENDUE: Mots-clés indiquant un établissement, site, bâtiment, boutique, etc.
+    const establishmentKeywords = [
+        // Restaurants & Cafés
+        'restaurant', 'café', 'cafe', 'fast food', 'pizzeria', 'boulangerie', 'patisserie',
+        // Hébergement
+        'hôtel', 'hotel', 'auberge', 'resort', 'motel',
+        // Santé
+        'hôpital', 'hopital', 'clinique', 'pharmacie', 'laboratoire', 'cabinet médical', 'dispensaire',
+        // Éducation
+        'école', 'ecole', 'université', 'universite', 'lycée', 'lycee', 'collège', 'college', 'institut',
+        // Commerce
+        'banque', 'supermarché', 'supermarche', 'marché', 'marche', 'magasin', 'boutique', 'shop', 
+        'centre commercial', 'mall', 'galerie', 'librairie', 'papeterie',
+        // Transport
+        'gare', 'aéroport', 'aeroport', 'station', 'terminal', 'arrêt', 'arret',
+        // Religion
+        'église', 'eglise', 'mosquée', 'mosquee', 'temple', 'cathédrale', 'cathedrale',
+        // Culture & Loisirs
+        'stade', 'cinéma', 'cinema', 'théâtre', 'theatre', 'musée', 'musee', 'bibliothèque', 'bibliotheque',
+        'parc', 'jardin', 'plage', 'piscine', 'salle de sport', 'gym',
+        // Divertissement
+        'bar', 'discothèque', 'discotheque', 'boîte', 'boite', 'nightclub', 'club',
+        // Bâtiments & Sites
+        'bâtiment', 'batiment', 'immeuble', 'tour', 'tower', 'centre', 'center', 'complexe', 'complex',
+        'siège', 'siege', 'bureau', 'office', 'agence', 'entrepôt', 'entrepot', 'usine', 'usine',
+        // Autres établissements
+        'poste', 'post office', 'mairie', 'préfecture', 'prefecture', 'tribunal', 'palais de justice',
+        'commissariat', 'gendarmerie', 'caserne', 'ambassade', 'consulat'
+    ];
+    
+    // ✅ Détection améliorée: vérifier si le texte contient un mot-clé d'établissement
+    if (establishmentKeywords.some(keyword => text.includes(keyword))) {
+        return 'establishment';
+    }
+    
+    // ✅ Détection par format: Si contient une virgule avec plusieurs parties
+    if (text.includes(',')) {
+        const parts = text.split(',').map(p => p.trim());
+        const firstPart = parts[0].toLowerCase();
+        
+        // Si le premier élément contient un mot-clé d'établissement, c'est un établissement
+        if (establishmentKeywords.some(keyword => firstPart.includes(keyword))) {
+            return 'establishment';
+        }
+        
+        // Si le premier élément est court (< 20 caractères) et ne ressemble pas à une ville, c'est probablement un quartier
+        if (parts.length >= 2 && parts[0].length < 20 && !firstPart.includes(' - ')) {
+            // Vérifier si ce n'est pas un établissement avec un nom court
+            const shortEstablishmentKeywords = ['bar', 'café', 'cafe', 'shop', 'boutique', 'magasin'];
+            if (!shortEstablishmentKeywords.some(keyword => firstPart.includes(keyword))) {
+                return 'neighborhood';
+            }
+        }
+    }
+    
+    // ✅ Si contient " - " c'est probablement "Pays - Ville"
+    if (text.includes(' - ')) {
+        return 'city';
+    }
+    
+    // ✅ Vérifier si c'est un pays connu
+    const paysConnus = ['cameroun', 'côte d\'ivoire', 'cote d\'ivoire', 'sénégal', 'senegal', 
+                        'mali', 'burkina faso', 'niger', 'tchad', 'guinée', 'guinee', 
+                        'bénin', 'benin', 'togo', 'congo', 'gabon', 'centrafrique', 
+                        'madagascar', 'burundi', 'rwanda', 'djibouti', 'comores', 
+                        'mauritanie', 'rd congo'];
+    if (paysConnus.includes(text.trim())) {
+        return 'country';
+    }
+    
+    // Par défaut, considérer comme ville
+    return 'city';
+};
+
+// ✅ AMÉLIORÉ: Obtenir l'icône selon le type de lieu (utilise types Google Places si disponibles)
+const getPlaceIcon = (
+    placeType: 'city' | 'neighborhood' | 'establishment' | 'country', 
+    placeText?: string,
+    googleTypes?: string[]
+): string => {
+    switch (placeType) {
+        case 'establishment': {
+            // ✅ Utiliser les types Google Places pour une détection précise (plus fiable que le texte)
+            if (googleTypes && googleTypes.length > 0) {
+                // Mapping des types Google vers les icônes
+                if (googleTypes.includes('restaurant') || googleTypes.includes('food') || googleTypes.includes('cafe')) {
+                    return 'utensils';
+                }
+                if (googleTypes.includes('lodging') || googleTypes.includes('hotel')) {
+                    return 'bed';
+                }
+                if (googleTypes.includes('hospital') || googleTypes.includes('pharmacy') || googleTypes.includes('doctor') || googleTypes.includes('dentist')) {
+                    return 'heart';
+                }
+                if (googleTypes.includes('school') || googleTypes.includes('university')) {
+                    return 'graduation-cap';
+                }
+                if (googleTypes.includes('store') || googleTypes.includes('shopping_mall') || googleTypes.includes('supermarket')) {
+                    return 'shopping-bag';
+                }
+                if (googleTypes.includes('airport') || googleTypes.includes('train_station') || googleTypes.includes('bus_station') || googleTypes.includes('subway_station')) {
+                    return 'navigation';
+                }
+                if (googleTypes.includes('church') || googleTypes.includes('mosque') || googleTypes.includes('synagogue') || googleTypes.includes('hindu_temple')) {
+                    return 'church';
+                }
+                if (googleTypes.includes('stadium') || googleTypes.includes('movie_theater') || googleTypes.includes('museum') || googleTypes.includes('library') || googleTypes.includes('park')) {
+                    return 'film';
+                }
+                if (googleTypes.includes('bank') || googleTypes.includes('atm')) {
+                    return 'dollar-sign';
+                }
+            }
+            
+            // ✅ Fallback: Détection depuis le texte si types Google non disponibles
+            if (placeText) {
+                const text = placeText.toLowerCase();
+                if (text.includes('restaurant') || text.includes('café') || text.includes('cafe')) {
+                    return 'utensils';
+                }
+                if (text.includes('hôtel') || text.includes('hotel')) {
+                    return 'bed';
+                }
+                if (text.includes('hôpital') || text.includes('hopital') || text.includes('pharmacie')) {
+                    return 'heart';
+                }
+                if (text.includes('école') || text.includes('ecole') || text.includes('université')) {
+                    return 'graduation-cap';
+                }
+                if (text.includes('magasin') || text.includes('boutique') || text.includes('mall')) {
+                    return 'shopping-bag';
+                }
+                if (text.includes('gare') || text.includes('aéroport') || text.includes('aeroport')) {
+                    return 'navigation';
+                }
+                if (text.includes('église') || text.includes('eglise') || text.includes('mosquée')) {
+                    return 'church';
+                }
+                if (text.includes('banque')) {
+                    return 'dollar-sign';
+                }
+            }
+            return 'map-pin'; // Icône par défaut pour établissements
+        }
+        case 'neighborhood':
+            return 'home'; // Icône pour quartiers
+        case 'country':
+            return 'globe'; // Icône pour pays
+        case 'city':
+        default:
+            return 'map'; // Icône pour villes
+    }
 };
 
 const formatLocationDisplay = (location?: LocationObject | string | boolean | null): string => {
@@ -171,6 +412,8 @@ export interface LocationObject {
     };
     geoname_id?: number;
     location_vector?: string[];     // Enrichi par backend
+    google_types?: string[];        // ✅ NOUVEAU: Types Google Places API (évite le hardcodage)
+    place_id?: string;              // ✅ NOUVEAU: Place ID Google Places
 }
 
 interface LocationSelectorProps {
@@ -188,8 +431,8 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     label,
     value,
     onSelect,
-    placeholder = 'Rechercher... ',
-    scope = 'all', // ✅ NOUVEAU: Par défaut, recherche universelle (tous types géographiques)
+    placeholder = 'Ville, quartier, lieu, site, boutique...',
+    scope = 'all', // ✅ NOUVEAU: Par défaut, recherche universelle (tous types géographiques + établissements)
     cityContext,
     required = false,
     enrichWithBackend = false,
@@ -199,6 +442,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     const [loading, setLoading] = useState(false);
     const [enriching, setEnriching] = useState(false);
     const [options, setOptions] = useState<string[]>([]);
+    const [optionsEnriched, setOptionsEnriched] = useState<PlaceResult[]>([]); // ✅ NOUVEAU: Stocker résultats enrichis avec types
 
     // ✅ Parser valeur affichée (string ou objet)
     const displayValue = formatLocationDisplay(value as any);
@@ -211,10 +455,13 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         const run = async () => {
             setLoading(true);
             try {
-                // ✅ NOUVEAU: Si scope est 'all', passer undefined pour recherche universelle
+                // ✅ AMÉLIORÉ: Utiliser autocompleteEnriched pour obtenir les types Google Places
                 const scopeParam = scope === 'all' ? undefined : scope as PlaceScope;
-                const results = await placesService.autocomplete(debouncedQuery, scopeParam, cityContext);
-                if (!cancelled) setOptions(results);
+                const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeParam, cityContext);
+                if (!cancelled) {
+                    setOptionsEnriched(resultsEnriched);
+                    setOptions(resultsEnriched.map(r => r.description)); // Pour compatibilité
+                }
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -262,7 +509,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                                     scope === 'city' ? 'une ville' :
                                         scope === 'neighborhood' ? 'un quartier' :
                                             scope === 'point' ? 'un lieu' :
-                                                'ville, quartier, pays...'
+                                                'ville, quartier, lieu, site...'
                                 }
                             </Text>
                             <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeButton}>
@@ -293,49 +540,72 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                             ) : options.length === 0 ? (
                                 <Text style={styles.emptyText}>Aucun résultat</Text>
                             ) : (
-                                options.map((opt) => (
-                                    <TouchableOpacity
-                                        key={opt}
-                                        style={styles.optionItem}
-                                        onPress={async () => {
-                                            setOpen(false);
+                                options.map((opt, index) => {
+                                    // ✅ AMÉLIORÉ: Utiliser les types Google Places au lieu du hardcodage
+                                    const enrichedResult = optionsEnriched[index];
+                                    const placeType = enrichedResult?.types 
+                                        ? mapGoogleTypesToLocalType(enrichedResult.types)
+                                        : detectPlaceTypeFromText(opt); // Fallback si types non disponibles
+                                    const placeIcon = getPlaceIcon(placeType, opt, enrichedResult?.types);
+                                    
+                                    return (
+                                        <TouchableOpacity
+                                            key={opt}
+                                            style={styles.optionItem}
+                                            onPress={async () => {
+                                                setOpen(false);
 
-                                            // ✅ Parser composants du lieu
-                                            const locationObj = parseLocationString(opt);
+                                                // ✅ Parser composants du lieu
+                                                const locationObj = parseLocationString(opt);
 
-                                            // ✅ Enrichir avec backend si demandé
-                                            if (enrichWithBackend) {
-                                                setEnriching(true);
-                                                try {
-                                                    const enriched = await enrichLocation(locationObj);
+                                                // ✅ Enrichir avec backend si demandé
+                                                if (enrichWithBackend) {
+                                                    setEnriching(true);
+                                                    try {
+                                                const enriched = await enrichLocation(locationObj);
                                                     const display = formatLocationDisplay(enriched);
+                                                    // ✅ NOUVEAU: Inclure les types Google Places dans LocationObject
                                                     onSelect({
                                                         ...enriched,
                                                         raw: display,
+                                                        google_types: enrichedResult?.types, // ✅ Utiliser types Google
+                                                        place_id: enrichedResult?.place_id,
                                                     });
-                                                } catch (error) {
-                                                    console.error('[LocationSelector] Erreur enrichissement:', error);
-                                                    // Fallback : retourner sans enrichissement
+                                                    } catch (error) {
+                                                        console.error('[LocationSelector] Erreur enrichissement:', error);
+                                                        // Fallback : retourner sans enrichissement
+                                                        const display = formatLocationDisplay(locationObj);
+                                                        onSelect({
+                                                            ...locationObj,
+                                                            raw: display,
+                                                            google_types: enrichedResult?.types, // ✅ Utiliser types Google même en fallback
+                                                            place_id: enrichedResult?.place_id,
+                                                        });
+                                                    } finally {
+                                                        setEnriching(false);
+                                                    }
+                                                } else {
                                                     const display = formatLocationDisplay(locationObj);
                                                     onSelect({
                                                         ...locationObj,
                                                         raw: display,
+                                                        google_types: enrichedResult?.types, // ✅ Utiliser types Google
+                                                        place_id: enrichedResult?.place_id,
                                                     });
-                                                } finally {
-                                                    setEnriching(false);
                                                 }
-                                            } else {
-                                                const display = formatLocationDisplay(locationObj);
-                                                onSelect({
-                                                    ...locationObj,
-                                                    raw: display,
-                                                });
-                                            }
-                                        }}
-                                    >
-                                        <Text style={styles.optionText}>{opt}</Text>
-                                    </TouchableOpacity>
-                                ))
+                                            }}
+                                        >
+                                            <View style={styles.optionContent}>
+                                                <SafeIcon 
+                                                    name={placeIcon} 
+                                                    size={18} 
+                                                    color={placeType === 'establishment' ? modernColors.primary : modernColors.textSecondary} 
+                                                />
+                                                <Text style={styles.optionText}>{opt}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })
                             )}
                         </ScrollView>
                     </View>
@@ -377,7 +647,8 @@ const styles = StyleSheet.create({
     loadingText: { padding: 16, color: modernColors.textSecondary },
     emptyText: { padding: 16, color: modernColors.textSecondary },
     optionItem: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: modernColors.border },
-    optionText: { fontSize: 14, color: modernColors.text },
+    optionContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    optionText: { fontSize: 14, color: modernColors.text, flex: 1 },
 });
 
 export default LocationSelector;

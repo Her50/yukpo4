@@ -1,0 +1,6 @@
+[build]
+# Désactiver les PDB pour éviter l'erreur LNK1140 (limite dépassée)
+# Les PDB sont des fichiers de debug très volumineux sur Windows
+[target.'cfg(windows)']
+rustflags = ["-C", "link-arg=/PDB:NONE"]
+

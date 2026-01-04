@@ -22,9 +22,17 @@ pub struct PlacesAutocompleteQuery {
 }
 
 #[derive(Debug, Serialize)]
+pub struct PlaceResult {
+    pub description: String,
+    pub place_id: Option<String>,
+    pub types: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct PlacesAutocompleteResponse {
     pub success: bool,
-    pub data: Option<Vec<String>>,
+    pub data: Option<Vec<String>>, // ✅ Compatibilité: format simple (string)
+    pub results: Option<Vec<PlaceResult>>, // ✅ NOUVEAU: format enrichi avec types
     pub error: Option<String>,
 }
 
@@ -54,12 +62,22 @@ pub async fn autocomplete_places(
             "Garoua, Cameroun".to_string(),
             "Maroua, Cameroun".to_string(),
         ];
+        
+        let default_results: Vec<PlaceResult> = default_suggestions
+            .iter()
+            .map(|desc| PlaceResult {
+                description: desc.clone(),
+                place_id: None,
+                types: Some(vec!["locality".to_string(), "political".to_string()]),
+            })
+            .collect();
 
         return (
             StatusCode::OK,
             Json(PlacesAutocompleteResponse {
                 success: true,
                 data: Some(default_suggestions),
+                results: Some(default_results),
                 error: None,
             }),
         );
@@ -81,6 +99,7 @@ pub async fn autocomplete_places(
             Json(PlacesAutocompleteResponse {
                 success: true,
                 data: Some(vec![]),
+                results: Some(vec![]),
                 error: None,
             }),
         );
@@ -96,8 +115,8 @@ pub async fn autocomplete_places(
     // Filtrer par type et géolocalisation
     match place_type {
         None => {
-            // ✅ NOUVEAU: Recherche universelle - tous les types géographiques (geocode = régions, pays, villes, quartiers)
-            url.push_str("&types=geocode");
+            // ✅ AMÉLIORÉ 2025-01-02: Recherche universelle - inclut TOUS les types (géographiques + établissements)
+            // Ne pas spécifier types pour obtenir tous les résultats (villes, quartiers, établissements, etc.)
             // Biais vers l'Afrique francophone
             url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ml|country:bf|country:ne|country:td|country:gn|country:bj|country:tg|country:cg|country:ga|country:cf|country:mg|country:bi|country:rw|country:dj|country:km|country:mr");
         }
@@ -157,21 +176,47 @@ pub async fn autocomplete_places(
         Ok(response) => {
             if let Ok(json) = response.json::<serde_json::Value>().await {
                 if let Some(predictions) = json.get("predictions").and_then(|p| p.as_array()) {
-                    let results: Vec<String> = predictions
+                    // ✅ AMÉLIORÉ: Extraire description, place_id et types pour chaque résultat
+                    let enriched_results: Vec<PlaceResult> = predictions
                         .iter()
                         .filter_map(|pred| {
-                            pred.get("description")
+                            let description = pred.get("description")
                                 .and_then(|d| d.as_str())
-                                .map(|s| s.to_string())
+                                .map(|s| s.to_string())?;
+                            
+                            let place_id = pred.get("place_id")
+                                .and_then(|p| p.as_str())
+                                .map(|s| s.to_string());
+                            
+                            let types = pred.get("types")
+                                .and_then(|t| t.as_array())
+                                .map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                        .collect::<Vec<String>>()
+                                });
+                            
+                            Some(PlaceResult {
+                                description,
+                                place_id,
+                                types,
+                            })
                         })
                         .take(20) // Limiter à 20 résultats
+                        .collect();
+                    
+                    // ✅ Compatibilité: format simple (string) pour l'ancien code
+                    let simple_results: Vec<String> = enriched_results
+                        .iter()
+                        .map(|r| r.description.clone())
                         .collect();
 
                     return (
                         StatusCode::OK,
                         Json(PlacesAutocompleteResponse {
                             success: true,
-                            data: Some(results),
+                            data: Some(simple_results), // Format simple pour compatibilité
+                            results: Some(enriched_results), // Format enrichi avec types
                             error: None,
                         }),
                     );
@@ -184,6 +229,7 @@ pub async fn autocomplete_places(
                 Json(PlacesAutocompleteResponse {
                     success: true,
                     data: Some(vec![]),
+                    results: Some(vec![]),
                     error: None,
                 }),
             )
@@ -196,6 +242,7 @@ pub async fn autocomplete_places(
                 Json(PlacesAutocompleteResponse {
                     success: true,
                     data: Some(vec![]),
+                    results: Some(vec![]),
                     error: None,
                 }),
             )

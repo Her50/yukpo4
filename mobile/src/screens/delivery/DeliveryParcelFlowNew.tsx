@@ -6,6 +6,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
     Alert,
     Animated,
@@ -55,22 +56,52 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     // États
-    const [parcelType, setParcelType] = useState<'document' | 'package' | 'moving' | 'cake' | 'other'>('package');
+    const [parcelType, setParcelType] = useState<'document' | 'package' | 'moving' | 'cake'>('package');
+    // ✅ Par défaut: "motorcycle" sera utilisé par le backend si vide
     const [transportMode, setTransportMode] = useState<string>('');
     const [weight, setWeight] = useState<string>('');
     const [volume, setVolume] = useState<string>('');
     const [declaredValue, setDeclaredValue] = useState<string>('');
     const [notes, setNotes] = useState('');
     const [photos, setPhotos] = useState<string[]>([]);
+    
+    // États pour formulaire adaptatif
+    const [numberOfPages, setNumberOfPages] = useState<string>(''); // Document
+    const [numberOfBoxes, setNumberOfBoxes] = useState<string>(''); // Déménagement
+    const [movingFurniture, setMovingFurniture] = useState<string>(''); // Déménagement
+    const [movingAccess, setMovingAccess] = useState<string>(''); // Déménagement
+    const [cakeSize, setCakeSize] = useState<string>(''); // Gâteau
+    const [cakeLayers, setCakeLayers] = useState<string>(''); // Gâteau
 
     const [pickupLocation, setPickupLocation] = useState<LocationData | null>(null);
     const [dropoffLocation, setDropoffLocation] = useState<LocationData | null>(null);
     const [showPickupGPS, setShowPickupGPS] = useState(false);
     const [showDropoffGPS, setShowDropoffGPS] = useState(false);
+    
+    // ✅ États pour aller-retour
+    const [isRoundTrip, setIsRoundTrip] = useState<boolean>(false);
+    const [returnPickupLocation, setReturnPickupLocation] = useState<LocationData | null>(null);
+    const [returnDropoffLocation, setReturnDropoffLocation] = useState<LocationData | null>(null);
+    const [showReturnPickupGPS, setShowReturnPickupGPS] = useState(false);
+    const [showReturnDropoffGPS, setShowReturnDropoffGPS] = useState(false);
+    const [returnDistance, setReturnDistance] = useState<number | null>(null);
 
     const [preferredDeliveryDate, setPreferredDeliveryDate] = useState<string>('');
     const [preferredDeliveryTimeStart, setPreferredDeliveryTimeStart] = useState<string>('');
     const [preferredDeliveryTimeEnd, setPreferredDeliveryTimeEnd] = useState<string>('');
+    
+    // ✅ Planification
+    const [isScheduled, setIsScheduled] = useState<boolean>(false);
+    const [scheduledDateTime, setScheduledDateTime] = useState<Date>(() => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(14, 0, 0, 0);
+        return tomorrow;
+    });
+    const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+    const [showTimePicker, setShowTimePicker] = useState<boolean>(false);
+    // ✅ Par défaut : matching instantané si planification sélectionnée
+    const [matchingMode, setMatchingMode] = useState<'immediate' | 'scheduled'>('immediate');
 
     // États pour le destinataire
     const [recipientName, setRecipientName] = useState<string>('');
@@ -111,6 +142,43 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             setEstimatedDistance(null);
         }
     }, [pickupLocation, dropoffLocation]);
+
+    // ✅ Calculer distance retour
+    useEffect(() => {
+        if (isRoundTrip && returnPickupLocation && returnDropoffLocation) {
+            const distance = calculateDistance(
+                returnPickupLocation.latitude,
+                returnPickupLocation.longitude,
+                returnDropoffLocation.latitude,
+                returnDropoffLocation.longitude
+            );
+            setReturnDistance(distance);
+        } else {
+            setReturnDistance(null);
+        }
+    }, [isRoundTrip, returnPickupLocation, returnDropoffLocation]);
+
+    // ✅ Auto-remplir les points de retour depuis les points aller si activé
+    useEffect(() => {
+        if (isRoundTrip && pickupLocation && dropoffLocation) {
+            // Point de collecte retour = point de livraison aller
+            if (!returnPickupLocation) {
+                setReturnPickupLocation({
+                    latitude: dropoffLocation.latitude,
+                    longitude: dropoffLocation.longitude,
+                    address: dropoffLocation.address,
+                });
+            }
+            // Point de livraison retour = point de collecte aller
+            if (!returnDropoffLocation) {
+                setReturnDropoffLocation({
+                    latitude: pickupLocation.latitude,
+                    longitude: pickupLocation.longitude,
+                    address: pickupLocation.address,
+                });
+            }
+        }
+    }, [isRoundTrip, pickupLocation, dropoffLocation]);
 
     useEffect(() => {
         if (visible && userLocation) {
@@ -229,10 +297,36 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
         console.log('[DeliveryParcelFlowNew] ✅ Validation passée, création de la livraison...');
 
+        // ✅ Validation aller-retour
+        if (isRoundTrip && (!returnPickupLocation || !returnDropoffLocation)) {
+            Alert.alert('Erreur', 'Veuillez sélectionner les points de collecte et de livraison pour le retour');
+            return;
+        }
+
         setLoading(true);
         try {
-            const payload: CreateDeliveryRequestPayload = {
-                preferred_vehicle_type: transportMode || undefined,
+            // ✅ Par défaut: "motorcycle" si aucun type spécifié (sera géré par le backend)
+        const payload: CreateDeliveryRequestPayload = {
+                preferred_vehicle_type: transportMode || undefined, // Backend utilisera "motorcycle" par défaut
+                is_round_trip: isRoundTrip || undefined,
+                // ✅ Planification
+                scheduled_delivery_at: isScheduled
+                    ? scheduledDateTime.toISOString()
+                    : undefined,
+                matching_mode: isScheduled ? matchingMode : undefined,
+                ...(isRoundTrip && returnPickupLocation && returnDropoffLocation && {
+                    return_pickup: {
+                        latitude: returnPickupLocation.latitude,
+                        longitude: returnPickupLocation.longitude,
+                        address: returnPickupLocation.address,
+                    },
+                    return_dropoff: {
+                        latitude: returnDropoffLocation.latitude,
+                        longitude: returnDropoffLocation.longitude,
+                        address: returnDropoffLocation.address,
+                    },
+                    round_trip_discount_percent: 10, // 10% de réduction par défaut pour aller-retour
+                }),
                 parcel: {
                     type_id: getParcelTypeId(parcelType),
                     notes: notes || `Colis: ${parcelType}`,
@@ -241,6 +335,19 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         weight: weight ? parseFloat(weight) : undefined,
                         volume: volume ? parseFloat(volume) : undefined,
                         declared_value: declaredValue ? parseFloat(declaredValue) : undefined,
+                        // Champs spécifiques selon le type
+                        ...(parcelType === 'document' && {
+                            number_of_pages: numberOfPages ? parseInt(numberOfPages) : undefined,
+                        }),
+                        ...(parcelType === 'moving' && {
+                            number_of_boxes: numberOfBoxes ? parseInt(numberOfBoxes) : undefined,
+                            furniture: movingFurniture || undefined,
+                            access: movingAccess || undefined,
+                        }),
+                        ...(parcelType === 'cake' && {
+                            cake_size: cakeSize || undefined,
+                            cake_layers: cakeLayers ? parseInt(cakeLayers) : undefined,
+                        }),
                     },
                 },
                 pickup: {
@@ -312,70 +419,184 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
             <View style={styles.typeSelector}>
                 <Text style={styles.label}>Type de colis</Text>
-                <View style={styles.typeButtons}>
+                <View style={styles.typeButtonsGrid}>
                     {[
-                        { id: 'document', label: '📄 Document', icon: 'file-text' },
-                        { id: 'package', label: '📦 Colis', icon: 'package' },
-                        { id: 'moving', label: '🚚 Déménagement', icon: 'truck' },
-                        { id: 'cake', label: '🎂 Gâteau', icon: 'cake' },
-                        { id: 'other', label: '📋 Autre', icon: 'box' },
+                        { id: 'document', label: 'Document', icon: 'file-text' },
+                        { id: 'package', label: 'Colis', icon: 'package' },
+                        { id: 'moving', label: 'Déménagement', icon: 'truck' },
+                        { id: 'cake', label: 'Gâteau', icon: 'cake' },
                     ].map((type) => (
                         <HapticTouchable
                             key={type.id}
                             hapticType="light"
                             onPress={() => setParcelType(type.id as any)}
                             style={[
-                                styles.typeButton,
+                                styles.typeButtonGrid,
                                 parcelType === type.id && styles.typeButtonActive,
                             ]}
                         >
                             <SafeIcon
                                 name={type.icon}
-                                size={20}
+                                size={24}
                                 color={parcelType === type.id ? '#FFFFFF' : modernColors.text}
                             />
                             <Text
                                 style={[
-                                    styles.typeButtonText,
+                                    styles.typeButtonTextGrid,
                                     parcelType === type.id && styles.typeButtonTextActive,
                                 ]}
+                                numberOfLines={1}
                             >
-                                {type.label.split(' ')[1]}
+                                {type.label}
                             </Text>
                         </HapticTouchable>
                     ))}
                 </View>
             </View>
 
-            <View style={styles.inputGroup}>
-                <Text style={styles.label}>Poids (kg)</Text>
-                <NativeInput
-                    placeholder="Ex: 2.5"
-                    value={weight}
-                    onChangeText={setWeight}
-                    keyboardType="numeric"
-                />
-            </View>
+            {/* Formulaire adaptatif selon le type de colis */}
+            {parcelType === 'document' && (
+                <>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Nombre de pages (optionnel)</Text>
+                        <NativeInput
+                            placeholder="Ex: 10"
+                            value={numberOfPages}
+                            onChangeText={setNumberOfPages}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
+                        <NativeInput
+                            placeholder="Ex: 5000"
+                            value={declaredValue}
+                            onChangeText={setDeclaredValue}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                </>
+            )}
 
-            <View style={styles.inputGroup}>
-                <Text style={styles.label}>Volume (L)</Text>
-                <NativeInput
-                    placeholder="Ex: 10"
-                    value={volume}
-                    onChangeText={setVolume}
-                    keyboardType="numeric"
-                />
-            </View>
+            {parcelType === 'package' && (
+                <>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Poids (kg)</Text>
+                        <NativeInput
+                            placeholder="Ex: 2.5"
+                            value={weight}
+                            onChangeText={setWeight}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Volume (L)</Text>
+                        <NativeInput
+                            placeholder="Ex: 10"
+                            value={volume}
+                            onChangeText={setVolume}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
+                        <NativeInput
+                            placeholder="Ex: 50000"
+                            value={declaredValue}
+                            onChangeText={setDeclaredValue}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                </>
+            )}
 
-            <View style={styles.inputGroup}>
-                <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
-                <NativeInput
-                    placeholder="Ex: 50000"
-                    value={declaredValue}
-                    onChangeText={setDeclaredValue}
-                    keyboardType="numeric"
-                />
-            </View>
+            {parcelType === 'moving' && (
+                <>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Nombre de cartons</Text>
+                        <NativeInput
+                            placeholder="Ex: 20"
+                            value={numberOfBoxes}
+                            onChangeText={setNumberOfBoxes}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Meubles à transporter (optionnel)</Text>
+                        <NativeInput
+                            placeholder="Ex: Canapé, Table, Armoire"
+                            value={movingFurniture}
+                            onChangeText={setMovingFurniture}
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Accès (étage, ascenseur, etc.)</Text>
+                        <NativeInput
+                            placeholder="Ex: 3ème étage, ascenseur disponible"
+                            value={movingAccess}
+                            onChangeText={setMovingAccess}
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Volume estimé (m³)</Text>
+                        <NativeInput
+                            placeholder="Ex: 20"
+                            value={volume}
+                            onChangeText={setVolume}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
+                        <NativeInput
+                            placeholder="Ex: 500000"
+                            value={declaredValue}
+                            onChangeText={setDeclaredValue}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                </>
+            )}
+
+            {parcelType === 'cake' && (
+                <>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Taille du gâteau</Text>
+                        <NativeInput
+                            placeholder="Ex: 20cm, 30cm"
+                            value={cakeSize}
+                            onChangeText={setCakeSize}
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Nombre d'étages</Text>
+                        <NativeInput
+                            placeholder="Ex: 2"
+                            value={cakeLayers}
+                            onChangeText={setCakeLayers}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Poids (kg)</Text>
+                        <NativeInput
+                            placeholder="Ex: 2"
+                            value={weight}
+                            onChangeText={setWeight}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
+                        <NativeInput
+                            placeholder="Ex: 30000"
+                            value={declaredValue}
+                            onChangeText={setDeclaredValue}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                </>
+            )}
 
             <View style={styles.inputGroup}>
                 <Text style={styles.label}>Notes (optionnel)</Text>
@@ -388,6 +609,241 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 />
             </View>
 
+            {/* Type de transport remonté avant les photos */}
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>Type de transport souhaité</Text>
+                <View style={styles.vehicleGridContainer}>
+                    {VEHICLE_TRANSPORT_OPTIONS.map((type) => (
+                        <TouchableOpacity
+                            key={type.value}
+                            style={[
+                                styles.vehicleOptionGrid,
+                                transportMode === type.value && styles.vehicleOptionSelected,
+                            ]}
+                            onPress={() => setTransportMode(transportMode === type.value ? '' : type.value)}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={styles.vehicleIconGrid}>{type.icon}</Text>
+                            <Text
+                                style={[
+                                    styles.vehicleLabelGrid,
+                                    transportMode === type.value && styles.vehicleLabelSelected,
+                                ]}
+                                numberOfLines={2}
+                            >
+                                {type.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </View>
+
+            {/* ✅ Option Aller-retour */}
+            <View style={styles.inputGroup}>
+                <View style={styles.checkboxRow}>
+                    <TouchableOpacity
+                        style={styles.checkboxRow}
+                        onPress={() => setIsRoundTrip(!isRoundTrip)}
+                    >
+                        <View style={[styles.checkbox, isRoundTrip && styles.checkboxChecked]}>
+                            {isRoundTrip && (
+                                <SafeIcon name="check" size={16} color="#FFFFFF" />
+                            )}
+                        </View>
+                        <Text style={styles.checkboxLabel}>
+                            Aller-retour (réduction 10%)
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+                {isRoundTrip && (
+                    <>
+                        <Text style={[styles.label, { marginTop: 16, marginBottom: 8 }]}>
+                            Point de collecte retour (même que point de livraison aller)
+                        </Text>
+                        {returnPickupLocation ? (
+                            <NativeCard style={styles.locationCard}>
+                                <Text style={styles.locationText}>
+                                    {returnPickupLocation.address ||
+                                        `${returnPickupLocation.latitude.toFixed(6)}, ${returnPickupLocation.longitude.toFixed(6)}`}
+                                </Text>
+                                <NativeButton
+                                    title="Modifier"
+                                    variant="outline"
+                                    size="small"
+                                    onPress={() => setShowReturnPickupGPS(true)}
+                                    style={styles.changeButton}
+                                />
+                            </NativeCard>
+                        ) : (
+                            <NativeButton
+                                title="Sélectionner le point de collecte retour"
+                                variant="outline"
+                                onPress={() => setShowReturnPickupGPS(true)}
+                            />
+                        )}
+                        <Text style={[styles.label, { marginTop: 16, marginBottom: 8 }]}>
+                            Point de livraison retour (même que point de collecte aller)
+                        </Text>
+                        {returnDropoffLocation ? (
+                            <NativeCard style={styles.locationCard}>
+                                <Text style={styles.locationText}>
+                                    {returnDropoffLocation.address ||
+                                        `${returnDropoffLocation.latitude.toFixed(6)}, ${returnDropoffLocation.longitude.toFixed(6)}`}
+                                </Text>
+                                {returnDistance !== null && (
+                                    <Text style={styles.distance}>
+                                        Distance retour : {returnDistance.toFixed(1)} km
+                                    </Text>
+                                )}
+                                <NativeButton
+                                    title="Modifier"
+                                    variant="outline"
+                                    size="small"
+                                    onPress={() => setShowReturnDropoffGPS(true)}
+                                    style={styles.changeButton}
+                                />
+                            </NativeCard>
+                        ) : (
+                            <NativeButton
+                                title="Sélectionner le point de livraison retour"
+                                variant="outline"
+                                onPress={() => setShowReturnDropoffGPS(true)}
+                            />
+                        )}
+                    </>
+                )}
+            </View>
+
+            {/* ✅ Section Planification */}
+            <View style={styles.inputGroup}>
+                <View style={styles.checkboxRow}>
+                    <TouchableOpacity
+                        style={styles.checkboxRow}
+                        onPress={() => {
+                            setIsScheduled(!isScheduled);
+                            if (!isScheduled) {
+                                const tomorrow = new Date();
+                                tomorrow.setDate(tomorrow.getDate() + 1);
+                                tomorrow.setHours(14, 0, 0, 0);
+                                setScheduledDateTime(tomorrow);
+                            }
+                        }}
+                    >
+                        <View style={[styles.checkbox, isScheduled && styles.checkboxChecked]}>
+                            {isScheduled && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                        </View>
+                        <Text style={styles.checkboxLabel}>Planifier cette livraison</Text>
+                    </TouchableOpacity>
+                </View>
+                {isScheduled && (
+                    <>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Date de livraison *</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowDatePicker(true)}
+                                style={styles.dateTimeButton}
+                            >
+                                <Text style={styles.dateTimeText}>
+                                    {scheduledDateTime.toLocaleDateString('fr-FR', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                    })}
+                                </Text>
+                                <SafeIcon name="calendar" size={20} color={modernColors.primary} />
+                            </TouchableOpacity>
+                            {showDatePicker && (
+                                <DateTimePicker
+                                    value={scheduledDateTime}
+                                    mode="date"
+                                    display="default"
+                                    minimumDate={new Date()}
+                                    onChange={(event, date) => {
+                                        setShowDatePicker(false);
+                                        if (date) {
+                                            // Préserver l'heure existante
+                                            date.setHours(
+                                                scheduledDateTime.getHours(),
+                                                scheduledDateTime.getMinutes(),
+                                                0,
+                                                0
+                                            );
+                                            setScheduledDateTime(date);
+                                        }
+                                    }}
+                                />
+                            )}
+                        </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Heure de livraison *</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowTimePicker(true)}
+                                style={styles.dateTimeButton}
+                            >
+                                <Text style={styles.dateTimeText}>
+                                    {scheduledDateTime.toLocaleTimeString('fr-FR', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                    })}
+                                </Text>
+                                <SafeIcon name="clock" size={20} color={modernColors.primary} />
+                            </TouchableOpacity>
+                            {showTimePicker && (
+                                <DateTimePicker
+                                    value={scheduledDateTime}
+                                    mode="time"
+                                    display="default"
+                                    is24Hour={true}
+                                    onChange={(event, date) => {
+                                        setShowTimePicker(false);
+                                        if (date) {
+                                            // Préserver la date existante
+                                            const newDateTime = new Date(scheduledDateTime);
+                                            newDateTime.setHours(date.getHours(), date.getMinutes(), 0, 0);
+                                            setScheduledDateTime(newDateTime);
+                                        }
+                                    }}
+                                />
+                            )}
+                        </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Quand matcher le coursier ?</Text>
+                            <View style={styles.radioGroup}>
+                                <TouchableOpacity
+                                    style={styles.radioOption}
+                                    onPress={() => setMatchingMode('immediate')}
+                                >
+                                    <View style={[styles.radio, matchingMode === 'immediate' && styles.radioChecked]}>
+                                        {matchingMode === 'immediate' && <View style={styles.radioInner} />}
+                                    </View>
+                                    <View style={styles.radioLabelContainer}>
+                                        <Text style={styles.radioLabel}>Maintenant (par défaut - contact à l'avance)</Text>
+                                        <Text style={styles.radioDescription}>
+                                            ✅ Le coursier sera assigné maintenant. Vous pourrez le contacter et préparer la livraison. Il devra déclencher la livraison au moment planifié.
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.radioOption}
+                                    onPress={() => setMatchingMode('scheduled')}
+                                >
+                                    <View style={[styles.radio, matchingMode === 'scheduled' && styles.radioChecked]}>
+                                        {matchingMode === 'scheduled' && <View style={styles.radioInner} />}
+                                    </View>
+                                    <View style={styles.radioLabelContainer}>
+                                        <Text style={styles.radioLabel}>Au moment planifié</Text>
+                                        <Text style={styles.radioDescription}>
+                                            Le coursier sera recherché automatiquement à la date et heure planifiée.
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </>
+                )}
+            </View>
+
             <View style={styles.inputGroup}>
                 <Text style={styles.label}>Photos du colis</Text>
                 <MediaUploadManager
@@ -396,46 +852,6 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     maxMedia={5}
                     allowVideo={false}
                 />
-            </View>
-
-            <View style={styles.inputGroup}>
-                <Text style={styles.label}>Type de transport souhaité (optionnel)</Text>
-                <View style={styles.vehicleScrollContainer}>
-                    <FlatList
-                        data={VEHICLE_TRANSPORT_OPTIONS}
-                        horizontal
-                        showsHorizontalScrollIndicator={true}
-                        keyExtractor={(item) => item.value}
-                        contentContainerStyle={styles.vehicleScrollContent}
-                        style={styles.vehicleScroll}
-                        renderItem={({ item: type }) => (
-                            <TouchableOpacity
-                                style={[
-                                    styles.vehicleOption,
-                                    transportMode === type.value && styles.vehicleOptionSelected,
-                                ]}
-                                onPress={() => setTransportMode(transportMode === type.value ? '' : type.value)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.vehicleIcon}>{type.icon}</Text>
-                                <Text
-                                    style={[
-                                        styles.vehicleLabel,
-                                        transportMode === type.value && styles.vehicleLabelSelected,
-                                    ]}
-                                >
-                                    {type.label}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        nestedScrollEnabled={true}
-                        scrollEnabled={true}
-                        bounces={true}
-                        decelerationRate="fast"
-                        alwaysBounceHorizontal={true}
-                        removeClippedSubviews={false}
-                    />
-                </View>
             </View>
         </ScrollView>
     );
@@ -798,6 +1214,73 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 title="Sélectionner le point de livraison"
                 allowZoneSelection={false}
             />
+
+            {/* ✅ Modals GPS pour retour */}
+            <ModernGPSModal
+                visible={showReturnPickupGPS}
+                onClose={() => setShowReturnPickupGPS(false)}
+                onSelect={(coords) => {
+                    const [lat, lng] = coords.split(',').map(parseFloat);
+                    Location.reverseGeocodeAsync({ latitude: lat, longitude: lng })
+                        .then((reverseGeocode) => {
+                            let address = '';
+                            if (reverseGeocode && reverseGeocode.length > 0) {
+                                const addr = reverseGeocode[0];
+                                address = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.city || ''}, ${addr.region || ''}`.trim();
+                            }
+                            setReturnPickupLocation({ latitude: lat, longitude: lng, address });
+                            setShowReturnPickupGPS(false);
+                        })
+                        .catch(() => {
+                            setReturnPickupLocation({ latitude: lat, longitude: lng, address: '' });
+                            setShowReturnPickupGPS(false);
+                        });
+                }}
+                currentLocation={
+                    returnPickupLocation
+                        ? { lat: returnPickupLocation.latitude, lng: returnPickupLocation.longitude }
+                        : dropoffLocation
+                            ? { lat: dropoffLocation.latitude, lng: dropoffLocation.longitude }
+                            : userLocation
+                                ? { lat: userLocation.coords.latitude, lng: userLocation.coords.longitude }
+                                : null
+                }
+                title="Sélectionner le point de collecte retour"
+                allowZoneSelection={false}
+            />
+
+            <ModernGPSModal
+                visible={showReturnDropoffGPS}
+                onClose={() => setShowReturnDropoffGPS(false)}
+                onSelect={(coords) => {
+                    const [lat, lng] = coords.split(',').map(parseFloat);
+                    Location.reverseGeocodeAsync({ latitude: lat, longitude: lng })
+                        .then((reverseGeocode) => {
+                            let address = '';
+                            if (reverseGeocode && reverseGeocode.length > 0) {
+                                const addr = reverseGeocode[0];
+                                address = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.city || ''}, ${addr.region || ''}`.trim();
+                            }
+                            setReturnDropoffLocation({ latitude: lat, longitude: lng, address });
+                            setShowReturnDropoffGPS(false);
+                        })
+                        .catch(() => {
+                            setReturnDropoffLocation({ latitude: lat, longitude: lng, address: '' });
+                            setShowReturnDropoffGPS(false);
+                        });
+                }}
+                currentLocation={
+                    returnDropoffLocation
+                        ? { lat: returnDropoffLocation.latitude, lng: returnDropoffLocation.longitude }
+                        : pickupLocation
+                            ? { lat: pickupLocation.latitude, lng: pickupLocation.longitude }
+                            : userLocation
+                                ? { lat: userLocation.coords.latitude, lng: userLocation.coords.longitude }
+                                : null
+                }
+                title="Sélectionner le point de livraison retour"
+                allowZoneSelection={false}
+            />
         </>
     );
 };
@@ -869,6 +1352,25 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         gap: 8,
     },
+    typeButtonsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        justifyContent: 'space-between',
+    },
+    typeButtonGrid: {
+        width: '48%',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 16,
+        backgroundColor: modernColors.surfaceVariant,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        minHeight: 100,
+    },
     typeButton: {
         flex: 1,
         minWidth: '30%',
@@ -885,6 +1387,12 @@ const styles = StyleSheet.create({
     typeButtonActive: {
         backgroundColor: modernColors.primary,
         borderColor: modernColors.primary,
+    },
+    typeButtonTextGrid: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.text,
+        textAlign: 'center',
     },
     typeButtonText: {
         fontSize: 12,
@@ -992,6 +1500,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         flexGrow: 0,
     },
+    vehicleGridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    vehicleOptionGrid: {
+        width: '23%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 8,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surfaceVariant,
+        minHeight: 80,
+    },
     vehicleOption: {
         alignItems: 'center',
         justifyContent: 'center',
@@ -1009,9 +1534,19 @@ const styles = StyleSheet.create({
         borderColor: modernColors.primary,
         backgroundColor: modernColors.primary + '20',
     },
+    vehicleIconGrid: {
+        fontSize: 24,
+        marginBottom: 4,
+    },
     vehicleIcon: {
         fontSize: 32,
         marginBottom: 4,
+    },
+    vehicleLabelGrid: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: modernColors.text,
+        textAlign: 'center',
     },
     vehicleLabel: {
         fontSize: 12,
@@ -1021,6 +1556,74 @@ const styles = StyleSheet.create({
     },
     vehicleLabelSelected: {
         color: modernColors.primary,
+    },
+    // ✅ Styles pour planification
+    radioGroup: {
+        marginTop: 8,
+        gap: 12,
+    },
+    radioOption: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: modernColors.surfaceVariant,
+        gap: 12,
+    },
+    radio: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 2,
+    },
+    radioChecked: {
+        borderColor: modernColors.primary,
+    },
+    radioInner: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: modernColors.primary,
+    },
+    radioLabelContainer: {
+        flex: 1,
+    },
+    radioLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    radioDescription: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        lineHeight: 16,
+    },
+    helperText: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    dateTimeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+        marginTop: 8,
+    },
+    dateTimeText: {
+        fontSize: 14,
+        color: modernColors.text,
+        fontWeight: '500',
     },
 });
 

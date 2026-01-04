@@ -5,14 +5,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  DeviceEventEmitter,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -34,7 +32,6 @@ import LocationSelector from '../components/LocationSelector';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
 import ProductFieldSelector from '../components/ProductFieldSelector';
-import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 // TODO: Fix TypeScript type issue
@@ -49,72 +46,6 @@ interface ServiceData {
   serviceId?: string;
   cout?: number;
 }
-
-// ✅ NOUVEAU 2026-01-02: Fonction utilitaire pour interroger le statut d'un job de création de produit
-const pollProductCreationJobStatus = async (
-  serviceId: number,
-  jobId: number,
-  onProgress?: (status: string, attempt: number) => void
-): Promise<{ productIndex: number | null; error: string | null }> => {
-  const maxAttempts = 60; // 60 tentatives max (5 minutes avec intervalle de 5s)
-  const pollInterval = 5000; // 5 secondes entre chaque tentative
-  
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      if (attempt > 0) {
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-      }
-      
-      const statusResponse = await apiGet(`/api/services/${serviceId}/products/queue/${jobId}`);
-      
-      if (!statusResponse.success) {
-        console.warn('[pollProductCreationJobStatus] ⚠️ Erreur récupération statut job:', statusResponse.error);
-        continue;
-      }
-      
-      const statusData: any = statusResponse.data ?? {};
-      const jobStatus = statusData.status;
-      
-      if (onProgress) {
-        onProgress(jobStatus, attempt + 1);
-      }
-      
-      console.log('[pollProductCreationJobStatus] 📊 Statut job:', jobStatus, '(tentative', attempt + 1, '/', maxAttempts, ')');
-      
-      if (jobStatus === 'completed') {
-        // Job terminé avec succès, extraire product_index depuis result_data
-        const resultData = statusData.result;
-        if (resultData && typeof resultData === 'object') {
-          const productIndex = resultData.product_index ?? resultData.data?.product_index;
-          if (typeof productIndex === 'number') {
-            console.log('[pollProductCreationJobStatus] ✅ Job terminé, product_index:', productIndex);
-            return { productIndex, error: null };
-          }
-        }
-        // Si pas de product_index dans result, essayer de le calculer depuis produits_data
-        console.warn('[pollProductCreationJobStatus] ⚠️ product_index non trouvé dans result_data');
-        return { productIndex: null, error: null }; // On continuera sans product_index
-      } else if (jobStatus === 'failed') {
-        const errorMsg = statusData.error_message || 'Erreur lors de la création du produit';
-        console.error('[pollProductCreationJobStatus] ❌ Job échoué:', errorMsg);
-        return { productIndex: null, error: errorMsg };
-      } else if (jobStatus === 'pending' || jobStatus === 'processing') {
-        // Continuer à interroger
-        continue;
-      } else {
-        console.warn('[pollProductCreationJobStatus] ⚠️ Statut job inattendu:', jobStatus);
-        continue;
-      }
-    } catch (error: any) {
-      console.error('[pollProductCreationJobStatus] ❌ Erreur interrogation statut job:', error);
-      // Continuer à interroger malgré l'erreur
-      continue;
-    }
-  }
-  
-  // Timeout après maxAttempts
-  return { productIndex: null, error: 'Timeout: La création du produit a pris trop de temps' };
-};
 
 interface MediaFiles {
   images: any[];
@@ -133,8 +64,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const mainScrollViewRef = React.useRef<ScrollView>(null);
   const blockRefs = React.useRef<Record<number, View | null>>({});
   const blockPositions = React.useRef<Record<number, number>>({});
-  const tabsScrollViewRef = React.useRef<ScrollView>(null);
-  const tabRefs = React.useRef<Record<number, View | null>>({});
 
   const params = ((route || {})?.params || {}) as any;
 
@@ -215,15 +144,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   };
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
-  // ✅ NOUVEAU: États pour le modal de configuration de livraison
-  const [showProductDeliveryConfig, setShowProductDeliveryConfig] = useState(false);
-  const [productDeliveryConfigData, setProductDeliveryConfigData] = useState<{
-    serviceId: number;
-    productIndex: number;
-    productName: string;
-  } | null>(null);
-  // ✅ NOUVEAU: État pour savoir si on vient de créer un service (pour redirection après modal)
-  const [justCreatedService, setJustCreatedService] = useState(false);
   // ✅ SUPPRIMÉ: Duplication produits - Les produits sont maintenant gérés via les champs dynamiques
   const normalizeMediaList = (value: any): any[] => {
     if (!value) {
@@ -372,30 +292,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       setCurrentBlock(displayedBlocks[0].index);
     }
   }, [displayedBlocks, currentBlock]);
-
-  // ✅ NOUVEAU: Scroller automatiquement vers l'onglet actif dans la navigation horizontale
-  useEffect(() => {
-    if (!tabsScrollViewRef.current || !displayedBlocks || displayedBlocks.length === 0) {
-      return;
-    }
-
-    const activeTabIndex = displayedBlocks.findIndex((item) => item.index === currentBlock);
-    if (activeTabIndex === -1) {
-      return;
-    }
-
-    // Utiliser une estimation basée sur la largeur moyenne d'un onglet (minWidth 120 + gap 8 = ~128px)
-    // Centrer approximativement l'onglet actif
-    setTimeout(() => {
-      if (tabsScrollViewRef.current) {
-        const estimatedScrollX = activeTabIndex * 128 - 100; // 100 pour centrer approximativement
-        tabsScrollViewRef.current.scrollTo({
-          x: Math.max(0, estimatedScrollX),
-          animated: true,
-        });
-      }
-    }, 100);
-  }, [currentBlock, displayedBlocks]);
 
   useEffect(() => {
     const parseMediaValue = (value: any): any[] => {
@@ -618,6 +514,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Nom du produit / prestation',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
@@ -628,6 +526,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Catégorie du produit / prestation',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
         },
@@ -717,6 +617,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Nom du produit / prestation',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
@@ -727,6 +629,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Catégorie du produit / prestation',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
         },
@@ -823,6 +727,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: isPrestation ? 'Nom de la prestation' : 'Nom du produit',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de mathématiques, Réparation téléphone, Consultation médicale...'
@@ -835,6 +741,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Catégorie du produit/prestation',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
         } as DynamicField);
@@ -2106,84 +2014,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           <LinearAutocompleteEditor
             label={field.label}
             identifiantBase={field.identifiantBase || field.name || 'produit'}
-            sousCaracteristiques={(() => {
-              // ✅ CORRIGÉ: Construire les sous-caractéristiques avec alignement correct comme dans AjoutProduitSimpleScreen
-              // PRIORITÉ 1: Utiliser sous_caracteristiques complets si disponibles (contient TOUTES les valeurs)
-              const sousCaracsComplets = (fieldValue && typeof fieldValue === 'object' && 'sous_caracteristiques' in fieldValue)
-                ? fieldValue.sous_caracteristiques
-                : currentSousCaracs
-                || field.sousCaracteristiques
-                || {};
-              
-              if (sousCaracsComplets && typeof sousCaracsComplets === 'object' && Object.keys(sousCaracsComplets).length > 0) {
-                const sousCaracsObj: Record<string, string[]> = {};
-                Object.entries(sousCaracsComplets).forEach(([key, vals]: [string, any]) => {
-                  if (Array.isArray(vals) && vals.length > 0) {
-                    // ✅ Passer TOUTES les valeurs pour permettre l'affichage du tableau complet
-                    const allValues = vals
-                      .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
-                      .map((v: string) => v.trim());
-                    if (allValues.length > 0) {
-                      sousCaracsObj[key] = allValues;
-                    }
-                  }
-                });
-                
-                if (Object.keys(sousCaracsObj).length > 0) {
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Utilisation sous_caracteristiques complets (TOUTES les valeurs):', sousCaracsObj);
-                  return sousCaracsObj;
-                }
-              }
-
-              // ✅ PRIORITÉ 2: Construire depuis product_vector/product_labels pour garantir l'alignement correct
-              const productVector = (fieldValue && typeof fieldValue === 'object' && 'product_vector' in fieldValue && Array.isArray(fieldValue.product_vector))
-                ? fieldValue.product_vector.filter((v: any) => typeof v === 'string')
-                : (valeursFormulaire.product_vector && Array.isArray(valeursFormulaire.product_vector))
-                  ? valeursFormulaire.product_vector.filter((v: any) => typeof v === 'string')
-                  : undefined;
-              
-              const productLabels = (fieldValue && typeof fieldValue === 'object' && 'product_labels' in fieldValue && Array.isArray(fieldValue.product_labels))
-                ? fieldValue.product_labels.filter((label: any) => typeof label === 'string')
-                : (valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels))
-                  ? valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string')
-                  : undefined;
-
-              if (productVector && productLabels && productVector.length > 0 && productVector.length === productLabels.length) {
-                const sousCaracsFromPreferred: Record<string, string[]> = {};
-                
-                console.log('[FormulaireYukpoIntelligentScreen] 🔍 Construction depuis product_vector/product_labels:', {
-                  product_vector: productVector,
-                  product_labels: productLabels,
-                  length_vector: productVector.length,
-                  length_labels: productLabels.length
-                });
-                
-                // ✅ CRITIQUE: Chaque valeur doit être associée à son label correspondant par index
-                productVector.forEach((value: string, index: number) => {
-                  const label = productLabels[index];
-                  
-                  if (label && typeof label === 'string' && value && typeof value === 'string') {
-                    // Si le label existe déjà, ajouter la valeur (cas où même label apparaît plusieurs fois)
-                    if (!sousCaracsFromPreferred[label]) {
-                      sousCaracsFromPreferred[label] = [value];
-                    } else {
-                      const existingValues = sousCaracsFromPreferred[label];
-                      if (!existingValues.includes(value)) {
-                        sousCaracsFromPreferred[label] = [value, ...existingValues];
-                      }
-                    }
-                  }
-                });
-                
-                if (Object.keys(sousCaracsFromPreferred).length > 0) {
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Utilisation sous_caracteristiques depuis product_vector/product_labels (alignement garanti):', sousCaracsFromPreferred);
-                  return sousCaracsFromPreferred;
-                }
-              }
-
-              // Fallback: Utiliser currentSousCaracs
-              return currentSousCaracs || {};
-            })()}
+            sousCaracteristiques={currentSousCaracs || {}} // ✅ PROTECTION: Garantir objet valide
             separateur={safeSeparateur} // ✅ PROTECTION ULTIME: Garantit string valide
             value={currentValues || []} // ✅ PROTECTION: Garantir array de strings valides
             contextValues={[
@@ -2195,21 +2026,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               valeursFormulaire.titre_service,
             ]}
             categoryValue={valeursFormulaire.categorie_produit || valeursFormulaire.category || ''}
-            // ✅ NOUVEAU: Passer productLabels pour garantir l'ordre correct des sous-caractéristiques
-            productLabels={
-              (fieldValue && typeof fieldValue === 'object' && 'product_labels' in fieldValue && Array.isArray(fieldValue.product_labels))
-                ? fieldValue.product_labels.filter((label: any) => typeof label === 'string')
-                : (valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels))
-                  ? valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string')
-                  : undefined
-            }
-            productVector={
-              (fieldValue && typeof fieldValue === 'object' && 'product_vector' in fieldValue && Array.isArray(fieldValue.product_vector))
-                ? fieldValue.product_vector.filter((v: any) => typeof v === 'string')
-                : (valeursFormulaire.product_vector && Array.isArray(valeursFormulaire.product_vector))
-                  ? valeursFormulaire.product_vector.filter((v: any) => typeof v === 'string')
-                  : undefined
-            }
             onChange={(values, updatedSousCaracs) => {
               // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
               if (updatedSousCaracs) {
@@ -2413,7 +2229,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // ✅ NOUVEAU 2025-11-02: Gestionnaire de média produit avec upload complet
     if (field.name === '_product_media_manager') {
       return (
-        <View key={field.name} style={[styles.fieldContainer, { overflow: 'visible' }]}>
+        <View key={field.name} style={styles.fieldContainer}>
           <Text style={styles.fieldLabel}>{field.label || '📸 Médias du produit'}</Text>
           <Text style={styles.helperText}>
             Ajoutez des photos et vidéos pour illustrer votre produit/prestation
@@ -2426,19 +2242,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             readonly={isReadonly}
             maxImages={MAX_PRODUCT_IMAGES}
             maxVideos={3}
-            // ✅ OPTIMISATION: Callbacks pour gérer le scroll horizontal et éviter les conflits
-            onHorizontalScrollStart={() => {
-              // Bloquer temporairement le scroll vertical pendant le scroll horizontal
-              if (mainScrollViewRef.current) {
-                mainScrollViewRef.current.setNativeProps({ scrollEnabled: false });
-              }
-            }}
-            onHorizontalScrollEnd={() => {
-              // Réactiver le scroll vertical après le scroll horizontal
-              if (mainScrollViewRef.current) {
-                mainScrollViewRef.current.setNativeProps({ scrollEnabled: true });
-              }
-            }}
           />
         </View>
       );
@@ -2548,7 +2351,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               }}
               style={[
                 styles.fieldInput,
-                hasError && styles.fieldInputError
+                hasError && styles.fieldInputError,
+                styles.autoGrowingInput,
+                field.name === 'nom_produit' && styles.autoGrowingInputName,
+                field.name === 'categorie_produit' && styles.autoGrowingInputCategory
               ]}
             />
             {hasError && (
@@ -2558,16 +2364,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       case 'textarea':
         const isProductDescField = field.name === 'description_produit';
-        // ✅ AMÉLIORÉ: Augmenter les lignes minimum pour description_produit (8 lignes au lieu de 6)
-        const linesMinimum = isProductDescField ? 8 : 3;
+        const linesMinimum = isProductDescField ? 6 : 3;
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
-            {/* ✅ CORRIGÉ: Utiliser NativeInput pour description_produit comme les autres textarea pour permettre les retours à la ligne */}
             <NativeInput
-              placeholder={field.placeholder || (isProductDescField ? "Décrivez votre produit/prestation en détail...\n\nVous pouvez utiliser plusieurs lignes pour une description complète." : field.placeholder)}
+              placeholder={field.placeholder}
               value={valeursFormulaire[field.name] || ''}
               onChangeText={(text) => handleFieldChange(field.name, text)}
               multiline
@@ -2576,16 +2380,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               onContentSizeChange={(width, height) => {
                 const lineHeight = 24;
                 const computedLines = Math.max(linesMinimum, Math.ceil(height / lineHeight));
-                const minHeight = Math.max(isProductDescField ? 320 : 200, computedLines * lineHeight + 32);
                 setDynamicTextareaHeights(prev => ({
                   ...prev,
-                  [field.name]: minHeight
+                  [field.name]: computedLines * lineHeight + 32
                 }));
               }}
               style={[
                 styles.fieldInput,
                 styles.textareaInput,
-                isProductDescField && styles.productDescriptionInputEnhanced,
+                isProductDescField && styles.productDescriptionInput,
                 dynamicTextareaHeights[field.name] ? { minHeight: dynamicTextareaHeights[field.name] } : null
               ]}
             />
@@ -3216,72 +3019,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     throw new Error(response.error || 'Erreur lors de l\'ajout du produit');
                   }
 
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', response);
+
                   const responseData: any = response.data ?? {};
                   const costPaid = Number(responseData.cost ?? response.cost ?? COUT_AJOUT_PRODUIT);
                   const newBalanceValue = Number(
                     responseData.new_balance ?? response.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT)
                   );
-                  
-                  // ✅ NOUVEAU 2026-01-02: Vérifier si c'est une queue asynchrone (job_id présent)
-                  const jobId = responseData.job_id;
-                  
-                  let productIndexResult: number | undefined = undefined;
-                  
-                  if (jobId) {
-                    // ✅ NOUVEAU: Le backend utilise une queue asynchrone, il faut interroger le statut
-                    console.log('[FormulaireYukpoIntelligentScreen] 🔄 Job créé, interrogation du statut (job_id:', jobId, ')');
-                    
-                    const jobResult = await pollProductCreationJobStatus(
-                      typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
-                      jobId,
-                      (status, attempt) => {
-                        console.log(`[FormulaireYukpoIntelligentScreen] 📊 Job status: ${status} (tentative ${attempt})`);
-                      }
-                    );
-                    
-                    if (jobResult.error) {
-                      throw new Error(jobResult.error);
-                    }
-                    
-                    productIndexResult = jobResult.productIndex ?? undefined;
-                    
-                    // Rafraîchir la liste des services pour afficher le nouveau produit
-                    DeviceEventEmitter.emit('service:refresh');
-                  } else {
-                    // ✅ ANCIEN CODE: Si pas de job_id, traitement synchrone (ancien format)
-                    productIndexResult =
-                      responseData.product_index ??
-                      response.product_index ??
-                      (typeof responseData === 'object' && responseData.data
-                        ? responseData.data.product_index
-                        : undefined);
-                  }
+                  const productIndexResult =
+                    responseData.product_index ??
+                    response.product_index ??
+                    (typeof responseData === 'object' && responseData.data
+                      ? responseData.data.product_index
+                      : undefined);
 
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', {
-                    productIndex: productIndexResult,
-                    cost: costPaid,
-                    newBalance: newBalanceValue
-                  });
-
-                  // ✅ NOUVEAU: Ouvrir automatiquement le modal de configuration de livraison
-                  if (productIndexResult !== undefined && serviceId) {
-                    const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
-                    const finalProductIndex = typeof productIndexResult === 'number' ? productIndexResult : parseInt(String(productIndexResult), 10);
-                    const productName = valeursFormulaire.nom_produit || 'Nouveau produit';
-                    
-                    // Ouvrir le modal de configuration de livraison
-                    setShowProductDeliveryConfig(true);
-                    setProductDeliveryConfigData({
-                      serviceId: finalServiceId,
-                      productIndex: finalProductIndex,
-                      productName: productName,
-                    });
-                    
-                    // Ne pas afficher l'Alert de succès ici, le modal s'ouvrira directement
-                    return;
-                  }
-                  
-                  // Si productIndexResult n'est pas disponible, afficher l'Alert normal
                   Alert.alert(
                     '✅ Produit créé',
                     `Votre nouveau produit a été ajouté au service avec succès !\n\n` +
@@ -3328,296 +3079,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }
         });
 
-        // ✅ NOUVEAU: Upload préalable des médias (compressés) pour éviter payload trop volumineux
         const compressedMedia = await getCompressedMedia();
-        let uploadedMediaUrls: {
-          images?: string[];
-          videos?: string[];
-          audios?: string[];
-          documents?: string[];
-          excel?: string[];
-          logo?: string;
-          banner?: string;
-        } = {};
-
         if (compressedMedia) {
-          console.log('[FormulaireYukpoIntelligentScreen] 📤 Début upload préalable des médias (modification)...');
-          try {
-            const { uploadFiles } = await import('../services/uploadApi');
-
-            // Collecter tous les médias à uploader (après compression)
-            const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
-            let logoIndex = -1;
-            let bannerIndex = -1;
-
-            // Images
-            if (compressedMedia.images && Array.isArray(compressedMedia.images)) {
-              compressedMedia.images.forEach((img: string, idx: number) => {
-                if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
-                  const mimeType = img.startsWith('data:')
-                    ? img.split(',')[0].split(':')[1].split(';')[0]
-                    : 'image/jpeg';
-                  filesToUpload.push({
-                    uri: img,
-                    type: mimeType,
-                    name: `image_${idx}.jpg`
-                  });
-                }
-              });
-            }
-
-            // Vidéos
-            if (compressedMedia.videos && Array.isArray(compressedMedia.videos)) {
-              compressedMedia.videos.forEach((vid: string, idx: number) => {
-                if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
-                  const mimeType = vid.startsWith('data:')
-                    ? vid.split(',')[0].split(':')[1].split(';')[0]
-                    : 'video/mp4';
-                  filesToUpload.push({
-                    uri: vid,
-                    type: mimeType,
-                    name: `video_${idx}.mp4`
-                  });
-                }
-              });
-            }
-
-            // Audios
-            if (compressedMedia.audios && Array.isArray(compressedMedia.audios)) {
-              compressedMedia.audios.forEach((audio: string, idx: number) => {
-                if (audio && (audio.startsWith('data:') || audio.startsWith('file://'))) {
-                  const mimeType = audio.startsWith('data:')
-                    ? audio.split(',')[0].split(':')[1].split(';')[0]
-                    : 'audio/mpeg';
-                  filesToUpload.push({
-                    uri: audio,
-                    type: mimeType,
-                    name: `audio_${idx}.mp3`
-                  });
-                }
-              });
-            }
-
-            // Documents
-            if (compressedMedia.documents && Array.isArray(compressedMedia.documents)) {
-              compressedMedia.documents.forEach((doc: string, idx: number) => {
-                if (doc && (doc.startsWith('data:') || doc.startsWith('file://'))) {
-                  const mimeType = doc.startsWith('data:')
-                    ? doc.split(',')[0].split(':')[1].split(';')[0]
-                    : 'application/pdf';
-                  filesToUpload.push({
-                    uri: doc,
-                    type: mimeType,
-                    name: `document_${idx}.pdf`
-                  });
-                }
-              });
-            }
-
-            // Excel
-            if (compressedMedia.excel && Array.isArray(compressedMedia.excel)) {
-              compressedMedia.excel.forEach((excel: string, idx: number) => {
-                if (excel && (excel.startsWith('data:') || excel.startsWith('file://'))) {
-                  const mimeType = excel.startsWith('data:')
-                    ? excel.split(',')[0].split(':')[1].split(';')[0]
-                    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-                  filesToUpload.push({
-                    uri: excel,
-                    type: mimeType,
-                    name: `excel_${idx}.xlsx`
-                  });
-                }
-              });
-            }
-
-            // Logo (première image seulement)
-            if (compressedMedia.logo && Array.isArray(compressedMedia.logo) && compressedMedia.logo.length > 0) {
-              const logo = compressedMedia.logo[0];
-              if (logo && (logo.startsWith('data:') || logo.startsWith('file://'))) {
-                const mimeType = logo.startsWith('data:')
-                  ? logo.split(',')[0].split(':')[1].split(';')[0]
-                  : 'image/jpeg';
-                logoIndex = filesToUpload.length;
-                filesToUpload.push({
-                  uri: logo,
-                  type: mimeType,
-                  name: 'logo.jpg'
-                });
-              }
-            }
-
-            // Banner (première image seulement)
-            if (compressedMedia.banner && Array.isArray(compressedMedia.banner) && compressedMedia.banner.length > 0) {
-              const banner = compressedMedia.banner[0];
-              if (banner && (banner.startsWith('data:') || banner.startsWith('file://'))) {
-                const mimeType = banner.startsWith('data:')
-                  ? banner.split(',')[0].split(':')[1].split(';')[0]
-                  : 'image/jpeg';
-                bannerIndex = filesToUpload.length;
-                filesToUpload.push({
-                  uri: banner,
-                  type: mimeType,
-                  name: 'banner.jpg'
-                });
-              }
-            }
-
-            // Uploader tous les fichiers
-            if (filesToUpload.length > 0) {
-              console.log(`[FormulaireYukpoIntelligentScreen] 📤 Upload de ${filesToUpload.length} fichier(s) (modification)...`);
-              const uploadedFiles = await uploadFiles(filesToUpload);
-              console.log('[FormulaireYukpoIntelligentScreen] ✅ Upload réussi (modification):', uploadedFiles.length, 'fichier(s)');
-
-              // Organiser les URLs par type de média
-              const imageFiles = uploadedFiles.filter(f => f.media_type === 'image');
-              uploadedMediaUrls.images = imageFiles
-                        .filter((_, idx) => idx !== logoIndex && idx !== bannerIndex)
-                        .map(f => f.url);
-              
-              uploadedMediaUrls.videos = uploadedFiles
-                .filter(f => f.media_type === 'video')
-                .map(f => f.url);
-              
-              uploadedMediaUrls.audios = uploadedFiles
-                .filter(f => f.media_type === 'audio')
-                .map(f => f.url);
-              
-              uploadedMediaUrls.documents = uploadedFiles
-                .filter(f => f.media_type === 'document' || f.media_type === 'file')
-                .map(f => f.url);
-              
-              uploadedMediaUrls.excel = uploadedFiles
-                .filter(f => f.url.includes('.xlsx') || f.url.includes('.xls'))
-                .map(f => f.url);
-
-              // Logo et Banner (utiliser les index pour trouver les bons fichiers)
-              if (logoIndex >= 0 && logoIndex < uploadedFiles.length) {
-                const logoFile = uploadedFiles.find((_, idx) => idx === logoIndex && filesToUpload[idx]?.name === 'logo.jpg');
-                if (logoFile) {
-                  uploadedMediaUrls.logo = logoFile.url;
-                }
-              }
-              
-              if (bannerIndex >= 0 && bannerIndex < uploadedFiles.length) {
-                const bannerFile = uploadedFiles.find((_, idx) => idx === bannerIndex && filesToUpload[idx]?.name === 'banner.jpg');
-                if (bannerFile) {
-                  uploadedMediaUrls.banner = bannerFile.url;
-                }
-              }
-
-              console.log('[FormulaireYukpoIntelligentScreen] ✅ URLs médias uploadées (modification):', {
-                images: uploadedMediaUrls.images?.length || 0,
-                videos: uploadedMediaUrls.videos?.length || 0,
-                audios: uploadedMediaUrls.audios?.length || 0,
-                documents: uploadedMediaUrls.documents?.length || 0,
-                excel: uploadedMediaUrls.excel?.length || 0,
-                logo: uploadedMediaUrls.logo ? 'oui' : 'non',
-                banner: uploadedMediaUrls.banner ? 'oui' : 'non'
-              });
-            } else {
-              console.log('[FormulaireYukpoIntelligentScreen] ℹ️ Aucun média à uploader (modification) - déjà URLs ou vide');
-            }
-          } catch (uploadError: any) {
-            console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur upload préalable (modification):', uploadError);
-            // ✅ CORRIGÉ : Ne pas fallback automatiquement vers base64
-            // L'utilisateur sera averti et pourra réessayer
-            // Le fallback base64 se fera dans attachMediaField si nécessaire
-            // Mais on log l'erreur pour déboguer
-          }
-        }
-
-        if (compressedMedia) {
-          const attachMediaField = (fieldName: string, values: any[] | string | undefined, options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
-            // ✅ CORRIGÉ : Vérifier que uploadedMediaUrls existe ET contient des données
-            if (uploadedMediaUrls && Object.keys(uploadedMediaUrls).length > 0) {
-              let urlValue: string | string[] | undefined;
-
-              switch (fieldName) {
-                case 'base64_image':
-                  urlValue = uploadedMediaUrls.images;
-                  break;
-                case 'video_base64':
-                  urlValue = uploadedMediaUrls.videos;
-                  break;
-                case 'audio_base64':
-                  urlValue = uploadedMediaUrls.audios;
-                  break;
-                case 'doc_base64':
-                  urlValue = uploadedMediaUrls.documents;
-                  break;
-                case 'excel_base64':
-                  urlValue = uploadedMediaUrls.excel;
-                  break;
-                case 'logo':
-                  urlValue = uploadedMediaUrls.logo;
-                  break;
-                case 'banner':
-                  urlValue = uploadedMediaUrls.banner;
-                  break;
-              }
-
-              // ✅ CORRIGÉ : Vérifier que urlValue existe ET n'est pas vide
-              if (urlValue !== undefined) {
-                if (typeof urlValue === 'string' && urlValue.length > 0 && !urlValue.startsWith('data:')) {
-                  // ✅ URL valide (pas base64)
-                  finalServiceData[fieldName] = {
-                    type_donnee: options.typeDonnee || 'string',
-                    valeur: urlValue,
-                    origine_champs: 'formulaire'
-                  };
-                  console.log(`[attachMediaField] ✅ Utilisation URL pour ${fieldName}:`, urlValue.substring(0, 100) + '...');
-                  return; // ✅ IMPORTANT : Sortir pour éviter le fallback base64
-                } else if (Array.isArray(urlValue) && urlValue.length > 0) {
-                  // ✅ Vérifier que les URLs ne sont pas des base64
-                  const validUrls = urlValue.filter(url => typeof url === 'string' && url.length > 0 && !url.startsWith('data:'));
-                  if (validUrls.length > 0) {
-                    const { takeFirst = false } = options;
-                    const valeur = takeFirst ? validUrls[0] : validUrls;
-                    finalServiceData[fieldName] = {
-                      type_donnee: options.typeDonnee || 'array',
-                      valeur,
-                      origine_champs: 'formulaire'
-                    };
-                    console.log(`[attachMediaField] ✅ Utilisation URLs pour ${fieldName}:`, validUrls.length, 'URL(s)');
-                    return; // ✅ IMPORTANT : Sortir pour éviter le fallback base64
-                  }
-                }
-              }
-            }
-
-            // ✅ NOUVEAU : Vérifier si values contient déjà des URLs (pas base64)
-            // Cas : Médias déjà uploadés (modification de service existant)
-            if (values) {
-              const valuesArray = Array.isArray(values) ? values : [values];
-              const existingUrls = valuesArray.filter(v => 
-                typeof v === 'string' && 
-                v.length > 0 && 
-                (v.startsWith('http://') || v.startsWith('https://'))
-              );
-              
-              if (existingUrls.length > 0) {
-                // ✅ Utiliser les URLs existantes (déjà uploadées, pas besoin de ré-uploader)
-                const { takeFirst = false } = options;
-                const valeur = takeFirst ? existingUrls[0] : existingUrls;
-                finalServiceData[fieldName] = {
-                  type_donnee: options.typeDonnee || (takeFirst ? 'string' : 'array'),
-                  valeur,
-                  origine_champs: 'formulaire'
-                };
-                console.log(`[attachMediaField] ✅ Utilisation URLs existantes pour ${fieldName}:`, existingUrls.length, 'URL(s)');
-                return; // ✅ Sortir, pas besoin de base64
-              }
-            }
-
-            // ✅ CORRIGÉ : Si pas de valeurs, ignorer le champ (pas de médias)
-            if (!values || (Array.isArray(values) && values.length === 0)) {
-              console.log(`[attachMediaField] ℹ️ Pas de valeurs pour ${fieldName}, champ ignoré (aucun média)`);
+          const attachMediaField = (fieldName: string, values: any[], options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
+            if (!values || !Array.isArray(values)) {
               return;
             }
 
-            // ⚠️ FALLBACK : Utiliser base64 compressé (seulement si upload a échoué ET médias base64 existent)
-            console.warn(`[attachMediaField] ⚠️ Fallback base64 pour ${fieldName} (upload échoué ou URLs vides)`);
-            const cleaned = Array.isArray(values) ? values.filter(Boolean) : (values ? [values] : []);
+            const cleaned = values.filter(Boolean);
             if (cleaned.length === 0) {
               return;
             }
@@ -3856,39 +3325,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             throw new Error(response.error || 'Erreur ajout produit');
           }
 
-          const responseData: any = response.data ?? {};
-          const cost = responseData.cost ?? COUT_AJOUT_PRODUIT;
-          const new_balance = responseData.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT);
-          
-          // ✅ NOUVEAU 2026-01-02: Vérifier si c'est une queue asynchrone (job_id présent)
-          const jobId = responseData.job_id;
-          
-          let product_index: number | undefined = undefined;
-          
-          if (jobId) {
-            // ✅ NOUVEAU: Le backend utilise une queue asynchrone, il faut interroger le statut
-            console.log('[FormulaireYukpoIntelligentScreen] 🔄 Job créé, interrogation du statut (job_id:', jobId, ')');
-            
-            const jobResult = await pollProductCreationJobStatus(
-              typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
-              jobId,
-              (status, attempt) => {
-                console.log(`[FormulaireYukpoIntelligentScreen] 📊 Job status: ${status} (tentative ${attempt})`);
-              }
-            );
-            
-            if (jobResult.error) {
-              throw new Error(jobResult.error);
-            }
-            
-            product_index = jobResult.productIndex ?? undefined;
-            
-            // Rafraîchir la liste des services pour afficher le nouveau produit
-            DeviceEventEmitter.emit('service:refresh');
-          } else {
-            // ✅ ANCIEN CODE: Si pas de job_id, traitement synchrone (ancien format)
-            product_index = responseData.product_index;
-          }
+          const { cost, new_balance, product_index } = response.data;
 
           console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', {
             cost,
@@ -3896,38 +3333,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             product_index
           });
 
-          // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
-          const typeOffre = valeursFormulaire.type_offre || valeursFormulaire.nature_offre || 'produit';
-          const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
-          
-          if (!isPrestation && product_index !== undefined && serviceId) {
-            // C'est un produit, ouvrir le modal de configuration de livraison
-            const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
-            const finalProductIndex = typeof product_index === 'number' ? product_index : parseInt(String(product_index), 10);
-            const productName = valeursFormulaire.nom_produit || 'Nouveau produit';
-            
-            console.log('[FormulaireYukpoIntelligentScreen] 🚚 Ouverture automatique du modal de configuration de livraison (ADD_PRODUCT):', {
-              serviceId: finalServiceId,
-              productIndex: finalProductIndex,
-              productName: productName
-            });
-            
-            // Ouvrir le modal de configuration de livraison
-            setShowProductDeliveryConfig(true);
-            setProductDeliveryConfigData({
-              serviceId: finalServiceId,
-              productIndex: finalProductIndex,
-              productName: productName,
-            });
-            
-            setSuccessData({ serviceId, cout: cost });
-            setShowSuccessToast(true);
-            
-            // Ne pas afficher l'Alert de succès ici, le modal s'ouvrira directement
-            return;
-          }
-
-          // Pour les prestations ou si product_index n'est pas disponible, afficher l'Alert normal
           Alert.alert(
             '✅ Produit ajouté',
             `Votre produit a été ajouté avec succès au service.\n\n💰 Coût: ${cost.toLocaleString()} FCFA\n💳 Nouveau solde: ${new_balance.toLocaleString()} FCFA`,
@@ -4256,286 +3661,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Mode de paiement ajouté:', paymentMethod);
                 }
 
-                // ✅ NOUVEAU: Upload préalable des médias (compressés) pour éviter payload trop volumineux
-                let uploadedMediaUrls: {
-                  images?: string[];
-                  videos?: string[];
-                  audios?: string[];
-                  documents?: string[];
-                  excel?: string[];
-                  logo?: string;
-                  banner?: string;
-                } = {};
-
-                if (compressedMedia) {
-                  console.log('[FormulaireYukpoIntelligentScreen] 📤 Début upload préalable des médias...');
-                  try {
-                    const { uploadFiles } = await import('../services/uploadApi');
-
-                    // Collecter tous les médias à uploader (après compression)
-                    const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
-                    let logoIndex = -1;
-                    let bannerIndex = -1;
-
-                    // Images (sans logo et banner)
-                    if (compressedMedia.images && Array.isArray(compressedMedia.images)) {
-                      compressedMedia.images.forEach((img: string, idx: number) => {
-                        if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
-                          const mimeType = img.startsWith('data:')
-                            ? img.split(',')[0].split(':')[1].split(';')[0]
-                            : 'image/jpeg';
-                          filesToUpload.push({
-                            uri: img,
-                            type: mimeType,
-                            name: `image_${idx}.jpg`
-                          });
-                        }
-                      });
-                    }
-
-                    // Vidéos
-                    if (compressedMedia.videos && Array.isArray(compressedMedia.videos)) {
-                      compressedMedia.videos.forEach((vid: string, idx: number) => {
-                        if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
-                          const mimeType = vid.startsWith('data:')
-                            ? vid.split(',')[0].split(':')[1].split(';')[0]
-                            : 'video/mp4';
-                          filesToUpload.push({
-                            uri: vid,
-                            type: mimeType,
-                            name: `video_${idx}.mp4`
-                          });
-                        }
-                      });
-                    }
-
-                    // Audios
-                    if (compressedMedia.audios && Array.isArray(compressedMedia.audios)) {
-                      compressedMedia.audios.forEach((audio: string, idx: number) => {
-                        if (audio && (audio.startsWith('data:') || audio.startsWith('file://'))) {
-                          const mimeType = audio.startsWith('data:')
-                            ? audio.split(',')[0].split(':')[1].split(';')[0]
-                            : 'audio/mpeg';
-                          filesToUpload.push({
-                            uri: audio,
-                            type: mimeType,
-                            name: `audio_${idx}.mp3`
-                          });
-                        }
-                      });
-                    }
-
-                    // Documents
-                    if (compressedMedia.documents && Array.isArray(compressedMedia.documents)) {
-                      compressedMedia.documents.forEach((doc: string, idx: number) => {
-                        if (doc && (doc.startsWith('data:') || doc.startsWith('file://'))) {
-                          const mimeType = doc.startsWith('data:')
-                            ? doc.split(',')[0].split(':')[1].split(';')[0]
-                            : 'application/pdf';
-                          filesToUpload.push({
-                            uri: doc,
-                            type: mimeType,
-                            name: `document_${idx}.pdf`
-                          });
-                        }
-                      });
-                    }
-
-                    // Excel
-                    if (compressedMedia.excel && Array.isArray(compressedMedia.excel)) {
-                      compressedMedia.excel.forEach((excel: string, idx: number) => {
-                        if (excel && (excel.startsWith('data:') || excel.startsWith('file://'))) {
-                          const mimeType = excel.startsWith('data:')
-                            ? excel.split(',')[0].split(':')[1].split(';')[0]
-                            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-                          filesToUpload.push({
-                            uri: excel,
-                            type: mimeType,
-                            name: `excel_${idx}.xlsx`
-                          });
-                        }
-                      });
-                    }
-
-                    // Logo (première image seulement)
-                    if (compressedMedia.logo && Array.isArray(compressedMedia.logo) && compressedMedia.logo.length > 0) {
-                      const logo = compressedMedia.logo[0];
-                      if (logo && (logo.startsWith('data:') || logo.startsWith('file://'))) {
-                        const mimeType = logo.startsWith('data:')
-                          ? logo.split(',')[0].split(':')[1].split(';')[0]
-                          : 'image/jpeg';
-                        logoIndex = filesToUpload.length;
-                        filesToUpload.push({
-                          uri: logo,
-                          type: mimeType,
-                          name: 'logo.jpg'
-                        });
-                      }
-                    }
-
-                    // Banner (première image seulement)
-                    if (compressedMedia.banner && Array.isArray(compressedMedia.banner) && compressedMedia.banner.length > 0) {
-                      const banner = compressedMedia.banner[0];
-                      if (banner && (banner.startsWith('data:') || banner.startsWith('file://'))) {
-                        const mimeType = banner.startsWith('data:')
-                          ? banner.split(',')[0].split(':')[1].split(';')[0]
-                          : 'image/jpeg';
-                        bannerIndex = filesToUpload.length;
-                        filesToUpload.push({
-                          uri: banner,
-                          type: mimeType,
-                          name: 'banner.jpg'
-                        });
-                      }
-                    }
-
-                    // Uploader tous les fichiers
-                    if (filesToUpload.length > 0) {
-                      console.log(`[FormulaireYukpoIntelligentScreen] 📤 Upload de ${filesToUpload.length} fichier(s)...`);
-                      const uploadedFiles = await uploadFiles(filesToUpload);
-                      console.log('[FormulaireYukpoIntelligentScreen] ✅ Upload réussi:', uploadedFiles.length, 'fichier(s)');
-
-                      // Organiser les URLs par type de média (uploadFiles retourne les fichiers dans le même ordre)
-                      const imageFiles = uploadedFiles.filter((f, idx) => f.media_type === 'image' && idx !== logoIndex && idx !== bannerIndex);
-                      uploadedMediaUrls.images = imageFiles.map(f => f.url);
-                      
-                      uploadedMediaUrls.videos = uploadedFiles
-                        .filter(f => f.media_type === 'video')
-                        .map(f => f.url);
-                      
-                      uploadedMediaUrls.audios = uploadedFiles
-                        .filter(f => f.media_type === 'audio')
-                        .map(f => f.url);
-                      
-                      uploadedMediaUrls.documents = uploadedFiles
-                        .filter(f => f.media_type === 'document' || f.media_type === 'file')
-                        .map(f => f.url);
-                      
-                      uploadedMediaUrls.excel = uploadedFiles
-                        .filter(f => f.url.includes('.xlsx') || f.url.includes('.xls'))
-                        .map(f => f.url);
-
-                      // Logo et Banner (utiliser les index pour trouver les bons fichiers)
-                      if (logoIndex >= 0 && logoIndex < uploadedFiles.length && uploadedFiles[logoIndex].media_type === 'image') {
-                        uploadedMediaUrls.logo = uploadedFiles[logoIndex].url;
-                      }
-                      
-                      if (bannerIndex >= 0 && bannerIndex < uploadedFiles.length && uploadedFiles[bannerIndex].media_type === 'image') {
-                        uploadedMediaUrls.banner = uploadedFiles[bannerIndex].url;
-                      }
-
-                      console.log('[FormulaireYukpoIntelligentScreen] ✅ URLs médias uploadées:', {
-                        images: uploadedMediaUrls.images?.length || 0,
-                        videos: uploadedMediaUrls.videos?.length || 0,
-                        audios: uploadedMediaUrls.audios?.length || 0,
-                        documents: uploadedMediaUrls.documents?.length || 0,
-                        excel: uploadedMediaUrls.excel?.length || 0,
-                        logo: uploadedMediaUrls.logo ? 'oui' : 'non',
-                        banner: uploadedMediaUrls.banner ? 'oui' : 'non'
-                      });
-                    } else {
-                      console.log('[FormulaireYukpoIntelligentScreen] ℹ️ Aucun média à uploader (déjà URLs ou vide)');
-                    }
-                  } catch (uploadError: any) {
-                    console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur upload préalable:', uploadError);
-                    // ✅ CORRIGÉ : Ne pas fallback automatiquement vers base64
-                    // L'utilisateur sera averti et pourra réessayer
-                    // Le fallback base64 se fera dans attachMediaField si nécessaire
-                    // Mais on log l'erreur pour déboguer
-                  }
-                }
-
-                const attachMediaField = (fieldName: string, values: any[] | string | undefined, options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
-                  // ✅ CORRIGÉ : Vérifier que uploadedMediaUrls existe ET contient des données
-                  if (uploadedMediaUrls && Object.keys(uploadedMediaUrls).length > 0) {
-                    let urlValue: string | string[] | undefined;
-
-                    switch (fieldName) {
-                      case 'base64_image':
-                        urlValue = uploadedMediaUrls.images;
-                        break;
-                      case 'video_base64':
-                        urlValue = uploadedMediaUrls.videos;
-                        break;
-                      case 'audio_base64':
-                        urlValue = uploadedMediaUrls.audios;
-                        break;
-                      case 'doc_base64':
-                        urlValue = uploadedMediaUrls.documents;
-                        break;
-                      case 'excel_base64':
-                        urlValue = uploadedMediaUrls.excel;
-                        break;
-                      case 'logo':
-                        urlValue = uploadedMediaUrls.logo;
-                        break;
-                      case 'banner':
-                        urlValue = uploadedMediaUrls.banner;
-                        break;
-                    }
-
-                    // ✅ CORRIGÉ : Vérifier que urlValue existe ET n'est pas vide
-                    if (urlValue !== undefined) {
-                      if (typeof urlValue === 'string' && urlValue.length > 0 && !urlValue.startsWith('data:')) {
-                        // ✅ URL valide (pas base64)
-                        finalServiceData[fieldName] = {
-                          type_donnee: options.typeDonnee || 'string',
-                          valeur: urlValue,
-                          origine_champs: 'formulaire'
-                        };
-                        console.log(`[attachMediaField] ✅ Utilisation URL pour ${fieldName}:`, urlValue.substring(0, 100) + '...');
-                        return; // ✅ IMPORTANT : Sortir pour éviter le fallback base64
-                      } else if (Array.isArray(urlValue) && urlValue.length > 0) {
-                        // ✅ Vérifier que les URLs ne sont pas des base64
-                        const validUrls = urlValue.filter(url => typeof url === 'string' && url.length > 0 && !url.startsWith('data:'));
-                        if (validUrls.length > 0) {
-                          const { takeFirst = false } = options;
-                          const valeur = takeFirst ? validUrls[0] : validUrls;
-                          finalServiceData[fieldName] = {
-                            type_donnee: options.typeDonnee || 'array',
-                            valeur,
-                            origine_champs: 'formulaire'
-                          };
-                          console.log(`[attachMediaField] ✅ Utilisation URLs pour ${fieldName}:`, validUrls.length, 'URL(s)');
-                          return; // ✅ IMPORTANT : Sortir pour éviter le fallback base64
-                        }
-                      }
-                    }
-                  }
-
-                  // ✅ NOUVEAU : Vérifier si values contient déjà des URLs (pas base64)
-                  // Cas : Médias déjà uploadés (modification de service existant)
-                  if (values) {
-                    const valuesArray = Array.isArray(values) ? values : [values];
-                    const existingUrls = valuesArray.filter(v => 
-                      typeof v === 'string' && 
-                      v.length > 0 && 
-                      (v.startsWith('http://') || v.startsWith('https://'))
-                    );
-                    
-                    if (existingUrls.length > 0) {
-                      // ✅ Utiliser les URLs existantes (déjà uploadées, pas besoin de ré-uploader)
-                      const { takeFirst = false } = options;
-                      const valeur = takeFirst ? existingUrls[0] : existingUrls;
-                      finalServiceData[fieldName] = {
-                        type_donnee: options.typeDonnee || (takeFirst ? 'string' : 'array'),
-                        valeur,
-                        origine_champs: 'formulaire'
-                      };
-                      console.log(`[attachMediaField] ✅ Utilisation URLs existantes pour ${fieldName}:`, existingUrls.length, 'URL(s)');
-                      return; // ✅ Sortir, pas besoin de base64
-                    }
-                  }
-
-                  // ✅ CORRIGÉ : Si pas de valeurs, ignorer le champ (pas de médias)
-                  if (!values || (Array.isArray(values) && values.length === 0)) {
-                    console.log(`[attachMediaField] ℹ️ Pas de valeurs pour ${fieldName}, champ ignoré (aucun média)`);
+                const attachMediaField = (fieldName: string, values: any[], options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
+                  if (!values || !Array.isArray(values)) {
                     return;
                   }
 
-                  // ⚠️ FALLBACK : Utiliser base64 compressé (seulement si upload a échoué ET médias base64 existent)
-                  console.warn(`[attachMediaField] ⚠️ Fallback base64 pour ${fieldName} (upload échoué ou URLs vides)`);
-                  const cleaned = Array.isArray(values) ? values.filter(Boolean) : (values ? [values] : []);
+                  const cleaned = values.filter(Boolean);
                   if (cleaned.length === 0) {
                     return;
                   }
@@ -4812,13 +3943,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   let alertTitle = '❌ Erreur de création';
                   let alertMessage = errorMessage;
 
-                  // ✅ AMÉLIORÉ: Gérer les codes d'erreur spécifiques
-                  if (response.code === 'NETWORK_ERROR' || errorMessage.includes('Network request failed') || errorMessage.includes('Impossible de se connecter')) {
+                  if (errorMessage.includes('Network request failed') || errorMessage.includes('Impossible de se connecter')) {
                     alertTitle = '🌐 Problème de connexion';
-                    alertMessage = `Problème de connexion réseau détecté.\n\n${errorMessage}\n\nCauses possibles :\n- Connexion internet instable\n- Payload trop volumineux\n- Serveur temporairement indisponible\n\nConseils :\n- Vérifiez votre connexion\n- Réduisez le nombre de médias\n- Réessayez dans quelques instants`;
-                  } else if (response.code === 'TIMEOUT' || errorMessage.includes('timeout') || errorMessage.includes('expiré') || errorMessage.includes('La requête a expiré')) {
+                    alertMessage = `Problème de connexion réseau détecté.\n\n${errorMessage}\n\nVérifiez votre connexion internet et réessayez.`;
+                  } else if (errorMessage.includes('timeout') || errorMessage.includes('expiré')) {
                     alertTitle = '⏱️ Timeout de requête';
-                    alertMessage = `La création du service a pris trop de temps.\n\n${errorMessage}\n\nCela peut être dû à un grand nombre de médias.\n\nConseils :\n- Réduisez le nombre d'images par produit\n- Raccourcissez les vidéos\n- Vérifiez votre connexion internet`;
+                    alertMessage = `La requête a pris trop de temps.\n\n${errorMessage}\n\nVotre service contient peut-être trop de données. Essayez de réduire le nombre de médias.`;
                   } else if (errorMessage.includes('413') || errorMessage.includes('trop volumineux')) {
                     alertTitle = '📦 Données trop volumineuses';
                     alertMessage = `Votre service contient trop de données.\n\n${errorMessage}\n\nConseils :\n- Réduisez le nombre d'images par produit\n- Raccourcissez les vidéos\n- Supprimez les produits non essentiels`;
@@ -4852,59 +3982,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // ✅ SUPPRIMÉ: Vérification tickets de voyage - Géré maintenant via les champs dynamiques
                 // Les tickets de voyage sont gérés via les champs autocomplete et date dans le formulaire
 
-                const createdServiceId = result?.id || result?.service_id;
-                setSuccessData({ serviceId: createdServiceId || 'nouveau', cout: coutReel });
+                setSuccessData({ serviceId: result?.id || result?.service_id || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);
-
-                // ✅ NOUVEAU: Vérifier si c'est un produit (pas une prestation) et ouvrir la configuration de livraison
-                const typeOffre = valeursFormulaire.type_offre || valeursFormulaire.nature_offre || 'produit';
-                const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
-                const hasProducts = hasAtLeastOneProduct();
-
-                // Si c'est un produit (pas une prestation) ET qu'il y a des produits, ouvrir le modal de configuration de livraison
-                if (!isPrestation && hasProducts && createdServiceId) {
-                  const finalServiceId = typeof createdServiceId === 'string' ? parseInt(createdServiceId, 10) : createdServiceId;
-                  
-                  // Pour un service nouvellement créé, le premier produit est à l'index 0
-                  const firstProductIndex = 0;
-                  
-                  // Récupérer le nom du produit depuis le formulaire
-                  const productName = valeursFormulaire.nom_produit || 
-                    (finalServiceData.produits?.valeur?.[0]?.nom) || 
-                    (finalServiceData.titre_service?.valeur) || 
-                    'Nouveau produit';
-                  
-                  console.log('[FormulaireYukpoIntelligentScreen] 🚚 Ouverture automatique du modal de configuration de livraison:', {
-                    serviceId: finalServiceId,
-                    productIndex: firstProductIndex,
-                    productName: productName
-                  });
-                  
-                  // Ouvrir le modal de configuration de livraison
-                  setJustCreatedService(true); // Marquer qu'on vient de créer un service
-                  setShowProductDeliveryConfig(true);
-                  setProductDeliveryConfigData({
-                    serviceId: finalServiceId,
-                    productIndex: firstProductIndex,
-                    productName: productName,
-                  });
-                  
-                  // Ne pas rediriger immédiatement, le modal s'ouvrira
-                  // La redirection se fera après la fermeture du modal
-                } else {
-                  // Pour les prestations ou si pas de produits, redirection normale après 3 secondes
-                  setTimeout(() => {
-                    if (fromMesServices) {
-                      (navigation as any).navigate('MesServices');
-                    } else {
-                      (navigation as any).navigate('Home');
-                    }
-                  }, 3000);
-                }
 
                 // ✅ Marquer la soumission comme terminée
                 setIsSubmitting(false);
                 setLoading(false);
+
+                // Redirection après 3 secondes
+                setTimeout(() => {
+                  if (fromMesServices) {
+                    (navigation as any).navigate('MesServices');
+                  } else {
+                    (navigation as any).navigate('Home');
+                  }
+                }, 3000);
 
               } catch (innerError: any) {
                 console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur création:', innerError);
@@ -5007,24 +4099,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           showHandle={false}
           density="compact"
           backIcon="back"
-          title={
-            activeStep === 2 && blocks.length > 0 && blocks[currentBlock]
-              ? `${blocks[currentBlock].icon} ${blocks[currentBlock].title}`
-              : isReadonly
-                ? 'Consultation'
-                : mode === 'edit'
-                  ? 'Modification'
-                  : 'Formulaire Intelligent'
-          }
-          subtitle={
-            activeStep === 2 && blocks.length > 0 && blocks[currentBlock]
-              ? `Bloc ${currentBlock + 1} / ${blocks.length}`
-              : isReadonly
-                ? 'Mode lecture seule'
-                : mode === 'edit'
-                  ? 'Modification en cours'
-                  : 'Propulsé par l\'IA Yukpo'
-          }
+          title={isReadonly ? 'Consultation' : mode === 'edit' ? 'Modification' : 'Formulaire Intelligent'}
+          subtitle={isReadonly ? 'Mode lecture seule' : mode === 'edit' ? 'Modification en cours' : 'Propulsé par l\'IA Yukpo'}
           onClose={handleGoBack}
         />
       </LinearGradient>
@@ -5178,21 +4254,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     </Text>
                   </View>
 
-                  {/* Navigation entre blocs (tabs avec scroll horizontal) */}
-                  <ScrollView
-                    ref={tabsScrollViewRef}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.blockNavigationScroll}
-                    contentContainerStyle={styles.blockNavigation}
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    {displayedBlocks.map(({ block, index: originalIndex }, tabIndex) => (
+                  {/* Navigation entre blocs (tabs simples sans scroll horizontal) */}
+                  <View style={styles.blockNavigation}>
+                    {displayedBlocks.map(({ block, index: originalIndex }) => (
                       <TouchableOpacity
                         key={block.id}
-                        ref={(ref) => {
-                          tabRefs.current[tabIndex] = ref;
-                        }}
                         style={[
                           styles.blockTab,
                           currentBlock === originalIndex && styles.blockTabActive
@@ -5208,7 +4274,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         </Text>
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
+                  </View>
                 </View>
 
                 {/* ✅ CORRIGÉ 2025-12-23: Afficher UNIQUEMENT le bloc actif (currentBlock) */}
@@ -5219,11 +4285,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   showsVerticalScrollIndicator={true}
                   keyboardShouldPersistTaps="handled"
                   keyboardDismissMode="on-drag"
-                  nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll horizontal des images dans MediaUploadManager
+                  nestedScrollEnabled={false}
                   bounces={Platform.OS === 'ios'}
-                  scrollEventThrottle={16} // ✅ OPTIMISATION: Limiter la fréquence des événements de scroll
-                  removeClippedSubviews={true} // ✅ OPTIMISATION: Améliorer les performances
-                  decelerationRate="normal" // ✅ OPTIMISATION: Comportement de scroll plus fluide
                 >
                   {displayedBlocks
                     .filter(({ index: blockIndex }) => blockIndex === currentBlock) // ✅ CRITIQUE: Filtrer pour n'afficher que le bloc actif
@@ -5374,76 +4437,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         allowZoneSelection={true}
       />
 
-      {/* ✅ NOUVEAU: Modal de configuration de livraison */}
-      {productDeliveryConfigData && (
-        <ProductDeliveryConfigModal
-          visible={showProductDeliveryConfig}
-          onClose={() => {
-            setShowProductDeliveryConfig(false);
-            setProductDeliveryConfigData(null);
-            
-            // ✅ NOUVEAU: Si on vient de créer un service, rediriger vers MesServices ou Home
-            // Sinon, retourner vers l'écran précédent
-            if (justCreatedService) {
-              setJustCreatedService(false); // Réinitialiser l'état
-              setTimeout(() => {
-                if (fromMesServices) {
-                  (navigation as any).navigate('MesServices');
-                } else {
-                  (navigation as any).navigate('Home');
-                }
-              }, 300);
-            } else {
-              // Après fermeture, retourner vers l'écran précédent
-              setTimeout(() => {
-                navigation.goBack();
-              }, 300);
-            }
-          }}
-          serviceId={productDeliveryConfigData.serviceId}
-          productIndex={productDeliveryConfigData.productIndex}
-          productName={productDeliveryConfigData.productName}
-          onSuccess={() => {
-            // Configuration sauvegardée avec succès
-            setShowProductDeliveryConfig(false);
-            setProductDeliveryConfigData(null);
-            
-            // ✅ NOUVEAU: Si on vient de créer un service, rediriger vers MesServices ou Home
-            if (justCreatedService) {
-              setJustCreatedService(false); // Réinitialiser l'état
-              Alert.alert(
-                '✅ Configuration terminée',
-                'Votre produit a été configuré avec succès !',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => {
-                      if (fromMesServices) {
-                        (navigation as any).navigate('MesServices');
-                      } else {
-                        (navigation as any).navigate('Home');
-                      }
-                    }
-                  }
-                ]
-              );
-            } else {
-              Alert.alert(
-                '✅ Configuration terminée',
-                'Votre produit a été configuré avec succès !',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => {
-                      navigation.goBack();
-                    }
-                  }
-                ]
-              );
-            }
-          }}
-        />
-      )}
 
       {/* ✅ SUPPRIMÉ: Modal de duplication de produit - Les produits sont maintenant gérés via les champs dynamiques */}
     </View>
@@ -5594,9 +4587,6 @@ const styles = StyleSheet.create({
     color: modernColors.textSecondary,
     textAlign: 'center',
   },
-  blockNavigationScroll: {
-    maxHeight: 80,
-  },
   blockNavigation: {
     flexDirection: 'row',
     gap: 8,
@@ -5743,21 +4733,8 @@ const styles = StyleSheet.create({
     minHeight: 240,
     lineHeight: 22,
   },
-  // ✅ NOUVEAU: Style amélioré pour description_produit avec hauteur augmentée
-  productDescriptionInputEnhanced: {
-    minHeight: 320, // ✅ AUGMENTÉ: 320px pour plus d'espace de saisie
-    maxHeight: 500, // ✅ AUGMENTÉ: Hauteur maximale augmentée pour permettre plus de contenu
-    paddingTop: 14, // ✅ Aligné avec textareaInput
-    paddingBottom: 14, // ✅ NOUVEAU: Padding en bas pour meilleur espacement
-    paddingVertical: undefined, // ✅ Surcharger paddingVertical de fieldInput pour utiliser paddingTop/Bottom
-    // ✅ Note: paddingHorizontal hérité de fieldInput (16px)
-    textAlignVertical: 'top', // ✅ Assure que le texte commence en haut
-    lineHeight: 24, // ✅ AUGMENTÉ: Espacement entre les lignes pour meilleure lisibilité
-    fontSize: 15, // ✅ Légèrement plus grand pour meilleure lisibilité
-  },
   productDescriptionText: {
-    lineHeight: 24, // ✅ AUGMENTÉ: Aligné avec productDescriptionInputEnhanced
-    fontSize: 15,
+    lineHeight: 22,
   },
   navigationButtons: {
     flexDirection: 'row',

@@ -6057,6 +6057,215 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
+/// ✅ NOUVEAU 2025-01-31: Ajouter les colonnes aller-retour à la table deliveries
+pub async fn ensure_delivery_round_trip_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des colonnes aller-retour dans deliveries...");
+
+    // Ajouter les colonnes si elles n'existent pas
+    sqlx::query(
+        r#"
+        ALTER TABLE deliveries 
+        ADD COLUMN IF NOT EXISTS is_round_trip BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS return_delivery_id UUID REFERENCES deliveries(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS return_pickup_location GEOGRAPHY(Point, 4326),
+        ADD COLUMN IF NOT EXISTS return_dropoff_location GEOGRAPHY(Point, 4326),
+        ADD COLUMN IF NOT EXISTS return_pickup_address TEXT,
+        ADD COLUMN IF NOT EXISTS return_dropoff_address TEXT,
+        ADD COLUMN IF NOT EXISTS return_distance_meters INTEGER,
+        ADD COLUMN IF NOT EXISTS return_estimated_duration_seconds INTEGER,
+        ADD COLUMN IF NOT EXISTS return_actual_duration_seconds INTEGER,
+        ADD COLUMN IF NOT EXISTS return_requested_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS round_trip_discount_percent INTEGER DEFAULT 0
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    // Créer les index
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_return_delivery_id ON deliveries(return_delivery_id) WHERE return_delivery_id IS NOT NULL")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_is_round_trip ON deliveries(is_round_trip) WHERE is_round_trip = TRUE")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_return_pickup_location ON deliveries USING GIST(return_pickup_location) WHERE return_pickup_location IS NOT NULL")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_return_dropoff_location ON deliveries USING GIST(return_dropoff_location) WHERE return_dropoff_location IS NOT NULL")
+        .execute(pool)
+        .await?;
+
+    // Créer le trigger de vérification de cohérence
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION check_round_trip_consistency()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            IF NEW.return_delivery_id IS NOT NULL THEN
+                IF NOT EXISTS (
+                    SELECT 1 FROM deliveries 
+                    WHERE id = NEW.return_delivery_id 
+                    AND creator_id = NEW.creator_id
+                ) THEN
+                    RAISE EXCEPTION 'La livraison retour doit appartenir au même créateur';
+                END IF;
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DROP TRIGGER IF EXISTS trigger_check_round_trip_consistency ON deliveries;
+        CREATE TRIGGER trigger_check_round_trip_consistency
+            BEFORE INSERT OR UPDATE ON deliveries
+            FOR EACH ROW
+            EXECUTE FUNCTION check_round_trip_consistency()
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Colonnes aller-retour vérifiées");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-01-31: Créer la table delivery_media pour optimiser le stockage des médias
+pub async fn ensure_delivery_media_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table delivery_media...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_media (
+            id SERIAL PRIMARY KEY,
+            delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            parcel_id INTEGER REFERENCES delivery_parcels(id) ON DELETE SET NULL,
+            
+            -- Informations média
+            type TEXT NOT NULL CHECK (type IN ('image', 'video', 'audio', 'document')),
+            path TEXT NOT NULL,
+            media_type TEXT,
+            file_size BIGINT,
+            file_format TEXT,
+            
+            -- Métadonnées
+            is_parcel_photo BOOLEAN NOT NULL DEFAULT TRUE,
+            is_proof_media BOOLEAN NOT NULL DEFAULT FALSE,
+            proof_type TEXT CHECK (proof_type IN ('pickup', 'delivery', NULL)),
+            
+            -- Ordre d'affichage
+            display_order INTEGER NOT NULL DEFAULT 0,
+            
+            -- Analyse IA (optionnel)
+            ai_description TEXT,
+            ai_tags TEXT[],
+            ai_metadata JSONB,
+            ai_analyzed_at TIMESTAMPTZ,
+            ai_model_used VARCHAR(100),
+            ai_confidence DOUBLE PRECISION,
+            
+            -- Timestamps
+            uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            
+            -- Métadonnées additionnelles
+            metadata JSONB DEFAULT '{}'::jsonb
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    // Index pour améliorer les performances
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_delivery_id ON delivery_media(delivery_id)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_parcel_id ON delivery_media(parcel_id) WHERE parcel_id IS NOT NULL")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_type ON delivery_media(type)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_is_parcel_photo ON delivery_media(is_parcel_photo) WHERE is_parcel_photo = TRUE")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_is_proof ON delivery_media(is_proof_media, proof_type) WHERE is_proof_media = TRUE")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_display_order ON delivery_media(delivery_id, display_order)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_uploaded_at ON delivery_media(uploaded_at DESC)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_delivery_type ON delivery_media(delivery_id, type)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_delivery_proof ON delivery_media(delivery_id, is_proof_media, proof_type)")
+        .execute(pool)
+        .await?;
+
+    // Index full-text pour ai_description
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_delivery_media_ai_description_fulltext
+            ON delivery_media USING GIN (to_tsvector('french', COALESCE(ai_description, '')))
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    // Index GIN pour metadata JSONB
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_metadata ON delivery_media USING GIN (metadata)")
+        .execute(pool)
+        .await?;
+
+    // Trigger pour updated_at
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION update_delivery_media_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DROP TRIGGER IF EXISTS trigger_update_delivery_media_updated_at ON delivery_media;
+        CREATE TRIGGER trigger_update_delivery_media_updated_at
+            BEFORE UPDATE ON delivery_media
+            FOR EACH ROW
+            EXECUTE FUNCTION update_delivery_media_updated_at()
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table delivery_media créée");
+    Ok(())
+}
+
 pub async fn ensure_delivery_seed_data(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des seeds livraison (parcel_types alignés avec véhicules)...");
 
@@ -7147,6 +7356,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto delivery_proof_media: {}", e),
     }
 
+    // ✅ NOUVEAU 2025-01-31: Colonnes aller-retour pour deliveries
+    match ensure_delivery_round_trip_columns(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery_round_trip_columns OK"),
+        Err(e) => error!("❌ Erreur migration auto delivery_round_trip_columns: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-01-31: Table delivery_media pour optimiser le stockage des médias
+    match ensure_delivery_media_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery_media table OK"),
+        Err(e) => error!("❌ Erreur migration auto delivery_media table: {}", e),
+    }
+
     // ✅ NOUVEAU 2025-12-07 : Tables sociales vidéo (duets, remixes, stitches, video_reactions)
     match ensure_social_video_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: social video tables OK"),
@@ -7639,10 +7860,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         ),
     }
 
-    // ✅ 2025-11-27 : Table products (critique)
-    match ensure_products_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: products table OK"),
-        Err(e) => error!("❌ Erreur migration auto products: {}", e),
+    // ✅ 2026-01-03 : Table service_products (critique)
+    match ensure_service_products_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: service_products table OK"),
+        Err(e) => error!("❌ Erreur migration auto service_products: {}", e),
     }
 
     // ✅ 2025-11-27 : Table echanges (critique)
@@ -9255,22 +9476,126 @@ pub async fn ensure_token_consumption_and_purchase_history_tables(
     Ok(())
 }
 
-/// Vérifie que la table products existe (créée via 0000_create_all_tables.sql)
-pub async fn ensure_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table products...");
-
-    let products_lifecycle_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'products_lifecycle')"
+/// Vérifie que la table service_products existe (créée via 0000_create_all_tables.sql)
+/// ✅ NOUVEAU 2026-01-03: Vérifie et crée la table service_products séparée pour améliorer les performances
+/// Cette table remplace le stockage JSONB dans services.data->'produits'->'valeur'
+/// NOTE: La table products (UUID) pour tickets de bus est préservée et non modifiée
+pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table service_products...");
+    
+    // Vérifier si la table existe
+    let table_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'service_products')"
     )
     .fetch_one(pool)
     .await?;
-
-    if !products_lifecycle_exists {
-        warn!("⚠️ Table products_lifecycle manquante (sera créée par 0000_create_all_tables.sql)");
+    
+    if table_exists {
+        info!("✅ Table service_products déjà présente");
+        
+        // Vérifier et ajouter les colonnes manquantes si nécessaire (pour migrations incrémentales)
+        // Pour l'instant, on suppose que si la table existe, elle a déjà la bonne structure
+        // Des migrations futures pourront ajouter des colonnes si nécessaire
     } else {
-        info!("✅ Table products_lifecycle présente");
+        warn!("⚠️ Table service_products manquante, création en cours...");
+        
+        // Créer la table service_products
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS service_products (
+                id SERIAL PRIMARY KEY,
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                product_index INTEGER NOT NULL,
+                product_data JSONB NOT NULL,
+                
+                -- Métadonnées générées
+                product_name TEXT GENERATED ALWAYS AS (
+                    COALESCE(
+                        product_data->'nom'->>'valeur',
+                        product_data->>'nom',
+                        product_data->'nom_produit'->>'valeur',
+                        product_data->>'nom_produit',
+                        'Produit sans nom'
+                    )
+                ) STORED,
+                
+                product_type TEXT GENERATED ALWAYS AS (
+                    COALESCE(
+                        product_data->'type'->>'valeur',
+                        product_data->>'type',
+                        'autre'
+                    )
+                ) STORED,
+                
+                product_price NUMERIC GENERATED ALWAYS AS (
+                    CASE 
+                        WHEN product_data->'prix'->'valeur'->>'montant' IS NOT NULL 
+                        THEN (product_data->'prix'->'valeur'->>'montant')::NUMERIC
+                        WHEN product_data->'prix'->>'montant' IS NOT NULL 
+                        THEN (product_data->'prix'->>'montant')::NUMERIC
+                        WHEN product_data->>'prix' IS NOT NULL 
+                        THEN (product_data->>'prix')::NUMERIC
+                        ELSE NULL
+                    END
+                ) STORED,
+                
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                auto_deactivate_at TIMESTAMPTZ,
+                
+                UNIQUE(service_id, product_index)
+            )
+            "#,
+        )
+        .execute(pool)
+        .await?;
+        
+        // Créer les index
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_service_id ON service_products(service_id)")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_active ON service_products(is_active) WHERE is_active = true")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_type ON service_products(product_type)")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_name_gin ON service_products USING GIN(to_tsvector('french', product_name))")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_data_gin ON service_products USING GIN(product_data)")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_service_index ON service_products(service_id, product_index)")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_created_at ON service_products(created_at DESC)")
+            .execute(pool).await?;
+        
+        // Créer le trigger pour updated_at
+        sqlx::query(
+            r#"
+            CREATE OR REPLACE FUNCTION update_service_products_updated_at()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.updated_at = NOW();
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        sqlx::query(
+            r#"
+            CREATE TRIGGER trg_service_products_updated_at
+                BEFORE UPDATE ON service_products
+                FOR EACH ROW
+                EXECUTE FUNCTION update_service_products_updated_at()
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        info!("✅ Table service_products créée avec succès !");
     }
-
+    
     Ok(())
 }
 

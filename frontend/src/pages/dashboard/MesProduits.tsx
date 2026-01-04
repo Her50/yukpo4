@@ -22,6 +22,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ROUTES } from '@/routes/AppRoutesRegistry';
+import { productsService } from '@/services/productsService';
+import { useUser } from '@/hooks/useUser';
 
 interface Product {
     id: string;
@@ -42,45 +44,45 @@ interface Product {
 
 const MesProduits: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useUser();
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'tous' | 'actif' | 'inactif'>('tous');
 
     useEffect(() => {
-        loadProducts();
-    }, []);
+        if (user?.id) {
+            loadProducts();
+        }
+    }, [user?.id]);
 
     const loadProducts = async () => {
+        if (!user?.id) {
+            console.warn('[MesProduits] ⚠️ Utilisateur non connecté');
+            setProducts([]);
+            return;
+        }
+
         try {
             setLoading(true);
 
-            const response = await fetch('/api/prestataire/services', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-
-            if (!response.ok) throw new Error('Erreur chargement');
-
-            const services = await response.json();
-
-            // Extraire tous les produits
+            // ✅ PHASE 5: Charger les produits depuis l'API (plus de fallback JSONB)
             const allProducts: Product[] = [];
-
-            services.forEach((service: any) => {
-                if (service.data?.produits && Array.isArray(service.data.produits)) {
-                    service.data.produits.forEach((product: any, index: number) => {
-                        allProducts.push({
-                            ...product,
-                            id: `${service.id}_${index}`,
-                            serviceId: service.id,
-                            productIndex: index,
-                            isActive: true, // TODO: Récupérer de products_lifecycle
-                            createdAt: service.created_at
-                        });
-                    });
-                }
+            
+            // Utiliser l'endpoint API pour récupérer tous les produits de l'utilisateur
+            const products = await productsService.getProductsByUser(user.id);
+            
+            products.forEach((product) => {
+                allProducts.push({
+                    ...product.product_data,
+                    id: `${product.service_id}_${product.product_index}`,
+                    serviceId: product.service_id,
+                    productIndex: product.product_index,
+                    isActive: product.is_active,
+                    createdAt: product.created_at
+                });
             });
+            
+            console.log('[MesProduits] ✅ Produits chargés depuis API:', allProducts.length);
 
             // Trier par date
             allProducts.sort((a, b) =>
@@ -142,37 +144,18 @@ const MesProduits: React.FC = () => {
         if (!confirm(`Supprimer "${product.nom}" ?`)) return;
 
         try {
-            // Récupérer le service
-            const serviceResponse = await fetch(`/api/services/${product.serviceId}`, {
+            // ✅ PHASE 4: Utiliser l'endpoint API service_products au lieu de JSONB
+            const response = await fetch(`/api/services/${product.serviceId}/products/${product.productIndex}`, {
+                method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
 
-            if (!serviceResponse.ok) throw new Error('Service non trouvé');
-
-            const service = await serviceResponse.json();
-
-            // Supprimer le produit
-            const updatedProducts = [...(service.data.produits || [])];
-            updatedProducts.splice(product.productIndex, 1);
-
-            // Mettre à jour
-            const updateResponse = await fetch(`/api/services/${product.serviceId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({
-                    data: {
-                        ...service.data,
-                        produits: updatedProducts
-                    }
-                })
-            });
-
-            if (!updateResponse.ok) throw new Error('Échec suppression');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Échec suppression');
+            }
 
             toast.success('Produit supprimé');
             loadProducts();

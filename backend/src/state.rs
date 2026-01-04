@@ -119,6 +119,8 @@ pub struct AppState {
     pub spotify_service: Option<Arc<SpotifyIntegrationService>>,
     /// ✅ NOUVEAU: Service YouTube Audio Library
     pub youtube_audio_service: Option<Arc<YouTubeAudioService>>,
+    /// ✅ NOUVEAU 2026-01-03: Service de gestion de la table products séparée
+    pub products_service: Arc<crate::services::products_service::ProductsService>,
 }
 
 impl AppState {
@@ -419,6 +421,9 @@ impl AppState {
             None
         };
 
+        // Cloner pg avant de le déplacer dans AppState
+        let pg_clone = pg.clone();
+
         AppState {
             pg,
             pg_read, // ✅ NOUVEAU 2025-12-02: Read replica pour scaling horizontal
@@ -515,6 +520,7 @@ impl AppState {
             )),
             spotify_service,
             youtube_audio_service,
+            products_service: Arc::new(crate::services::products_service::ProductsService::new(Arc::new(pg_clone))),
         }
     }
 
@@ -657,6 +663,9 @@ impl AppState {
             )),
         );
 
+        // Cloner pg avant de le déplacer dans AppState
+        let pg_clone = pg.clone();
+
         AppState {
             pg,
             pg_read: None, // ✅ NOUVEAU 2025-12-02: Read replica optionnel pour tests
@@ -767,6 +776,7 @@ impl AppState {
             )),
             spotify_service: None, // Pas de Spotify pour les tests
             youtube_audio_service: Some(Arc::new(YouTubeAudioService::new(None))),
+            products_service: Arc::new(crate::services::products_service::ProductsService::new(Arc::new(pg_clone))),
         }
     }
 }

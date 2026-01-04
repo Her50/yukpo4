@@ -301,12 +301,32 @@ export interface CreateDeliveryRequestPayload {
     metadata?: Record<string, unknown>;
     initial_event_payload?: Record<string, unknown>;
     recipient?: DeliveryRecipientPayload;
+    // ✅ Aller-retour
+    is_round_trip?: boolean;
+    return_pickup?: {
+        latitude: number;
+        longitude: number;
+        address?: string;
+    };
+    return_dropoff?: {
+        latitude: number;
+        longitude: number;
+        address?: string;
+    };
+    round_trip_discount_percent?: number; // Réduction en % pour aller-retour (0-100)
+    preferred_vehicle_type?: string;
 }
 
 export interface CreateDeliveryRequestResponse {
     id: string;
     status: string;
     kind: 'parcel' | 'shopping';
+    // ✅ Aller-retour
+    is_round_trip?: boolean;
+    return_delivery?: {
+        id: string;
+        status: string;
+    };
 }
 
 // ✅ NOUVEAU : Récupérer les instructions de navigation pour le coursier

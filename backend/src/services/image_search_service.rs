@@ -168,23 +168,18 @@ impl ImageSearchService {
         let signature_json = serde_json::to_value(image_signature)
             .map_err(|e| AppError::Internal(format!("Erreur conversion signature: {}", e)))?;
 
-        // Rechercher dans les images des produits (stockées dans data->'produits')
+        // ✅ PHASE 3: Rechercher dans les images des produits depuis table service_products
         let sql = r#"
             WITH product_images AS (
                 SELECT 
-                    s.id as service_id,
+                    p.service_id,
                     s.data,
-                    product->>'nom' as product_name,
-                    jsonb_array_elements_text(COALESCE(product->'images', '[]'::jsonb)) as image_path
-                FROM services s,
-                jsonb_array_elements(
-                    CASE 
-                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                        THEN s.data->'produits'
-                        ELSE '[]'::jsonb
-                    END
-                ) AS product
-                WHERE s.is_active = true
+                    p.product_name,
+                    jsonb_array_elements_text(COALESCE(p.product_data->'images', '[]'::jsonb)) as image_path
+                FROM service_products p
+                INNER JOIN services s ON s.id = p.service_id
+                WHERE p.is_active = true
+                AND s.is_active = true
             )
             SELECT 
                 m.id as media_id,

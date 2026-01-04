@@ -9,6 +9,7 @@ use crate::{
         analyze_behavior, analyze_media_tags, analyze_text_input, enrichir_contexte_ia, handle_audio_suggestions,
         handle_audio_sync, handle_auto_captions, handle_auto_cut, handle_color_grade,
         handle_effect_preview, handle_quick_preview, handle_timeline_variants, predict_ia,
+        get_available_effects, get_effect_metrics,
     },
     controllers::ia_status_controller::get_ia_status,
     middlewares::jwt::jwt_auth,
@@ -55,6 +56,14 @@ pub fn ia_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/ia/audio/suggestions", post(handle_audio_suggestions))
         // ✅ NOUVEAU: Génération de preview rapide
         .route("/api/ia/video/quick-preview", post(handle_quick_preview))
+        // ✅ NOUVEAU 2026-01-04: Liste des effets disponibles (public)
+        .route("/api/video/effects", get(get_available_effects))
+        // ✅ NOUVEAU 2026-01-04: Métriques des effets (protégé)
+        .route(
+            "/api/video/effects/metrics",
+            get(get_effect_metrics)
+                .layer(axum::middleware::from_fn(jwt_auth))
+        )
         .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }

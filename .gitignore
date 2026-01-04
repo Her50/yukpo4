@@ -71,3 +71,6 @@ mobile/web-build/
 **/.expo-shared/
 mobile/temp-apk-server/
 *.apk
+
+# Fichiers volumineux à exclure
+backend/NONE

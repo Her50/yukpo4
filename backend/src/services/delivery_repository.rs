@@ -239,6 +239,17 @@ struct DeliverySummaryRow {
     store_lng: Option<f64>,
     shopping_required: bool,
     metadata: Value,
+    // ✅ Aller-retour
+    is_round_trip: Option<bool>,
+    return_delivery_id: Option<Uuid>,
+    return_pickup_lat: Option<f64>,
+    return_pickup_lng: Option<f64>,
+    return_dropoff_lat: Option<f64>,
+    return_dropoff_lng: Option<f64>,
+    return_pickup_address: Option<String>,
+    return_dropoff_address: Option<String>,
+    return_distance_meters: Option<i32>,
+    round_trip_discount_percent: Option<i32>,
 }
 
 #[derive(FromRow)]
@@ -1922,7 +1933,18 @@ impl DeliveryRepository {
                 ST_Y(store_location::geometry) AS store_lat,
                 ST_X(store_location::geometry) AS store_lng,
                 COALESCE(shopping_required, FALSE) AS shopping_required,
-                COALESCE(metadata, '{}'::jsonb) AS metadata
+                COALESCE(metadata, '{}'::jsonb) AS metadata,
+                -- ✅ Aller-retour
+                COALESCE(is_round_trip, FALSE) AS is_round_trip,
+                return_delivery_id,
+                CASE WHEN return_pickup_location IS NOT NULL THEN ST_Y(return_pickup_location::geometry) ELSE NULL END AS return_pickup_lat,
+                CASE WHEN return_pickup_location IS NOT NULL THEN ST_X(return_pickup_location::geometry) ELSE NULL END AS return_pickup_lng,
+                CASE WHEN return_dropoff_location IS NOT NULL THEN ST_Y(return_dropoff_location::geometry) ELSE NULL END AS return_dropoff_lat,
+                CASE WHEN return_dropoff_location IS NOT NULL THEN ST_X(return_dropoff_location::geometry) ELSE NULL END AS return_dropoff_lng,
+                return_pickup_address,
+                return_dropoff_address,
+                return_distance_meters,
+                COALESCE(round_trip_discount_percent, 0) AS round_trip_discount_percent
             FROM deliveries
             WHERE id = $1
             "#,
@@ -1991,6 +2013,17 @@ impl DeliveryRepository {
                     || recipient.dropoff_override.is_some()
             });
 
+            // ✅ Récupérer la livraison retour si elle existe
+            let return_delivery: Option<Box<DeliverySummary>> = if let Some(return_delivery_id) = row.return_delivery_id {
+                if let Ok(Some(ret)) = self.get_delivery_summary(return_delivery_id).await {
+                    Some(Box::new(ret))
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
             return Ok(Some(DeliverySummary {
                 id: row.id,
                 status: row.status,
@@ -2023,6 +2056,11 @@ impl DeliveryRepository {
                 },
                 shopping_required,
                 metadata,
+                // ✅ Aller-retour
+                is_round_trip: Some(row.is_round_trip.unwrap_or(false)),
+                return_delivery_id: row.return_delivery_id,
+                return_delivery,
+                round_trip_discount_percent: Some(row.round_trip_discount_percent),
             }));
         }
 

@@ -113,18 +113,15 @@ async fn search_services_fallback(
                         ),
                         sq.query
                     ), 0) * 2.0 +
-                    -- Score produits (poids faible: 1)
-                    COALESCE(ts_rank(
-                        to_tsvector('french', extract_product_search_text(
-                            CASE 
-                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                                THEN s.data->'produits'
-                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                                THEN s.data->'produits'->'valeur'
-                                ELSE '[]'::jsonb
-                            END
-                        )),
-                        sq.query
+                    -- ✅ PHASE 3: Score produits depuis table service_products (poids faible: 1)
+                    COALESCE((
+                        SELECT MAX(ts_rank(
+                            to_tsvector('french', p.product_name),
+                            sq.query
+                        ))
+                        FROM service_products p
+                        WHERE p.service_id = s.id
+                        AND p.is_active = true
                     ), 0) * 1.0
                 ) as relevance_score
             FROM services s
@@ -147,16 +144,14 @@ async fn search_services_fallback(
                     COALESCE(s.data->'description'->>'valeur', '') || ' ' ||
                     COALESCE(s.data->>'description', '')
                 ) @@ sq.query
-                -- Recherche full-text dans produits
-                OR to_tsvector('french', extract_product_search_text(
-                    CASE 
-                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                        THEN s.data->'produits'
-                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                        THEN s.data->'produits'->'valeur'
-                        ELSE '[]'::jsonb
-                    END
-                )) @@ sq.query
+                -- ✅ PHASE 3: Recherche full-text dans produits depuis table service_products
+                OR EXISTS (
+                    SELECT 1
+                    FROM service_products p
+                    WHERE p.service_id = s.id
+                    AND p.is_active = true
+                    AND to_tsvector('french', p.product_name) @@ sq.query
+                )
             )
         )
         SELECT 

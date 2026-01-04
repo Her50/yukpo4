@@ -10,6 +10,18 @@ import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
+// Options de transport disponibles
+const VEHICLE_TRANSPORT_OPTIONS = [
+    { value: 'bike', label: 'Vélo cargo', icon: '🚲' },
+    { value: 'motorcycle', label: 'Moto', icon: '🏍️' },
+    { value: 'tricycle', label: 'Tricycle', icon: '🛺' },
+    { value: 'car', label: 'Voiture', icon: '🚗' },
+    { value: 'pickup', label: 'Pick-up', icon: '🛻' },
+    { value: 'van', label: 'Fourgonnette', icon: '🚐' },
+    { value: 'truck', label: 'Camion', icon: '🚚' },
+    { value: 'walking', label: 'À pied', icon: '🚶' },
+];
+
 interface LocationData {
     latitude: number;
     longitude: number;
@@ -24,12 +36,17 @@ const DeliveryParcelFlowPage: React.FC = () => {
     const [estimatedDistance, setEstimatedDistance] = useState<number | null>(null);
 
     // État informations colis
-    const [parcelType, setParcelType] = useState<'document' | 'package' | 'moving'>('package');
+    const [parcelType, setParcelType] = useState<'document' | 'package' | 'moving' | 'cake'>('package');
     const [weight, setWeight] = useState<string>('');
     const [volume, setVolume] = useState<string>('');
     const [declaredValue, setDeclaredValue] = useState<string>('');
     const [notes, setNotes] = useState('');
     const [photos, setPhotos] = useState<string[]>([]);
+    
+    // États pour formulaire adaptatif
+    const [numberOfPages, setNumberOfPages] = useState<string>(''); // Document
+    const [cakeSize, setCakeSize] = useState<string>(''); // Gâteau
+    const [cakeLayers, setCakeLayers] = useState<string>(''); // Gâteau
     const [photoFiles, setPhotoFiles] = useState<File[]>([]);
     const [photoCompression, setPhotoCompression] = useState<Record<number, CompressionResult>>({});
     const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
@@ -41,6 +58,17 @@ const DeliveryParcelFlowPage: React.FC = () => {
     const [showPickupGPS, setShowPickupGPS] = useState(false);
     const [showDropoffGPS, setShowDropoffGPS] = useState(false);
 
+    // ✅ États pour aller-retour
+    const [isRoundTrip, setIsRoundTrip] = useState<boolean>(false);
+    const [returnPickupLocation, setReturnPickupLocation] = useState<LocationData | null>(null);
+    const [returnDropoffLocation, setReturnDropoffLocation] = useState<LocationData | null>(null);
+    const [showReturnPickupGPS, setShowReturnPickupGPS] = useState(false);
+    const [showReturnDropoffGPS, setShowReturnDropoffGPS] = useState(false);
+    const [returnDistance, setReturnDistance] = useState<number | null>(null);
+
+    // État transport (vide par défaut, backend utilisera "motorcycle")
+    const [transportMode, setTransportMode] = useState<string>('');
+    
     // État déménagement
     const [isMoving, setIsMoving] = useState(false);
     const [movingBoxes, setMovingBoxes] = useState<string>('');
@@ -54,6 +82,12 @@ const DeliveryParcelFlowPage: React.FC = () => {
     const [isFlexible, setIsFlexible] = useState<boolean>(true);
     const [flexibilityWindowDays, setFlexibilityWindowDays] = useState<number>(3);
     const [urgencyLevel, setUrgencyLevel] = useState<'standard' | 'urgent' | 'scheduled'>('standard');
+    // ✅ Planification
+    const [isScheduled, setIsScheduled] = useState<boolean>(false);
+    const [scheduledDate, setScheduledDate] = useState<string>('');
+    const [scheduledTime, setScheduledTime] = useState<string>('');
+    // ✅ Par défaut : matching instantané si planification sélectionnée
+    const [matchingMode, setMatchingMode] = useState<'immediate' | 'scheduled'>('immediate');
 
     // État destinataire
     const [recipientName, setRecipientName] = useState<string>('');
@@ -91,10 +125,54 @@ const DeliveryParcelFlowPage: React.FC = () => {
         }
     }, [pickupLocation, dropoffLocation]);
 
+    // ✅ Calculer distance retour
+    useEffect(() => {
+        if (isRoundTrip && returnPickupLocation && returnDropoffLocation) {
+            const distance = calculateDistance(
+                returnPickupLocation.latitude,
+                returnPickupLocation.longitude,
+                returnDropoffLocation.latitude,
+                returnDropoffLocation.longitude
+            );
+            setReturnDistance(distance);
+        } else {
+            setReturnDistance(null);
+        }
+    }, [isRoundTrip, returnPickupLocation, returnDropoffLocation]);
+
+    // ✅ Auto-remplir les points de retour depuis les points aller si activé
+    useEffect(() => {
+        if (isRoundTrip && pickupLocation && dropoffLocation) {
+            // Point de collecte retour = point de livraison aller
+            if (!returnPickupLocation) {
+                setReturnPickupLocation({
+                    latitude: dropoffLocation.latitude,
+                    longitude: dropoffLocation.longitude,
+                    address: dropoffLocation.address,
+                });
+            }
+            // Point de livraison retour = point de collecte aller
+            if (!returnDropoffLocation) {
+                setReturnDropoffLocation({
+                    latitude: pickupLocation.latitude,
+                    longitude: pickupLocation.longitude,
+                    address: pickupLocation.address,
+                });
+            }
+        }
+    }, [isRoundTrip, pickupLocation, dropoffLocation]);
+
     // Mettre à jour isMoving quand le type change
     useEffect(() => {
         setIsMoving(parcelType === 'moving');
     }, [parcelType]);
+    
+    // Supprimer transportMode si le type change vers un type incompatible
+    useEffect(() => {
+        if (parcelType === 'moving' && transportMode === 'walking') {
+            setTransportMode('');
+        }
+    }, [parcelType, transportMode]);
 
     // Gérer l'upload de photos avec compression
     const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -369,12 +447,39 @@ const DeliveryParcelFlowPage: React.FC = () => {
             return;
         }
 
+        // ✅ Validation aller-retour
+        if (isRoundTrip && (!returnPickupLocation || !returnDropoffLocation)) {
+            toast.error('Veuillez sélectionner les points de collecte et de livraison pour le retour');
+            return;
+        }
+
         setLoading(true);
         try {
             // Construire le payload
             const payload: CreateDeliveryRequestPayload = {
+                // ✅ Par défaut: "motorcycle" si aucun type spécifié
+                preferred_vehicle_type: transportMode || undefined, // Sera remplacé par "motorcycle" dans le backend si vide
+                is_round_trip: isRoundTrip || undefined,
+                // ✅ Planification
+                scheduled_delivery_at: isScheduled && scheduledDate && scheduledTime
+                    ? `${scheduledDate}T${scheduledTime}:00Z`
+                    : undefined,
+                matching_mode: isScheduled ? matchingMode : undefined,
+                ...(isRoundTrip && returnPickupLocation && returnDropoffLocation && {
+                    return_pickup: {
+                        latitude: returnPickupLocation.latitude,
+                        longitude: returnPickupLocation.longitude,
+                        address: returnPickupLocation.address,
+                    },
+                    return_dropoff: {
+                        latitude: returnDropoffLocation.latitude,
+                        longitude: returnDropoffLocation.longitude,
+                        address: returnDropoffLocation.address,
+                    },
+                    round_trip_discount_percent: 10, // 10% de réduction par défaut pour aller-retour
+                }),
                 parcel: {
-                    type_id: parcelType === 'document' ? 1 : parcelType === 'package' ? 2 : 3,
+                    type_id: parcelType === 'document' ? 1 : parcelType === 'package' ? 2 : parcelType === 'moving' ? 3 : 4,
                     weight_kg: weight ? parseFloat(weight) : undefined,
                     volume_cm3: volume ? parseFloat(volume) : undefined,
                     declared_value: declaredValue ? parseFloat(declaredValue) : undefined,
@@ -382,12 +487,21 @@ const DeliveryParcelFlowPage: React.FC = () => {
                     // ✅ CORRIGÉ : Toujours envoyer un tableau (même vide) pour photos
                     photos: photos.length > 0 ? photos : [],
                     // ✅ CORRIGÉ : Toujours envoyer un objet (même vide) pour constraints
-                    constraints: isMoving ? {
-                        is_moving: true,
-                        boxes: movingBoxes || undefined,
-                        furniture: movingFurniture || undefined,
-                        access: movingAccess || undefined,
-                    } : {},
+                    constraints: {
+                        ...(parcelType === 'document' && {
+                            number_of_pages: numberOfPages ? parseInt(numberOfPages) : undefined,
+                        }),
+                        ...(parcelType === 'moving' && {
+                            is_moving: true,
+                            boxes: movingBoxes || undefined,
+                            furniture: movingFurniture || undefined,
+                            access: movingAccess || undefined,
+                        }),
+                        ...(parcelType === 'cake' && {
+                            cake_size: cakeSize || undefined,
+                            cake_layers: cakeLayers ? parseInt(cakeLayers) : undefined,
+                        }),
+                    },
                 },
                 pickup: {
                     latitude: pickupLocation!.latitude,
@@ -453,121 +567,220 @@ const DeliveryParcelFlowPage: React.FC = () => {
                         <Package className="h-5 w-5 text-primary" />
                         <h2 className="text-lg font-semibold text-slate-900">Type de colis *</h2>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                        {(['document', 'package', 'moving'] as const).map((type) => (
+                    <div className="grid grid-cols-2 gap-4">
+                        {([
+                            { id: 'document', label: 'Document', icon: 'file-text' },
+                            { id: 'package', label: 'Colis', icon: 'package' },
+                            { id: 'moving', label: 'Déménagement', icon: 'truck' },
+                            { id: 'cake', label: 'Gâteau', icon: 'cake' },
+                        ] as const).map((type) => (
                             <button
-                                key={type}
+                                key={type.id}
                                 type="button"
-                                onClick={() => setParcelType(type)}
-                                className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${parcelType === type
+                                onClick={() => setParcelType(type.id)}
+                                className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all min-h-[100px] ${parcelType === type.id
                                     ? 'border-primary bg-primary/5'
                                     : 'border-slate-200 hover:border-slate-300'
                                     }`}
                             >
-                                {type === 'document' ? (
+                                {type.id === 'document' ? (
                                     <AlertCircle className="h-6 w-6 text-primary" />
-                                ) : type === 'package' ? (
+                                ) : type.id === 'package' ? (
                                     <Package className="h-6 w-6 text-primary" />
-                                ) : (
+                                ) : type.id === 'moving' ? (
                                     <Truck className="h-6 w-6 text-primary" />
+                                ) : (
+                                    <span className="text-2xl">🎂</span>
                                 )}
-                                <span className="text-sm font-medium">
-                                    {type === 'document'
-                                        ? 'Document'
-                                        : type === 'package'
-                                            ? 'Paquet'
-                                            : 'Déménagement'}
+                                <span className={`text-xs font-medium text-center ${parcelType === type.id ? 'text-primary' : 'text-slate-700'}`}>
+                                    {type.label}
                                 </span>
                             </button>
                         ))}
                     </div>
                 </section>
 
-                {/* Informations colis */}
+                {/* Informations colis - Formulaire adaptatif */}
                 <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="mb-4 flex items-center gap-2">
                         <AlertCircle className="h-5 w-5 text-accent" />
                         <h2 className="text-lg font-semibold text-slate-900">Informations du colis</h2>
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div className="grid gap-2">
-                            <Label htmlFor="weight">Poids (kg)</Label>
-                            <Input
-                                id="weight"
-                                type="number"
-                                step="0.1"
-                                placeholder="Ex: 2.5"
-                                value={weight}
-                                onChange={(e) => {
-                                    setWeight(e.target.value);
-                                    const error = validateField('weight', e.target.value);
-                                    setErrors(prev => ({ ...prev, weight: error }));
-                                }}
-                                className={errors.weight ? 'border-red-500' : ''}
-                            />
-                            {errors.weight && (
-                                <p className="text-sm text-red-600">{errors.weight}</p>
-                            )}
+                    
+                    {/* Formulaire pour Document */}
+                    {parcelType === 'document' && (
+                        <div className="grid gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="numberOfPages">Nombre de pages (optionnel)</Label>
+                                <Input
+                                    id="numberOfPages"
+                                    type="number"
+                                    placeholder="Ex: 10"
+                                    value={numberOfPages}
+                                    onChange={(e) => setNumberOfPages(e.target.value)}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="declaredValue">Valeur déclarée (FCFA)</Label>
+                                <Input
+                                    id="declaredValue"
+                                    type="number"
+                                    placeholder="Ex: 5000"
+                                    value={declaredValue}
+                                    onChange={(e) => {
+                                        setDeclaredValue(e.target.value);
+                                        const error = validateField('declaredValue', e.target.value);
+                                        setErrors(prev => ({ ...prev, declaredValue: error }));
+                                    }}
+                                    className={errors.declaredValue ? 'border-red-500' : ''}
+                                />
+                                {errors.declaredValue && (
+                                    <p className="text-sm text-red-600">{errors.declaredValue}</p>
+                                )}
+                            </div>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="volume">Volume (cm³)</Label>
-                            <Input
-                                id="volume"
-                                type="number"
-                                placeholder="Ex: 5000"
-                                value={volume}
-                                onChange={(e) => {
-                                    setVolume(e.target.value);
-                                    const error = validateField('volume', e.target.value);
-                                    setErrors(prev => ({ ...prev, volume: error }));
-                                }}
-                                className={errors.volume ? 'border-red-500' : ''}
-                            />
-                            {errors.volume && (
-                                <p className="text-sm text-red-600">{errors.volume}</p>
-                            )}
+                    )}
+
+                    {/* Formulaire pour Colis standard */}
+                    {parcelType === 'package' && (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="weight">Poids (kg)</Label>
+                                <Input
+                                    id="weight"
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="Ex: 2.5"
+                                    value={weight}
+                                    onChange={(e) => {
+                                        setWeight(e.target.value);
+                                        const error = validateField('weight', e.target.value);
+                                        setErrors(prev => ({ ...prev, weight: error }));
+                                    }}
+                                    className={errors.weight ? 'border-red-500' : ''}
+                                />
+                                {errors.weight && (
+                                    <p className="text-sm text-red-600">{errors.weight}</p>
+                                )}
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="volume">Volume (L)</Label>
+                                <Input
+                                    id="volume"
+                                    type="number"
+                                    placeholder="Ex: 10"
+                                    value={volume}
+                                    onChange={(e) => {
+                                        setVolume(e.target.value);
+                                        const error = validateField('volume', e.target.value);
+                                        setErrors(prev => ({ ...prev, volume: error }));
+                                    }}
+                                    className={errors.volume ? 'border-red-500' : ''}
+                                />
+                                {errors.volume && (
+                                    <p className="text-sm text-red-600">{errors.volume}</p>
+                                )}
+                            </div>
+                            <div className="grid gap-2 md:col-span-2">
+                                <Label htmlFor="declaredValue">Valeur déclarée (FCFA)</Label>
+                                <Input
+                                    id="declaredValue"
+                                    type="number"
+                                    placeholder="Ex: 50000"
+                                    value={declaredValue}
+                                    onChange={(e) => {
+                                        setDeclaredValue(e.target.value);
+                                        const error = validateField('declaredValue', e.target.value);
+                                        setErrors(prev => ({ ...prev, declaredValue: error }));
+                                    }}
+                                    className={errors.declaredValue ? 'border-red-500' : ''}
+                                />
+                                {errors.declaredValue && (
+                                    <p className="text-sm text-red-600">{errors.declaredValue}</p>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                    <div className="mt-4 grid gap-2">
-                        <Label htmlFor="declaredValue">Valeur déclarée (FCFA)</Label>
-                        <Input
-                            id="declaredValue"
-                            type="number"
-                            placeholder="Ex: 50000"
-                            value={declaredValue}
-                            onChange={(e) => {
-                                setDeclaredValue(e.target.value);
-                                const error = validateField('declaredValue', e.target.value);
-                                setErrors(prev => ({ ...prev, declaredValue: error }));
-                            }}
-                            className={errors.declaredValue ? 'border-red-500' : ''}
-                        />
-                        {errors.declaredValue && (
-                            <p className="text-sm text-red-600">{errors.declaredValue}</p>
-                        )}
-                    </div>
+                    )}
+
+                    {/* Formulaire pour Gâteau */}
+                    {parcelType === 'cake' && (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="cakeSize">Taille du gâteau</Label>
+                                <Input
+                                    id="cakeSize"
+                                    type="text"
+                                    placeholder="Ex: 20cm, 30cm"
+                                    value={cakeSize}
+                                    onChange={(e) => setCakeSize(e.target.value)}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="cakeLayers">Nombre d'étages</Label>
+                                <Input
+                                    id="cakeLayers"
+                                    type="number"
+                                    placeholder="Ex: 2"
+                                    value={cakeLayers}
+                                    onChange={(e) => setCakeLayers(e.target.value)}
+                                />
+                            </div>
+                            <div className="grid gap-2 md:col-span-2">
+                                <Label htmlFor="weight">Poids (kg)</Label>
+                                <Input
+                                    id="weight"
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="Ex: 2"
+                                    value={weight}
+                                    onChange={(e) => {
+                                        setWeight(e.target.value);
+                                        const error = validateField('weight', e.target.value);
+                                        setErrors(prev => ({ ...prev, weight: error }));
+                                    }}
+                                    className={errors.weight ? 'border-red-500' : ''}
+                                />
+                                {errors.weight && (
+                                    <p className="text-sm text-red-600">{errors.weight}</p>
+                                )}
+                            </div>
+                            <div className="grid gap-2 md:col-span-2">
+                                <Label htmlFor="declaredValue">Valeur déclarée (FCFA)</Label>
+                                <Input
+                                    id="declaredValue"
+                                    type="number"
+                                    placeholder="Ex: 30000"
+                                    value={declaredValue}
+                                    onChange={(e) => {
+                                        setDeclaredValue(e.target.value);
+                                        const error = validateField('declaredValue', e.target.value);
+                                        setErrors(prev => ({ ...prev, declaredValue: error }));
+                                    }}
+                                    className={errors.declaredValue ? 'border-red-500' : ''}
+                                />
+                                {errors.declaredValue && (
+                                    <p className="text-sm text-red-600">{errors.declaredValue}</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </section>
 
-                {/* Déménagement - Champs supplémentaires */}
-                {isMoving && (
-                    <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                        <div className="mb-4 flex items-center gap-2">
-                            <Truck className="h-5 w-5 text-warning" />
-                            <h2 className="text-lg font-semibold text-slate-900">Détails déménagement</h2>
-                        </div>
+                    {/* Formulaire pour Déménagement */}
+                    {parcelType === 'moving' && (
                         <div className="grid gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="movingBoxes">Nombre de cartons</Label>
                                 <Input
                                     id="movingBoxes"
                                     type="number"
-                                    placeholder="Ex: 10"
+                                    placeholder="Ex: 20"
                                     value={movingBoxes}
                                     onChange={(e) => setMovingBoxes(e.target.value)}
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="movingFurniture">Meubles à transporter</Label>
+                                <Label htmlFor="movingFurniture">Meubles à transporter (optionnel)</Label>
                                 <Input
                                     id="movingFurniture"
                                     placeholder="Ex: Canapé, Table, Armoire"
@@ -584,9 +797,74 @@ const DeliveryParcelFlowPage: React.FC = () => {
                                     onChange={(e) => setMovingAccess(e.target.value)}
                                 />
                             </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="volume">Volume estimé (m³)</Label>
+                                <Input
+                                    id="volume"
+                                    type="number"
+                                    placeholder="Ex: 20"
+                                    value={volume}
+                                    onChange={(e) => {
+                                        setVolume(e.target.value);
+                                        const error = validateField('volume', e.target.value);
+                                        setErrors(prev => ({ ...prev, volume: error }));
+                                    }}
+                                    className={errors.volume ? 'border-red-500' : ''}
+                                />
+                                {errors.volume && (
+                                    <p className="text-sm text-red-600">{errors.volume}</p>
+                                )}
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="declaredValue">Valeur déclarée (FCFA)</Label>
+                                <Input
+                                    id="declaredValue"
+                                    type="number"
+                                    placeholder="Ex: 500000"
+                                    value={declaredValue}
+                                    onChange={(e) => {
+                                        setDeclaredValue(e.target.value);
+                                        const error = validateField('declaredValue', e.target.value);
+                                        setErrors(prev => ({ ...prev, declaredValue: error }));
+                                    }}
+                                    className={errors.declaredValue ? 'border-red-500' : ''}
+                                />
+                                {errors.declaredValue && (
+                                    <p className="text-sm text-red-600">{errors.declaredValue}</p>
+                                )}
+                            </div>
                         </div>
-                    </section>
-                )}
+                    )}
+
+                    {/* Type de transport souhaité */}
+                    <div className="mt-6 grid gap-4">
+                        <div className="mb-2 flex items-center gap-2">
+                            <Truck className="h-5 w-5 text-primary" />
+                            <h3 className="text-base font-semibold text-slate-900">Type de transport souhaité</h3>
+                        </div>
+                        <div className="grid grid-cols-4 gap-3">
+                            {VEHICLE_TRANSPORT_OPTIONS.map((type) => (
+                                <button
+                                    key={type.value}
+                                    type="button"
+                                    onClick={() => setTransportMode(transportMode === type.value ? '' : type.value)}
+                                    className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 p-3 min-h-[80px] transition-all ${transportMode === type.value
+                                        ? 'border-primary bg-primary/5'
+                                        : 'border-slate-200 hover:border-slate-300'
+                                        }`}
+                                >
+                                    <span className="text-2xl">{type.icon}</span>
+                                    <span className={`text-xs font-medium text-center leading-tight ${transportMode === type.value ? 'text-primary' : 'text-slate-700'}`}>
+                                        {type.label}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2">
+                            Si aucun type n'est sélectionné, la moto sera utilisée par défaut.
+                        </p>
+                    </div>
+                </section>
 
                 {/* Point de collecte */}
                 <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -922,6 +1200,87 @@ const DeliveryParcelFlowPage: React.FC = () => {
                             </select>
                         </div>
                     </div>
+
+                    {/* ✅ Section Planification */}
+                    <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                        <div className="mb-4 flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="isScheduled"
+                                checked={isScheduled}
+                                onChange={(e) => {
+                                    setIsScheduled(e.target.checked);
+                                    if (!e.target.checked) {
+                                        setScheduledDate('');
+                                        setScheduledTime('');
+                                    } else {
+                                        // Pré-remplir avec demain à 14h par défaut
+                                        const tomorrow = new Date();
+                                        tomorrow.setDate(tomorrow.getDate() + 1);
+                                        setScheduledDate(tomorrow.toISOString().split('T')[0]);
+                                        setScheduledTime('14:00');
+                                    }
+                                }}
+                                className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                            />
+                            <Label htmlFor="isScheduled" className="text-base font-semibold text-slate-900 cursor-pointer">
+                                Planifier cette livraison
+                            </Label>
+                        </div>
+                        {isScheduled && (
+                            <div className="space-y-4">
+                                <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="scheduledDate">Date de livraison *</Label>
+                                <Input
+                                    id="scheduledDate"
+                                    type="date"
+                                    value={scheduledDate}
+                                    onChange={(e) => setScheduledDate(e.target.value)}
+                                    min={new Date().toISOString().split('T')[0]}
+                                    className="border-slate-300"
+                                />
+                                <p className="text-xs text-slate-500">
+                                    Sélectionnez une date future pour planifier votre livraison
+                                </p>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="scheduledTime">Heure de livraison *</Label>
+                                <Input
+                                    id="scheduledTime"
+                                    type="time"
+                                    value={scheduledTime}
+                                    onChange={(e) => setScheduledTime(e.target.value)}
+                                    className="border-slate-300"
+                                />
+                                <p className="text-xs text-slate-500">
+                                    Heure souhaitée de collecte (format 24h)
+                                </p>
+                            </div>
+                        </div>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="matchingMode">Quand matcher le coursier ?</Label>
+                                    <select
+                                        id="matchingMode"
+                                        value={matchingMode}
+                                        onChange={(e) => setMatchingMode(e.target.value as 'immediate' | 'scheduled')}
+                                        className="rounded-lg border border-slate-300 p-2 text-sm"
+                                    >
+                                        <option value="immediate">Maintenant (par défaut - pour contacter le coursier à l'avance)</option>
+                                        <option value="scheduled">Au moment de la livraison planifiée</option>
+                                    </select>
+                                    <p className="text-xs text-slate-600">
+                                        {matchingMode === 'immediate'
+                                            ? "✅ Le coursier sera assigné maintenant. Vous pourrez le contacter et préparer la livraison. Il devra déclencher la livraison au moment planifié."
+                                            : "Le coursier sera recherché automatiquement à la date et heure planifiée."}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     {preferredDeliveryDate && (
                         <div className="mt-4 grid gap-4 md:grid-cols-2">
                             <div className="grid gap-2">
@@ -1015,6 +1374,57 @@ const DeliveryParcelFlowPage: React.FC = () => {
                             dropoffLocation
                                 ? { lat: dropoffLocation.latitude, lng: dropoffLocation.longitude }
                                 : undefined
+                        }
+                    />
+                </div>
+            )}
+
+            {/* ✅ Modals GPS pour retour */}
+            {showReturnPickupGPS && (
+                <div className="fixed inset-0 z-50">
+                    <AdvancedGPSModal
+                        onClose={() => setShowReturnPickupGPS(false)}
+                        onSelect={(path, previewUrl, metadata) => {
+                            if (!path || path.length === 0) return;
+                            const firstPoint = path[0];
+                            setReturnPickupLocation({
+                                latitude: firstPoint.lat,
+                                longitude: firstPoint.lng,
+                                address: metadata?.address || metadata?.formatted_address || undefined,
+                            });
+                            setShowReturnPickupGPS(false);
+                        }}
+                        initialLocation={
+                            returnPickupLocation
+                                ? { lat: returnPickupLocation.latitude, lng: returnPickupLocation.longitude }
+                                : dropoffLocation
+                                    ? { lat: dropoffLocation.latitude, lng: dropoffLocation.longitude }
+                                    : undefined
+                        }
+                    />
+                </div>
+            )}
+
+            {showReturnDropoffGPS && (
+                <div className="fixed inset-0 z-50">
+                    <AdvancedGPSModal
+                        onClose={() => setShowReturnDropoffGPS(false)}
+                        onSelect={(path, previewUrl, metadata) => {
+                            if (!path || path.length === 0) return;
+                            const firstPoint = path[0];
+                            setReturnDropoffLocation({
+                                latitude: firstPoint.lat,
+                                longitude: firstPoint.lng,
+                                address: metadata?.address || metadata?.formatted_address || undefined,
+                            });
+                            setShowReturnDropoffGPS(false);
+                        }}
+                        initialLocation={
+                            returnDropoffLocation
+                                ? { lat: returnDropoffLocation.latitude, lng: returnDropoffLocation.longitude }
+                                : pickupLocation
+                                    ? { lat: pickupLocation.latitude, lng: pickupLocation.longitude }
+                                    : undefined
                         }
                     />
                 </div>

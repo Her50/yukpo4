@@ -13,6 +13,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 
+/// ✅ CORRECTION 2: Nettoie la réponse JSON en enlevant les markdown code blocks
+/// L'IA peut retourner du JSON dans un bloc markdown (```json\n...\n```)
+fn clean_json_response(response: &str) -> String {
+    let mut cleaned = response.trim().to_string();
+    
+    // Enlever les markdown code blocks au début
+    if cleaned.starts_with("```json") {
+        cleaned = cleaned.strip_prefix("```json").unwrap_or(&cleaned).trim().to_string();
+    } else if cleaned.starts_with("```") {
+        cleaned = cleaned.strip_prefix("```").unwrap_or(&cleaned).trim().to_string();
+    }
+    
+    // Enlever les markdown code blocks à la fin
+    if cleaned.ends_with("```") {
+        cleaned = cleaned.strip_suffix("```").unwrap_or(&cleaned).trim().to_string();
+    }
+    
+    // Enlever les sauts de ligne en début/fin
+    cleaned.trim().to_string()
+}
+
 /// Profil famille pour personnalisation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FamilyProfile {
@@ -206,14 +227,18 @@ IMPORTANT :
             tokens
         );
 
+        // ✅ CORRECTION 2: Nettoyer la réponse JSON (enlever markdown code blocks)
+        let cleaned_response = clean_json_response(&response);
+        
         // Parser la réponse JSON
-        let menu: WeeklyMenu = match serde_json::from_str(&response) {
+        let menu: WeeklyMenu = match serde_json::from_str(&cleaned_response) {
             Ok(m) => m,
             Err(e) => {
                 log::error!(
-                    "[MenuPlanningAIService] Erreur parsing JSON: {} | Réponse: {}",
+                    "[MenuPlanningAIService] Erreur parsing JSON: {} | Réponse originale: {} | Réponse nettoyée: {}",
                     e,
-                    response
+                    response,
+                    cleaned_response
                 );
                 // Fallback: créer un menu basique
                 self.create_fallback_menu(profile, week_start)
@@ -280,8 +305,11 @@ RÉPONSE ATTENDUE (JSON strict) :
             tokens
         );
 
+        // ✅ CORRECTION 2: Nettoyer la réponse JSON (enlever markdown code blocks)
+        let cleaned_response = clean_json_response(&response);
+        
         // Parser la réponse
-        let result: serde_json::Value = serde_json::from_str(&response).unwrap_or_default();
+        let result: serde_json::Value = serde_json::from_str(&cleaned_response).unwrap_or_default();
         let suggestions: Vec<RecipeSuggestion> = result
             .get("suggestions")
             .and_then(|s| s.as_array())
@@ -332,8 +360,11 @@ RÉPONSE ATTENDUE (JSON strict) :
             tokens
         );
 
+        // ✅ CORRECTION 2: Nettoyer la réponse JSON (enlever markdown code blocks)
+        let cleaned_response = clean_json_response(&response);
+        
         let result: serde_json::Value =
-            serde_json::from_str(&response).unwrap_or_else(|_| json!({ "ingredients": [] }));
+            serde_json::from_str(&cleaned_response).unwrap_or_else(|_| json!({ "ingredients": [] }));
 
         Ok(result)
     }
@@ -390,8 +421,11 @@ RÉPONSE ATTENDUE (JSON strict) :
             tokens
         );
 
+        // ✅ CORRECTION 2: Nettoyer la réponse JSON (enlever markdown code blocks)
+        let cleaned_response = clean_json_response(&response);
+        
         let analysis: NutritionAnalysis =
-            serde_json::from_str(&response).unwrap_or_else(|_| NutritionAnalysis {
+            serde_json::from_str(&cleaned_response).unwrap_or_else(|_| NutritionAnalysis {
                 total_calories: 0.0,
                 total_proteins: 0.0,
                 total_carbs: 0.0,

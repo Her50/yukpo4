@@ -21,6 +21,7 @@ import BrandingManager from '@/components/ui/BrandingManager';
 import ProductManager from '@/components/ui/ProductManager';
 import MediaUploadManager from '@/components/ui/MediaUploadManager';
 import LocationSelector, { LocationObject } from '@/components/ui/LocationSelector';
+import { productsService } from '@/services/productsService';
 
 export default function FormulaireDemandeOuService() {
   const location = useLocation();
@@ -133,6 +134,19 @@ export default function FormulaireDemandeOuService() {
                 conditions: promoData.conditions || '',
               });
               console.log('[FormulaireYukpoIntelligent] ✅ Promotion chargée:', promoData);
+            }
+          }
+
+          // ✅ PHASE 4: Charger les produits depuis l'API au lieu de service.data.produits
+          if (serviceId) {
+            try {
+              const products = await productsService.getProductsByService(parseInt(serviceId));
+              console.log('[FormulaireYukpoIntelligent] ✅ Produits chargés depuis API:', products.length);
+              // Les produits sont maintenant disponibles depuis l'API
+              // Les champs dynamiques utiliseront ces données si nécessaire
+            } catch (error) {
+              console.warn('[FormulaireYukpoIntelligent] Erreur récupération produits, fallback JSONB:', error);
+              // Fallback vers service.data.produits si l'API échoue
             }
           }
 

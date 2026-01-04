@@ -48,11 +48,25 @@ pub async fn search_product_suggestions(
             ac.full_vector,
             ac.chosen_location,
             ac.usage_count,
-            -- Extraire données produit depuis service.data
-            (s.data->'produits'->>'prix')::FLOAT as prix,
-            s.data->'produits'->>'devise' as devise,
-            COALESCE((s.data->'produits'->>'has_variant')::BOOLEAN, FALSE) as has_variant,
-            s.data->'produits'->>'variant_dimension' as variant_dimension,
+            -- ✅ PHASE 3: Extraire données produit depuis table service_products
+            COALESCE(p.product_price::FLOAT, 
+                CASE 
+                    WHEN p.product_data->'prix'->'valeur'->>'montant' IS NOT NULL 
+                    THEN (p.product_data->'prix'->'valeur'->>'montant')::FLOAT
+                    WHEN p.product_data->'prix'->>'montant' IS NOT NULL 
+                    THEN (p.product_data->'prix'->>'montant')::FLOAT
+                    WHEN p.product_data->>'prix' IS NOT NULL 
+                    THEN (p.product_data->>'prix')::FLOAT
+                    ELSE NULL
+                END
+            ) as prix,
+            COALESCE(
+                p.product_data->'prix'->'valeur'->>'devise',
+                p.product_data->'prix'->>'devise',
+                p.product_data->>'devise'
+            ) as devise,
+            COALESCE((p.product_data->>'has_variant')::BOOLEAN, FALSE) as has_variant,
+            p.product_data->>'variant_dimension' as variant_dimension,
             -- Score de pertinence
             (
                 -- Correspondance dans full_vector
@@ -66,9 +80,11 @@ pub async fn search_product_suggestions(
             ) as relevance_score
         FROM autocomplete_characteristics ac
         INNER JOIN services s ON s.id = ac.service_id
+        INNER JOIN service_products p ON p.id = ac.product_id::INTEGER AND p.service_id = ac.service_id
         WHERE 
             ac.is_real_product = TRUE
             AND s.is_active = TRUE
+            AND p.is_active = TRUE
             AND ac.identifiant_base = 'produits'
             AND (
                 -- Au moins UN élément du vecteur matche

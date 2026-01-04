@@ -4,65 +4,83 @@ import { apiGet } from './api';
 
 export type PlaceScope = 'city' | 'point' | 'neighborhood' | 'all'; // ✅ AJOUT: Support des quartiers et 'all' pour recherche universelle
 
+// ✅ NOUVEAU: Interface pour résultats enrichis avec types Google Places
+export interface PlaceResult {
+    description: string;
+    place_id?: string;
+    types?: string[]; // Types retournés par Google Places API
+}
+
 class PlacesService {
     /**
-     * Autocomplete intelligent pour villes, quartiers, pays et lieux
+     * Autocomplete intelligent pour villes, quartiers, pays et lieux (format enrichi avec types)
      * - Essaie d'abord le backend Google Maps API
      * - Fallback sur la base locale (TOUS les pays d'Afrique francophone)
      * - Si scope est undefined ou 'all', recherche universelle (tous les types géographiques)
+     * - Retourne les résultats avec types Google Places pour éviter le hardcodage
      */
-    async autocomplete(query: string, scope?: PlaceScope, cityContext?: string): Promise<string[]> {
+    async autocompleteEnriched(query: string, scope?: PlaceScope, cityContext?: string): Promise<PlaceResult[]> {
         const q = (query || '').trim();
-        const results: string[] = [];
+        const results: PlaceResult[] = [];
 
         // ✅ PRIORITÉ 1: Backend Google Maps API
         try {
             const params = encodeURI(q);
-            // ✅ CORRECTION 2025-11-04: Recherche universelle si scope est undefined
             let url: string;
             if (!scope) {
-                // Recherche universelle - tous les types géographiques (ville, quartier, pays, région)
                 url = `/api/places/autocomplete?query=${params}`;
             } else if (scope === 'city') {
                 url = `/api/places/autocomplete?query=${params}&type=city`;
             } else if (scope === 'neighborhood') {
                 url = `/api/places/autocomplete?query=${params}&type=neighborhood${cityContext ? `&city=${encodeURIComponent(cityContext)}` : ''}`;
             } else {
-                // point
                 url = `/api/places/autocomplete?query=${params}&type=point${cityContext ? `&city=${encodeURIComponent(cityContext)}` : ''}`;
             }
 
-            const response = await apiGet<{ success: boolean; data?: string[] }>(url);
-            if (response.success && Array.isArray(response.data) && response.data.length > 0) {
-                results.push(...response.data);
+            const response = await apiGet<{ 
+                success: boolean; 
+                data?: string[];
+                results?: PlaceResult[];
+            }>(url);
+            
+            if (response.success) {
+                // ✅ PRIORITÉ: Utiliser les résultats enrichis avec types si disponibles
+                if (response.results && Array.isArray(response.results) && response.results.length > 0) {
+                    results.push(...response.results);
+                } else if (Array.isArray(response.data) && response.data.length > 0) {
+                    // Fallback: convertir les strings en PlaceResult sans types
+                    results.push(...response.data.map(desc => ({ description: desc })));
+                }
             }
         } catch (_err) {
             // Fallback ci-dessous
         }
 
-        // ✅ PRIORITÉ 2: Base de données locale (AFRIQUE FRANCOPHONE COMPLÈTE)
-        // ✅ CORRECTION: Recherche universelle inclut pays, villes ET quartiers
+        // ✅ PRIORITÉ 2: Base de données locale (sans types Google, donc sans types)
         if (!scope || scope === 'all') {
-            // Recherche universelle: pays, villes, quartiers
             if (q.length > 0) {
                 const qLower = q.toLowerCase();
                 
-                // 1. Rechercher dans les PAYS
                 const paysMatches = TOUS_LES_PAYS.filter(p => 
                     p.nom.toLowerCase().includes(qLower) || 
                     p.nomComplet.toLowerCase().includes(qLower) ||
                     p.code.toLowerCase().includes(qLower)
                 );
                 paysMatches.forEach(pays => {
-                    results.push(pays.nom); // Format simple "Cameroun"
+                    results.push({ 
+                        description: pays.nom,
+                        types: ['country', 'political'] // Types déduits pour pays
+                    });
                 });
                 
-                // 2. Rechercher dans les VILLES
                 const villesRecherchees = rechercherVilles(q);
-                const nomsVilles = villesRecherchees.map(v => `${v.pays} - ${v.nom}`);
-                results.push(...nomsVilles);
+                villesRecherchees.forEach(v => {
+                    results.push({ 
+                        description: `${v.pays} - ${v.nom}`,
+                        types: ['locality', 'political'] // Types déduits pour villes
+                    });
+                });
                 
-                // 3. Rechercher dans les QUARTIERS (tous les pays)
                 TOUS_LES_PAYS.forEach(pays => {
                     pays.villes.forEach(ville => {
                         if (ville.quartiers) {
@@ -70,42 +88,52 @@ class PlacesService {
                                 quartier.toLowerCase().includes(qLower)
                             );
                             quartiersMatches.forEach(quartier => {
-                                // Format "Quartier, Ville, Pays"
-                                results.push(`${quartier}, ${ville.nom}, ${pays.nom}`);
+                                results.push({ 
+                                    description: `${quartier}, ${ville.nom}, ${pays.nom}`,
+                                    types: ['sublocality', 'sublocality_level_1'] // Types déduits pour quartiers
+                                });
                             });
                         }
                     });
                 });
             } else {
-                // Sans recherche, retourner un échantillon de chaque type
-                // PAYS (tous)
                 TOUS_LES_PAYS.forEach(pays => {
-                    results.push(pays.nom);
+                    results.push({ 
+                        description: pays.nom,
+                        types: ['country', 'political']
+                    });
                 });
                 
-                // VILLES (limitées)
                 const toutesVilles = getToutesLesVilles();
-                const nomsVilles = toutesVilles.slice(0, 30).map(v => `${v.pays} - ${v.nom}`);
-                results.push(...nomsVilles);
+                toutesVilles.slice(0, 30).forEach(v => {
+                    results.push({ 
+                        description: `${v.pays} - ${v.nom}`,
+                        types: ['locality', 'political']
+                    });
+                });
             }
         } else if (scope === 'city') {
-            // Recherche intelligente dans TOUS les pays d'Afrique francophone (villes uniquement)
             if (q.length > 0) {
                 const villesRecherchees = rechercherVilles(q);
-                const nomsVilles = villesRecherchees.map(v => `${v.pays} - ${v.nom}`);
-                results.push(...nomsVilles);
+                villesRecherchees.forEach(v => {
+                    results.push({ 
+                        description: `${v.pays} - ${v.nom}`,
+                        types: ['locality', 'political']
+                    });
+                });
             } else {
-                // Sans recherche, retourner toutes les villes (limitées)
                 const toutesVilles = getToutesLesVilles();
-                const nomsVilles = toutesVilles.slice(0, 50).map(v => `${v.pays} - ${v.nom}`);
-                results.push(...nomsVilles);
+                toutesVilles.slice(0, 50).forEach(v => {
+                    results.push({ 
+                        description: `${v.pays} - ${v.nom}`,
+                        types: ['locality', 'political']
+                    });
+                });
             }
         } else if (scope === 'neighborhood') {
-            // Recherche dans les quartiers (avec contexte de ville si fourni)
             if (q.length > 0) {
                 TOUS_LES_PAYS.forEach(pays => {
                     pays.villes.forEach(ville => {
-                        // Si cityContext fourni, filtrer par ville
                         if (cityContext && !ville.nom.toLowerCase().includes(cityContext.toLowerCase())) {
                             return;
                         }
@@ -114,43 +142,62 @@ class PlacesService {
                                 quartier.toLowerCase().includes(q.toLowerCase())
                             );
                             quartiersMatches.forEach(quartier => {
-                                results.push(`${quartier}, ${ville.nom}, ${pays.nom}`);
+                                results.push({ 
+                                    description: `${quartier}, ${ville.nom}, ${pays.nom}`,
+                                    types: ['sublocality', 'sublocality_level_1']
+                                });
                             });
                         }
                     });
                 });
             } else if (cityContext) {
-                // Sans recherche mais avec contexte de ville, retourner tous les quartiers de cette ville
                 TOUS_LES_PAYS.forEach(pays => {
                     const ville = pays.villes.find(v => 
                         v.nom.toLowerCase().includes(cityContext.toLowerCase())
                     );
                     if (ville && ville.quartiers) {
                         ville.quartiers.forEach(quartier => {
-                            results.push(`${quartier}, ${ville.nom}, ${pays.nom}`);
+                            results.push({ 
+                                description: `${quartier}, ${ville.nom}, ${pays.nom}`,
+                                types: ['sublocality', 'sublocality_level_1']
+                            });
                         });
                     }
                 });
             }
         } else if (scope === 'point') {
-            // Points de départ/arrivée depuis modalités covoiturage
             const pointsDepart = getFieldOptions('covoiturage', 'points_depart') || [];
             const pointsArrivee = getFieldOptions('covoiturage', 'points_arrivee') || [];
             const points = Array.from(new Set([...pointsDepart, ...pointsArrivee]));
             const filtered = q ? points.filter(p => p.toLowerCase().includes(q.toLowerCase())) : points;
-            results.push(...filtered);
+            filtered.forEach(p => {
+                results.push({ 
+                    description: p,
+                    types: ['establishment'] // Type déduit pour points
+                });
+            });
         }
 
-        // ✅ Dédupliquer en conservant l'ordre (backend prioritaire)
+        // Dédupliquer en conservant l'ordre
         const seen = new Set<string>();
         const unique = results.filter(item => {
-            const key = item.trim().toLowerCase();
+            const key = item.description.trim().toLowerCase();
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
         });
 
-        return unique.slice(0, 30); // Limiter à 30 résultats
+        return unique.slice(0, 30);
+    }
+
+    /**
+     * Autocomplete intelligent (format simple string pour compatibilité)
+     * @deprecated Utiliser autocompleteEnriched pour obtenir les types Google Places
+     */
+    async autocomplete(query: string, scope?: PlaceScope, cityContext?: string): Promise<string[]> {
+        // Utiliser la méthode enrichie et extraire seulement les descriptions
+        const enriched = await this.autocompleteEnriched(query, scope, cityContext);
+        return enriched.map(r => r.description);
     }
 }
 

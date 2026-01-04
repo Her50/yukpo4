@@ -27,6 +27,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
 import { useDeviceType } from '../hooks/useDeviceType';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../services/api';
+import { productsService } from '../services/productsService';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
@@ -311,30 +312,57 @@ const MesServicesScreen: React.FC = () => {
         const servicesArray = Array.isArray(data) ? data : [];
         setRawServices(servicesArray);
 
-        // ✅ IMPORTANT: On extrait et affiche les PRODUITS (pas les services)
-        // Chaque produit est parsé depuis les services de l'utilisateur
+        // ✅ PHASE 4: On extrait et affiche les PRODUITS depuis l'API service_products
+        // Chaque produit est récupéré depuis la table service_products
         const allProducts: Service[] = []; // Note: Type Service mais contient des produits
 
         if (Array.isArray(data)) {
-          data.forEach((service: any) => {
-            const serviceId = service.id?.toString() || String(service.id) || '';
+          // ✅ PHASE 4: Récupérer les produits depuis l'API pour chaque service
+          const productPromises = data.map(async (service: any) => {
+            const serviceId = service.id;
             const serviceTitre = service.data?.titre_service?.valeur ||
               service.data?.titre?.valeur ||
               service.titre ||
               'Service sans titre';
 
-            // ✅ Extraire les produits depuis le service
-            const produits = extractProduits(service);
-
-            if (produits && produits.length > 0) {
-              produits.forEach((product: any, index: number) => {
-                // ✅ Parser chaque produit (l'ID sera "serviceId_productIndex")
-                const parsed = parseProduct(product, index, service, serviceId, serviceTitre);
+            try {
+              // ✅ PHASE 4: Récupérer les produits depuis l'API
+              const products = await productsService.getProductsByService(serviceId);
+              
+              return products.map((product, index) => {
+                // ✅ Parser chaque produit depuis l'API
+                const parsed = parseProduct(product.product_data, product.product_index, service, serviceId.toString(), serviceTitre);
                 if (parsed) {
-                  allProducts.push(parsed); // ✅ Ajouter le produit à la liste
+                  // ✅ Ajouter les métadonnées de service_products
+                  parsed.product_id = product.id;
+                  parsed.product_name = product.product_name;
+                  parsed.product_type = product.product_type;
+                  parsed.product_price = product.product_price;
                 }
-              });
+                return parsed;
+              }).filter((p): p is Service => p !== null);
+            } catch (error) {
+              logger.warn('[MesServicesScreen] ⚠️ Erreur récupération produits depuis API, fallback extractProduits:', error);
+              // ✅ FALLBACK: Utiliser extractProduits si l'API échoue (compatibilité)
+              const produits = extractProduits(service);
+              if (produits && produits.length > 0) {
+                return produits.map((product: any, index: number) => {
+                  const parsed = parseProduct(product, index, service, serviceId.toString(), serviceTitre);
+                  return parsed;
+                }).filter((p): p is Service => p !== null);
+              }
+              return [];
             }
+          });
+
+          // ✅ Attendre tous les appels API en parallèle
+          const productsArrays = await Promise.all(productPromises);
+          productsArrays.forEach(products => {
+            products.forEach(product => {
+              if (product) {
+                allProducts.push(product);
+              }
+            });
           });
         }
 

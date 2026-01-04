@@ -42,7 +42,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [deliveryConfig, setDeliveryConfig] = useState<any>(null);
+    const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
     const autoScrollTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    // ✅ PHASE 4: Gérer les produits depuis l'API (type Product) ou JSONB (fallback)
+    // Si le produit vient de l'API, utiliser product.product_data pour les données
+    const productData = product.product_data || product;
+
+    // ✅ NOUVEAU 2026-01-04: Récupération des variants de prix
+    const hasVariant = productData.has_variant || false;
+    const variants = Array.isArray(productData.variants) ? productData.variants : [];
+    const variantDimension = productData.variant_dimension || 'variante';
 
     // Récupérer la configuration de livraison
     useEffect(() => {
@@ -50,6 +60,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
             // D'abord, vérifier si delivery_availability est déjà dans product (enrichi par backend)
             if (product.delivery_availability) {
                 setDeliveryConfig(product.delivery_availability);
+                return;
+            }
+            // ✅ PHASE 4: productData peut aussi avoir delivery_availability
+            if (productData.delivery_availability) {
+                setDeliveryConfig(productData.delivery_availability);
                 return;
             }
 
@@ -67,23 +82,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
         };
 
         loadDeliveryConfig();
-    }, [product, serviceId, productIndex]);
+    }, [product, productData, serviceId, productIndex]);
 
-    // Obtenir service_id et product_index
     const serviceId = service?.id;
     const productIndex = product.product_index ?? product.index ??
         (service?.data?.produits?.valeur ?
-            service.data.produits.valeur.findIndex((p: any) => p === product || p.nom === product.nom) :
+            service.data.produits.valeur.findIndex((p: any) => p === productData || p.nom === productData.nom) :
             undefined);
-    const productName = product.nom || product.name || 'Produit';
+    const productName = productData.nom || productData.name || 'Produit';
 
     // ✅ Vérifier si c'est un produit (pas une prestation de service)
     // Par défaut, si le type n'est pas défini, on considère que c'est un produit
-    const isProduct = product.type !== 'prestation_service';
+    const isProduct = productData.type !== 'prestation_service';
 
     // ✅ AMÉLIORATION: Extraire les images et vidéos avec support vidéo prioritaire (comme mobile)
-    const images = product.images || product.imagesRealisations || [];
-    const videos = product.videos || product.videosRealisations || [];
+    const images = productData.images || productData.imagesRealisations || [];
+    const videos = productData.videos || productData.videosRealisations || [];
     // Vidéos en premier (comme mobile)
     const allMedia = [
         ...videos.map((v: string) => ({ type: 'video', uri: v })),
@@ -93,15 +107,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
     const hasVideo = videos.length > 0;
 
     // GPS prioritaire : produit > service gps_fixe > service gps
-    const productGPS = product.gps || product.gpsFixe;
+    const productGPS = productData.gps || productData.gpsFixe;
     const serviceGPS = service.data?.gps_fixe?.valeur || service.data?.gps_fixe || service.gps;
     const displayGPS = productGPS || serviceGPS;
 
+    // ✅ NOUVEAU 2026-01-04: Calcul du prix d'affichage (minimum si variants, sinon prix unique)
+    const displayPrice = hasVariant && variants.length > 0
+        ? Math.min(...variants.map((v: any) => parseFloat(v.prix) || 0))
+        : parseFloat(productData.prix) || 0;
+
+    const devise = productData.devise || variants[0]?.devise || 'FCFA';
+
     // Formater le prix
     const formatPrice = () => {
-        if (!product.prix) return null;
-        const devise = product.devise || 'FCFA';
-        return `${parseFloat(product.prix).toLocaleString()} ${devise}`;
+        if (hasVariant && variants.length > 0) {
+            return `À partir de ${displayPrice.toLocaleString()} ${devise}`;
+        }
+        if (!productData.prix) return null;
+        return `${parseFloat(productData.prix).toLocaleString()} ${devise}`;
     };
 
     // Obtenir le style par type
@@ -133,7 +156,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             bijoux: { icon: '💎', color: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Bijoux' },
             autre: { icon: '📦', color: 'bg-gray-50 text-gray-700 border-gray-200', label: 'Produit' }
         };
-        return styles[product.type] || styles.autre;
+        return styles[productData.type] || styles.autre;
     };
 
     const typeStyle = getTypeStyle();
@@ -165,27 +188,27 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     // Rendu spécialisé par type de produit
     const renderProductDetails = () => {
-        switch (product.type) {
+        switch (productData.type) {
             case 'immobilier_batiment':
             case 'immobilier_terrain':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.superficie && (
+                        {productData.superficie && (
                             <Badge variant="secondary" className="text-xs">
                                 <Maximize2 className="w-3 h-3 mr-1" />
-                                {product.superficie} m²
+                                {productData.superficie} m²
                             </Badge>
                         )}
-                        {product.nbPieces && (
+                        {productData.nbPieces && (
                             <Badge variant="secondary" className="text-xs">
                                 <Grid className="w-3 h-3 mr-1" />
-                                {product.nbPieces} pièces
+                                {productData.nbPieces} pièces
                             </Badge>
                         )}
-                        {product.quartier && (
+                        {productData.quartier && (
                             <Badge variant="secondary" className="text-xs">
                                 <MapPin className="w-3 h-3 mr-1" />
-                                {product.quartier}
+                                {productData.quartier}
                             </Badge>
                         )}
                     </div>
@@ -194,27 +217,27 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'automobile':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.marque && (
+                        {productData.marque && (
                             <Badge variant="secondary" className="text-xs">
                                 <Tag className="w-3 h-3 mr-1" />
-                                {product.marque}
+                                {productData.marque}
                             </Badge>
                         )}
-                        {product.modele && (
+                        {productData.modele && (
                             <Badge variant="secondary" className="text-xs">
-                                🚗 {product.modele}
+                                🚗 {productData.modele}
                             </Badge>
                         )}
-                        {product.annee && (
+                        {productData.annee && (
                             <Badge variant="secondary" className="text-xs">
                                 <Calendar className="w-3 h-3 mr-1" />
-                                {product.annee}
+                                {productData.annee}
                             </Badge>
                         )}
-                        {product.kilometrage && (
+                        {productData.kilometrage && (
                             <Badge variant="secondary" className="text-xs">
                                 <Activity className="w-3 h-3 mr-1" />
-                                {product.kilometrage} km
+                                {productData.kilometrage} km
                             </Badge>
                         )}
                     </div>
@@ -224,22 +247,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'chaussure':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.taille && (
+                        {productData.taille && (
                             <Badge variant="secondary" className="text-xs">
                                 <Maximize2 className="w-3 h-3 mr-1" />
-                                Taille {product.taille}
+                                Taille {productData.taille}
                             </Badge>
                         )}
-                        {product.couleur && (
+                        {productData.couleur && (
                             <Badge variant="secondary" className="text-xs">
                                 <Droplet className="w-3 h-3 mr-1" />
-                                {product.couleur}
+                                {productData.couleur}
                             </Badge>
                         )}
-                        {product.marque && (
+                        {productData.marque && (
                             <Badge variant="secondary" className="text-xs">
                                 <Tag className="w-3 h-3 mr-1" />
-                                {product.marque}
+                                {productData.marque}
                             </Badge>
                         )}
                     </div>
@@ -248,20 +271,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'electromenager':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.marque && (
+                        {productData.marque && (
                             <Badge variant="secondary" className="text-xs">
                                 <Tag className="w-3 h-3 mr-1" />
-                                {product.marque}
+                                {productData.marque}
                             </Badge>
                         )}
-                        {product.modele && (
+                        {productData.modele && (
                             <Badge variant="secondary" className="text-xs">
-                                📱 {product.modele}
+                                📱 {productData.modele}
                             </Badge>
                         )}
-                        {product.etatProduit && (
+                        {productData.etatProduit && (
                             <Badge variant="default" className="text-xs bg-green-50 text-green-700">
-                                ✓ {product.etatProduit}
+                                ✓ {productData.etatProduit}
                             </Badge>
                         )}
                     </div>
@@ -270,20 +293,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'pharmacie':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.typePharmacie && (
+                        {productData.typePharmacie && (
                             <Badge variant="default" className="text-xs bg-emerald-50 text-emerald-700">
-                                🛡️ {product.typePharmacie}
+                                🛡️ {productData.typePharmacie}
                             </Badge>
                         )}
-                        {product.joursGarde && (
+                        {productData.joursGarde && (
                             <Badge variant="secondary" className="text-xs">
-                                ⏰ Garde: {product.joursGarde}
+                                ⏰ Garde: {productData.joursGarde}
                             </Badge>
                         )}
-                        {product.telephoneUrgence && (
+                        {productData.telephoneUrgence && (
                             <Badge variant="default" className="text-xs bg-red-50 text-red-700">
                                 <Phone className="w-3 h-3 mr-1" />
-                                {product.telephoneUrgence}
+                                {productData.telephoneUrgence}
                             </Badge>
                         )}
                     </div>
@@ -292,19 +315,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'hopital_clinique':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.specialites && (
+                        {productData.specialites && (
                             <Badge variant="default" className="text-xs bg-red-50 text-red-700">
-                                ❤️ {product.specialites}
+                                ❤️ {productData.specialites}
                             </Badge>
                         )}
-                        {product.urgences === 'oui' && (
+                        {productData.urgences === 'oui' && (
                             <Badge variant="default" className="text-xs bg-red-100 text-red-800">
                                 🚨 Urgences 24/7
                             </Badge>
                         )}
-                        {product.medecinsDispo && (
+                        {productData.medecinsDispo && (
                             <Badge variant="secondary" className="text-xs">
-                                👨‍⚕️ {product.medecinsDispo}
+                                👨‍⚕️ {productData.medecinsDispo}
                             </Badge>
                         )}
                     </div>
@@ -313,24 +336,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'ticket_voyage':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.depart && (
+                        {productData.depart && (
                             <Badge variant="secondary" className="text-xs">
-                                🚏 De: {product.depart}
+                                🚏 De: {productData.depart}
                             </Badge>
                         )}
-                        {product.destination && (
+                        {productData.destination && (
                             <Badge variant="secondary" className="text-xs">
-                                🏁 À: {product.destination}
+                                🏁 À: {productData.destination}
                             </Badge>
                         )}
-                        {product.dateDepart && (
+                        {productData.dateDepart && (
                             <Badge variant="secondary" className="text-xs">
-                                📅 {product.dateDepart}
+                                📅 {productData.dateDepart}
                             </Badge>
                         )}
-                        {product.heureDepart && (
+                        {productData.heureDepart && (
                             <Badge variant="secondary" className="text-xs">
-                                ⏰ {product.heureDepart}
+                                ⏰ {productData.heureDepart}
                             </Badge>
                         )}
                     </div>
@@ -339,19 +362,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'covoiturage':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.pointDepart && (
+                        {productData.pointDepart && (
                             <Badge variant="secondary" className="text-xs">
-                                🚏 De: {product.pointDepart}
+                                🚏 De: {productData.pointDepart}
                             </Badge>
                         )}
-                        {product.pointArrivee && (
+                        {productData.pointArrivee && (
                             <Badge variant="secondary" className="text-xs">
-                                🏁 À: {product.pointArrivee}
+                                🏁 À: {productData.pointArrivee}
                             </Badge>
                         )}
-                        {product.nbPlacesDisponibles && (
+                        {productData.nbPlacesDisponibles && (
                             <Badge variant="default" className="text-xs bg-pink-50 text-pink-700">
-                                👥 {product.nbPlacesDisponibles} places
+                                👥 {productData.nbPlacesDisponibles} places
                             </Badge>
                         )}
                     </div>
@@ -360,19 +383,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'mobilier':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.typeMobilier && (
+                        {productData.typeMobilier && (
                             <Badge variant="secondary" className="text-xs">
-                                🪑 {product.typeMobilier}
+                                🪑 {productData.typeMobilier}
                             </Badge>
                         )}
-                        {product.materiau && (
+                        {productData.materiau && (
                             <Badge variant="secondary" className="text-xs">
-                                📦 {product.materiau}
+                                📦 {productData.materiau}
                             </Badge>
                         )}
-                        {product.dimensions && (
+                        {productData.dimensions && (
                             <Badge variant="secondary" className="text-xs">
-                                📐 {product.dimensions}
+                                📐 {productData.dimensions}
                             </Badge>
                         )}
                     </div>
@@ -381,19 +404,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'aliments':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.categorieAliment && (
+                        {productData.categorieAliment && (
                             <Badge variant="secondary" className="text-xs">
-                                🍕 {product.categorieAliment}
+                                🍕 {productData.categorieAliment}
                             </Badge>
                         )}
-                        {product.origine && (
+                        {productData.origine && (
                             <Badge variant="secondary" className="text-xs">
-                                🌍 {product.origine}
+                                🌍 {productData.origine}
                             </Badge>
                         )}
-                        {product.certification && (
+                        {productData.certification && (
                             <Badge variant="default" className="text-xs bg-green-50 text-green-700">
-                                🏆 {product.certification}
+                                🏆 {productData.certification}
                             </Badge>
                         )}
                     </div>
@@ -402,19 +425,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'livres_fournitures':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.categorieLivre && (
+                        {productData.categorieLivre && (
                             <Badge variant="secondary" className="text-xs">
-                                📚 {product.categorieLivre}
+                                📚 {productData.categorieLivre}
                             </Badge>
                         )}
-                        {product.niveau && (
+                        {productData.niveau && (
                             <Badge variant="default" className="text-xs bg-indigo-50 text-indigo-700">
-                                🎓 {product.niveau}
+                                🎓 {productData.niveau}
                             </Badge>
                         )}
-                        {product.matiereScolaire && (
+                        {productData.matiereScolaire && (
                             <Badge variant="secondary" className="text-xs">
-                                📝 {product.matiereScolaire}
+                                📝 {productData.matiereScolaire}
                             </Badge>
                         )}
                     </div>
@@ -423,20 +446,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'quincaillerie':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.categorieQuincaillerie && (
+                        {productData.categorieQuincaillerie && (
                             <Badge variant="secondary" className="text-xs">
-                                🔧 {product.categorieQuincaillerie}
+                                🔧 {productData.categorieQuincaillerie}
                             </Badge>
                         )}
-                        {product.marqueQuincaillerie && (
+                        {productData.marqueQuincaillerie && (
                             <Badge variant="secondary" className="text-xs">
                                 <Tag className="w-3 h-3 mr-1" />
-                                {product.marqueQuincaillerie}
+                                {productData.marqueQuincaillerie}
                             </Badge>
                         )}
-                        {product.unite && (
+                        {productData.unite && (
                             <Badge variant="secondary" className="text-xs">
-                                📦 Unité: {product.unite}
+                                📦 Unité: {productData.unite}
                             </Badge>
                         )}
                     </div>
@@ -445,25 +468,25 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'image_son':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.marqueImageSon && (
+                        {productData.marqueImageSon && (
                             <Badge variant="secondary" className="text-xs">
                                 <Tag className="w-3 h-3 mr-1" />
-                                {product.marqueImageSon}
+                                {productData.marqueImageSon}
                             </Badge>
                         )}
-                        {product.typeImageSon && (
+                        {productData.typeImageSon && (
                             <Badge variant="secondary" className="text-xs">
-                                📺 {product.typeImageSon}
+                                📺 {productData.typeImageSon}
                             </Badge>
                         )}
-                        {product.diagonaleEcran && (
+                        {productData.diagonaleEcran && (
                             <Badge variant="secondary" className="text-xs">
-                                📐 {product.diagonaleEcran}"
+                                📐 {productData.diagonaleEcran}"
                             </Badge>
                         )}
-                        {product.resolution && (
+                        {productData.resolution && (
                             <Badge variant="default" className="text-xs bg-purple-50 text-purple-700">
-                                🎬 {product.resolution}
+                                🎬 {productData.resolution}
                             </Badge>
                         )}
                     </div>
@@ -472,25 +495,25 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'telephone':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.marqueTelephone && (
+                        {productData.marqueTelephone && (
                             <Badge variant="secondary" className="text-xs">
                                 <Tag className="w-3 h-3 mr-1" />
-                                {product.marqueTelephone}
+                                {productData.marqueTelephone}
                             </Badge>
                         )}
-                        {product.modeleTelephone && (
+                        {productData.modeleTelephone && (
                             <Badge variant="secondary" className="text-xs">
-                                📱 {product.modeleTelephone}
+                                📱 {productData.modeleTelephone}
                             </Badge>
                         )}
-                        {product.stockage && (
+                        {productData.stockage && (
                             <Badge variant="default" className="text-xs bg-orange-50 text-orange-700">
-                                💾 {product.stockage}
+                                💾 {productData.stockage}
                             </Badge>
                         )}
-                        {product.ram && (
+                        {productData.ram && (
                             <Badge variant="secondary" className="text-xs">
-                                RAM: {product.ram}
+                                RAM: {productData.ram}
                             </Badge>
                         )}
                     </div>
@@ -499,25 +522,25 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'ordinateur':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.marqueOrdinateur && (
+                        {productData.marqueOrdinateur && (
                             <Badge variant="secondary" className="text-xs">
                                 <Tag className="w-3 h-3 mr-1" />
-                                {product.marqueOrdinateur}
+                                {productData.marqueOrdinateur}
                             </Badge>
                         )}
-                        {product.processeur && (
+                        {productData.processeur && (
                             <Badge variant="default" className="text-xs bg-cyan-50 text-cyan-700">
-                                🖥️ {product.processeur}
+                                🖥️ {productData.processeur}
                             </Badge>
                         )}
-                        {product.ramOrdinateur && (
+                        {productData.ramOrdinateur && (
                             <Badge variant="secondary" className="text-xs">
-                                RAM: {product.ramOrdinateur}
+                                RAM: {productData.ramOrdinateur}
                             </Badge>
                         )}
-                        {product.stockageOrdinateur && (
+                        {productData.stockageOrdinateur && (
                             <Badge variant="secondary" className="text-xs">
-                                💾 {product.stockageOrdinateur}
+                                💾 {productData.stockageOrdinateur}
                             </Badge>
                         )}
                     </div>
@@ -526,20 +549,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'decoration':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.typeDecoration && (
+                        {productData.typeDecoration && (
                             <Badge variant="secondary" className="text-xs">
-                                🖼️ {product.typeDecoration}
+                                🖼️ {productData.typeDecoration}
                             </Badge>
                         )}
-                        {product.style && (
+                        {productData.style && (
                             <Badge variant="default" className="text-xs bg-pink-50 text-pink-700">
-                                ✨ {product.style}
+                                ✨ {productData.style}
                             </Badge>
                         )}
-                        {product.couleurDecoration && (
+                        {productData.couleurDecoration && (
                             <Badge variant="secondary" className="text-xs">
                                 <Droplet className="w-3 h-3 mr-1" />
-                                {product.couleurDecoration}
+                                {productData.couleurDecoration}
                             </Badge>
                         )}
                     </div>
@@ -548,20 +571,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'ustensiles_cuisine':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {product.typeUstensile && (
+                        {productData.typeUstensile && (
                             <Badge variant="secondary" className="text-xs">
-                                🍴 {product.typeUstensile}
+                                🍴 {productData.typeUstensile}
                             </Badge>
                         )}
-                        {product.materiauUstensile && (
+                        {productData.materiauUstensile && (
                             <Badge variant="secondary" className="text-xs">
-                                📦 {product.materiauUstensile}
+                                📦 {productData.materiauUstensile}
                             </Badge>
                         )}
-                        {product.marqueUstensile && (
+                        {productData.marqueUstensile && (
                             <Badge variant="secondary" className="text-xs">
                                 <Tag className="w-3 h-3 mr-1" />
-                                {product.marqueUstensile}
+                                {productData.marqueUstensile}
                             </Badge>
                         )}
                     </div>
@@ -580,74 +603,74 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 return (
                     <div className="space-y-3 mt-2">
                         {/* Type de déménagement */}
-                        {product.typeDemenagement && (
+                        {productData.typeDemenagement && (
                             <Badge variant="secondary" className="text-xs">
-                                🚚 {product.typeDemenagement}
+                                🚚 {productData.typeDemenagement}
                             </Badge>
                         )}
 
                         <div className="flex flex-wrap gap-2">
                             {/* Volume */}
-                            {product.volumeEstime && (
+                            {productData.volumeEstime && (
                                 <Badge variant="secondary" className="text-xs">
-                                    📦 {product.volumeEstime} m³
+                                    📦 {productData.volumeEstime} m³
                                 </Badge>
                             )}
 
                             {/* Véhicule */}
-                            {product.typeVehicule && (
+                            {productData.typeVehicule && (
                                 <Badge variant="secondary" className="text-xs">
-                                    🚛 {product.typeVehicule}
+                                    🚛 {productData.typeVehicule}
                                 </Badge>
                             )}
 
                             {/* Déménageurs */}
-                            {product.nbDemenageurs && (
+                            {productData.nbDemenageurs && (
                                 <Badge variant="secondary" className="text-xs">
-                                    👥 {product.nbDemenageurs} personnes
+                                    👥 {productData.nbDemenageurs} personnes
                                 </Badge>
                             )}
 
                             {/* Distance */}
-                            {product.distanceKm && (
+                            {productData.distanceKm && (
                                 <Badge variant="secondary" className="text-xs">
-                                    🗺️ Max {product.distanceKm} km
+                                    🗺️ Max {productData.distanceKm} km
                                 </Badge>
                             )}
                         </div>
 
                         {/* Services inclus */}
-                        {(product.assuranceMarchandise || product.serviceManutention || product.montageDemontage ||
-                            product.emballageCartons || product.gardeMeuble || product.debarras) && (
+                        {(productData.assuranceMarchandise || productData.serviceManutention || productData.montageDemontage ||
+                            productData.emballageCartons || productData.gardeMeuble || productData.debarras) && (
                                 <div className="mt-2">
                                     <p className="text-xs font-medium text-gray-600 mb-1">Services inclus:</p>
                                     <div className="flex flex-wrap gap-1">
-                                        {product.assuranceMarchandise && (
+                                        {productData.assuranceMarchandise && (
                                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                                                 ✓ Assurance
                                             </Badge>
                                         )}
-                                        {product.serviceManutention && (
+                                        {productData.serviceManutention && (
                                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                                                 ✓ Manutention
                                             </Badge>
                                         )}
-                                        {product.montageDemontage && (
+                                        {productData.montageDemontage && (
                                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                                                 ✓ Montage
                                             </Badge>
                                         )}
-                                        {product.emballageCartons && (
+                                        {productData.emballageCartons && (
                                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                                                 ✓ Emballage
                                             </Badge>
                                         )}
-                                        {product.gardeMeuble && (
+                                        {productData.gardeMeuble && (
                                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                                                 ✓ Garde-meuble
                                             </Badge>
                                         )}
-                                        {product.debarras && (
+                                        {productData.debarras && (
                                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                                                 ✓ Débarras
                                             </Badge>
@@ -662,57 +685,57 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 return (
                     <div className="space-y-3 mt-2">
                         {/* Type de cosmétique */}
-                        {product.typeCosmetique && (
+                        {productData.typeCosmetique && (
                             <Badge variant="secondary" className="text-xs">
-                                ✨ {product.typeCosmetique}
+                                ✨ {productData.typeCosmetique}
                             </Badge>
                         )}
 
                         <div className="flex flex-wrap gap-2">
                             {/* Marque */}
-                            {product.marqueCosmetique && (
+                            {productData.marqueCosmetique && (
                                 <Badge variant="secondary" className="text-xs">
-                                    🏷️ {product.marqueCosmetique}
+                                    🏷️ {productData.marqueCosmetique}
                                 </Badge>
                             )}
 
                             {/* Volume */}
-                            {product.volumeCosmetique && product.uniteCosmetique && (
+                            {productData.volumeCosmetique && productData.uniteCosmetique && (
                                 <Badge variant="secondary" className="text-xs">
                                     <Droplet className="w-3 h-3 mr-1" />
-                                    {product.volumeCosmetique} {product.uniteCosmetique}
+                                    {productData.volumeCosmetique} {productData.uniteCosmetique}
                                 </Badge>
                             )}
 
                             {/* Type de peau */}
-                            {product.typePeau && (
+                            {productData.typePeau && (
                                 <Badge variant="secondary" className="text-xs">
-                                    👤 Peau: {product.typePeau}
+                                    👤 Peau: {productData.typePeau}
                                 </Badge>
                             )}
 
                             {/* Âge recommandé */}
-                            {product.ageRecommandé && (
+                            {productData.ageRecommandé && (
                                 <Badge variant="secondary" className="text-xs">
                                     <Calendar className="w-3 h-3 mr-1" />
-                                    Âge: {product.ageRecommandé}
+                                    Âge: {productData.ageRecommandé}
                                 </Badge>
                             )}
                         </div>
 
                         {/* Origine */}
-                        {product.origineCosmetique && (
+                        {productData.origineCosmetique && (
                             <Badge variant="secondary" className="text-xs">
-                                🌍 Origine: {product.origineCosmetique}
+                                🌍 Origine: {productData.origineCosmetique}
                             </Badge>
                         )}
 
                         {/* Ingrédients */}
-                        {product.ingredientsCosmetique && (
+                        {productData.ingredientsCosmetique && (
                             <div className="mt-2">
                                 <p className="text-xs font-medium text-gray-600 mb-1">Ingrédients:</p>
                                 <p className="text-xs text-gray-500 italic line-clamp-2">
-                                    {product.ingredientsCosmetique}
+                                    {productData.ingredientsCosmetique}
                                 </p>
                             </div>
                         )}
@@ -723,54 +746,54 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 return (
                     <div className="space-y-3 mt-2">
                         {/* Type de bijou */}
-                        {product.typeBijou && (
+                        {productData.typeBijou && (
                             <Badge variant="secondary" className="text-xs">
-                                💎 {product.typeBijou}
+                                💎 {productData.typeBijou}
                             </Badge>
                         )}
 
                         <div className="flex flex-wrap gap-2">
                             {/* Matière */}
-                            {product.matiereBijou && (
+                            {productData.matiereBijou && (
                                 <Badge variant="secondary" className="text-xs">
-                                    💍 {product.matiereBijou}
+                                    💍 {productData.matiereBijou}
                                 </Badge>
                             )}
 
                             {/* Poids */}
-                            {product.poidsBijou && product.unitePoids && (
+                            {productData.poidsBijou && productData.unitePoids && (
                                 <Badge variant="secondary" className="text-xs">
-                                    ⚖️ {product.poidsBijou} {product.unitePoids}
+                                    ⚖️ {productData.poidsBijou} {productData.unitePoids}
                                 </Badge>
                             )}
 
                             {/* Taille */}
-                            {product.tailleBijou && (
+                            {productData.tailleBijou && (
                                 <Badge variant="secondary" className="text-xs">
                                     <Maximize2 className="w-3 h-3 mr-1" />
-                                    Taille: {product.tailleBijou}
+                                    Taille: {productData.tailleBijou}
                                 </Badge>
                             )}
 
                             {/* Style */}
-                            {product.styleBijou && (
+                            {productData.styleBijou && (
                                 <Badge variant="secondary" className="text-xs">
-                                    ✨ {product.styleBijou}
+                                    ✨ {productData.styleBijou}
                                 </Badge>
                             )}
                         </div>
 
                         {/* Origine */}
-                        {product.origineBijou && (
+                        {productData.origineBijou && (
                             <Badge variant="secondary" className="text-xs">
-                                🌍 Origine: {product.origineBijou}
+                                🌍 Origine: {productData.origineBijou}
                             </Badge>
                         )}
 
                         {/* Certificat */}
-                        {product.certificatBijou && (
+                        {productData.certificatBijou && (
                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                                🏆 Certifié: {product.certificatBijou}
+                                🏆 Certifié: {productData.certificatBijou}
                             </Badge>
                         )}
                     </div>
@@ -814,7 +837,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                     ) : (
                                         <img
                                             src={media.uri}
-                                            alt={product.nom || 'Produit'}
+                                            alt={productData.nom || 'Produit'}
                                             className="w-full h-full object-cover"
                                         />
                                     )}
@@ -834,7 +857,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </div>
 
                     {/* ✅ Badge PROMOTION si produit en promotion */}
-                    {(product.en_promotion || product.promotion_active) && (
+                    {(productData.en_promotion || productData.promotion_active) && (
                         <div className="absolute top-14 left-3 bg-gradient-to-r from-yellow-500 to-red-500 text-white px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg flex items-center gap-1">
                             <span className="text-lg">⚡</span>
                             <span className="text-xs font-bold">PROMO</span>
@@ -912,7 +935,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
                     {/* Nom du produit */}
                     <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">
-                        {product.nom || product.name || product.titre || 'Produit'}
+                        {productData.nom || productData.name || productData.titre || 'Produit'}
                     </h3>
 
                     {/* Badges de disponibilité */}
@@ -928,23 +951,117 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     )}
 
                     {/* Description */}
-                    {product.description && (
+                    {productData.description && (
                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                            {product.description}
+                            {productData.description}
                         </p>
                     )}
 
                     {/* Détails spécifiques par type */}
                     {renderProductDetails()}
 
-                    {/* Prix */}
-                    {formatPrice() && (
+                    {/* ✅ NOUVEAU 2026-01-04: Affichage des variants de prix */}
+                    {hasVariant && variants.length > 0 ? (
                         <div className="mt-3 mb-3">
+                            {/* Titre de la section */}
+                            <div className="flex items-center gap-2 mb-3">
+                                <Tag className="w-4 h-4 text-gray-600" />
+                                <h4 className="text-sm font-semibold text-gray-700">
+                                    Prix selon {variantDimension}
+                                </h4>
+                            </div>
+
+                            {/* Tableau des variants */}
+                            <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden mb-3">
+                                {/* En-tête du tableau */}
+                                <div className="grid grid-cols-3 gap-2 bg-gray-100 px-3 py-2 border-b border-gray-200">
+                                    <div className="text-xs font-semibold text-gray-700">Variante</div>
+                                    <div className="text-xs font-semibold text-gray-700 text-center">Prix</div>
+                                    <div className="text-xs font-semibold text-gray-700 text-right">Stock</div>
+                                </div>
+
+                                {/* Liste des variants (max 5 visibles) */}
+                                <div className="divide-y divide-gray-200">
+                                    {variants.slice(0, 5).map((variant: any, i: number) => {
+                                        const isSelected = selectedVariantIndex === i;
+                                        const stock = variant.stock || 0;
+                                        const stockClass = stock > 5 
+                                            ? 'bg-green-100 text-green-700 border-green-300' 
+                                            : stock > 0 
+                                                ? 'bg-yellow-100 text-yellow-700 border-yellow-300' 
+                                                : 'bg-red-100 text-red-700 border-red-300';
+
+                                        return (
+                                            <div
+                                                key={i}
+                                                onClick={() => setSelectedVariantIndex(selectedVariantIndex === i ? null : i)}
+                                                className={`grid grid-cols-3 gap-2 px-3 py-2 cursor-pointer transition-colors ${
+                                                    isSelected ? 'bg-blue-50 border-l-2 border-blue-500' : 'hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                {/* Variante */}
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    {variant.image && (
+                                                        <img
+                                                            src={variant.image.startsWith('data:') 
+                                                                ? variant.image 
+                                                                : `data:image/jpeg;base64,${variant.image}`}
+                                                            alt={variant.value || variant.valeur}
+                                                            className="w-8 h-8 rounded object-cover"
+                                                        />
+                                                    )}
+                                                    <span className="text-sm text-gray-900 truncate">
+                                                        {variant.value || variant.valeur}
+                                                    </span>
+                                                </div>
+
+                                                {/* Prix */}
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <span className="text-sm font-semibold text-gray-900">
+                                                        {parseFloat(variant.prix || 0).toLocaleString()}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500">
+                                                        {variant.devise || devise}
+                                                    </span>
+                                                </div>
+
+                                                {/* Stock */}
+                                                <div className="flex items-center justify-end">
+                                                    <span className={`text-xs font-semibold px-2 py-1 rounded border ${stockClass}`}>
+                                                        {stock > 0 ? stock : '0'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Message si plus de 5 variants */}
+                                {variants.length > 5 && (
+                                    <div className="px-3 py-2 bg-gray-50 text-center border-t border-gray-200">
+                                        <span className="text-xs text-gray-500">
+                                            +{variants.length - 5} autre{variants.length - 5 > 1 ? 's' : ''} variante{variants.length - 5 > 1 ? 's' : ''}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Prix minimum */}
                             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg shadow-md">
                                 <Tag className="w-4 h-4" />
                                 <span className="text-lg font-bold">{formatPrice()}</span>
                             </div>
                         </div>
+                    ) : (
+                        /* Prix unique (pas de variants) */
+                        formatPrice() && (
+                            <div className="mt-3 mb-3">
+                                <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg shadow-md">
+                                    <Tag className="w-4 h-4" />
+                                    <span className="text-lg font-bold">{formatPrice()}</span>
+                                </div>
+                            </div>
+                        )
                     )}
 
                     {/* GPS et distance */}
@@ -952,10 +1069,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         <div className="flex items-center gap-2 text-sm text-red-600 mb-3">
                             <MapPin className="w-4 h-4" />
                             <span className="font-medium">
-                                {product.quartier || product.ville || 'Localisation disponible'}
+                                {productData.quartier || productData.ville || 'Localisation disponible'}
                             </span>
-                            {product.distance && (
-                                <span className="text-gray-500">• {product.distance.toFixed(1)} km</span>
+                            {productData.distance && (
+                                <span className="text-gray-500">• {productData.distance.toFixed(1)} km</span>
                             )}
                         </div>
                     )}
@@ -964,19 +1081,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     <div className="flex items-center justify-around py-2 px-3 bg-gray-50 rounded-lg mb-3">
                         <div className="flex items-center gap-1.5">
                             <Activity className="w-4 h-4 text-gray-500" />
-                            <span className="text-xs font-semibold text-gray-700">{product.views || service.views || 0}</span>
+                            <span className="text-xs font-semibold text-gray-700">{productData.views || service.views || 0}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <Tag className="w-4 h-4 text-gray-500" />
-                            <span className="text-xs font-semibold text-gray-700">{product.shares || 0}</span>
+                            <span className="text-xs font-semibold text-gray-700">{productData.shares || 0}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <span className="text-amber-500">⭐</span>
-                            <span className="text-xs font-semibold text-gray-700">{product.rating || service.rating || '—'}</span>
+                            <span className="text-xs font-semibold text-gray-700">{productData.rating || service.rating || '—'}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <MessageCircle className="w-4 h-4 text-gray-500" />
-                            <span className="text-xs font-semibold text-gray-700">{product.reviews || 0}</span>
+                            <span className="text-xs font-semibold text-gray-700">{productData.reviews || 0}</span>
                         </div>
                     </div>
 

@@ -219,12 +219,51 @@ async fn enrich_timeline_with_media_urls(
 
 /// Génère un preview rapide (low quality) de la timeline
 /// ✅ Phase 7 & 10: Optimisé avec GPU et cache pour <100ms
+/// ✅ NOUVEAU 2026-01-04: Cache intégré pour éviter les régénérations
 /// ✅ NOUVEAU: Résout automatiquement les media_id en media_url depuis la DB
 pub async fn generate_quick_preview(
     request: QuickPreviewRequest,
     pool: Option<&PgPool>,
 ) -> AppResult<QuickPreviewResponse> {
     let start_time = std::time::Instant::now();
+
+    // ✅ NOUVEAU 2026-01-04: Vérifier le cache AVANT de générer
+    if let Some(pool_ref) = pool {
+        use crate::services::preview_cache_service::{
+            generate_preview_cache_key, get_cached_preview,
+        };
+        
+        let quality = request.quality.as_deref().unwrap_or("low");
+        let max_duration = request.max_duration.unwrap_or(10.0);
+        
+        // Convertir la timeline en JSON pour générer la clé de cache
+        let timeline_json = serde_json::to_value(&request.timeline).unwrap_or_default();
+        let cache_key = generate_preview_cache_key(&timeline_json, quality, Some(max_duration));
+        
+        // Vérifier le cache
+        if let Ok(Some(cached)) = get_cached_preview(pool_ref, &cache_key).await {
+            let cache_time = start_time.elapsed().as_millis() as u64;
+            info!(
+                "[QuickPreview] ✅ Cache hit - Preview récupéré en {}ms (accès #{})",
+                cache_time, cached.access_count
+            );
+            
+            return Ok(QuickPreviewResponse {
+                success: true,
+                preview_url: cached.preview_url,
+                preview_duration: cached.preview_duration,
+                quality: cached.quality,
+                processing_time_ms: cache_time,
+                thumbnail_url: cached.thumbnail_url,
+            });
+        }
+        
+        info!(
+            "[QuickPreview] Cache miss - Génération preview ({} scènes, qualité: {})",
+            request.timeline.scenes.len(),
+            quality
+        );
+    }
 
     // ✅ NOUVEAU Phase 7: Utiliser GPU si disponible
     let _gpu_render = GPURenderService::new();
@@ -237,32 +276,50 @@ pub async fn generate_quick_preview(
     );
 
     // ✅ NOUVEAU: Enrichir la timeline en résolvant les media_id
+    // ✅ CORRIGÉ: Cloner la timeline avant de la déplacer
+    let timeline_clone = request.timeline.clone();
     let enriched_timeline = enrich_timeline_with_media_urls(request.timeline, pool).await?;
     
     let quality = request.quality.as_deref().unwrap_or("low");
     let max_duration = request.max_duration.unwrap_or(10.0);
 
-    // ✅ CORRIGÉ: Filtrer les scènes avec media_url valide et prendre seulement les premières
-    let preview_scenes: Vec<_> = enriched_timeline
+    // ✅ CORRIGÉ 2026-01-04: Filtrer les scènes avec media_url valide
+    let scenes_with_media: Vec<_> = enriched_timeline
         .scenes
         .iter()
         .filter(|scene| scene.media_url.is_some() && !scene.media_url.as_ref().unwrap().trim().is_empty())
-        .take_while(|scene| scene.start_time + scene.duration <= max_duration)
         .collect();
 
-    if preview_scenes.is_empty() {
-        // ✅ AMÉLIORÉ: Message d'erreur plus informatif
+    if scenes_with_media.is_empty() {
         let total_scenes = enriched_timeline.scenes.len();
-        let scenes_with_media = enriched_timeline.scenes.iter()
-            .filter(|s| s.media_url.is_some())
-            .count();
-        let scenes_in_range = enriched_timeline.scenes.iter()
-            .filter(|s| s.start_time + s.duration <= max_duration)
-            .count();
-        
         return Err(AppError::Internal(format!(
-            "Aucune scène valide dans la plage de preview (max_duration: {:.1}s). Total scènes: {}, Scènes avec média: {}, Scènes dans plage: {}. Veuillez vérifier que les scènes ont des media_url valides.",
-            max_duration, total_scenes, scenes_with_media, scenes_in_range
+            "Aucune scène avec média valide. Total scènes: {}. Veuillez vérifier que les scènes ont des media_url valides.",
+            total_scenes
+        )));
+    }
+
+    // ✅ NOUVEAU 2026-01-04: Prendre les scènes dans la plage, ou au moins la première scène
+    let preview_scenes: Vec<_> = if let Some(first_scene) = scenes_with_media.first() {
+        // Si la première scène est dans la plage, prendre toutes les scènes dans la plage
+        if first_scene.start_time + first_scene.duration <= max_duration {
+            scenes_with_media
+                .iter()
+                .take_while(|scene| scene.start_time + scene.duration <= max_duration)
+                .collect()
+        } else {
+            // Sinon, prendre au moins la première scène (tronquée si nécessaire)
+            vec![first_scene]
+        }
+    } else {
+        vec![]
+    };
+
+    if preview_scenes.is_empty() {
+        let total_scenes = enriched_timeline.scenes.len();
+        let scenes_with_media_count = scenes_with_media.len();
+        return Err(AppError::Internal(format!(
+            "Aucune scène valide pour preview. Total scènes: {}, Scènes avec média: {}.",
+            total_scenes, scenes_with_media_count
         )));
     }
 
@@ -491,14 +548,61 @@ pub async fn generate_quick_preview(
 
                 info!("[QuickPreview] ✅ Preview généré en {}ms", processing_time);
 
-                Ok(QuickPreviewResponse {
+                let response = QuickPreviewResponse {
                     success: true,
-                    preview_url: output_path,
+                    preview_url: output_path.clone(),
                     preview_duration,
                     quality: quality.to_string(),
                     processing_time_ms: processing_time,
-                    thumbnail_url: Some(thumbnail_path),
-                })
+                    thumbnail_url: Some(thumbnail_path.clone()),
+                };
+                
+                // ✅ NOUVEAU 2026-01-04: Mettre en cache le résultat
+                if let Some(pool_ref) = pool {
+                    use crate::services::preview_cache_service::{
+                        generate_preview_cache_key, cache_preview, get_preview_ttl,
+                        CachedPreview,
+                    };
+                    use std::time::{SystemTime, UNIX_EPOCH};
+                    use std::fs;
+                    
+                    // ✅ CORRIGÉ: Utiliser la timeline clonée au lieu de request.timeline (déjà déplacée)
+                    let timeline_json = serde_json::to_value(&timeline_clone).unwrap_or_default();
+                    let cache_key = generate_preview_cache_key(&timeline_json, quality, Some(max_duration));
+                    let ttl = get_preview_ttl(quality);
+                    
+                    // Obtenir la taille du fichier si possible
+                    let file_size = fs::metadata(&output_path)
+                        .ok()
+                        .and_then(|m| m.len().try_into().ok());
+                    
+                    let cached = CachedPreview {
+                        preview_url: output_path,
+                        preview_duration,
+                        quality: quality.to_string(),
+                        thumbnail_url: Some(thumbnail_path),
+                        created_at: SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() as i64,
+                        access_count: 0,
+                        file_size,
+                    };
+                    
+                    if let Err(e) = cache_preview(pool_ref, &cache_key, &cached, ttl).await {
+                        warn!(
+                            "[QuickPreview] ⚠️ Erreur mise en cache: {} (continuer quand même)",
+                            e
+                        );
+                    } else {
+                        info!(
+                            "[QuickPreview] ✅ Preview mise en cache: {} (TTL: {}s)",
+                            cache_key, ttl
+                        );
+                    }
+                }
+                
+                Ok(response)
             } else {
                 let error = String::from_utf8_lossy(&output.stderr);
                 error!("[QuickPreview] ❌ Erreur FFmpeg: {}", error);

@@ -286,27 +286,18 @@ pub async fn estimate_video_cost(
         ));
     }
 
-    let service_data: Value = svc.data;
-    if service_data.is_null() {
-        return Err(AppError::Internal(
-            "Service sans données associées.".to_string(),
-        ));
-    }
+    // ✅ PHASE 3: Récupérer le produit depuis la table service_products
+    let product = state.products_service
+        .get_product(service_id, product_index)
+        .await?
+        .ok_or_else(|| {
+            AppError::NotFound(format!(
+                "Produit introuvable pour ce service (service_id: {}, product_index: {})",
+                service_id, product_index
+            ))
+        })?;
 
-    let product_array = locate_product_array(&service_data).ok_or_else(|| {
-        AppError::BadRequest("Aucun produit enregistré pour ce service.".to_string())
-    })?;
-
-    if product_index < 0 || product_index as usize >= product_array.len() {
-        return Err(AppError::NotFound(
-            "Produit introuvable pour ce service.".to_string(),
-        ));
-    }
-
-    let primary_product = product_array
-        .get(product_index as usize)
-        .cloned()
-        .unwrap_or(Value::Null);
+    let primary_product = product.product_data;
 
     let product_name = extract_string(&primary_product, &["nom", "name", "titre", "title"])
         .unwrap_or_else(|| "Produit".to_string());
@@ -653,30 +644,29 @@ pub async fn generate_product_video(
         ));
     }
 
-    let mut service_data: Value = svc.data;
-    if service_data.is_null() {
-        return Err(AppError::Internal(
-            "Service sans données associées.".to_string(),
-        ));
-    }
-
-    let product_array_len = {
-        let array = locate_product_array(&service_data).ok_or_else(|| {
-            AppError::BadRequest("Aucun produit enregistré pour ce service.".to_string())
+    // ✅ CORRIGÉ 2026-01-04: Utiliser ProductsService au lieu de JSONB
+    let product = state.products_service
+        .get_product(service_id, product_index)
+        .await?
+        .ok_or_else(|| {
+            AppError::NotFound(format!(
+                "Produit {} introuvable pour le service {}. Vérifiez que le produit existe et est actif.",
+                product_index, service_id
+            ))
         })?;
-        array.len()
-    };
 
-    if product_index < 0 || product_index as usize >= product_array_len {
-        return Err(AppError::NotFound(
-            "Produit introuvable pour ce service.".to_string(),
-        ));
+    // Vérifier que le produit est actif
+    if !product.is_active {
+        return Err(AppError::BadRequest(format!(
+            "Le produit {} du service {} est désactivé. Veuillez le réactiver avant de générer une vidéo.",
+            product_index, service_id
+        )));
     }
 
-    let primary_product = locate_product_array(&service_data)
-        .and_then(|array| array.get(product_index as usize))
-        .cloned()
-        .unwrap_or(Value::Null);
+    let primary_product = product.product_data;
+    
+    // ✅ CORRIGÉ: Récupérer service_data depuis svc.data pour ensure_product_in_lifecycle
+    let service_data = svc.data.clone();
 
     let product_name = extract_string(&primary_product, &["nom", "name", "titre", "title"])
         .unwrap_or_else(|| "Produit".to_string());
@@ -2236,11 +2226,13 @@ pub async fn generate_product_video(
 
     let absolute_output_path = state.media_storage.local_path_for(&storage_key);
 
+    // ✅ CORRIGÉ: Rendre service_data mutable pour append_video_to_service_data
+    let mut service_data_mut = service_data.clone();
     append_video_to_service_data(
         &state,
         service_id,
         product_index,
-        &mut service_data,
+        &mut service_data_mut,
         public_url.clone(),
         subtitle_public_url.clone(),
         &[],
@@ -3779,6 +3771,7 @@ async fn apply_crossfade_transitions(
     run_ffmpeg(session_dir, args).await
 }
 
+#[allow(dead_code)]
 fn locate_product_array(data: &Value) -> Option<&Vec<Value>> {
     if let Some(arr) = data.get("produits").and_then(Value::as_array) {
         return Some(arr);

@@ -112,7 +112,8 @@ async fn send_product_deactivation_notification_with_reason(
     Ok(())
 }
 
-/// Récupère les produits désactivés d'un prestataire
+/// ✅ PHASE 6: Récupère les produits désactivés d'un prestataire
+/// Utilise maintenant service_products au lieu de products_lifecycle et JSONB
 pub async fn get_inactive_products_for_user(
     pool: &PgPool,
     user_id: i32,
@@ -120,20 +121,20 @@ pub async fn get_inactive_products_for_user(
     let products = sqlx::query_as::<_, InactiveProduct>(
         r#"
         SELECT 
-            pl.id,
-            pl.service_id,
-            pl.product_index,
-            pl.product_nom,
-            pl.product_type,
-            pl.auto_deactivate_at,
-            pl.reactivation_cost,
-            pl.deactivation_count,
-            s.data->'produits'->pl.product_index AS product_data
-        FROM products_lifecycle pl
-        JOIN services s ON s.id = pl.service_id
+            p.id,
+            p.service_id,
+            p.product_index,
+            p.product_name as product_nom,
+            p.product_type,
+            p.auto_deactivate_at,
+            1000 as reactivation_cost, -- Coût fixe de réactivation
+            0 as deactivation_count, -- Non suivi dans service_products, utiliser product_data si nécessaire
+            p.product_data
+        FROM service_products p
+        JOIN services s ON s.id = p.service_id
         WHERE s.user_id = $1
-            AND pl.is_active = FALSE
-        ORDER BY pl.auto_deactivate_at DESC
+            AND p.is_active = FALSE
+        ORDER BY p.auto_deactivate_at DESC NULLS LAST
         "#,
     )
     .bind(user_id)

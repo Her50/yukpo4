@@ -107,40 +107,151 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
         }
     };
 
-    // ✅ NOUVEAU: Gérer la sélection d'un lieu via LocationSelector
-    const handleLocationSelect = (location: LocationObject) => {
-        const coords = location.coordinates;
-        if (coords?.lat && coords?.lng) {
-            const newLocation = {
-                lat: coords.lat,
-                lng: coords.lng
-            };
-            setSelectedLocation(newLocation);
-            setSearchLocation(location);
-            setSelectedAddress(location.raw || location.place_name || '');
+    // ✅ AMÉLIORÉ: Gérer la sélection d'un lieu via LocationSelector avec géocodage automatique
+    const handleLocationSelect = async (location: LocationObject) => {
+        setLoading(true);
+        try {
+            let coords = location.coordinates;
+            let locationToUse = location;
             
-            // ✅ NOUVEAU: Repositionner la carte automatiquement
-            // Le zoom sera adapté selon le type de lieu (quartier vs ville)
-            setTimeout(() => {
-                if (mapRef.current) {
-                    // Déterminer le zoom selon le type de lieu
-                    const isQuartier = !!(location.components?.quartier);
-                    const isVille = !!(location.components?.ville && !location.components?.quartier);
-                    
-                    // Zoom plus proche pour quartier, plus large pour ville
-                    const latitudeDelta = isQuartier ? 0.005 : (isVille ? 0.02 : 0.01); // Quartier: ~500m, Ville: ~2km, Autre: ~1km
-                    const longitudeDelta = isQuartier ? 0.005 : (isVille ? 0.02 : 0.01);
-                    
-                    mapRef.current.animateToRegion({
-                        latitude: coords.lat,
-                        longitude: coords.lng,
-                        latitudeDelta,
-                        longitudeDelta,
-                    }, 500); // Animation de 500ms
+            // ✅ NOUVEAU: Si les coordonnées ne sont pas disponibles, géocoder le lieu
+            if (!coords?.lat || !coords?.lng) {
+                const locationText = location.raw || location.place_name || '';
+                if (locationText) {
+                    console.log('[ModernGPSSelector] Géocodage du lieu:', locationText);
+                    try {
+                        // Utiliser expo-location pour géocoder
+                        const geocodeResults = await Location.geocodeAsync(locationText);
+                        if (geocodeResults && geocodeResults.length > 0) {
+                            const firstResult = geocodeResults[0];
+                            coords = {
+                                lat: firstResult.latitude,
+                                lng: firstResult.longitude
+                            };
+                            // Mettre à jour location avec les coordonnées
+                            locationToUse = {
+                                ...location,
+                                coordinates: coords
+                            };
+                            console.log('[ModernGPSSelector] ✅ Coordonnées obtenues:', coords);
+                        } else {
+                            throw new Error('Aucun résultat de géocodage');
+                        }
+                    } catch (geocodeError) {
+                        console.error('[ModernGPSSelector] Erreur géocodage:', geocodeError);
+                        Alert.alert(
+                            'Erreur',
+                            'Impossible de trouver les coordonnées de ce lieu. Veuillez sélectionner une position sur la carte.'
+                        );
+                        setLoading(false);
+                        return;
+                    }
+                } else {
+                    Alert.alert('Erreur', 'Nom de lieu invalide');
+                    setLoading(false);
+                    return;
                 }
-            }, 300);
-        } else {
-            Alert.alert('Erreur', 'Coordonnées GPS non disponibles pour ce lieu');
+            }
+            
+            if (coords?.lat && coords?.lng) {
+                const newLocation = {
+                    lat: coords.lat,
+                    lng: coords.lng
+                };
+                setSelectedLocation(newLocation);
+                setSearchLocation(locationToUse);
+                setSelectedAddress(locationToUse.raw || locationToUse.place_name || '');
+                
+                // ✅ AMÉLIORÉ: Repositionner la carte automatiquement avec zoom adapté
+                // Le zoom sera adapté selon le type de lieu (établissement, quartier, ville, pays)
+                setTimeout(() => {
+                    if (mapRef.current) {
+                        // ✅ AMÉLIORÉ: Utiliser les types Google Places au lieu du hardcodage
+                        // Importer la fonction de mapping depuis LocationSelector (ou créer une version locale)
+                        const mapGoogleTypesToLocalType = (googleTypes?: string[]): 'city' | 'neighborhood' | 'establishment' | 'country' => {
+                            if (!googleTypes || googleTypes.length === 0) {
+                                return 'city';
+                            }
+                            const establishmentTypes = ['establishment', 'point_of_interest', 'restaurant', 'food', 'cafe', 'bar', 'hospital', 'pharmacy', 'store', 'shopping_mall', 'bank', 'airport', 'train_station', 'church', 'mosque', 'stadium', 'movie_theater', 'museum', 'library', 'park', 'hotel', 'lodging'];
+                            const neighborhoodTypes = ['sublocality', 'sublocality_level_1', 'neighborhood'];
+                            const cityTypes = ['locality', 'administrative_area_level_2'];
+                            const countryTypes = ['country', 'administrative_area_level_1'];
+                            
+                            if (googleTypes.some(type => establishmentTypes.includes(type))) return 'establishment';
+                            if (googleTypes.some(type => neighborhoodTypes.includes(type))) return 'neighborhood';
+                            if (googleTypes.some(type => cityTypes.includes(type))) return 'city';
+                            if (googleTypes.some(type => countryTypes.includes(type))) return 'country';
+                            return 'city';
+                        };
+                        
+                        // ✅ Utiliser types Google Places si disponibles, sinon fallback sur détection manuelle
+                        const placeType = locationToUse.google_types 
+                            ? mapGoogleTypesToLocalType(locationToUse.google_types)
+                            : (() => {
+                                // Fallback: détection manuelle si types non disponibles
+                                const locationText = (locationToUse.raw || locationToUse.place_name || '').toLowerCase();
+                                const isQuartier = !!(locationToUse.components?.quartier);
+                                const isVille = !!(locationToUse.components?.ville && !locationToUse.components?.quartier);
+                                const isPays = !!(locationToUse.components?.pays && !locationToUse.components?.ville);
+                                if (isQuartier) return 'neighborhood';
+                                if (isVille) return 'city';
+                                if (isPays) return 'country';
+                                return 'city';
+                            })();
+                        
+                        // ✅ Calcul du zoom selon le type de lieu (utilise types Google)
+                        let latitudeDelta: number;
+                        let longitudeDelta: number;
+                        
+                        switch (placeType) {
+                            case 'establishment':
+                                // Établissement : zoom très proche (~200m) pour position précise
+                                latitudeDelta = 0.002;
+                                longitudeDelta = 0.002;
+                                break;
+                            case 'neighborhood':
+                                // Quartier : zoom proche (~500m)
+                                latitudeDelta = 0.005;
+                                longitudeDelta = 0.005;
+                                break;
+                            case 'city':
+                                // Ville : zoom moyen (~2km)
+                                latitudeDelta = 0.02;
+                                longitudeDelta = 0.02;
+                                break;
+                            case 'country':
+                                // Pays : zoom large (~50km)
+                                latitudeDelta = 0.5;
+                                longitudeDelta = 0.5;
+                                break;
+                            default:
+                                // Par défaut : zoom moyen (~1km)
+                                latitudeDelta = 0.01;
+                                longitudeDelta = 0.01;
+                        }
+                        
+                        console.log('[ModernGPSSelector] Recentrage carte:', {
+                            coords,
+                            type: isEstablishment ? 'établissement' : isQuartier ? 'quartier' : isVille ? 'ville' : isPays ? 'pays' : 'autre',
+                            zoom: { latitudeDelta, longitudeDelta }
+                        });
+                        
+                        mapRef.current.animateToRegion({
+                            latitude: coords.lat,
+                            longitude: coords.lng,
+                            latitudeDelta,
+                            longitudeDelta,
+                        }, 800); // Animation de 800ms pour un mouvement fluide
+                    }
+                }, 100); // Réduire le délai pour une réaction plus rapide
+            } else {
+                Alert.alert('Erreur', 'Coordonnées GPS non disponibles pour ce lieu');
+            }
+        } catch (error) {
+            console.error('[ModernGPSSelector] Erreur sélection lieu:', error);
+            Alert.alert('Erreur', 'Impossible de traiter ce lieu');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -214,7 +325,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                                     label=""
                                     value={searchLocation}
                                     onSelect={handleLocationSelect}
-                                    placeholder="Ville, quartier, pays..."
+                                    placeholder="Ville, quartier, lieu, site..."
                                     enrichWithBackend={true}
                                 />
                             </View>

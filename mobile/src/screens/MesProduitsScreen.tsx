@@ -31,6 +31,7 @@ import ServiceTeamManager from '../components/ServiceTeamManager';
 import config from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch, apiPost, mediaApi } from '../services/api';
+import { productsService } from '../services/productsService';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
@@ -293,24 +294,70 @@ const MesProduitsScreen: React.FC = () => {
                 setLoading(true);
             }
 
-            // ✅ NOUVEAU: Charger les services avec pagination pour améliorer les performances
-            const servicesResponse = await apiGet('/api/prestataire/services', {
-                params: {
-                    page: 0,
-                    limit: 20
-                }
-            });
+            // ✅ PHASE 4: Charger les produits directement depuis l'API service_products
+            if (!user?.id) {
+                console.warn('[MesProduitsScreen] ⚠️ Utilisateur non connecté');
+                setProducts([]);
+                return;
+            }
 
-            if (servicesResponse.success && servicesResponse.data) {
-                // ✅ CORRIGÉ: Gérer le nouveau format avec pagination ou l'ancien format
-                const servicesData = Array.isArray(servicesResponse.data)
-                    ? servicesResponse.data
-                    : (servicesResponse.data.data || servicesResponse.data);
-                console.log('[MesProduitsScreen] 📦 Services reçus:', servicesData.length);
-                setServices(servicesData);
+            try {
+                // ✅ PHASE 4: Utiliser l'endpoint dédié pour récupérer tous les produits d'un utilisateur
+                const products = await productsService.getProductsByUser(user.id);
+                console.log('[MesProduitsScreen] ✅ Produits récupérés depuis API:', products.length);
 
-                // Extraire tous les produits de tous les services
-                const allProducts: ManagedProduct[] = [];
+                // ✅ Convertir les produits de l'API en format ManagedProduct
+                const allProducts: ManagedProduct[] = products.map((product) => {
+                    const productData = product.product_data || {};
+                    return {
+                        id: `${product.service_id}_${product.product_index}`,
+                        rawProductId: product.id.toString(),
+                        serviceId: product.service_id.toString(),
+                        productIndex: product.product_index,
+                        nom: product.product_name || productData.nom || productData.nom_produit || 'Produit sans nom',
+                        prix: product.product_price || productData.prix || productData.prix_produit || 0,
+                        devise: productData.devise || productData.devise_produit || 'XAF',
+                        description: productData.description || productData.description_produit || '',
+                        categorie: product.product_type || productData.categorie || productData.categorie_produit || '',
+                        images: Array.isArray(productData.images) ? productData.images : [],
+                        videos: Array.isArray(productData.videos) ? productData.videos : [],
+                        is_active: product.is_active,
+                        createdAt: product.created_at,
+                        updatedAt: product.updated_at,
+                        // ✅ Préserver toutes les autres données du produit
+                        ...productData,
+                    } as ManagedProduct;
+                });
+
+                // ✅ Trier par date de création (plus récent en premier)
+                allProducts.sort((a, b) => {
+                    const dateA = parseDateToTimestamp(a.createdAt || a.created_at) || 0;
+                    const dateB = parseDateToTimestamp(b.createdAt || b.created_at) || 0;
+                    return dateB - dateA;
+                });
+
+                setProducts(allProducts);
+                console.log('[MesProduitsScreen] ✅ Produits chargés:', allProducts.length);
+            } catch (error) {
+                console.error('[MesProduitsScreen] ❌ Erreur chargement produits depuis API, fallback vers services:', error);
+                
+                // ✅ FALLBACK: Charger depuis les services si l'API échoue (compatibilité)
+                const servicesResponse = await apiGet('/api/prestataire/services', {
+                    params: {
+                        page: 0,
+                        limit: 20
+                    }
+                });
+
+                if (servicesResponse.success && servicesResponse.data) {
+                    const servicesData = Array.isArray(servicesResponse.data)
+                        ? servicesResponse.data
+                        : (servicesResponse.data.data || servicesResponse.data);
+                    console.log('[MesProduitsScreen] 📦 Services reçus (fallback):', servicesData.length);
+                    setServices(servicesData);
+
+                    // Extraire tous les produits de tous les services
+                    const allProducts: ManagedProduct[] = [];
 
                 servicesData.forEach((service: any) => {
                     const serviceId = service.id.toString();
@@ -617,6 +664,7 @@ const MesProduitsScreen: React.FC = () => {
                 setServices([]);
                 setProducts([]);
             }
+            } // ✅ Fermeture du catch block interne (ligne 341)
         } catch (error) {
             // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -964,24 +1012,25 @@ const MesProduitsScreen: React.FC = () => {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            const productIdForDelete = resolveNumericId(product.rawProductId ?? product.id);
-
-                            if (productIdForDelete === null) {
+                            // ✅ PHASE 4: Utiliser l'endpoint API service_products avec serviceId et productIndex
+                            if (!product.serviceId || typeof product.product_index !== 'number') {
                                 Alert.alert(
                                     '❌ Identifiant introuvable',
-                                    'Impossible de supprimer ce produit car son identifiant est manquant.'
+                                    'Impossible de supprimer ce produit car les identifiants sont manquants.'
                                 );
                                 return;
                             }
 
+                            const serviceId = Number(product.serviceId);
+                            const productIndex = product.product_index;
+
                             // ✅ CORRECTION: Supprimer d'abord de l'état local pour feedback immédiat
                             setProducts(prevProducts => prevProducts.filter((p) => {
-                                const candidateId = resolveNumericId(p.rawProductId ?? p.id);
-                                return candidateId !== productIdForDelete;
+                                return !(p.serviceId === product.serviceId && p.product_index === productIndex);
                             }));
 
-                            // ✅ CORRECTION: Appeler l'API après mise à jour de l'état local
-                            const response = await apiDelete(`/api/products/${productIdForDelete}`);
+                            // ✅ PHASE 4: Appeler l'API service_products au lieu de /api/products/{id}
+                            const response = await apiDelete(`/api/services/${serviceId}/products/${productIndex}`);
 
                             if (response.success) {
                                 // ✅ CORRECTION: Recharger les produits depuis le serveur pour synchronisation

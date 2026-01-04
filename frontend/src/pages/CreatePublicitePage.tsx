@@ -117,24 +117,29 @@ const CreatePublicitePage: React.FC = () => {
     const loadMesServicesEtProduits = async () => {
         try {
             setLoading(true);
-            const response = await apiGet('/api/prestataire/services');
-
-            if (response.success && response.data) {
-                const allProducts: Product[] = [];
-                response.data.forEach((service: any) => {
-                    if (service.data?.produits && Array.isArray(service.data.produits)) {
-                        service.data.produits.forEach((product: any, index: number) => {
-                            allProducts.push({
-                                ...product,
-                                id: `${service.id}_${index}`,
-                                serviceId: service.id,
-                                serviceTitre: service.data?.titre_service?.valeur || service.titre || 'Service',
-                                productIndex: index
-                            });
-                        });
-                    }
-                });
+            // ✅ PHASE 5: Utiliser getProductsByUser (plus de fallback JSONB)
+            const token = localStorage.getItem('token');
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+            
+            // Extraire userId depuis le token JWT
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const userId = payload.user_id || payload.id;
+            
+            if (userId) {
+                const { productsService } = await import('@/services/productsService');
+                const products = await productsService.getProductsByUser(userId);
+                const allProducts: Product[] = products.map((product) => ({
+                    ...product.product_data,
+                    id: `${product.service_id}_${product.product_index}`,
+                    serviceId: product.service_id.toString(),
+                    serviceTitre: '', // Pourra être enrichi si nécessaire
+                    productIndex: product.product_index
+                }));
                 setProduitsList(allProducts);
+                console.log('[CreatePublicite] ✅ Produits chargés depuis API:', allProducts.length);
             }
             setLoading(false);
         } catch (error) {

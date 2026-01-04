@@ -651,7 +651,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("? {}", massive_load_handler.get_stats().await);
     log::info!("?? {}", gpu_optimizer.get_stats());
 
-    // ✅ Lancer la désactivation automatique des produits (tous les jours à minuit)
+    // ✅ PHASE 6: Lancer la désactivation automatique des produits (tous les jours à minuit)
+    // Utilise maintenant service_products au lieu de JSONB
     let state_clone_products = app_state.clone();
     let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
@@ -661,7 +662,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             interval.tick().await;
             log::info!("🔄 Démarrage de la désactivation automatique des produits...");
 
-            match yukpomnang_backend::tasks::product_deactivation::deactivate_expired_products(
+            match yukpomnang_backend::controllers::product_lifecycle_controller::auto_deactivate_expired_products(
                 &state_clone_products.pg,
             )
             .await

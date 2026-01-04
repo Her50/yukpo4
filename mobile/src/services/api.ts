@@ -810,6 +810,14 @@ export interface CreateDeliveryRequestPayload {
   metadata?: Record<string, unknown>;
   initial_event_payload?: Record<string, unknown>;
   recipient?: DeliveryRecipientPayload;
+  // ✅ Aller-retour
+  is_round_trip?: boolean;
+  return_pickup?: DeliveryLocationInput;
+  return_dropoff?: DeliveryLocationInput;
+  round_trip_discount_percent?: number; // Réduction en % pour aller-retour (0-100)
+  // ✅ Planification
+  scheduled_delivery_at?: string; // ISO 8601 datetime (ex: "2025-02-01T14:30:00Z")
+  matching_mode?: 'immediate' | 'scheduled'; // Matching immédiat ou à la date planifiée
 }
 
 export interface DropoffShareResponse {

@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import MapModal from '@/components/ui/MapModal';
 import { useToast } from '@/components/ui/use-toast';
 import { listStorageLocations, type MerchantStorageLocation } from '@/services/deliveryApi';
+import { productsService } from '@/services/productsService';
 import { MapPin, Truck, Warehouse, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
@@ -80,6 +81,25 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         billing_mode: 'standard',
         billing_partner_label: ''
     });
+
+    // ✅ PHASE 4: Charger le produit depuis l'API si nécessaire
+    useEffect(() => {
+        const loadProduct = async () => {
+            if (isOpen && !isTransversalMode && serviceId && productIndex >= 0) {
+                try {
+                    const product = await productsService.getProduct(serviceId, productIndex);
+                    // Le produit est maintenant disponible depuis l'API
+                    // productName est déjà fourni en prop, mais on peut enrichir si nécessaire
+                    console.log('[ProductDeliveryConfigModal] ✅ Produit chargé depuis API:', product.product_name);
+                } catch (error) {
+                    console.warn('[ProductDeliveryConfigModal] Erreur chargement produit depuis API, utilisation productName prop:', error);
+                    // Fallback : utiliser productName fourni en prop
+                }
+            }
+        };
+
+        loadProduct();
+    }, [isOpen, serviceId, productIndex, isTransversalMode]);
 
     // Charger les types de colis
     useEffect(() => {

@@ -123,6 +123,15 @@ class RemoteLoggingService {
                 return;
             }
 
+            // ✅ CORRECTION 1: Filtrer les erreurs liées à /api/mobile-logs pour éviter la boucle infinie
+            if (this.isLoggingError(message, error)) {
+                // Ne pas logger les erreurs de logging pour éviter la boucle infinie
+                if (__DEV__) {
+                    this.originalConsole?.warn('[RemoteLogging] ⚠️ Erreur de logging filtrée pour éviter la boucle:', message);
+                }
+                return;
+            }
+
             this.addToQueue({
                 level: 'error',
                 message,
@@ -186,6 +195,28 @@ class RemoteLoggingService {
     }
 
     /**
+     * ✅ CORRECTION 1: Vérifie si une erreur est liée au logging pour éviter la boucle infinie
+     */
+    private isLoggingError(message: string, error: any): boolean {
+        const errorMsg = error?.message || message || '';
+        const errorName = error?.name || '';
+        
+        // Filtrer les erreurs liées à /api/mobile-logs
+        return (
+            errorMsg.includes('/api/mobile-logs') ||
+            errorMsg.includes('mobile-logs') ||
+            errorMsg.includes('Network request failed') && (errorMsg.includes('mobile') || errorMsg.includes('log')) ||
+            errorName === 'TypeError' && errorMsg.includes('Network request failed') ||
+            // Filtrer aussi les erreurs dans le stack trace
+            (error?.stack && (
+                error.stack.includes('/api/mobile-logs') ||
+                error.stack.includes('remoteLoggingService') ||
+                error.stack.includes('flush')
+            ))
+        );
+    }
+
+    /**
      * Intercepter les erreurs React Native spécifiques (ErrorBoundary, Promise rejections, etc.)
      */
     private interceptReactNativeErrors() {
@@ -197,6 +228,17 @@ class RemoteLoggingService {
                     // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
                     if (this.isAsyncStorageError(error)) {
                         // Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+                        if (originalHandler) {
+                            originalHandler(error, isFatal);
+                        }
+                        return;
+                    }
+
+                    // ✅ CORRECTION 1: Filtrer les erreurs de logging pour éviter la boucle
+                    if (this.isLoggingError(error.message, error)) {
+                        if (__DEV__) {
+                            this.originalConsole?.warn('[RemoteLogging] ⚠️ Erreur de logging filtrée (ErrorUtils):', error.message);
+                        }
                         if (originalHandler) {
                             originalHandler(error, isFatal);
                         }
@@ -230,6 +272,14 @@ class RemoteLoggingService {
                     // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
                     if (this.isAsyncStorageError(reason)) {
                         // Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+                        return originalReject(reason);
+                    }
+
+                    // ✅ CORRECTION 1: Filtrer les erreurs de logging pour éviter la boucle
+                    if (this.isLoggingError(reason?.message || String(reason), reason)) {
+                        if (__DEV__) {
+                            this.originalConsole?.warn('[RemoteLogging] ⚠️ Erreur de logging filtrée (Promise rejection):', reason?.message || String(reason));
+                        }
                         return originalReject(reason);
                     }
 
@@ -529,6 +579,14 @@ class RemoteLoggingService {
         // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
         if (this.isAsyncStorageError(error || message)) {
             // Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+            return;
+        }
+
+        // ✅ CORRECTION 1: Filtrer les erreurs de logging pour éviter la boucle infinie
+        if (this.isLoggingError(message, error)) {
+            if (__DEV__) {
+                this.originalConsole?.warn('[RemoteLogging] ⚠️ Erreur de logging filtrée (méthode error):', message);
+            }
             return;
         }
 

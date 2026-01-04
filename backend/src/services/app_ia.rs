@@ -3328,12 +3328,42 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 .join("\n")
         };
 
-        // Construire le prompt pour l'IA
-        let effects_list = if request.style.effects.is_empty() {
+        // ✅ NOUVEAU 2026-01-04: Extraire la liste complète des effets disponibles
+        use crate::services::effect_preview_service::get_available_effect_names;
+        let all_available_effects = get_available_effect_names();
+        
+        // ✅ CORRIGÉ: Filtrer les effets demandés pour ne garder que ceux supportés
+        let requested_effects: Vec<String> = if request.style.effects.is_empty() {
+            vec!["zoom".to_string(), "fade".to_string()] // Par défaut
+        } else {
+            request.style.effects
+                .iter()
+                .filter_map(|e| {
+                    // Normaliser et vérifier si l'effet existe
+                    let normalized = e.trim().to_lowercase();
+                    if all_available_effects.iter().any(|a| a.to_lowercase() == normalized) {
+                        Some(e.clone())
+                    } else {
+                        log::warn!(
+                            "[AppIA::generate_video_timeline] ⚠️ Effet demandé '{}' non supporté, ignoré",
+                            e
+                        );
+                        None
+                    }
+                })
+                .collect()
+        };
+        
+        // Construire la liste d'effets pour le prompt
+        let effects_list = if requested_effects.is_empty() {
+            // Si aucun effet valide, utiliser les effets par défaut
             "zoom, fade".to_string()
         } else {
-            request.style.effects.join(", ")
+            requested_effects.join(", ")
         };
+        
+        // ✅ NOUVEAU: Liste complète des effets disponibles pour l'IA
+        let all_effects_list = all_available_effects.join(", ");
 
         let transitions_list = if request.style.transitions.is_empty() {
             "fade, slide".to_string()
@@ -3355,7 +3385,9 @@ Contraintes:
 - Nombre de scènes: {num_scenes}
 - text_position: 'top' | 'center' | 'bottom'
 - transition: 'fade' | 'slide' | 'zoom' | 'none'
-- effects: liste d'effets disponibles ({effects_list})
+- effects: ⚠️ CRITIQUE - Utilise UNIQUEMENT ces effets disponibles: {all_effects_list}
+  Effets suggérés pour ce style: {effects_list}
+  ⚠️ N'invente JAMAIS d'effets qui ne sont pas dans la liste ci-dessus
 - transitions disponibles: {transitions_list}
 - audio_cue: timing pour synchronisation (secondes depuis le début)
 
@@ -3389,6 +3421,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 .join("\n"),
             media_list = media_list,
             effects_list = effects_list,
+            all_effects_list = all_effects_list,
             transitions_list = transitions_list,
             color_palette = request
                 .style
@@ -3570,17 +3603,68 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     .and_then(Value::as_str)
                     .map(|s| s.trim().to_string())
                     .filter(|s| matches!(s.as_str(), "fade" | "slide" | "zoom" | "none")),
-                effects: entry
-                    .get("effects")
-                    .and_then(Value::as_array)
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str())
-                            .map(|s| s.trim().to_string())
-                            .filter(|s| !s.is_empty())
-                            .collect()
-                    })
-                    .unwrap_or_default(),
+                effects: {
+                    // ✅ NOUVEAU 2026-01-04: Valider et filtrer les effets générés par l'IA
+                    use crate::services::effect_preview_service::{get_available_effect_names, normalize_effect_name};
+                    let available_effects: Vec<String> = get_available_effect_names()
+                        .iter()
+                        .map(|a| normalize_effect_name(a))
+                        .collect();
+                    
+                    let mut unsupported_effects: Vec<String> = Vec::new();
+                    let mut valid_effects = entry
+                        .get("effects")
+                        .and_then(Value::as_array)
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str())
+                                .map(|s| {
+                                    let normalized = normalize_effect_name(s.trim());
+                                    // Vérifier si l'effet normalisé existe dans la liste disponible
+                                    if available_effects.contains(&normalized) {
+                                        Some(normalized)
+                                    } else {
+                                        log::warn!(
+                                            "[AppIA::generate_video_timeline] ⚠️ Effet généré '{}' (normalisé: '{}') non supporté, ignoré. Effets disponibles: {}",
+                                            s.trim(),
+                                            normalized,
+                                            available_effects.join(", ")
+                                        );
+                                        // ✅ NOUVEAU 2026-01-04: Collecter les effets non supportés pour enregistrement asynchrone
+                                        unsupported_effects.push(s.trim().to_string());
+                                        None
+                                    }
+                                })
+                                .flatten()
+                                .collect::<Vec<String>>()
+                        })
+                        .unwrap_or_default();
+                    
+                    // ✅ CORRIGÉ: Enregistrer les effets non supportés de manière asynchrone (non-bloquant)
+                    if !unsupported_effects.is_empty() {
+                        use crate::controllers::ia_controller::record_unsupported_effect;
+                        for effect in unsupported_effects {
+                            let effect_clone = effect.clone();
+                            tokio::spawn(async move {
+                                record_unsupported_effect(&effect_clone).await;
+                            });
+                        }
+                    }
+                    
+                    // Si aucun effet valide, utiliser un effet par défaut
+                    if valid_effects.is_empty() {
+                        valid_effects.push("zoom".to_string());
+                        log::debug!(
+                            "[AppIA::generate_video_timeline] ✅ Aucun effet valide, utilisation de 'zoom' par défaut"
+                        );
+                    }
+                    
+                    // ✅ NOUVEAU 2026-01-04: Enregistrer la génération de timeline dans les métriques
+                    use crate::controllers::ia_controller::record_timeline_generation;
+                    record_timeline_generation(valid_effects.len()).await;
+                    
+                    valid_effects
+                },
                 audio_cue: entry.get("audio_cue").and_then(Value::as_f64),
             };
 
@@ -3598,11 +3682,49 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             })
             .collect();
         
+        // ✅ NOUVEAU 2026-01-04: Log pour diagnostic
+        log::info!(
+            "[AppIA::generate_video_timeline] 📊 Médias disponibles: {} items, {} avec URL",
+            request.available_media.len(),
+            media_map.len()
+        );
+        if !request.available_media.is_empty() {
+            log::debug!(
+                "[AppIA::generate_video_timeline] 📋 IDs disponibles: {:?}",
+                request.available_media.iter().map(|m| &m.id).collect::<Vec<_>>()
+            );
+        }
+        
         // ✅ CORRIGÉ: Mapper media_id vers media_url avec fallback intelligent
         for scene in &mut scenes {
             if scene.media_url.is_none() {
-                if let Some(ref media_id) = scene.media_id {
-                    if let Some(url) = media_map.get(media_id) {
+                if let Some(media_id) = scene.media_id.clone() {
+                    // ✅ NOUVEAU 2026-01-04: Ignorer les IDs placeholder (>= 10000)
+                    if let Ok(id_num) = media_id.parse::<i32>() {
+                        if id_num >= 10000 {
+                            log::debug!(
+                                "[AppIA::generate_video_timeline] ⏭️ Ignoré media_id placeholder '{}' (>= 10000)",
+                                media_id
+                            );
+                            // Utiliser le premier média disponible à la place
+                            if !request.available_media.is_empty() {
+                                if let Some(first_media) = request.available_media.first() {
+                                    if let Some(url) = &first_media.url {
+                                        scene.media_url = Some(url.clone());
+                                        scene.media_id = Some(first_media.id.clone());
+                                        log::info!(
+                                            "[AppIA::generate_video_timeline] ✅ Remplacé placeholder '{}' par premier média disponible '{}'",
+                                            media_id,
+                                            url
+                                        );
+                                    }
+                                }
+                            }
+                            continue;
+                        }
+                    }
+                    
+                    if let Some(url) = media_map.get(&media_id) {
                         scene.media_url = Some(url.clone());
                         log::debug!(
                             "[AppIA::generate_video_timeline] Mapped media_id '{}' -> media_url '{}'",
@@ -3621,6 +3743,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                             if let Some(first_media) = request.available_media.first() {
                                 if let Some(url) = &first_media.url {
                                     scene.media_url = Some(url.clone());
+                                    scene.media_id = Some(first_media.id.clone());
                                     log::info!(
                                         "[AppIA::generate_video_timeline] ✅ Fallback: Utilisé premier média disponible pour media_id '{}' -> '{}'",
                                         media_id,

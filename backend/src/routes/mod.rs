@@ -35,6 +35,7 @@ pub mod recommendation_routes; // ✅ NOUVEAU: Routes pour recommandations et tr
 pub mod embedding_routes; // ✅ Routes pour embeddings
 pub mod places_routes; // ✅ NOUVEAU: Routes pour autocomplete de lieux (Google Maps API)
 pub mod products_management; // ✅ Routes pour gestion des produits
+pub mod products_routes; // ✅ PHASE 3: Routes pour gestion produits via table service_products
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens
 pub mod video_metrics_routes;
 pub mod chat_media_routes;

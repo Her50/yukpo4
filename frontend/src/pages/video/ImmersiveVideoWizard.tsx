@@ -27,6 +27,7 @@ import {
     fetchVideoJobStatus,
     startVideoGeneration,
 } from '@/services/videoGeneration';
+import { productsService } from '@/services/productsService';
 import type { CreateVoiceProfilePayload } from '@/types/audio';
 import type {
     GeneratedVideoResponse,

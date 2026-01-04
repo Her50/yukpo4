@@ -2792,6 +2792,10 @@ pub async fn creer_service(
         let mut saved_image_paths_by_product: Vec<Vec<String>> =
             Vec::with_capacity(produits_array.len());
 
+        // ✅ NOUVEAU 2026-01-04: Créer ProductsService AVANT la boucle pour créer les produits
+        use crate::services::products_service::ProductsService;
+        let products_service = ProductsService::new(std::sync::Arc::new(pool.clone()));
+
         for (product_index, produit_value) in produits_array.iter_mut().enumerate() {
             let produit_obj = match produit_value.as_object_mut() {
                 Some(obj) => obj,
@@ -2801,16 +2805,55 @@ pub async fn creer_service(
                 }
             };
 
-            let product_id = produit_obj
-                .get("id")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| format!("prod_{}", product_index));
+            // ✅ CORRIGÉ 2026-01-04: Créer le produit dans service_products EN PREMIER
+            // pour obtenir le vrai product_id avant de créer les médias
+            let produit_cleaned_for_creation = {
+                // ✅ CORRIGÉ: Convertir Map en Value avant de passer à clean_media_recursive_final
+                let mut cleaned = serde_json::Value::Object(produit_obj.clone());
+                // Nettoyer les médias (seront dans table media)
+                let mut removed_count = 0;
+                clean_media_recursive_final(&mut cleaned, &mut removed_count);
+                cleaned
+            };
+
+            // Créer le produit dans service_products AVANT de créer les médias
+            let product_record = match products_service
+                .create_product(
+                    service_id,
+                    product_index as i32,
+                    &produit_cleaned_for_creation,
+                )
+                .await
+            {
+                Ok(product) => {
+                    log::info!(
+                        "[creer_service] ✅ Produit {} créé dans service_products (id: {}) AVANT création médias",
+                        product_index,
+                        product.id
+                    );
+                    product
+                }
+                Err(e) => {
+                    log::error!(
+                        "[creer_service] ❌ Erreur création produit {} dans service_products: {}",
+                        product_index,
+                        e
+                    );
+                    // ⚠️ CRITIQUE: Si la création du produit échoue, on ne peut pas créer les médias
+                    // On continue quand même pour ne pas bloquer les autres produits
+                    saved_image_paths_by_product.push(Vec::new());
+                    continue;
+                }
+            };
+
+            // ✅ Utiliser le vrai product_id de service_products
+            let product_id = product_record.id.to_string();
 
             log::info!(
-                "[creer_service] 📦 Produit {} (index {}): {}",
+                "[creer_service] 📦 Produit {} (index {}, id: {}): {}",
                 product_id,
                 product_index,
+                product_record.id,
                 produit_obj
                     .get("nom")
                     .and_then(|v| v.as_str())
@@ -4804,6 +4847,51 @@ pub async fn creer_service(
         AppError::Internal(format!("Échec commit: {}", e))
     })?;
 
+    // ✅ PHASE 1: Écriture UNIQUEMENT dans table products (JSONB supprimé)
+    // Créer les produits dans la table products séparée pour améliorer les performances
+    use crate::services::products_service::ProductsService;
+    let _products_service = ProductsService::new(std::sync::Arc::new(pool.clone()));
+    
+    // Utiliser data_processed si disponible (contient les produits avant nettoyage)
+    let data_for_products = if data_processed.get("produits").is_some() {
+        data_processed.clone()
+    } else {
+        data_obj.clone()
+    };
+    
+    // Extraire le tableau de produits
+    let _produits_array = if let Some(produits_value) = data_for_products.get("produits") {
+        // Si produits est directement un array
+        if produits_value.is_array() {
+            produits_value.as_array().cloned()
+        } 
+        // Si produits est un objet avec "valeur" contenant l'array
+        else if let Some(produits_obj) = produits_value.as_object() {
+            produits_obj.get("valeur").and_then(|v| v.as_array().cloned())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    
+    // ✅ SUPPRIMER les produits de data_obj avant insertion dans services
+    // Les produits seront uniquement dans la table products
+    if let Some(data_map) = data_obj.as_object_mut() {
+        data_map.remove("produits");
+        log::info!("[creer_service] ✅ Produits supprimés de data_obj (seront uniquement dans table products)");
+    }
+    
+    // ✅ CORRIGÉ 2026-01-04: Les produits sont maintenant créés dans service_products
+    // AVANT la création des médias (dans la boucle précédente)
+    // Cette section est maintenant obsolète car la création se fait plus tôt
+    // On garde cette section vide pour compatibilité, mais elle ne fait plus rien
+    // car les produits sont déjà créés avec leurs médias dans la boucle précédente
+    
+    log::info!(
+        "[creer_service] ✅ Tous les produits ont été créés dans service_products avec leurs médias"
+    );
+
     // ✅ NOUVEAU 2025-01-27 : Métriques - Succès et durée
     let duration = start_time.elapsed();
     if let Ok(metrics) = crate::metrics::product_creation_metrics::ProductCreationMetrics::new() {
@@ -5242,137 +5330,50 @@ pub async fn save_autocomplete_combination(
     use crate::services::geonames_service::{
         build_location_vector, extract_country_from_lieu, get_geoname_id,
     };
+    use crate::services::products_service::ProductsService;
 
     log::info!(
         "[save_autocomplete_combination] Début sauvegarde pour service {} (VRAIS produits)",
         service_id
     );
-
-    // 1. Extraire vecteur produit depuis champ produits
-    // ✅ CORRIGÉ: Réduire le niveau de log (warn → debug) car c'est normal pour certains services sans produits
-    // ✅ NOUVEAU 2025-12-20: Gérer le cas où produits est directement un array (rétrocompatibilité)
-    let produits_field = match data_obj.get("produits") {
-        Some(p) => {
-            // Si produits est directement un array, le transformer en format attendu
-            if p.is_array() {
-                log::info!("[save_autocomplete_combination] Produits est directement un array, transformation en format structuré");
-                // Créer un objet temporaire avec type_donnee et valeur
-                serde_json::json!({
-                    "type_donnee": "listeproduit",
-                    "valeur": p
-                })
-            } else {
-                p.clone()
-            }
-        },
-        None => {
-            log::debug!("[save_autocomplete_combination] Pas de champ produits (service sans produits - normal)");
-            return Ok(());
-        }
-    };
-
-    // Convertir en référence pour les appels suivants
-    let produits_field_ref = &produits_field;
-
-    let type_donnee = produits_field_ref
-        .get("type_donnee")
-        .and_then(|v| v.as_str())
-        .unwrap_or("autocomplete");
-
-    let separateur = produits_field_ref
-        .get("separateur")
-        .and_then(|v| v.as_str())
-        .unwrap_or(",");
-
-    let mut product_vector: Vec<String> = Vec::new();
-    let mut product_labels: Vec<String> = if let Some(sous_caracs) = produits_field_ref
-        .get("sous_caracteristiques")
-        .and_then(|v| v.as_object())
-    {
-        sous_caracs.keys().map(|k| k.to_string()).collect()
-    } else {
-        vec![]
-    };
-    let mut variation_prix_node: Option<serde_json::Value> =
-        produits_field_ref.get("variation_prix").cloned();
-    let mut embedded_product_object: Option<serde_json::Value> = None;
-
-    // ✅ OPTIMISATION : Extraire product_vector directement depuis les objets JSON
-    if type_donnee == "listeproduit" {
-        if let Some(valeur_array) = produits_field_ref.get("valeur").and_then(|v| v.as_array()) {
-            if let Some(first) = valeur_array.first() {
-                if let Some(obj) = first.as_object() {
-                    // Générer product_vector directement depuis l'objet JSON
-                    product_vector = extract_product_vector_from_object(obj);
-
-                    // Extraire product_labels si disponibles
-                    if product_labels.is_empty() {
-                        if let Some(labels_array) =
-                            obj.get("product_labels").and_then(|v| v.as_array())
-                        {
-                            product_labels = labels_array
-                                .iter()
-                                .filter_map(|label| label.as_str().map(|s| s.to_string()))
-                                .collect();
-                        }
-                    }
-
-                    // Extraire variation_prix
-                    if variation_prix_node.is_none() {
-                        variation_prix_node = obj
-                            .get("variabilite_prix")
-                            .cloned()
-                            .or_else(|| obj.get("variation_prix").cloned())
-                            .or_else(|| obj.get("price_variant").cloned());
-                    }
-
-                    embedded_product_object = Some(first.clone());
-                }
-            }
-        }
-    } else {
-        // ✅ RÉTROCOMPATIBILITÉ : Gérer les anciennes chaînes concaténées
-        if let Some(valeur_str) = produits_field_ref.get("valeur").and_then(|v| v.as_str()) {
-            product_vector = valeur_str
-                .split(separateur)
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-        } else if let Some(valeur_array) = produits_field_ref.get("valeur").and_then(|v| v.as_array()) {
-            // Si c'est un array de chaînes (ancien format)
-            if let Some(first_str) = valeur_array.iter().filter_map(|v| v.as_str()).next() {
-                product_vector = first_str
-                    .split(separateur)
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect();
-            }
-        }
-    }
-
-    if product_vector.is_empty() {
-        log::warn!("[save_autocomplete_combination] Vecteur produit vide");
+    
+    // ✅ PHASE 1: Récupérer les produits depuis la table products au lieu de JSONB
+    let products_service = ProductsService::new(std::sync::Arc::new(pool.clone()));
+    let products = products_service.get_products_by_service(service_id).await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération produits depuis table products: {}", e)))?;
+    
+    if products.is_empty() {
+        log::warn!(
+            "[save_autocomplete_combination] Aucun produit trouvé dans table products pour service {} (peut être normal si produits pas encore créés)",
+            service_id
+        );
+        // Fallback : utiliser l'ancien système si pas de produits dans la table
+        // (pour compatibilité pendant la transition)
         return Ok(());
     }
 
     log::info!(
-        "[save_autocomplete_combination] Vecteur produit: {:?}",
-        product_vector
+        "[save_autocomplete_combination] {} produits trouvés dans table products pour service {}",
+        products.len(),
+        service_id
     );
 
-    // 2. Extraire lieu (plusieurs champs possibles)
+    // 1. Extraire lieu (au niveau service, partagé entre tous les produits)
     let mut lieu_field = data_obj
         .get("lieu_produit")
         .or_else(|| data_obj.get("localisation"))
         .or_else(|| data_obj.get("ville"))
         .or_else(|| data_obj.get("lieu"));
 
+    // Si lieu non trouvé au niveau service, essayer depuis le premier produit
     if lieu_field.is_none() {
-        if let Some(obj) = embedded_product_object.as_ref().and_then(|v| v.as_object()) {
-            lieu_field = obj
-                .get("lieu_produit")
-                .or_else(|| obj.get("localisation"))
-                .or_else(|| obj.get("lieu"));
+        if let Some(first_product) = products.first() {
+            if let Some(product_obj) = first_product.product_data.as_object() {
+                lieu_field = product_obj
+                    .get("lieu_produit")
+                    .or_else(|| product_obj.get("localisation"))
+                    .or_else(|| product_obj.get("lieu"));
+            }
         }
     }
 
@@ -5410,197 +5411,288 @@ pub async fn save_autocomplete_combination(
             (vec![], None, None)
         }
     } else {
-        log::warn!("[save_autocomplete_combination] Pas de champ lieu trouvé");
+        log::debug!("[save_autocomplete_combination] Pas de champ lieu trouvé (normal pour certains services)");
         (vec![], None, None)
     };
 
-    // 3. Vecteur complet = produit + location (UNIQUEMENT pour autocomplete_characteristics)
-    let mut full_vector = product_vector.clone();
-    full_vector.extend(location_vector.clone());
-
-    log::info!(
-        "[save_autocomplete_combination] Vecteur produit ({}): {:?}",
-        product_vector.len(),
-        product_vector
-    );
-    log::info!(
-        "[save_autocomplete_combination] Vecteur lieu ({}): {:?}",
-        location_vector.len(),
-        location_vector
-    );
-    log::info!(
-        "[save_autocomplete_combination] Vecteur complet ({}): {:?}",
-        full_vector.len(),
-        full_vector
-    );
-
-    // 4. Extraire les labels des sous-caractéristiques (dimensions)
-    // 5. Générer product_id (format: "serviceId_productIndex")
-    let product_id = format!("{}_0", service_id); // Index 0 pour produit principal
-
-    // 5. Gérer variations prix si existe
-    let variation_prix = variation_prix_node.as_ref();
-
-    if let Some(variation) = variation_prix {
-        let variant_dimension = variation
-            .get("variable")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-
-        let modalites = variation.get("modalites").and_then(|v| v.as_array());
-
-        if let Some(modalites_array) = modalites {
-            log::info!(
-                "[save_autocomplete_combination] {} variations prix trouvées (dimension: {})",
-                modalites_array.len(),
-                variant_dimension
-            );
-
-            for (variant_index, modalite) in modalites_array.iter().enumerate() {
-                let variant_value = modalite
-                    .get("valeur")
+    // 2. ✅ PHASE 1 CORRIGÉ: Boucler sur TOUS les produits pour créer une entrée autocomplete_characteristics pour chacun
+    for product in &products {
+        let product_id = product.id.to_string();
+        
+        // Extraire product_vector depuis product_data de ce produit
+        let mut product_vector: Vec<String> = Vec::new();
+        let mut product_labels: Vec<String> = Vec::new();
+        let mut variation_prix_node: Option<serde_json::Value> = None;
+        
+        if let Some(product_obj) = product.product_data.as_object() {
+            // Extraire product_vector depuis product_data
+            product_vector = extract_product_vector_from_object(product_obj);
+            
+            // Si product_vector est vide, essayer d'extraire depuis les champs standards
+            if product_vector.is_empty() {
+                if let Some(nom) = product_obj.get("nom")
+                    .and_then(|v| v.get("valeur"))
                     .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let prix = modalite.get("prix").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let stock = modalite.get("stock").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-                let devise = modalite
-                    .get("devise")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("XAF");
-
-                // Vecteur produit avec variation (sans lieu)
-                let mut variant_product_vector = product_vector.clone();
-                variant_product_vector.push(variant_value.to_string());
-
-                // Vecteur complet (produit + variation + lieu)
-                let mut variant_full_vector = variant_product_vector.clone();
-                variant_full_vector.extend(location_vector.clone());
-
-                let variant_product_id = format!("{}_{}", service_id, variant_index);
-
-                // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
-                let result_char = sqlx::query(
-                    r#"INSERT INTO autocomplete_characteristics 
-                       (identifiant_base, service_id, product_id, 
-                        characteristic_vector, product_labels, location_vector, full_vector,
-                        chosen_location, chosen_location_geoname_id,
-                        is_real_product, origine_champs, usage_count,
-                        sous_caracteristique, valeur)
-                       VALUES ('produits', $1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'formulaire', 1, 'vector', $9)"#
-                )
-                .bind(service_id)
-                .bind(&variant_product_id)
-                .bind(&variant_product_vector)
-                .bind(&product_labels)  // ✅ AJOUT product_labels
-                .bind(&location_vector)
-                .bind(&variant_full_vector)
-                .bind(chosen_location.as_deref())
-                .bind(geoname_id)
-                .bind(variant_value)  // Premier élément comme valeur legacy
-                .execute(pool).await;
-
-                if let Err(e) = result_char {
-                    log::error!("[save_autocomplete_combination] Erreur sauvegarde autocomplete_characteristics variation '{}': {}", variant_value, e);
-                } else {
-                    log::info!("[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_characteristics variation: {}", variant_value);
-                }
-
-                // ✅ AUSSI sauvegarder dans autocomplete_combinations (POPULARITÉ - doublons OK)
-                let result_comb = sqlx::query(
-                    r#"INSERT INTO autocomplete_combinations 
-                       (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
-                        has_variant, variant_dimension, variant_value, prix, devise, stock, usage_count)
-                       VALUES ($1, $2, $3, '{}', '{}', $2, true, $4, $5, $6, $7, $8, 1)
-                       ON CONFLICT (full_vector)
-                       DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
-                )
-                .bind(service_id)
-                .bind(&variant_product_vector)  // SANS lieu
-                .bind(&product_labels)
-                .bind(variant_dimension)
-                .bind(variant_value)
-                .bind(prix)
-                .bind(devise)
-                .bind(stock)
-                .execute(pool).await;
-
-                if let Err(e) = result_comb {
-                    log::error!("[save_autocomplete_combination] Erreur sauvegarde autocomplete_combinations variation '{}': {}", variant_value, e);
-                } else {
-                    log::info!("[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_combinations variation: {}", variant_value);
+                    .or_else(|| product_obj.get("nom").and_then(|v| v.as_str()))
+                    .or_else(|| product_obj.get("nom_produit")
+                        .and_then(|v| v.get("valeur"))
+                        .and_then(|v| v.as_str()))
+                    .or_else(|| product_obj.get("nom_produit").and_then(|v| v.as_str())) {
+                    product_vector.push(nom.to_string());
                 }
             }
+            
+            // Extraire product_labels
+            if let Some(labels_array) = product_obj.get("product_labels").and_then(|v| v.as_array()) {
+                product_labels = labels_array
+                    .iter()
+                    .filter_map(|label| label.as_str().map(|s| s.to_string()))
+                    .collect();
+            } else if let Some(sous_caracs) = product_obj.get("sous_caracteristiques").and_then(|v| v.as_object()) {
+                product_labels = sous_caracs.keys().map(|k| k.to_string()).collect();
+            }
+            
+            // Extraire variation_prix
+            variation_prix_node = product_obj
+                .get("variabilite_prix")
+                .cloned()
+                .or_else(|| product_obj.get("variation_prix").cloned())
+                .or_else(|| product_obj.get("price_variant").cloned());
         }
-    } else {
-        // Pas de variation : sauvegarder une seule combinaison
-        let prix = produits_field
-            .get("prix")
-            .and_then(|p| p.get("valeur"))
-            .or_else(|| produits_field.get("prix"))
-            .and_then(|v| v.as_f64())
-            .or_else(|| {
-                embedded_product_object
-                    .as_ref()
-                    .and_then(|obj| obj.get("prix"))
-                    .and_then(|v| v.as_f64())
-            })
-            .unwrap_or(0.0);
-
-        // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
-        let result_char = sqlx::query(
-            r#"INSERT INTO autocomplete_characteristics 
-               (identifiant_base, service_id, product_id,
-                characteristic_vector, product_labels, location_vector, full_vector,
-                chosen_location, chosen_location_geoname_id,
-                is_real_product, origine_champs, usage_count,
-                sous_caracteristique, valeur)
-               VALUES ('produits', $1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'formulaire', 1, 'vector', $9)"#
-        )
-        .bind(service_id)
-        .bind(&product_id)
-        .bind(&product_vector)
-        .bind(&product_labels)  // ✅ AJOUT product_labels
-        .bind(&location_vector)
-        .bind(&full_vector)
-        .bind(chosen_location.as_deref())
-        .bind(geoname_id)
-        .bind(product_vector.get(0).unwrap_or(&String::new()))  // Premier élément comme valeur legacy
-        .execute(pool).await;
-
-        if let Err(e) = result_char {
-            log::error!("[save_autocomplete_combination] Erreur sauvegarde autocomplete_characteristics: {}", e);
-        } else {
-            log::info!("[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_characteristics (VRAI produit)");
-        }
-
-        // ✅ AUSSI sauvegarder dans autocomplete_combinations (POPULARITÉ - doublons OK)
-        let result_comb = sqlx::query(
-            r#"INSERT INTO autocomplete_combinations 
-               (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
-                has_variant, prix, usage_count)
-               VALUES ($1, $2, $3, '{}', '{}', $2, false, $4, 1)
-               ON CONFLICT (product_vector)
-               DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
-        )
-        .bind(service_id)
-        .bind(&product_vector)  // SANS lieu
-        .bind(&product_labels)
-        .bind(prix)
-        .execute(pool).await;
-
-        if let Err(e) = result_comb {
-            log::error!(
-                "[save_autocomplete_combination] Erreur sauvegarde autocomplete_combinations: {}",
-                e
+        
+        if product_vector.is_empty() {
+            log::warn!(
+                "[save_autocomplete_combination] Vecteur produit vide pour produit {} (id: {}), skip",
+                product.product_index,
+                product.id
             );
+            continue;
+        }
+        
+        log::info!(
+            "[save_autocomplete_combination] Produit {} (id: {}): vecteur {:?}",
+            product.product_index,
+            product.id,
+            product_vector
+        );
+        
+        // Vecteur complet = produit + location
+        let mut full_vector = product_vector.clone();
+        full_vector.extend(location_vector.clone());
+
+        // 3. Gérer variations prix si existe pour ce produit
+        let variation_prix = variation_prix_node.as_ref();
+
+        if let Some(variation) = variation_prix {
+            let variant_dimension = variation
+                .get("variable")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            let modalites = variation.get("modalites").and_then(|v| v.as_array());
+
+            if let Some(modalites_array) = modalites {
+                log::info!(
+                    "[save_autocomplete_combination] Produit {} (id: {}): {} variations prix trouvées (dimension: {})",
+                    product.product_index,
+                    product.id,
+                    modalites_array.len(),
+                    variant_dimension
+                );
+
+                for (_variant_index, modalite) in modalites_array.iter().enumerate() {
+                    let variant_value = modalite
+                        .get("valeur")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let prix = modalite.get("prix").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                    let stock = modalite.get("stock").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                    let devise = modalite
+                        .get("devise")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("XAF");
+
+                    // Vecteur produit avec variation (sans lieu)
+                    let mut variant_product_vector = product_vector.clone();
+                    variant_product_vector.push(variant_value.to_string());
+
+                    // Vecteur complet (produit + variation + lieu)
+                    let mut variant_full_vector = variant_product_vector.clone();
+                    variant_full_vector.extend(location_vector.clone());
+
+                    // ✅ PHASE 1: Utiliser product_id de la table products pour les variations
+                    // Pour les variations, on utilise le même product_id que le produit principal
+                    // (les variations sont des variantes du même produit, pas des produits séparés)
+                    let variant_product_id = product_id.clone();
+
+                    // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
+                    let result_char = sqlx::query(
+                        r#"INSERT INTO autocomplete_characteristics 
+                           (identifiant_base, service_id, product_id, 
+                            characteristic_vector, product_labels, location_vector, full_vector,
+                            chosen_location, chosen_location_geoname_id,
+                            is_real_product, origine_champs, usage_count,
+                            sous_caracteristique, valeur)
+                           VALUES ('produits', $1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'formulaire', 1, 'vector', $9)
+                           ON CONFLICT (service_id, product_id, characteristic_vector) 
+                           DO UPDATE SET 
+                               location_vector = EXCLUDED.location_vector,
+                               full_vector = EXCLUDED.full_vector,
+                               updated_at = NOW()"#
+                    )
+                    .bind(service_id)
+                    .bind(&variant_product_id)
+                    .bind(&variant_product_vector)
+                    .bind(&product_labels)
+                    .bind(&location_vector)
+                    .bind(&variant_full_vector)
+                    .bind(chosen_location.as_deref())
+                    .bind(geoname_id)
+                    .bind(variant_value)
+                    .execute(pool).await;
+
+                    if let Err(e) = result_char {
+                        log::error!(
+                            "[save_autocomplete_combination] Erreur sauvegarde autocomplete_characteristics variation '{}' pour produit {} (id: {}): {}", 
+                            variant_value, product.product_index, product.id, e
+                        );
+                    } else {
+                        log::info!(
+                            "[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_characteristics variation '{}' pour produit {} (id: {})",
+                            variant_value, product.product_index, product.id
+                        );
+                    }
+
+                    // ✅ AUSSI sauvegarder dans autocomplete_combinations (POPULARITÉ - doublons OK)
+                    let result_comb = sqlx::query(
+                        r#"INSERT INTO autocomplete_combinations 
+                           (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
+                            has_variant, variant_dimension, variant_value, prix, devise, stock, usage_count)
+                           VALUES ($1, $2, $3, '{}', '{}', $2, true, $4, $5, $6, $7, $8, 1)
+                           ON CONFLICT (full_vector)
+                           DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
+                    )
+                    .bind(service_id)
+                    .bind(&variant_product_vector)
+                    .bind(&product_labels)
+                    .bind(variant_dimension)
+                    .bind(variant_value)
+                    .bind(prix)
+                    .bind(devise)
+                    .bind(stock)
+                    .execute(pool).await;
+
+                    if let Err(e) = result_comb {
+                        log::error!(
+                            "[save_autocomplete_combination] Erreur sauvegarde autocomplete_combinations variation '{}' pour produit {} (id: {}): {}", 
+                            variant_value, product.product_index, product.id, e
+                        );
+                    } else {
+                        log::info!(
+                            "[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_combinations variation '{}' pour produit {} (id: {})",
+                            variant_value, product.product_index, product.id
+                        );
+                    }
+                }
+            }
         } else {
-            log::info!("[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_combinations (POPULARITÉ)");
+            // Pas de variation : sauvegarder une seule combinaison pour ce produit
+            let prix = if let Some(product_obj) = product.product_data.as_object() {
+                product_obj
+                    .get("prix")
+                    .and_then(|p| p.get("valeur"))
+                    .or_else(|| product_obj.get("prix"))
+                    .and_then(|v| v.as_f64())
+                    .or_else(|| {
+                        product_obj
+                            .get("prix_produit")
+                            .and_then(|p| p.get("valeur"))
+                            .or_else(|| product_obj.get("prix_produit"))
+                            .and_then(|v| v.as_f64())
+                    })
+                    .unwrap_or(0.0)
+            } else {
+                0.0
+            };
+
+            // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
+            let result_char = sqlx::query(
+                r#"INSERT INTO autocomplete_characteristics 
+                   (identifiant_base, service_id, product_id,
+                    characteristic_vector, product_labels, location_vector, full_vector,
+                    chosen_location, chosen_location_geoname_id,
+                    is_real_product, origine_champs, usage_count,
+                    sous_caracteristique, valeur)
+                   VALUES ('produits', $1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'formulaire', 1, 'vector', $9)
+                   ON CONFLICT (service_id, product_id, characteristic_vector) 
+                   DO UPDATE SET 
+                       location_vector = EXCLUDED.location_vector,
+                       full_vector = EXCLUDED.full_vector,
+                       updated_at = NOW()"#
+            )
+            .bind(service_id)
+            .bind(&product_id)
+            .bind(&product_vector)
+            .bind(&product_labels)
+            .bind(&location_vector)
+            .bind(&full_vector)
+            .bind(chosen_location.as_deref())
+            .bind(geoname_id)
+            .bind(product_vector.get(0).unwrap_or(&String::new()))
+            .execute(pool).await;
+
+            if let Err(e) = result_char {
+                log::error!(
+                    "[save_autocomplete_combination] Erreur sauvegarde autocomplete_characteristics pour produit {} (id: {}): {}", 
+                    product.product_index, product.id, e
+                );
+            } else {
+                log::info!(
+                    "[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_characteristics pour produit {} (id: {})",
+                    product.product_index, product.id
+                );
+            }
+
+            // ✅ AUSSI sauvegarder dans autocomplete_combinations (POPULARITÉ - doublons OK)
+            let result_comb = sqlx::query(
+                r#"INSERT INTO autocomplete_combinations 
+                   (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
+                    has_variant, prix, usage_count)
+                   VALUES ($1, $2, $3, '{}', '{}', $2, false, $4, 1)
+                   ON CONFLICT (product_vector)
+                   DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
+            )
+            .bind(service_id)
+            .bind(&product_vector)
+            .bind(&product_labels)
+            .bind(prix)
+            .execute(pool).await;
+
+            if let Err(e) = result_comb {
+                log::error!(
+                    "[save_autocomplete_combination] Erreur sauvegarde autocomplete_combinations pour produit {} (id: {}): {}", 
+                    product.product_index, product.id, e
+                );
+            } else {
+                log::info!(
+                    "[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_combinations pour produit {} (id: {})",
+                    product.product_index, product.id
+                );
+            }
         }
     }
+    
+    log::info!(
+        "[save_autocomplete_combination] ✅ Fin sauvegarde pour service {} ({} produits traités)",
+        service_id,
+        products.len()
+    );
 
     // ✅ NOUVEAU 2025-11-04: Sauvegarder le vecteur AUSSI dans service.data->produits pour compatibilité recherche
+    // ✅ PHASE 1 CORRIGÉ: Mettre à jour tous les produits dans service.data avec leurs vecteurs
     log::info!(
-        "[save_autocomplete_combination] Mise à jour vecteur dans service.data->produits..."
+        "[save_autocomplete_combination] Mise à jour vecteur dans service.data->produits pour {} produits...",
+        products.len()
     );
 
     // Récupérer le JSON actuel du service
@@ -5612,14 +5704,6 @@ pub async fn save_autocomplete_combination(
 
     if let Some(row) = current_data_row {
         let mut service_data: serde_json::Value = row.get::<serde_json::Value, _>("data");
-
-        // ✅ CORRECTION 2025-11-04: Ajouter le vecteur COMPLET (produit + lieu) au champ produits
-        // Construire combination_string à partir de product_vector
-        let combination_string = if !product_vector.is_empty() {
-            Some(product_vector.join(separateur))
-        } else {
-            None
-        };
 
         if let Some(produits_obj) = service_data
             .get_mut("produits")
@@ -5635,93 +5719,119 @@ pub async fn save_autocomplete_combination(
                     .get_mut("valeur")
                     .and_then(|v| v.as_array_mut())
                 {
+                    // Mettre à jour chaque produit dans le JSON avec son vecteur depuis la table products
+                    for (index, product) in products.iter().enumerate() {
+                        if let Some(product_json) = valeur_array.get_mut(index).and_then(|v| v.as_object_mut()) {
+                            // Extraire product_vector depuis product_data
+                            let mut product_vector: Vec<String> = Vec::new();
+                            if let Some(product_obj) = product.product_data.as_object() {
+                                product_vector = extract_product_vector_from_object(product_obj);
+                                
+                                if product_vector.is_empty() {
+                                    if let Some(nom) = product_obj.get("nom")
+                                        .and_then(|v| v.get("valeur"))
+                                        .and_then(|v| v.as_str())
+                                        .or_else(|| product_obj.get("nom").and_then(|v| v.as_str())) {
+                                        product_vector.push(nom.to_string());
+                                    }
+                                }
+                            }
+                            
+                            if !product_vector.is_empty() {
+                                product_json.insert(
+                                    "characteristic_vector".to_string(),
+                                    serde_json::json!(product_vector),
+                                );
+                                
+                                // Extraire product_labels
+                                let mut product_labels: Vec<String> = Vec::new();
+                                if let Some(product_obj) = product.product_data.as_object() {
+                                    if let Some(labels_array) = product_obj.get("product_labels").and_then(|v| v.as_array()) {
+                                        product_labels = labels_array
+                                            .iter()
+                                            .filter_map(|label| label.as_str().map(|s| s.to_string()))
+                                            .collect();
+                                    } else if let Some(sous_caracs) = product_obj.get("sous_caracteristiques").and_then(|v| v.as_object()) {
+                                        product_labels = sous_caracs.keys().map(|k| k.to_string()).collect();
+                                    }
+                                }
+                                
+                                if !product_labels.is_empty() {
+                                    product_json.insert(
+                                        "product_labels".to_string(),
+                                        serde_json::json!(product_labels),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Pour compatibilité, mettre à jour aussi le premier produit si disponible
                     if let Some(first_product) =
                         valeur_array.first_mut().and_then(|v| v.as_object_mut())
                     {
-                        first_product.insert(
-                            "characteristic_vector".to_string(),
-                            serde_json::json!(product_vector),
-                        );
-                        first_product.insert(
-                            "product_labels".to_string(),
-                            serde_json::json!(product_labels),
-                        );
-                        if let Some(combo) = &combination_string {
-                            first_product
-                                .insert("combinaison_brute".to_string(), serde_json::json!(combo));
+                        if !first_product.contains_key("characteristic_vector") {
+                            // Fallback : utiliser le premier produit de la table
+                            if let Some(first_table_product) = products.first() {
+                                let mut product_vector: Vec<String> = Vec::new();
+                                if let Some(product_obj) = first_table_product.product_data.as_object() {
+                                    product_vector = extract_product_vector_from_object(product_obj);
+                                }
+                                
+                                if !product_vector.is_empty() {
+                                    first_product.insert(
+                                        "characteristic_vector".to_string(),
+                                        serde_json::json!(product_vector),
+                                    );
+                                }
+                            }
                         }
+                        
+                        // Ajouter location_vector et chosen_location au premier produit pour compatibilité
                         if let Some(chosen) = &chosen_location {
                             first_product
                                 .insert("chosen_location".to_string(), serde_json::json!(chosen));
                         }
-
-                        // ✅ NOUVEAU 2025-12-XX: Extraire et sauvegarder la description depuis full_vector
-                        // La description est souvent le 3ème élément de full_vector (après nom et catégorie)
-                        // ou un élément long (> 50 caractères)
-                        if !first_product.contains_key("description")
-                            && !first_product.contains_key("description_produit")
-                        {
-                            if let Some(description) = full_vector
-                                .iter()
-                                .skip(2) // Après nom et catégorie
-                                .find(|s| s.len() > 50) // Description probablement longue
-                                .or_else(|| full_vector.iter().skip(2).next())
-                            // Sinon prendre le 3ème élément
-                            {
-                                first_product.insert(
-                                    "description".to_string(),
-                                    serde_json::json!(description),
-                                );
-                                log::info!(
-                                    "[save_autocomplete_combination] ✅ Description sauvegardée dans produit: {}",
-                                    description.chars().take(50).collect::<String>()
-                                );
-                            }
-                        }
                     }
                 }
 
-                produits_obj.insert(
-                    "characteristic_vector".to_string(),
-                    serde_json::json!(product_vector),
-                );
-                produits_obj.insert(
-                    "product_labels".to_string(),
-                    serde_json::json!(product_labels),
-                );
-                if let Some(combo) = &combination_string {
-                    produits_obj.insert("combinaison_brute".to_string(), serde_json::json!(combo));
-                }
+                // Ajouter les métadonnées au niveau produits pour compatibilité
                 produits_obj.insert(
                     "location_vector".to_string(),
                     serde_json::json!(location_vector),
                 );
-                produits_obj.insert("full_vector".to_string(), serde_json::json!(full_vector));
-                produits_obj.insert(
-                    "chosen_location".to_string(),
-                    serde_json::json!(chosen_location),
-                );
+                if let Some(chosen) = &chosen_location {
+                    produits_obj.insert(
+                        "chosen_location".to_string(),
+                        serde_json::json!(chosen),
+                    );
+                }
             } else {
-                produits_obj.insert(
-                    "characteristic_vector".to_string(),
-                    serde_json::json!(product_vector),
-                );
-                produits_obj.insert(
-                    "product_labels".to_string(),
-                    serde_json::json!(product_labels),
-                );
-                if let Some(combo) = &combination_string {
-                    produits_obj.insert("combinaison_brute".to_string(), serde_json::json!(combo));
+                // Format non-listeproduit : utiliser le premier produit pour compatibilité
+                if let Some(first_product) = products.first() {
+                    let mut product_vector: Vec<String> = Vec::new();
+                    if let Some(product_obj) = first_product.product_data.as_object() {
+                        product_vector = extract_product_vector_from_object(product_obj);
+                    }
+                    
+                    if !product_vector.is_empty() {
+                        produits_obj.insert(
+                            "characteristic_vector".to_string(),
+                            serde_json::json!(product_vector),
+                        );
+                    }
+                    
+                    produits_obj.insert(
+                        "location_vector".to_string(),
+                        serde_json::json!(location_vector),
+                    );
+                    if let Some(chosen) = &chosen_location {
+                        produits_obj.insert(
+                            "chosen_location".to_string(),
+                            serde_json::json!(chosen),
+                        );
+                    }
                 }
-                produits_obj.insert(
-                    "location_vector".to_string(),
-                    serde_json::json!(location_vector),
-                );
-                produits_obj.insert("full_vector".to_string(), serde_json::json!(full_vector));
-                produits_obj.insert(
-                    "chosen_location".to_string(),
-                    serde_json::json!(chosen_location),
-                );
             }
 
             // ✅ OPTIMISATION: Mettre à jour seulement data->produits au lieu de remplacer tout data

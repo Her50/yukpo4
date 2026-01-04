@@ -178,34 +178,38 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
 
-  const productVector = Array.isArray(product.product_vector)
-    ? product.product_vector
-    : Array.isArray(product.characteristic_vector)
-      ? product.characteristic_vector
-      : typeof product.product_vector === 'string'
-        ? splitWithFallback(product.product_vector, ',')
+  // ✅ PHASE 4: Gérer les produits depuis l'API (type Product) ou JSONB (fallback)
+  // Si le produit vient de l'API, utiliser product.product_data pour les données
+  const productData = product.product_data || product;
+
+  const productVector = Array.isArray(productData.product_vector)
+    ? productData.product_vector
+    : Array.isArray(productData.characteristic_vector)
+      ? productData.characteristic_vector
+      : typeof productData.product_vector === 'string'
+        ? splitWithFallback(productData.product_vector, ',')
         : [];
 
-  const rawLocationVector = product.location_vector || product.locationVector || product.location?.vector;
+  const rawLocationVector = productData.location_vector || productData.locationVector || productData.location?.vector;
   const locationVector = Array.isArray(rawLocationVector)
     ? rawLocationVector.filter(Boolean)
     : typeof rawLocationVector === 'string'
       ? splitWithFallback(rawLocationVector, ',')
       : [];
 
-  const chosenLocation = product.chosen_location ||
+  const chosenLocation = productData.chosen_location ||
     locationVector[0] ||
-    product.adresse ||
-    product.address ||
+    productData.adresse ||
+    productData.address ||
     service?.data?.adresse?.valeur ||
     service?.data?.adresse_service?.valeur ||
     '';
 
-  const hasVariant = product.has_variant || false;
-  const variants = product.variants || [];
+  const hasVariant = productData.has_variant || false;
+  const variants = productData.variants || [];
   const rawPrestataire =
     prestataireFromProps ||
-    product.prestataire ||
+    productData.prestataire ||
     service?.prestataire ||
     {
       nom: service?.data?.nom_prestataire?.valeur ||
@@ -213,10 +217,10 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         service?.data?.contact_nom?.valeur ||
         service?.data?.nom_prestataire ||
         service?.data?.prestataire_nom ||
-        product?.prestataire_nom ||
-        product?.prestataire_name ||
-        product?.owner_name ||
-        product?.vendor_name ||
+        productData?.prestataire_nom ||
+        productData?.prestataire_name ||
+        productData?.owner_name ||
+        productData?.vendor_name ||
         'Prestataire',
       user_id: service?.user_id,
       avatar_url: service?.data?.photo_prestataire?.valeur,
@@ -228,11 +232,11 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     rawPrestataire?.name ||
     rawPrestataire?.username ||
     rawPrestataire?.display_name ||
-    product.prestataire_nom ||
-    product.prestataire_name ||
-    product.prestataire?.nom ||
-    product.prestataire?.nom_complet ||
-    product.prestataire?.name ||
+    productData.prestataire_nom ||
+    productData.prestataire_name ||
+    productData.prestataire?.nom ||
+    productData.prestataire?.nom_complet ||
+    productData.prestataire?.name ||
     service?.data?.nom_prestataire?.valeur ||
     service?.data?.prestataire_nom?.valeur ||
     service?.data?.contact_nom?.valeur ||
@@ -244,15 +248,15 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     rawPrestataire?.avatar_url ||
     rawPrestataire?.photo_profil ||
     rawPrestataire?.photo ||
-    product.prestataire_avatar ||
-    product.prestataire?.avatar_url ||
-    product.prestataire?.avatar ||
+    productData.prestataire_avatar ||
+    productData.prestataire?.avatar_url ||
+    productData.prestataire?.avatar ||
     service?.data?.photo_prestataire?.valeur ||
     service?.data?.photo_profil?.valeur;
 
   const prestataireUserId =
     rawPrestataire?.user_id ||
-    product.prestataire?.user_id ||
+    productData.prestataire?.user_id ||
     service?.user_id ||
     service?.data?.user_id;
 
@@ -264,23 +268,23 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     user_id: prestataireUserId,
   };
 
-  const usageCount = product.usage_count || 0;
+  const usageCount = productData.usage_count || 0;
   const isPopular = usageCount >= 5;
   const isTrending = usageCount >= 10;
 
-  // ✅ CORRIGÉ: Extraire les images et vidéos depuis product/service avec fallbacks multiples
-  const images = Array.isArray(product.images) ? product.images 
+  // ✅ PHASE 4: Extraire les images et vidéos depuis productData/service avec fallbacks multiples
+  const images = Array.isArray(productData.images) ? productData.images 
     : Array.isArray(service?.images) ? service.images
     : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
     : Array.isArray(service?.data?.images) ? service.data.images
-    : Array.isArray(product.data?.images) ? product.data.images
+    : Array.isArray(productData.data?.images) ? productData.data.images
     : [];
   
-  const videos = Array.isArray(product.videos) ? product.videos
+  const videos = Array.isArray(productData.videos) ? productData.videos
     : Array.isArray(service?.videos) ? service.videos
     : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
     : Array.isArray(service?.data?.videos) ? service.data.videos
-    : Array.isArray(product.data?.videos) ? product.data.videos
+    : Array.isArray(productData.data?.videos) ? productData.data.videos
     : [];
 
   const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
@@ -301,29 +305,29 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     product.id ||
     (serviceId ? `${serviceId}_${productIndex}` : null);
 
-  const isProduct = product.type !== 'prestation_service' &&
-    product.type !== 'service' &&
-    product.type !== 'service_prestation';
+  const isProduct = productData.type !== 'prestation_service' &&
+    productData.type !== 'service' &&
+    productData.type !== 'service_prestation';
 
   // ✅ RESTAURÉ: Conditions strictes pour l'affichage du bouton "Me livrer"
   // Le bouton s'affiche uniquement si la livraison est explicitement activée
-  const deliveryEnabled = product.delivery_enabled !== false &&
-    product.livraison !== false &&
-    product.delivery_enabled !== 'false' &&
-    product.livraison !== 'false' &&
+  const deliveryEnabled = productData.delivery_enabled !== false &&
+    productData.livraison !== false &&
+    productData.delivery_enabled !== 'false' &&
+    productData.livraison !== 'false' &&
     (service?.data?.livraison?.valeur !== false && service?.data?.livraison?.valeur !== 'false') &&
     (service?.data?.delivery_enabled !== false && service?.data?.delivery_enabled !== 'false') &&
     isProduct && serviceId; // ✅ S'assurer que c'est un produit et qu'il y a un serviceId
 
   const displayPrice = hasVariant && variants.length > 0
     ? Math.min(...variants.map((v: any) => v.prix || 0))
-    : product.prix || 0;
+    : productData.prix || 0;
 
-  const devise = product.devise || variants[0]?.devise || 'XAF';
+  const devise = productData.devise || variants[0]?.devise || 'XAF';
 
   // ✅ CORRIGÉ 2025-01-01: Mémoriser le calcul de distance pour éviter les recalculs à chaque render
   const distanceKm = useMemo(() => {
-    const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance ?? product.distance_client;
+    const rawDistance = productData.distance_km ?? productData.distanceKm ?? productData.distance ?? productData.distance_client;
     let calculatedDistance = typeof rawDistance === 'string'
       ? parseFloat(rawDistance)
       : typeof rawDistance === 'number'
@@ -333,7 +337,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     // ✅ NOUVEAU: Calculer la distance si elle n'est pas fournie et qu'on a les coordonnées GPS
     if ((calculatedDistance === undefined || !Number.isFinite(calculatedDistance)) && effectiveUserLocation && locationCalculateDistance) {
       // Extraire les coordonnées GPS du produit/service (priorité: _gps ajouté dans ResultatBesoinScreen, puis gps direct, puis service)
-      const productGPS = product._gps || product.gps || product.gps_coords || product.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
+      const productGPS = productData._gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
       
       if (productGPS) {
         let productLat: number | undefined;
@@ -369,22 +373,22 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     }
     
     return calculatedDistance;
-  }, [product.distance_km, product.distanceKm, product.distance, product.distance_client, product._gps, product.gps, product.gps_coords, product.gps_fixe, service?.data?.gps_fixe?.valeur, service?.data?.gps?.valeur, effectiveUserLocation, locationCalculateDistance]);
+  }, [productData.distance_km, productData.distanceKm, productData.distance, productData.distance_client, productData._gps, productData.gps, productData.gps_coords, productData.gps_fixe, service?.data?.gps_fixe?.valeur, service?.data?.gps?.valeur, effectiveUserLocation, locationCalculateDistance]);
   
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm) && distanceKm >= 0;
 
   const pays = locationVector[locationVector.length - 1] ||
-    product.pays ||
+    productData.pays ||
     service?.data?.pays?.valeur;
 
   const countryFlag = getCountryFlag(pays);
 
-  const commentServiceId = Number(product._serviceId || product.service_id || service?.id || 0);
+  const commentServiceId = Number(productData._serviceId || product.service_id || service?.id || 0);
   const serviceTitleForComments =
-    product.nom ||
-    product.name ||
-    product.titre ||
-    product.title ||
+    productData.nom ||
+    productData.name ||
+    productData.titre ||
+    productData.title ||
     service?.data?.titre_service?.valeur ||
     service?.data?.nom ||
     'Produit';
@@ -400,33 +404,33 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     : prestataire;
 
   const viewsCount =
-    product.views ??
-    product.vues ??
-    product.consultations ??
+    productData.views ??
+    productData.vues ??
+    productData.consultations ??
     service?.views ??
     usageCount ??
     0;
 
   const sharesCount =
-    product.shares ??
-    product.partages ??
-    product.share_count ??
+    productData.shares ??
+    productData.partages ??
+    productData.share_count ??
     service?.shares ??
     0;
 
   const reviewsCount =
-    product.reviews ??
-    product.reviews_count ??
-    product.nb_avis ??
+    productData.reviews ??
+    productData.reviews_count ??
+    productData.nb_avis ??
     service?.reviews_count ??
     0;
 
   const favoritesCount =
-    product.favoris ??
-    product.likes ??
-    product.favorites ??
-    product.saves ??
-    product.bookmarks ??
+    productData.favoris ??
+    productData.likes ??
+    productData.favorites ??
+    productData.saves ??
+    productData.bookmarks ??
     0;
 
   const topStatsData = [
@@ -454,8 +458,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
   const handleShare = async () => {
     try {
-      const productName = product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
-      const productDesc = product.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur || '';
+      const productName = productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
+      const productDesc = productData.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur || '';
       const price = displayPrice > 0 ? `${displayPrice.toLocaleString()} ${devise}` : '';
       const location = chosenLocation || '';
 
@@ -689,7 +693,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
               )}
 
               <Text style={styles.productName} numberOfLines={2}>
-                {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
+                {productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
               </Text>
 
               {prestataire.nom && (
@@ -790,7 +794,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   <View style={styles.sectionHeader}>
                     <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
                     <Text style={styles.sectionTitle}>
-                      Prix selon {product.variant_dimension || 'variante'}
+                      Prix selon {productData.variant_dimension || 'variante'}
                     </Text>
                   </View>
 
@@ -962,19 +966,19 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     </Text>
                   </View>
                 )}
-                {product.usage_count && (
+                {productData.usage_count && (
                   <View style={styles.footerItem}>
                     <SafeIcon name="eye" size={12} color="#9CA3AF" />
                     <Text style={styles.footerText}>
-                      {product.usage_count} vues
+                      {productData.usage_count} vues
                     </Text>
                   </View>
                 )}
-                {product.created_at && (
+                {productData.created_at && (
                   <View style={styles.footerItem}>
                     <SafeIcon name="clock" size={12} color="#9CA3AF" />
                     <Text style={styles.footerText}>
-                      {formatDate(product.created_at)}
+                      {formatDate(productData.created_at)}
                     </Text>
                   </View>
                 )}
@@ -990,7 +994,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
           onClose={handleCloseChatModal}
           service={service || {
             id: product.service_id,
-            data: { titre_service: { valeur: product.nom } }
+            data: { titre_service: { valeur: productData.nom } }
           }}
           prestataireInfo={activeChatPeer}
           user={null}
@@ -1005,7 +1009,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
           onClose={() => setShowOrderModal(false)}
           serviceId={serviceId}
           productIndex={productIndex}
-          productName={product.nom || product.name || product.titre || 'Produit'}
+          productName={productData.nom || productData.name || productData.titre || 'Produit'}
           onSuccess={(deliveryId) => {
             console.log('[ProductCard] Livraison créée:', deliveryId);
             setShowOrderModal(false);
@@ -1019,8 +1023,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
           visible={showGallery}
           service={service || {
             id: String(product.service_id || service?.id),
-            titre: product.nom || service?.data?.titre_service?.valeur || 'Produit',
-            description: product.description || service?.data?.description?.valeur || '',
+            titre: productData.nom || service?.data?.titre_service?.valeur || 'Produit',
+            description: productData.description || service?.data?.description?.valeur || '',
             user_id: String(prestataire.user_id || service?.user_id || ''),
             data: service?.data || {},
           }}
