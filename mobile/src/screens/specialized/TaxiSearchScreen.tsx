@@ -18,7 +18,6 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { LinearGradient } from 'expo-linear-gradient';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface TaxiSearchFilters {
