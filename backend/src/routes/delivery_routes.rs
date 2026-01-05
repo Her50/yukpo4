@@ -2612,7 +2612,7 @@ async fn estimate_delivery_costs(
                 _ => crate::models::delivery_model::DeliveryEngineType::Moto, // Par défaut : moto
             }
         } else {
-            // Par défaut : moto (le plus courant au Cameroun)
+            // Par défaut : moto (véhicule le plus courant pour les livraisons)
             crate::models::delivery_model::DeliveryEngineType::Moto
         };
 

@@ -45,7 +45,7 @@ pub struct FamilyProfile {
     pub allergies: Vec<String>,
     pub dietary_restrictions: Vec<String>, // diabète, hypertension, etc.
     pub budget_monthly: Option<f64>,
-    pub cuisine_styles: Vec<String>, // africaine, camerounaise, etc.
+    pub cuisine_styles: Vec<String>, // styles de cuisine (déterminés dynamiquement)
     pub cooking_level: Option<String>, // débutant, intermédiaire, avancé
     pub time_available_hours: Option<f64>,
 }
@@ -459,7 +459,7 @@ CONTEXTE :
 - Style cuisine : {}
 - Type repas recherché : {}
 
-Génère {} suggestions de recettes adaptées au contexte africain/camerounais.
+Génère {} suggestions de recettes adaptées au contexte local/régional.
 
 RÉPONSE ATTENDUE (JSON strict) :
 {{
@@ -467,7 +467,7 @@ RÉPONSE ATTENDUE (JSON strict) :
         {{
             "name": "Nom recette",
             "description": "Description brève",
-            "cuisine_style": "camerounaise",
+            "cuisine_style": "cuisine locale traditionnelle",
             "meal_type": ["dejeuner"],
             "difficulty": "facile",
             "prep_time_minutes": 30,
@@ -657,7 +657,7 @@ RÉPONSE ATTENDUE (JSON strict) :
                 p.dietary_restrictions.join(", ") 
             };
             let cuisine_styles_str = if p.cuisine_styles.is_empty() { 
-                "africaine".to_string() 
+                "cuisine locale".to_string() 
             } else { 
                 p.cuisine_styles.join(", ") 
             };
@@ -715,7 +715,7 @@ Générer une recette COMPLÈTE et DÉTAILLÉE pour le plat : "{}"
 {{
     "recipe_name": "Nom exact du plat",
     "description": "Description courte et appétissante du plat",
-    "cuisine_style": "Style de cuisine (ex: camerounaise, sénégalaise, etc.)",
+    "cuisine_style": "Style de cuisine (déterminé automatiquement selon le pays/ville, ex: cuisine locale traditionnelle)",
     "meal_type": ["petit_dejeuner", "dejeuner", "diner"],
     "difficulty": "débutant" | "intermédiaire" | "avancé",
     "prep_time_minutes": 30,

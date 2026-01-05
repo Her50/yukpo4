@@ -114,13 +114,19 @@ pub async fn validate_partner(
                 .map(|s| s.as_str())
                 .unwrap_or(&partner_info.email);
             
+            // ✅ Récupérer dynamiquement le pays de l'utilisateur depuis GPS
+            let user_country = get_user_country(&state, user_id).await;
+            if user_country.is_none() {
+                warn!("[validate_partner] Impossible de déterminer le pays pour user_id={}, utilisation de NULL", user_id);
+            }
+            
             // Note: Les autres infos (phone, address, etc.) ne sont pas stockées dans users
             // Elles seront complétées lors de la configuration du service spécialisé
             let _partner_id = sqlx::query_scalar::<_, i32>(
                 r#"
                 INSERT INTO delivery_partners 
                 (name, partner_type, contact_email, user_id, is_active, created_by, country)
-                VALUES ($1, $2::delivery_partner_type, $3, $4, TRUE, $4, 'Cameroun')
+                VALUES ($1, $2::delivery_partner_type, $3, $4, TRUE, $4, $5)
                 ON CONFLICT (name, country) DO UPDATE 
                 SET user_id = $4, is_active = TRUE
                 RETURNING id
@@ -130,6 +136,7 @@ pub async fn validate_partner(
             .bind(partner_type)
             .bind(&partner_info.email)
             .bind(user_id)
+            .bind(user_country.as_deref())
             .fetch_optional(&state.pg)
             .await?;
         }
@@ -152,5 +159,38 @@ pub async fn validate_partner(
             "message": "Partenaire rejeté"
         })))
     }
+}
+
+/// ✅ Récupère le pays de l'utilisateur depuis ses coordonnées GPS
+async fn get_user_country(state: &AppState, user_id: i32) -> Option<String> {
+    // Récupérer GPS utilisateur
+    let user_gps: Option<String> = sqlx::query_scalar(
+        "SELECT gps FROM users WHERE id = $1 AND gps IS NOT NULL AND gps != ''"
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten()?;
+
+    // Parser coordonnées GPS (format: "lat,lng")
+    if let Some(gps_str) = user_gps {
+        if let Some((lat_str, lng_str)) = gps_str.split_once(',') {
+        if let (Ok(lat), Ok(lng)) = (lat_str.trim().parse::<f64>(), lng_str.trim().parse::<f64>()) {
+            // Utiliser le service de géocodage inverse
+            let geocoding_service = GeocodingService::new();
+            match geocoding_service.reverse_geocode(lat, lng).await {
+                Ok(result) => {
+                    return result.country;
+                }
+                Err(e) => {
+                    warn!("[get_user_country] Erreur géocodage inverse pour user_id={}: {}", user_id, e);
+                }
+            }
+        }
+    }
+    }
+
+    None
 }
 

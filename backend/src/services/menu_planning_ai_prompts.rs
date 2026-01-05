@@ -23,7 +23,7 @@ TON RÔLE :
 - Respecter allergies et restrictions
 - Optimiser le budget
 - Varier les repas pour éviter la monotonie
-- Suggérer des plats adaptés au contexte africain/camerounais quand pertinent
+- Suggérer des plats adaptés au contexte local/régional quand pertinent
 
 FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
 {{
@@ -86,11 +86,11 @@ IMPORTANT :
 - Pas de texte avant ou après le JSON
 - Pas de markdown (```json```)
 - Pas de commentaires dans le JSON
-- Utiliser des noms de plats réalistes et adaptés au contexte camerounais
+- Utiliser des noms de plats réalistes et adaptés au contexte local
 - Les quantités doivent être adaptées au nombre de personnes
 - Respecter strictement les allergies
 - Varier les types de plats
-- Adapter les coûts au contexte camerounais (prix en FCFA)
+- Adapter les coûts au contexte local (prix en devise locale)
 "#;
 
 /// Prompt pour suggestions de recettes
@@ -107,7 +107,7 @@ CONTEXTE :
 - Type repas recherché : {meal_type}
 
 TÂCHE:
-Génère exactement {limit} suggestions de recettes adaptées au contexte africain/camerounais.
+Génère exactement {limit} suggestions de recettes adaptées au contexte local/régional.
 
 FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
 {{
@@ -115,7 +115,7 @@ FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
         {{
             "name": "Nom recette",
             "description": "Description brève",
-            "cuisine_style": "camerounaise",
+            "cuisine_style": "cuisine locale traditionnelle",
             "meal_type": ["dejeuner"],
             "difficulty": "facile",
             "prep_time_minutes": 30,
@@ -130,7 +130,7 @@ CONTRAINTES:
 - suggestions: tableau d'exactement {limit} objets
 - name: string (nom de la recette)
 - description: string (50-200 caractères)
-- cuisine_style: string (ex: "camerounaise", "africaine", "occidentale")
+- cuisine_style: string (déterminé automatiquement selon le pays/ville, ex: "cuisine locale traditionnelle")
 - meal_type: tableau de strings (ex: ["dejeuner", "diner"])
 - difficulty: "facile" | "moyen" | "difficile"
 - prep_time_minutes: entier positif
@@ -144,7 +144,7 @@ IMPORTANT:
 - Pas de markdown (```json```)
 - Pas de commentaires dans le JSON
 - Tous les nombres doivent être des nombres (pas de strings)
-- Adapte les recettes au contexte camerounais/africain
+- Adapte les recettes au contexte local/régional
 "#;
 
 /// Prompt pour calcul de quantités
@@ -229,6 +229,6 @@ IMPORTANT:
 - Pas de markdown (```json```)
 - Pas de commentaires dans le JSON
 - Tous les nombres doivent être des nombres (pas de strings)
-- Les recommandations doivent être adaptées au contexte camerounais/africain
+- Les recommandations doivent être adaptées au contexte local/régional
 "#;
 
