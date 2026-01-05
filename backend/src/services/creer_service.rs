@@ -49,7 +49,7 @@ mod service_costs {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct StoredMedia {
-    path: String,
+    pub path: String, // ✅ NOUVEAU 2026-01-04: Rendre public pour accès dans delivery_routes
     bytes: Vec<u8>,
 }
 

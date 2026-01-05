@@ -744,6 +744,7 @@ fn merge_json(base: Value, overlay: Value) -> Value {
 pub struct CourierApplicationInput {
     pub user_id: i32,
     pub profile_data: Value,
+    pub partner_id: Option<i32>, // ✅ NOUVEAU 2026-01-04: ID du partenaire de livraison
     pub documents: Value,
     pub submitted: bool,
 }
@@ -767,6 +768,7 @@ pub struct CourierAssetInput {
     pub available: bool,
     pub availability_schedule: Option<Value>,
     pub documents: Option<Value>,
+    pub vehicle_image_url: Option<String>, // ✅ NOUVEAU 2026-01-04: URL de l'image du moyen de transport
 }
 
 #[derive(Clone)]
@@ -1209,6 +1211,7 @@ impl DeliveryService {
                 profile_data: input.profile_data,
                 documents: input.documents,
                 notes: None,
+                partner_id: input.partner_id, // ✅ NOUVEAU 2026-01-04: Partenaire de livraison
             })
             .await?;
 
@@ -1279,6 +1282,7 @@ impl DeliveryService {
                     available: asset_input.available,
                     availability_schedule: asset_input.availability_schedule.clone(),
                     documents: asset_input.documents.clone(),
+                    vehicle_image_url: asset_input.vehicle_image_url.clone(), // ✅ NOUVEAU 2026-01-04: URL de l'image du moyen de transport
                 })
                 .await?;
             Some(inserted)
@@ -3093,6 +3097,7 @@ impl DeliveryService {
                 available: input.available,
                 availability_schedule: input.availability_schedule.clone(),
                 documents: input.documents.clone(),
+                vehicle_image_url: input.vehicle_image_url.clone(), // ✅ NOUVEAU 2026-01-04: URL de l'image du moyen de transport
             })
             .await?;
 

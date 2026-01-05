@@ -19,6 +19,8 @@ import { modernColors } from '../theme/modernTheme';
 import ErrorBoundary from './ErrorBoundary';
 import InteractiveMapView from './InteractiveMapView';
 import SafeIcon from './SafeIcon';
+import { useSavedAddresses } from '../hooks/useSavedAddresses';
+import { LocationObject } from './LocationSelector';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,6 +42,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     allowZoneSelection = true
 }) => {
     const { location: userLocation } = useLocation();
+    const { createAddressFromLocation, addresses: savedAddresses } = useSavedAddresses('both');
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
     const [selectedPolygon, setSelectedPolygon] = useState<{ lat: number; lng: number }[]>([]);
     const [loading, setLoading] = useState(false);
@@ -50,6 +53,10 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     const [zoneType, setZoneType] = useState<'point' | 'polygon'>('point');
     const [placeSuggestions, setPlaceSuggestions] = useState<any[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    // ✅ NOUVEAU 2026-01-04: États pour sauvegarder un lieu personnalisé
+    const [showSaveLocationModal, setShowSaveLocationModal] = useState(false);
+    const [saveLocationName, setSaveLocationName] = useState('');
+    const [savingLocation, setSavingLocation] = useState(false);
 
     useEffect(() => {
         if (visible) {
@@ -185,7 +192,25 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             const data = await response.json();
 
             if (data.status === 'OK' && data.predictions) {
-                setPlaceSuggestions(data.predictions);
+                // ✅ NOUVEAU 2026-01-04: Ajouter les lieux sauvegardés aux suggestions
+                const savedMatches = savedAddresses
+                    .filter(addr => 
+                        addr.label.toLowerCase().includes(query.toLowerCase()) ||
+                        addr.address.toLowerCase().includes(query.toLowerCase())
+                    )
+                    .map(addr => ({
+                        place_id: `saved_${addr.id}`,
+                        description: `${addr.label} - ${addr.address}`,
+                        structured_formatting: {
+                            main_text: addr.label,
+                            secondary_text: addr.address
+                        },
+                        is_saved: true,
+                        saved_address: addr
+                    }));
+                
+                // Combiner les suggestions Google avec les lieux sauvegardés (lieux sauvegardés en premier)
+                setPlaceSuggestions([...savedMatches, ...data.predictions]);
                 setShowSuggestions(true);
             } else {
                 setPlaceSuggestions([]);
@@ -196,11 +221,20 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         }
     };
 
-    const handleSelectSuggestion = async (placeId: string, description: string) => {
+    const handleSelectSuggestion = async (placeId: string, description: string, suggestion?: any) => {
         try {
             setLoading(true);
             setShowSuggestions(false);
             setSearchQuery(description);
+
+            // ✅ NOUVEAU 2026-01-04: Si c'est un lieu sauvegardé, utiliser directement ses coordonnées
+            if (suggestion?.is_saved && suggestion?.saved_address) {
+                const savedAddr = suggestion.saved_address;
+                setSelectedLocation({ lat: savedAddr.latitude, lng: savedAddr.longitude });
+                setAddress(savedAddr.address);
+                setLoading(false);
+                return;
+            }
 
             // ✅ Récupérer les détails du lieu avec l'API Place Details
             const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
@@ -249,6 +283,22 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         setLoading(true);
         setShowSuggestions(false);
         try {
+            // ✅ NOUVEAU 2026-01-04: Vérifier d'abord dans les lieux sauvegardés
+            const savedMatch = savedAddresses.find(addr => 
+                addr.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                addr.address.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+
+            if (savedMatch) {
+                // Utiliser le lieu sauvegardé
+                setSelectedLocation({ lat: savedMatch.latitude, lng: savedMatch.longitude });
+                setAddress(savedMatch.address);
+                setSearchQuery(savedMatch.label);
+                setLoading(false);
+                return;
+            }
+
+            // Sinon, rechercher via Google Places ou expo-location
             const results = await Location.geocodeAsync(searchQuery);
             if (results.length > 0) {
                 const result = results[0];
@@ -312,6 +362,101 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     const clearPolygon = () => {
         setSelectedPolygon([]);
         setZoneType('point');
+    };
+
+    // ✅ NOUVEAU 2026-01-04: Fonction pour obtenir l'adresse depuis les coordonnées (reverse geocoding)
+    const getAddressFromCoordinates = async (lat: number, lng: number): Promise<string> => {
+        try {
+            const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
+            
+            if (GOOGLE_MAPS_API_KEY) {
+                // Utiliser Google Geocoding API pour obtenir l'adresse
+                const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=fr&key=${GOOGLE_MAPS_API_KEY}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.status === 'OK' && data.results && data.results.length > 0) {
+                    return data.results[0].formatted_address;
+                }
+            }
+            
+            // Fallback: utiliser expo-location
+            const results = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+            if (results.length > 0) {
+                const result = results[0];
+                const parts = [];
+                if (result.street) parts.push(result.street);
+                if (result.city) parts.push(result.city);
+                if (result.region) parts.push(result.region);
+                if (result.country) parts.push(result.country);
+                return parts.join(', ') || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            }
+        } catch (error) {
+            console.error('[ModernGPSModal] Erreur reverse geocoding:', error);
+        }
+        
+        // Fallback final: retourner les coordonnées
+        return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    };
+
+    // ✅ NOUVEAU 2026-01-04: Fonction pour ouvrir le modal de sauvegarde
+    const handleSaveLocation = () => {
+        if (!selectedLocation) {
+            Alert.alert('Erreur', 'Veuillez d\'abord sélectionner un lieu sur la carte.');
+            return;
+        }
+        setSaveLocationName('');
+        setShowSaveLocationModal(true);
+    };
+
+    // ✅ NOUVEAU 2026-01-04: Fonction pour sauvegarder le lieu avec un nom personnalisé
+    const handleConfirmSaveLocation = async () => {
+        if (!selectedLocation || !saveLocationName.trim()) {
+            Alert.alert('Erreur', 'Veuillez entrer un nom pour ce lieu.');
+            return;
+        }
+
+        setSavingLocation(true);
+        try {
+            // Obtenir l'adresse complète depuis les coordonnées
+            const fullAddress = await getAddressFromCoordinates(selectedLocation.lat, selectedLocation.lng);
+            
+            // Créer un LocationObject depuis les coordonnées sélectionnées
+            const locationObject: LocationObject = {
+                raw: fullAddress,
+                place_name: saveLocationName.trim(),
+                components: {},
+                coordinates: {
+                    lat: selectedLocation.lat,
+                    lng: selectedLocation.lng
+                }
+            };
+
+            // Sauvegarder via useSavedAddresses
+            await createAddressFromLocation(
+                locationObject,
+                saveLocationName.trim(),
+                'both',
+                {
+                    is_default_pickup: false,
+                    is_default_dropoff: false
+                }
+            );
+
+            Alert.alert(
+                '✅ Lieu sauvegardé',
+                `Le lieu "${saveLocationName.trim()}" a été sauvegardé avec succès. Vous pourrez le retrouver facilement lors de vos prochaines recherches.`,
+                [{ text: 'OK', onPress: () => {
+                    setShowSaveLocationModal(false);
+                    setSaveLocationName('');
+                }}]
+            );
+        } catch (error: any) {
+            console.error('[ModernGPSModal] Erreur sauvegarde lieu:', error);
+            Alert.alert('Erreur', error?.message || 'Impossible de sauvegarder ce lieu.');
+        } finally {
+            setSavingLocation(false);
+        }
     };
 
     return (
@@ -477,11 +622,16 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                         key={suggestion.place_id || index}
                                         style={[
                                             styles.suggestionItem,
-                                            index === placeSuggestions.slice(0, 5).length - 1 && styles.suggestionItemLast
+                                            index === placeSuggestions.slice(0, 5).length - 1 && styles.suggestionItemLast,
+                                            suggestion.is_saved && styles.suggestionItemSaved
                                         ]}
-                                        onPress={() => handleSelectSuggestion(suggestion.place_id, suggestion.description)}
+                                        onPress={() => handleSelectSuggestion(suggestion.place_id, suggestion.description, suggestion)}
                                     >
-                                        <SafeIcon name="map-pin" size={14} color={modernColors.textSecondary} />
+                                        <SafeIcon 
+                                            name={suggestion.is_saved ? "bookmark" : "map-pin"} 
+                                            size={14} 
+                                            color={suggestion.is_saved ? modernColors.primary : modernColors.textSecondary} 
+                                        />
                                         <View style={styles.suggestionTextContainer}>
                                             <Text style={styles.suggestionMainText} numberOfLines={1}>
                                                 {suggestion.structured_formatting?.main_text || suggestion.description}
@@ -492,6 +642,11 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                                 </Text>
                                             )}
                                         </View>
+                                        {suggestion.is_saved && (
+                                            <View style={styles.savedBadge}>
+                                                <Text style={styles.savedBadgeText}>Sauvegardé</Text>
+                                            </View>
+                                        )}
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
@@ -548,6 +703,17 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         <Text style={styles.cancelButtonText}>Annuler</Text>
                     </TouchableOpacity>
 
+                    {/* ✅ NOUVEAU 2026-01-04: Bouton "Sauvegarder ce lieu" (uniquement pour les points) */}
+                    {zoneType === 'point' && selectedLocation && (
+                        <TouchableOpacity
+                            style={styles.saveLocationButton}
+                            onPress={handleSaveLocation}
+                        >
+                            <SafeIcon name="bookmark" size={16} color="#FFFFFF" />
+                            <Text style={styles.saveLocationButtonText}>Sauvegarder</Text>
+                        </TouchableOpacity>
+                    )}
+
                     <TouchableOpacity
                         style={[
                             styles.confirmButton,
@@ -559,6 +725,85 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         <Text style={styles.confirmButtonText}>Confirmer</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* ✅ NOUVEAU 2026-01-04: Modal pour nommer et sauvegarder le lieu */}
+                <Modal
+                    visible={showSaveLocationModal}
+                    animationType="slide"
+                    transparent={true}
+                    onRequestClose={() => setShowSaveLocationModal(false)}
+                >
+                    <View style={styles.saveModalOverlay}>
+                        <View style={styles.saveModalContainer}>
+                            <View style={styles.saveModalHeader}>
+                                <SafeIcon name="bookmark" size={24} color={modernColors.primary} />
+                                <Text style={styles.saveModalTitle}>Sauvegarder ce lieu</Text>
+                                <TouchableOpacity
+                                    onPress={() => setShowSaveLocationModal(false)}
+                                    style={styles.saveModalCloseButton}
+                                >
+                                    <SafeIcon name="x" size={20} color={modernColors.text} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.saveModalContent}>
+                                <Text style={styles.saveModalLabel}>
+                                    Donnez un nom à ce lieu pour le retrouver facilement
+                                </Text>
+                                <Text style={styles.saveModalHint}>
+                                    Ex: "Mon bureau", "Maison", "Restaurant préféré", etc.
+                                </Text>
+                                
+                                <TextInput
+                                    style={styles.saveModalInput}
+                                    placeholder="Nom du lieu..."
+                                    value={saveLocationName}
+                                    onChangeText={setSaveLocationName}
+                                    autoFocus={true}
+                                    maxLength={50}
+                                />
+
+                                {selectedLocation && (
+                                    <View style={styles.saveModalLocationInfo}>
+                                        <SafeIcon name="map-pin" size={14} color={modernColors.textSecondary} />
+                                        <Text style={styles.saveModalLocationText}>
+                                            {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                <View style={styles.saveModalActions}>
+                                    <TouchableOpacity
+                                        style={styles.saveModalCancelButton}
+                                        onPress={() => {
+                                            setShowSaveLocationModal(false);
+                                            setSaveLocationName('');
+                                        }}
+                                    >
+                                        <Text style={styles.saveModalCancelText}>Annuler</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.saveModalConfirmButton,
+                                            (!saveLocationName.trim() || savingLocation) && styles.saveModalConfirmButtonDisabled
+                                        ]}
+                                        onPress={handleConfirmSaveLocation}
+                                        disabled={!saveLocationName.trim() || savingLocation}
+                                    >
+                                        {savingLocation ? (
+                                            <Text style={styles.saveModalConfirmText}>Sauvegarde...</Text>
+                                        ) : (
+                                            <>
+                                                <SafeIcon name="check" size={16} color="#FFFFFF" />
+                                                <Text style={styles.saveModalConfirmText}>Sauvegarder</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
             </View>
         </Modal>
     );
@@ -873,6 +1118,23 @@ const styles = StyleSheet.create({
     suggestionItemLast: {
         borderBottomWidth: 0,
     },
+    suggestionItemSaved: {
+        backgroundColor: '#F0FDF4',
+        borderLeftWidth: 3,
+        borderLeftColor: modernColors.primary,
+    },
+    savedBadge: {
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginLeft: 8,
+    },
+    savedBadgeText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
     suggestionTextContainer: {
         flex: 1,
     },
@@ -1171,6 +1433,137 @@ const styles = StyleSheet.create({
         backgroundColor: '#D1D5DB',
     },
     confirmButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    // ✅ NOUVEAU 2026-01-04: Styles pour le bouton "Sauvegarder ce lieu"
+    saveLocationButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        backgroundColor: modernColors.success || '#10B981',
+        gap: 6,
+    },
+    saveLocationButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    // ✅ NOUVEAU 2026-01-04: Styles pour le modal de sauvegarde
+    saveModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    saveModalContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        width: '100%',
+        maxWidth: 400,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    saveModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        gap: 12,
+    },
+    saveModalTitle: {
+        flex: 1,
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    saveModalCloseButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    saveModalContent: {
+        padding: 20,
+    },
+    saveModalLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    saveModalHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginBottom: 16,
+        fontStyle: 'italic',
+    },
+    saveModalInput: {
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        color: modernColors.text,
+        backgroundColor: '#FFFFFF',
+        marginBottom: 12,
+    },
+    saveModalLocationInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 10,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        marginBottom: 20,
+        gap: 8,
+    },
+    saveModalLocationText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontFamily: 'monospace',
+    },
+    saveModalActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    saveModalCancelButton: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+    },
+    saveModalCancelText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.text,
+    },
+    saveModalConfirmButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary,
+        gap: 6,
+    },
+    saveModalConfirmButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+    },
+    saveModalConfirmText: {
         fontSize: 14,
         fontWeight: '600',
         color: '#FFFFFF',

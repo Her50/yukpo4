@@ -56,6 +56,7 @@ export const ROUTES = {
   DELIVERY_TRACKING: "/delivery/:deliveryId/tracking",
   DELIVERY_COURIER_DASHBOARD: "/delivery/:deliveryId/courier",
   DELIVERY_STORAGE_LOCATIONS: "/delivery/storage-locations", // ✅ Phase 9 - Amélioration 32
+  DELIVERY_PARTNERS_ADMIN: "/admin/delivery-partners", // ✅ NOUVEAU 2026-01-04: Gestion partenaires (admin)
 
   // 🛒 Gestion commandes et produits similaires
   SIMILAR_PRODUCTS: "/similar-products", // Produits similaires (quand produit non disponible)

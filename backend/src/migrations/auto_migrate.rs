@@ -5368,6 +5368,179 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .await?;
 
+    // ✅ NOUVEAU 2026-01-04: Créer le type ENUM pour les types de partenaires
+    run_delivery_step(
+        pool,
+        "Create delivery_partner_type enum",
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_partner_type') THEN
+                CREATE TYPE delivery_partner_type AS ENUM (
+                    'livraison',
+                    'pharmacie',
+                    'hopital',
+                    'laboratoire',
+                    'agence de voyage',
+                    'demenagement',
+                    'transport',
+                    'assureur',
+                    'supermarche',
+                    'telecom'
+                );
+            END IF;
+        END
+        $$;
+        "#,
+    )
+    .await?;
+
+    // ✅ NOUVEAU 2026-01-04: Créer la table delivery_partners
+    run_delivery_step(
+        pool,
+        "Create delivery_partners table",
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_partners (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            partner_type delivery_partner_type NOT NULL DEFAULT 'livraison',
+            contact_email VARCHAR(255),
+            contact_phone VARCHAR(50),
+            address TEXT,
+            city VARCHAR(100),
+            country VARCHAR(100) NOT NULL, -- ✅ NOUVEAU 2026-01-04: Pays obligatoire pour distinguer les partenaires
+            continent VARCHAR(50), -- ✅ NOUVEAU 2026-01-04: Continent pour meilleure organisation
+            website VARCHAR(255),
+            logo_url TEXT,
+            -- ✅ NOUVEAU 2026-01-04: Localisation intelligente du partenaire
+            location_latitude DOUBLE PRECISION,
+            location_longitude DOUBLE PRECISION,
+            location_address TEXT, -- Adresse complète formatée depuis la géolocalisation
+            is_active BOOLEAN DEFAULT TRUE,
+            created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            -- ✅ NOUVEAU 2026-01-04: Contrainte unique sur (name, country) pour permettre le même nom dans différents pays
+            UNIQUE(name, country)
+        )
+        "#,
+    )
+    .await?;
+
+    run_delivery_step(
+        pool,
+        "Create delivery_partners indexes",
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_delivery_partners_name ON delivery_partners(name);
+        CREATE INDEX IF NOT EXISTS idx_delivery_partners_active ON delivery_partners(is_active);
+        CREATE INDEX IF NOT EXISTS idx_delivery_partners_created_by ON delivery_partners(created_by);
+        CREATE INDEX IF NOT EXISTS idx_delivery_partners_type ON delivery_partners(partner_type);
+        "#,
+    )
+    .await?;
+
+    // ✅ NOUVEAU 2026-01-04: Ajouter la colonne partner_type si elle n'existe pas (pour les tables existantes)
+    run_delivery_step(
+        pool,
+        "Add partner_type column to delivery_partners if missing",
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'delivery_partners' AND column_name = 'partner_type'
+            ) THEN
+                ALTER TABLE delivery_partners 
+                ADD COLUMN partner_type delivery_partner_type NOT NULL DEFAULT 'livraison';
+            END IF;
+        END
+        $$;
+        "#,
+    )
+    .await?;
+
+    // ✅ NOUVEAU 2026-01-04: Ajouter les colonnes de localisation si elles n'existent pas
+    run_delivery_step(
+        pool,
+        "Add location columns to delivery_partners if missing",
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'delivery_partners' AND column_name = 'location_latitude'
+            ) THEN
+                ALTER TABLE delivery_partners 
+                ADD COLUMN location_latitude DOUBLE PRECISION,
+                ADD COLUMN location_longitude DOUBLE PRECISION,
+                ADD COLUMN location_address TEXT;
+            END IF;
+        END
+        $$;
+        "#,
+    )
+    .await?;
+
+    // ✅ NOUVEAU 2026-01-04: Ajouter les nouveaux types de partenaires à l'enum
+    run_delivery_step(
+        pool,
+        "Add new partner types to delivery_partner_type enum",
+        r#"
+        DO $$
+        BEGIN
+            -- Ajouter 'assureur' si n'existe pas
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'assureur' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'assureur';
+            END IF;
+            
+            -- Ajouter 'supermarche' si n'existe pas
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'supermarche' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'supermarche';
+            END IF;
+            
+            -- Ajouter 'telecom' si n'existe pas
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'telecom' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'telecom';
+            END IF;
+        END
+        $$;
+        "#,
+    )
+    .await?;
+
+    // ✅ NOUVEAU 2026-01-04: Ajouter partner_id à courier_applications
+    run_delivery_step(
+        pool,
+        "Add partner_id to courier_applications",
+        r#"
+        ALTER TABLE courier_applications 
+        ADD COLUMN IF NOT EXISTS partner_id INTEGER REFERENCES delivery_partners(id) ON DELETE SET NULL;
+        CREATE INDEX IF NOT EXISTS idx_courier_applications_partner ON courier_applications(partner_id);
+        "#,
+    )
+    .await?;
+
+    // ✅ NOUVEAU 2026-01-04: Ajouter vehicle_image_url à courier_assets
+    run_delivery_step(
+        pool,
+        "Add vehicle_image_url to courier_assets",
+        r#"
+        ALTER TABLE courier_assets 
+        ADD COLUMN IF NOT EXISTS vehicle_image_url TEXT;
+        "#,
+    )
+    .await?;
+
     run_delivery_step(
         pool,
         "Create delivery_parcels table",

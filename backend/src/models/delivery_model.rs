@@ -149,6 +149,7 @@ pub struct CourierApplication {
     pub profile_data: serde_json::Value,
     pub documents: serde_json::Value,
     pub notes: serde_json::Value,
+    pub partner_id: Option<i32>, // ✅ NOUVEAU 2026-01-04: ID du partenaire de livraison
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -182,6 +183,7 @@ pub struct CourierAsset {
     pub available: bool,
     pub availability_schedule: Option<serde_json::Value>,
     pub documents: Option<serde_json::Value>,
+    pub vehicle_image_url: Option<String>, // ✅ NOUVEAU 2026-01-04: URL de l'image du moyen de transport
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -791,4 +793,69 @@ pub struct UserSavedAddressInput {
 pub struct UserSavedAddressListResponse {
     pub addresses: Vec<UserSavedAddress>,
     pub total: i64,
+}
+
+/// ✅ NOUVEAU 2026-01-04: Type de partenaire
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[sqlx(type_name = "delivery_partner_type", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum DeliveryPartnerType {
+    #[sqlx(rename = "livraison")]
+    Livraison,
+    Pharmacie,
+    Hopital,
+    Laboratoire,
+    #[sqlx(rename = "agence de voyage")]
+    AgenceDeVoyage,
+    Demenagement,
+    Transport,
+    Assureur, // ✅ NOUVEAU 2026-01-04: Type partenaire assureur
+    Supermarche, // ✅ NOUVEAU 2026-01-04: Type partenaire supermarché
+    Telecom, // ✅ NOUVEAU 2026-01-04: Type partenaire télécom
+}
+
+/// ✅ NOUVEAU 2026-01-04: Modèle pour les partenaires de livraison
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct DeliveryPartner {
+    pub id: i32,
+    pub name: String,
+    pub description: Option<String>,
+    pub partner_type: DeliveryPartnerType, // ✅ NOUVEAU 2026-01-04: Type de partenaire
+    pub contact_email: Option<String>,
+    pub contact_phone: Option<String>,
+    pub address: Option<String>,
+    pub city: Option<String>,
+    pub country: String, // ✅ NOUVEAU 2026-01-04: Pays obligatoire pour distinguer les partenaires
+    pub continent: Option<String>, // ✅ NOUVEAU 2026-01-04: Continent pour meilleure organisation
+    pub website: Option<String>,
+    pub logo_url: Option<String>,
+    // ✅ NOUVEAU 2026-01-04: Localisation intelligente du partenaire
+    pub location_latitude: Option<f64>,
+    pub location_longitude: Option<f64>,
+    pub location_address: Option<String>, // Adresse complète formatée depuis la géolocalisation
+    pub is_active: bool,
+    pub created_by: Option<i32>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// ✅ NOUVEAU 2026-01-04: Input pour créer/mettre à jour un partenaire
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeliveryPartnerInput {
+    pub name: String,
+    pub description: Option<String>,
+    pub partner_type: Option<String>, // ✅ NOUVEAU 2026-01-04: Type de partenaire (string pour flexibilité)
+    pub contact_email: Option<String>,
+    pub contact_phone: Option<String>,
+    pub address: Option<String>,
+    pub city: Option<String>,
+    pub country: String, // ✅ NOUVEAU 2026-01-04: Pays obligatoire pour distinguer les partenaires
+    pub continent: Option<String>, // ✅ NOUVEAU 2026-01-04: Continent pour meilleure organisation
+    pub website: Option<String>,
+    pub logo_url: Option<String>,
+    // ✅ NOUVEAU 2026-01-04: Localisation intelligente du partenaire
+    pub location_latitude: Option<f64>,
+    pub location_longitude: Option<f64>,
+    pub location_address: Option<String>, // Adresse complète formatée depuis la géolocalisation
+    pub is_active: Option<bool>,
 }

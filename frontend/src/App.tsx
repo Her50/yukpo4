@@ -30,6 +30,7 @@ import CreationSmartService from '@/pages/CreationSmartService';
 import CourierDashboardPage from '@/pages/delivery/CourierDashboardPage';
 import CourierMyDeliveriesPage from '@/pages/delivery/CourierMyDeliveriesPage';
 import CourierRegistrationPage from '@/pages/delivery/CourierRegistrationPage';
+import DeliveryPartnersAdminPage from '@/pages/delivery/DeliveryPartnersAdminPage';
 import DeliveryHomePage from '@/pages/delivery/DeliveryHomePage';
 import DeliveryParcelFlowPage from '@/pages/delivery/DeliveryParcelFlowPage';
 import DeliveryShoppingFlowPage from '@/pages/delivery/DeliveryShoppingFlowPage';
@@ -336,6 +337,11 @@ function App() {
                         <Route path={ROUTES.DELIVERY_STORAGE_LOCATIONS} element={
                           <RequireAuth>
                             <StorageLocationsPage />
+                          </RequireAuth>
+                        } />
+                        <Route path="/admin/delivery-partners" element={
+                          <RequireAuth>
+                            <DeliveryPartnersAdminPage />
                           </RequireAuth>
                         } />
                         {/* 🛒 Gestion commandes et produits similaires */}

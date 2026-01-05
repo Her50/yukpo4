@@ -98,6 +98,9 @@ export const API_ENDPOINTS = {
     NOTIFY_CALL: '/api/webrtc/notify-call',
   },
 
+  // Delivery Partners (Admin)
+  DELIVERY_PARTNERS: '/api/delivery/partners',
+
   // Health check
   HEALTH: '/healthz',
 };

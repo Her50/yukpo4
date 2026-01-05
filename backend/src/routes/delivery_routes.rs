@@ -1,3 +1,4 @@
+use std::env;
 use std::sync::Arc;
 
 use axum::middleware;
@@ -7,7 +8,7 @@ use axum::{
         Extension, Path, Query, State,
     },
     response::IntoResponse,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use bigdecimal::ToPrimitive;
@@ -430,6 +431,15 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/delivery/saved-addresses/{id}/set-default",
             post(set_default_saved_address),
+        )
+        // ✅ NOUVEAU 2026-01-04: Routes pour gérer les partenaires de livraison (admin uniquement)
+        .route(
+            "/api/delivery/partners",
+            get(list_delivery_partners).post(create_delivery_partner),
+        )
+        .route(
+            "/api/delivery/partners/{id}",
+            get(get_delivery_partner).put(update_delivery_partner).delete(delete_delivery_partner),
         )
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
@@ -2822,6 +2832,7 @@ struct CourierApplicationPayload {
     profile_data: Value,
     documents: Value,
     submitted: bool,
+    partner_id: Option<i32>, // ✅ NOUVEAU 2026-01-04: ID du partenaire de livraison
 }
 
 async fn submit_courier_application(
@@ -2836,6 +2847,7 @@ async fn submit_courier_application(
             profile_data: payload.profile_data,
             documents: payload.documents,
             submitted: payload.submitted,
+            partner_id: payload.partner_id, // ✅ NOUVEAU 2026-01-04: Partenaire de livraison
         })
         .await?;
 
@@ -3021,6 +3033,46 @@ async fn approve_courier_application_endpoint(
         _ => crate::models::delivery_model::DeliveryEngineType::Autre,
     };
 
+    // ✅ NOUVEAU 2026-01-04: Extraire et uploader l'image du moyen de transport depuis documents
+    let vehicle_image_url = if let Some(docs) = application.documents.as_object() {
+        if let Some(vehicle_image_doc) = docs.get("vehicle_image") {
+            if let Some(base64_data) = vehicle_image_doc.get("data").and_then(|v| v.as_str()) {
+                // Uploader l'image vers le stockage
+                let media_storage = state.media_storage.clone();
+                let storage_path = env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "/var/data/uploads".to_string());
+                let storage_root = std::path::Path::new(&storage_path);
+                let file_name = vehicle_image_doc.get("name")
+                    .and_then(|n| n.as_str())
+                    .unwrap_or("vehicle_image.jpg");
+                let file_ext = file_name.split('.').last().unwrap_or("jpg");
+                
+                match crate::services::creer_service::persist_base64_media(
+                    storage_root,
+                    user_id, // Utiliser user_id comme identifiant pour le dossier
+                    "courier_vehicles",
+                    base64_data,
+                    file_ext,
+                    media_storage,
+                ).await {
+                    Ok(stored) => {
+                        log::info!("[approve_courier_application] ✅ Image véhicule uploadée: {}", stored.path);
+                        Some(stored.path)
+                    },
+                    Err(e) => {
+                        log::warn!("[approve_courier_application] ⚠️ Erreur upload image véhicule: {}", e);
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     // Préparer l'asset input (le courier_id sera rempli automatiquement dans approve_courier_application)
     let asset_input = Some(crate::services::delivery_service::CourierAssetInput {
         courier_id: Uuid::new_v4(), // Sera remplacé par l'ID réel du coursier créé
@@ -3031,6 +3083,7 @@ async fn approve_courier_application_endpoint(
         available: true,
         availability_schedule: profile_data.get("availability").cloned(),
         documents: Some(application.documents.clone()),
+        vehicle_image_url, // ✅ NOUVEAU 2026-01-04: URL de l'image uploadée
     });
 
     // Approuver la candidature
@@ -3118,6 +3171,7 @@ struct CourierAssetPayload {
     available: bool,
     availability_schedule: Option<Value>,
     documents: Option<Value>,
+    vehicle_image_url: Option<String>, // ✅ NOUVEAU 2026-01-04: URL de l'image du moyen de transport
 }
 
 async fn upsert_courier_asset(
@@ -3150,6 +3204,7 @@ async fn upsert_courier_asset(
             available: payload.available,
             availability_schedule: payload.availability_schedule,
             documents: payload.documents,
+            vehicle_image_url: payload.vehicle_image_url, // ✅ NOUVEAU 2026-01-04: URL de l'image du moyen de transport
         })
         .await?;
 
@@ -4884,5 +4939,262 @@ async fn set_default_saved_address(
     Ok(Json(json!({
         "success": true,
         "address": address
+    })))
+}
+
+// ✅ NOUVEAU 2026-01-04: Handlers pour les partenaires de livraison
+
+/// GET /api/delivery/partners - Lister tous les partenaires (admin uniquement)
+/// Peut être filtré par type via query param ?type=Livraison
+async fn list_delivery_partners(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Query(params): Query<serde_json::Map<String, serde_json::Value>>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est admin
+    if user.role != "admin" {
+        return Err(AppError::Forbidden("Accès réservé aux administrateurs".to_string()));
+    }
+
+    // ✅ NOUVEAU 2026-01-04: Filtrer par type si fourni (pour l'écran d'enregistrement coursier)
+    let partner_type_filter: Option<String> = params
+        .get("type")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let partners: Vec<crate::models::delivery_model::DeliveryPartner> = if let Some(partner_type) = partner_type_filter {
+        sqlx::query_as(
+            r#"
+            SELECT id, name, description, partner_type, contact_email, contact_phone, address, city, country, 
+                   continent, website, logo_url, location_latitude, location_longitude, location_address, 
+                   is_active, created_by, created_at, updated_at
+            FROM delivery_partners
+            WHERE partner_type::text = $1 AND is_active = TRUE
+            ORDER BY country, name ASC
+            "#
+        )
+        .bind(partner_type)
+        .fetch_all(&state.pg)
+        .await?
+    } else {
+        sqlx::query_as(
+            r#"
+            SELECT id, name, description, partner_type, contact_email, contact_phone, address, city, country, 
+                   continent, website, logo_url, location_latitude, location_longitude, location_address, 
+                   is_active, created_by, created_at, updated_at
+            FROM delivery_partners
+            ORDER BY country, name ASC
+            "#
+        )
+        .fetch_all(&state.pg)
+        .await?
+    };
+
+    Ok(Json(json!({
+        "success": true,
+        "partners": partners,
+        "total": partners.len()
+    })))
+}
+
+/// POST /api/delivery/partners - Créer un nouveau partenaire (admin uniquement)
+async fn create_delivery_partner(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<crate::models::delivery_model::DeliveryPartnerInput>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est admin
+    if user.role != "admin" {
+        return Err(AppError::Forbidden("Accès réservé aux administrateurs".to_string()));
+    }
+
+    // Validation
+    if payload.name.trim().is_empty() {
+        return Err(AppError::BadRequest("Le nom est requis".to_string()));
+    }
+
+    // ✅ NOUVEAU 2026-01-04: Valider et convertir le type de partenaire
+    let partner_type_str = payload.partner_type.as_deref().unwrap_or("livraison");
+    let valid_types = ["livraison", "pharmacie", "hopital", "laboratoire", "agence de voyage", "demenagement", "transport", "assureur", "supermarche", "telecom"];
+    if !valid_types.contains(&partner_type_str) {
+        return Err(AppError::BadRequest(
+            format!("Type de partenaire invalide. Types valides: {}", valid_types.join(", "))
+        ));
+    }
+
+    let partner: crate::models::delivery_model::DeliveryPartner = sqlx::query_as(
+        r#"
+        INSERT INTO delivery_partners (name, description, partner_type, contact_email, contact_phone, address, 
+                                      city, country, continent, website, logo_url, location_latitude, location_longitude, 
+                                      location_address, is_active, created_by)
+        VALUES ($1, $2, $3::delivery_partner_type, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        RETURNING id, name, description, partner_type, contact_email, contact_phone, address, city, country, 
+                  continent, website, logo_url, location_latitude, location_longitude, location_address, 
+                  is_active, created_by, created_at, updated_at
+        "#
+    )
+    .bind(payload.name.trim())
+    .bind(payload.description.as_ref().map(|s| s.trim()))
+    .bind(partner_type_str)
+    .bind(payload.contact_email.as_ref().map(|s| s.trim()))
+    .bind(payload.contact_phone.as_ref().map(|s| s.trim()))
+    .bind(payload.address.as_ref().map(|s| s.trim()))
+    .bind(payload.city.as_ref().map(|s| s.trim()))
+    .bind(payload.country.trim())
+    .bind(payload.continent.as_ref().map(|s| s.trim()))
+    .bind(payload.website.as_ref().map(|s| s.trim()))
+    .bind(payload.logo_url.as_ref().map(|s| s.trim()))
+    .bind(payload.location_latitude)
+    .bind(payload.location_longitude)
+    .bind(payload.location_address.as_ref().map(|s| s.trim()))
+    .bind(payload.is_active.unwrap_or(true))
+    .bind(user.id)
+    .fetch_one(&state.pg)
+    .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "partner": partner
+    })))
+}
+
+/// GET /api/delivery/partners/{id} - Récupérer un partenaire par ID
+async fn get_delivery_partner(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(partner_id): Path<i32>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est admin
+    if user.role != "admin" {
+        return Err(AppError::Forbidden("Accès réservé aux administrateurs".to_string()));
+    }
+
+    let partner: Option<crate::models::delivery_model::DeliveryPartner> = sqlx::query_as(
+        r#"
+        SELECT id, name, description, partner_type, contact_email, contact_phone, address, city, country, 
+               continent, website, logo_url, location_latitude, location_longitude, location_address, 
+               is_active, created_by, created_at, updated_at
+        FROM delivery_partners
+        WHERE id = $1
+        "#
+    )
+    .bind(partner_id)
+    .fetch_optional(&state.pg)
+    .await?;
+
+    match partner {
+        Some(p) => Ok(Json(json!({
+            "success": true,
+            "partner": p
+        }))),
+        None => Err(AppError::NotFound("Partenaire non trouvé".to_string())),
+    }
+}
+
+/// PUT /api/delivery/partners/{id} - Mettre à jour un partenaire (admin uniquement)
+async fn update_delivery_partner(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(partner_id): Path<i32>,
+    Json(payload): Json<crate::models::delivery_model::DeliveryPartnerInput>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est admin
+    if user.role != "admin" {
+        return Err(AppError::Forbidden("Accès réservé aux administrateurs".to_string()));
+    }
+
+    // Validation
+    if payload.name.trim().is_empty() {
+        return Err(AppError::BadRequest("Le nom est requis".to_string()));
+    }
+
+    // ✅ NOUVEAU 2026-01-04: Valider et convertir le type de partenaire
+    let partner_type_str = payload.partner_type.as_deref().unwrap_or("livraison");
+    let valid_types = ["livraison", "pharmacie", "hopital", "laboratoire", "agence de voyage", "demenagement", "transport", "assureur", "supermarche", "telecom"];
+    if !valid_types.contains(&partner_type_str) {
+        return Err(AppError::BadRequest(
+            format!("Type de partenaire invalide. Types valides: {}", valid_types.join(", "))
+        ));
+    }
+
+    let partner: Option<crate::models::delivery_model::DeliveryPartner> = sqlx::query_as(
+        r#"
+        UPDATE delivery_partners
+        SET name = $1, description = $2, partner_type = $3::delivery_partner_type, contact_email = $4, contact_phone = $5, address = $6,
+            city = $7, country = $8, continent = $9, website = $10, logo_url = $11, location_latitude = $12, location_longitude = $13, 
+            location_address = $14, is_active = $15, updated_at = NOW()
+        WHERE id = $16
+        RETURNING id, name, description, partner_type, contact_email, contact_phone, address, city, country, 
+                  continent, website, logo_url, location_latitude, location_longitude, location_address, 
+                  is_active, created_by, created_at, updated_at
+        "#
+    )
+    .bind(payload.name.trim())
+    .bind(payload.description.as_ref().map(|s| s.trim()))
+    .bind(partner_type_str)
+    .bind(payload.contact_email.as_ref().map(|s| s.trim()))
+    .bind(payload.contact_phone.as_ref().map(|s| s.trim()))
+    .bind(payload.address.as_ref().map(|s| s.trim()))
+    .bind(payload.city.as_ref().map(|s| s.trim()))
+    .bind(payload.country.trim())
+    .bind(payload.continent.as_ref().map(|s| s.trim()))
+    .bind(payload.website.as_ref().map(|s| s.trim()))
+    .bind(payload.logo_url.as_ref().map(|s| s.trim()))
+    .bind(payload.location_latitude)
+    .bind(payload.location_longitude)
+    .bind(payload.location_address.as_ref().map(|s| s.trim()))
+    .bind(payload.is_active.unwrap_or(true))
+    .bind(partner_id)
+    .fetch_optional(&state.pg)
+    .await?;
+
+    match partner {
+        Some(p) => Ok(Json(json!({
+            "success": true,
+            "partner": p
+        }))),
+        None => Err(AppError::NotFound("Partenaire non trouvé".to_string())),
+    }
+}
+
+/// DELETE /api/delivery/partners/{id} - Supprimer un partenaire (admin uniquement)
+async fn delete_delivery_partner(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(partner_id): Path<i32>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est admin
+    if user.role != "admin" {
+        return Err(AppError::Forbidden("Accès réservé aux administrateurs".to_string()));
+    }
+
+    // Vérifier qu'aucun coursier n'utilise ce partenaire
+    let courier_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM courier_applications WHERE partner_id = $1"
+    )
+    .bind(partner_id)
+    .fetch_one(&state.pg)
+    .await?;
+
+    if courier_count > 0 {
+        return Err(AppError::BadRequest(
+            format!("Impossible de supprimer ce partenaire car {} coursier(s) y sont associé(s)", courier_count)
+        ));
+    }
+
+    let deleted = sqlx::query(
+        "DELETE FROM delivery_partners WHERE id = $1"
+    )
+    .bind(partner_id)
+    .execute(&state.pg)
+    .await?;
+
+    if deleted.rows_affected() == 0 {
+        return Err(AppError::NotFound("Partenaire non trouvé".to_string()));
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Partenaire supprimé avec succès"
     })))
 }

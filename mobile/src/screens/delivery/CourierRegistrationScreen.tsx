@@ -63,6 +63,9 @@ const CourierRegistrationScreen: React.FC = () => {
     const [vehicleBrand, setVehicleBrand] = useState('');
     const [vehicleModel, setVehicleModel] = useState('');
     const [licensePlate, setLicensePlate] = useState('');
+    const [vehicleImage, setVehicleImage] = useState<DocumentFile | null>(null); // ✅ NOUVEAU 2026-01-04: Image du moyen de transport
+    const [selectedPartnerId, setSelectedPartnerId] = useState<number | null>(null); // ✅ NOUVEAU 2026-01-04: Partenaire sélectionné
+    const [partners, setPartners] = useState<Array<{ id: number; name: string; is_active: boolean }>>([]); // ✅ NOUVEAU 2026-01-04: Liste des partenaires
 
     // Documents
     const [idDocument, setIdDocument] = useState<DocumentFile | null>(null);
@@ -85,7 +88,30 @@ const CourierRegistrationScreen: React.FC = () => {
     useEffect(() => {
         checkApplicationStatus();
         loadUserPhoneFromServices();
+        loadPartners(); // ✅ NOUVEAU 2026-01-04: Charger les partenaires
     }, [user]);
+
+    // ✅ NOUVEAU 2026-01-04: Charger la liste des partenaires actifs de type "Livraison" ou "demenagement"
+    const loadPartners = async () => {
+        try {
+            const { apiGet } = require('../../services/api');
+            // ✅ NOUVEAU 2026-01-04: Charger tous les partenaires et filtrer côté client
+            // (ou utiliser un endpoint filtré si disponible)
+            const response = await apiGet('/api/delivery/partners');
+            const partnersList = response.partners || response.data?.partners || [];
+            // ✅ NOUVEAU 2026-01-04: Filtrer uniquement les partenaires actifs de type "livraison" ou "demenagement"
+            const activePartners = partnersList.filter((p: any) => {
+                const isActive = p.is_active !== false;
+                const partnerType = p.partner_type || p.partnerType || '';
+                const validTypes = ['livraison', 'demenagement'];
+                return isActive && validTypes.includes(partnerType);
+            });
+            setPartners(activePartners);
+        } catch (error) {
+            console.error('[CourierRegistrationScreen] Erreur chargement partenaires:', error);
+            // En cas d'erreur (ex: pas admin), on continue sans bloquer
+        }
+    };
 
     const hasInitializedNameRef = React.useRef(false);
     useEffect(() => {
@@ -157,7 +183,7 @@ const CourierRegistrationScreen: React.FC = () => {
         }
     };
 
-    const pickDocument = async (type: 'id' | 'license' | 'registration' | 'insurance') => {
+    const pickDocument = async (type: 'id' | 'license' | 'registration' | 'insurance' | 'vehicle') => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
                 type: ['image/*', 'application/pdf'],
@@ -186,6 +212,9 @@ const CourierRegistrationScreen: React.FC = () => {
                     case 'insurance':
                         setInsuranceDocument(document);
                         break;
+                    case 'vehicle':
+                        setVehicleImage(document);
+                        break;
                 }
             }
         } catch (error) {
@@ -194,7 +223,7 @@ const CourierRegistrationScreen: React.FC = () => {
         }
     };
 
-    const pickImage = async (type: 'id' | 'license' | 'registration' | 'insurance') => {
+    const pickImage = async (type: 'id' | 'license' | 'registration' | 'insurance' | 'vehicle') => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
@@ -235,6 +264,9 @@ const CourierRegistrationScreen: React.FC = () => {
                         break;
                     case 'insurance':
                         setInsuranceDocument(document);
+                        break;
+                    case 'vehicle':
+                        setVehicleImage(document);
                         break;
                 }
             }
@@ -302,6 +334,11 @@ const CourierRegistrationScreen: React.FC = () => {
             Alert.alert('Erreur', 'Sélectionnez au moins un jour de disponibilité');
             return false;
         }
+        // ✅ NOUVEAU 2026-01-04: Vérifier que le partenaire est sélectionné
+        if (!selectedPartnerId) {
+            Alert.alert('Erreur', 'Veuillez sélectionner un partenaire de livraison');
+            return false;
+        }
         return true;
     };
 
@@ -339,6 +376,14 @@ const CourierRegistrationScreen: React.FC = () => {
                     type: insuranceDocument.type,
                 };
             }
+            // ✅ NOUVEAU 2026-01-04: Ajouter l'image du moyen de transport
+            if (vehicleImage) {
+                documents.vehicle_image = {
+                    name: vehicleImage.name,
+                    data: await convertFileToBase64(vehicleImage),
+                    type: vehicleImage.type,
+                };
+            }
 
             const profileData = {
                 personal: {
@@ -372,12 +417,14 @@ const CourierRegistrationScreen: React.FC = () => {
                     cardHolder: paymentMethod.cardHolder,
                     taxId: paymentMethod.taxId,
                 } : null,
+                partner_id: selectedPartnerId, // ✅ NOUVEAU 2026-01-04: ID du partenaire sélectionné
             };
 
             const response = await deliveryApi.submitCourierApplication({
                 profile_data: profileData,
                 documents,
                 submitted: submit,
+                partner_id: selectedPartnerId, // ✅ NOUVEAU 2026-01-04: Envoyer aussi partner_id à la racine pour le backend
             });
 
             if (response.success) {
@@ -672,8 +719,67 @@ const CourierRegistrationScreen: React.FC = () => {
                                 value={licensePlate}
                                 onChangeText={setLicensePlate}
                             />
+                            {/* ✅ NOUVEAU 2026-01-04: Champ pour télécharger l'image du moyen de transport */}
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Photo du moyen de transport</Text>
+                                <View style={styles.documentRow}>
+                                    <View style={styles.documentInfo}>
+                                        {vehicleImage && <Text style={styles.documentName}>{vehicleImage.name}</Text>}
+                                        {!vehicleImage && <Text style={styles.documentHint}>Aucune image sélectionnée</Text>}
+                                    </View>
+                                    <View style={styles.documentButtons}>
+                                        <NativeButton
+                                            title="📷 Photo"
+                                            variant="outline"
+                                            size="small"
+                                            onPress={() => pickImage('vehicle')}
+                                        />
+                                        <NativeButton
+                                            title="📄 Fichier"
+                                            variant="outline"
+                                            size="small"
+                                            onPress={() => pickDocument('vehicle')}
+                                        />
+                                    </View>
+                                </View>
+                            </View>
                         </>
                     )}
+                    {/* ✅ NOUVEAU 2026-01-04: Champ partenaire (obligatoire) */}
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Partenaire de livraison *</Text>
+                        <Text style={styles.helperText}>
+                            Sélectionnez le partenaire de logistique auquel vous appartenez
+                        </Text>
+                        {partners.length === 0 ? (
+                            <Text style={styles.errorText}>
+                                Aucun partenaire disponible. Veuillez contacter l'administrateur.
+                            </Text>
+                        ) : (
+                            <View style={styles.pickerContainer}>
+                                {partners.map((partner) => (
+                                    <TouchableOpacity
+                                        key={partner.id}
+                                        style={[
+                                            styles.partnerOption,
+                                            selectedPartnerId === partner.id && styles.partnerOptionSelected
+                                        ]}
+                                        onPress={() => setSelectedPartnerId(partner.id)}
+                                    >
+                                        <Text style={[
+                                            styles.partnerOptionText,
+                                            selectedPartnerId === partner.id && styles.partnerOptionTextSelected
+                                        ]}>
+                                            {partner.name}
+                                        </Text>
+                                        {selectedPartnerId === partner.id && (
+                                            <SafeIcon name="check" size={16} color={modernColors.surface} />
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+                    </View>
                 </NativeCard>
 
                 {/* Documents */}
@@ -1085,6 +1191,45 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         textAlign: 'center',
         marginBottom: 32,
+    },
+    // ✅ NOUVEAU 2026-01-04: Styles pour le champ partenaire
+    pickerContainer: {
+        marginTop: 8,
+    },
+    partnerOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 12,
+        marginBottom: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+    },
+    partnerOptionSelected: {
+        borderColor: modernColors.primary,
+        backgroundColor: modernColors.primary,
+    },
+    partnerOptionText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.text,
+    },
+    partnerOptionTextSelected: {
+        color: modernColors.surface,
+        fontWeight: '600',
+    },
+    errorText: {
+        fontSize: 12,
+        color: modernColors.error || '#EF4444',
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    documentHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
     },
 });
 

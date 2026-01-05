@@ -49,6 +49,7 @@ import AnalyticsDashboardScreen from '../screens/dashboard/AnalyticsDashboardScr
 import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen'; // ✅ Dashboard Prestataire
 import DashboardScreen from '../screens/DashboardScreen'; // ✅ Ancien Dashboard
 import CourierAdminScreen from '../screens/delivery/CourierAdminScreen';
+import DeliveryPartnersAdminScreen from '../screens/delivery/DeliveryPartnersAdminScreen';
 import UserRoleManagementScreen from '../screens/admin/UserRoleManagementScreen';
 import DeliveryHomeScreen from '../screens/delivery/DeliveryHomeScreen';
 import DeliveryParcelFlowScreen from '../screens/delivery/DeliveryParcelFlowScreen';
@@ -1474,6 +1475,14 @@ const SecondaryStack = () => {
           options={{
             ...defaultScreenOptions,
             title: 'Gestion des coursiers',
+          }}
+        />
+        <Stack.Screen
+          name="DeliveryPartnersAdmin"
+          component={withNavigatorSafeArea(DeliveryPartnersAdminScreen)}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Gestion des partenaires',
           }}
         />
         <Stack.Screen

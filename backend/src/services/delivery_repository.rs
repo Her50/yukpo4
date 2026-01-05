@@ -84,6 +84,7 @@ struct CourierApplicationRow {
     profile_data: Value,
     documents: Value,
     notes: Value,
+    partner_id: Option<i32>, // ✅ NOUVEAU 2026-01-04: ID du partenaire de livraison
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -117,6 +118,7 @@ struct CourierAssetRow {
     available: bool,
     availability_schedule: Option<Value>,
     documents: Value,
+    vehicle_image_url: Option<String>, // ✅ NOUVEAU 2026-01-04: URL de l'image du moyen de transport
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -674,9 +676,10 @@ impl DeliveryRepository {
                 submitted_at,
                 profile_data,
                 documents,
-                notes
+                notes,
+                partner_id
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING
                 id,
                 user_id,
@@ -688,6 +691,7 @@ impl DeliveryRepository {
                 profile_data,
                 documents,
                 notes,
+                partner_id,
                 created_at,
                 updated_at
             "#,
@@ -698,6 +702,7 @@ impl DeliveryRepository {
         .bind(payload.profile_data)
         .bind(payload.documents)
         .bind(payload.notes.unwrap_or_else(|| Value::Array(Vec::new())))
+        .bind(payload.partner_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -712,6 +717,7 @@ impl DeliveryRepository {
             profile_data: row.profile_data,
             documents: row.documents,
             notes: row.notes,
+            partner_id: row.partner_id, // ✅ NOUVEAU 2026-01-04: ID du partenaire de livraison
             created_at: row.created_at,
             updated_at: row.updated_at,
         })
@@ -767,6 +773,7 @@ impl DeliveryRepository {
             profile_data: row.profile_data,
             documents: row.documents,
             notes: row.notes,
+            partner_id: row.partner_id, // ✅ NOUVEAU 2026-01-04: ID du partenaire de livraison
             created_at: row.created_at,
             updated_at: row.updated_at,
         })
@@ -813,6 +820,7 @@ impl DeliveryRepository {
             profile_data: row.profile_data,
             documents: row.documents,
             notes: row.notes,
+            partner_id: row.partner_id, // ✅ NOUVEAU 2026-01-04: ID du partenaire de livraison
             created_at: row.created_at,
             updated_at: row.updated_at,
         }))
@@ -857,6 +865,7 @@ impl DeliveryRepository {
             profile_data: row.profile_data,
             documents: row.documents,
             notes: row.notes,
+            partner_id: row.partner_id, // ✅ NOUVEAU 2026-01-04: ID du partenaire de livraison
             created_at: row.created_at,
             updated_at: row.updated_at,
         }))
@@ -941,6 +950,7 @@ impl DeliveryRepository {
                 profile_data: row.profile_data,
                 documents: row.documents,
                 notes: row.notes,
+                partner_id: row.partner_id, // ✅ NOUVEAU 2026-01-04: ID du partenaire de livraison
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             })
@@ -1088,9 +1098,10 @@ impl DeliveryRepository {
                 equipments,
                 available,
                 availability_schedule,
-                documents
+                documents,
+                vehicle_image_url
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             ON CONFLICT (courier_id) WHERE is_primary = TRUE
             DO UPDATE SET
                 engine_type = EXCLUDED.engine_type,
@@ -1100,6 +1111,7 @@ impl DeliveryRepository {
                 available = EXCLUDED.available,
                 availability_schedule = EXCLUDED.availability_schedule,
                 documents = EXCLUDED.documents,
+                vehicle_image_url = EXCLUDED.vehicle_image_url,
                 updated_at = NOW()
             RETURNING
                 id,
@@ -1112,6 +1124,7 @@ impl DeliveryRepository {
                 available,
                 availability_schedule,
                 documents,
+                vehicle_image_url,
                 created_at,
                 updated_at
             "#,
@@ -1125,6 +1138,7 @@ impl DeliveryRepository {
         .bind(payload.available)
         .bind(payload.availability_schedule)
         .bind(payload.documents)
+        .bind(payload.vehicle_image_url)
         .fetch_one(&self.pool)
         .await?;
 
@@ -1139,6 +1153,7 @@ impl DeliveryRepository {
             available: row.available,
             availability_schedule: row.availability_schedule,
             documents: Some(row.documents),
+            vehicle_image_url: row.vehicle_image_url, // ✅ NOUVEAU 2026-01-04: URL de l'image du moyen de transport
             created_at: row.created_at,
             updated_at: row.updated_at,
         })
@@ -3407,6 +3422,7 @@ pub struct NewCourierApplication {
     pub profile_data: Value,
     pub documents: Value,
     pub notes: Option<Value>,
+    pub partner_id: Option<i32>, // ✅ NOUVEAU 2026-01-04: ID du partenaire de livraison
 }
 
 /// Payload pour créer le profil coursier validé
@@ -3429,6 +3445,7 @@ pub struct NewCourierAsset {
     pub available: bool,
     pub availability_schedule: Option<Value>,
     pub documents: Option<Value>,
+    pub vehicle_image_url: Option<String>, // ✅ NOUVEAU 2026-01-04: URL de l'image du moyen de transport
 }
 
 /// Informations colis à insérer

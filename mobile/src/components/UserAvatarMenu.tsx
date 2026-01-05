@@ -36,6 +36,13 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                 highlighted: true
             },
             {
+                title: 'Gérer les partenaires',
+                icon: '🚚',
+                route: 'DeliveryPartnersAdmin',
+                description: 'Gérer les partenaires de livraison (Admin)',
+                highlighted: true
+            },
+            {
                 title: 'Gestion des rôles',
                 icon: '👤',
                 route: 'UserRoleManagement',
