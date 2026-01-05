@@ -1274,8 +1274,8 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                             : 'Créez votre premier service spécialisé pour commencer à proposer vos services sur Yukpo'}
                     </Text>
                     {/* ✅ AMÉLIORÉ: CTA avec meilleur design et accessibilité - Masqué pour non-partenaires */}
-                    {user?.role === 'partenaire' && (
-                        <View style={styles.emptyActions}>
+                    <View style={styles.emptyActions}>
+                        {user?.role === 'partenaire' && (
                             <TouchableOpacity
                                 onPress={() => (navigation as any).navigate('MesServicesSpecialises')}
                                 style={[styles.createButton, { backgroundColor: modernColors.primary }]}
@@ -1286,8 +1286,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 <SafeIcon name="plus" size={18} color="#fff" />
                                 <Text style={styles.createButtonText}>Créer un service</Text>
                             </TouchableOpacity>
-                        </View>
-                    )}
+                        )}
                         {searchQuery || filter !== 'tous' ? (
                             <TouchableOpacity
                                 onPress={() => {
