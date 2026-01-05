@@ -8,7 +8,7 @@ use axum::{
         Extension, Path, Query, State,
     },
     response::IntoResponse,
-    routing::{delete, get, post, put},
+    routing::{delete, get, post},
     Json, Router,
 };
 use bigdecimal::ToPrimitive;
