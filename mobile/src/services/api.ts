@@ -638,20 +638,41 @@ export const authApi = {
 
   // Inscription (identique au frontend)
   register: async (userData: {
-    name: string;
+    name?: string;
+    nom?: string;
+    prenom?: string;
     email: string;
     password: string;
     phone?: string;
+    // ✅ NOUVEAU: Champs pour inscription partenaire
+    is_partner?: boolean;
+    partner_type?: string;
+    partner_name?: string;
+    partner_phone?: string;
+    partner_address?: string;
+    partner_city?: string;
+    partner_country?: string;
   }) => {
     // Payload identique au frontend
-    const payload = {
-      nom: userData.name,
-      prenom: userData.name,
-      name: userData.name,
+    const payload: any = {
+      nom: userData.nom || userData.name,
+      prenom: userData.prenom || userData.name,
+      name: userData.name || userData.nom,
       email: userData.email,
       password: userData.password,
       lang: 'fr',
     };
+    
+    // ✅ NOUVEAU: Ajouter les champs partenaire si présents
+    if (userData.is_partner) {
+      payload.is_partner = true;
+      payload.partner_type = userData.partner_type;
+      payload.partner_name = userData.partner_name;
+      payload.partner_phone = userData.partner_phone;
+      payload.partner_address = userData.partner_address;
+      payload.partner_city = userData.partner_city;
+      payload.partner_country = userData.partner_country;
+    }
 
     const response = await apiCall<{ success?: boolean; token?: string; tokens_balance?: number; message?: string }>('/auth/register', {
       method: 'POST',
@@ -1026,6 +1047,28 @@ export const deliveryApi = {
         ...payload,
         timestamp: new Date().toISOString(),
       }),
+    });
+  },
+  // ✅ NOUVEAU : Signaler une difficulté du coursier
+  reportCourierDifficulty: async (
+    deliveryId: string,
+    difficultyType: 'breakdown' | 'illness',
+    relayLocation?: { latitude: number; longitude: number; address?: string },
+    notes?: string
+  ) => {
+    return apiCall(`/api/delivery/${deliveryId}/report-difficulty`, {
+      method: 'POST',
+      body: JSON.stringify({
+        difficulty_type: difficultyType,
+        relay_location: relayLocation,
+        notes: notes,
+      }),
+    });
+  },
+  // ✅ NOUVEAU : Accepter une course
+  acceptDelivery: async (deliveryId: string) => {
+    return apiCall(`/api/delivery/${deliveryId}/accept`, {
+      method: 'POST',
     });
   },
   updateStatus: async (deliveryId: string, status: string, metadata?: Record<string, any>) => {

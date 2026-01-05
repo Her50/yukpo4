@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
+// ✅ SUPPRIMÉ: PartnerSelector - Les données partenaire sont chargées automatiquement depuis /api/partners/me
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import PrestationSelectorWithSchedule, { PrestationWithSchedule } from '../../components/PrestationSelectorWithSchedule';
 import SafeIcon from '../../components/SafeIcon';
@@ -33,7 +34,7 @@ const HopitalFormScreen: React.FC = () => {
     const mode = (route.params as any)?.mode as string | undefined;
 
     const [formData, setFormData] = useState({
-        nom: '',
+        nom: '', // ✅ Sera rempli automatiquement depuis /api/partners/me
         type_etablissement: 'Hôpital',
         adresse: '',
         quartier: null as LocationObject | null,
@@ -54,6 +55,11 @@ const HopitalFormScreen: React.FC = () => {
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
     // ✅ SUPPRIMÉ : showScheduleModal et schedule (planning hebdomadaire supprimé)
+
+    // ✅ NOUVEAU: États pour statistiques et gestion des créneaux
+    const [loadingSlots, setLoadingSlots] = useState(false);
+    // ✅ NOUVEAU: Données du partenaire pour affichage dans l'en-tête
+    const [partnerData, setPartnerData] = useState<any>(null);
 
     const typesEtablissement = ['Hôpital', 'Clinique', 'Centre de santé', 'Dispensaire'];
 
@@ -88,10 +94,45 @@ const HopitalFormScreen: React.FC = () => {
         'Physiothérapie',
     ];
 
+    // ✅ NOUVEAU: Charger automatiquement les données partenaire depuis /api/partners/me
+    useEffect(() => {
+        const loadPartnerData = async () => {
+            if (user?.role === 'partenaire' && user?.partner_type === 'hopital') {
+                try {
+                    const { apiGet } = require('../../services/api');
+                    const response = await apiGet('/api/partners/me');
+                    if (response.success && response.data) {
+                        const partner = response.data;
+                        setPartnerData(partner); // ✅ Stocker pour affichage dans l'en-tête
+                        // ✅ Pré-remplir silencieusement les champs pour l'envoi au backend (mais ne pas les afficher)
+                        setFormData(prev => ({
+                            ...prev,
+                            nom: partner.name || prev.nom,
+                            adresse: partner.address || partner.location_address || prev.adresse,
+                            telephone: partner.contact_phone || prev.telephone,
+                            email: partner.contact_email || prev.email,
+                            quartier: partner.city ? {
+                                raw: partner.city,
+                                place_name: partner.city,
+                                components: {
+                                    ville: partner.city,
+                                    pays: partner.country,
+                                }
+                            } : prev.quartier,
+                        }));
+                    }
+                } catch (error) {
+                    console.error('[HopitalFormScreen] Erreur chargement partenaire:', error);
+                }
+            }
+        };
+        loadPartnerData();
+    }, [user?.role, user?.partner_type]);
+
     // ✅ Créer automatiquement un service si serviceId manquant
     useEffect(() => {
         const createServiceIfNeeded = async () => {
-            if (!serviceId && user?.id) {
+            if (!serviceId && user?.id && formData.nom) {
                 try {
                     const serviceData = {
                         titre_service: formData.nom || 'Établissement de santé',
@@ -169,6 +210,23 @@ const HopitalFormScreen: React.FC = () => {
         loadExistingData();
     }, [mode, specializedServiceId, serviceId]);
 
+    // ✅ NOUVEAU: Calculer les statistiques des prestations
+    const stats = {
+        totalPrestations: prestationsWithSchedule.length,
+        totalSlots: prestationsWithSchedule.reduce((sum, p) => {
+            if (p.scheduleByDay && p.scheduleByDay.length > 0) {
+                return sum + p.scheduleByDay.reduce((daySum, day) => daySum + (day.timeSlots?.length || 0), 0);
+            }
+            return sum + (p.timeSlots?.length || 0);
+        }, 0),
+        prestationsAvecSlots: prestationsWithSchedule.filter(p => {
+            if (p.scheduleByDay && p.scheduleByDay.length > 0) {
+                return p.scheduleByDay.some(day => day.timeSlots && day.timeSlots.length > 0);
+            }
+            return p.timeSlots && p.timeSlots.length > 0;
+        }).length,
+    };
+
     const handleGPSSelect = (coordinates: string) => {
         setSelectedGPS(coordinates);
         setShowGPSModal(false);
@@ -241,9 +299,11 @@ const HopitalFormScreen: React.FC = () => {
                 }))
                 : null;
 
+            const nom = formData.partner?.name || formData.nom;
             const payload = {
                 service_id: finalServiceId,
-                nom: formData.nom,
+                nom: nom,
+                // ✅ partner_id sera récupéré automatiquement depuis /api/partners/me si nécessaire
                 type_etablissement: formData.type_etablissement,
                 adresse: formData.adresse || null,
                 quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
@@ -292,18 +352,30 @@ const HopitalFormScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Enregistrer un Hôpital/Clinique</Text>
+                    <View style={styles.headerContent}>
+                        <Text style={styles.title}>Enregistrer un Hôpital/Clinique</Text>
+                        {/* ✅ NOUVEAU: Afficher le nom du partenaire dans l'en-tête */}
+                        {user?.role === 'partenaire' && partnerData && (
+                            <View style={styles.partnerHeader}>
+                                <SafeIcon name="building" size={16} color={modernColors.primary} />
+                                <Text style={styles.partnerName}>{partnerData.name}</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
 
                 <View style={styles.form}>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nom de l'établissement *</Text>
-                        <NativeInput
-                            value={formData.nom}
-                            onChangeText={(text) => setFormData({ ...formData, nom: text })}
-                            placeholder="Ex: Hôpital Central"
-                        />
-                    </View>
+                    {/* ✅ Masquer les champs redondants pour les partenaires */}
+                    {user?.role !== 'partenaire' && (
+                        <View style={styles.inputGroup}>
+                            <NativeInput
+                                label="Nom de l'établissement *"
+                                value={formData.nom}
+                                onChangeText={(text) => setFormData({ ...formData, nom: text })}
+                                placeholder="Ex: Hôpital Central"
+                            />
+                        </View>
+                    )}
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Type d'établissement</Text>
@@ -348,21 +420,34 @@ const HopitalFormScreen: React.FC = () => {
                         )}
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Adresse</Text>
-                        <NativeInput
-                            value={formData.adresse}
-                            onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                            placeholder="Adresse complète"
-                            multiline
-                        />
-                    </View>
+                    {/* ✅ Masquer l'adresse pour les partenaires (chargée automatiquement) */}
+                    {user?.role !== 'partenaire' && (
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Adresse</Text>
+                            <NativeInput
+                                value={formData.adresse}
+                                onChangeText={(text) => setFormData({ ...formData, adresse: text })}
+                                placeholder="Adresse complète"
+                                multiline
+                            />
+                        </View>
+                    )}
 
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Quartier"
-                            value={formData.quartier || ''}
-                            onSelect={(value) => setFormData({ ...formData, quartier: value })}
+                            value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''}
+                            onSelect={(location: LocationObject) => {
+                                // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
+                                const quartierValue = location.raw || location.place_name || '';
+                                setFormData({ 
+                                    ...formData, 
+                                    quartier: quartierValue,
+                                    // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
+                                    ville: location.components?.ville || formData.ville,
+                                    pays: location.components?.pays || formData.pays,
+                                });
+                            }}
                             placeholder="Rechercher un quartier (inclut ville et pays)..."
                             scope="neighborhood"
                             enrichWithBackend
@@ -385,6 +470,109 @@ const HopitalFormScreen: React.FC = () => {
                             placeholder="Ajouter une prestation personnalisée"
                         />
                     </View>
+
+                    {/* ✅ NOUVEAU: Section Statistiques et gestion des créneaux */}
+                    {serviceId && specializedServiceId && prestationsWithSchedule.length > 0 && (
+                        <View style={styles.slotsSection}>
+                            <View style={styles.sectionHeader}>
+                                <View style={styles.sectionTitleContainer}>
+                                    <SafeIcon name="calendar-clock" size={20} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.sectionTitle}>Gestion des créneaux</Text>
+                                </View>
+                            </View>
+
+                            {/* Statistiques */}
+                            <View style={styles.statsContainer}>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>{prestationsWithSchedule.length}</Text>
+                                    <Text style={styles.statLabel}>Prestations</Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>
+                                        {prestationsWithSchedule.filter(p => {
+                                            if (p.scheduleByDay && p.scheduleByDay.length > 0) {
+                                                return p.scheduleByDay.some(day => day.timeSlots && day.timeSlots.length > 0);
+                                            }
+                                            return p.timeSlots && p.timeSlots.length > 0;
+                                        }).length}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Avec créneaux</Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>
+                                        {prestationsWithSchedule.reduce((sum, p) => {
+                                            if (p.scheduleByDay && p.scheduleByDay.length > 0) {
+                                                return sum + p.scheduleByDay.reduce((daySum, day) => daySum + (day.timeSlots?.length || 0), 0);
+                                            }
+                                            return sum + (p.timeSlots?.length || 0);
+                                        }, 0)}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Créneaux totaux</Text>
+                                </View>
+                            </View>
+
+                            {/* Liste des prestations avec leurs créneaux */}
+                            <View style={styles.prestationsList}>
+                                {prestationsWithSchedule.map((prestation, index) => {
+                                    const slotsCount = prestation.scheduleByDay && prestation.scheduleByDay.length > 0
+                                        ? prestation.scheduleByDay.reduce((sum, day) => sum + (day.timeSlots?.length || 0), 0)
+                                        : (prestation.timeSlots?.length || 0);
+                                    const daysCount = prestation.scheduleByDay?.length || (prestation.days?.length || 0);
+                                    const DAYS_OF_WEEK = [
+                                        { value: 1, label: 'Lundi', short: 'Lun' },
+                                        { value: 2, label: 'Mardi', short: 'Mar' },
+                                        { value: 3, label: 'Mercredi', short: 'Mer' },
+                                        { value: 4, label: 'Jeudi', short: 'Jeu' },
+                                        { value: 5, label: 'Vendredi', short: 'Ven' },
+                                        { value: 6, label: 'Samedi', short: 'Sam' },
+                                        { value: 7, label: 'Dimanche', short: 'Dim' },
+                                    ];
+
+                                    return (
+                                        <View key={index} style={styles.prestationCard}>
+                                            <View style={styles.prestationInfo}>
+                                                <Text style={styles.prestationName}>{prestation.prestation}</Text>
+                                                <View style={styles.prestationStats}>
+                                                    <View style={styles.prestationStatItem}>
+                                                        <SafeIcon name="calendar" size={14} color="#6B7280" type="lucide" />
+                                                        <Text style={styles.prestationStatText}>{daysCount} jour(s)</Text>
+                                                    </View>
+                                                    <View style={styles.prestationStatItem}>
+                                                        <SafeIcon name="clock" size={14} color="#6B7280" type="lucide" />
+                                                        <Text style={styles.prestationStatText}>{slotsCount} créneau(x)</Text>
+                                                    </View>
+                                                </View>
+                                                {prestation.scheduleByDay && prestation.scheduleByDay.length > 0 && (
+                                                    <View style={styles.schedulePreview}>
+                                                        {prestation.scheduleByDay.slice(0, 3).map((day, dayIdx) => (
+                                                            <View key={dayIdx} style={styles.dayPreview}>
+                                                                <Text style={styles.dayPreviewText}>
+                                                                    {DAYS_OF_WEEK.find(d => d.value === day.day)?.short || 'J' + day.day}:
+                                                                    {day.timeSlots?.slice(0, 2).map((slot: any) => slot.start).join(', ') || 'N/A'}
+                                                                </Text>
+                                                            </View>
+                                                        ))}
+                                                        {prestation.scheduleByDay.length > 3 && (
+                                                            <Text style={styles.moreDaysText}>
+                                                                +{prestation.scheduleByDay.length - 3} jour(s)
+                                                            </Text>
+                                                        )}
+                                                    </View>
+                                                )}
+                                            </View>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+
+                            <Text style={styles.hintText}>
+                                💡 Les créneaux sont configurés via le sélecteur de prestations ci-dessus.
+                                Vous pouvez définir des horaires différents pour chaque jour de la semaine.
+                            </Text>
+                        </View>
+                    )}
 
                     {/* ✅ SUPPRIMÉ : Planning hebdomadaire (pas d'utilité) */}
 
@@ -438,27 +626,32 @@ const HopitalFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Email</Text>
-                        <NativeInput
-                            value={formData.email}
-                            onChangeText={(text) => setFormData({ ...formData, email: text })}
-                            placeholder="hopital@example.com"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                        />
-                    </View>
+                    {/* ✅ Masquer email et site web pour les partenaires (chargés automatiquement) */}
+                    {user?.role !== 'partenaire' && (
+                        <>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Email</Text>
+                                <NativeInput
+                                    value={formData.email}
+                                    onChangeText={(text) => setFormData({ ...formData, email: text })}
+                                    placeholder="hopital@example.com"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                            </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Site web</Text>
-                        <NativeInput
-                            value={formData.site_web}
-                            onChangeText={(text) => setFormData({ ...formData, site_web: text })}
-                            placeholder="https://..."
-                            keyboardType="url"
-                            autoCapitalize="none"
-                        />
-                    </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Site web</Text>
+                                <NativeInput
+                                    value={formData.site_web}
+                                    onChangeText={(text) => setFormData({ ...formData, site_web: text })}
+                                    placeholder="https://..."
+                                    keyboardType="url"
+                                    autoCapitalize="none"
+                                />
+                            </View>
+                        </>
+                    )}
 
                     {/* ✅ CORRIGÉ: Utiliser title au lieu de children */}
                     <NativeButton
@@ -639,6 +832,110 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         marginTop: 24,
+    },
+    // ✅ NOUVEAU: Styles pour la section créneaux
+    slotsSection: {
+        marginTop: 24,
+        marginBottom: 16,
+        padding: 16,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    sectionTitleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    statsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    statItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    statValue: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.primary,
+        marginBottom: 4,
+    },
+    statLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    statDivider: {
+        width: 1,
+        height: 40,
+        backgroundColor: '#E5E7EB',
+        marginHorizontal: 8,
+    },
+    prestationsList: {
+        gap: 12,
+    },
+    prestationCard: {
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    prestationInfo: {
+        flex: 1,
+    },
+    prestationName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    prestationStats: {
+        flexDirection: 'row',
+        gap: 16,
+        marginBottom: 8,
+    },
+    prestationStatItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    prestationStatText: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    schedulePreview: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 8,
+    },
+    dayPreview: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 4,
+    },
+    dayPreviewText: {
+        fontSize: 11,
+        color: modernColors.primary,
+        fontWeight: '500',
+    },
+    moreDaysText: {
+        fontSize: 11,
+        color: '#6B7280',
+        fontStyle: 'italic',
+        alignSelf: 'center',
     },
 });
 

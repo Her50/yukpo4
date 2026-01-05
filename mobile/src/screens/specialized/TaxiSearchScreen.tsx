@@ -18,9 +18,14 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { LinearGradient } from 'expo-linear-gradient';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface TaxiSearchFilters {
     zone?: string;
+    lieu?: string;
+    ville?: string;
+    quartier?: string;
     lat?: number;
     lng?: number;
     max_distance_km?: number;
@@ -33,6 +38,8 @@ const TaxiSearchScreen: React.FC = () => {
     const { location } = useLocation();
 
     const [zone, setZone] = useState('');
+    // ✅ NOUVEAU: Localisation avec autocomplete intelligent (lieu universel)
+    const [lieu, setLieu] = useState<LocationObject | string>('');
     const [gpsString, setGpsString] = useState('');
     const [gpsData, setGpsData] = useState<{ lat: number; lng: number } | null>(null);
     const [showGPSModal, setShowGPSModal] = useState(false);
@@ -61,13 +68,22 @@ const TaxiSearchScreen: React.FC = () => {
     };
 
     const handleSearch = () => {
-        if (!zone.trim() && !gpsData) {
-            Alert.alert('Erreur', 'Veuillez renseigner une zone ou sélectionner un point GPS');
+        const lieuStr = typeof lieu === 'string' ? lieu : (lieu as LocationObject)?.place_name || (lieu as LocationObject)?.raw || '';
+        const villeStr = typeof lieu === 'string' ? '' : (lieu as LocationObject)?.components?.ville || '';
+        const quartierStr = typeof lieu === 'string' ? '' : (lieu as LocationObject)?.components?.quartier || '';
+        
+        if (!lieuStr.trim() && !zone.trim() && !gpsData) {
+            Alert.alert('Erreur', 'Veuillez renseigner un lieu, une zone ou sélectionner un point GPS');
             return;
         }
 
         const filters: TaxiSearchFilters = {};
-        if (zone.trim()) filters.zone = zone.trim();
+        if (lieuStr.trim()) {
+            filters.lieu = lieuStr.trim();
+            if (villeStr.trim()) filters.ville = villeStr.trim();
+            if (quartierStr.trim()) filters.quartier = quartierStr.trim();
+        }
+        if (zone.trim()) filters.zone = zone.trim(); // Fallback pour compatibilité
         if (gpsData) {
             filters.lat = gpsData.lat;
             filters.lng = gpsData.lng;
@@ -151,6 +167,33 @@ const TaxiSearchScreen: React.FC = () => {
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
             >
+                {/* ✅ NOUVEAU: Bannière fonctionnalités IA */}
+                <TouchableOpacity
+                    style={styles.aiFeaturesBanner}
+                    onPress={() => {
+                        hapticPress();
+                        navigation.navigate('TaxiAIFeatures' as never);
+                    }}
+                >
+                    <LinearGradient
+                        colors={['#06B6D4', '#22D3EE']}
+                        style={styles.aiFeaturesBannerGradient}
+                    >
+                        <View style={styles.aiFeaturesBannerContent}>
+                            <View style={styles.aiFeaturesBannerIcon}>
+                                <SafeIcon name="sparkles" size={24} color="#FFFFFF" type="lucide" />
+                            </View>
+                            <View style={styles.aiFeaturesBannerText}>
+                                <Text style={styles.aiFeaturesBannerTitle}>Fonctionnalités IA</Text>
+                                <Text style={styles.aiFeaturesBannerSubtitle}>
+                                    Prédiction demande, prix dynamique, optimisation routes
+                                </Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
+                        </View>
+                    </LinearGradient>
+                </TouchableOpacity>
+
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
                     <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
@@ -181,17 +224,22 @@ const TaxiSearchScreen: React.FC = () => {
                 <View style={styles.searchFormCard}>
                     <Text style={styles.sectionTitle}>📍 Localisation</Text>
                     
-                    {/* Zone */}
+                    {/* Lieu (universel : ville, quartier, établissement, point GPS) */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="map" size={14} color={modernColors.primary} type="lucide" /> Zone / Quartier
-                        </Text>
-                        <NativeInput
-                            value={zone}
-                            onChangeText={setZone}
-                            placeholder="Ex: Douala, Centre-ville"
-                            autoCapitalize="words"
+                        <LocationSelector
+                            label="Lieu de recherche *"
+                            value={typeof lieu === 'string' ? (lieu ? { raw: lieu, place_name: lieu } : '') : lieu}
+                            onSelect={(location: LocationObject) => {
+                                setLieu(location);
+                            }}
+                            placeholder="Rechercher un lieu, ville, quartier, établissement..."
+                            scope="all"
+                            enrichWithBackend={true}
+                            required={true}
                         />
+                        <Text style={styles.hintText}>
+                            Vous pouvez rechercher une ville, un quartier, un établissement ou un point GPS
+                        </Text>
                     </View>
 
                     {/* GPS */}
@@ -309,10 +357,11 @@ const TaxiSearchScreen: React.FC = () => {
 
                     {/* Boutons recherche */}
                     <View style={styles.buttonsRow}>
-                        <NativeButton
+                        <TouchableOpacity
                             onPress={handleSearch}
                             disabled={loading}
-                            style={[styles.searchButton, styles.searchButtonSecondary]}
+                            style={[styles.searchButton, styles.searchButtonSecondary, loading && styles.searchButtonDisabled]}
+                            activeOpacity={0.8}
                         >
                             <View style={styles.searchButtonContent}>
                                 <SafeIcon name="search" size={18} color="#06B6D4" type="lucide" />
@@ -320,21 +369,22 @@ const TaxiSearchScreen: React.FC = () => {
                                     {loading ? 'Recherche...' : 'Recherche classique'}
                                 </Text>
                             </View>
-                        </NativeButton>
-                        <NativeButton
+                        </TouchableOpacity>
+                        <TouchableOpacity
                             onPress={() => {
                                 hapticPress();
                                 (navigation as any).navigate('TaxiIntelligentSearch');
                             }}
-                            style={styles.searchButton}
+                            style={[styles.searchButton, styles.searchButtonSecondary]}
+                            activeOpacity={0.8}
                         >
                             <View style={styles.searchButtonContent}>
-                                <SafeIcon name="sparkles" size={18} color="#FFFFFF" type="lucide" />
-                                <Text style={styles.searchButtonText}>
+                                <SafeIcon name="sparkles" size={18} color="#06B6D4" type="lucide" />
+                                <Text style={styles.searchButtonTextSecondary}>
                                     Recherche intelligente
                                 </Text>
                             </View>
-                        </NativeButton>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -615,11 +665,16 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: '#06B6D4',
+        paddingVertical: 16,
     },
     searchButtonSecondary: {
         backgroundColor: '#FFFFFF',
         borderWidth: 2,
         borderColor: '#06B6D4',
+    },
+    searchButtonDisabled: {
+        opacity: 0.6,
     },
     searchButtonContent: {
         flexDirection: 'row',
@@ -659,6 +714,53 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#0E7490',
         lineHeight: 20,
+    },
+    hintText: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 6,
+        fontStyle: 'italic',
+    },
+    // ✅ NOUVEAU: Styles pour bannière fonctionnalités IA
+    aiFeaturesBanner: {
+        marginBottom: 20,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    aiFeaturesBannerGradient: {
+        padding: 16,
+    },
+    aiFeaturesBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    aiFeaturesBannerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    aiFeaturesBannerText: {
+        flex: 1,
+    },
+    aiFeaturesBannerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    aiFeaturesBannerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        lineHeight: 16,
     },
 });
 

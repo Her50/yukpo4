@@ -1,225 +1,287 @@
-# ✅ Améliorations Services Spécialisés
+# 🚀 Améliorations des Services Spécialisés - Plan d'Action
 
-## 📋 Résumé des améliorations
+## 📋 Vue d'ensemble
 
-Toutes les améliorations demandées ont été implémentées pour améliorer l'UX et la fonctionnalité des services spécialisés.
-
----
-
-## 🔧 Corrections apportées
-
-### 1. ✅ Correction erreur "Service ID manquant"
-
-**Problème** : Tous les formulaires affichaient l'erreur "Service ID manquant. Veuillez créer un service d'abord."
-
-**Solution** :
-- **MesServicesSpecialisesScreen** : Création automatique d'un service minimal avant la navigation vers le formulaire
-- **HopitalFormScreen** : Création automatique du service si `serviceId` manquant lors de la soumission
-- Le service est créé avec les informations de base (titre, description, catégorie)
-
-**Fichiers modifiés** :
-- `mobile/src/screens/MesServicesSpecialisesScreen.tsx`
-- `mobile/src/screens/specialized/HopitalFormScreen.tsx`
+Amélioration des écrans de formulaire des prestataires pour les services spécialisés avec des fonctionnalités avancées similaires à celles ajoutées pour les pharmacies.
 
 ---
 
-### 2. ✅ Intégration Google Maps pour la localisation
+## ✅ 1. PharmacieFormScreen - TERMINÉ
 
-**Problème** : Les formulaires n'utilisaient pas le composant interne de sélection de localisation avec Google Maps.
-
-**Solution** :
-- Intégration de `ModernGPSModal` dans tous les formulaires
-- Bouton "Sélectionner sur la carte" pour ouvrir le modal
-- Affichage de la localisation sélectionnée
-- Utilisation de l'autocomplete Google Places
-
-**Fichiers modifiés** :
-- `mobile/src/screens/specialized/HopitalFormScreen.tsx`
-
-**Composant utilisé** :
-- `mobile/src/components/ModernGPSModal.tsx`
+**Fonctionnalités ajoutées** :
+- ✅ Gestion complète des médicaments (CRUD)
+- ✅ Import en masse (JSON/CSV)
+- ✅ Export des produits
+- ✅ Recherche/filtrage en temps réel
+- ✅ Statistiques (total produits, stock, valeur)
 
 ---
 
-### 3. ✅ Liste complète des prestations médicales
+## 🔄 2. LaboratoireFormScreen - À AMÉLIORER
 
-**Problème** : Liste limitée (seulement 7 prestations) sans possibilité d'ajouter d'autres.
+### Fonctionnalités à ajouter :
 
-**Solution** :
-- **Liste étendue** : 27 prestations essentielles incluant :
-  - Urgences, Consultation générale
-  - Chirurgie (générale, cardiaque, orthopédique)
-  - Maternité, Pédiatrie
-  - Cardiologie, Radiologie, Imagerie médicale
-  - **Urologie, Cancérologie, Oncologie, Dentisterie** (demandés)
-  - Ophtalmologie, ORL, Dermatologie
-  - Neurologie, Psychiatrie, Gynécologie
-  - Médecine interne, Anesthésie, Réanimation
-  - Laboratoire d'analyses, Pharmacie
-  - Kinésithérapie, Physiothérapie
-- **Ajout personnalisé** : Champ de saisie pour ajouter des prestations personnalisées
-- **Suppression** : Possibilité de supprimer les prestations personnalisées ajoutées
+1. **Gestion des types d'examens**
+   - Liste des examens disponibles
+   - Ajouter/modifier/supprimer un type d'examen
+   - Champs : nom, catégorie (analyse/imagerie), prix, durée estimée, préparation requise
+   - Modal de création/édition
 
-**Fichiers modifiés** :
-- `mobile/src/screens/specialized/HopitalFormScreen.tsx`
+2. **Statistiques**
+   - Nombre total d'examens disponibles
+   - Répartition par catégorie (analyses vs imagerie)
+   - Prix moyen des examens
 
----
+3. **Recherche/filtrage**
+   - Recherche dans les types d'examens
+   - Filtre par catégorie
 
-### 4. ✅ Sélecteur visuel de jours/horaires
+4. **Export/Import**
+   - Export de la liste des examens
+   - Import en masse (JSON/CSV)
 
-**Problème** : Saisie manuelle des jours (champ texte) peu ergonomique.
+**Backend disponible** :
+- `GET /api/laboratoires/{id}/examination-types` - Liste des types d'examens
+- `POST /api/laboratoires/{id}/book-examination` - Réservation (pour clients)
+- `GET /api/laboratoires/{id}/analytics` - Analytics
 
-**Solution** :
-- **Nouveau composant** : `WeekScheduleSelector`
-- Sélection visuelle des jours de la semaine (checkboxes)
-- Sélection des plages horaires par scroll horizontal (06:00 à 23:00)
-- Possibilité d'ajouter plusieurs plages horaires par jour
-- Interface intuitive avec modal plein écran
-
-**Fichier créé** :
-- `mobile/src/components/WeekScheduleSelector.tsx`
-
-**Fichiers modifiés** :
-- `mobile/src/screens/specialized/HopitalFormScreen.tsx`
+**Note** : L'endpoint `examination-types` retourne actuellement des données vides. Il faudra peut-être créer une table dédiée ou utiliser le champ `analyses_disponibles` existant.
 
 ---
 
-### 5. ✅ Planification des prestations
+## 🔄 3. HopitalFormScreen - À AMÉLIORER
 
-**Problème** : Pas de possibilité de planifier chaque prestation avec ses jours et horaires spécifiques.
+### Fonctionnalités à ajouter :
 
-**Solution** :
-- **Nouveau composant** : `ServicePrestationsPlanner`
-- Planification individuelle pour chaque prestation sélectionnée
-- Chaque prestation peut avoir :
-  - Ses propres jours de disponibilité
-  - Ses propres plages horaires (plusieurs possibles)
-- Interface claire avec sections par prestation
+1. **Gestion des créneaux (slots)**
+   - Liste des créneaux disponibles par prestation
+   - Ajouter/modifier/supprimer des créneaux
+   - Gestion des horaires par jour et par prestation
+   - Modal de gestion des créneaux
 
-**Fichier créé** :
-- `mobile/src/components/ServicePrestationsPlanner.tsx`
+2. **Statistiques**
+   - Nombre de prestations médicales
+   - Nombre de créneaux disponibles
+   - Taux de disponibilité
 
-**Fichiers modifiés** :
-- `mobile/src/screens/specialized/HopitalFormScreen.tsx`
+3. **Recherche/filtrage**
+   - Recherche dans les prestations
+   - Filtre par type de prestation
 
----
+**Backend disponible** :
+- `POST /api/hopitaux/{id}/slots` - Gestion des créneaux
+- `GET /api/hopitaux/{id}` - Détails avec planning_prestations
 
-### 6. ✅ Correction bouton de sauvegarde
-
-**Problème** : Le texte du bouton n'était pas visible (utilisation incorrecte de `NativeButton`).
-
-**Solution** :
-- Utilisation du prop `title` au lieu de `children` pour `NativeButton`
-- Le texte est maintenant correctement affiché avec les styles appropriés
-- Correction appliquée à tous les formulaires
-
-**Fichiers modifiés** :
-- `mobile/src/screens/specialized/HopitalFormScreen.tsx`
-- (À appliquer aux autres formulaires : PharmacieFormScreen, LaboratoireFormScreen, etc.)
+**Note** : Le backend utilise déjà `planning_prestations` avec structure `scheduleByDay`.
 
 ---
 
-### 7. ✅ Amélioration UX générale
+## 🔄 4. AgenceVoyageFormScreen - À VÉRIFIER/AMÉLIORER
 
-**Améliorations** :
-- **Grille 2x2** pour l'affichage des services (au lieu d'une liste verticale)
-- **Indicateurs de chargement** lors de la création du service
-- **Boutons de planification** avec icônes pour accéder rapidement aux modals
-- **Résumé du planning** affiché après configuration
-- **Meilleure organisation** des sections avec headers clairs
-- **Feedback visuel** amélioré (chips sélectionnés, boutons actifs)
+### État actuel :
+- ✅ Gestion des modèles de bus
+- ✅ Création automatique de produits bus
+- ✅ Liaison produits-agence
 
-**Fichiers modifiés** :
-- `mobile/src/screens/MesServicesSpecialisesScreen.tsx`
-- `mobile/src/screens/specialized/HopitalFormScreen.tsx`
+### Fonctionnalités à ajouter :
 
----
+1. **Statistiques**
+   - Nombre de modèles de bus
+   - Nombre de destinations
+   - Nombre de compagnies affiliées
 
-## 📦 Nouveaux composants créés
+2. **Gestion des horaires de départ**
+   - Liste des horaires par destination
+   - Ajouter/modifier/supprimer des horaires
+   - Gestion par jour de la semaine
 
-### 1. `WeekScheduleSelector.tsx`
-Composant réutilisable pour la sélection de planning hebdomadaire avec jours et plages horaires.
+3. **Recherche/filtrage**
+   - Recherche dans les destinations
+   - Filtre par compagnie
 
-**Props** :
-- `visible`: boolean
-- `onClose`: () => void
-- `onSave`: (schedule: ScheduleDay[]) => void
-- `initialSchedule?`: ScheduleDay[]
-- `title?`: string
-
-### 2. `ServicePrestationsPlanner.tsx`
-Composant réutilisable pour la planification des prestations avec jours et horaires spécifiques.
-
-**Props** :
-- `visible`: boolean
-- `onClose`: () => void
-- `onSave`: (schedules: PrestationSchedule[]) => void
-- `prestations`: string[]
-- `initialSchedules?`: PrestationSchedule[]
-- `title?`: string
+**Backend disponible** :
+- `POST /api/bus-tickets/create-product` - Créer produit bus
+- `POST /api/bus-tickets/link` - Lier produit à agence
+- `GET /api/agences-voyage/{id}` - Détails agence
 
 ---
 
-## 🔄 Structure des données
+## 🔄 5. TaxiFormScreen - À AMÉLIORER
 
-### Planning hebdomadaire
-```typescript
-interface ScheduleDay {
-    day: number; // 1-7 (Lundi-Dimanche)
-    enabled: boolean;
-    timeSlots: Array<{ start: string; end: string }>; // Format "HH:MM"
-}
-```
+### Fonctionnalités à ajouter :
 
-### Planning des prestations
-```typescript
-interface PrestationSchedule {
-    prestation: string;
-    days: number[]; // [1, 2, 3] pour Lundi, Mardi, Mercredi
-    timeSlots: Array<{ start: string; end: string }>;
-}
-```
+1. **Statistiques**
+   - Nombre de zones d'intervention
+   - Tarifs moyens (base et par km)
+   - Disponibilité actuelle
 
----
+2. **Gestion des zones**
+   - Liste des zones d'intervention
+   - Ajouter/modifier/supprimer une zone
+   - Visualisation sur carte
 
-## 📝 Prochaines étapes
+3. **Recherche/filtrage**
+   - Recherche dans les zones
 
-Pour appliquer ces améliorations aux autres formulaires de services spécialisés :
-
-1. **PharmacieFormScreen** : Ajouter GPS modal, sélecteur de jours, correction bouton
-2. **LaboratoireFormScreen** : Même chose
-3. **BanqueSangFormScreen** : Même chose
-4. **AgenceVoyageFormScreen** : Même chose
-5. **TaxiFormScreen** : Même chose
-6. **CovoiturageFormScreen** : Même chose
-
-**Pattern à suivre** :
-- Intégrer `ModernGPSModal` pour la localisation
-- Utiliser `WeekScheduleSelector` pour le planning
-- Corriger `NativeButton` avec `title` au lieu de `children`
-- Créer automatiquement le service si `serviceId` manquant
+**Backend disponible** :
+- `POST /api/taxis` - Création
+- `GET /api/taxis/{id}` - Détails
+- `POST /api/taxi/demand-prediction` - Prédiction demande (IA)
 
 ---
 
-## ✅ Tests recommandés
+## 🔄 6. CovoiturageFormScreen - À AMÉLIORER
 
-1. **Création de service** : Vérifier que le service est créé automatiquement
-2. **Sélection GPS** : Tester l'ouverture du modal et la sélection sur la carte
-3. **Prestations** : Vérifier l'ajout/suppression de prestations personnalisées
-4. **Planning** : Tester la sélection de jours et horaires
-5. **Planification prestations** : Vérifier que chaque prestation peut avoir son propre planning
-6. **Bouton sauvegarde** : Vérifier que le texte est visible et correctement stylé
+### État actuel :
+- ✅ Trajets récurrents (daily, weekly, monthly)
+
+### Fonctionnalités à ajouter :
+
+1. **Statistiques**
+   - Nombre de trajets actifs
+   - Nombre de places disponibles
+   - Revenus estimés
+
+2. **Gestion des trajets récurrents**
+   - Liste des trajets récurrents
+   - Activer/désactiver un trajet récurrent
+   - Visualisation du calendrier
+
+3. **Recherche/filtrage**
+   - Recherche dans les trajets
+
+**Backend disponible** :
+- `POST /api/covoiturages` - Création
+- `GET /api/covoiturages/{id}` - Détails
+- Endpoints commentés pour trajets récurrents (à implémenter)
 
 ---
 
-## 🎯 Résultat
+## 🔄 7. LivreScolaireFormScreen - À AMÉLIORER
 
-Toutes les fonctionnalités demandées ont été implémentées avec succès :
-- ✅ Service créé automatiquement
-- ✅ Google Maps intégré
-- ✅ Liste complète des prestations + ajout personnalisé
-- ✅ Sélecteur visuel de jours/horaires
-- ✅ Planification des prestations
-- ✅ Bouton de sauvegarde corrigé
-- ✅ UX améliorée globalement
+### Fonctionnalités à ajouter :
 
+1. **Statistiques**
+   - Nombre de livres enregistrés
+   - Répartition par niveau
+   - Répartition par matière
+
+2. **Recherche/filtrage**
+   - Recherche dans les livres
+   - Filtre par niveau, matière, état
+
+3. **Gestion des trocs**
+   - Liste des demandes de troc
+   - Matching intelligent
+
+**Backend disponible** :
+- `POST /api/livres-scolaires` - Création
+- `PUT /api/livres-scolaires/{id}` - Modification
+- `GET /api/livres-scolaires/{id}` - Détails
+- Routes troc disponibles
+
+---
+
+## ❌ 8. ImmobilierFormScreen - À CRÉER
+
+### Fonctionnalités à implémenter :
+
+1. **Formulaire complet**
+   - Type de bien (maison, appartement, terrain, etc.)
+   - Statut (vente, location, les deux)
+   - Caractéristiques (surface, chambres, salles de bain, standing, etc.)
+   - Prix (vente et/ou location)
+   - Photos (upload multiple)
+   - Visite virtuelle (optionnel)
+
+2. **Statistiques**
+   - Nombre de biens
+   - Valeur totale du portefeuille
+   - Répartition par type
+
+3. **Gestion des biens**
+   - Liste des biens
+   - Modifier/supprimer un bien
+   - Upload médias
+
+**Backend disponible** :
+- `GET /api/immobilier/biens` - Recherche (pas de POST trouvé)
+- `POST /api/immobilier/biens/{id}/upload-media` - Upload médias
+- `POST /api/immobilier/biens/{id}/upload-virtual-tour` - Visite virtuelle
+
+**Note** : Il n'existe pas d'endpoint `POST /api/immobilier/biens`. Les biens sont probablement créés via `/api/services/create` puis détails dans `real_estate_properties`.
+
+---
+
+## ❌ 9. OffresEmploiFormScreen - À VÉRIFIER/CRÉER
+
+### État :
+- ❌ Aucun endpoint backend trouvé
+
+### Si backend existe :
+1. **Formulaire complet**
+   - Titre du poste
+   - Description
+   - Type de contrat
+   - Salaire
+   - Localisation
+   - Compétences requises
+   - Date limite
+
+2. **Statistiques**
+   - Nombre d'offres actives
+   - Nombre de candidatures
+
+---
+
+## 📊 Priorités d'implémentation
+
+### Priorité 1 (Critique)
+1. ✅ PharmacieFormScreen - TERMINÉ
+2. 🔄 LaboratoireFormScreen - Gestion types d'examens
+3. 🔄 HopitalFormScreen - Gestion créneaux
+
+### Priorité 2 (Important)
+4. 🔄 AgenceVoyageFormScreen - Vérifier tickets bus
+5. 🔄 TaxiFormScreen - Statistiques et zones
+6. 🔄 CovoiturageFormScreen - Statistiques
+
+### Priorité 3 (Optionnel)
+7. 🔄 LivreScolaireFormScreen - Statistiques et recherche
+8. ❌ ImmobilierFormScreen - Créer écran complet
+9. ❌ OffresEmploiFormScreen - Vérifier backend puis créer
+
+---
+
+## 🎯 Fonctionnalités communes à tous les écrans
+
+1. **Statistiques rapides**
+   - Cartes avec métriques clés
+   - Design cohérent
+
+2. **Recherche/filtrage**
+   - Barre de recherche en temps réel
+   - Filtres contextuels
+
+3. **Export/Import** (si applicable)
+   - Export JSON
+   - Import en masse
+
+4. **Gestion d'erreurs**
+   - Messages clairs
+   - Validation côté client
+
+5. **UI/UX cohérente**
+   - Design moderne
+   - Animations fluides
+   - Feedback utilisateur
+
+---
+
+## 📝 Notes techniques
+
+- Tous les écrans utilisent le pattern : création automatique de `service` si `serviceId` manquant
+- Utilisation de `LocationSelector` pour la géolocalisation
+- Utilisation de `ModernGPSModal` pour sélection GPS
+- Gestion des états de chargement
+- Validation des données avant envoi

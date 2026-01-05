@@ -65,6 +65,7 @@ pub async fn update_jwt_with_new_balance(
         user_data.nom_complet,
         new_balance,
         &secret,
+        None, // partner_type
     )?;
 
     Ok(new_jwt)

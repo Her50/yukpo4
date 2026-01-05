@@ -4,16 +4,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Dimensions,
+    Modal,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeCard } from '../../components/SafeNativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import { DailyMeal, WeeklyMenu } from '../../services/menuPlanningService';
+import { DailyMeal, GeneratedRecipe, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
@@ -29,6 +32,11 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const menu: WeeklyMenu | undefined = route.params?.menu;
 
     const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay() === 0 ? 7 : new Date().getDay());
+    const [showRecipeModal, setShowRecipeModal] = useState(false);
+    const [recipeRequest, setRecipeRequest] = useState('');
+    const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
+    const [loadingRecipe, setLoadingRecipe] = useState(false);
+    const [showRecipeDetails, setShowRecipeDetails] = useState(false);
 
     if (!menu) {
         return (
@@ -43,6 +51,39 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         return menu.meals.find((m) => m.day === day);
     };
 
+    // ✅ NOUVEAU: Générer une recette via IA
+    const handleGenerateRecipe = async () => {
+        if (!recipeRequest.trim()) {
+            Alert.alert('Erreur', 'Veuillez entrer le nom d\'un plat');
+            return;
+        }
+
+        try {
+            setLoadingRecipe(true);
+            const response = await menuPlanningService.generateRecipe(recipeRequest.trim());
+            
+            if (response.success && response.data?.recipe) {
+                setGeneratedRecipe(response.data.recipe);
+                setShowRecipeModal(false);
+                setShowRecipeDetails(true);
+                setRecipeRequest('');
+            } else {
+                Alert.alert('Erreur', response.error || 'Impossible de générer la recette');
+            }
+        } catch (error: any) {
+            console.error('[MenuWeekCalendar] Erreur génération recette:', error);
+            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+        } finally {
+            setLoadingRecipe(false);
+        }
+    };
+
+    // ✅ NOUVEAU: Demander recette d'un plat du menu
+    const handleRequestRecipeFromMenu = (recipeName: string) => {
+        setRecipeRequest(recipeName);
+        setShowRecipeModal(true);
+    };
+
     const renderMealItem = (meal: any, mealType: string, icon: string) => {
         if (!meal) return null;
 
@@ -51,9 +92,8 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 key={mealType}
                 style={styles.mealCard}
                 onPress={() => {
-                    if (meal.recipe_id) {
-                        navigation.navigate('RecipeDetails' as never, { recipeId: meal.recipe_id } as never);
-                    }
+                    // ✅ NOUVEAU: Demander la recette via IA
+                    handleRequestRecipeFromMenu(meal.recipe_name);
                 }}
             >
                 <View style={styles.mealHeader}>
@@ -73,6 +113,15 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                         <Text style={styles.mealInfoText}>💰 {meal.estimated_cost.toLocaleString()} FCFA</Text>
                     )}
                     <Text style={styles.mealInfoText}>👥 {meal.servings} portions</Text>
+                </View>
+                <View style={styles.recipeButtonContainer}>
+                    <TouchableOpacity
+                        style={styles.recipeButton}
+                        onPress={() => handleRequestRecipeFromMenu(meal.recipe_name)}
+                    >
+                        <SafeIcon name="ChefHat" size={16} color={modernColors.primary} type="lucide" />
+                        <Text style={styles.recipeButtonText}>Voir la recette</Text>
+                    </TouchableOpacity>
                 </View>
             </TouchableOpacity>
         );
@@ -200,6 +249,237 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+
+            {/* ✅ NOUVEAU: Modal pour demander une recette */}
+            <Modal
+                visible={showRecipeModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowRecipeModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Demander une recette</Text>
+                            <TouchableOpacity onPress={() => setShowRecipeModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            <Text style={styles.modalHint}>
+                                Entrez le nom d'un plat pour générer sa recette complète. 
+                                Vous pouvez demander un plat de votre menu ou un autre plat.
+                            </Text>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Nom du plat *</Text>
+                                <NativeInput
+                                    value={recipeRequest}
+                                    onChangeText={setRecipeRequest}
+                                    placeholder="Ex: Ndolé, Poulet DG, Riz au gras..."
+                                    autoFocus
+                                />
+                            </View>
+
+                            {/* Suggestions de plats du menu */}
+                            {menu && (
+                                <View style={styles.suggestionsContainer}>
+                                    <Text style={styles.suggestionsTitle}>Plats de votre menu</Text>
+                                    <View style={styles.suggestionsList}>
+                                        {Array.from(new Set(
+                                            menu.meals.flatMap(m => [
+                                                m.petit_dejeuner?.recipe_name,
+                                                m.dejeuner?.recipe_name,
+                                                m.diner?.recipe_name,
+                                                m.gouter?.recipe_name,
+                                            ].filter(Boolean))
+                                        )).map((recipeName, index) => (
+                                            <TouchableOpacity
+                                                key={index}
+                                                style={styles.suggestionChip}
+                                                onPress={() => {
+                                                    setRecipeRequest(recipeName as string);
+                                                }}
+                                            >
+                                                <Text style={styles.suggestionText}>{recipeName}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Annuler"
+                                onPress={() => {
+                                    setShowRecipeModal(false);
+                                    setRecipeRequest('');
+                                }}
+                                variant="secondary"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title={loadingRecipe ? 'Génération...' : 'Générer la recette'}
+                                onPress={handleGenerateRecipe}
+                                variant="primary"
+                                style={styles.modalButton}
+                                disabled={!recipeRequest.trim() || loadingRecipe}
+                                loading={loadingRecipe}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ✅ NOUVEAU: Modal pour afficher la recette générée */}
+            <Modal
+                visible={showRecipeDetails}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowRecipeDetails(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Recette générée</Text>
+                            <TouchableOpacity onPress={() => setShowRecipeDetails(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {generatedRecipe && (
+                            <ScrollView style={styles.modalBody}>
+                                <View style={styles.recipeHeader}>
+                                    <Text style={styles.recipeTitle}>{generatedRecipe.recipe_name}</Text>
+                                    {generatedRecipe.description && (
+                                        <Text style={styles.recipeDescription}>{generatedRecipe.description}</Text>
+                                    )}
+                                </View>
+
+                                {/* Informations rapides */}
+                                <View style={styles.recipeInfoRow}>
+                                    {generatedRecipe.prep_time_minutes && (
+                                        <View style={styles.recipeInfoItem}>
+                                            <SafeIcon name="clock" size={16} color={modernColors.primary} type="lucide" />
+                                            <Text style={styles.recipeInfoText}>{generatedRecipe.prep_time_minutes} min</Text>
+                                        </View>
+                                    )}
+                                    {generatedRecipe.difficulty && (
+                                        <View style={styles.recipeInfoItem}>
+                                            <SafeIcon name="star" size={16} color={modernColors.primary} type="lucide" />
+                                            <Text style={styles.recipeInfoText}>{generatedRecipe.difficulty}</Text>
+                                        </View>
+                                    )}
+                                    <View style={styles.recipeInfoItem}>
+                                        <SafeIcon name="users" size={16} color={modernColors.primary} type="lucide" />
+                                        <Text style={styles.recipeInfoText}>{generatedRecipe.servings} portions</Text>
+                                    </View>
+                                </View>
+
+                                {/* Ingrédients */}
+                                {generatedRecipe.ingredients && generatedRecipe.ingredients.length > 0 && (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Ingrédients</Text>
+                                        {generatedRecipe.ingredients.map((ingredient, index) => (
+                                            <View key={index} style={styles.ingredientItem}>
+                                                <Text style={styles.ingredientText}>
+                                                    • {ingredient.name}: {ingredient.quantity} {ingredient.unit}
+                                                    {ingredient.notes && ` (${ingredient.notes})`}
+                                                </Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+
+                                {/* Instructions */}
+                                {generatedRecipe.instructions && generatedRecipe.instructions.length > 0 && (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Instructions</Text>
+                                        {generatedRecipe.instructions.map((instruction, index) => (
+                                            <View key={index} style={styles.instructionItem}>
+                                                <View style={styles.instructionNumber}>
+                                                    <Text style={styles.instructionNumberText}>{index + 1}</Text>
+                                                </View>
+                                                <Text style={styles.instructionText}>{instruction}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+
+                                {/* Astuces */}
+                                {generatedRecipe.tips && generatedRecipe.tips.length > 0 && (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Astuces</Text>
+                                        {generatedRecipe.tips.map((tip, index) => (
+                                            <View key={index} style={styles.tipItem}>
+                                                <SafeIcon name="lightbulb" size={16} color="#F59E0B" type="lucide" />
+                                                <Text style={styles.tipText}>{tip}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+
+                                {/* Nutrition */}
+                                {generatedRecipe.nutrition && (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Valeurs nutritionnelles (par portion)</Text>
+                                        <View style={styles.nutritionGrid}>
+                                            <View style={styles.nutritionItem}>
+                                                <Text style={styles.nutritionLabel}>Calories</Text>
+                                                <Text style={styles.nutritionValue}>
+                                                    {generatedRecipe.calories_per_serving?.toFixed(0) || 'N/A'}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.nutritionItem}>
+                                                <Text style={styles.nutritionLabel}>Protéines</Text>
+                                                <Text style={styles.nutritionValue}>
+                                                    {generatedRecipe.nutrition.proteins.toFixed(1)}g
+                                                </Text>
+                                            </View>
+                                            <View style={styles.nutritionItem}>
+                                                <Text style={styles.nutritionLabel}>Glucides</Text>
+                                                <Text style={styles.nutritionValue}>
+                                                    {generatedRecipe.nutrition.carbs.toFixed(1)}g
+                                                </Text>
+                                            </View>
+                                            <View style={styles.nutritionItem}>
+                                                <Text style={styles.nutritionLabel}>Lipides</Text>
+                                                <Text style={styles.nutritionValue}>
+                                                    {generatedRecipe.nutrition.fats.toFixed(1)}g
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                )}
+
+                                {/* Coût estimé */}
+                                {generatedRecipe.estimated_cost && (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Coût estimé</Text>
+                                        <Text style={styles.costText}>
+                                            {generatedRecipe.estimated_cost.toLocaleString()} FCFA
+                                        </Text>
+                                    </View>
+                                )}
+                            </ScrollView>
+                        )}
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Fermer"
+                                onPress={() => {
+                                    setShowRecipeDetails(false);
+                                    setGeneratedRecipe(null);
+                                }}
+                                variant="primary"
+                                style={styles.modalButton}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -391,6 +671,229 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#fff',
+    },
+    recipeActionButton: {
+        backgroundColor: '#8B5CF6',
+    },
+    recipeButtonContainer: {
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    recipeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 8,
+    },
+    recipeButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    // ✅ NOUVEAU: Styles pour modals recette
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '90%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    modalBody: {
+        padding: 16,
+        maxHeight: 500,
+    },
+    modalHint: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 16,
+        lineHeight: 20,
+    },
+    inputGroup: {
+        marginBottom: 16,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 8,
+    },
+    suggestionsContainer: {
+        marginTop: 16,
+    },
+    suggestionsTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 8,
+    },
+    suggestionsList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    suggestionChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    suggestionText: {
+        fontSize: 12,
+        color: '#374151',
+    },
+    modalFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    modalButton: {
+        flex: 1,
+    },
+    // ✅ NOUVEAU: Styles pour affichage recette
+    recipeHeader: {
+        marginBottom: 16,
+    },
+    recipeTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    recipeDescription: {
+        fontSize: 14,
+        color: '#6B7280',
+        lineHeight: 20,
+    },
+    recipeInfoRow: {
+        flexDirection: 'row',
+        gap: 16,
+        marginBottom: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    recipeInfoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    recipeInfoText: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    recipeSection: {
+        marginBottom: 24,
+    },
+    recipeSectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 12,
+    },
+    ingredientItem: {
+        marginBottom: 8,
+    },
+    ingredientText: {
+        fontSize: 14,
+        color: '#374151',
+        lineHeight: 20,
+    },
+    instructionItem: {
+        flexDirection: 'row',
+        marginBottom: 12,
+        gap: 12,
+    },
+    instructionNumber: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: modernColors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexShrink: 0,
+    },
+    instructionNumberText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#fff',
+    },
+    instructionText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#374151',
+        lineHeight: 20,
+    },
+    tipItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        marginBottom: 8,
+        padding: 12,
+        backgroundColor: '#FFFBEB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#FEF3C7',
+    },
+    tipText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#92400E',
+        lineHeight: 20,
+    },
+    nutritionGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
+    nutritionItem: {
+        flex: 1,
+        minWidth: '45%',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    nutritionLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    nutritionValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    costText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.primary,
     },
 });
 

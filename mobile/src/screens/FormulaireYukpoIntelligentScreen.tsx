@@ -2241,8 +2241,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 origine_champs: 'formulaire'
               });
             }}
-            placeholder={field.placeholder || 'Rechercher ville, quartier, pays, région...'}
-            scope="all" // ✅ CORRECTION 2025-11-05: Recherche universelle (ville, quartier, pays, région)
+            placeholder={field.placeholder}
+            // ✅ EXPLICITE: Déterminer le scope basé sur le label du champ (robuste même si label mal formaté)
+            scope={
+              field.label?.toLowerCase().includes('quartier') || field.label?.toLowerCase().includes('zone') || field.label?.toLowerCase().includes('neighborhood')
+                ? 'neighborhood'
+                : field.label?.toLowerCase().includes('ville') || field.label?.toLowerCase().includes('city')
+                ? 'city'
+                : field.label?.toLowerCase().includes('pays') || field.label?.toLowerCase().includes('country')
+                ? 'all'
+                : 'all' // Par défaut: recherche universelle pour "lieu" et autres
+            }
             required={field.required}
             enrichWithBackend={true} // ✅ Activer enrichissement GeoNames pour tous les champs location
           />

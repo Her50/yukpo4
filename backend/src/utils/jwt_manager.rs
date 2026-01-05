@@ -10,10 +10,11 @@ use crate::core::types::AppError;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserClaims {
     pub sub: i32,             // ID utilisateur
-    pub role: String,         // ex: "user", "admin"
+    pub role: String,         // ex: "user", "admin", "partenaire"
     pub email: String,        // email de l?utilisateur
     pub name: Option<String>, // ✅ NOUVEAU: nom de l'utilisateur
     pub tokens_balance: i64,  // solde
+    pub partner_type: Option<String>, // ✅ NOUVEAU: Type de partenaire (pharmacie, hopital, etc.)
     pub iat: usize,           // ?mis ?
     pub exp: usize,           // expiration
 }
@@ -26,6 +27,7 @@ impl UserClaims {
         name: Option<String>,
         tokens_balance: i64,
         ttl_secs: i64,
+        partner_type: Option<String>, // ✅ NOUVEAU: Type de partenaire
     ) -> Self {
         let now = Utc::now();
         Self {
@@ -34,6 +36,7 @@ impl UserClaims {
             email: email.to_string(),
             name,
             tokens_balance,
+            partner_type, // ✅ NOUVEAU
             iat: now.timestamp() as usize,
             exp: (now + Duration::seconds(ttl_secs)).timestamp() as usize,
         }
@@ -48,8 +51,9 @@ pub fn generate_jwt(
     name: Option<String>, // ✅ NOUVEAU: nom de l'utilisateur
     tokens_balance: i64,
     secret: &str,
+    partner_type: Option<String>, // ✅ NOUVEAU: Type de partenaire
 ) -> Result<String, AppError> {
-    let claims = UserClaims::new(user_id, role, email, name, tokens_balance, 60 * 60 * 24); // 24h
+    let claims = UserClaims::new(user_id, role, email, name, tokens_balance, 60 * 60 * 24, partner_type); // 24h
     encode(
         &Header::new(Algorithm::HS256),
         &claims,

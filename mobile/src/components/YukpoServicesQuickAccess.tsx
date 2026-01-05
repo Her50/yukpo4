@@ -52,16 +52,16 @@ const SERVICES_DATA: Service[] = [
     { id: 'laboratoire', title: 'Laboratoire', icon: 'microscope', gradient: ['#3B82F6', '#60A5FA'], description: 'Analyses médicales', comingSoon: false },
     { id: 'banque_sang', title: 'Transfusion', icon: 'droplet', gradient: ['#DC2626', '#F87171'], description: 'Don de sang', comingSoon: false },
     // Transport
-    { id: 'agence_voyage', title: 'Agence Voyage', icon: 'bus', gradient: ['#F59E0B', '#FBBF24'], description: 'Billets, réservations', comingSoon: false },
+    { id: 'agence_voyage', title: 'Ticket voyage', icon: 'bus', gradient: ['#F59E0B', '#FBBF24'], description: 'Billets, réservations', comingSoon: false },
     { id: 'covoiturage', title: 'Covoiturage', icon: 'users', gradient: ['#8B5CF6', '#A78BFA'], description: 'Partage de trajet', comingSoon: false },
     { id: 'taxi', title: 'Taxi', icon: 'car', gradient: ['#F97316', '#FB923C'], description: 'Transport rapide', comingSoon: false },
     // Éducation
     { id: 'orientation_scolaire', title: 'Orientation', icon: 'book-open', gradient: ['#10B981', '#34D399'], description: 'Orientation scolaire', comingSoon: false },
-    { id: 'bourse_livre', title: 'Bourse du Livre', icon: 'book-open', gradient: ['#8B5CF6', '#A78BFA'], description: 'Livres scolaires', comingSoon: false },
+    { id: 'bourse_livre', title: 'Troc livre', icon: 'book-open', gradient: ['#8B5CF6', '#A78BFA'], description: 'Livres scolaires', comingSoon: false },
     // Emploi
     { id: 'offres_emploi', title: 'Offres d\'Emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', comingSoon: false },
     // Vie quotidienne
-    { id: 'menu_planning', title: 'Planification Menus', icon: 'coffee', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', comingSoon: false },
+    { id: 'menu_planning', title: 'Mon menu', icon: 'coffee', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', comingSoon: false },
     { id: 'bayamselam', title: 'BayamSelam', icon: 'trending-down', gradient: ['#10B981', '#34D399'], description: 'Comparatif prix', comingSoon: true },
     // Immobilier
     { id: 'immo', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], description: 'Biens immobiliers', comingSoon: false },

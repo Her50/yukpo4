@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Modal,
     ScrollView,
     StyleSheet,
     Text,
@@ -48,6 +49,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [editingPartner, setEditingPartner] = useState<DeliveryPartner | null>(null);
     const [showForm, setShowForm] = useState(false);
+    const [showPartnerTypePicker, setShowPartnerTypePicker] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -179,18 +181,27 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         }
 
         try {
+            let response;
             if (editingPartner) {
-                await apiPut(`/api/delivery/partners/${editingPartner.id}`, formData);
+                response = await apiPut(`/api/delivery/partners/${editingPartner.id}`, formData);
                 Alert.alert('✅ Succès', 'Partenaire mis à jour avec succès');
             } else {
-                await apiPost('/api/delivery/partners', formData);
+                response = await apiPost('/api/delivery/partners', formData);
                 Alert.alert('✅ Succès', 'Partenaire créé avec succès');
             }
+            
+            // ✅ CORRECTION: Vérifier que la réponse est valide
+            console.log('[DeliveryPartnersAdminScreen] Réponse sauvegarde:', response);
+            
             setShowForm(false);
-            loadPartners();
+            // ✅ CORRECTION: Recharger la liste après un court délai pour s'assurer que la DB est à jour
+            setTimeout(() => {
+                loadPartners();
+            }, 500);
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminScreen] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', error?.message || 'Impossible de sauvegarder le partenaire');
+            const errorMessage = error?.response?.data?.error || error?.message || 'Impossible de sauvegarder le partenaire';
+            Alert.alert('Erreur', errorMessage);
         }
     };
 
@@ -237,47 +248,87 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                             multiline
                             numberOfLines={3}
                         />
-                        {/* ✅ NOUVEAU 2026-01-04: Sélecteur de type de partenaire */}
+                        {/* ✅ NOUVEAU 2026-01-04: Sélecteur de type de partenaire - Liste déroulante */}
                         <View style={styles.inputContainer}>
                             <Text style={styles.inputLabel}>Type de partenaire *</Text>
-                            <View style={styles.pickerContainer}>
-                                {partnerTypes.map((type) => (
-                                    <TouchableOpacity
-                                        key={type.value}
-                                        style={[
-                                            styles.partnerTypeOption,
-                                            formData.partner_type === type.value && styles.partnerTypeOptionSelected
-                                        ]}
-                                        onPress={() => setFormData({ ...formData, partner_type: type.value })}
-                                    >
-                                        <Text style={[
-                                            styles.partnerTypeOptionText,
-                                            formData.partner_type === type.value && styles.partnerTypeOptionTextSelected
-                                        ]}>
-                                            {type.label}
-                                        </Text>
-                                        {formData.partner_type === type.value && (
-                                            <SafeIcon name="check" size={16} color={modernColors.surface} />
-                                        )}
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                            <TouchableOpacity
+                                style={styles.pickerButton}
+                                onPress={() => setShowPartnerTypePicker(true)}
+                            >
+                                <Text style={[
+                                    styles.pickerButtonText,
+                                    !formData.partner_type && styles.pickerButtonPlaceholder
+                                ]}>
+                                    {formData.partner_type 
+                                        ? partnerTypes.find(t => t.value === formData.partner_type)?.label || formData.partner_type
+                                        : 'Sélectionner un type...'}
+                                </Text>
+                                <SafeIcon name="chevron-down" size={18} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                            
+                            {/* Modal pour sélectionner le type */}
+                            <Modal
+                                visible={showPartnerTypePicker}
+                                transparent
+                                animationType="slide"
+                                onRequestClose={() => setShowPartnerTypePicker(false)}
+                            >
+                                <View style={styles.modalOverlay}>
+                                    <View style={styles.modalContent}>
+                                        <View style={styles.modalHeader}>
+                                            <Text style={styles.modalTitle}>Sélectionner un type de partenaire</Text>
+                                            <TouchableOpacity onPress={() => setShowPartnerTypePicker(false)}>
+                                                <SafeIcon name="x" size={24} color={modernColors.text} />
+                                            </TouchableOpacity>
+                                        </View>
+                                        <ScrollView style={styles.modalList}>
+                                            {partnerTypes.map((type) => (
+                                                <TouchableOpacity
+                                                    key={type.value}
+                                                    style={[
+                                                        styles.modalOption,
+                                                        formData.partner_type === type.value && styles.modalOptionSelected
+                                                    ]}
+                                                    onPress={() => {
+                                                        setFormData({ ...formData, partner_type: type.value });
+                                                        setShowPartnerTypePicker(false);
+                                                    }}
+                                                >
+                                                    <Text style={[
+                                                        styles.modalOptionText,
+                                                        formData.partner_type === type.value && styles.modalOptionTextSelected
+                                                    ]}>
+                                                        {type.label}
+                                                    </Text>
+                                                    {formData.partner_type === type.value && (
+                                                        <SafeIcon name="check" size={18} color={modernColors.primary} />
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+                                </View>
+                            </Modal>
                         </View>
                         {/* ✅ NOUVEAU 2026-01-04: Sélecteur de localisation intelligent */}
                         <View style={styles.inputContainer}>
                             <Text style={styles.inputLabel}>Localisation du partenaire</Text>
                             <LocationSelector
-                                value={formData.location_address || ''}
-                                onLocationSelect={(location: LocationObject) => {
+                                label=""
+                                value={formData.location_address ? { raw: formData.location_address, place_name: formData.location_address } : ''}
+                                onSelect={(location: LocationObject) => {
                                     setFormData({
                                         ...formData,
-                                        location_latitude: location.latitude,
-                                        location_longitude: location.longitude,
-                                        location_address: location.formatted_address || location.address || '',
+                                        location_latitude: location.coordinates?.lat,
+                                        location_longitude: location.coordinates?.lng,
+                                        location_address: location.raw || location.place_name || '',
+                                        // ✅ NOUVEAU: Extraire ville et pays depuis les composants si disponibles
+                                        city: location.components?.ville || formData.city,
+                                        country: location.components?.pays || formData.country,
                                     });
                                 }}
                                 placeholder="Rechercher l'adresse du partenaire..."
-                                showMap={true}
+                                scope="all" // ✅ EXPLICITE: Recherche universelle pour adresse/lieu
                             />
                             {formData.location_address && (
                                 <Text style={styles.locationInfo}>
@@ -307,18 +358,40 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                             onChangeText={(text) => setFormData({ ...formData, address: text })}
                             multiline
                         />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Ville"
-                            value={formData.city}
-                            onChangeText={(text) => setFormData({ ...formData, city: text })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Pays *"
-                            value={formData.country}
-                            onChangeText={(text) => setFormData({ ...formData, country: text })}
-                        />
+                        {/* ✅ NOUVEAU: Ville avec autocomplétion intelligente */}
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>Ville</Text>
+                            <LocationSelector
+                                label="Ville"
+                                value={formData.city ? { raw: formData.city, place_name: formData.city } : ''}
+                                onSelect={(location: LocationObject) => {
+                                    setFormData({
+                                        ...formData,
+                                        city: location.place_name || location.raw || '',
+                                        // ✅ Extraire le pays depuis les composants si disponible
+                                        country: location.components?.pays || formData.country,
+                                    });
+                                }}
+                                placeholder="Rechercher une ville..."
+                                scope="city" // ✅ EXPLICITE: Recherche de villes uniquement
+                            />
+                        </View>
+                        {/* ✅ NOUVEAU: Pays avec autocomplétion intelligente */}
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>Pays *</Text>
+                            <LocationSelector
+                                label="Pays"
+                                value={formData.country ? { raw: formData.country, place_name: formData.country } : ''}
+                                onSelect={(location: LocationObject) => {
+                                    setFormData({
+                                        ...formData,
+                                        country: location.place_name || location.raw || '',
+                                    });
+                                }}
+                                placeholder="Rechercher un pays..."
+                                scope="all" // ✅ EXPLICITE: Recherche universelle pour pays
+                            />
+                        </View>
                         <TextInput
                             style={styles.input}
                             placeholder="Continent (ex: Afrique, Europe, Asie...)"
@@ -705,6 +778,73 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         marginTop: 8,
         fontStyle: 'italic',
+    },
+    // ✅ NOUVEAU: Styles pour la liste déroulante de type de partenaire
+    pickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+    },
+    pickerButtonText: {
+        fontSize: 14,
+        color: modernColors.text,
+        flex: 1,
+    },
+    pickerButtonPlaceholder: {
+        color: modernColors.textSecondary,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: modernColors.surface,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '70%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    modalList: {
+        maxHeight: 400,
+    },
+    modalOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    modalOptionSelected: {
+        backgroundColor: modernColors.primary + '10',
+    },
+    modalOptionText: {
+        fontSize: 16,
+        color: modernColors.text,
+    },
+    modalOptionTextSelected: {
+        fontWeight: '600',
+        color: modernColors.primary,
     },
 });
 

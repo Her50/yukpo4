@@ -5541,6 +5541,59 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .await?;
 
+    // ✅ NOUVEAU 2026-01-XX: Ajouter colonnes pour partenaires dans users
+    run_delivery_step(
+        pool,
+        "Add partner columns to users table",
+        r#"
+        DO $$
+        BEGIN
+            -- Ajouter partner_type si n'existe pas
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name = 'partner_type'
+            ) THEN
+                ALTER TABLE users 
+                ADD COLUMN partner_type VARCHAR(50);
+            END IF;
+            
+            -- Ajouter partner_status si n'existe pas
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name = 'partner_status'
+            ) THEN
+                ALTER TABLE users 
+                ADD COLUMN partner_status VARCHAR(20);
+            END IF;
+        END
+        $$;
+        "#,
+    )
+    .await?;
+
+    // ✅ NOUVEAU 2026-01-XX: Ajouter user_id à delivery_partners pour lier au compte
+    run_delivery_step(
+        pool,
+        "Add user_id to delivery_partners table",
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'delivery_partners' AND column_name = 'user_id'
+            ) THEN
+                ALTER TABLE delivery_partners 
+                ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+                
+                CREATE INDEX IF NOT EXISTS idx_delivery_partners_user_id 
+                ON delivery_partners(user_id);
+            END IF;
+        END
+        $$;
+        "#,
+    )
+    .await?;
+
     run_delivery_step(
         pool,
         "Create delivery_parcels table",

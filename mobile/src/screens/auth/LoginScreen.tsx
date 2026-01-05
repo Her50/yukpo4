@@ -255,6 +255,17 @@ const LoginScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
+          {/* ✅ NOUVEAU: Bouton Devenir partenaire */}
+          <View style={styles.partnerContainer}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('PartnerRegister' as never)}
+              style={styles.partnerButton}
+            >
+              <Text style={styles.partnerButtonText}>
+                🏢 Devenir partenaire
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Informations de support */}
           <View style={styles.supportContainer}>
@@ -432,6 +443,24 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  partnerContainer: {
+    marginTop: modernStyles.spacing.md,
+    marginBottom: modernStyles.spacing.lg,
+    alignItems: 'center',
+  },
+  partnerButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingVertical: modernStyles.spacing.sm,
+    paddingHorizontal: modernStyles.spacing.lg,
+    borderRadius: modernStyles.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  partnerButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

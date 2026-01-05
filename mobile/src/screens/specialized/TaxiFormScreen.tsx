@@ -426,28 +426,67 @@ const TaxiFormScreen: React.FC = () => {
                             enrichWithBackend
                         />
                         {selectedZones.length > 0 && (
-                            <View style={styles.chipsContainer}>
-                                {selectedZones.map((zone, index) => {
-                                    const zoneStr = zone.raw || zone.place_name || '';
-                                    return (
-                                        <TouchableOpacity
-                                            key={index}
-                                            style={[styles.chip, styles.chipSelected]}
-                                            onPress={() => handleZoneSelect(zone)}
-                                        >
-                                            <Text style={styles.chipTextSelected}>
-                                                {zoneStr}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
+                            <>
+                                {/* ✅ NOUVEAU: Statistiques zones */}
+                                <View style={styles.statsContainer}>
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>{selectedZones.length}</Text>
+                                        <Text style={styles.statLabel}>Zones</Text>
+                                    </View>
+                                    <View style={styles.statDivider} />
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>
+                                            {formData.tarif_base ? parseInt(formData.tarif_base) : 0}
+                                        </Text>
+                                        <Text style={styles.statLabel}>Tarif base ({formData.devise})</Text>
+                                    </View>
+                                    <View style={styles.statDivider} />
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>
+                                            {formData.tarif_par_km ? parseInt(formData.tarif_par_km) : 0}
+                                        </Text>
+                                        <Text style={styles.statLabel}>Par km ({formData.devise})</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.chipsContainer}>
+                                    {selectedZones.map((zone, index) => {
+                                        const zoneStr = zone.raw || zone.place_name || '';
+                                        return (
+                                            <TouchableOpacity
+                                                key={index}
+                                                style={[styles.chip, styles.chipSelected]}
+                                                onPress={() => {
+                                                    Alert.alert(
+                                                        'Supprimer la zone',
+                                                        `Voulez-vous supprimer "${zoneStr}" ?`,
+                                                        [
+                                                            { text: 'Annuler', style: 'cancel' },
+                                                            {
+                                                                text: 'Supprimer',
+                                                                style: 'destructive',
+                                                                onPress: () => {
+                                                                    setSelectedZones(selectedZones.filter((_, i) => i !== index));
+                                                                },
+                                                            },
+                                                        ]
+                                                    );
+                                                }}
+                                            >
+                                                <Text style={styles.chipTextSelected}>
+                                                    {zoneStr}
+                                                </Text>
+                                                <SafeIcon name="x" size={14} color="#fff" style={{ marginLeft: 6 }} type="lucide" />
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </>
                         )}
                     </View>
 
                     <View style={styles.row}>
                         <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Tarif de base (XAF)</Text>
+                            <Text style={styles.label}>Tarif de base ({formData.devise})</Text>
                             <NativeInput
                                 value={formData.tarif_base}
                                 onChangeText={(text) => setFormData({ ...formData, tarif_base: text })}
@@ -456,7 +495,7 @@ const TaxiFormScreen: React.FC = () => {
                             />
                         </View>
                         <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Tarif par km (XAF)</Text>
+                            <Text style={styles.label}>Tarif par km ({formData.devise})</Text>
                             <NativeInput
                                 value={formData.tarif_par_km}
                                 onChangeText={(text) => setFormData({ ...formData, tarif_par_km: text })}
@@ -465,6 +504,36 @@ const TaxiFormScreen: React.FC = () => {
                             />
                         </View>
                     </View>
+
+                    {/* ✅ NOUVEAU: Section Statistiques (si service existe) */}
+                    {serviceId && specializedServiceId && (
+                        <View style={styles.statsSection}>
+                            <View style={styles.sectionHeader}>
+                                <SafeIcon name="bar-chart" size={20} color={modernColors.primary} type="lucide" />
+                                <Text style={styles.sectionTitle}>Statistiques</Text>
+                            </View>
+                            <View style={styles.statsContainer}>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>{selectedZones.length}</Text>
+                                    <Text style={styles.statLabel}>Zones</Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>
+                                        {[formData.paiement_cash, formData.paiement_mobile_money, formData.paiement_carte].filter(Boolean).length}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Modes paiement</Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>
+                                        {[formData.climatisation, formData.wifi].filter(Boolean).length}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Équipements</Text>
+                                </View>
+                            </View>
+                        </View>
+                    )}
 
                     <View style={styles.switchGroup}>
                         <Text style={styles.label}>Paiement cash</Text>

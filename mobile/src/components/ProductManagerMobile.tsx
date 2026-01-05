@@ -4832,13 +4832,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ NOUVEAU: Ville avec LocationSelector (Google Maps API + fallback local) */}
                         <LocationSelector
                             label="Ville"
-                            value={newProduct.ville || ''}
-                            onSelect={(value) => setNewProduct({
-                                ...newProduct,
-                                ville: value,
-                                // Reset quartier si on change de ville
-                                quartier: value === newProduct.ville ? newProduct.quartier : ''
-                            })}
+                            value={newProduct.ville ? (typeof newProduct.ville === 'string' ? { raw: newProduct.ville, place_name: newProduct.ville } : newProduct.ville) : ''}
+                            onSelect={(location: LocationObject) => {
+                                const villeValue = location.raw || location.place_name || '';
+                                setNewProduct({
+                                    ...newProduct,
+                                    ville: villeValue,
+                                    // Reset quartier si on change de ville
+                                    quartier: villeValue === newProduct.ville ? newProduct.quartier : '',
+                                    // ✅ NOUVEAU: Extraire le pays si disponible
+                                    pays: location.components?.pays || newProduct.pays
+                                });
+                            }}
                             scope="city"
                             required
                             placeholder="Ex: Douala, Yaoundé, Kinshasa, Abidjan..."
@@ -4848,10 +4853,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {newProduct.ville && (
                             <LocationSelector
                                 label="Quartier / Zone"
-                                value={newProduct.quartier || ''}
-                                onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
+                                value={newProduct.quartier ? (typeof newProduct.quartier === 'string' ? { raw: newProduct.quartier, place_name: newProduct.quartier } : newProduct.quartier) : ''}
+                                onSelect={(location: LocationObject) => {
+                                    const quartierValue = location.raw || location.place_name || '';
+                                    setNewProduct({ 
+                                        ...newProduct, 
+                                        quartier: quartierValue,
+                                        // ✅ NOUVEAU: Extraire ville et pays si disponibles
+                                        ville: location.components?.ville || newProduct.ville,
+                                        pays: location.components?.pays || newProduct.pays
+                                    });
+                                }}
                                 scope="point"
-                                cityContext={newProduct.ville}
+                                cityContext={typeof newProduct.ville === 'string' ? newProduct.ville : (newProduct.ville as LocationObject)?.place_name || ''}
                                 placeholder="Ex: Akwa, Bonanjo, Bonapriso, Centre-ville..."
                             />
                         )}
@@ -13217,6 +13231,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     fieldName="lieuxTravail"
                                     onSelect={(value) => setNewProduct({ ...newProduct, lieuTravailCouturier: value })}
                                     placeholder="Atelier, Domicile..."
+                                    scope="all" // ✅ EXPLICITE: Recherche universelle pour lieu (établissements + géographie)
                                 />
                             </View>
                         </View>
@@ -14964,7 +14979,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             label="Lieu de l'événement"
                             value={newProduct.localisationEvenement || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, localisationEvenement: value })}
-                            scope="point"
+                            scope="all" // ✅ EXPLICITE: Recherche universelle pour lieu (établissements + géographie)
                             placeholder="Ex: Hôtel Hilton, Salle des fêtes..."
                         />
 

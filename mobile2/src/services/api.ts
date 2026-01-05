@@ -145,9 +145,11 @@ const apiCall = async <T>(
     }
 
     if (!response.ok) {
+      // Le backend retourne {error, code, status}, mais peut aussi retourner {message}
+      const errorMessage = data?.error || data?.message || `Erreur ${response.status}`;
       return {
         success: false,
-        error: data?.message || `Erreur ${response.status}`,
+        error: errorMessage,
         data: data,
       };
     }

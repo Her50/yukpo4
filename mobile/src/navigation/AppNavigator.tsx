@@ -1,7 +1,7 @@
 // Navigation ULTRA-SIMPLIFIÉE avec TOUS les providers nécessaires
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, useNavigation } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -435,10 +435,14 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
 // Stack d'authentification - Très léger
 const AuthStack = () => {
   console.log('[AppNavigator] 📱 Rendu AuthStack');
+  const PartnerRegisterScreen = require('../screens/auth/PartnerRegisterScreen').default;
+  const PartnerRegisterScreenWithSafeArea = withSafeArea(PartnerRegisterScreen);
+  
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreenWithSafeArea} />
       <Stack.Screen name="Register" component={RegisterScreenWithSafeArea} />
+      <Stack.Screen name="PartnerRegister" component={PartnerRegisterScreenWithSafeArea} />
     </Stack.Navigator>
   );
 };
@@ -811,6 +815,33 @@ const DeepLinkHandler = ({ children }: { children: React.ReactNode }) => {
 // Stack secondaire avec toutes les routes
 const SecondaryStack = () => {
   console.log('[AppNavigator] 📱 Rendu SecondaryStack');
+  const { user } = useAuth();
+  const navigation = useNavigation();
+  
+  // ✅ NOUVEAU: Rediriger les partenaires vers leur écran spécialisé
+  React.useEffect(() => {
+    if (user?.role === 'partenaire' && user.partner_type) {
+      const partnerTypeToScreen: Record<string, string> = {
+        'pharmacie': 'PharmacieForm',
+        'hopital': 'HopitalForm',
+        'laboratoire': 'LaboratoireForm',
+        'agence de voyage': 'AgenceVoyageForm',
+      };
+      
+      const targetScreen = partnerTypeToScreen[user.partner_type];
+      if (targetScreen) {
+        // Petit délai pour laisser le stack se monter
+        setTimeout(() => {
+          try {
+            (navigation as any).navigate(targetScreen);
+          } catch (error) {
+            console.error('[AppNavigator] Erreur redirection partenaire:', error);
+          }
+        }, 500);
+      }
+    }
+  }, [user?.role, user?.partner_type]);
+  
   return (
     <DeepLinkHandler>
       <Stack.Navigator
@@ -1542,6 +1573,22 @@ const AppNavigator: React.FC = () => {
   if (!user) {
     console.log('[AppNavigator] 📱 Mode Non-Connecté');
     return <AuthStack />;
+  }
+
+  // ✅ NOUVEAU: Rediriger les partenaires vers leur écran spécialisé
+  if (user.role === 'partenaire' && user.partner_type) {
+    console.log('[AppNavigator] 🏢 Mode Partenaire - Redirection vers écran spécialisé');
+    // Rediriger vers l'écran de gestion du service spécialisé selon le type
+    const partnerTypeToScreen: Record<string, string> = {
+      'pharmacie': 'PharmacieForm',
+      'hopital': 'HopitalForm',
+      'laboratoire': 'LaboratoireForm',
+      'agence de voyage': 'AgenceVoyageForm',
+    };
+    
+    const targetScreen = partnerTypeToScreen[user.partner_type] || 'GestionServicesSpecialises';
+    // Note: La navigation sera gérée dans SecondaryStack avec un useEffect
+    // Pour l'instant, on charge l'app normalement et la redirection se fera dans SecondaryStack
   }
 
   // ✅ Si connecté: Charger TOUS les providers nécessaires

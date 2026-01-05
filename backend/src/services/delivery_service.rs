@@ -4112,7 +4112,8 @@ impl DeliveryService {
             return Ok(());
         }
 
-        let best = filtered_candidates
+        // ✅ NOUVEAU : Calculer les scores pour tous les candidats et trier
+        let mut scored_candidates: Vec<_> = filtered_candidates
             .into_iter()
             .map(|candidate| {
                 let mut score = Self::compute_candidate_score(&candidate, passenger_mode);
@@ -4163,48 +4164,44 @@ impl DeliveryService {
 
                 (candidate, score)
             })
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(CmpOrdering::Equal));
+            .collect();
+        
+        // Trier par score décroissant
+        scored_candidates.sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap_or(CmpOrdering::Equal));
 
-        let Some((best_candidate, score)) = best else {
+        if scored_candidates.is_empty() {
             return Ok(());
-        };
+        }
 
-        self.repository
-            .assign_delivery_courier(summary.id, best_candidate.courier_id)
-            .await?;
+        // ✅ NOUVEAU : Notifier les N meilleurs coursiers (jusqu'à 10) au lieu d'assigner automatiquement
+        let top_candidates_count = scored_candidates.len().min(10); // Notifier jusqu'à 10 coursiers (ou moins s'il y en a moins)
+        let top_candidates: Vec<_> = scored_candidates
+            .into_iter()
+            .take(top_candidates_count)
+            .collect();
 
+        // ✅ NOUVEAU : Notifier tous les coursiers sélectionnés au lieu d'assigner automatiquement
+        self.notify_available_couriers(summary, &top_candidates).await?;
+
+        // ✅ NOUVEAU : Mettre à jour le statut de matching à "Searching" (en attente d'acceptation)
+        let notified_courier_ids: Vec<Uuid> = top_candidates.iter().map(|(c, _)| c.courier_id).collect();
         let queue_metadata = json!({
-            "courier_id": best_candidate.courier_id,
-            "score": score,
-            "distance_meters": best_candidate.distance_meters,
+            "notified_couriers": notified_courier_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>(),
+            "notified_count": notified_courier_ids.len(),
+            "notification_sent_at": Utc::now().to_rfc3339(),
         });
 
         self.repository
             .update_matching_queue_status(
                 summary.id,
-                DeliveryMatchingStatus::Assigned,
+                DeliveryMatchingStatus::Searching, // Rester en "Searching" jusqu'à acceptation
                 None,
                 Some(queue_metadata),
                 false,
             )
             .await?;
 
-        self.repository
-            .insert_matching_event(NewDeliveryMatchingEvent {
-                delivery_id: summary.id,
-                courier_id: Some(best_candidate.courier_id),
-                status: DeliveryMatchingStatus::Assigned,
-                score: rust_decimal::Decimal::from_f64(score).map(decimal_to_bigdecimal),
-                reason: Some("auto_dispatch".into()),
-                metadata: json!({
-                    "distance_meters": best_candidate.distance_meters,
-                    "load_factor": best_candidate.load_factor,
-                    "passenger_mode": passenger_mode,
-                    "vehicle_type_id": vehicle_type_id,
-                }),
-            })
-            .await?;
-
+        // ✅ NOUVEAU : Mettre le statut de la livraison à "AwaitingCourierConfirmation" (en attente d'acceptation)
         self.update_delivery_status(
             summary.id,
             DeliveryStatus::AwaitingCourierConfirmation,
@@ -4212,37 +4209,73 @@ impl DeliveryService {
             None,
             Some(json!({
                 "matching": {
-                    "courier_id": best_candidate.courier_id,
-                    "auto": true,
-                    "score": score
+                    "notified_couriers": notified_courier_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>(),
+                    "notified_count": notified_courier_ids.len(),
+                    "waiting_for_acceptance": true,
                 }
             })),
         )
         .await?;
 
-        // ✅ NOUVEAU : Envoyer notification au coursier avec informations de navigation
-        let courier_user_id =
-            sqlx::query_scalar::<_, Option<i32>>("SELECT user_id FROM couriers WHERE id = $1")
-                .bind(best_candidate.courier_id)
-                .fetch_optional(self.repository.pool())
-                .await
-                .ok()
-                .flatten()
-                .flatten();
+        Ok(())
+    }
 
-        if let Some(courier_user_id) = courier_user_id {
-            let _ = push_notification_service::send_push_notification(
-                self.repository.pool(),
-                courier_user_id,
-                "📦 Nouvelle livraison assignée".to_string(),
-                format!(
-                    "Une nouvelle livraison #{} vous a été assignée. Distance: {:.1} km",
-                    summary.id.to_string()[..8].to_uppercase(),
-                    best_candidate.distance_meters.unwrap_or(0.0) / 1000.0
-                ),
-                Some(json!({
-                    "type": "courier_delivery_assigned",
+    /// ✅ NOUVEAU : Notifier plusieurs coursiers disponibles d'une nouvelle livraison
+    /// Envoie des notifications persistantes avec son aux coursiers dans le rayon
+    async fn notify_available_couriers(
+        &self,
+        summary: &DeliverySummary,
+        candidates: &[(CourierMatchingCandidate, f64)],
+    ) -> AppResult<()> {
+        use crate::services::push_notification_service;
+        
+        let mut notified_courier_ids = Vec::new();
+        let mut notified_user_ids = Vec::new();
+        
+        // Détecter si c'est un relais
+        let is_relay = summary.metadata.get("is_relay").and_then(|v| v.as_bool()).unwrap_or(false);
+        let relay_info = summary.metadata.get("relay_info").cloned();
+        let courier_difficulty = summary.metadata.get("courier_difficulty").cloned();
+        
+        for (candidate, score) in candidates {
+            // Récupérer l'user_id du coursier
+            let courier_user_id: Option<i32> = sqlx::query_scalar(
+                "SELECT user_id FROM couriers WHERE id = $1"
+            )
+            .bind(candidate.courier_id)
+            .fetch_optional(self.repository.pool())
+            .await?
+            .flatten();
+            
+            if let Some(user_id) = courier_user_id {
+                notified_courier_ids.push(candidate.courier_id);
+                notified_user_ids.push(user_id);
+                
+                let notification_title = if is_relay {
+                    "🔄 Relais de livraison disponible".to_string()
+                } else {
+                    "📦 Nouvelle livraison disponible".to_string()
+                };
+                
+                let notification_message = if is_relay {
+                    format!(
+                        "Course de relais disponible #{}. Distance: {:.1} km. Appuyez pour accepter.",
+                        summary.id.to_string()[..8].to_uppercase(),
+                        candidate.distance_meters.unwrap_or(0.0) / 1000.0
+                    )
+                } else {
+                    format!(
+                        "Nouvelle course disponible #{}. Distance: {:.1} km. Appuyez pour accepter.",
+                        summary.id.to_string()[..8].to_uppercase(),
+                        candidate.distance_meters.unwrap_or(0.0) / 1000.0
+                    )
+                };
+                
+                // ✅ Construire les métadonnées avec toutes les informations nécessaires
+                let mut notification_data = json!({
+                    "type": "delivery_available",
                     "delivery_id": summary.id.to_string(),
+                    "courier_id": candidate.courier_id.to_string(),
                     "navigation_available": true,
                     "navigation_endpoint": format!("/api/delivery/{}/navigation", summary.id),
                     "pickup": {
@@ -4255,14 +4288,149 @@ impl DeliveryService {
                         "longitude": summary.dropoff.longitude,
                         "address": summary.dropoff_address.clone()
                     },
-                    "distance_meters": best_candidate.distance_meters,
-                    "matching_score": score
+                    "distance_meters": candidate.distance_meters,
+                    "matching_score": score,
+                    "can_accept": true, // ✅ Flag pour indiquer que le coursier peut accepter
+                });
+                
+                // ✅ Ajouter les informations de relais si applicable
+                if is_relay {
+                    notification_data["is_relay"] = json!(true);
+                    if let Some(relay) = &relay_info {
+                        notification_data["relay_info"] = relay.clone();
+                    }
+                    if let Some(difficulty) = &courier_difficulty {
+                        notification_data["original_difficulty"] = difficulty.clone();
+                    }
+                }
+                
+                // ✅ Ajouter les informations du destinataire (recommandations)
+                if let Some(recipient) = &summary.recipient {
+                    notification_data["recipient"] = json!({
+                        "name": recipient.contact_name.clone(),
+                        "phone": recipient.contact_phone.clone(),
+                        "notes": recipient.notes.clone(),
+                        "instructions": recipient.notes.clone(),
+                    });
+                }
+                
+                // ✅ Ajouter les informations d'aller-retour si applicable
+                if let Some(is_round_trip) = summary.metadata.get("is_round_trip").and_then(|v| v.as_bool()) {
+                    if is_round_trip {
+                        notification_data["is_round_trip"] = json!(true);
+                        if let Some(return_pickup) = summary.metadata.get("return_pickup") {
+                            notification_data["return_pickup"] = return_pickup.clone();
+                        }
+                        if let Some(return_dropoff) = summary.metadata.get("return_dropoff") {
+                            notification_data["return_dropoff"] = return_dropoff.clone();
+                        }
+                    }
+                }
+                
+                // ✅ NOUVEAU : Envoyer notification persistante avec son
+                let _ = push_notification_service::send_persistent_delivery_notification(
+                    self.repository.pool(),
+                    user_id,
+                    notification_title,
+                    notification_message,
+                    Some(notification_data),
+                )
+                .await;
+            }
+        }
+        
+        // ✅ Sauvegarder la liste des coursiers notifiés dans les métadonnées
+        let mut metadata = summary.metadata.clone();
+        metadata["notified_couriers"] = json!(notified_courier_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>());
+        metadata["notified_user_ids"] = json!(notified_user_ids);
+        metadata["notification_sent_at"] = json!(Utc::now().to_rfc3339());
+        metadata["notification_repeat_interval_seconds"] = json!(30); // Répéter toutes les 30 secondes
+        
+        sqlx::query(
+            "UPDATE deliveries SET metadata = $1, updated_at = NOW() WHERE id = $2"
+        )
+        .bind(&metadata)
+        .bind(summary.id)
+        .execute(self.repository.pool())
+        .await?;
+        
+        log::info!(
+            "[DeliveryService] ✅ {} coursiers notifiés pour la livraison {}",
+            notified_courier_ids.len(),
+            summary.id
+        );
+        
+        Ok(())
+    }
+
+    /// ✅ NOUVEAU : Arrêter toutes les notifications pour une livraison
+    /// Appelée quand un coursier accepte la course ou quand la livraison est annulée
+    pub async fn stop_delivery_notifications(&self, delivery_id: Uuid) -> AppResult<()> {
+        use crate::services::push_notification_service;
+        
+        // Récupérer les métadonnées de la livraison
+        let summary = self.get_delivery_summary(delivery_id).await?;
+        
+        // Récupérer la liste des coursiers notifiés
+        let notified_user_ids: Vec<i32> = summary.metadata
+            .get("notified_user_ids")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_i64().map(|i| i as i32))
+                    .collect()
+            })
+            .unwrap_or_default();
+        
+        if notified_user_ids.is_empty() {
+            log::debug!(
+                "[DeliveryService] Aucun coursier notifié pour la livraison {}",
+                delivery_id
+            );
+            return Ok(());
+        }
+        
+        // ✅ Envoyer une notification d'annulation à tous les coursiers notifiés
+        let cancellation_message = format!(
+            "La course #{} a été prise par un autre coursier.",
+            delivery_id.to_string()[..8].to_uppercase()
+        );
+        
+        for user_id in &notified_user_ids {
+            let _ = push_notification_service::send_push_notification(
+                self.repository.pool(),
+                *user_id,
+                "📦 Course prise".to_string(),
+                cancellation_message.clone(),
+                Some(json!({
+                    "type": "delivery_taken",
+                    "delivery_id": delivery_id.to_string(),
+                    "cancelled": true,
                 })),
                 Some("default".to_string()),
             )
             .await;
         }
-
+        
+        // ✅ Mettre à jour les métadonnées pour indiquer que les notifications sont arrêtées
+        let mut metadata = summary.metadata.clone();
+        metadata["notifications_stopped"] = json!(true);
+        metadata["notifications_stopped_at"] = json!(Utc::now().to_rfc3339());
+        
+        sqlx::query(
+            "UPDATE deliveries SET metadata = $1, updated_at = NOW() WHERE id = $2"
+        )
+        .bind(&metadata)
+        .bind(delivery_id)
+        .execute(self.repository.pool())
+        .await?;
+        
+        log::info!(
+            "[DeliveryService] ✅ Notifications arrêtées pour la livraison {} ({} coursiers notifiés)",
+            delivery_id,
+            notified_user_ids.len()
+        );
+        
         Ok(())
     }
 

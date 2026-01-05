@@ -20,16 +20,27 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface CovoiturageSearchFilters {
     depart?: string;
     destination?: string;
+    ville_depart?: string;
+    quartier_depart?: string;
+    ville_destination?: string;
+    quartier_destination?: string;
     date_depart?: string;
     min_places?: number;
     max_prix?: number;
     lat?: number;
     lng?: number;
     radius_km?: number;
+    // ✅ NOUVEAU: Filtres avancés
+    type_vehicule?: string;
+    accepte_animaux?: boolean;
+    fumeur_autorise?: boolean;
+    bagages?: boolean;
+    trajet_recurrent?: boolean; // Trajets récurrents
 }
 
 const CovoiturageSearchScreen: React.FC = () => {
@@ -38,6 +49,11 @@ const CovoiturageSearchScreen: React.FC = () => {
 
     const [depart, setDepart] = useState('');
     const [destination, setDestination] = useState('');
+    // ✅ NOUVEAU: Localisation avec autocomplete intelligent
+    const [villeDepart, setVilleDepart] = useState<LocationObject | string>('');
+    const [quartierDepart, setQuartierDepart] = useState<LocationObject | string>('');
+    const [villeDestination, setVilleDestination] = useState<LocationObject | string>('');
+    const [quartierDestination, setQuartierDestination] = useState<LocationObject | string>('');
     const [dateDepart, setDateDepart] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [minPlaces, setMinPlaces] = useState(1);
@@ -47,6 +63,14 @@ const CovoiturageSearchScreen: React.FC = () => {
     const [radiusKm, setRadiusKm] = useState(50);
     const [showMap, setShowMap] = useState(false);
     const [nearbyTrips, setNearbyTrips] = useState<any[]>([]);
+    // ✅ NOUVEAU: Filtres avancés
+    const [typeVehicule, setTypeVehicule] = useState<string>('');
+    const [accepteAnimaux, setAccepteAnimaux] = useState(false);
+    const [fumeurAutorise, setFumeurAutorise] = useState(false);
+    const [bagages, setBagages] = useState(false);
+    const [trajetRecurrent, setTrajetRecurrent] = useState(false);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [showMatching, setShowMatching] = useState(false);
 
     useEffect(() => {
         if (searchNearby && location) {
@@ -81,32 +105,59 @@ const CovoiturageSearchScreen: React.FC = () => {
                 radius_km: radiusKm,
                 date_depart: dateDepart.toISOString().split('T')[0],
             };
-            if (minPlaces > 1) filters.min_places = minPlaces;
-            if (maxPrix) {
-                const prix = parseInt(maxPrix);
-                if (!isNaN(prix) && prix > 0) filters.max_prix = prix;
-            }
-            navigation.navigate('CovoiturageList' as never, { filters, searchType: 'nearby' } as never);
+                if (minPlaces > 1) filters.min_places = minPlaces;
+                if (maxPrix) {
+                    const prix = parseInt(maxPrix);
+                    if (!isNaN(prix) && prix > 0) filters.max_prix = prix;
+                }
+                // ✅ NOUVEAU: Filtres avancés
+                if (typeVehicule) filters.type_vehicule = typeVehicule;
+                if (accepteAnimaux) filters.accepte_animaux = true;
+                if (fumeurAutorise) filters.fumeur_autorise = true;
+                if (bagages) filters.bagages = true;
+                if (trajetRecurrent) filters.trajet_recurrent = true;
+                navigation.navigate('CovoiturageList' as never, { filters, searchType: 'nearby' } as never);
         } else {
             // Recherche classique
-            if (!depart.trim() || !destination.trim()) {
-                Alert.alert('Erreur', 'Veuillez renseigner le lieu de départ et la destination');
+            const villeDepartStr = typeof villeDepart === 'string' ? villeDepart : (villeDepart as LocationObject)?.components?.ville || (villeDepart as LocationObject)?.place_name || '';
+            const quartierDepartStr = typeof quartierDepart === 'string' ? quartierDepart : (quartierDepart as LocationObject)?.components?.quartier || (quartierDepart as LocationObject)?.place_name || '';
+            const villeDestinationStr = typeof villeDestination === 'string' ? villeDestination : (villeDestination as LocationObject)?.components?.ville || (villeDestination as LocationObject)?.place_name || '';
+            const quartierDestinationStr = typeof quartierDestination === 'string' ? quartierDestination : (quartierDestination as LocationObject)?.components?.quartier || (quartierDestination as LocationObject)?.place_name || '';
+            
+            if (!villeDepartStr.trim() && !quartierDepartStr.trim()) {
+                Alert.alert('Erreur', 'Veuillez renseigner au moins la ville ou le quartier de départ');
+                return;
+            }
+            if (!villeDestinationStr.trim() && !quartierDestinationStr.trim()) {
+                Alert.alert('Erreur', 'Veuillez renseigner au moins la ville ou le quartier de destination');
                 return;
             }
 
             try {
                 setLoading(true);
                 const filters: CovoiturageSearchFilters = {
-                    depart: depart.trim(),
-                    destination: destination.trim(),
                     date_depart: dateDepart.toISOString().split('T')[0],
                 };
+                // ✅ NOUVEAU: Utiliser ville/quartier avec autocomplete
+                if (villeDepartStr.trim()) filters.ville_depart = villeDepartStr.trim();
+                if (quartierDepartStr.trim()) filters.quartier_depart = quartierDepartStr.trim();
+                if (villeDestinationStr.trim()) filters.ville_destination = villeDestinationStr.trim();
+                if (quartierDestinationStr.trim()) filters.quartier_destination = quartierDestinationStr.trim();
+                // Fallback pour compatibilité backend
+                if (depart.trim()) filters.depart = depart.trim();
+                if (destination.trim()) filters.destination = destination.trim();
 
                 if (minPlaces > 1) filters.min_places = minPlaces;
                 if (maxPrix) {
                     const prix = parseInt(maxPrix);
                     if (!isNaN(prix) && prix > 0) filters.max_prix = prix;
                 }
+                // ✅ NOUVEAU: Filtres avancés
+                if (typeVehicule) filters.type_vehicule = typeVehicule;
+                if (accepteAnimaux) filters.accepte_animaux = true;
+                if (fumeurAutorise) filters.fumeur_autorise = true;
+                if (bagages) filters.bagages = true;
+                if (trajetRecurrent) filters.trajet_recurrent = true;
 
                 navigation.navigate('CovoiturageList' as never, { filters, searchType: 'classic' } as never);
             } catch (error: any) {
@@ -161,7 +212,17 @@ const CovoiturageSearchScreen: React.FC = () => {
             description: 'Matching IA',
             action: () => {
                 hapticPress();
-                (navigation as any).navigate('CovoiturageIntelligentSearch');
+                setShowMatching(true);
+            }
+        },
+        {
+            id: 'recurrent',
+            title: 'Récurrents',
+            icon: 'repeat',
+            description: 'Trajets réguliers',
+            action: () => {
+                hapticPress();
+                setTrajetRecurrent(true);
             }
         },
     ];
@@ -331,32 +392,82 @@ const CovoiturageSearchScreen: React.FC = () => {
 
                         {/* Départ */}
                         {!searchNearby && (
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>
-                                    <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" /> Lieu de départ *
-                                </Text>
-                                <NativeInput
-                                    value={depart}
-                                    onChangeText={setDepart}
-                                    placeholder="Ex: Douala, Centre-ville"
-                                    autoCapitalize="words"
-                                />
-                            </View>
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="map-pin" size={18} color="#10B981" type="lucide" />
+                                    <Text style={styles.sectionSubtitle}>📍 Lieu de départ</Text>
+                                </View>
+                                
+                                {/* Ville de départ */}
+                                <View style={styles.inputGroup}>
+                                    <LocationSelector
+                                        label="Ville de départ *"
+                                        value={typeof villeDepart === 'string' ? (villeDepart ? { raw: villeDepart, place_name: villeDepart } : '') : villeDepart}
+                                        onSelect={(location: LocationObject) => {
+                                            setVilleDepart(location);
+                                        }}
+                                        placeholder="Rechercher une ville de départ..."
+                                        scope="city"
+                                        enrichWithBackend={true}
+                                        required={true}
+                                    />
+                                </View>
+
+                                {/* Quartier de départ */}
+                                <View style={styles.inputGroup}>
+                                    <LocationSelector
+                                        label="Quartier de départ (optionnel)"
+                                        value={typeof quartierDepart === 'string' ? (quartierDepart ? { raw: quartierDepart, place_name: quartierDepart } : '') : quartierDepart}
+                                        onSelect={(location: LocationObject) => {
+                                            setQuartierDepart(location);
+                                        }}
+                                        placeholder="Rechercher un quartier de départ..."
+                                        scope="neighborhood"
+                                        cityContext={typeof villeDepart === 'string' ? villeDepart : (villeDepart as LocationObject)?.components?.ville || (villeDepart as LocationObject)?.place_name || ''}
+                                        enrichWithBackend={true}
+                                    />
+                                </View>
+                            </>
                         )}
 
                         {/* Destination */}
                         {!searchNearby && (
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>
-                                    <SafeIcon name="navigation" size={14} color={modernColors.primary} type="lucide" /> Destination *
-                                </Text>
-                                <NativeInput
-                                    value={destination}
-                                    onChangeText={setDestination}
-                                    placeholder="Ex: Yaoundé, Centre-ville"
-                                    autoCapitalize="words"
-                                />
-                            </View>
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="navigation" size={18} color="#10B981" type="lucide" />
+                                    <Text style={styles.sectionSubtitle}>🎯 Destination</Text>
+                                </View>
+                                
+                                {/* Ville de destination */}
+                                <View style={styles.inputGroup}>
+                                    <LocationSelector
+                                        label="Ville de destination *"
+                                        value={typeof villeDestination === 'string' ? (villeDestination ? { raw: villeDestination, place_name: villeDestination } : '') : villeDestination}
+                                        onSelect={(location: LocationObject) => {
+                                            setVilleDestination(location);
+                                        }}
+                                        placeholder="Rechercher une ville de destination..."
+                                        scope="city"
+                                        enrichWithBackend={true}
+                                        required={true}
+                                    />
+                                </View>
+
+                                {/* Quartier de destination */}
+                                <View style={styles.inputGroup}>
+                                    <LocationSelector
+                                        label="Quartier de destination (optionnel)"
+                                        value={typeof quartierDestination === 'string' ? (quartierDestination ? { raw: quartierDestination, place_name: quartierDestination } : '') : quartierDestination}
+                                        onSelect={(location: LocationObject) => {
+                                            setQuartierDestination(location);
+                                        }}
+                                        placeholder="Rechercher un quartier de destination..."
+                                        scope="neighborhood"
+                                        cityContext={typeof villeDestination === 'string' ? villeDestination : (villeDestination as LocationObject)?.components?.ville || (villeDestination as LocationObject)?.place_name || ''}
+                                        enrichWithBackend={true}
+                                    />
+                                </View>
+                            </>
                         )}
 
                         {/* Date départ */}
@@ -436,11 +547,154 @@ const CovoiturageSearchScreen: React.FC = () => {
                             />
                         </View>
 
+                        {/* ✅ NOUVEAU: Bouton filtres avancés */}
+                        <TouchableOpacity
+                            style={styles.advancedFiltersButton}
+                            onPress={() => {
+                                hapticPress();
+                                setShowAdvancedFilters(!showAdvancedFilters);
+                            }}
+                        >
+                            <SafeIcon name={showAdvancedFilters ? "chevron-up" : "chevron-down"} size={20} color="#10B981" type="lucide" />
+                            <Text style={styles.advancedFiltersButtonText}>
+                                {showAdvancedFilters ? 'Masquer' : 'Afficher'} les filtres avancés
+                            </Text>
+                        </TouchableOpacity>
+
+                        {/* ✅ NOUVEAU: Filtres avancés */}
+                        {showAdvancedFilters && (
+                            <View style={styles.advancedFiltersCard}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="filter" size={14} color={modernColors.primary} type="lucide" /> Type de véhicule
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
+                                    <TouchableOpacity
+                                        style={[styles.chip, !typeVehicule && styles.chipActive]}
+                                        onPress={() => {
+                                            hapticPress();
+                                            setTypeVehicule('');
+                                        }}
+                                    >
+                                        <Text style={[styles.chipText, !typeVehicule && styles.chipTextActive]}>
+                                            Tous
+                                        </Text>
+                                    </TouchableOpacity>
+                                    {['Voiture', 'SUV', 'Minibus', 'Bus'].map((type) => (
+                                        <TouchableOpacity
+                                            key={type}
+                                            style={[styles.chip, typeVehicule === type && styles.chipActive]}
+                                            onPress={() => {
+                                                hapticPress();
+                                                setTypeVehicule(typeVehicule === type ? '' : type);
+                                            }}
+                                        >
+                                            <Text style={[styles.chipText, typeVehicule === type && styles.chipTextActive]}>
+                                                {type}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+
+                                <View style={styles.optionCard}>
+                                    <View style={styles.optionContent}>
+                                        <View style={styles.optionIconContainer}>
+                                            <SafeIcon name="repeat" size={20} color="#10B981" type="lucide" />
+                                        </View>
+                                        <View style={styles.optionTextContainer}>
+                                            <Text style={styles.optionTitle}>Trajets récurrents</Text>
+                                            <Text style={styles.optionDescription}>
+                                                Rechercher uniquement les trajets réguliers
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={trajetRecurrent}
+                                        onValueChange={(value) => {
+                                            hapticPress();
+                                            setTrajetRecurrent(value);
+                                        }}
+                                        trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+                                        thumbColor="#FFFFFF"
+                                    />
+                                </View>
+
+                                <View style={styles.optionCard}>
+                                    <View style={styles.optionContent}>
+                                        <View style={styles.optionIconContainer}>
+                                            <SafeIcon name="dog" size={20} color="#10B981" type="lucide" />
+                                        </View>
+                                        <View style={styles.optionTextContainer}>
+                                            <Text style={styles.optionTitle}>Animaux acceptés</Text>
+                                            <Text style={styles.optionDescription}>
+                                                Conducteurs acceptant les animaux
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={accepteAnimaux}
+                                        onValueChange={(value) => {
+                                            hapticPress();
+                                            setAccepteAnimaux(value);
+                                        }}
+                                        trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+                                        thumbColor="#FFFFFF"
+                                    />
+                                </View>
+
+                                <View style={styles.optionCard}>
+                                    <View style={styles.optionContent}>
+                                        <View style={styles.optionIconContainer}>
+                                            <SafeIcon name="smoking" size={20} color="#10B981" type="lucide" />
+                                        </View>
+                                        <View style={styles.optionTextContainer}>
+                                            <Text style={styles.optionTitle}>Fumeur autorisé</Text>
+                                            <Text style={styles.optionDescription}>
+                                                Conducteurs autorisant le tabac
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={fumeurAutorise}
+                                        onValueChange={(value) => {
+                                            hapticPress();
+                                            setFumeurAutorise(value);
+                                        }}
+                                        trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+                                        thumbColor="#FFFFFF"
+                                    />
+                                </View>
+
+                                <View style={styles.optionCard}>
+                                    <View style={styles.optionContent}>
+                                        <View style={styles.optionIconContainer}>
+                                            <SafeIcon name="luggage" size={20} color="#10B981" type="lucide" />
+                                        </View>
+                                        <View style={styles.optionTextContainer}>
+                                            <Text style={styles.optionTitle}>Espace bagages</Text>
+                                            <Text style={styles.optionDescription}>
+                                                Véhicules avec espace bagages suffisant
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={bagages}
+                                        onValueChange={(value) => {
+                                            hapticPress();
+                                            setBagages(value);
+                                        }}
+                                        trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+                                        thumbColor="#FFFFFF"
+                                    />
+                                </View>
+                            </View>
+                        )}
+
                         {/* Bouton recherche */}
-                        <NativeButton
+                        <TouchableOpacity
                             onPress={handleSearch}
                             disabled={loading}
-                            style={styles.searchButton}
+                            style={[styles.searchButton, loading && styles.searchButtonDisabled]}
+                            activeOpacity={0.8}
                         >
                             <View style={styles.searchButtonContent}>
                                 <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
@@ -448,7 +702,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                     {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
                                 </Text>
                             </View>
-                        </NativeButton>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Info section */}
@@ -530,6 +784,18 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#111827',
         marginBottom: 12,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+        marginTop: 8,
+    },
+    sectionSubtitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
     },
     quickSearchesGrid: {
         flexDirection: 'row',
@@ -746,6 +1012,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
         borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: '#10B981',
+        paddingVertical: 16,
+    },
+    searchButtonDisabled: {
+        opacity: 0.6,
     },
     searchButtonContent: {
         flexDirection: 'row',
@@ -796,6 +1067,58 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
+    },
+    // ✅ NOUVEAU: Styles pour filtres avancés
+    advancedFiltersButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        marginBottom: 12,
+        gap: 8,
+    },
+    advancedFiltersButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#10B981',
+    },
+    advancedFiltersCard: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    chipContainer: {
+        flexDirection: 'row',
+        marginTop: 8,
+        marginBottom: 16,
+        gap: 8,
+    },
+    chip: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#D1D5DB',
+    },
+    chipActive: {
+        backgroundColor: '#10B981',
+        borderColor: '#10B981',
+    },
+    chipText: {
+        fontSize: 14,
+        color: '#374151',
+        fontWeight: '600',
+    },
+    chipTextActive: {
+        color: '#FFFFFF',
     },
 });
 

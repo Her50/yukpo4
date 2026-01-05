@@ -2,6 +2,7 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/buttons";
 import { useUser } from "@/hooks/useUser";
+import LocationSelector, { LocationObject } from "@/components/ui/LocationSelector";
 import axios from "axios";
 import { Edit2, Plus, Trash2, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -177,8 +178,9 @@ const DeliveryPartnersAdminPage = () => {
 
         try {
             const token = localStorage.getItem('token');
+            let response;
             if (editingPartner) {
-                await axios.put(
+                response = await axios.put(
                     buildUrl(`${API_ENDPOINTS.DELIVERY_PARTNERS || '/api/delivery/partners'}/${editingPartner.id}`),
                     formData,
                     {
@@ -187,7 +189,7 @@ const DeliveryPartnersAdminPage = () => {
                 );
                 toast.success('Partenaire mis à jour avec succès');
             } else {
-                await axios.post(
+                response = await axios.post(
                     buildUrl(API_ENDPOINTS.DELIVERY_PARTNERS || '/api/delivery/partners'),
                     formData,
                     {
@@ -196,11 +198,19 @@ const DeliveryPartnersAdminPage = () => {
                 );
                 toast.success('Partenaire créé avec succès');
             }
+            
+            // ✅ CORRECTION: Vérifier que la réponse est valide
+            console.log('[DeliveryPartnersAdminPage] Réponse sauvegarde:', response);
+            
             setShowForm(false);
-            loadPartners();
+            // ✅ CORRECTION: Recharger la liste après un court délai pour s'assurer que la DB est à jour
+            setTimeout(() => {
+                loadPartners();
+            }, 500);
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminPage] Erreur sauvegarde:', error);
-            toast.error(error?.response?.data?.error || 'Impossible de sauvegarder le partenaire');
+            const errorMessage = error?.response?.data?.error || error?.message || 'Impossible de sauvegarder le partenaire';
+            toast.error(errorMessage);
         }
     };
 
@@ -265,33 +275,39 @@ const DeliveryPartnersAdminPage = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Type de partenaire *
                                 </label>
-                                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                <select
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                    value={formData.partner_type}
+                                    onChange={(e) => setFormData({ ...formData, partner_type: e.target.value })}
+                                >
+                                    <option value="">Sélectionner un type...</option>
                                     {partnerTypes.map((type) => (
-                                        <button
-                                            key={type.value}
-                                            type="button"
-                                            className={`px-4 py-2 rounded-lg border transition-colors ${
-                                                formData.partner_type === type.value
-                                                    ? 'bg-blue-600 text-white border-blue-600'
-                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
-                                            }`}
-                                            onClick={() => setFormData({ ...formData, partner_type: type.value })}
-                                        >
+                                        <option key={type.value} value={type.value}>
                                             {type.label}
-                                        </button>
+                                        </option>
                                     ))}
-                                </div>
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Adresse de localisation
                                 </label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                <LocationSelector
+                                    label="Lieu"
+                                    value={formData.location_address ? { raw: formData.location_address, place_name: formData.location_address } : ''}
+                                    onSelect={(location) => {
+                                        setFormData({
+                                            ...formData,
+                                            location_latitude: location.coordinates?.lat,
+                                            location_longitude: location.coordinates?.lng,
+                                            location_address: location.raw || location.place_name || '',
+                                            // ✅ NOUVEAU: Extraire ville et pays depuis les composants si disponibles
+                                            city: location.components?.ville || formData.city,
+                                            country: location.components?.pays || formData.country,
+                                        });
+                                    }}
                                     placeholder="Rechercher l'adresse du partenaire..."
-                                    value={formData.location_address || ''}
-                                    onChange={(e) => setFormData({ ...formData, location_address: e.target.value })}
+                                    scope="all" // ✅ EXPLICITE: Recherche universelle pour adresse/lieu
                                 />
                                 {formData.location_address && (
                                     <p className="text-sm text-gray-500 mt-1">
@@ -342,24 +358,36 @@ const DeliveryPartnersAdminPage = () => {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Ville
                                     </label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="Ville"
-                                        value={formData.city}
-                                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                    <LocationSelector
+                                        label="Ville"
+                                        value={formData.city ? { raw: formData.city, place_name: formData.city } : ''}
+                                        onSelect={(location) => {
+                                            setFormData({
+                                                ...formData,
+                                                city: location.place_name || location.raw || '',
+                                                // ✅ Extraire le pays depuis les composants si disponible
+                                                country: location.components?.pays || formData.country,
+                                            });
+                                        }}
+                                        placeholder="Rechercher une ville..."
+                                        scope="city" // ✅ EXPLICITE: Recherche de villes uniquement
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Pays *
                                     </label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="Pays"
-                                        value={formData.country}
-                                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                                    <LocationSelector
+                                        label="Pays"
+                                        value={formData.country ? { raw: formData.country, place_name: formData.country } : ''}
+                                        onSelect={(location) => {
+                                            setFormData({
+                                                ...formData,
+                                                country: location.place_name || location.raw || '',
+                                            });
+                                        }}
+                                        placeholder="Rechercher un pays..."
+                                        scope="all" // ✅ EXPLICITE: Recherche universelle pour pays
                                     />
                                 </div>
                                 <div>
@@ -502,4 +530,5 @@ const DeliveryPartnersAdminPage = () => {
 };
 
 export default DeliveryPartnersAdminPage;
+
 

@@ -334,8 +334,18 @@ const BanqueSangFormScreen: React.FC = () => {
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Quartier"
-                            value={formData.quartier || ''}
-                            onSelect={(value) => setFormData({ ...formData, quartier: typeof value === 'string' ? value : (value?.raw || value?.place_name || '') })}
+                            value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''}
+                            onSelect={(location: LocationObject) => {
+                                // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
+                                const quartierValue = location.raw || location.place_name || '';
+                                setFormData({ 
+                                    ...formData, 
+                                    quartier: quartierValue,
+                                    // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
+                                    ville: location.components?.ville || formData.ville,
+                                    pays: location.components?.pays || formData.pays,
+                                });
+                            }}
                             placeholder="Rechercher un quartier (inclut ville et pays)..."
                             scope="neighborhood"
                             enrichWithBackend

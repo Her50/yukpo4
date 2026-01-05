@@ -101,6 +101,18 @@ const PushNotificationManager: React.FC = () => {
                     });
                 }
             }
+            // ✅ NOUVEAU: Gérer les notifications de livraison disponible
+            else if (data?.type === 'delivery_available') {
+                console.log('[PushNotificationManager] 📦 Notification de livraison disponible:', data.delivery_id);
+                
+                // Naviguer vers l'écran de suivi de livraison
+                if (data.delivery_id) {
+                    (navigation as any).navigate('DeliveryTracking', {
+                        deliveryId: data.delivery_id,
+                        showAcceptButton: true, // Afficher le bouton d'acceptation
+                    });
+                }
+            }
         });
 
         // Cleanup

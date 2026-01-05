@@ -182,6 +182,16 @@ const LoginPage: React.FC = () => {
             Crer un compte
           </Link>
         </p>
+        
+        {/* ✅ NOUVEAU: Bouton Devenir partenaire */}
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <Link
+            to="/register/partner"
+            className="block w-full text-center py-2 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition font-medium"
+          >
+            🏢 Devenir partenaire
+          </Link>
+        </div>
       </div>
     </main>
   );

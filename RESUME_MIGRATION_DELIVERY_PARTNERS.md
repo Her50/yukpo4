@@ -228,3 +228,4 @@
 - **Écran Mobile**: `mobile/src/screens/delivery/DeliveryPartnersAdminScreen.tsx`
 - **Page Frontend**: `frontend/src/pages/delivery/DeliveryPartnersAdminPage.tsx`
 
+

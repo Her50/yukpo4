@@ -8,6 +8,7 @@ export const ROUTES = {
   HOME: "/",
   LOGIN: "/login",
   REGISTER: "/register",
+  PARTNER_REGISTER: "/register/partner", // ✅ NOUVEAU: Inscription partenaire
   CONFIRMATION: "/register/confirmation",
   // 🛠 Création manuelle et intelligente
   SERVICE_CREATE: "/creation/service",

@@ -2,6 +2,7 @@
 use log::{error, info, warn};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sqlx::PgPool;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -240,6 +241,93 @@ pub async fn send_push_notification(
 
     info!(
         "[PushService] ✅ {} notifications push envoyées sur {} tokens",
+        success_count, total_tokens
+    );
+    Ok(success_count)
+}
+
+/// ✅ NOUVEAU : Envoyer une notification persistante pour les livraisons disponibles
+/// Utilise un son personnalisé et une priorité élevée pour attirer l'attention des coursiers
+pub async fn send_persistent_delivery_notification(
+    pool: &PgPool,
+    user_id: i32,
+    title: String,
+    body: String,
+    data: Option<serde_json::Value>,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    info!(
+        "[PushService] 📦 Envoi notification persistante de livraison à user {}: {}",
+        user_id, title
+    );
+
+    // Récupérer les tokens push de l'utilisateur
+    let tokens = get_user_push_tokens(pool, user_id).await?;
+
+    if tokens.is_empty() {
+        warn!("[PushService] Aucun token push pour user {}", user_id);
+        return Ok(0);
+    }
+
+    let client = Client::new();
+    let mut success_count = 0;
+    let total_tokens = tokens.len();
+
+    // Envoyer à tous les tokens avec configuration persistante
+    for token in &tokens {
+        let mut notification_data = data.clone().unwrap_or(json!({}));
+        // Ajouter des métadonnées pour la répétition
+        notification_data["persistent"] = json!(true);
+        notification_data["repeat_interval_seconds"] = json!(30);
+        notification_data["notification_id"] = json!(format!("delivery_{}", user_id));
+
+        let message = PushMessage {
+            to: token.clone(),
+            title: title.clone(),
+            body: body.clone(),
+            data: Some(notification_data),
+            sound: Some("delivery_alert".to_string()), // ✅ Son personnalisé pour les livraisons
+            badge: Some(1),
+            priority: Some("high".to_string()),
+            // ✅ Configuration pour notifications persistantes
+            channel_id: Some("delivery_notifications".to_string()), // Canal Android dédié
+            category_id: Some("delivery_available".to_string()), // Catégorie iOS
+            time_to_live: Some(300), // 5 minutes de TTL pour permettre la répétition
+            mutable_content: Some(true), // iOS: notification modifiable
+        };
+
+        // API Expo Push Notifications
+        let response = client
+            .post("https://exp.host/--/api/v2/push/send")
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .json(&message)
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    info!(
+                        "[PushService] ✅ Notification persistante envoyée au token {}",
+                        &token[..20]
+                    );
+                    success_count += 1;
+                } else {
+                    error!(
+                        "[PushService] ❌ Erreur push ({}): {:?}",
+                        resp.status(),
+                        resp.text().await
+                    );
+                }
+            }
+            Err(e) => {
+                error!("[PushService] ❌ Erreur réseau push: {}", e);
+            }
+        }
+    }
+
+    info!(
+        "[PushService] ✅ {} notifications persistantes envoyées sur {} tokens",
         success_count, total_tokens
     );
     Ok(success_count)

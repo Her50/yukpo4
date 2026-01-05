@@ -1,6 +1,7 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons/Button';
 import { Input } from '@/components/ui/input';
+import LocationSelector, { LocationObject } from '@/components/ui/LocationSelector';
 import { useUser } from '@/hooks/useUser';
 import axios from 'axios';
 import { ArrowLeft } from 'lucide-react';
@@ -170,18 +171,39 @@ export default function LaboratoireForm() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Quartier</label>
-                                    <Input
-                                        value={formData.quartier}
-                                        onChange={(e) => setFormData({ ...formData, quartier: e.target.value })}
-                                        placeholder="Quartier"
+                                    <LocationSelector
+                                        label="Quartier"
+                                        value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''}
+                                        onSelect={(location) => {
+                                            const quartierValue = location.raw || location.place_name || '';
+                                            setFormData({ 
+                                                ...formData, 
+                                                quartier: quartierValue,
+                                                ville: location.components?.ville || formData.ville,
+                                                pays: location.components?.pays || formData.pays,
+                                            });
+                                        }}
+                                        placeholder="Rechercher un quartier..."
+                                        scope="neighborhood" // ✅ EXPLICITE: Recherche de quartiers/neighborhoods
+                                        enrichWithBackend
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Ville</label>
-                                    <Input
-                                        value={formData.ville}
-                                        onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
-                                        placeholder="Ville"
+                                    <LocationSelector
+                                        label="Ville"
+                                        value={formData.ville ? (typeof formData.ville === 'string' ? { raw: formData.ville, place_name: formData.ville } : formData.ville) : ''}
+                                        onSelect={(location) => {
+                                            const villeValue = location.raw || location.place_name || '';
+                                            setFormData({ 
+                                                ...formData, 
+                                                ville: villeValue,
+                                                pays: location.components?.pays || formData.pays,
+                                            });
+                                        }}
+                                        placeholder="Rechercher une ville..."
+                                        scope="city" // ✅ EXPLICITE: Recherche de villes uniquement
+                                        enrichWithBackend
                                     />
                                 </div>
                             </div>

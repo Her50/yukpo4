@@ -712,6 +712,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tasks::live_analytics::start_live_analytics_task(app_state.clone());
     // ✅ Scheduler pour les ventes flash live
     tasks::live_flash_sale_scheduler::start_flash_sale_scheduler(app_state.clone());
+    // ✅ NOUVEAU : Démarrer la tâche de répétition des notifications de livraison
+    let app_state_notifications = app_state.clone();
+    tokio::spawn(async move {
+        tasks::delivery_notification_repeat::start_delivery_notification_repeat_task(app_state_notifications).await;
+    });
 
     // ✅ NOUVEAU: Worker de traitement des réservations Flash Sales
     if let (Some(_flash_sale_cache), Some(_flash_sale_queue)) = (

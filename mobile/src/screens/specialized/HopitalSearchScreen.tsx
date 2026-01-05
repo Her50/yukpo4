@@ -28,6 +28,11 @@ interface HopitalSearchFilters {
     max_distance_km?: number;
     type_etablissement?: string;
     prestation?: string;
+    specialites?: string[]; // ✅ NOUVEAU: Spécialités multiples
+    banque_sang?: boolean; // ✅ NOUVEAU: Banque de sang
+    urgences_24h?: boolean; // ✅ NOUVEAU: Urgences 24h/24
+    rdv_en_ligne?: boolean; // ✅ NOUVEAU: RDV en ligne
+    assurances_acceptees?: string[]; // ✅ NOUVEAU: Assurances acceptées
     urgences_only?: boolean;
     available_only?: boolean;
 }
@@ -47,6 +52,13 @@ const HopitalSearchScreen: React.FC = () => {
     const [urgencesOnly, setUrgencesOnly] = useState(false);
     const [availableOnly, setAvailableOnly] = useState(true);
     const [loading, setLoading] = useState(false);
+    // ✅ NOUVEAU: Filtres avancés
+    const [selectedSpecialites, setSelectedSpecialites] = useState<string[]>([]);
+    const [banqueSang, setBanqueSang] = useState(false);
+    const [urgences24h, setUrgences24h] = useState(false);
+    const [rdvEnLigne, setRdvEnLigne] = useState(false);
+    const [selectedAssurances, setSelectedAssurances] = useState<string[]>([]);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
     // Initialiser GPS avec position actuelle
     React.useEffect(() => {
@@ -68,26 +80,45 @@ const HopitalSearchScreen: React.FC = () => {
     };
 
     const handleSearch = () => {
-        const villeStr = typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || '';
-        const quartierStr = typeof quartier === 'string' ? quartier : (quartier as LocationObject)?.components?.quartier || (quartier as LocationObject)?.place_name || '';
+        // ✅ RÉORIENTÉ: Priorité sur recherche de services médicaux plutôt que d'établissements
+        // Si une spécialité ou prestation est sélectionnée, utiliser l'endpoint de recherche de services médicaux
+        const serviceRecherche = prestation || (selectedSpecialites.length > 0 ? selectedSpecialites[0] : '');
         
-        if (!villeStr.trim() && !quartierStr.trim() && !gpsData) {
-            Alert.alert('Erreur', 'Veuillez renseigner une ville/quartier ou sélectionner un point GPS');
+        if (serviceRecherche.trim()) {
+            const filters: HopitalSearchFilters = {
+                prestation: serviceRecherche.trim(),
+            };
+            if (gpsData) {
+                filters.lat = gpsData.lat;
+                filters.lng = gpsData.lng;
+            }
+            if (maxDistance > 0) filters.max_distance_km = maxDistance;
+            if (selectedSpecialites.length > 0) filters.specialites = selectedSpecialites;
+            if (banqueSang) filters.banque_sang = true;
+            if (urgences24h) filters.urgences_24h = true;
+            if (rdvEnLigne) filters.rdv_en_ligne = true;
+            if (availableOnly) filters.available_only = true;
+            // Navigation vers recherche de services médicaux
+            navigation.navigate('MedicalServicesList' as never, { filters } as never);
             return;
         }
 
+        // Sinon, recherche classique d'établissements (secondaire)
+        // GPS ou localisation optionnelle
         const filters: HopitalSearchFilters = {};
-        if (villeStr.trim()) filters.ville = villeStr.trim();
-        if (quartierStr.trim()) filters.quartier = quartierStr.trim();
         if (gpsData) {
             filters.lat = gpsData.lat;
             filters.lng = gpsData.lng;
         }
         if (maxDistance > 0) filters.max_distance_km = maxDistance;
         if (typeEtablissement) filters.type_etablissement = typeEtablissement;
-        if (prestation) filters.prestation = prestation;
         if (urgencesOnly) filters.urgences_only = true;
         if (availableOnly) filters.available_only = true;
+        if (selectedSpecialites.length > 0) filters.specialites = selectedSpecialites;
+        if (banqueSang) filters.banque_sang = true;
+        if (urgences24h) filters.urgences_24h = true;
+        if (rdvEnLigne) filters.rdv_en_ligne = true;
+        if (selectedAssurances.length > 0) filters.assurances_acceptees = selectedAssurances;
 
         navigation.navigate('HopitalList' as never, { filters } as never);
     };
@@ -96,6 +127,18 @@ const HopitalSearchScreen: React.FC = () => {
     const prestations = [
         'Urgences', 'Consultation générale', 'Chirurgie', 'Maternité', 
         'Pédiatrie', 'Cardiologie', 'Neurologie', 'Radiologie'
+    ];
+    // ✅ NOUVEAU: Spécialités médicales complètes
+    const specialites = [
+        'Médecine générale', 'Pédiatrie', 'Gynécologie', 'Cardiologie',
+        'Chirurgie', 'Dentaire', 'Ophtalmologie', 'Dermatologie',
+        'Neurologie', 'Orthopédie', 'Urologie', 'Oncologie',
+        'Psychiatrie', 'Radiologie', 'Anesthésie', 'Réanimation'
+    ];
+    // ✅ NOUVEAU: Assurances acceptées
+    const assurances = [
+        'CNPS', 'CNSS', 'Assurance privée', 'Mutuelle',
+        'Assurance internationale', 'Prise en charge étatique'
     ];
 
     // Recherches rapides spécifiques hôpitaux
@@ -196,35 +239,32 @@ const HopitalSearchScreen: React.FC = () => {
                     </View>
                 </View>
 
-                {/* Formulaire de recherche */}
+                {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur services médicaux */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
+                    <Text style={styles.sectionTitle}>🏥 Recherche de services médicaux</Text>
+                    <Text style={styles.sectionDescription}>
+                        Recherchez un service médical spécifique (consultation, chirurgie, spécialité...)
+                    </Text>
                     
-                    {/* Ville */}
+                    {/* Service médical recherché (PRIORITAIRE) */}
                     <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Ville"
-                            value={ville}
-                            onSelect={(location) => setVille(location)}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            enrichWithBackend={true}
+                        <Text style={styles.label}>
+                            <SafeIcon name="stethoscope" size={14} color={modernColors.primary} type="lucide" /> Service médical recherché *
+                        </Text>
+                        <NativeInput
+                            value={prestation}
+                            onChangeText={setPrestation}
+                            placeholder="Ex: Consultation cardiologie, Chirurgie, Urgences..."
+                            autoCapitalize="words"
                         />
                     </View>
 
-                    {/* Quartier */}
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Quartier (optionnel)"
-                            value={quartier}
-                            onSelect={(location) => setQuartier(location)}
-                            placeholder="Rechercher un quartier..."
-                            scope="neighborhood"
-                            cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
-                            enrichWithBackend={true}
-                        />
-                    </View>
-
+                    {/* Localisation (optionnelle pour recherche de services) */}
+                    <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
+                    <Text style={styles.sectionDescription}>
+                        Ajoutez votre position pour trouver des services à proximité
+                    </Text>
+                    
                     {/* GPS */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -239,7 +279,7 @@ const HopitalSearchScreen: React.FC = () => {
                         >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} type="lucide" />
                             <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                {gpsString || 'Utiliser ma position GPS'}
+                                {gpsString || 'Utiliser ma position GPS (optionnel)'}
                             </Text>
                             <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
                         </TouchableOpacity>
@@ -334,6 +374,169 @@ const HopitalSearchScreen: React.FC = () => {
                         </ScrollView>
                     </View>
 
+                    {/* ✅ NOUVEAU: Bouton filtres avancés */}
+                    <TouchableOpacity
+                        style={styles.advancedFiltersButton}
+                        onPress={() => {
+                            hapticPress();
+                            setShowAdvancedFilters(!showAdvancedFilters);
+                        }}
+                    >
+                        <SafeIcon name={showAdvancedFilters ? "chevron-up" : "chevron-down"} size={20} color="#3B82F6" type="lucide" />
+                        <Text style={styles.advancedFiltersButtonText}>
+                            {showAdvancedFilters ? 'Masquer' : 'Afficher'} les filtres avancés
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* ✅ NOUVEAU: Filtres avancés */}
+                    {showAdvancedFilters && (
+                        <View style={styles.advancedFiltersCard}>
+                            {/* Spécialités multiples */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="list" size={14} color={modernColors.primary} type="lucide" /> Spécialités médicales
+                                </Text>
+                                <View style={styles.servicesGrid}>
+                                    {specialites.map((spec) => {
+                                        const isSelected = selectedSpecialites.includes(spec);
+                                        return (
+                                            <TouchableOpacity
+                                                key={spec}
+                                                style={[
+                                                    styles.serviceChip,
+                                                    isSelected && styles.serviceChipActive
+                                                ]}
+                                                onPress={() => {
+                                                    hapticPress();
+                                                    if (isSelected) {
+                                                        setSelectedSpecialites(selectedSpecialites.filter(s => s !== spec));
+                                                    } else {
+                                                        setSelectedSpecialites([...selectedSpecialites, spec]);
+                                                    }
+                                                }}
+                                            >
+                                                <Text style={[
+                                                    styles.serviceChipText,
+                                                    isSelected && styles.serviceChipTextActive
+                                                ]}>
+                                                    {spec}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+
+                            {/* Assurances acceptées */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="shield" size={14} color={modernColors.primary} type="lucide" /> Assurances acceptées
+                                </Text>
+                                <View style={styles.servicesGrid}>
+                                    {assurances.map((assurance) => {
+                                        const isSelected = selectedAssurances.includes(assurance);
+                                        return (
+                                            <TouchableOpacity
+                                                key={assurance}
+                                                style={[
+                                                    styles.serviceChip,
+                                                    isSelected && styles.serviceChipActive
+                                                ]}
+                                                onPress={() => {
+                                                    hapticPress();
+                                                    if (isSelected) {
+                                                        setSelectedAssurances(selectedAssurances.filter(a => a !== assurance));
+                                                    } else {
+                                                        setSelectedAssurances([...selectedAssurances, assurance]);
+                                                    }
+                                                }}
+                                            >
+                                                <Text style={[
+                                                    styles.serviceChipText,
+                                                    isSelected && styles.serviceChipTextActive
+                                                ]}>
+                                                    {assurance}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+
+                            {/* Options supplémentaires */}
+                            <View style={styles.optionsSection}>
+                                <View style={styles.optionCard}>
+                                    <View style={styles.optionContent}>
+                                        <View style={styles.optionIconContainer}>
+                                            <SafeIcon name="droplet" size={20} color="#DC2626" type="lucide" />
+                                        </View>
+                                        <View style={styles.optionTextContainer}>
+                                            <Text style={styles.optionTitle}>Banque de sang</Text>
+                                            <Text style={styles.optionDescription}>
+                                                Afficher seulement les établissements avec banque de sang
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={banqueSang}
+                                        onValueChange={(value) => {
+                                            hapticPress();
+                                            setBanqueSang(value);
+                                        }}
+                                        trackColor={{ false: '#D1D5DB', true: '#DC2626' }}
+                                        thumbColor="#FFFFFF"
+                                    />
+                                </View>
+
+                                <View style={styles.optionCard}>
+                                    <View style={styles.optionContent}>
+                                        <View style={styles.optionIconContainer}>
+                                            <SafeIcon name="clock" size={20} color="#3B82F6" type="lucide" />
+                                        </View>
+                                        <View style={styles.optionTextContainer}>
+                                            <Text style={styles.optionTitle}>Urgences 24h/24</Text>
+                                            <Text style={styles.optionDescription}>
+                                                Service d'urgences disponible en permanence
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={urgences24h}
+                                        onValueChange={(value) => {
+                                            hapticPress();
+                                            setUrgences24h(value);
+                                        }}
+                                        trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+                                        thumbColor="#FFFFFF"
+                                    />
+                                </View>
+
+                                <View style={styles.optionCard}>
+                                    <View style={styles.optionContent}>
+                                        <View style={styles.optionIconContainer}>
+                                            <SafeIcon name="calendar" size={20} color="#10B981" type="lucide" />
+                                        </View>
+                                        <View style={styles.optionTextContainer}>
+                                            <Text style={styles.optionTitle}>RDV en ligne</Text>
+                                            <Text style={styles.optionDescription}>
+                                                Prise de rendez-vous disponible en ligne
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={rdvEnLigne}
+                                        onValueChange={(value) => {
+                                            hapticPress();
+                                            setRdvEnLigne(value);
+                                        }}
+                                        trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+                                        thumbColor="#FFFFFF"
+                                    />
+                                </View>
+                            </View>
+                        </View>
+                    )}
+
                     {/* Options */}
                     <View style={styles.optionsSection}>
                         <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
@@ -386,10 +589,11 @@ const HopitalSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Bouton recherche */}
-                    <NativeButton
+                    <TouchableOpacity
                         onPress={handleSearch}
                         disabled={loading}
-                        style={styles.searchButton}
+                        style={[styles.searchButton, loading && styles.searchButtonDisabled]}
+                        activeOpacity={0.8}
                     >
                         <View style={styles.searchButtonContent}>
                             <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
@@ -397,7 +601,7 @@ const HopitalSearchScreen: React.FC = () => {
                                 {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
                             </Text>
                         </View>
-                    </NativeButton>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Info section */}
@@ -485,6 +689,12 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#111827',
         marginBottom: 12,
+    },
+    sectionDescription: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginBottom: 16,
+        lineHeight: 18,
     },
     quickSearchesGrid: {
         flexDirection: 'row',
@@ -672,6 +882,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
         borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: '#3B82F6',
+        paddingVertical: 16,
+    },
+    searchButtonDisabled: {
+        opacity: 0.6,
     },
     searchButtonContent: {
         flexDirection: 'row',
@@ -706,6 +921,58 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#1E40AF',
         lineHeight: 20,
+    },
+    // ✅ NOUVEAU: Styles pour filtres avancés
+    advancedFiltersButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        marginBottom: 12,
+        gap: 8,
+    },
+    advancedFiltersButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#3B82F6',
+    },
+    advancedFiltersCard: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    servicesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    serviceChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    serviceChipActive: {
+        backgroundColor: '#3B82F6',
+        borderColor: '#3B82F6',
+    },
+    serviceChipText: {
+        fontSize: 12,
+        color: '#374151',
+        fontWeight: '500',
+    },
+    serviceChipTextActive: {
+        color: '#FFFFFF',
     },
 });
 

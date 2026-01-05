@@ -95,6 +95,11 @@ const LivreScolaireSearchScreen: React.FC = () => {
     const etats = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
     const matieres = ['Mathématiques', 'Français', 'Anglais', 'SVT', 'Physique-Chimie', 'Histoire-Géo', 'Philosophie'];
 
+    // ✅ NOUVEAU: État pour fonctionnalités avancées
+    const [showMatching, setShowMatching] = useState(false);
+    const [showTradeChains, setShowTradeChains] = useState(false);
+    const [loading, setLoading] = useState(false);
+
     // Recherches rapides spécifiques livres scolaires
     const quickSearches = [
         {
@@ -104,7 +109,27 @@ const LivreScolaireSearchScreen: React.FC = () => {
             description: 'Trouver un échange',
             action: () => {
                 hapticPress();
-                // Focus sur échange
+                navigation.navigate('BookTrading' as never);
+            }
+        },
+        {
+            id: 'matching',
+            title: 'Matching IA',
+            icon: 'sparkles',
+            description: 'Matching intelligent',
+            action: () => {
+                hapticPress();
+                setShowMatching(true);
+            }
+        },
+        {
+            id: 'chaines',
+            title: 'Chaînes de troc',
+            icon: 'link',
+            description: 'Troc en chaîne',
+            action: () => {
+                hapticPress();
+                setShowTradeChains(true);
             }
         },
         {
@@ -163,6 +188,59 @@ const LivreScolaireSearchScreen: React.FC = () => {
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
             >
+                {/* ✅ NOUVEAU: Bannière matching et chaînes de troc */}
+                <TouchableOpacity
+                    style={styles.matchingBanner}
+                    onPress={() => {
+                        hapticPress();
+                        setShowMatching(true);
+                    }}
+                >
+                    <LinearGradient
+                        colors={['#059669', '#10B981']}
+                        style={styles.matchingBannerGradient}
+                    >
+                        <View style={styles.matchingBannerContent}>
+                            <View style={styles.matchingBannerIcon}>
+                                <SafeIcon name="sparkles" size={24} color="#FFFFFF" type="lucide" />
+                            </View>
+                            <View style={styles.matchingBannerText}>
+                                <Text style={styles.matchingBannerTitle}>Matching intelligent</Text>
+                                <Text style={styles.matchingBannerSubtitle}>
+                                    Trouvez des échanges parfaits avec l'IA
+                                </Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
+                        </View>
+                    </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.tradeChainsBanner}
+                    onPress={() => {
+                        hapticPress();
+                        setShowTradeChains(true);
+                    }}
+                >
+                    <LinearGradient
+                        colors={['#10B981', '#34D399']}
+                        style={styles.tradeChainsBannerGradient}
+                    >
+                        <View style={styles.tradeChainsBannerContent}>
+                            <View style={styles.tradeChainsBannerIcon}>
+                                <SafeIcon name="link" size={24} color="#FFFFFF" type="lucide" />
+                            </View>
+                            <View style={styles.tradeChainsBannerText}>
+                                <Text style={styles.tradeChainsBannerTitle}>Chaînes de troc</Text>
+                                <Text style={styles.tradeChainsBannerSubtitle}>
+                                    Participez à des échanges en chaîne
+                                </Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
+                        </View>
+                    </LinearGradient>
+                </TouchableOpacity>
+
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
                     <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
@@ -297,8 +375,10 @@ const LivreScolaireSearchScreen: React.FC = () => {
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Ville"
-                            value={ville}
-                            onSelect={(location) => setVille(location)}
+                            value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
+                            onSelect={(location: LocationObject) => {
+                                setVille(location);
+                            }}
                             placeholder="Rechercher une ville..."
                             scope="city"
                             enrichWithBackend={true}
@@ -309,8 +389,10 @@ const LivreScolaireSearchScreen: React.FC = () => {
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Quartier (optionnel)"
-                            value={quartier}
-                            onSelect={(location) => setQuartier(location)}
+                            value={typeof quartier === 'string' ? (quartier ? { raw: quartier, place_name: quartier } : '') : quartier}
+                            onSelect={(location: LocationObject) => {
+                                setQuartier(location);
+                            }}
                             placeholder="Rechercher un quartier..."
                             scope="neighborhood"
                             cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
@@ -371,11 +453,42 @@ const LivreScolaireSearchScreen: React.FC = () => {
                         </View>
                     )}
 
+                    {/* ✅ NOUVEAU: Option recherche échange */}
+                    <View style={styles.inputGroup}>
+                        <View style={styles.optionCard}>
+                            <View style={styles.optionContent}>
+                                <View style={styles.optionIconContainer}>
+                                    <SafeIcon name="repeat" size={20} color="#059669" type="lucide" />
+                                </View>
+                                <View style={styles.optionTextContainer}>
+                                    <Text style={styles.optionTitle}>Rechercher des échanges</Text>
+                                    <Text style={styles.optionDescription}>
+                                        Trouver des utilisateurs intéressés par un échange
+                                    </Text>
+                                </View>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.exchangeButton}
+                                onPress={() => {
+                                    hapticPress();
+                                    navigation.navigate('BookTrading' as never, {
+                                        classeActuelle,
+                                        classeSouhaitee,
+                                        matiere,
+                                    } as never);
+                                }}
+                            >
+                                <SafeIcon name="arrow-right" size={20} color="#059669" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
                     {/* Bouton de recherche */}
-                    <NativeButton
+                    <TouchableOpacity
                         onPress={handleSearch}
                         disabled={loading}
-                        style={styles.searchButton}
+                        style={[styles.searchButton, loading && styles.searchButtonDisabled]}
+                        activeOpacity={0.8}
                     >
                         <View style={styles.searchButtonContent}>
                             <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
@@ -383,7 +496,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                                 {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
                             </Text>
                         </View>
-                    </NativeButton>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Info section */}
@@ -614,6 +727,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
         borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: '#059669',
+        paddingVertical: 16,
+    },
+    searchButtonDisabled: {
+        opacity: 0.6,
     },
     searchButtonContent: {
         flexDirection: 'row',
@@ -648,6 +766,134 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#065F46',
         lineHeight: 20,
+    },
+    // ✅ NOUVEAU: Styles pour bannières
+    matchingBanner: {
+        marginBottom: 16,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    matchingBannerGradient: {
+        padding: 16,
+    },
+    matchingBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    matchingBannerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    matchingBannerText: {
+        flex: 1,
+    },
+    matchingBannerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    matchingBannerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        lineHeight: 16,
+    },
+    tradeChainsBanner: {
+        marginBottom: 20,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    tradeChainsBannerGradient: {
+        padding: 16,
+    },
+    tradeChainsBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    tradeChainsBannerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    tradeChainsBannerText: {
+        flex: 1,
+    },
+    tradeChainsBannerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    tradeChainsBannerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        lineHeight: 16,
+    },
+    optionCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    optionContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        marginRight: 12,
+    },
+    optionIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    optionTextContainer: {
+        flex: 1,
+    },
+    optionTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    optionDescription: {
+        fontSize: 12,
+        color: '#6B7280',
+        lineHeight: 16,
+    },
+    exchangeButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#ECFDF5',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

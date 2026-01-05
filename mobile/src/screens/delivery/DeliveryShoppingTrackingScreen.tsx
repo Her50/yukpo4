@@ -13,6 +13,7 @@ import {
     View
 } from 'react-native';
 
+import CourierDifficultyModal from '../../components/delivery/CourierDifficultyModal';
 import CourierSelectionModal from '../../components/delivery/CourierSelectionModal';
 import EnhancedTrackingMap from '../../components/delivery/EnhancedTrackingMap';
 import InlineChat from '../../components/delivery/InlineChat';
@@ -51,6 +52,8 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
     const [showCourierModal, setShowCourierModal] = useState(false);
     const [rejectingItem, setRejectingItem] = useState<ShoppingBasketItem | null>(null);
     const [updatingStatus, setUpdatingStatus] = useState(false);
+    const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+    const [acceptingDelivery, setAcceptingDelivery] = useState(false);
 
     const { delivery, timeline, refresh, loading } = useDeliveryTracking(deliveryId);
     const { refreshDelivery, updateRecipientLocation, setActiveDeliveryId } = useDeliveryContext();
@@ -82,6 +85,16 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
     const isCourier = useMemo(() => {
         return user?.id && delivery?.courier?.id && String(delivery.courier.id) === String(user.id);
     }, [user?.id, delivery?.courier?.id]);
+
+    // ✅ NOUVEAU : Vérifier si le coursier peut accepter cette course (a été notifié)
+    const canAcceptDelivery = useMemo(() => {
+        if (!user?.id || !delivery) return false;
+        if (delivery.status !== 'awaiting_courier_confirmation') return false;
+        
+        // Vérifier si le coursier actuel a été notifié
+        const notifiedUserIds = delivery.metadata?.notified_user_ids as number[] | undefined;
+        return notifiedUserIds?.includes(user.id) ?? false;
+    }, [user?.id, delivery?.status, delivery?.metadata]);
 
     const shoppingItems = useMemo(() => delivery?.shopping?.items || [], [delivery?.shopping?.items]);
 
@@ -295,6 +308,40 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         }
     };
 
+    // ✅ NOUVEAU : Accepter une course
+    const handleAcceptDelivery = async () => {
+        if (!deliveryId || acceptingDelivery) return;
+        
+        Alert.alert(
+            'Accepter la course',
+            'Êtes-vous sûr de vouloir accepter cette course ?',
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Accepter',
+                    style: 'default',
+                    onPress: async () => {
+                        setAcceptingDelivery(true);
+                        try {
+                            const response = await deliveryApi.acceptDelivery(deliveryId);
+                            if (response.success) {
+                                showSuccess('Course acceptée avec succès !');
+                                await refresh({ force: true });
+                            } else {
+                                showError(response.error || 'Erreur lors de l\'acceptation');
+                            }
+                        } catch (error: any) {
+                            console.error('Erreur acceptation course:', error);
+                            showError(error.message || 'Erreur lors de l\'acceptation');
+                        } finally {
+                            setAcceptingDelivery(false);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     const getStatusOptions = () => {
         const status = delivery?.status;
         if (!status) return [];
@@ -393,6 +440,18 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 {isCourier && (
                     <View style={styles.courierSection}>
                         <Text style={styles.sectionTitle}>Actions coursier</Text>
+                        {/* ✅ NOUVEAU : Bouton pour accepter la course (si notifié) */}
+                        {canAcceptDelivery && (
+                            <TouchableOpacity
+                                style={[styles.button, styles.acceptButton, acceptingDelivery && styles.buttonDisabled]}
+                                onPress={handleAcceptDelivery}
+                                disabled={acceptingDelivery}
+                            >
+                                <Text style={styles.buttonText}>
+                                    {acceptingDelivery ? '⏳ Acceptation...' : '✅ Accepter la course'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                         <TouchableOpacity style={styles.button} onPress={handleNavigation}>
                             <Text style={styles.buttonText}>🧭 Ouvrir navigation</Text>
                         </TouchableOpacity>
@@ -408,6 +467,13 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                 </Text>
                             </TouchableOpacity>
                         ))}
+                        {/* ✅ NOUVEAU : Bouton pour signaler une difficulté */}
+                        <TouchableOpacity
+                            style={[styles.button, styles.difficultyButton]}
+                            onPress={() => setShowDifficultyModal(true)}
+                        >
+                            <Text style={styles.buttonText}>⚠️ Signaler une difficulté</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
 
@@ -682,6 +748,18 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                     }}
                 />
             )}
+
+            {/* ✅ NOUVEAU : Modal de signalement de difficulté */}
+            <CourierDifficultyModal
+                visible={showDifficultyModal}
+                onClose={() => setShowDifficultyModal(false)}
+                deliveryId={deliveryId}
+                onSuccess={async () => {
+                    setShowDifficultyModal(false);
+                    showSuccess('Difficulté signalée. Un nouveau coursier va prendre le relais.');
+                    await refresh({ force: true });
+                }}
+            />
         </SafeNativeView>
     );
 };
@@ -929,6 +1007,14 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: modernColors.border,
         marginVertical: 8,
+    },
+    difficultyButton: {
+        backgroundColor: '#EF4444',
+        borderColor: '#EF4444',
+    },
+    acceptButton: {
+        backgroundColor: '#10B981',
+        borderColor: '#10B981',
     },
 });
 

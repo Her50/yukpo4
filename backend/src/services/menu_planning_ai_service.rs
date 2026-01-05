@@ -9,6 +9,7 @@
 
 use crate::core::types::AppResult;
 use crate::services::app_ia::AppIA;
+use chrono::Datelike;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -128,12 +129,89 @@ impl MenuPlanningAIService {
         Self { app_ia }
     }
 
-    /// Génère un menu hebdomadaire personnalisé
+    /// ✅ NOUVEAU: Génère un menu hebdomadaire intelligent avec contextes dynamiques
+    pub async fn generate_weekly_menu_intelligent(
+        &self,
+        profile: &FamilyProfile,
+        week_start: &str,
+        user_country: Option<&str>,
+        user_city: Option<&str>,
+        previous_menus: &[WeeklyMenu],
+    ) -> AppResult<WeeklyMenu> {
+        // Extraire les recettes des menus précédents
+        let previous_recipes: Vec<String> = previous_menus
+            .iter()
+            .flat_map(|menu| {
+                menu.meals.iter().flat_map(|meal| {
+                    vec![
+                        meal.petit_dejeuner.as_ref().map(|m| m.recipe_name.clone()),
+                        meal.dejeuner.as_ref().map(|m| m.recipe_name.clone()),
+                        meal.diner.as_ref().map(|m| m.recipe_name.clone()),
+                    ]
+                    .into_iter()
+                    .flatten()
+                })
+            })
+            .collect();
+
+        // Construire le prompt enrichi avec contextes intelligents
+        let prompt = self.build_intelligent_prompt(
+            profile,
+            week_start,
+            user_country,
+            user_city,
+            &previous_recipes,
+        );
+
+        let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
+        log::info!(
+            "[MenuPlanningAIService] Menu intelligent généré avec {} (tokens: {})",
+            model_name,
+            tokens
+        );
+
+        let cleaned_response = clean_json_response(&response);
+        let menu: WeeklyMenu = match serde_json::from_str(&cleaned_response) {
+            Ok(m) => m,
+            Err(e) => {
+                log::error!(
+                    "[MenuPlanningAIService] Erreur parsing JSON: {} | Réponse: {}",
+                    e,
+                    cleaned_response
+                );
+                self.create_fallback_menu(profile, week_start)
+            }
+        };
+
+        Ok(menu)
+    }
+
+    /// Génère un menu hebdomadaire personnalisé (version originale - gardée pour compatibilité)
     pub async fn generate_weekly_menu(
         &self,
         profile: &FamilyProfile,
         week_start: &str,
     ) -> AppResult<WeeklyMenu> {
+        // Utiliser la version intelligente avec contextes vides
+        self.generate_weekly_menu_intelligent(
+            profile,
+            week_start,
+            None,
+            None,
+            &[],
+        )
+        .await
+    }
+
+    /// ✅ NOUVEAU: Construit le prompt intelligent avec contextes dynamiques
+    fn build_intelligent_prompt(
+        &self,
+        profile: &FamilyProfile,
+        week_start: &str,
+        user_country: Option<&str>,
+        user_city: Option<&str>,
+        previous_recipes: &[String],
+    ) -> String {
         let preferences_str = profile.preferences.join(", ");
         let allergies_str = if profile.allergies.is_empty() {
             "Aucune".to_string()
@@ -145,17 +223,126 @@ impl MenuPlanningAIService {
         } else {
             profile.dietary_restrictions.join(", ")
         };
-        let cuisine_str = profile.cuisine_styles.join(", ");
+        
+        // ✅ CONTEXTE 1: Localité culinaire (utiliser les préférences du profil si disponibles)
+        let cuisine_str = if !profile.cuisine_styles.is_empty() {
+            profile.cuisine_styles.join(", ")
+        } else {
+            // Si aucune préférence, l'IA déterminera automatiquement basé sur le pays/ville
+            String::new()
+        };
+        
         let budget_str = profile
             .budget_monthly
             .map(|b| format!("{:.2} FCFA", b))
             .unwrap_or_else(|| "Non spécifié".to_string());
 
+        // ✅ CONTEXTE 2: Localité géographique (détection dynamique)
+        let location_context = if let (Some(country), Some(city)) = (user_country, user_city) {
+            if !cuisine_str.is_empty() {
+                // Si l'utilisateur a spécifié des préférences culinaires, les utiliser
+                format!(
+                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n\
+                    - Pays de résidence : {}\n\
+                    - Ville : {}\n\
+                    - CUISINE PRÉFÉRÉE : {}\n\
+                    - PRIORITÉ : Plats traditionnels locaux adaptés à {}, ingrédients disponibles localement, recettes authentiques\n\
+                    - ADAPTATION : Utilise les noms de plats locaux, les ingrédients typiques de la région de {}\n\
+                    - CONTEXTE : Adapte les plats de la cuisine {} aux ingrédients et traditions de {}",
+                    country, city, cuisine_str, city, city, cuisine_str, country
+                )
+            } else {
+                // Sinon, laisser l'IA déterminer intelligemment la cuisine appropriée
+                format!(
+                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n\
+                    - Pays de résidence : {}\n\
+                    - Ville : {}\n\
+                    - DÉTECTION AUTOMATIQUE : Tu DOIS déterminer intelligemment la cuisine traditionnelle de {} ({})\n\
+                    - PRIORITÉ ABSOLUE : Proposer UNIQUEMENT des plats de la cuisine locale traditionnelle de {}\n\
+                    - INTERDICTION STRICTE : Ne JAMAIS proposer de plats de cuisines étrangères inadaptées \
+                    (ex: ne pas proposer de menu chinois, japonais, italien à un résident de {})\n\
+                    - INGRÉDIENTS LOCAUX : Utilise uniquement les ingrédients typiques et disponibles localement à {}\n\
+                    - NOMS LOCAUX : Utilise les noms de plats authentiques de {}\n\
+                    - TRADITIONS : Respecte les traditions culinaires et les habitudes alimentaires de {}",
+                    country, city, country, city, country, country, city, country, country
+                )
+            }
+        } else if let Some(country) = user_country {
+            if !cuisine_str.is_empty() {
+                format!(
+                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n\
+                    - Pays de résidence : {}\n\
+                    - CUISINE PRÉFÉRÉE : {}\n\
+                    - PRIORITÉ : Plats traditionnels locaux adaptés, ingrédients disponibles localement",
+                    country, cuisine_str
+                )
+            } else {
+                format!(
+                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n\
+                    - Pays de résidence : {}\n\
+                    - DÉTECTION AUTOMATIQUE : Tu DOIS déterminer intelligemment la cuisine traditionnelle de {}\n\
+                    - PRIORITÉ ABSOLUE : Proposer UNIQUEMENT des plats de la cuisine locale traditionnelle de {}\n\
+                    - INTERDICTION STRICTE : Ne JAMAIS proposer de plats de cuisines étrangères inadaptées\n\
+                    - INGRÉDIENTS LOCAUX : Utilise uniquement les ingrédients typiques et disponibles localement\n\
+                    - TRADITIONS : Respecte les traditions culinaires de {}",
+                    country, country, country, country
+                )
+            }
+        } else {
+            String::new()
+        };
+
+        // ✅ CONTEXTE 3: Saisonnalité (mois actuel)
+        let now = chrono::Utc::now();
+        let current_month = now.month();
+        let month_name = Self::get_month_name_fr(current_month);
+        let seasonal_context = if let Some(country) = user_country {
+            format!(
+                "\n\n🌱 SAISONNALITÉ (CRITIQUE - Mois actuel: {}) :\n\
+                - Pays : {}\n\
+                - CONTRAINTE STRICTE : Utilise UNIQUEMENT les ingrédients de saison pour ce pays en {}\n\
+                - INTERDICTION : Ne JAMAIS proposer d'ingrédients hors saison (cher, moins frais, moins disponible)\n\
+                - PRIORITÉ : Privilégier les fruits et légumes de saison pour optimiser coût et qualité\n\
+                - ADAPTATION : Consulte tes connaissances sur les saisons agricoles de {} et propose uniquement \
+                les ingrédients disponibles naturellement en ce moment",
+                month_name, country, month_name, country
+            )
+        } else {
+            format!(
+                "\n\n🌱 SAISONNALITÉ (CRITIQUE - Mois actuel: {}) :\n\
+                - CONTRAINTE STRICTE : Utilise UNIQUEMENT les ingrédients de saison pour le mois de {}\n\
+                - INTERDICTION : Ne JAMAIS proposer d'ingrédients hors saison\n\
+                - PRIORITÉ : Privilégier les fruits et légumes de saison",
+                month_name, month_name
+            )
+        };
+
+        // ✅ CONTEXTE 4: Variation temporelle
+        let variation_context = if !previous_recipes.is_empty() {
+            let recipes_list = previous_recipes
+                .iter()
+                .take(20) // Limiter à 20 pour ne pas surcharger le prompt
+                .map(|r| format!("- {}", r))
+                .collect::<Vec<_>>()
+                .join("\n");
+            format!(
+                "\n\n🔄 VARIATION TEMPORELLE (CRITIQUE) :\n\
+                - Plats récents déjà proposés (à éviter) :\n{}\n\
+                - CONTRAINTE STRICTE : Éviter de répéter ces plats dans le nouveau menu\n\
+                - OBJECTIF : Proposer des plats DIFFÉRENTS pour varier l'alimentation\n\
+                - PRIORITÉ : Nouveaux plats, nouvelles recettes, nouvelles combinaisons\n\
+                - Si répétition nécessaire : Varier au moins les accompagnements ou la préparation",
+                recipes_list
+            )
+        } else {
+            "\n\n🔄 VARIATION TEMPORELLE :\n- Aucun menu précédent, liberté totale dans le choix des plats".to_string()
+        };
+
         let prompt = format!(
             r#"
 Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de menus.
 
-CONTEXTE FAMILLE :
+👥 CONTEXTE FAMILLE :
 - Nombre total de personnes : {}
 - Enfants : {}, Adultes : {}
 - Préférences alimentaires : {}
@@ -165,17 +352,18 @@ CONTEXTE FAMILLE :
 - Budget mensuel : {}
 - Niveau cuisine : {:?}
 - Temps disponible : {:?} heures/jour
+{}{}{}
 
-TON RÔLE :
+🎯 TON RÔLE :
 - Générer un menu hebdomadaire complet (Lundi à Dimanche)
 - Planifier petit-déjeuner, déjeuner, dîner pour chaque jour
 - Adapter les quantités au nombre de personnes
 - Respecter allergies et restrictions
 - Optimiser le budget
 - Varier les repas pour éviter la monotonie
-- Suggérer des plats adaptés au contexte africain/camerounais quand pertinent
+- RESPECTER STRICTEMENT les contextes géographique, saisonnier et de variation ci-dessus
 
-RÉPONSE ATTENDUE (JSON strict) :
+📋 RÉPONSE ATTENDUE (JSON strict) :
 {{
     "week_start": "{}",
     "meals": [
@@ -200,11 +388,14 @@ RÉPONSE ATTENDUE (JSON strict) :
     "recommendations": ["Recommandation 1", "Recommandation 2"]
 }}
 
-IMPORTANT :
-- Utiliser des noms de plats réalistes et adaptés au contexte
+✅ RÈGLES CRITIQUES :
+- Utiliser des noms de plats réalistes et adaptés au contexte local
 - Les quantités doivent être adaptées au nombre de personnes
 - Respecter strictement les allergies
 - Varier les types de plats
+- RESPECTER la localité culinaire (pas de cuisines inadaptées)
+- RESPECTER la saisonnalité (uniquement ingrédients de saison)
+- RESPECTER la variation (éviter les répétitions)
 "#,
             profile.total_members,
             profile.children_count,
@@ -216,36 +407,34 @@ IMPORTANT :
             budget_str,
             profile.cooking_level,
             profile.time_available_hours,
+            location_context,
+            seasonal_context,
+            variation_context,
             week_start,
             profile.total_members
         );
-
-        let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
-        log::info!(
-            "[MenuPlanningAIService] Menu généré avec {} (tokens: {})",
-            model_name,
-            tokens
-        );
-
-        // ✅ CORRECTION 2: Nettoyer la réponse JSON (enlever markdown code blocks)
-        let cleaned_response = clean_json_response(&response);
         
-        // Parser la réponse JSON
-        let menu: WeeklyMenu = match serde_json::from_str(&cleaned_response) {
-            Ok(m) => m,
-            Err(e) => {
-                log::error!(
-                    "[MenuPlanningAIService] Erreur parsing JSON: {} | Réponse originale: {} | Réponse nettoyée: {}",
-                    e,
-                    response,
-                    cleaned_response
-                );
-                // Fallback: créer un menu basique
-                self.create_fallback_menu(profile, week_start)
-            }
-        };
+        prompt
+    }
 
-        Ok(menu)
+
+    /// ✅ NOUVEAU: Nom du mois en français
+    fn get_month_name_fr(month: u32) -> &'static str {
+        match month {
+            1 => "janvier",
+            2 => "février",
+            3 => "mars",
+            4 => "avril",
+            5 => "mai",
+            6 => "juin",
+            7 => "juillet",
+            8 => "août",
+            9 => "septembre",
+            10 => "octobre",
+            11 => "novembre",
+            12 => "décembre",
+            _ => "mois inconnu",
+        }
     }
 
     /// Suggère des recettes selon préférences
@@ -442,6 +631,153 @@ RÉPONSE ATTENDUE (JSON strict) :
             });
 
         Ok(analysis)
+    }
+
+    /// ✅ NOUVEAU: Génère une recette complète pour un plat spécifique
+    pub async fn generate_recipe(
+        &self,
+        recipe_name: &str,
+        profile: Option<&FamilyProfile>,
+        user_country: Option<&str>,
+        user_city: Option<&str>,
+        servings: Option<i32>,
+    ) -> AppResult<serde_json::Value> {
+        let servings = servings.unwrap_or(4);
+        
+        // Construire le contexte du profil si disponible
+        let profile_context = if let Some(p) = profile {
+            let allergies_str = if p.allergies.is_empty() { 
+                "Aucune".to_string() 
+            } else { 
+                p.allergies.join(", ") 
+            };
+            let restrictions_str = if p.dietary_restrictions.is_empty() { 
+                "Aucune".to_string() 
+            } else { 
+                p.dietary_restrictions.join(", ") 
+            };
+            let cuisine_styles_str = if p.cuisine_styles.is_empty() { 
+                "africaine".to_string() 
+            } else { 
+                p.cuisine_styles.join(", ") 
+            };
+            format!(
+                "\n👥 CONTEXTE FAMILLE :\n\
+                - Nombre de portions : {}\n\
+                - Préférences : {}\n\
+                - Allergies : {}\n\
+                - Restrictions : {}\n\
+                - Styles de cuisine : {}",
+                servings,
+                p.preferences.join(", "),
+                allergies_str,
+                restrictions_str,
+                cuisine_styles_str
+            )
+        } else {
+            format!("\n👥 CONTEXTE :\n- Nombre de portions : {}", servings)
+        };
+
+        // Contexte géographique (détection dynamique)
+        let location_context = if let (Some(country), Some(city)) = (user_country, user_city) {
+            format!(
+                "\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n\
+                - Pays : {}\n\
+                - Ville : {}\n\
+                - DÉTECTION AUTOMATIQUE : Détermine intelligemment la cuisine traditionnelle de {} ({})\n\
+                - PRIORITÉ : Utilise les ingrédients disponibles localement à {}, les noms de plats authentiques de {}\n\
+                - TRADITIONS : Respecte les techniques culinaires et traditions de la région de {}\n\
+                - ADAPTATION : Adapte la recette aux habitudes alimentaires et aux ingrédients typiques de {}",
+                country, city, country, city, city, country, city, country
+            )
+        } else if let Some(country) = user_country {
+            format!(
+                "\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n\
+                - Pays : {}\n\
+                - DÉTECTION AUTOMATIQUE : Détermine intelligemment la cuisine traditionnelle de {}\n\
+                - PRIORITÉ : Utilise les ingrédients disponibles localement, les noms de plats authentiques\n\
+                - TRADITIONS : Respecte les techniques culinaires et traditions de {}",
+                country, country, country
+            )
+        } else {
+            String::new()
+        };
+
+        let prompt = format!(
+            r#"
+Tu es l'assistant culinaire intelligent de Yukpomnang spécialisé dans les recettes.
+{}{}
+
+🎯 TON RÔLE :
+Générer une recette COMPLÈTE et DÉTAILLÉE pour le plat : "{}"
+
+📋 RÉPONSE ATTENDUE (JSON strict) :
+{{
+    "recipe_name": "Nom exact du plat",
+    "description": "Description courte et appétissante du plat",
+    "cuisine_style": "Style de cuisine (ex: camerounaise, sénégalaise, etc.)",
+    "meal_type": ["petit_dejeuner", "dejeuner", "diner"],
+    "difficulty": "débutant" | "intermédiaire" | "avancé",
+    "prep_time_minutes": 30,
+    "cook_time_minutes": 45,
+    "total_time_minutes": 75,
+    "servings": {},
+    "ingredients": [
+        {{
+            "name": "Nom ingrédient",
+            "quantity": 2.5,
+            "unit": "kg" | "g" | "ml" | "l" | "c. à soupe" | "c. à café" | "pièce(s)",
+            "notes": "Optionnel : notes sur l'ingrédient"
+        }}
+    ],
+    "instructions": [
+        "Étape 1 détaillée",
+        "Étape 2 détaillée",
+        "..."
+    ],
+    "tips": ["Astuce 1", "Astuce 2"],
+    "estimated_cost": 5000.0,
+    "calories_per_serving": 450.0,
+    "nutrition": {{
+        "proteins": 25.0,
+        "carbs": 60.0,
+        "fats": 15.0,
+        "fiber": 8.0
+    }},
+    "tags": ["tag1", "tag2"]
+}}
+
+IMPORTANT :
+- Si le plat demandé n'est pas dans la liste de suggestions, génère quand même une recette adaptée
+- Adapte les ingrédients à la localité (pays/ville) si fourni
+- Respecte les allergies et restrictions si fournies
+- Fournis des instructions claires et détaillées
+- Inclus des astuces pratiques
+"#,
+            profile_context,
+            location_context,
+            recipe_name,
+            servings
+        );
+
+        let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
+        log::info!(
+            "[MenuPlanningAIService] Recette générée avec {} (tokens: {})",
+            model_name,
+            tokens
+        );
+
+        // Nettoyer la réponse JSON
+        let cleaned_response = clean_json_response(&response);
+        
+        let recipe: serde_json::Value =
+            serde_json::from_str(&cleaned_response).unwrap_or_else(|_| json!({
+                "recipe_name": recipe_name,
+                "description": "Recette en cours de génération",
+                "error": "Impossible de générer la recette"
+            }));
+
+        Ok(recipe)
     }
 
     /// Crée un menu de fallback en cas d'erreur

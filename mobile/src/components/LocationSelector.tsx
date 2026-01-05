@@ -429,16 +429,61 @@ interface LocationSelectorProps {
     enrichWithBackend?: boolean;  // ✅ Si true, appelle /api/places/enrich
 }
 
+// ✅ NOUVEAU: Fonction pour déterminer automatiquement le scope basé sur le label
+const determineScopeFromLabel = (label: string, providedScope?: PlaceScope | 'all'): PlaceScope | 'all' => {
+    // Si un scope est explicitement fourni, l'utiliser
+    if (providedScope) {
+        return providedScope;
+    }
+    
+    // Sinon, déterminer le scope basé sur le label
+    const labelLower = label.toLowerCase().trim();
+    
+    // Détection pour "ville"
+    if (labelLower.includes('ville') && !labelLower.includes('quartier') && !labelLower.includes('lieu')) {
+        return 'city';
+    }
+    
+    // Détection pour "quartier"
+    if (labelLower.includes('quartier') && !labelLower.includes('lieu')) {
+        return 'neighborhood';
+    }
+    
+    // Détection pour "pays"
+    if (labelLower.includes('pays') && !labelLower.includes('lieu') && !labelLower.includes('ville') && !labelLower.includes('quartier')) {
+        return 'all'; // 'all' pour rechercher les pays
+    }
+    
+    // Pour "lieu" ou autres champs génériques → recherche universelle (établissements + géographie)
+    if (labelLower.includes('lieu') || labelLower.includes('localisation') || labelLower.includes('adresse')) {
+        return 'all'; // Recherche universelle pour les lieux/établissements
+    }
+    
+    // Par défaut, recherche universelle
+    return 'all';
+};
+
 export const LocationSelector: React.FC<LocationSelectorProps> = ({
     label,
     value,
     onSelect,
-    placeholder = 'Ville, quartier, lieu, site, boutique...',
-    scope = 'all', // ✅ NOUVEAU: Par défaut, recherche universelle (tous types géographiques + établissements)
+    placeholder,
+    scope,
     cityContext,
     required = false,
     enrichWithBackend = false,
 }) => {
+    // ✅ NOUVEAU: Déterminer automatiquement le scope basé sur le label si non fourni
+    const finalScope = determineScopeFromLabel(label, scope);
+    
+    // ✅ NOUVEAU: Déterminer le placeholder par défaut basé sur le scope
+    const defaultPlaceholder = placeholder || (
+        finalScope === 'city' ? 'Rechercher une ville...' :
+        finalScope === 'neighborhood' ? 'Rechercher un quartier...' :
+        finalScope === 'all' && label.toLowerCase().includes('pays') ? 'Rechercher un pays...' :
+        'Rechercher un lieu, ville, quartier...'
+    );
+    
     // ✅ NOUVEAU 2026-01-04: Utiliser useLocation pour obtenir la localisation de l'utilisateur
     const { location: userLocation } = useLocation();
 
@@ -499,14 +544,14 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                         setOptions(resultsEnriched.map(r => r.description)); // Pour compatibilité
                     } else if (!cancelled) {
                         // Fallback sur placesService si Google Places API échoue
-                        const scopeParam = scope === 'all' ? undefined : scope as PlaceScope;
+                        const scopeParam = finalScope === 'all' ? undefined : finalScope as PlaceScope;
                         const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeParam, cityContext);
                         setOptionsEnriched(resultsEnriched);
                         setOptions(resultsEnriched.map(r => r.description));
                     }
                 } else {
                     // ✅ Fallback: Utiliser placesService si clé API non configurée
-                    const scopeParam = scope === 'all' ? undefined : scope as PlaceScope;
+                    const scopeParam = finalScope === 'all' ? undefined : finalScope as PlaceScope;
                     const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeParam, cityContext);
                     if (!cancelled) {
                         setOptionsEnriched(resultsEnriched);
@@ -518,7 +563,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 if (!cancelled) {
                     // Fallback sur placesService en cas d'erreur
                     try {
-                        const scopeParam = scope === 'all' ? undefined : scope as PlaceScope;
+                        const scopeParam = finalScope === 'all' ? undefined : finalScope as PlaceScope;
                         const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeParam, cityContext);
                         setOptionsEnriched(resultsEnriched);
                         setOptions(resultsEnriched.map(r => r.description));
@@ -534,7 +579,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         };
         run();
         return () => { cancelled = true; };
-    }, [debouncedQuery, scope, cityContext, userLocation]);
+    }, [debouncedQuery, finalScope, cityContext, userLocation]);
 
     return (
         <View style={styles.container}>
@@ -547,7 +592,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             >
                 <View style={{ flex: 1 }}>
                     <Text style={[styles.selectorText, !displayValue && styles.placeholderText]}>
-                        {displayValue || placeholder}
+                        {displayValue || defaultPlaceholder}
                     </Text>
                     {enriching && (
                         <Text style={styles.enrichingText}>🌍 Enrichissement en cours...</Text>
@@ -572,9 +617,9 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>
                                 Rechercher {
-                                    scope === 'city' ? 'une ville' :
-                                        scope === 'neighborhood' ? 'un quartier' :
-                                            scope === 'point' ? 'un lieu' :
+                                    finalScope === 'city' ? 'une ville' :
+                                        finalScope === 'neighborhood' ? 'un quartier' :
+                                            finalScope === 'point' ? 'un lieu' :
                                                 'ville, quartier, lieu, site...'
                                 }
                             </Text>
@@ -586,7 +631,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                         <View style={styles.searchContainer}>
                             <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
                             <TextInput
-                                placeholder={placeholder}
+                                placeholder={defaultPlaceholder}
                                 value={query}
                                 onChangeText={setQuery}
                                 style={styles.searchInput}

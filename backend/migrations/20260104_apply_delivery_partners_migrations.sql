@@ -220,3 +220,4 @@ $$;
 -- ✅ Migration terminée
 SELECT '✅ Migrations delivery_partners appliquées avec succès' AS status;
 
+

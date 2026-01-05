@@ -42,6 +42,7 @@ pub fn gen_jwt(role: &str, user_id: i32) -> String {
         Some(format!("Test User {}", user_id)), // ✅ NOUVEAU: nom de test
         100,
         &secret,
+        None, // partner_type
     )
     .unwrap()
 }

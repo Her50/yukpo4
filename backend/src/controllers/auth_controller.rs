@@ -54,11 +54,13 @@ pub async fn login_handler(
         role: String,
         tokens_balance: i64,
         nom_complet: Option<String>,
+        partner_status: Option<String>,
+        partner_type: Option<String>,
     }
 
     let user = sqlx::query_as::<_, UserRow>(
         r#"
-        SELECT id, email, password_hash, role, tokens_balance, nom_complet
+        SELECT id, email, password_hash, role, tokens_balance, nom_complet, partner_status, partner_type
         FROM users
         WHERE email = $1
         "#,
@@ -92,6 +94,26 @@ pub async fn login_handler(
         );
         return Err(AppError::Unauthorized("Identifiants incorrects".into()));
     }
+    
+    // ✅ NOUVEAU: Vérifier le statut partenaire
+    if user.role == "partenaire" {
+        match user.partner_status.as_deref() {
+            Some("pending") => {
+                return Err(AppError::Forbidden(
+                    "Votre compte partenaire est en attente de validation par un administrateur".into()
+                ));
+            }
+            Some("rejected") => {
+                return Err(AppError::Forbidden(
+                    "Votre compte partenaire a été rejeté. Contactez le support pour plus d'informations".into()
+                ));
+            }
+            Some("approved") | None => {
+                // Compte approuvé ou statut non défini (ancien système)
+            }
+            _ => {}
+        }
+    }
     let secret = std::env::var("JWT_SECRET")
         .map_err(|_| AppError::Internal("JWT_SECRET manquant".into()))?;
     let jwt = generate_jwt(
@@ -101,15 +123,23 @@ pub async fn login_handler(
         user.nom_complet.clone(), // ✅ NOUVEAU: passer le nom de l'utilisateur
         user.tokens_balance,
         &secret,
+        user.partner_type.clone(), // ✅ NOUVEAU: passer le type de partenaire
     )?;
-    let response_data = serde_json::json!({
+    let mut response_data = serde_json::json!({
         "token": jwt,
         "tokens_balance": user.tokens_balance
     });
+    
+    // ✅ NOUVEAU: Inclure partner_type dans la réponse si c'est un partenaire
+    if user.role == "partenaire" {
+        response_data["partner_type"] = serde_json::json!(user.partner_type);
+    }
+    
     info!(
-        "[login_handler] ✅ Réponse login générée: token présent={}, tokens_balance={}",
+        "[login_handler] ✅ Réponse login générée: token présent={}, tokens_balance={}, role={}",
         !response_data["token"].as_str().unwrap_or("").is_empty(),
-        response_data["tokens_balance"]
+        response_data["tokens_balance"],
+        user.role
     );
     Ok(Json(response_data))
 }
@@ -122,6 +152,14 @@ pub struct RegisterInput {
     pub email: String,
     pub password: String,
     pub lang: Option<String>,
+    // ✅ NOUVEAU: Champs pour inscription partenaire
+    pub is_partner: Option<bool>, // true si c'est une inscription partenaire
+    pub partner_type: Option<String>, // 'pharmacie', 'hopital', 'laboratoire', 'agence de voyage'
+    pub partner_name: Option<String>, // Nom de la structure/établissement
+    pub partner_phone: Option<String>, // Téléphone de la structure
+    pub partner_address: Option<String>, // Adresse de la structure
+    pub partner_city: Option<String>, // Ville
+    pub partner_country: Option<String>, // Pays
 }
 
 /// ? Inscription manuelle
@@ -144,10 +182,38 @@ pub async fn register_user(
         validate_name(name, "Nom complet")?;
     }
 
+    // ✅ NOUVEAU: Déterminer le rôle
+    let user_role = if payload.is_partner.unwrap_or(false) {
+        "partenaire"
+    } else {
+        "user"
+    };
+    
+    // ✅ NOUVEAU: Valider partner_type si c'est un partenaire
+    if user_role == "partenaire" {
+        let valid_types = ["pharmacie", "hopital", "laboratoire", "agence de voyage", 
+                          "demenagement", "transport", "assureur", "supermarche", "telecom"];
+        if let Some(ref pt) = payload.partner_type {
+            if !valid_types.contains(&pt.as_str()) {
+                return Err(AppError::BadRequest(
+                    format!("Type de partenaire invalide. Types valides: {}", 
+                           valid_types.join(", "))
+                ));
+            }
+        } else {
+            return Err(AppError::BadRequest("partner_type est requis pour un partenaire".into()));
+        }
+        
+        if payload.partner_name.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true) {
+            return Err(AppError::BadRequest("partner_name est requis pour un partenaire".into()));
+        }
+    }
+
     // ✅ SÉCURITÉ: Logger l'email masqué
     info!(
-        "Appel register_user pour email={}",
-        log_safe_email(&payload.email)
+        "Appel register_user pour email={}, role={}",
+        log_safe_email(&payload.email),
+        user_role
     );
     let db = &state.pg;
     let exists =
@@ -208,15 +274,15 @@ pub async fn register_user(
         INSERT INTO users (
             email, password_hash, role, tokens_balance, preferred_lang,
             token_price_user, token_price_provider, commission_pct,
-            nom, prenom, nom_complet, avatar_url
+            nom, prenom, nom_complet, avatar_url, partner_type, partner_status
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING id, tokens_balance
         "#,
     )
     .bind(&payload.email)
     .bind(&password_hash)
-    .bind("user")
+    .bind(user_role)
     .bind(INITIAL_TOKENS)
     .bind(payload.lang.as_deref().unwrap_or("fr"))
     .bind(default_token_price_user)
@@ -226,6 +292,8 @@ pub async fn register_user(
     .bind(payload.prenom.as_deref())
     .bind(nom_complet.as_deref())
     .bind(avatar_url.as_deref())
+    .bind(payload.partner_type.as_deref())
+    .bind(if user_role == "partenaire" { Some("pending") } else { None::<&str> })
     .fetch_one(db)
     .await;
     let new = match new {
@@ -243,11 +311,12 @@ pub async fn register_user(
         .map_err(|_| AppError::Internal("JWT_SECRET manquant".into()))?;
     let jwt = generate_jwt(
         new.id,
-        "user",
+        user_role,
         &payload.email,
         nom_complet.clone(), // ✅ NOUVEAU: passer le nom de l'utilisateur
         new.tokens_balance,
         &secret,
+        payload.partner_type.clone(), // ✅ NOUVEAU: passer le type de partenaire
     )?;
 
     // Retourne explicitement 201 Created avec le token
@@ -500,6 +569,17 @@ pub async fn oauth_login_handler(
             return Err(e.into());
         }
     };
+    
+    // ✅ NOUVEAU: Récupérer partner_type depuis la DB pour OAuth
+    let partner_type: Option<String> = sqlx::query_scalar(
+        "SELECT partner_type FROM users WHERE id = $1"
+    )
+    .bind(user_id)
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten();
+    
     let secret = std::env::var("JWT_SECRET")
         .map_err(|_| AppError::Internal("JWT_SECRET manquant".into()))?;
     let jwt = generate_jwt(
@@ -509,6 +589,7 @@ pub async fn oauth_login_handler(
         nom_complet, // ✅ NOUVEAU: passer le nom de l'utilisateur
         balance,
         &secret,
+        partner_type, // ✅ NOUVEAU: passer le type de partenaire
     )?;
     Ok(Json(serde_json::json!({
         "token": jwt,

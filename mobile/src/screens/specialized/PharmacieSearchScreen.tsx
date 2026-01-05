@@ -12,6 +12,7 @@ import {
     View
 } from 'react-native';
 import ModernGPSModal from '../../components/ModernGPSModal';
+import PharmacyAIFeatures from '../../components/PharmacyAIFeatures';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
@@ -28,6 +29,10 @@ interface PharmacieSearchFilters {
     max_distance_km?: number;
     on_duty_only?: boolean;
     available_only?: boolean;
+    type_pharmacie?: string;
+    services?: string[];
+    livraison?: boolean;
+    product_search?: string; // ✅ NOUVEAU: Recherche de produits
 }
 
 const PharmacieSearchScreen: React.FC = () => {
@@ -43,6 +48,14 @@ const PharmacieSearchScreen: React.FC = () => {
     const [onDutyOnly, setOnDutyOnly] = useState(false);
     const [availableOnly, setAvailableOnly] = useState(true);
     const [loading, setLoading] = useState(false);
+    // ✅ NOUVEAU: Filtres avancés
+    const [typePharmacie, setTypePharmacie] = useState<string>('');
+    const [selectedServices, setSelectedServices] = useState<string[]>([]);
+    const [livraison, setLivraison] = useState(false);
+    const [productSearch, setProductSearch] = useState('');
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    // ✅ NOUVEAU: Modal fonctionnalités IA
+    const [showAIFeatures, setShowAIFeatures] = useState(false);
 
     React.useEffect(() => {
         if (location?.coords) {
@@ -63,34 +76,73 @@ const PharmacieSearchScreen: React.FC = () => {
     };
 
     const handleSearch = () => {
-        if (!ville.trim() && !quartier.trim() && !gpsData) {
-            Alert.alert('Erreur', 'Veuillez renseigner une ville/quartier ou sélectionner un point GPS');
+        // ✅ RÉORIENTÉ: Priorité sur recherche de produits/services plutôt que d'établissements
+        // Si recherche de produits, utiliser l'endpoint de recherche de produits
+        if (productSearch.trim()) {
+            const filters: PharmacieSearchFilters = {
+                product_search: productSearch.trim(),
+            };
+            if (gpsData) {
+                filters.lat = gpsData.lat;
+                filters.lng = gpsData.lng;
+            }
+            if (maxDistance > 0) filters.max_distance_km = maxDistance;
+            if (availableOnly) filters.available_only = true;
+            // Navigation vers recherche de produits
+            navigation.navigate('PharmacieProductsList' as never, { filters } as never);
             return;
         }
 
+        // Si recherche de pharmacie de garde, utiliser l'endpoint spécialisé
+        if (onDutyOnly) {
+            const filters: PharmacieSearchFilters = {
+                on_duty_only: true,
+            };
+            if (gpsData) {
+                filters.lat = gpsData.lat;
+                filters.lng = gpsData.lng;
+            }
+            if (maxDistance > 0) filters.max_distance_km = maxDistance;
+            // Navigation vers pharmacies de garde
+            navigation.navigate('PharmaciesOnDutyList' as never, { filters } as never);
+            return;
+        }
+
+        // Sinon, recherche classique d'établissements (secondaire)
+        // GPS ou localisation optionnelle pour recherche d'établissements
         const filters: PharmacieSearchFilters = {};
-        const villeStr = typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || '';
-        const quartierStr = typeof quartier === 'string' ? quartier : (quartier as LocationObject)?.components?.quartier || (quartier as LocationObject)?.place_name || '';
-        if (villeStr.trim()) filters.ville = villeStr.trim();
-        if (quartierStr.trim()) filters.quartier = quartierStr.trim();
         if (gpsData) {
             filters.lat = gpsData.lat;
             filters.lng = gpsData.lng;
         }
         if (maxDistance > 0) filters.max_distance_km = maxDistance;
-        if (onDutyOnly) filters.on_duty_only = true;
         if (availableOnly) filters.available_only = true;
+        // ✅ Filtres avancés
+        if (typePharmacie) filters.type_pharmacie = typePharmacie;
+        if (selectedServices.length > 0) filters.services = selectedServices;
+        if (livraison) filters.livraison = true;
 
         navigation.navigate('PharmacieList' as never, { filters } as never);
     };
 
-    // Recherches rapides
+    // ✅ RÉORIENTÉ: Recherches rapides - Priorité sur services/produits
     const quickSearches = [
+        {
+            id: 'produits',
+            title: 'Recherche produits',
+            icon: 'search',
+            description: 'Médicaments disponibles',
+            action: () => {
+                hapticPress();
+                setShowAdvancedFilters(true);
+                // Focus sur recherche produits
+            }
+        },
         {
             id: 'garde',
             title: 'Pharmacie de garde',
             icon: 'clock',
-            description: '24/7 disponible',
+            description: 'Disponible 24/7',
             action: () => {
                 hapticPress();
                 setOnDutyOnly(true);
@@ -99,27 +151,31 @@ const PharmacieSearchScreen: React.FC = () => {
         },
         {
             id: 'proche',
-            title: 'Plus proche',
+            title: 'À proximité',
             icon: 'map-pin',
-            description: 'À proximité',
+            description: 'Produits près de moi',
             action: () => {
                 hapticPress();
                 setMaxDistance(10);
                 setAvailableOnly(true);
             }
         },
-        {
-            id: 'urgence',
-            title: 'Urgence',
-            icon: 'alert-circle',
-            description: 'Disponible maintenant',
-            action: () => {
-                hapticPress();
-                setOnDutyOnly(true);
-                setAvailableOnly(true);
-                setMaxDistance(20);
-            }
-        },
+    ];
+
+    // ✅ NOUVEAU: Types de pharmacies
+    const typesPharmacie = [
+        { value: 'classique', label: 'Classique' },
+        { value: 'garde', label: 'De garde' },
+        { value: '24h', label: '24h/24' },
+    ];
+
+    // ✅ NOUVEAU: Services disponibles
+    const servicesOptions = [
+        { value: 'test_rapide', label: 'Tests rapides' },
+        { value: 'vaccination', label: 'Vaccination' },
+        { value: 'conseil', label: 'Conseil pharmaceutique' },
+        { value: 'dermato', label: 'Produits dermatologiques' },
+        { value: 'pediatrie', label: 'Pédiatrie' },
     ];
 
     return (
@@ -156,6 +212,35 @@ const PharmacieSearchScreen: React.FC = () => {
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
             >
+                {/* ✅ NOUVEAU: Bouton fonctionnalités IA */}
+                <View style={styles.aiFeaturesBanner}>
+                    <LinearGradient
+                        colors={['#EC4899', '#F472B6']}
+                        style={styles.aiFeaturesBannerGradient}
+                    >
+                        <View style={styles.aiFeaturesBannerContent}>
+                            <View style={styles.aiFeaturesBannerIcon}>
+                                <SafeIcon name="sparkles" size={24} color="#FFFFFF" type="lucide" />
+                            </View>
+                            <View style={styles.aiFeaturesBannerText}>
+                                <Text style={styles.aiFeaturesBannerTitle}>Fonctionnalités IA</Text>
+                                <Text style={styles.aiFeaturesBannerSubtitle}>
+                                    Interactions, dosage, budget, recherche produits
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.aiFeaturesBannerButton}
+                                onPress={() => {
+                                    hapticPress();
+                                    setShowAIFeatures(true);
+                                }}
+                            >
+                                <SafeIcon name="arrow-right" size={20} color="#EC4899" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+                    </LinearGradient>
+                </View>
+
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
                     <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
@@ -182,35 +267,32 @@ const PharmacieSearchScreen: React.FC = () => {
                     </View>
                 </View>
 
-                {/* Formulaire de recherche */}
+                {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur produits/services */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
+                    <Text style={styles.sectionTitle}>🔍 Recherche de produits</Text>
+                    <Text style={styles.sectionDescription}>
+                        Recherchez des médicaments ou produits pharmaceutiques disponibles
+                    </Text>
                     
-                    {/* Ville */}
+                    {/* Recherche de produits (PRIORITAIRE) */}
                     <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Ville"
-                            value={ville}
-                            onSelect={(location) => setVille(location)}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            enrichWithBackend={true}
+                        <Text style={styles.label}>
+                            <SafeIcon name="search" size={14} color={modernColors.primary} type="lucide" /> Nom du produit ou médicament *
+                        </Text>
+                        <NativeInput
+                            value={productSearch}
+                            onChangeText={setProductSearch}
+                            placeholder="Ex: Paracétamol, Doliprane, Amoxicilline..."
+                            autoCapitalize="none"
                         />
                     </View>
 
-                    {/* Quartier */}
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Quartier (optionnel)"
-                            value={quartier}
-                            onSelect={(location) => setQuartier(location)}
-                            placeholder="Rechercher un quartier..."
-                            scope="neighborhood"
-                            cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
-                            enrichWithBackend={true}
-                        />
-                    </View>
-
+                    {/* Localisation (optionnelle pour recherche de produits) */}
+                    <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
+                    <Text style={styles.sectionDescription}>
+                        Ajoutez votre position pour trouver des produits à proximité
+                    </Text>
+                    
                     {/* GPS */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -225,7 +307,7 @@ const PharmacieSearchScreen: React.FC = () => {
                         >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} type="lucide" />
                             <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                {gpsString || 'Utiliser ma position GPS'}
+                                {gpsString || 'Utiliser ma position GPS (optionnel)'}
                             </Text>
                             <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
                         </TouchableOpacity>
@@ -261,6 +343,126 @@ const PharmacieSearchScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
                     </View>
+
+                    {/* ✅ NOUVEAU: Recherche de produits */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>
+                            <SafeIcon name="pill" size={14} color={modernColors.primary} type="lucide" /> Rechercher un médicament/produit (optionnel)
+                        </Text>
+                        <NativeInput
+                            value={productSearch}
+                            onChangeText={setProductSearch}
+                            placeholder="Ex: Paracétamol, Amoxicilline..."
+                        />
+                    </View>
+
+                    {/* ✅ NOUVEAU: Bouton filtres avancés */}
+                    <TouchableOpacity
+                        style={styles.advancedFiltersButton}
+                        onPress={() => {
+                            hapticPress();
+                            setShowAdvancedFilters(!showAdvancedFilters);
+                        }}
+                    >
+                        <SafeIcon name={showAdvancedFilters ? "chevron-up" : "chevron-down"} size={20} color="#EC4899" type="lucide" />
+                        <Text style={styles.advancedFiltersButtonText}>
+                            {showAdvancedFilters ? 'Masquer' : 'Afficher'} les filtres avancés
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* ✅ NOUVEAU: Filtres avancés */}
+                    {showAdvancedFilters && (
+                        <View style={styles.advancedFiltersCard}>
+                            {/* Type de pharmacie */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" /> Type de pharmacie
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
+                                    {typesPharmacie.map((type) => (
+                                        <TouchableOpacity
+                                            key={type.value}
+                                            style={[
+                                                styles.chip,
+                                                typePharmacie === type.value && styles.chipActive
+                                            ]}
+                                            onPress={() => {
+                                                hapticPress();
+                                                setTypePharmacie(typePharmacie === type.value ? '' : type.value);
+                                            }}
+                                        >
+                                            <Text style={[
+                                                styles.chipText,
+                                                typePharmacie === type.value && styles.chipTextActive
+                                            ]}>
+                                                {type.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+
+                            {/* Services */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="list" size={14} color={modernColors.primary} type="lucide" /> Services disponibles
+                                </Text>
+                                <View style={styles.servicesGrid}>
+                                    {servicesOptions.map((service) => {
+                                        const isSelected = selectedServices.includes(service.value);
+                                        return (
+                                            <TouchableOpacity
+                                                key={service.value}
+                                                style={[
+                                                    styles.serviceChip,
+                                                    isSelected && styles.serviceChipActive
+                                                ]}
+                                                onPress={() => {
+                                                    hapticPress();
+                                                    if (isSelected) {
+                                                        setSelectedServices(selectedServices.filter(s => s !== service.value));
+                                                    } else {
+                                                        setSelectedServices([...selectedServices, service.value]);
+                                                    }
+                                                }}
+                                            >
+                                                <Text style={[
+                                                    styles.serviceChipText,
+                                                    isSelected && styles.serviceChipTextActive
+                                                ]}>
+                                                    {service.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+
+                            {/* Livraison */}
+                            <View style={styles.optionCard}>
+                                <View style={styles.optionContent}>
+                                    <View style={styles.optionIconContainer}>
+                                        <SafeIcon name="truck" size={20} color="#10B981" type="lucide" />
+                                    </View>
+                                    <View style={styles.optionTextContainer}>
+                                        <Text style={styles.optionTitle}>Livraison à domicile</Text>
+                                        <Text style={styles.optionDescription}>
+                                            Afficher seulement les pharmacies avec service de livraison
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Switch
+                                    value={livraison}
+                                    onValueChange={(value) => {
+                                        hapticPress();
+                                        setLivraison(value);
+                                    }}
+                                    trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+                                    thumbColor="#FFFFFF"
+                                />
+                            </View>
+                        </View>
+                    )}
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
@@ -314,10 +516,11 @@ const PharmacieSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Bouton recherche */}
-                    <NativeButton
+                    <TouchableOpacity
                         onPress={handleSearch}
                         disabled={loading}
-                        style={styles.searchButton}
+                        style={[styles.searchButton, loading && styles.searchButtonDisabled]}
+                        activeOpacity={0.8}
                     >
                         <View style={styles.searchButtonContent}>
                             <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
@@ -325,7 +528,7 @@ const PharmacieSearchScreen: React.FC = () => {
                                 {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
                             </Text>
                         </View>
-                    </NativeButton>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Info section */}
@@ -346,6 +549,12 @@ const PharmacieSearchScreen: React.FC = () => {
                 visible={showGPSModal}
                 onClose={() => setShowGPSModal(false)}
                 onSelect={handleGPSSelect}
+            />
+
+            {/* ✅ NOUVEAU: Modal fonctionnalités IA */}
+            <PharmacyAIFeatures
+                visible={showAIFeatures}
+                onClose={() => setShowAIFeatures(false)}
             />
         </SafeNativeView>
     );
@@ -411,6 +620,26 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#111827',
         marginBottom: 12,
+    },
+    sectionDescription: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginBottom: 16,
+        lineHeight: 18,
+    },
+    priceRangeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginTop: 8,
+    },
+    priceInput: {
+        flex: 1,
+    },
+    priceRangeSeparator: {
+        fontSize: 16,
+        color: '#6B7280',
+        fontWeight: '600',
     },
     quickSearchesGrid: {
         flexDirection: 'row',
@@ -573,6 +802,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
         borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: '#EC4899',
+        paddingVertical: 16,
+    },
+    searchButtonDisabled: {
+        opacity: 0.6,
     },
     searchButtonContent: {
         flexDirection: 'row',
@@ -607,6 +841,132 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#1E40AF',
         lineHeight: 20,
+    },
+    // ✅ NOUVEAU: Styles pour filtres avancés
+    advancedFiltersButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        marginBottom: 12,
+        gap: 8,
+    },
+    advancedFiltersButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#EC4899',
+    },
+    advancedFiltersCard: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    chipContainer: {
+        flexDirection: 'row',
+        marginTop: 8,
+        gap: 8,
+    },
+    chip: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#D1D5DB',
+    },
+    chipActive: {
+        backgroundColor: '#EC4899',
+        borderColor: '#EC4899',
+    },
+    chipText: {
+        fontSize: 14,
+        color: '#374151',
+        fontWeight: '600',
+    },
+    chipTextActive: {
+        color: '#FFFFFF',
+    },
+    servicesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    serviceChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    serviceChipActive: {
+        backgroundColor: '#EC4899',
+        borderColor: '#EC4899',
+    },
+    serviceChipText: {
+        fontSize: 12,
+        color: '#374151',
+        fontWeight: '500',
+    },
+    serviceChipTextActive: {
+        color: '#FFFFFF',
+    },
+    // ✅ NOUVEAU: Styles pour bannière fonctionnalités IA
+    aiFeaturesBanner: {
+        marginBottom: 20,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    aiFeaturesBannerGradient: {
+        padding: 16,
+    },
+    aiFeaturesBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    aiFeaturesBannerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    aiFeaturesBannerText: {
+        flex: 1,
+    },
+    aiFeaturesBannerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    aiFeaturesBannerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        lineHeight: 16,
+    },
+    aiFeaturesBannerButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

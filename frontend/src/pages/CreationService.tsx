@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/buttons";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, CheckCircle } from "lucide-react";
+import LocationSelector, { LocationObject } from "@/components/ui/LocationSelector";
 import { useUser } from "@/hooks/useUser";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
@@ -155,7 +156,17 @@ const CreationService = () => {
               <Textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Description du service" />
               <Input name="prix" value={form.prix} onChange={handleFormChange} placeholder="Prix (FCFA)" type="number" />
               <Input name="categorie" value={form.categorie} onChange={handleFormChange} placeholder="Catégorie" />
-              <Input name="localisation" value={form.localisation} onChange={handleFormChange} placeholder="Ville / Quartier" />
+              <LocationSelector
+                label="Localisation"
+                value={form.localisation ? (typeof form.localisation === 'string' ? { raw: form.localisation, place_name: form.localisation } : form.localisation) : ''}
+                onSelect={(location) => {
+                  const localisationValue = location.raw || location.place_name || '';
+                  handleFormChange({ target: { name: 'localisation', value: localisationValue } } as any);
+                }}
+                placeholder="Rechercher une ville ou quartier..."
+                scope="all"
+                enrichWithBackend
+              />
             </div>
 
             {blueprint.length > 0 && (

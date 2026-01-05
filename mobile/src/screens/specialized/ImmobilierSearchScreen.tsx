@@ -11,6 +11,7 @@ import {
     View,
 } from 'react-native';
 import ModernGPSModal from '../../components/ModernGPSModal';
+import RealEstateAIFeatures from '../../components/RealEstateAIFeatures';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
@@ -59,6 +60,8 @@ const ImmobilierSearchScreen: React.FC = () => {
     const [nbChambresMin, setNbChambresMin] = useState<string>('');
     const [standing, setStanding] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    // ✅ NOUVEAU: Modal fonctionnalités IA
+    const [showAIFeatures, setShowAIFeatures] = useState(false);
 
     // Initialiser GPS avec position actuelle
     React.useEffect(() => {
@@ -223,6 +226,33 @@ const ImmobilierSearchScreen: React.FC = () => {
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
             >
+                {/* ✅ NOUVEAU: Bannière fonctionnalités IA */}
+                <TouchableOpacity
+                    style={styles.aiFeaturesBanner}
+                    onPress={() => {
+                        hapticPress();
+                        setShowAIFeatures(true);
+                    }}
+                >
+                    <LinearGradient
+                        colors={['#8B5CF6', '#A78BFA']}
+                        style={styles.aiFeaturesBannerGradient}
+                    >
+                        <View style={styles.aiFeaturesBannerContent}>
+                            <View style={styles.aiFeaturesBannerIcon}>
+                                <SafeIcon name="sparkles" size={24} color="#FFFFFF" type="lucide" />
+                            </View>
+                            <View style={styles.aiFeaturesBannerText}>
+                                <Text style={styles.aiFeaturesBannerTitle}>Fonctionnalités IA</Text>
+                                <Text style={styles.aiFeaturesBannerSubtitle}>
+                                    Recommandations, estimation prix, comparaison, alertes
+                                </Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
+                        </View>
+                    </LinearGradient>
+                </TouchableOpacity>
+
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
                     <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
@@ -301,8 +331,10 @@ const ImmobilierSearchScreen: React.FC = () => {
                             <Text style={styles.sectionTitle}>📍 Localisation</Text>
                             <LocationSelector
                                 label="Ville"
-                                value={ville}
-                                onSelect={(location) => setVille(location)}
+                                value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
+                                onSelect={(location: LocationObject) => {
+                                    setVille(location);
+                                }}
                                 placeholder="Rechercher une ville..."
                                 scope="city"
                                 enrichWithBackend={true}
@@ -310,8 +342,10 @@ const ImmobilierSearchScreen: React.FC = () => {
                             <View style={{ marginTop: 12 }}>
                                 <LocationSelector
                                     label="Quartier (optionnel)"
-                                    value={quartier}
-                                    onSelect={(location) => setQuartier(location)}
+                                    value={typeof quartier === 'string' ? (quartier ? { raw: quartier, place_name: quartier } : '') : quartier}
+                                    onSelect={(location: LocationObject) => {
+                                        setQuartier(location);
+                                    }}
                                     placeholder="Rechercher un quartier..."
                                     scope="neighborhood"
                                     cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
@@ -547,10 +581,11 @@ const ImmobilierSearchScreen: React.FC = () => {
                     )}
 
                     {/* Bouton recherche */}
-                    <NativeButton
+                    <TouchableOpacity
                         onPress={handleSearch}
                         disabled={loading}
-                        style={styles.searchButton}
+                        style={[styles.searchButton, loading && styles.searchButtonDisabled]}
+                        activeOpacity={0.8}
                     >
                         <View style={styles.searchButtonContent}>
                             <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
@@ -558,7 +593,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                                 {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
                             </Text>
                         </View>
-                    </NativeButton>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Info section */}
@@ -586,6 +621,12 @@ const ImmobilierSearchScreen: React.FC = () => {
                 initialCoordinates={searchMode === 'zone' ? searchZone : gpsString}
                 allowZoneSelection={searchMode === 'zone'}
                 title={searchMode === 'zone' ? 'Délimiter une zone de recherche' : 'Sélectionner un point GPS'}
+            />
+
+            {/* ✅ NOUVEAU: Modal fonctionnalités IA */}
+            <RealEstateAIFeatures
+                visible={showAIFeatures}
+                onClose={() => setShowAIFeatures(false)}
             />
         </SafeNativeView>
     );
@@ -795,6 +836,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
         borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: '#1E40AF',
+        paddingVertical: 16,
+    },
+    searchButtonDisabled: {
+        opacity: 0.6,
     },
     searchButtonContent: {
         flexDirection: 'row',
@@ -829,6 +875,47 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#1E3A8A',
         lineHeight: 20,
+    },
+    // ✅ NOUVEAU: Styles pour bannière fonctionnalités IA
+    aiFeaturesBanner: {
+        marginBottom: 20,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    aiFeaturesBannerGradient: {
+        padding: 16,
+    },
+    aiFeaturesBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    aiFeaturesBannerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    aiFeaturesBannerText: {
+        flex: 1,
+    },
+    aiFeaturesBannerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    aiFeaturesBannerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        lineHeight: 16,
     },
     modeSelector: {
         flexDirection: 'row',

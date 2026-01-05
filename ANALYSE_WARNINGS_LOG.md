@@ -438,3 +438,4 @@ WHERE id = (SELECT parcel_id FROM deliveries WHERE id = $1)
    - Monitoring des performances
    - Alertes sur requêtes lentes
 
+

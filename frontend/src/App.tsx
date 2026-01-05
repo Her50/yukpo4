@@ -22,6 +22,7 @@ import HomePage from '@/pages/HomePage';
 import LoginPage from '@/pages/LoginPage';
 import PageNotFound from '@/pages/PageNotFound';
 import RegisterPage from '@/pages/RegisterPage';
+import PartnerRegisterPage from '@/pages/PartnerRegisterPage'; // ✅ NOUVEAU: Inscription partenaire
 // Recherche & Cr+�ation service
 import ServiceFormDynamic from "@/components/forms/ServiceFormDynamic";
 import ChatDialog from '@/pages/ChatDialog';
@@ -173,6 +174,7 @@ function App() {
                         {/* ���� Pages publiques */}
                         <Route path={ROUTES.HOME} element={<HomePage />} />
                         <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
+                        <Route path={ROUTES.PARTNER_REGISTER} element={<PartnerRegisterPage />} /> {/* ✅ NOUVEAU: Inscription partenaire */}
                         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
                         <Route path={ROUTES.CONFIRMATION} element={<ConfirmationPage />} />
                         <Route path={ROUTES.ABOUT} element={<AboutPage />} />

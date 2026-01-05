@@ -299,6 +299,10 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         // )
         // ✅ Routes Immobilier (protégées)
         .route(
+            "/api/immobilier/biens",
+            post(specialized_services_controller::create_property),
+        )
+        .route(
             "/api/immobilier/biens/{id}/book-visit",
             post(specialized_services_controller::book_property_visit),
         )
@@ -860,6 +864,10 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/menus/ai/generate-week",
             post(menu_planning_controller::generate_weekly_menu),
+        )
+        .route(
+            "/api/menus/ai/generate-recipe",
+            post(menu_planning_controller::generate_recipe),
         )
         .route(
             "/api/menus/my-week",

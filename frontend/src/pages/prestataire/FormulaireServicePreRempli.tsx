@@ -7,6 +7,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import LocationSelector, { LocationObject } from "@/components/ui/LocationSelector";
 import axios from "axios";
 import { useUser } from "@/hooks/useUser";
 
@@ -98,7 +99,17 @@ const FormulaireServicePreRempli = () => {
           <Textarea name="description" value={form.description} onChange={handleChange} placeholder="Description détaillée" />
           <Input name="prix" value={form.prix} onChange={handleChange} placeholder="Prix (FCFA)" type="number" />
           <Input name="categorie" value={form.categorie} onChange={handleChange} placeholder="Catégorie" />
-          <Input name="localisation" value={form.localisation} onChange={handleChange} placeholder="Ville / Quartier" />
+          <LocationSelector
+            label="Localisation"
+            value={form.localisation ? (typeof form.localisation === 'string' ? { raw: form.localisation, place_name: form.localisation } : form.localisation) : ''}
+            onSelect={(location) => {
+              const localisationValue = location.raw || location.place_name || '';
+              handleChange({ target: { name: 'localisation', value: localisationValue } } as any);
+            }}
+            placeholder="Rechercher une ville ou quartier..."
+            scope="all"
+            enrichWithBackend
+          />
         </div>
 
         {blueprint.length > 0 && (

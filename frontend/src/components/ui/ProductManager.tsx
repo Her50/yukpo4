@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/buttons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import LocationSelector, { LocationObject } from '@/components/ui/LocationSelector';
 import MapModal from '@/components/ui/MapModal';
 import { PriceVariantSelector } from '@/components/ui/PriceVariantSelector';
 import { useToast } from '@/components/ui/use-toast';
@@ -1730,7 +1731,20 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                             </div>
 
                                             <div><Label>Adresse *</Label><Input placeholder="Ex: Avenue Kennedy" value={editingProduct.adresseHotel || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, adresseHotel: e.target.value }))} /></div>
-                                            <div><Label>Ville *</Label><Input placeholder="Ex: Douala" value={editingProduct.villeHotel || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, villeHotel: e.target.value }))} /></div>
+                                            <div>
+                                                <Label>Ville *</Label>
+                                                <LocationSelector
+                                                    label=""
+                                                    value={editingProduct.villeHotel ? (typeof editingProduct.villeHotel === 'string' ? { raw: editingProduct.villeHotel, place_name: editingProduct.villeHotel } : editingProduct.villeHotel) : ''}
+                                                    onSelect={(location) => {
+                                                        const villeValue = location.raw || location.place_name || '';
+                                                        setEditingProduct(prev => ({ ...prev!, villeHotel: villeValue }));
+                                                    }}
+                                                    placeholder="Rechercher une ville..."
+                                                    scope="city"
+                                                    enrichWithBackend
+                                                />
+                                            </div>
                                         </div>
                                     )}
 

@@ -29,6 +29,12 @@ interface AgenceVoyageSearchFilters {
     destination?: string;
     compagnie_bus?: string;
     available_only?: boolean;
+    // ✅ NOUVEAU: Filtres tickets bus
+    search_tickets?: boolean; // Activer recherche tickets
+    date_depart?: string; // Date de départ
+    heure_depart?: string; // Heure de départ
+    ville_depart?: string; // Ville de départ
+    ville_arrivee?: string; // Ville d'arrivée
 }
 
 const AgenceVoyageSearchScreen: React.FC = () => {
@@ -43,8 +49,15 @@ const AgenceVoyageSearchScreen: React.FC = () => {
     const [maxDistance, setMaxDistance] = useState(50);
     const [destination, setDestination] = useState('');
     const [compagnieBus, setCompagnieBus] = useState('');
+    const [compagnieBusFilter, setCompagnieBusFilter] = useState(''); // Pour filtres tickets bus
     const [availableOnly, setAvailableOnly] = useState(true);
     const [loading, setLoading] = useState(false);
+    // ✅ NOUVEAU: Mode recherche (agences vs tickets)
+    const [searchMode, setSearchMode] = useState<'agences' | 'tickets'>('agences');
+    const [dateDepart, setDateDepart] = useState('');
+    const [heureDepart, setHeureDepart] = useState('');
+    const [villeDepart, setVilleDepart] = useState<LocationObject | string>('');
+    const [villeArrivee, setVilleArrivee] = useState<LocationObject | string>('');
 
     React.useEffect(() => {
         if (location?.coords) {
@@ -65,17 +78,39 @@ const AgenceVoyageSearchScreen: React.FC = () => {
     };
 
     const handleSearch = () => {
-        const villeStr = typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || '';
-        const quartierStr = typeof quartier === 'string' ? quartier : (quartier as LocationObject)?.components?.quartier || (quartier as LocationObject)?.place_name || '';
-        
-        if (!villeStr.trim() && !quartierStr.trim() && !gpsData) {
-            Alert.alert('Erreur', 'Veuillez renseigner une ville/quartier ou sélectionner un point GPS');
+        // ✅ RÉORIENTÉ: Priorité sur recherche de tickets bus plutôt que d'agences
+        // Mode tickets bus (PRIORITAIRE)
+        if (searchMode === 'tickets') {
+            const villeDepartStr = typeof villeDepart === 'string' ? villeDepart : (villeDepart as LocationObject)?.components?.ville || (villeDepart as LocationObject)?.place_name || '';
+            const villeArriveeStr = typeof villeArrivee === 'string' ? villeArrivee : (villeArrivee as LocationObject)?.components?.ville || (villeArrivee as LocationObject)?.place_name || '';
+            
+            if (!villeDepartStr.trim() || !villeArriveeStr.trim()) {
+                Alert.alert('Erreur', 'Veuillez renseigner la ville de départ et d\'arrivée');
+                return;
+            }
+
+            const filters: AgenceVoyageSearchFilters = {
+                search_tickets: true,
+                ville_depart: villeDepartStr.trim(),
+                ville_arrivee: villeArriveeStr.trim(),
+            };
+            if (dateDepart.trim()) filters.date_depart = dateDepart.trim();
+            if (heureDepart.trim()) filters.heure_depart = heureDepart.trim();
+            if (compagnieBusFilter.trim()) filters.compagnie_bus_filter = compagnieBusFilter.trim();
+            if (gpsData) {
+                filters.lat = gpsData.lat;
+                filters.lng = gpsData.lng;
+            }
+            if (maxDistance > 0) filters.max_distance_km = maxDistance;
+            
+            // Navigation vers recherche tickets
+            navigation.navigate('BusTicketSearch' as never, { filters } as never);
             return;
         }
 
+        // Sinon, recherche classique d'agences (secondaire)
+        // GPS ou localisation optionnelle
         const filters: AgenceVoyageSearchFilters = {};
-        if (villeStr.trim()) filters.ville = villeStr.trim();
-        if (quartierStr.trim()) filters.quartier = quartierStr.trim();
         if (gpsData) {
             filters.lat = gpsData.lat;
             filters.lng = gpsData.lng;
@@ -88,7 +123,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
         navigation.navigate('AgenceVoyageList' as never, { filters } as never);
     };
 
-    // Recherches rapides spécifiques agence voyage
+    // ✅ AMÉLIORÉ: Recherches rapides avec mode tickets
     const quickSearches = [
         {
             id: 'proche',
@@ -97,28 +132,29 @@ const AgenceVoyageSearchScreen: React.FC = () => {
             description: 'À proximité',
             action: () => {
                 hapticPress();
+                setSearchMode('agences');
                 setMaxDistance(15);
                 setAvailableOnly(true);
             }
         },
         {
-            id: 'destination',
-            title: 'Par destination',
-            icon: 'map',
-            description: 'Recherche ciblée',
+            id: 'tickets',
+            title: 'Rechercher tickets',
+            icon: 'ticket',
+            description: 'Billets de bus',
             action: () => {
                 hapticPress();
-                // Focus sur le champ destination
+                setSearchMode('tickets');
             }
         },
         {
-            id: 'compagnie',
-            title: 'Par compagnie',
-            icon: 'building',
-            description: 'Filtrer compagnie',
+            id: 'mes_tickets',
+            title: 'Mes tickets',
+            icon: 'file-text',
+            description: 'Voir mes billets',
             action: () => {
                 hapticPress();
-                // Focus sur le champ compagnie
+                navigation.navigate('MyBusTickets' as never);
             }
         },
     ];
@@ -157,6 +193,56 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
             >
+                {/* ✅ NOUVEAU: Sélecteur de mode */}
+                <View style={styles.modeSelector}>
+                    <TouchableOpacity
+                        style={[
+                            styles.modeButton,
+                            searchMode === 'agences' && styles.modeButtonActive
+                        ]}
+                        onPress={() => {
+                            hapticPress();
+                            setSearchMode('agences');
+                        }}
+                    >
+                        <SafeIcon
+                            name="building"
+                            size={18}
+                            color={searchMode === 'agences' ? '#FFFFFF' : '#8B5CF6'}
+                            type="lucide"
+                        />
+                        <Text style={[
+                            styles.modeButtonText,
+                            searchMode === 'agences' && styles.modeButtonTextActive
+                        ]}>
+                            Agences
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.modeButton,
+                            searchMode === 'tickets' && styles.modeButtonActive
+                        ]}
+                        onPress={() => {
+                            hapticPress();
+                            setSearchMode('tickets');
+                        }}
+                    >
+                        <SafeIcon
+                            name="ticket"
+                            size={18}
+                            color={searchMode === 'tickets' ? '#FFFFFF' : '#8B5CF6'}
+                            type="lucide"
+                        />
+                        <Text style={[
+                            styles.modeButtonText,
+                            searchMode === 'tickets' && styles.modeButtonTextActive
+                        ]}>
+                            Tickets Bus
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
                     <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
@@ -183,109 +269,229 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                     </View>
                 </View>
 
-                {/* Formulaire de recherche */}
+                {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur tickets bus */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
-                    
-                    {/* Ville */}
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Ville"
-                            value={ville}
-                            onSelect={(location) => setVille(location)}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            enrichWithBackend={true}
-                        />
-                    </View>
-
-                    {/* Quartier */}
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Quartier (optionnel)"
-                            value={quartier}
-                            onSelect={(location) => setQuartier(location)}
-                            placeholder="Rechercher un quartier..."
-                            scope="neighborhood"
-                            cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
-                            enrichWithBackend={true}
-                        />
-                    </View>
-
-                    {/* GPS */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" /> Position GPS
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.gpsButton}
-                            onPress={() => {
-                                hapticPress();
-                                setShowGPSModal(true);
-                            }}
-                        >
-                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} type="lucide" />
-                            <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                {gpsString || 'Utiliser ma position GPS'}
+                    {searchMode === 'tickets' ? (
+                        <>
+                            <Text style={styles.sectionTitle}>🎫 Recherche de tickets bus</Text>
+                            <Text style={styles.sectionDescription}>
+                                Recherchez des tickets de bus pour votre trajet. Les villes de départ et d'arrivée sont obligatoires.
                             </Text>
-                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Distance max */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="maximize-2" size={14} color={modernColors.primary} type="lucide" /> Distance maximale
-                        </Text>
-                        <View style={styles.distanceCard}>
-                            <TouchableOpacity
-                                style={styles.distanceButton}
-                                onPress={() => {
-                                    hapticPress();
-                                    setMaxDistance(Math.max(5, maxDistance - 5));
-                                }}
-                            >
-                                <SafeIcon name="minus" size={18} color="#FFFFFF" type="lucide" />
-                            </TouchableOpacity>
-                            <View style={styles.distanceValueContainer}>
-                                <Text style={styles.distanceValue}>{maxDistance}</Text>
-                                <Text style={styles.distanceUnit}>km</Text>
+                            
+                            {/* Ville de départ - OBLIGATOIRE */}
+                            <View style={styles.inputGroup}>
+                                <LocationSelector
+                                    label="Ville de départ *"
+                                    value={typeof villeDepart === 'string' ? (villeDepart ? { raw: villeDepart, place_name: villeDepart } : '') : villeDepart}
+                                    onSelect={(location: LocationObject) => {
+                                        setVilleDepart(location);
+                                    }}
+                                    placeholder="Rechercher une ville de départ..."
+                                    scope="city"
+                                    enrichWithBackend={true}
+                                    required={true}
+                                />
+                                {!villeDepart && (
+                                    <Text style={styles.requiredHint}>Ce champ est obligatoire</Text>
+                                )}
                             </View>
-                            <TouchableOpacity
-                                style={styles.distanceButton}
-                                onPress={() => {
-                                    hapticPress();
-                                    setMaxDistance(Math.min(200, maxDistance + 5));
-                                }}
-                            >
-                                <SafeIcon name="plus" size={18} color="#FFFFFF" type="lucide" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
 
-                    {/* Destination */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="map" size={14} color={modernColors.primary} type="lucide" /> Destination recherchée (optionnel)
-                        </Text>
-                        <NativeInput
-                            value={destination}
-                            onChangeText={setDestination}
-                            placeholder="Ex: Bafoussam, Buea"
-                        />
-                    </View>
+                            {/* Ville d'arrivée - OBLIGATOIRE */}
+                            <View style={styles.inputGroup}>
+                                <LocationSelector
+                                    label="Ville d'arrivée *"
+                                    value={typeof villeArrivee === 'string' ? (villeArrivee ? { raw: villeArrivee, place_name: villeArrivee } : '') : villeArrivee}
+                                    onSelect={(location: LocationObject) => {
+                                        setVilleArrivee(location);
+                                    }}
+                                    placeholder="Rechercher une ville d'arrivée..."
+                                    scope="city"
+                                    enrichWithBackend={true}
+                                    required={true}
+                                />
+                                {!villeArrivee && (
+                                    <Text style={styles.requiredHint}>Ce champ est obligatoire</Text>
+                                )}
+                            </View>
 
-                    {/* Compagnie bus */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" /> Compagnie de bus (optionnel)
-                        </Text>
-                        <NativeInput
-                            value={compagnieBus}
-                            onChangeText={setCompagnieBus}
-                            placeholder="Ex: Amour Mezam, Guarantee Express"
-                        />
-                    </View>
+                            {/* Date départ */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="calendar" size={14} color={modernColors.primary} type="lucide" /> Date de départ (optionnel)
+                                </Text>
+                                <NativeInput
+                                    value={dateDepart}
+                                    onChangeText={setDateDepart}
+                                    placeholder="JJ/MM/AAAA"
+                                />
+                            </View>
+
+                            {/* Heure départ */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="clock" size={14} color={modernColors.primary} type="lucide" /> Heure de départ (optionnel)
+                                </Text>
+                                <NativeInput
+                                    value={heureDepart}
+                                    onChangeText={setHeureDepart}
+                                    placeholder="HH:MM"
+                                />
+                            </View>
+
+                            {/* Compagnie bus */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" /> Compagnie de bus (optionnel)
+                                </Text>
+                                <NativeInput
+                                    value={compagnieBusFilter}
+                                    onChangeText={setCompagnieBusFilter}
+                                    placeholder="Ex: Amour Mezam, Guarantee Express"
+                                />
+                            </View>
+
+                            {/* Localisation GPS (optionnelle pour tickets) */}
+                            <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
+                            <Text style={styles.sectionDescription}>
+                                Ajoutez votre position pour trouver des tickets à proximité
+                            </Text>
+                            
+                            {/* GPS */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" /> Position GPS
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.gpsButton}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setShowGPSModal(true);
+                                    }}
+                                >
+                                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.gpsButtonText} numberOfLines={1}>
+                                        {gpsString || 'Utiliser ma position GPS (optionnel)'}
+                                    </Text>
+                                    <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Distance max */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="maximize-2" size={14} color={modernColors.primary} type="lucide" /> Distance maximale (optionnel)
+                                </Text>
+                                <View style={styles.distanceCard}>
+                                    <TouchableOpacity
+                                        style={styles.distanceButton}
+                                        onPress={() => {
+                                            hapticPress();
+                                            setMaxDistance(Math.max(5, maxDistance - 5));
+                                        }}
+                                    >
+                                        <SafeIcon name="minus" size={18} color="#FFFFFF" type="lucide" />
+                                    </TouchableOpacity>
+                                    <View style={styles.distanceValueContainer}>
+                                        <Text style={styles.distanceValue}>{maxDistance}</Text>
+                                        <Text style={styles.distanceUnit}>km</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.distanceButton}
+                                        onPress={() => {
+                                            hapticPress();
+                                            setMaxDistance(Math.min(200, maxDistance + 5));
+                                        }}
+                                    >
+                                        <SafeIcon name="plus" size={18} color="#FFFFFF" type="lucide" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
+                            <Text style={styles.sectionDescription}>
+                                Recherchez des agences de voyage à proximité
+                            </Text>
+
+                            {/* GPS */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" /> Position GPS
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.gpsButton}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setShowGPSModal(true);
+                                    }}
+                                >
+                                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.gpsButtonText} numberOfLines={1}>
+                                        {gpsString || 'Utiliser ma position GPS (optionnel)'}
+                                    </Text>
+                                    <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Distance max */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="maximize-2" size={14} color={modernColors.primary} type="lucide" /> Distance maximale
+                                </Text>
+                                <View style={styles.distanceCard}>
+                                    <TouchableOpacity
+                                        style={styles.distanceButton}
+                                        onPress={() => {
+                                            hapticPress();
+                                            setMaxDistance(Math.max(5, maxDistance - 5));
+                                        }}
+                                    >
+                                        <SafeIcon name="minus" size={18} color="#FFFFFF" type="lucide" />
+                                    </TouchableOpacity>
+                                    <View style={styles.distanceValueContainer}>
+                                        <Text style={styles.distanceValue}>{maxDistance}</Text>
+                                        <Text style={styles.distanceUnit}>km</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.distanceButton}
+                                        onPress={() => {
+                                            hapticPress();
+                                            setMaxDistance(Math.min(200, maxDistance + 5));
+                                        }}
+                                    >
+                                        <SafeIcon name="plus" size={18} color="#FFFFFF" type="lucide" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            {/* Destination */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="map" size={14} color={modernColors.primary} type="lucide" /> Destination recherchée (optionnel)
+                                </Text>
+                                <NativeInput
+                                    value={destination}
+                                    onChangeText={setDestination}
+                                    placeholder="Ex: Bafoussam, Buea"
+                                />
+                            </View>
+
+                            {/* Compagnie bus */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" /> Compagnie de bus (optionnel)
+                                </Text>
+                                <NativeInput
+                                    value={compagnieBus}
+                                    onChangeText={setCompagnieBus}
+                                    placeholder="Ex: Amour Mezam, Guarantee Express"
+                                />
+                            </View>
+                        </>
+                    )}
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
@@ -316,18 +522,26 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Bouton recherche */}
-                    <NativeButton
+                    <TouchableOpacity
                         onPress={handleSearch}
-                        disabled={loading}
-                        style={styles.searchButton}
+                        disabled={loading || (searchMode === 'tickets' && (!villeDepart || !villeArrivee))}
+                        style={[
+                            styles.searchButton,
+                            (loading || (searchMode === 'tickets' && (!villeDepart || !villeArrivee))) && styles.searchButtonDisabled
+                        ]}
+                        activeOpacity={0.8}
                     >
                         <View style={styles.searchButtonContent}>
-                            <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
+                            <SafeIcon name={searchMode === 'tickets' ? "ticket" : "search"} size={20} color="#FFFFFF" type="lucide" />
                             <Text style={styles.searchButtonText}>
-                                {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
+                                {loading 
+                                    ? 'Recherche en cours...' 
+                                    : searchMode === 'tickets' 
+                                        ? 'Rechercher des tickets' 
+                                        : 'Lancer la recherche'}
                             </Text>
                         </View>
-                    </NativeButton>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Info section */}
@@ -414,6 +628,18 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#111827',
         marginBottom: 12,
+    },
+    sectionDescription: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginBottom: 16,
+        lineHeight: 18,
+    },
+    requiredHint: {
+        fontSize: 12,
+        color: '#DC2626',
+        marginTop: 4,
+        fontStyle: 'italic',
     },
     quickSearchesGrid: {
         flexDirection: 'row',
@@ -576,6 +802,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
         borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: '#8B5CF6',
+        paddingVertical: 16,
+    },
+    searchButtonDisabled: {
+        opacity: 0.6,
     },
     searchButtonContent: {
         flexDirection: 'row',
@@ -610,6 +841,36 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#6B21A8',
         lineHeight: 20,
+    },
+    // ✅ NOUVEAU: Styles pour sélecteur de mode
+    modeSelector: {
+        flexDirection: 'row',
+        marginBottom: 20,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 4,
+        gap: 4,
+    },
+    modeButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        gap: 8,
+    },
+    modeButtonActive: {
+        backgroundColor: '#8B5CF6',
+    },
+    modeButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#8B5CF6',
+    },
+    modeButtonTextActive: {
+        color: '#FFFFFF',
     },
 });
 

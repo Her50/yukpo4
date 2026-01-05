@@ -26,12 +26,14 @@ import { SavedAddressSelector } from '../../components/delivery/SavedAddressSele
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useLocation } from '../../contexts/LocationContext';
-import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';
+import { CreateDeliveryRequestPayload, deliveryApi, userApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { useScreenEnter } from '../../utils/animations';
 import { LocationObject } from '../../components/LocationSelector';
 import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 import { VEHICLE_TRANSPORT_OPTIONS } from '../../config/deliveryConfig';
+import { useNavigation } from '@react-navigation/native';
+import SafeStorage from '../../utils/safeStorage';
 
 interface DeliveryParcelFlowNewProps {
     visible: boolean;
@@ -51,9 +53,17 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     onSuccess,
 }) => {
     const { location: userLocation } = useLocation();
+    const navigation = useNavigation();
     const [loading, setLoading] = useState(false);
     const [loadingLocation, setLoadingLocation] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    
+    // ✅ États pour coûts et assurance
+    const [deliveryCost, setDeliveryCost] = useState<number | null>(null);
+    const [insuranceCost, setInsuranceCost] = useState<number>(0);
+    const [userBalance, setUserBalance] = useState<number>(0);
+    const [loadingCosts, setLoadingCosts] = useState(false);
+    const [pendingDeliveryData, setPendingDeliveryData] = useState<any>(null); // Pour reprise après recharge
 
     // États
     const [parcelType, setParcelType] = useState<'document' | 'package' | 'moving' | 'cake'>('package');
@@ -62,10 +72,11 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     const [weight, setWeight] = useState<string>('');
     const [volume, setVolume] = useState<string>('');
     const [declaredValue, setDeclaredValue] = useState<string>('');
+    const [numberOfItems, setNumberOfItems] = useState<string>(''); // Nombre d'éléments à transporter
     const [notes, setNotes] = useState('');
     const [photos, setPhotos] = useState<string[]>([]);
     
-    // États pour formulaire adaptatif
+    // États pour formulaire adaptatif (conservés pour compatibilité mais non utilisés dans l'UI)
     const [numberOfPages, setNumberOfPages] = useState<string>(''); // Document
     const [numberOfBoxes, setNumberOfBoxes] = useState<string>(''); // Déménagement
     const [movingFurniture, setMovingFurniture] = useState<string>(''); // Déménagement
@@ -113,6 +124,128 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
     // Animation d'entrée
     const screenEnterStyle = useScreenEnter();
+
+    // ✅ Fonction de calcul d'assurance avec tranches
+    const calculateInsurance = (declaredValue: number): number => {
+        // Tranches d'assurance basées sur la valeur déclarée
+        const insuranceRates = [
+            { min: 0, max: 10000, rate: 0.02 },      // 2% pour 0-10k FCFA
+            { min: 10001, max: 50000, rate: 0.015 }, // 1.5% pour 10k-50k FCFA
+            { min: 50001, max: 100000, rate: 0.01 }, // 1% pour 50k-100k FCFA
+            { min: 100001, max: 500000, rate: 0.008 }, // 0.8% pour 100k-500k FCFA
+            { min: 500001, max: Infinity, rate: 0.005 }, // 0.5% pour >500k FCFA
+        ];
+
+        for (const tier of insuranceRates) {
+            if (declaredValue >= tier.min && declaredValue <= tier.max) {
+                return Math.ceil(declaredValue * tier.rate);
+            }
+        }
+        return 0;
+    };
+
+    // ✅ Obtenir les tranches d'assurance pour affichage
+    const getInsuranceTiers = () => {
+        return [
+            { range: '0 - 10 000 FCFA', rate: '2%', example: 'Ex: 10 000 FCFA → 200 FCFA' },
+            { range: '10 001 - 50 000 FCFA', rate: '1.5%', example: 'Ex: 50 000 FCFA → 750 FCFA' },
+            { range: '50 001 - 100 000 FCFA', rate: '1%', example: 'Ex: 100 000 FCFA → 1 000 FCFA' },
+            { range: '100 001 - 500 000 FCFA', rate: '0.8%', example: 'Ex: 500 000 FCFA → 4 000 FCFA' },
+            { range: '> 500 000 FCFA', rate: '0.5%', example: 'Ex: 1 000 000 FCFA → 5 000 FCFA' },
+        ];
+    };
+
+    // ✅ Calculer l'assurance quand la valeur déclarée change
+    useEffect(() => {
+        if (declaredValue && !isNaN(parseFloat(declaredValue))) {
+            const value = parseFloat(declaredValue);
+            const insurance = calculateInsurance(value);
+            setInsuranceCost(insurance);
+        } else {
+            setInsuranceCost(0);
+        }
+    }, [declaredValue]);
+
+    // ✅ Charger le solde utilisateur
+    useEffect(() => {
+        const loadBalance = async () => {
+            try {
+                const response = await userApi.getTokensBalance() as any;
+                if (response.success && response.data) {
+                    setUserBalance(response.data.tokens_balance || 0);
+                }
+            } catch (error) {
+                console.error('Erreur chargement solde:', error);
+            }
+        };
+        if (visible) {
+            loadBalance();
+        }
+    }, [visible]);
+
+    // ✅ Vérifier si une commande est en attente après recharge
+    useEffect(() => {
+        const checkPendingDelivery = async () => {
+            try {
+                const pendingData = await SafeStorage.getItem('pending_delivery');
+                if (pendingData) {
+                    const data = JSON.parse(pendingData);
+                    const balanceResponse = await userApi.getTokensBalance() as any;
+                    const currentBalance = balanceResponse?.data?.tokens_balance || 0;
+                    
+                    // Calculer les coûts pour cette commande en attente
+                    const declaredValueNum = parseFloat(data.declaredValue || '0');
+                    const insurance = calculateInsurance(declaredValueNum);
+                    // Estimation basique du coût de livraison (sera recalculé si nécessaire)
+                    const estimatedDeliveryCost = estimatedDistance ? Math.max(1000, Math.ceil(estimatedDistance * 500)) : 0;
+                    const totalCost = estimatedDeliveryCost + insurance;
+                    
+                    if (currentBalance >= totalCost) {
+                        // Solde suffisant, restaurer les données et permettre la création
+                        setPendingDeliveryData(data);
+                        // Restaurer les états
+                        setParcelType(data.parcelType);
+                        setTransportMode(data.transportMode || '');
+                        setWeight(data.weight || '');
+                        setVolume(data.volume || '');
+                        setDeclaredValue(data.declaredValue || '');
+                        setNumberOfItems(data.numberOfItems || '');
+                        setNotes(data.notes || '');
+                        setPhotos(data.photos || []);
+                        setIsRoundTrip(data.isRoundTrip || false);
+                        setReturnPickupLocation(data.returnPickupLocation || null);
+                        setReturnDropoffLocation(data.returnDropoffLocation || null);
+                        setIsScheduled(data.isScheduled || false);
+                        if (data.scheduledDateTime) {
+                            setScheduledDateTime(new Date(data.scheduledDateTime));
+                        }
+                        setMatchingMode(data.matchingMode || 'immediate');
+                        setRecipientName(data.recipientName || '');
+                        setRecipientPhone(data.recipientPhone || '');
+                        setRecipientCountryCode(data.recipientCountryCode || '+237');
+                        setRecipientConsentGranted(data.recipientConsentGranted || false);
+                        setRecipientInstructions(data.recipientInstructions || '');
+                        setRecipientAllowTracking(data.recipientAllowTracking || false);
+                        setPickupLocation(data.pickupLocation);
+                        setDropoffLocation(data.dropoffLocation);
+                        
+                        // Afficher une notification
+                        Alert.alert(
+                            'Commande en attente',
+                            'Votre solde est maintenant suffisant. Vous pouvez finaliser votre commande.',
+                            [{ text: 'OK' }]
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur vérification commande en attente:', error);
+            }
+        };
+        
+        if (visible) {
+            checkPendingDelivery();
+        }
+    }, [visible, estimatedDistance]);
 
     // Calculer distance
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -266,6 +399,35 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         }
     };
 
+    // ✅ Estimer les coûts de livraison
+    const estimateDeliveryCosts = async () => {
+        if (!pickupLocation || !dropoffLocation) {
+            return;
+        }
+
+        setLoadingCosts(true);
+        try {
+            // TODO: Appeler l'API d'estimation de coûts si disponible
+            // Pour l'instant, estimation basique basée sur la distance
+            if (estimatedDistance) {
+                // Estimation: 500 FCFA par km minimum + 1000 FCFA de base
+                const estimatedCost = Math.max(1000, Math.ceil(estimatedDistance * 500));
+                setDeliveryCost(estimatedCost);
+            }
+        } catch (error) {
+            console.error('Erreur estimation coûts:', error);
+        } finally {
+            setLoadingCosts(false);
+        }
+    };
+
+    // ✅ Calculer les coûts quand les adresses sont définies
+    useEffect(() => {
+        if (pickupLocation && dropoffLocation) {
+            estimateDeliveryCosts();
+        }
+    }, [pickupLocation, dropoffLocation, estimatedDistance]);
+
     const handleComplete = async (data: any) => {
         console.log('[DeliveryParcelFlowNew] handleComplete appelé avec data:', data);
         console.log('[DeliveryParcelFlowNew] États actuels:', {
@@ -274,6 +436,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             recipientName: !!recipientName,
             recipientPhone: !!recipientPhone,
             recipientConsentGranted,
+            declaredValue: !!declaredValue,
         });
 
         // Validation
@@ -295,10 +458,112 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             return;
         }
 
-        console.log('[DeliveryParcelFlowNew] ✅ Validation passée, création de la livraison...');
+        // ✅ Validation valeur déclarée obligatoire
+        if (!declaredValue || isNaN(parseFloat(declaredValue)) || parseFloat(declaredValue) <= 0) {
+            console.log('[DeliveryParcelFlowNew] ❌ Erreur: valeur déclarée manquante ou invalide');
+            Alert.alert('Erreur', 'La valeur déclarée est obligatoire et doit être supérieure à 0');
+            return;
+        }
 
+        console.log('[DeliveryParcelFlowNew] ✅ Validation passée, vérification du solde...');
+
+        // ✅ Vérifier le solde utilisateur
+        const totalCost = (deliveryCost || 0) + insuranceCost;
+        const balanceResponse = await userApi.getTokensBalance() as any;
+        const currentBalance = balanceResponse?.data?.tokens_balance || 0;
+
+        if (currentBalance < totalCost) {
+            // Solde insuffisant - sauvegarder la commande et rediriger vers recharge
+            const deliveryData = {
+                pickupLocation,
+                dropoffLocation,
+                parcelType,
+                transportMode,
+                weight,
+                volume,
+                declaredValue,
+                numberOfItems,
+                notes,
+                photos,
+                isRoundTrip,
+                returnPickupLocation,
+                returnDropoffLocation,
+                isScheduled,
+                scheduledDateTime,
+                matchingMode,
+                recipientName,
+                recipientPhone,
+                recipientCountryCode,
+                recipientConsentGranted,
+                recipientInstructions,
+                recipientAllowTracking,
+                preferredDeliveryDate,
+                preferredDeliveryTimeStart,
+                preferredDeliveryTimeEnd,
+            };
+
+            await SafeStorage.setItem('pending_delivery', JSON.stringify(deliveryData));
+            setPendingDeliveryData(deliveryData);
+
+            Alert.alert(
+                'Solde insuffisant',
+                `Votre solde actuel (${currentBalance.toLocaleString('fr-FR')} FCFA) est insuffisant pour couvrir le coût total (${totalCost.toLocaleString('fr-FR')} FCFA).\n\nVeuillez recharger votre compte pour continuer.`,
+                [
+                    {
+                        text: 'Annuler',
+                        style: 'cancel',
+                        onPress: () => {
+                            SafeStorage.removeItem('pending_delivery');
+                        },
+                    },
+                    {
+                        text: 'Recharger',
+                        onPress: () => {
+                            onClose();
+                            (navigation as any).navigate('RechargeTokens');
+                        },
+                    },
+                ]
+            );
+            return;
+        }
+
+        console.log('[DeliveryParcelFlowNew] ✅ Solde suffisant, création de la livraison...');
+
+        // ✅ Si une commande était en attente, utiliser ses données
+        const deliveryDataToUse = pendingDeliveryData || {
+            pickupLocation,
+            dropoffLocation,
+            parcelType,
+            transportMode,
+            weight,
+            volume,
+            declaredValue,
+            numberOfItems,
+            notes,
+            photos,
+            isRoundTrip,
+            returnPickupLocation,
+            returnDropoffLocation,
+            isScheduled,
+            scheduledDateTime,
+            matchingMode,
+            recipientName,
+            recipientPhone,
+            recipientCountryCode,
+            recipientConsentGranted,
+            recipientInstructions,
+            recipientAllowTracking,
+            preferredDeliveryDate,
+            preferredDeliveryTimeStart,
+            preferredDeliveryTimeEnd,
+        };
+
+        // ✅ Utiliser les données en attente si disponibles
+        const data = deliveryDataToUse;
+        
         // ✅ Validation aller-retour
-        if (isRoundTrip && (!returnPickupLocation || !returnDropoffLocation)) {
+        if (data.isRoundTrip && (!data.returnPickupLocation || !data.returnDropoffLocation)) {
             Alert.alert('Erreur', 'Veuillez sélectionner les points de collecte et de livraison pour le retour');
             return;
         }
@@ -307,70 +572,58 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         try {
             // ✅ Par défaut: "motorcycle" si aucun type spécifié (sera géré par le backend)
         const payload: CreateDeliveryRequestPayload = {
-                preferred_vehicle_type: transportMode || undefined, // Backend utilisera "motorcycle" par défaut
-                is_round_trip: isRoundTrip || undefined,
+                preferred_vehicle_type: data.transportMode || undefined, // Backend utilisera "motorcycle" par défaut
+                is_round_trip: data.isRoundTrip || undefined,
                 // ✅ Planification
-                scheduled_delivery_at: isScheduled
-                    ? scheduledDateTime.toISOString()
+                scheduled_delivery_at: data.isScheduled && data.scheduledDateTime
+                    ? new Date(data.scheduledDateTime).toISOString()
                     : undefined,
-                matching_mode: isScheduled ? matchingMode : undefined,
-                ...(isRoundTrip && returnPickupLocation && returnDropoffLocation && {
+                matching_mode: data.isScheduled ? data.matchingMode : undefined,
+                ...(data.isRoundTrip && data.returnPickupLocation && data.returnDropoffLocation && {
                     return_pickup: {
-                        latitude: returnPickupLocation.latitude,
-                        longitude: returnPickupLocation.longitude,
-                        address: returnPickupLocation.address,
+                        latitude: data.returnPickupLocation.latitude,
+                        longitude: data.returnPickupLocation.longitude,
+                        address: data.returnPickupLocation.address,
                     },
                     return_dropoff: {
-                        latitude: returnDropoffLocation.latitude,
-                        longitude: returnDropoffLocation.longitude,
-                        address: returnDropoffLocation.address,
+                        latitude: data.returnDropoffLocation.latitude,
+                        longitude: data.returnDropoffLocation.longitude,
+                        address: data.returnDropoffLocation.address,
                     },
                     round_trip_discount_percent: 10, // 10% de réduction par défaut pour aller-retour
                 }),
                 parcel: {
-                    type_id: getParcelTypeId(parcelType),
-                    notes: notes || `Colis: ${parcelType}`,
-                    photos: photos,
+                    type_id: getParcelTypeId(data.parcelType),
+                    notes: data.notes || `Colis: ${data.parcelType}`,
+                    photos: data.photos || [],
                     constraints: {
-                        weight: weight ? parseFloat(weight) : undefined,
-                        volume: volume ? parseFloat(volume) : undefined,
-                        declared_value: declaredValue ? parseFloat(declaredValue) : undefined,
-                        // Champs spécifiques selon le type
-                        ...(parcelType === 'document' && {
-                            number_of_pages: numberOfPages ? parseInt(numberOfPages) : undefined,
-                        }),
-                        ...(parcelType === 'moving' && {
-                            number_of_boxes: numberOfBoxes ? parseInt(numberOfBoxes) : undefined,
-                            furniture: movingFurniture || undefined,
-                            access: movingAccess || undefined,
-                        }),
-                        ...(parcelType === 'cake' && {
-                            cake_size: cakeSize || undefined,
-                            cake_layers: cakeLayers ? parseInt(cakeLayers) : undefined,
-                        }),
+                        weight: data.weight ? parseFloat(data.weight) : undefined,
+                        volume: data.volume ? parseFloat(data.volume) : undefined,
+                        declared_value: data.declaredValue ? parseFloat(data.declaredValue) : undefined,
+                        number_of_items: data.numberOfItems ? parseInt(data.numberOfItems) : undefined,
                     },
                 },
                 pickup: {
-                    latitude: pickupLocation.latitude,
-                    longitude: pickupLocation.longitude,
-                    address: pickupLocation.address,
+                    latitude: data.pickupLocation.latitude,
+                    longitude: data.pickupLocation.longitude,
+                    address: data.pickupLocation.address,
                 },
                 dropoff: {
-                    latitude: dropoffLocation.latitude,
-                    longitude: dropoffLocation.longitude,
-                    address: dropoffLocation.address,
+                    latitude: data.dropoffLocation.latitude,
+                    longitude: data.dropoffLocation.longitude,
+                    address: data.dropoffLocation.address,
                 },
                 recipient: {
-                    contact_name: recipientName,
-                    contact_phone: recipientPhone,
-                    country_code: recipientCountryCode || undefined,
-                    consent_granted: recipientConsentGranted,
-                    notes: recipientInstructions || undefined,
-                    allow_tracking: recipientAllowTracking || undefined,
+                    contact_name: data.recipientName,
+                    contact_phone: data.recipientPhone,
+                    country_code: data.recipientCountryCode || undefined,
+                    consent_granted: data.recipientConsentGranted,
+                    notes: data.recipientInstructions || undefined,
+                    allow_tracking: data.recipientAllowTracking || undefined,
                 },
                 metadata: {
                     kind: 'parcel',
-                    parcel_type: parcelType,
+                    parcel_type: data.parcelType,
                 },
                 initial_event_payload: {},
             };
@@ -378,9 +631,13 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             const result = await deliveryApi.createDeliveryRequest(payload);
 
             if (result.success && result.data?.id) {
+                // ✅ Nettoyer la commande en attente si elle existait
+                await SafeStorage.removeItem('pending_delivery');
+                setPendingDeliveryData(null);
+                
                 Alert.alert(
                     'Livraison créée',
-                    'Votre demande de livraison a été créée avec succès.',
+                    'Votre demande de livraison a été créée avec succès. Le matching d\'un coursier est en cours.',
                     [
                         {
                             text: 'OK',
@@ -422,7 +679,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 <View style={styles.typeButtonsGrid}>
                     {[
                         { id: 'document', label: 'Document', icon: 'file-text' },
-                        { id: 'package', label: 'Colis', icon: 'package' },
+                        { id: 'package', label: 'Paquet/Sac', icon: 'package' },
                         { id: 'moving', label: 'Déménagement', icon: 'truck' },
                         { id: 'cake', label: 'Gâteau', icon: 'cake' },
                     ].map((type) => (
@@ -455,148 +712,59 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 </View>
             </View>
 
-            {/* Formulaire adaptatif selon le type de colis */}
-            {parcelType === 'document' && (
-                <>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nombre de pages (optionnel)</Text>
-                        <NativeInput
-                            placeholder="Ex: 10"
-                            value={numberOfPages}
-                            onChangeText={setNumberOfPages}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
-                        <NativeInput
-                            placeholder="Ex: 5000"
-                            value={declaredValue}
-                            onChangeText={setDeclaredValue}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                </>
-            )}
+            {/* Champ Nombre */}
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>Nombre</Text>
+                <NativeInput
+                    placeholder="Nombre d'éléments à transporter"
+                    value={numberOfItems}
+                    onChangeText={setNumberOfItems}
+                    keyboardType="numeric"
+                />
+            </View>
 
-            {parcelType === 'package' && (
-                <>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Poids (kg)</Text>
-                        <NativeInput
-                            placeholder="Ex: 2.5"
-                            value={weight}
-                            onChangeText={setWeight}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Volume (L)</Text>
-                        <NativeInput
-                            placeholder="Ex: 10"
-                            value={volume}
-                            onChangeText={setVolume}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
-                        <NativeInput
-                            placeholder="Ex: 50000"
-                            value={declaredValue}
-                            onChangeText={setDeclaredValue}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                </>
-            )}
+            {/* Champ Valeur déclarée - OBLIGATOIRE */}
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>Valeur déclarée (FCFA) *</Text>
+                <NativeInput
+                    placeholder="Ex: 50000"
+                    value={declaredValue}
+                    onChangeText={setDeclaredValue}
+                    keyboardType="numeric"
+                />
+                {!declaredValue && (
+                    <Text style={styles.errorText}>Ce champ est obligatoire</Text>
+                )}
+                {declaredValue && !isNaN(parseFloat(declaredValue)) && insuranceCost > 0 && (() => {
+                    const value = parseFloat(declaredValue);
+                    let rate = 'N/A';
+                    if (value >= 0 && value <= 10000) rate = '2%';
+                    else if (value >= 10001 && value <= 50000) rate = '1.5%';
+                    else if (value >= 50001 && value <= 100000) rate = '1%';
+                    else if (value >= 100001 && value <= 500000) rate = '0.8%';
+                    else if (value > 500000) rate = '0.5%';
+                    return (
+                        <Text style={styles.helperText}>
+                            Assurance: {insuranceCost.toLocaleString('fr-FR')} FCFA (taux: {rate})
+                        </Text>
+                    );
+                })()}
+            </View>
 
-            {parcelType === 'moving' && (
-                <>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nombre de cartons</Text>
-                        <NativeInput
-                            placeholder="Ex: 20"
-                            value={numberOfBoxes}
-                            onChangeText={setNumberOfBoxes}
-                            keyboardType="numeric"
-                        />
+            {/* Tableau des tranches d'assurance */}
+            {declaredValue && !isNaN(parseFloat(declaredValue)) && (
+                <View style={styles.insuranceTableContainer}>
+                    <Text style={styles.insuranceTableTitle}>Tranches d'assurance</Text>
+                    <View style={styles.insuranceTable}>
+                        {getInsuranceTiers().map((tier, index) => (
+                            <View key={index} style={styles.insuranceTableRow}>
+                                <Text style={styles.insuranceTableRange}>{tier.range}</Text>
+                                <Text style={styles.insuranceTableRate}>{tier.rate}</Text>
+                                <Text style={styles.insuranceTableExample}>{tier.example}</Text>
+                            </View>
+                        ))}
                     </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Meubles à transporter (optionnel)</Text>
-                        <NativeInput
-                            placeholder="Ex: Canapé, Table, Armoire"
-                            value={movingFurniture}
-                            onChangeText={setMovingFurniture}
-                        />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Accès (étage, ascenseur, etc.)</Text>
-                        <NativeInput
-                            placeholder="Ex: 3ème étage, ascenseur disponible"
-                            value={movingAccess}
-                            onChangeText={setMovingAccess}
-                        />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Volume estimé (m³)</Text>
-                        <NativeInput
-                            placeholder="Ex: 20"
-                            value={volume}
-                            onChangeText={setVolume}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
-                        <NativeInput
-                            placeholder="Ex: 500000"
-                            value={declaredValue}
-                            onChangeText={setDeclaredValue}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                </>
-            )}
-
-            {parcelType === 'cake' && (
-                <>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Taille du gâteau</Text>
-                        <NativeInput
-                            placeholder="Ex: 20cm, 30cm"
-                            value={cakeSize}
-                            onChangeText={setCakeSize}
-                        />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nombre d'étages</Text>
-                        <NativeInput
-                            placeholder="Ex: 2"
-                            value={cakeLayers}
-                            onChangeText={setCakeLayers}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Poids (kg)</Text>
-                        <NativeInput
-                            placeholder="Ex: 2"
-                            value={weight}
-                            onChangeText={setWeight}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
-                        <NativeInput
-                            placeholder="Ex: 30000"
-                            value={declaredValue}
-                            onChangeText={setDeclaredValue}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                </>
+                </View>
             )}
 
             <View style={styles.inputGroup}>
@@ -1117,7 +1285,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             label: 'Colis',
             icon: 'package',
             component: ParcelInfoStep,
-            validation: () => !!parcelType,
+            validation: () => !!parcelType && !!declaredValue && !isNaN(parseFloat(declaredValue)) && parseFloat(declaredValue) > 0,
         },
         {
             id: 'pickup',
@@ -1139,6 +1307,13 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             icon: 'user',
             component: RecipientInfoStep,
             validation: () => !!recipientName && !!recipientPhone && recipientConsentGranted,
+        },
+        {
+            id: 'summary',
+            label: 'Récapitulatif',
+            icon: 'check-circle',
+            component: SummaryStep,
+            validation: () => true, // Toujours valide, la validation se fait dans handleComplete
         },
     ];
 
@@ -1355,22 +1530,22 @@ const styles = StyleSheet.create({
     },
     typeButtonsGrid: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-        justifyContent: 'space-between',
+        gap: 6,
+        width: '100%',
     },
     typeButtonGrid: {
-        width: '48%',
+        flex: 1,
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 4,
-        padding: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 2,
         backgroundColor: modernColors.surfaceVariant,
         borderRadius: 8,
         borderWidth: 1.5,
         borderColor: modernColors.border,
-        minHeight: 55,
+        minHeight: 60,
     },
     typeButton: {
         flex: 1,
@@ -1390,7 +1565,7 @@ const styles = StyleSheet.create({
         borderColor: modernColors.primary,
     },
     typeButtonTextGrid: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '600',
         color: modernColors.text,
         textAlign: 'center',
@@ -1609,6 +1784,112 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         marginTop: 4,
         fontStyle: 'italic',
+    },
+    // ✅ Styles pour tableau d'assurance
+    insuranceTableContainer: {
+        marginTop: 16,
+        marginBottom: 16,
+    },
+    insuranceTableTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    insuranceTable: {
+        backgroundColor: modernColors.surfaceVariant,
+        borderRadius: 8,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    insuranceTableRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    insuranceTableRange: {
+        flex: 1,
+        fontSize: 12,
+        color: modernColors.text,
+        fontWeight: '500',
+    },
+    insuranceTableRate: {
+        flex: 0.5,
+        fontSize: 12,
+        color: modernColors.primary,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    insuranceTableExample: {
+        flex: 1.5,
+        fontSize: 10,
+        color: modernColors.textSecondary,
+        textAlign: 'right',
+        fontStyle: 'italic',
+    },
+    // ✅ Styles pour récapitulatif
+    summaryCard: {
+        marginBottom: 16,
+        padding: 16,
+    },
+    summaryCardTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 12,
+    },
+    summaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    summaryLabel: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        flex: 1,
+    },
+    summaryValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        flex: 1,
+        textAlign: 'right',
+    },
+    totalRow: {
+        marginTop: 8,
+        paddingTop: 12,
+        borderTopWidth: 2,
+        borderTopColor: modernColors.primary,
+    },
+    totalLabel: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    totalValue: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    insufficientBalance: {
+        color: '#EF4444',
+    },
+    warningText: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginTop: 8,
+        fontStyle: 'italic',
+    },
+    loadingText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        padding: 16,
     },
     dateTimeButton: {
         flexDirection: 'row',

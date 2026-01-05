@@ -28,6 +28,7 @@ interface LaboratoireSearchFilters {
     lng?: number;
     max_distance_km?: number;
     prestation_analyse?: string;
+    types_examens?: string[]; // ✅ NOUVEAU: Types d'examens multiples
     rdv_en_ligne?: boolean;
     available_only?: boolean;
 }
@@ -47,6 +48,10 @@ const LaboratoireSearchScreen: React.FC = () => {
     const [prestationAnalyse, setPrestationAnalyse] = useState<string>('');
     const [availableOnly, setAvailableOnly] = useState(true);
     const [loading, setLoading] = useState(false);
+    // ✅ NOUVEAU: Types d'examens et fonctionnalités avancées
+    const [selectedTypesExamens, setSelectedTypesExamens] = useState<string[]>([]);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [showMyExaminations, setShowMyExaminations] = useState(false);
 
     React.useEffect(() => {
         if (location?.coords) {
@@ -67,17 +72,27 @@ const LaboratoireSearchScreen: React.FC = () => {
     };
 
     const handleSearch = () => {
-        const villeStr = typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || '';
-        const quartierStr = typeof quartier === 'string' ? quartier : (quartier as LocationObject)?.components?.quartier || (quartier as LocationObject)?.place_name || '';
-        
-        if (!villeStr.trim() && !quartierStr.trim() && !gpsData && !serviceType && !prestationAnalyse) {
-            Alert.alert('Erreur', 'Veuillez renseigner au moins un critère de recherche');
+        // ✅ RÉORIENTÉ: Priorité sur recherche d'examens plutôt que de laboratoires
+        // Si un type d'examen est sélectionné, utiliser l'endpoint de recherche d'examens
+        if (selectedTypesExamens.length > 0 || prestationAnalyse.trim()) {
+            const filters: LaboratoireSearchFilters = {};
+            if (selectedTypesExamens.length > 0) filters.types_examens = selectedTypesExamens;
+            if (prestationAnalyse.trim()) filters.prestation_analyse = prestationAnalyse.trim();
+            if (gpsData) {
+                filters.lat = gpsData.lat;
+                filters.lng = gpsData.lng;
+            }
+            if (maxDistance > 0) filters.max_distance_km = maxDistance;
+            if (rdvEnLigne) filters.rdv_en_ligne = true;
+            if (availableOnly) filters.available_only = true;
+            // Navigation vers recherche d'examens
+            navigation.navigate('LaboratoryExaminationsList' as never, { filters } as never);
             return;
         }
 
+        // Sinon, recherche classique de laboratoires (secondaire)
+        // GPS ou localisation optionnelle
         const filters: LaboratoireSearchFilters = {};
-        if (villeStr.trim()) filters.ville = villeStr.trim();
-        if (quartierStr.trim()) filters.quartier = quartierStr.trim();
         if (serviceType.trim()) filters.service_type = serviceType.trim();
         if (gpsData) {
             filters.lat = gpsData.lat;
@@ -85,7 +100,6 @@ const LaboratoireSearchScreen: React.FC = () => {
         }
         if (maxDistance > 0) filters.max_distance_km = maxDistance;
         if (rdvEnLigne) filters.rdv_en_ligne = true;
-        if (prestationAnalyse) filters.prestation_analyse = prestationAnalyse;
         if (availableOnly) filters.available_only = true;
 
         navigation.navigate('LaboratoireList' as never, { filters } as never);
@@ -95,6 +109,15 @@ const LaboratoireSearchScreen: React.FC = () => {
     const prestationsAnalyses = [
         'Biologie', 'Hématologie', 'Biochimie', 'Microbiologie', 
         'Sérologie', 'Immunologie', 'Radiologie', 'Échographie'
+    ];
+    // ✅ NOUVEAU: Types d'examens détaillés
+    const typesExamens = [
+        'Analyse de sang', 'Analyse d\'urine', 'Analyse de selles',
+        'Bilan lipidique', 'Bilan hépatique', 'Bilan rénal',
+        'Glycémie', 'Hémogramme', 'Coagulation',
+        'Hormones', 'Vitamines', 'Sérologie',
+        'Radiographie', 'Échographie', 'IRM', 'Scanner',
+        'Mammographie', 'Densitométrie osseuse'
     ];
 
     // Recherches rapides spécifiques laboratoires
@@ -168,6 +191,33 @@ const LaboratoireSearchScreen: React.FC = () => {
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
             >
+                {/* ✅ NOUVEAU: Bouton mes examens */}
+                <TouchableOpacity
+                    style={styles.myExaminationsBanner}
+                    onPress={() => {
+                        hapticPress();
+                        navigation.navigate('MyExaminations' as never);
+                    }}
+                >
+                    <LinearGradient
+                        colors={['#6366F1', '#818CF8']}
+                        style={styles.myExaminationsBannerGradient}
+                    >
+                        <View style={styles.myExaminationsBannerContent}>
+                            <View style={styles.myExaminationsBannerIcon}>
+                                <SafeIcon name="file-text" size={24} color="#FFFFFF" type="lucide" />
+                            </View>
+                            <View style={styles.myExaminationsBannerText}>
+                                <Text style={styles.myExaminationsBannerTitle}>Mes examens</Text>
+                                <Text style={styles.myExaminationsBannerSubtitle}>
+                                    Consulter mes résultats et analyses
+                                </Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
+                        </View>
+                    </LinearGradient>
+                </TouchableOpacity>
+
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
                     <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
@@ -194,35 +244,32 @@ const LaboratoireSearchScreen: React.FC = () => {
                     </View>
                 </View>
 
-                {/* Formulaire de recherche */}
+                {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur examens */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
+                    <Text style={styles.sectionTitle}>🔬 Recherche d'examens</Text>
+                    <Text style={styles.sectionDescription}>
+                        Recherchez un type d'examen médical spécifique
+                    </Text>
                     
-                    {/* Ville */}
+                    {/* Type d'examen recherché (PRIORITAIRE) */}
                     <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Ville"
-                            value={ville}
-                            onSelect={(location) => setVille(location)}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            enrichWithBackend={true}
+                        <Text style={styles.label}>
+                            <SafeIcon name="microscope" size={14} color={modernColors.primary} type="lucide" /> Type d'examen recherché
+                        </Text>
+                        <NativeInput
+                            value={prestationAnalyse}
+                            onChangeText={setPrestationAnalyse}
+                            placeholder="Ex: Analyse de sang, Radiographie, Échographie..."
+                            autoCapitalize="words"
                         />
                     </View>
 
-                    {/* Quartier */}
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Quartier (optionnel)"
-                            value={quartier}
-                            onSelect={(location) => setQuartier(location)}
-                            placeholder="Rechercher un quartier..."
-                            scope="neighborhood"
-                            cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
-                            enrichWithBackend={true}
-                        />
-                    </View>
-
+                    {/* Localisation (optionnelle pour recherche d'examens) */}
+                    <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
+                    <Text style={styles.sectionDescription}>
+                        Ajoutez votre position pour trouver des examens à proximité
+                    </Text>
+                    
                     {/* GPS */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -237,7 +284,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                         >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} type="lucide" />
                             <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                {gpsString || 'Utiliser ma position GPS'}
+                                {gpsString || 'Utiliser ma position GPS (optionnel)'}
                             </Text>
                             <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
                         </TouchableOpacity>
@@ -342,6 +389,61 @@ const LaboratoireSearchScreen: React.FC = () => {
                         </ScrollView>
                     </View>
 
+                    {/* ✅ NOUVEAU: Bouton filtres avancés */}
+                    <TouchableOpacity
+                        style={styles.advancedFiltersButton}
+                        onPress={() => {
+                            hapticPress();
+                            setShowAdvancedFilters(!showAdvancedFilters);
+                        }}
+                    >
+                        <SafeIcon name={showAdvancedFilters ? "chevron-up" : "chevron-down"} size={20} color="#6366F1" type="lucide" />
+                        <Text style={styles.advancedFiltersButtonText}>
+                            {showAdvancedFilters ? 'Masquer' : 'Afficher'} les types d'examens
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* ✅ NOUVEAU: Filtres avancés - Types d'examens */}
+                    {showAdvancedFilters && (
+                        <View style={styles.advancedFiltersCard}>
+                            <Text style={styles.label}>
+                                <SafeIcon name="list" size={14} color={modernColors.primary} type="lucide" /> Types d'examens disponibles
+                            </Text>
+                            <Text style={styles.advancedFiltersDescription}>
+                                Sélectionnez les types d'examens que vous recherchez
+                            </Text>
+                            <View style={styles.servicesGrid}>
+                                {typesExamens.map((type) => {
+                                    const isSelected = selectedTypesExamens.includes(type);
+                                    return (
+                                        <TouchableOpacity
+                                            key={type}
+                                            style={[
+                                                styles.serviceChip,
+                                                isSelected && styles.serviceChipActive
+                                            ]}
+                                            onPress={() => {
+                                                hapticPress();
+                                                if (isSelected) {
+                                                    setSelectedTypesExamens(selectedTypesExamens.filter(t => t !== type));
+                                                } else {
+                                                    setSelectedTypesExamens([...selectedTypesExamens, type]);
+                                                }
+                                            }}
+                                        >
+                                            <Text style={[
+                                                styles.serviceChipText,
+                                                isSelected && styles.serviceChipTextActive
+                                            ]}>
+                                                {type}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                    )}
+
                     {/* Options */}
                     <View style={styles.optionsSection}>
                         <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
@@ -394,10 +496,11 @@ const LaboratoireSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Bouton recherche */}
-                    <NativeButton
+                    <TouchableOpacity
                         onPress={handleSearch}
                         disabled={loading}
-                        style={styles.searchButton}
+                        style={[styles.searchButton, loading && styles.searchButtonDisabled]}
+                        activeOpacity={0.8}
                     >
                         <View style={styles.searchButtonContent}>
                             <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
@@ -405,7 +508,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                                 {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
                             </Text>
                         </View>
-                    </NativeButton>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Info section */}
@@ -493,6 +596,12 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#111827',
         marginBottom: 12,
+    },
+    sectionDescription: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginBottom: 16,
+        lineHeight: 18,
     },
     quickSearchesGrid: {
         flexDirection: 'row',
@@ -680,6 +789,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
         borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: '#6366F1',
+        paddingVertical: 16,
+    },
+    searchButtonDisabled: {
+        opacity: 0.6,
     },
     searchButtonContent: {
         flexDirection: 'row',
@@ -714,6 +828,104 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#4338CA',
         lineHeight: 20,
+    },
+    // ✅ NOUVEAU: Styles pour bannière mes examens
+    myExaminationsBanner: {
+        marginBottom: 20,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    myExaminationsBannerGradient: {
+        padding: 16,
+    },
+    myExaminationsBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    myExaminationsBannerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    myExaminationsBannerText: {
+        flex: 1,
+    },
+    myExaminationsBannerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    myExaminationsBannerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        lineHeight: 16,
+    },
+    // ✅ NOUVEAU: Styles pour filtres avancés
+    advancedFiltersButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        marginBottom: 12,
+        gap: 8,
+    },
+    advancedFiltersButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6366F1',
+    },
+    advancedFiltersCard: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    advancedFiltersDescription: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 12,
+        lineHeight: 16,
+    },
+    servicesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    serviceChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    serviceChipActive: {
+        backgroundColor: '#6366F1',
+        borderColor: '#6366F1',
+    },
+    serviceChipText: {
+        fontSize: 12,
+        color: '#374151',
+        fontWeight: '500',
+    },
+    serviceChipTextActive: {
+        color: '#FFFFFF',
     },
 });
 

@@ -965,6 +965,36 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
         </NativeCard>
     );
 
+    // ✅ NOUVEAU: Vérifier que l'utilisateur est un partenaire
+    if (user?.role !== 'partenaire') {
+        return (
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={styles.backButton}
+                    >
+                        <SafeIcon name="arrow-left" size={24} color="#111827" />
+                    </TouchableOpacity>
+                    <Text style={styles.title}>Gestion Services Spécialisés</Text>
+                </View>
+                <View style={styles.emptyContainer}>
+                    <SafeIcon name="shield-off" size={64} color={modernColors.textSecondary} />
+                    <Text style={styles.emptyTitle}>Accès réservé aux partenaires</Text>
+                    <Text style={styles.emptyText}>
+                        Cette section est réservée aux partenaires commerciaux. Si vous souhaitez devenir partenaire, veuillez vous inscrire depuis l'écran de connexion.
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.createButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Text style={styles.createButtonText}>Retour</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
+
     // ✅ NOUVEAU: Afficher skeleton loaders pendant le chargement
     if (loading) {
         return (
@@ -1243,18 +1273,21 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                             ? 'Aucun service ne correspond à vos critères de recherche. Essayez de modifier vos filtres.'
                             : 'Créez votre premier service spécialisé pour commencer à proposer vos services sur Yukpo'}
                     </Text>
-                    {/* ✅ AMÉLIORÉ: CTA avec meilleur design et accessibilité */}
-                    <View style={styles.emptyActions}>
-                        <TouchableOpacity
-                            onPress={() => (navigation as any).navigate('MesServicesSpecialises')}
-                            style={[styles.createButton, { backgroundColor: modernColors.primary }]}
-                            accessibilityRole="button"
-                            accessibilityLabel="Créer un nouveau service spécialisé"
-                            accessibilityHint="Ouvre le formulaire de création de service"
-                        >
-                            <SafeIcon name="plus" size={18} color="#fff" />
-                            <Text style={styles.createButtonText}>Créer un service</Text>
-                        </TouchableOpacity>
+                    {/* ✅ AMÉLIORÉ: CTA avec meilleur design et accessibilité - Masqué pour non-partenaires */}
+                    {user?.role === 'partenaire' && (
+                        <View style={styles.emptyActions}>
+                            <TouchableOpacity
+                                onPress={() => (navigation as any).navigate('MesServicesSpecialises')}
+                                style={[styles.createButton, { backgroundColor: modernColors.primary }]}
+                                accessibilityRole="button"
+                                accessibilityLabel="Créer un nouveau service spécialisé"
+                                accessibilityHint="Ouvre le formulaire de création de service"
+                            >
+                                <SafeIcon name="plus" size={18} color="#fff" />
+                                <Text style={styles.createButtonText}>Créer un service</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                         {searchQuery || filter !== 'tous' ? (
                             <TouchableOpacity
                                 onPress={() => {

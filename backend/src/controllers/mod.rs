@@ -62,6 +62,7 @@ pub mod mobile_logs_controller; // ✅ NOUVEAU : Contrôleur pour logs mobile
 pub mod notification_controller; // ✅ Contrôleur de notifications
 pub mod offres_emploi_controller; // ✅ NOUVEAU 2025-01-28: Contrôleur offres d'emploi
 pub mod orientation_scolaire_controller; // ✅ NOUVEAU 2025-01-28: Contrôleur orientation scolaire et établissements
+pub mod partner_validation_controller;
 pub mod payment_controller;
 pub mod performance_controller; // ✅ NOUVEAU 2025-11-28: Contrôleur pour métriques de performance
 pub mod pharmacy_controller; // ✅ 2025-11-26: Contrôleur pour pharmacies

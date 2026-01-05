@@ -8,7 +8,8 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::services::menu_planning_ai_service::{FamilyProfile, MenuPlanningAIService};
+use crate::services::menu_planning_ai_service::{FamilyProfile, MenuPlanningAIService, WeeklyMenu};
+use crate::services::geocoding_service::GeocodingService;
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Query, State},
@@ -17,7 +18,7 @@ use axum::{
     Json,
 };
 use chrono::{Datelike, NaiveDate, Utc};
-use log::{error, info};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
@@ -69,10 +70,22 @@ pub async fn generate_weekly_menu(
         get_or_create_family_profile(&state, user_id).await?
     };
 
-    // Générer menu avec IA
+    // ✅ NOUVEAU: Récupérer contexte localité utilisateur (pays, ville)
+    let (user_country, user_city) = get_user_location_context(&state, user_id).await?;
+
+    // ✅ NOUVEAU: Récupérer menus précédents pour variation
+    let previous_menus = get_previous_menus(&state, user_id, 3).await?;
+
+    // Générer menu avec IA (version intelligente avec contextes)
     let ai_service = MenuPlanningAIService::new(state.ia.clone());
     let menu = ai_service
-        .generate_weekly_menu(&profile, &week_start.format("%Y-%m-%d").to_string())
+        .generate_weekly_menu_intelligent(
+            &profile,
+            &week_start.format("%Y-%m-%d").to_string(),
+            user_country.as_deref(),
+            user_city.as_deref(),
+            &previous_menus,
+        )
         .await?;
 
     // Sauvegarder le menu en base
@@ -347,4 +360,140 @@ pub async fn update_family_profile(
             "message": "Profil mis à jour avec succès"
         })),
     ))
+}
+
+/// ✅ NOUVEAU: Récupère le contexte de localité de l'utilisateur (pays, ville)
+async fn get_user_location_context(
+    state: &AppState,
+    user_id: i32,
+) -> AppResult<(Option<String>, Option<String>)> {
+    // Récupérer GPS utilisateur
+    let user_gps: Option<String> = sqlx::query_scalar(
+        "SELECT gps FROM users WHERE id = $1 AND gps IS NOT NULL AND gps != ''"
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_user_location_context] Erreur récupération GPS: {}", e);
+        AppError::Internal(format!("Erreur récupération GPS: {}", e))
+    })?;
+
+    if let Some(gps_str) = user_gps {
+        // Parser coordonnées GPS (format: "lat,lng")
+        if let Some((lat_str, lng_str)) = gps_str.split_once(',') {
+            if let (Ok(lat), Ok(lng)) = (lat_str.trim().parse::<f64>(), lng_str.trim().parse::<f64>()) {
+                // Utiliser le service de géocodage inverse
+                let geocoding_service = GeocodingService::new();
+                match geocoding_service.reverse_geocode(lat, lng).await {
+                    Ok(result) => {
+                        return Ok((result.country, result.city));
+                    }
+                    Err(e) => {
+                        warn!("[get_user_location_context] Erreur géocodage inverse: {}", e);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok((None, None))
+}
+
+/// ✅ NOUVEAU: Génère une recette complète pour un plat spécifique
+#[derive(Debug, Deserialize)]
+pub struct GenerateRecipeRequest {
+    pub recipe_name: String,
+    pub servings: Option<i32>,
+}
+
+/// Endpoint : Générer recette avec IA
+pub async fn generate_recipe(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(req): Json<GenerateRecipeRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[generate_recipe] Génération recette '{}' pour user_id={}",
+        req.recipe_name, user_id
+    );
+
+    // Récupérer profil famille (optionnel)
+    let profile = get_or_create_family_profile(&state, user_id).await.ok();
+
+    // Récupérer contexte localité utilisateur
+    let (user_country, user_city) = get_user_location_context(&state, user_id).await.unwrap_or((None, None));
+
+    // Générer recette avec IA
+    let ai_service = MenuPlanningAIService::new(state.ia.clone());
+    let recipe = ai_service
+        .generate_recipe(
+            &req.recipe_name,
+            profile.as_ref(),
+            user_country.as_deref(),
+            user_city.as_deref(),
+            req.servings,
+        )
+        .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "recipe": recipe,
+        })),
+    ))
+}
+
+/// ✅ NOUVEAU: Récupère les menus précédents pour éviter la répétition
+async fn get_previous_menus(
+    state: &AppState,
+    user_id: i32,
+    limit: i32,
+) -> AppResult<Vec<WeeklyMenu>> {
+    // Récupérer les menus précédents depuis la base
+    let menu_rows = sqlx::query(
+        r#"
+        SELECT 
+            id,
+            week_start,
+            week_end,
+            total_budget
+        FROM menu_plans
+        WHERE user_id = $1
+            AND week_start < CURRENT_DATE
+            AND status = 'active'
+        ORDER BY week_start DESC
+        LIMIT $2
+        "#
+    )
+    .bind(user_id)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_previous_menus] Erreur: {}", e);
+        AppError::Internal(format!("Erreur récupération menus précédents: {}", e))
+    })?;
+
+    // Pour l'instant, on retourne des menus vides (structure)
+    // TODO: Charger les repas détaillés depuis planned_meals si la table existe
+    let previous_menus: Vec<WeeklyMenu> = menu_rows
+        .into_iter()
+        .map(|row| {
+            WeeklyMenu {
+                week_start: row.get::<chrono::NaiveDate, _>("week_start").format("%Y-%m-%d").to_string(),
+                meals: vec![], // TODO: Charger depuis planned_meals
+                total_estimated_cost: row
+                    .try_get::<Option<rust_decimal::Decimal>, _>("total_budget")
+                    .ok()
+                    .flatten()
+                    .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+                total_calories_per_day: None,
+                recommendations: vec![],
+            }
+        })
+        .collect();
+
+    Ok(previous_menus)
 }

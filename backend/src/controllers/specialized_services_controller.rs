@@ -1427,6 +1427,116 @@ pub async fn get_property_details(
     ))
 }
 
+/// ✅ NOUVEAU: Créer un bien immobilier
+#[derive(Debug, Deserialize)]
+pub struct CreatePropertyRequest {
+    pub service_id: i32,
+    pub titre: String,
+    pub description: Option<String>,
+    pub type_bien: String, // "maison", "appartement", "terrain", "bureau", "local_commercial"
+    pub statut: String,    // "vente", "location", "les_deux"
+    pub adresse: Option<String>,
+    pub quartier: Option<String>,
+    pub ville: Option<String>,
+    pub gps: Option<String>,
+    pub superficie_m2: Option<f64>,
+    pub nb_chambres: Option<i32>,
+    pub nb_salles_bain: Option<i32>,
+    pub standing: Option<String>, // "économique", "moyen", "haut_de_gamme", "luxe"
+    pub etat_general: Option<String>, // "neuf", "bon_etat", "à_rénover", "rénové"
+    pub prix_vente: Option<f64>,
+    pub prix_location_mensuel: Option<f64>,
+    pub photos: Option<Vec<String>>,
+}
+
+/// POST /api/immobilier/biens
+/// Créer un bien immobilier
+pub async fn create_property(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<CreatePropertyRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[create_property] Création bien immobilier pour user_id={}, service_id={}",
+        user_id, payload.service_id
+    );
+
+    // Vérifier que le service existe et appartient à l'utilisateur
+    let service_exists: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM services WHERE id = $1 AND user_id = $2")
+            .bind(payload.service_id)
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[create_property] Erreur vérification service: {}", e);
+                AppError::Internal(format!("Erreur vérification service: {}", e))
+            })?;
+
+    if service_exists.is_none() {
+        return Err(AppError::NotFound(
+            "Service non trouvé ou n'appartient pas à l'utilisateur".to_string(),
+        ));
+    }
+
+    // Convertir les prix en Decimal
+    use rust_decimal::Decimal;
+    let prix_vente = payload.prix_vente.map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
+    let prix_location = payload.prix_location_mensuel.map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
+    let superficie = payload.superficie_m2.map(|s| Decimal::from_f64_retain(s).unwrap_or_default());
+
+    // Insérer le bien immobilier
+    let property_id = sqlx::query_scalar::<_, i32>(
+        r#"
+        INSERT INTO real_estate_properties (
+            service_id, user_id, titre, description, type_bien, statut,
+            adresse, quartier, ville, gps, superficie_m2,
+            nb_chambres, nb_salles_bain, standing, etat_general,
+            prix_vente, prix_location_mensuel, photos, is_available_now
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, true)
+        RETURNING id
+        "#,
+    )
+    .bind(payload.service_id)
+    .bind(user_id)
+    .bind(&payload.titre)
+    .bind(payload.description.as_deref())
+    .bind(&payload.type_bien)
+    .bind(&payload.statut)
+    .bind(payload.adresse.as_deref())
+    .bind(payload.quartier.as_deref())
+    .bind(payload.ville.as_deref())
+    .bind(payload.gps.as_deref())
+    .bind(superficie.as_ref())
+    .bind(payload.nb_chambres)
+    .bind(payload.nb_salles_bain)
+    .bind(payload.standing.as_deref())
+    .bind(payload.etat_general.as_deref())
+    .bind(prix_vente.as_ref())
+    .bind(prix_location.as_ref())
+    .bind(payload.photos.as_deref())
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_property] Erreur insertion: {}", e);
+        AppError::Internal(format!("Erreur création bien: {}", e))
+    })?;
+
+    info!("[create_property] Bien immobilier créé avec id={}", property_id);
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "data": {
+                "id": property_id,
+                "service_id": payload.service_id
+            }
+        })),
+    ))
+}
+
 // Helper functions
 fn parse_gps(gps_str: &str) -> Option<(f64, f64)> {
     let parts: Vec<&str> = gps_str.split(',').collect();

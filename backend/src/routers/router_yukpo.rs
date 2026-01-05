@@ -169,6 +169,9 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU: Routes pour signalements
     let signalement_routes_merged = crate::routes::signalement_routes::signalement_routes(state.clone());
     
+    // ✅ NOUVEAU: Routes pour validation des partenaires (admin)
+    let partner_validation_routes_merged = crate::routes::partner_validation_routes::partner_validation_routes(state.clone());
+    
     // ✅ NOUVEAU: Routes pour recherche avec planifications
     let scheduling_search_routes_merged = crate::routes::scheduling_search_routes::scheduling_search_routes(state.clone());
     
@@ -195,6 +198,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(mobile_routes)
         .merge(conversation_routes_merged)
         .merge(signalement_routes_merged)
+        .merge(partner_validation_routes_merged)
         .merge(scheduling_search_routes_merged)
         .merge(service_team_routes_merged)
         .merge(image_search_routes_merged)

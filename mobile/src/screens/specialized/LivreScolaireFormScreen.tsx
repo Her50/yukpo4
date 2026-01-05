@@ -326,12 +326,58 @@ const LivreScolaireFormScreen: React.FC = () => {
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Quartier"
-                            value={formData.quartier || ''}
-                            onSelect={(value) => setFormData({ ...formData, quartier: value })}
+                            value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''}
+                            onSelect={(location: LocationObject) => {
+                                // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
+                                const quartierValue = location.raw || location.place_name || '';
+                                setFormData({ 
+                                    ...formData, 
+                                    quartier: quartierValue,
+                                    // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
+                                    ville: location.components?.ville || formData.ville,
+                                    pays: location.components?.pays || formData.pays,
+                                });
+                            }}
                             placeholder="Rechercher un quartier..."
                             scope="neighborhood"
                         />
                     </View>
+
+                    {/* ✅ NOUVEAU: Section Statistiques (si livre existe) */}
+                    {livreId && (
+                        <View style={styles.statsSection}>
+                            <View style={styles.sectionHeader}>
+                                <SafeIcon name="bar-chart" size={20} color={modernColors.primary} type="lucide" />
+                                <Text style={styles.sectionTitle}>Informations</Text>
+                            </View>
+                            <View style={styles.statsContainer}>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>{formData.niveau || 'N/A'}</Text>
+                                    <Text style={styles.statLabel}>Niveau</Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>{formData.etat_livre || 'N/A'}</Text>
+                                    <Text style={styles.statLabel}>État</Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>
+                                        {formData.classe_actuelle ? 'Oui' : 'Non'}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Échange</Text>
+                                </View>
+                            </View>
+                            {formData.classe_actuelle && formData.classe_souhaitee && (
+                                <View style={styles.exchangeInfo}>
+                                    <SafeIcon name="repeat" size={16} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.exchangeInfoText}>
+                                        {formData.classe_actuelle} → {formData.classe_souhaitee}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
 
                     {/* GPS */}
                     <View style={styles.inputGroup}>
@@ -453,6 +499,71 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         marginTop: 8,
+    },
+    // ✅ NOUVEAU: Styles pour section statistiques
+    statsSection: {
+        marginTop: 24,
+        marginBottom: 16,
+        padding: 16,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    statsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    statItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    statValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.primary,
+        marginBottom: 4,
+    },
+    statLabel: {
+        fontSize: 11,
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    statDivider: {
+        width: 1,
+        height: 35,
+        backgroundColor: '#E5E7EB',
+        marginHorizontal: 8,
+    },
+    exchangeInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 12,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    exchangeInfoText: {
+        fontSize: 14,
+        color: modernColors.primary,
+        fontWeight: '500',
     },
 });
 

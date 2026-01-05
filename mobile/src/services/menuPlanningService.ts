@@ -88,6 +88,35 @@ export interface ShoppingList {
     total_estimated_cost?: number;
 }
 
+export interface GeneratedRecipe {
+    recipe_name: string;
+    description: string;
+    cuisine_style?: string;
+    meal_type: string[];
+    difficulty?: string;
+    prep_time_minutes?: number;
+    cook_time_minutes?: number;
+    total_time_minutes?: number;
+    servings: number;
+    ingredients: Array<{
+        name: string;
+        quantity: number;
+        unit: string;
+        notes?: string;
+    }>;
+    instructions: string[];
+    tips?: string[];
+    estimated_cost?: number;
+    calories_per_serving?: number;
+    nutrition?: {
+        proteins: number;
+        carbs: number;
+        fats: number;
+        fiber: number;
+    };
+    tags?: string[];
+}
+
 export const menuPlanningService = {
     // ✅ Générer menu hebdomadaire avec IA
     generateWeeklyMenu: async (weekStart?: string, profileOverride?: Partial<FamilyProfile>) => {
@@ -166,6 +195,18 @@ export const menuPlanningService = {
             success: boolean;
             shopping_list: ShoppingList | null;
         }>(`/api/menus/shopping-list${params}`);
+        return response;
+    },
+
+    // ✅ NOUVEAU: Générer une recette complète avec IA
+    generateRecipe: async (recipeName: string, servings?: number) => {
+        const response = await apiPost<{
+            success: boolean;
+            recipe: GeneratedRecipe;
+        }>('/api/menus/ai/generate-recipe', {
+            recipe_name: recipeName,
+            servings: servings || 4,
+        });
         return response;
     },
 };

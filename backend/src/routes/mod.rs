@@ -28,6 +28,7 @@ pub mod conversation_routes; // ✅ NOUVEAU: Routes pour @mentions et multi-part
 pub mod scheduling_search_routes; // ✅ NOUVEAU: Routes pour recherche avec planifications
 pub mod service_team_routes; // ✅ NOUVEAU: Routes pour gestion d'équipe des services
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
+pub mod partner_validation_routes; // ✅ NOUVEAU: Routes pour validation des partenaires
 pub mod publicite_routes; // ✅ NOUVEAU: Routes pour système de publicité payante
 pub mod autocomplete_routes; // ✅ NOUVEAU: Routes pour autocomplete characteristics
 pub mod search_history_routes; // ✅ NOUVEAU: Routes pour historique de recherche

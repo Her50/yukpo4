@@ -342,8 +342,11 @@ const CovoiturageFormScreen: React.FC = () => {
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Ville de départ *"
-                            value={formData.depart || ''}
-                            onSelect={(value) => setFormData({ ...formData, depart: value })}
+                            value={formData.depart ? (typeof formData.depart === 'string' ? { raw: formData.depart, place_name: formData.depart } : formData.depart) : ''}
+                            onSelect={(location: LocationObject) => {
+                                const departValue = location.raw || location.place_name || '';
+                                setFormData({ ...formData, depart: departValue });
+                            }}
                             placeholder="Rechercher une ville de départ..."
                             scope="city"
                             enrichWithBackend
@@ -366,8 +369,11 @@ const CovoiturageFormScreen: React.FC = () => {
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Destination *"
-                            value={formData.destination || ''}
-                            onSelect={(value) => setFormData({ ...formData, destination: value })}
+                            value={formData.destination ? (typeof formData.destination === 'string' ? { raw: formData.destination, place_name: formData.destination } : formData.destination) : ''}
+                            onSelect={(location: LocationObject) => {
+                                const destinationValue = location.raw || location.place_name || '';
+                                setFormData({ ...formData, destination: destinationValue });
+                            }}
                             placeholder="Rechercher une ville de destination..."
                             scope="city"
                             enrichWithBackend
@@ -545,6 +551,49 @@ const CovoiturageFormScreen: React.FC = () => {
                             trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
                         />
                     </View>
+
+                    {/* ✅ NOUVEAU: Section Statistiques (si service existe) */}
+                    {serviceId && specializedServiceId && (
+                        <View style={styles.statsSection}>
+                            <View style={styles.sectionHeader}>
+                                <SafeIcon name="bar-chart" size={20} color={modernColors.primary} type="lucide" />
+                                <Text style={styles.sectionTitle}>Statistiques</Text>
+                            </View>
+                            <View style={styles.statsContainer}>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>
+                                        {parseInt(formData.places_disponibles) || 0}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Places disponibles</Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>
+                                        {formData.is_recurring ? 'Oui' : 'Non'}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Récurrent</Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>
+                                        {formData.prix_par_place ? parseInt(formData.prix_par_place) : 0}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Prix/place ({formData.devise})</Text>
+                                </View>
+                            </View>
+                            {formData.is_recurring && formData.recurrence_type && (
+                                <View style={styles.recurrenceInfo}>
+                                    <SafeIcon name="repeat" size={16} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.recurrenceInfoText}>
+                                        {formData.recurrence_type === 'daily' ? 'Quotidien' :
+                                         formData.recurrence_type === 'weekly' ? 'Hebdomadaire' :
+                                         'Mensuel'}
+                                        {formData.recurrence_end_date && ` jusqu'au ${formData.recurrence_end_date.toLocaleDateString('fr-FR')}`}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
 
                     {/* ✅ NOUVEAU 2025-01-29: Section Trajets Récurrents */}
                     <View style={styles.sectionDivider}>

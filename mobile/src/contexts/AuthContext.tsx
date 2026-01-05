@@ -14,6 +14,7 @@ interface User {
   credits: number;
   photo?: string;
   token?: string;
+  partner_type?: string; // ✅ NOUVEAU: Type de partenaire
 }
 
 interface DecodedToken {
@@ -23,6 +24,7 @@ interface DecodedToken {
   exp: number;
   name?: string;
   tokens_balance?: number;
+  partner_type?: string; // ✅ NOUVEAU: Type de partenaire depuis JWT
 }
 
 interface AuthContextType {
@@ -134,7 +136,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             credits: decoded.tokens_balance ?? 0,
             phone: '',
             photo: '',
-            token: token
+            token: token,
+            // ✅ NOUVEAU: Stocker partner_type dans user pour navigation
+            ...(decoded.partner_type && { partner_type: decoded.partner_type }),
           };
 
           setUser(userData);
@@ -204,7 +208,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             credits: decoded.tokens_balance ?? (response.data as any)?.tokens_balance ?? 0,
             phone: '',
             photo: '',
-            token: token
+            token: token,
+            // ✅ NOUVEAU: Récupérer partner_type depuis la réponse ou le JWT
+            partner_type: decoded.partner_type || (response.data as any)?.partner_type,
           };
 
           setUser(userData);

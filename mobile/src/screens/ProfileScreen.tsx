@@ -284,6 +284,13 @@ const ProfileScreen: React.FC = () => {
 
   const profileActions = [
     {
+      title: 'Recharger Tokens',
+      icon: 'wallet', // ✅ CORRIGÉ: Icône Lucide pour wallet
+      color: '#EC4899',
+      route: 'RechargeTokens',
+      description: 'Ajouter des tokens à votre compte'
+    },
+    {
       title: 'Mes Vidéos',
       icon: 'video', // ✅ NOUVEAU: Accès aux vidéos créées
       color: '#EC4899',
@@ -298,13 +305,14 @@ const ProfileScreen: React.FC = () => {
       route: 'VideoAnalytics',
       description: 'Statistiques et performances de vos vidéos'
     },
-    {
+    // ✅ Masqué pour non-partenaires - Les partenaires sont redirigés automatiquement vers leur écran
+    ...(user?.role === 'partenaire' ? [{
       title: 'Mes Services Spécialisés',
       icon: 'layout-grid', // ✅ CORRIGÉ: Icône Lucide pour interface de gestion (tablette/grille)
       color: '#6366F1',
       route: 'SpecializedServicesHub',
       description: 'Gérer vos services de santé et transport'
-    },
+    }] : []),
     {
       title: 'Mes tickets de voyage',
       icon: 'ticket', // ✅ CORRIGÉ: Icône Lucide pour tickets
@@ -332,13 +340,6 @@ const ProfileScreen: React.FC = () => {
       color: '#F59E0B',
       route: 'History',
       description: 'Voir mon historique de transactions'
-    },
-    {
-      title: 'Recharger Tokens',
-      icon: 'wallet', // ✅ CORRIGÉ: Icône Lucide pour wallet
-      color: '#EC4899',
-      route: 'RechargeTokens',
-      description: 'Ajouter des tokens à votre compte'
     },
     {
       title: 'Paramètres',

@@ -628,9 +628,9 @@ const CourierRegistrationScreen: React.FC = () => {
                     <View style={styles.inputContainer}>
                         <LocationSelector
                             label="Ville *"
-                            value={city}
+                            value={city ? { raw: city, place_name: city } : ''}
                             onSelect={(location: LocationObject) => {
-                                const ville = location.components?.ville || location.place_name || '';
+                                const ville = location.components?.ville || location.place_name || location.raw || '';
                                 setCity(ville);
                                 // Si le pays n'est pas encore défini, l'extraire aussi
                                 if (location.components?.pays && !country) {
@@ -646,9 +646,9 @@ const CourierRegistrationScreen: React.FC = () => {
                     <View style={styles.inputContainer}>
                         <LocationSelector
                             label="Pays"
-                            value={country}
+                            value={country ? { raw: country, place_name: country } : ''}
                             onSelect={(location: LocationObject) => {
-                                const pays = location.components?.pays || location.place_name || '';
+                                const pays = location.components?.pays || location.place_name || location.raw || '';
                                 setCountry(pays);
                             }}
                             placeholder="Rechercher un pays..."

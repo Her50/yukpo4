@@ -2073,6 +2073,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 value={formValues.lieu_produit}
                                 onSelect={(value) => handleFieldChange('lieu_produit', value)}
                                 placeholder="Ville, quartier, pays..."
+                                scope="all" // ✅ EXPLICITE: Recherche universelle pour lieu (ville, quartier, pays, établissements)
                                 enrichWithBackend={true}
                                 required
                             />

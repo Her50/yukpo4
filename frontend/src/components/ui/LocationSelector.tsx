@@ -179,18 +179,63 @@ interface LocationSelectorProps {
     className?: string;
 }
 
+// ✅ NOUVEAU: Fonction pour déterminer automatiquement le scope basé sur le label
+const determineScopeFromLabel = (label: string, providedScope?: PlaceScope | 'all'): PlaceScope | 'all' => {
+    // Si un scope est explicitement fourni, l'utiliser
+    if (providedScope) {
+        return providedScope;
+    }
+    
+    // Sinon, déterminer le scope basé sur le label
+    const labelLower = label.toLowerCase().trim();
+    
+    // Détection pour "ville"
+    if (labelLower.includes('ville') && !labelLower.includes('quartier') && !labelLower.includes('lieu')) {
+        return 'city';
+    }
+    
+    // Détection pour "quartier"
+    if (labelLower.includes('quartier') && !labelLower.includes('lieu')) {
+        return 'neighborhood';
+    }
+    
+    // Détection pour "pays"
+    if (labelLower.includes('pays') && !labelLower.includes('lieu') && !labelLower.includes('ville') && !labelLower.includes('quartier')) {
+        return 'all'; // 'all' pour rechercher les pays
+    }
+    
+    // Pour "lieu" ou autres champs génériques → recherche universelle (établissements + géographie)
+    if (labelLower.includes('lieu') || labelLower.includes('localisation') || labelLower.includes('adresse')) {
+        return 'all'; // Recherche universelle pour les lieux/établissements
+    }
+    
+    // Par défaut, recherche universelle
+    return 'all';
+};
+
 export const LocationSelector: React.FC<LocationSelectorProps> = ({
     label,
     value,
     onSelect,
-    placeholder = 'Rechercher un lieu...',
-    scope = 'all',
+    placeholder,
+    scope,
     cityContext,
     required = false,
     enrichWithBackend = false,
     readonly = false,
     className = '',
 }) => {
+    // ✅ NOUVEAU: Déterminer automatiquement le scope basé sur le label si non fourni
+    const finalScope = determineScopeFromLabel(label, scope);
+    
+    // ✅ NOUVEAU: Déterminer le placeholder par défaut basé sur le scope
+    const defaultPlaceholder = placeholder || (
+        finalScope === 'city' ? 'Rechercher une ville...' :
+        finalScope === 'neighborhood' ? 'Rechercher un quartier...' :
+        finalScope === 'all' && label.toLowerCase().includes('pays') ? 'Rechercher un pays...' :
+        'Rechercher un lieu, ville, quartier...'
+    );
+    
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
@@ -214,7 +259,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             setLoading(true);
             try {
                 // ✅ Si scope est 'all', passer undefined pour recherche universelle
-                const scopeParam = scope === 'all' ? undefined : scope as PlaceScope;
+                const scopeParam = finalScope === 'all' ? undefined : finalScope as PlaceScope;
                 const results = await placesService.autocomplete(debouncedQuery, scopeParam, cityContext);
                 if (!cancelled) setOptions(results);
             } catch (error) {
@@ -226,7 +271,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         };
         run();
         return () => { cancelled = true; };
-    }, [debouncedQuery, scope, cityContext]);
+    }, [debouncedQuery, finalScope, cityContext]);
 
     const handleSelect = async (opt: string) => {
         setOpen(false);
@@ -284,7 +329,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     <span className="flex items-center gap-2 flex-1 min-w-0">
                         <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                         <span className="truncate">
-                            {displayValue || placeholder}
+                            {displayValue || defaultPlaceholder}
                         </span>
                     </span>
                     <Search className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
@@ -337,7 +382,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
                                     type="text"
-                                    placeholder={placeholder}
+                                    placeholder={defaultPlaceholder}
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                     className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

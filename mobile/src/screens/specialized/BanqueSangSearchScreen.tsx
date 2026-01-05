@@ -16,9 +16,11 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
+import { apiGet, apiPost } from '../../services/api';
 
 interface BanqueSangSearchFilters {
     ville?: string;
@@ -29,11 +31,13 @@ interface BanqueSangSearchFilters {
     groupe_sanguin?: string;
     urgence?: boolean;
     available_only?: boolean;
+    check_stocks?: boolean; // ✅ NOUVEAU: Vérifier stocks
 }
 
 const BanqueSangSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { user } = useAuth();
 
     const [ville, setVille] = useState<LocationObject | string>('');
     const [quartier, setQuartier] = useState<LocationObject | string>('');
@@ -45,6 +49,11 @@ const BanqueSangSearchScreen: React.FC = () => {
     const [urgence, setUrgence] = useState(false);
     const [availableOnly, setAvailableOnly] = useState(true);
     const [loading, setLoading] = useState(false);
+    // ✅ NOUVEAU: Fonctionnalités avancées
+    const [userBloodGroup, setUserBloodGroup] = useState<string>('');
+    const [compatibleGroups, setCompatibleGroups] = useState<string[]>([]);
+    const [showMatching, setShowMatching] = useState(false);
+    const [showCompatibility, setShowCompatibility] = useState(false);
 
     React.useEffect(() => {
         if (location?.coords) {
@@ -84,11 +93,71 @@ const BanqueSangSearchScreen: React.FC = () => {
         if (groupeSanguin) filters.groupe_sanguin = groupeSanguin;
         if (urgence) filters.urgence = true;
         if (availableOnly) filters.available_only = true;
+        // ✅ NOUVEAU: Vérifier stocks si groupe sanguin spécifié
+        if (groupeSanguin) filters.check_stocks = true;
 
         navigation.navigate('BanqueSangList' as never, { filters } as never);
     };
 
     const groupesSanguins = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+    // ✅ NOUVEAU: Charger le groupe sanguin de l'utilisateur
+    React.useEffect(() => {
+        loadUserBloodGroup();
+    }, [user]);
+
+    const loadUserBloodGroup = async () => {
+        if (!user) return;
+        try {
+            const response = await apiGet('/api/blood-donation/donor/blood-groups');
+            if (response?.success && response?.data && response.data.length > 0) {
+                const firstGroup = response.data[0].blood_group;
+                setUserBloodGroup(firstGroup);
+                // Charger les groupes compatibles
+                loadCompatibility(firstGroup);
+            }
+        } catch (error) {
+            console.error('[BanqueSangSearchScreen] Erreur chargement groupe sanguin:', error);
+        }
+    };
+
+    // ✅ NOUVEAU: Charger la compatibilité
+    const loadCompatibility = async (group: string) => {
+        try {
+            const response = await apiGet(`/api/blood-donation/compatibility/${group}`);
+            if (response?.success && response?.data) {
+                setCompatibleGroups(response.data.compatible_groups || []);
+            }
+        } catch (error) {
+            console.error('[BanqueSangSearchScreen] Erreur chargement compatibilité:', error);
+        }
+    };
+
+    // ✅ NOUVEAU: Enregistrer groupe sanguin
+    const saveBloodGroup = async (group: string) => {
+        if (!user) {
+            Alert.alert('Erreur', 'Vous devez être connecté pour enregistrer votre groupe sanguin');
+            return;
+        }
+        try {
+            setLoading(true);
+            const response = await apiPost('/api/blood-donation/donor/blood-group', {
+                blood_group: group,
+            });
+            if (response?.success) {
+                setUserBloodGroup(group);
+                loadCompatibility(group);
+                Alert.alert('Succès', 'Votre groupe sanguin a été enregistré');
+            } else {
+                Alert.alert('Erreur', response?.message || 'Impossible d\'enregistrer le groupe sanguin');
+            }
+        } catch (error: any) {
+            console.error('[BanqueSangSearchScreen] Erreur enregistrement:', error);
+            Alert.alert('Erreur', error?.message || 'Une erreur est survenue');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Recherches rapides spécifiques banque de sang
     const quickSearches = [
@@ -162,6 +231,72 @@ const BanqueSangSearchScreen: React.FC = () => {
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
             >
+                {/* ✅ NOUVEAU: Bannière groupe sanguin et matching */}
+                {user && (
+                    <View style={styles.bloodGroupBanner}>
+                        <LinearGradient
+                            colors={['#DC2626', '#F87171']}
+                            style={styles.bloodGroupBannerGradient}
+                        >
+                            <View style={styles.bloodGroupBannerContent}>
+                                <View style={styles.bloodGroupBannerIcon}>
+                                    <SafeIcon name="droplet" size={24} color="#FFFFFF" type="lucide" />
+                                </View>
+                                <View style={styles.bloodGroupBannerText}>
+                                    <Text style={styles.bloodGroupBannerTitle}>
+                                        {userBloodGroup ? `Groupe sanguin: ${userBloodGroup}` : 'Enregistrer votre groupe sanguin'}
+                                    </Text>
+                                    {userBloodGroup && compatibleGroups.length > 0 && (
+                                        <Text style={styles.bloodGroupBannerSubtitle}>
+                                            Compatible avec: {compatibleGroups.join(', ')}
+                                        </Text>
+                                    )}
+                                </View>
+                                {!userBloodGroup && (
+                                    <TouchableOpacity
+                                        style={styles.bloodGroupBannerButton}
+                                        onPress={() => {
+                                            hapticPress();
+                                            setShowCompatibility(true);
+                                        }}
+                                    >
+                                        <SafeIcon name="plus" size={20} color="#DC2626" type="lucide" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        </LinearGradient>
+                    </View>
+                )}
+
+                {/* ✅ NOUVEAU: Bouton matching intelligent */}
+                {user && (
+                    <TouchableOpacity
+                        style={styles.matchingBanner}
+                        onPress={() => {
+                            hapticPress();
+                            navigation.navigate('BloodDonationMatching' as never);
+                        }}
+                    >
+                        <LinearGradient
+                            colors={['#10B981', '#34D399']}
+                            style={styles.matchingBannerGradient}
+                        >
+                            <View style={styles.matchingBannerContent}>
+                                <View style={styles.matchingBannerIcon}>
+                                    <SafeIcon name="heart-handshake" size={24} color="#FFFFFF" type="lucide" />
+                                </View>
+                                <View style={styles.matchingBannerText}>
+                                    <Text style={styles.matchingBannerTitle}>Matching intelligent</Text>
+                                    <Text style={styles.matchingBannerSubtitle}>
+                                        Créer une demande ou trouver des donneurs compatibles
+                                    </Text>
+                                </View>
+                                <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
+                            </View>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                )}
+
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
                     <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
@@ -196,8 +331,10 @@ const BanqueSangSearchScreen: React.FC = () => {
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Ville"
-                            value={ville}
-                            onSelect={(location) => setVille(location)}
+                            value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
+                            onSelect={(location: LocationObject) => {
+                                setVille(location);
+                            }}
                             placeholder="Rechercher une ville..."
                             scope="city"
                             enrichWithBackend={true}
@@ -208,8 +345,10 @@ const BanqueSangSearchScreen: React.FC = () => {
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Quartier (optionnel)"
-                            value={quartier}
-                            onSelect={(location) => setQuartier(location)}
+                            value={typeof quartier === 'string' ? (quartier ? { raw: quartier, place_name: quartier } : '') : quartier}
+                            onSelect={(location: LocationObject) => {
+                                setQuartier(location);
+                            }}
                             placeholder="Rechercher un quartier..."
                             scope="neighborhood"
                             cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
@@ -270,9 +409,22 @@ const BanqueSangSearchScreen: React.FC = () => {
 
                     {/* Groupe sanguin */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="droplet" size={14} color={modernColors.primary} type="lucide" /> Groupe sanguin recherché
-                        </Text>
+                        <View style={styles.labelRow}>
+                            <Text style={styles.label}>
+                                <SafeIcon name="droplet" size={14} color={modernColors.primary} type="lucide" /> Groupe sanguin recherché
+                            </Text>
+                            {userBloodGroup && (
+                                <TouchableOpacity
+                                    style={styles.useMyGroupButton}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setGroupeSanguin(userBloodGroup);
+                                    }}
+                                >
+                                    <Text style={styles.useMyGroupText}>Utiliser mon groupe ({userBloodGroup})</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
                         <View style={styles.bloodGroupContainer}>
                             <TouchableOpacity
                                 style={[styles.bloodGroupButton, !groupeSanguin && styles.bloodGroupButtonActive]}
@@ -285,21 +437,40 @@ const BanqueSangSearchScreen: React.FC = () => {
                                     Tous
                                 </Text>
                             </TouchableOpacity>
-                            {groupesSanguins.map((groupe) => (
-                                <TouchableOpacity
-                                    key={groupe}
-                                    style={[styles.bloodGroupButton, groupeSanguin === groupe && styles.bloodGroupButtonActive]}
-                                    onPress={() => {
-                                        hapticPress();
-                                        setGroupeSanguin(groupeSanguin === groupe ? '' : groupe);
-                                    }}
-                                >
-                                    <Text style={[styles.bloodGroupText, groupeSanguin === groupe && styles.bloodGroupTextActive]}>
-                                        {groupe}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                            {groupesSanguins.map((groupe) => {
+                                const isCompatible = userBloodGroup && compatibleGroups.includes(groupe);
+                                return (
+                                    <TouchableOpacity
+                                        key={groupe}
+                                        style={[
+                                            styles.bloodGroupButton,
+                                            groupeSanguin === groupe && styles.bloodGroupButtonActive,
+                                            isCompatible && groupeSanguin !== groupe && styles.bloodGroupButtonCompatible
+                                        ]}
+                                        onPress={() => {
+                                            hapticPress();
+                                            setGroupeSanguin(groupeSanguin === groupe ? '' : groupe);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.bloodGroupText,
+                                            groupeSanguin === groupe && styles.bloodGroupTextActive,
+                                            isCompatible && groupeSanguin !== groupe && styles.bloodGroupTextCompatible
+                                        ]}>
+                                            {groupe}
+                                        </Text>
+                                        {isCompatible && (
+                                            <SafeIcon name="check" size={12} color="#10B981" type="lucide" />
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
+                        {userBloodGroup && compatibleGroups.length > 0 && (
+                            <Text style={styles.compatibilityHint}>
+                                💡 Les groupes {compatibleGroups.join(', ')} sont compatibles avec votre groupe ({userBloodGroup})
+                            </Text>
+                        )}
                     </View>
 
                     {/* Options */}
@@ -354,10 +525,11 @@ const BanqueSangSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Bouton recherche */}
-                    <NativeButton
+                    <TouchableOpacity
                         onPress={handleSearch}
                         disabled={loading}
-                        style={styles.searchButton}
+                        style={[styles.searchButton, loading && styles.searchButtonDisabled]}
+                        activeOpacity={0.8}
                     >
                         <View style={styles.searchButtonContent}>
                             <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
@@ -365,7 +537,7 @@ const BanqueSangSearchScreen: React.FC = () => {
                                 {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
                             </Text>
                         </View>
-                    </NativeButton>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Info section */}
@@ -388,6 +560,51 @@ const BanqueSangSearchScreen: React.FC = () => {
                 onClose={() => setShowGPSModal(false)}
                 onSelect={handleGPSSelect}
             />
+
+            {/* ✅ NOUVEAU: Modal enregistrement groupe sanguin */}
+            {showCompatibility && (
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Enregistrer votre groupe sanguin</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowCompatibility(false)}
+                                style={styles.modalCloseButton}
+                            >
+                                <SafeIcon name="x" size={24} color="#111827" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={styles.modalBody}>
+                            <Text style={styles.modalDescription}>
+                                Enregistrez votre groupe sanguin pour faciliter les recherches et le matching avec les donneurs.
+                            </Text>
+                            <View style={styles.bloodGroupModalContainer}>
+                                {groupesSanguins.map((groupe) => (
+                                    <TouchableOpacity
+                                        key={groupe}
+                                        style={[
+                                            styles.bloodGroupModalButton,
+                                            userBloodGroup === groupe && styles.bloodGroupModalButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            hapticPress();
+                                            saveBloodGroup(groupe);
+                                            setShowCompatibility(false);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.bloodGroupModalText,
+                                            userBloodGroup === groupe && styles.bloodGroupModalTextActive
+                                        ]}>
+                                            {groupe}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
+                    </View>
+                </View>
+            )}
         </SafeNativeView>
     );
 };
@@ -642,6 +859,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
         borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: '#DC2626',
+        paddingVertical: 16,
+    },
+    searchButtonDisabled: {
+        opacity: 0.6,
     },
     searchButtonContent: {
         flexDirection: 'row',
@@ -676,6 +898,203 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#991B1B',
         lineHeight: 20,
+    },
+    // ✅ NOUVEAU: Styles pour bannières
+    bloodGroupBanner: {
+        marginBottom: 16,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    bloodGroupBannerGradient: {
+        padding: 16,
+    },
+    bloodGroupBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    bloodGroupBannerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    bloodGroupBannerText: {
+        flex: 1,
+    },
+    bloodGroupBannerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    bloodGroupBannerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        lineHeight: 16,
+    },
+    bloodGroupBannerButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    matchingBanner: {
+        marginBottom: 16,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    matchingBannerGradient: {
+        padding: 16,
+    },
+    matchingBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    matchingBannerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    matchingBannerText: {
+        flex: 1,
+    },
+    matchingBannerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    matchingBannerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        lineHeight: 16,
+    },
+    labelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    useMyGroupButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: '#FEE2E2',
+        borderRadius: 8,
+    },
+    useMyGroupText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#DC2626',
+    },
+    bloodGroupButtonCompatible: {
+        borderColor: '#10B981',
+        borderWidth: 2,
+    },
+    bloodGroupTextCompatible: {
+        color: '#10B981',
+    },
+    compatibilityHint: {
+        fontSize: 12,
+        color: '#059669',
+        marginTop: 8,
+        fontStyle: 'italic',
+    },
+    modalOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        width: '90%',
+        maxHeight: '70%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    modalCloseButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalBody: {
+        padding: 20,
+    },
+    modalDescription: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 20,
+        lineHeight: 20,
+    },
+    bloodGroupModalContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
+    bloodGroupModalButton: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#D1D5DB',
+        backgroundColor: '#FFFFFF',
+        minWidth: 80,
+        alignItems: 'center',
+    },
+    bloodGroupModalButtonActive: {
+        backgroundColor: '#DC2626',
+        borderColor: '#DC2626',
+    },
+    bloodGroupModalText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#374151',
+    },
+    bloodGroupModalTextActive: {
+        color: '#FFFFFF',
     },
 });
 

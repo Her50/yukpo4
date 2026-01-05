@@ -235,8 +235,10 @@ const BayamSelamSearchScreen: React.FC = () => {
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Ville"
-                            value={ville}
-                            onSelect={(location) => setVille(location)}
+                            value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
+                            onSelect={(location: LocationObject) => {
+                                setVille(location);
+                            }}
                             placeholder="Rechercher une ville..."
                             scope="city"
                             enrichWithBackend={true}
@@ -247,8 +249,10 @@ const BayamSelamSearchScreen: React.FC = () => {
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Quartier (optionnel)"
-                            value={quartier}
-                            onSelect={(location) => setQuartier(location)}
+                            value={typeof quartier === 'string' ? (quartier ? { raw: quartier, place_name: quartier } : '') : quartier}
+                            onSelect={(location: LocationObject) => {
+                                setQuartier(location);
+                            }}
                             placeholder="Rechercher un quartier..."
                             scope="neighborhood"
                             cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}

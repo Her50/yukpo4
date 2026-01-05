@@ -2,6 +2,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Modal,
     ScrollView,
     StyleSheet,
     Switch,
@@ -11,16 +12,25 @@ import {
 } from 'react-native';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
+// ✅ SUPPRIMÉ: PartnerSelector - Les données partenaire sont chargées automatiquement depuis /api/partners/me
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 // ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { apiPost, servicesApi } from '../../services/api';
+import { apiDelete, apiGet, apiPatch, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
-// ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
+// ✅ NOUVEAU: Interface pour les types d'examens
+interface ExaminationType {
+    id?: number;
+    nom: string;
+    categorie: 'analyse' | 'imagerie';
+    prix?: number;
+    duree_estimee?: string; // Format: "30 min", "1h", etc.
+    preparation_requise?: string;
+}
 
 const LaboratoireFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -32,7 +42,7 @@ const LaboratoireFormScreen: React.FC = () => {
     const mode = (route.params as any)?.mode as string | undefined;
 
     const [formData, setFormData] = useState({
-        nom: '',
+        nom: '', // ✅ Sera rempli automatiquement depuis /api/partners/me
         type_laboratoire: 'Laboratoire',
         adresse: '',
         quartier: null as LocationObject | null,
@@ -56,9 +66,61 @@ const LaboratoireFormScreen: React.FC = () => {
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
     // ✅ SUPPRIMÉ : showScheduleModal et schedule (planning hebdomadaire supprimé)
 
+    // ✅ NOUVEAU: Données du partenaire pour affichage dans l'en-tête
+    const [partnerData, setPartnerData] = useState<any>(null);
+
+    // ✅ NOUVEAU: États pour la gestion des types d'examens
+    const [examinationTypes, setExaminationTypes] = useState<ExaminationType[]>([]);
+    const [loadingExaminations, setLoadingExaminations] = useState(false);
+    const [showExaminationModal, setShowExaminationModal] = useState(false);
+    const [editingExamination, setEditingExamination] = useState<ExaminationType | null>(null);
+    const [examinationFormData, setExaminationFormData] = useState<ExaminationType>({
+        nom: '',
+        categorie: 'analyse',
+        prix: undefined,
+        duree_estimee: '',
+        preparation_requise: '',
+    });
+    const [searchQuery, setSearchQuery] = useState('');
+
     const typesLaboratoire = ['Laboratoire', 'Centre d\'imagerie', 'Les deux'];
     const analysesOptions = ['Sang', 'Urine', 'Bactériologie', 'Parasitologie', 'Sérologie', 'Biochimie'];
     const imagerieOptions = ['Radiologie', 'Échographie', 'Scanner', 'IRM', 'Mammographie'];
+
+    // ✅ NOUVEAU: Charger automatiquement les données partenaire depuis /api/partners/me
+    useEffect(() => {
+        const loadPartnerData = async () => {
+            if (user?.role === 'partenaire' && user?.partner_type === 'laboratoire') {
+                try {
+                    const { apiGet } = require('../../services/api');
+                    const response = await apiGet('/api/partners/me');
+                    if (response.success && response.data) {
+                        const partner = response.data;
+                        setPartnerData(partner); // ✅ Stocker pour affichage dans l'en-tête
+                        // ✅ Pré-remplir silencieusement les champs pour l'envoi au backend (mais ne pas les afficher)
+                        setFormData(prev => ({
+                            ...prev,
+                            nom: partner.name || prev.nom,
+                            adresse: partner.address || partner.location_address || prev.adresse,
+                            telephone: partner.contact_phone || prev.telephone,
+                            email: partner.contact_email || prev.email,
+                            quartier: partner.city ? {
+                                raw: partner.city,
+                                place_name: partner.city,
+                                components: {
+                                    ville: partner.city,
+                                    pays: partner.country,
+                                }
+                            } : prev.quartier,
+                        }));
+                    }
+                } catch (error) {
+                    console.error('[LaboratoireFormScreen] Erreur chargement partenaire:', error);
+                }
+            }
+        };
+        loadPartnerData();
+    }, [user?.role, user?.partner_type]);
 
     // ✅ Créer automatiquement un service si serviceId manquant
     useEffect(() => {
@@ -131,9 +193,162 @@ const LaboratoireFormScreen: React.FC = () => {
         loadExistingData();
     }, [mode, specializedServiceId, serviceId]);
 
+    // ✅ NOUVEAU: Charger les types d'examens
+    useEffect(() => {
+        const loadExaminationTypes = async () => {
+            if (serviceId && specializedServiceId) {
+                try {
+                    setLoadingExaminations(true);
+                    const response = await apiGet(`/api/laboratoires/${specializedServiceId}/examination-types`);
+                    if (response.success && response.data) {
+                        const data = response.data.data || response.data;
+                        if (Array.isArray(data) && data.length > 0) {
+                            setExaminationTypes(data);
+                        } else {
+                            // Si backend retourne vide, utiliser analyses_disponibles et imagerie_disponible
+                            const exams: ExaminationType[] = [];
+                            if (selectedAnalyses.length > 0) {
+                                selectedAnalyses.forEach(nom => {
+                                    exams.push({ nom, categorie: 'analyse' });
+                                });
+                            }
+                            if (selectedImagerie.length > 0) {
+                                selectedImagerie.forEach(nom => {
+                                    exams.push({ nom, categorie: 'imagerie' });
+                                });
+                            }
+                            setExaminationTypes(exams);
+                        }
+                    }
+                } catch (error: any) {
+                    console.error('[LaboratoireFormScreen] Erreur chargement types examens:', error);
+                    // Utiliser les données du formulaire comme fallback
+                    const exams: ExaminationType[] = [];
+                    selectedAnalyses.forEach(nom => exams.push({ nom, categorie: 'analyse' }));
+                    selectedImagerie.forEach(nom => exams.push({ nom, categorie: 'imagerie' }));
+                    setExaminationTypes(exams);
+                } finally {
+                    setLoadingExaminations(false);
+                }
+            }
+        };
+
+        if (serviceId && specializedServiceId) {
+            loadExaminationTypes();
+        } else if (selectedAnalyses.length > 0 || selectedImagerie.length > 0) {
+            // Fallback : utiliser les sélections actuelles
+            const exams: ExaminationType[] = [];
+            selectedAnalyses.forEach(nom => exams.push({ nom, categorie: 'analyse' }));
+            selectedImagerie.forEach(nom => exams.push({ nom, categorie: 'imagerie' }));
+            setExaminationTypes(exams);
+        }
+    }, [serviceId, specializedServiceId, selectedAnalyses, selectedImagerie]);
+
+    // ✅ NOUVEAU: Filtrer les types d'examens selon la recherche
+    const filteredExaminations = examinationTypes.filter((exam) => {
+        if (!searchQuery.trim()) return true;
+        const query = searchQuery.toLowerCase();
+        return (
+            exam.nom.toLowerCase().includes(query) ||
+            exam.categorie.toLowerCase().includes(query) ||
+            (exam.preparation_requise && exam.preparation_requise.toLowerCase().includes(query))
+        );
+    });
+
+    // ✅ NOUVEAU: Calculer les statistiques
+    const stats = {
+        total: examinationTypes.length,
+        analyses: examinationTypes.filter(e => e.categorie === 'analyse').length,
+        imagerie: examinationTypes.filter(e => e.categorie === 'imagerie').length,
+        avecPrix: examinationTypes.filter(e => e.prix && e.prix > 0).length,
+    };
+
     const handleGPSSelect = (coordinates: string) => {
         setSelectedGPS(coordinates);
         setShowGPSModal(false);
+    };
+
+    // ✅ NOUVEAU: Gestion des types d'examens
+    const openExaminationModal = (exam?: ExaminationType) => {
+        if (exam) {
+            setEditingExamination(exam);
+            setExaminationFormData(exam);
+        } else {
+            setEditingExamination(null);
+            setExaminationFormData({
+                nom: '',
+                categorie: 'analyse',
+                prix: undefined,
+                duree_estimee: '',
+                preparation_requise: '',
+            });
+        }
+        setShowExaminationModal(true);
+    };
+
+    const closeExaminationModal = () => {
+        setShowExaminationModal(false);
+        setEditingExamination(null);
+        setExaminationFormData({
+            nom: '',
+            categorie: 'analyse',
+            prix: undefined,
+            duree_estimee: '',
+            preparation_requise: '',
+        });
+    };
+
+    const handleSaveExamination = () => {
+        if (!examinationFormData.nom.trim()) {
+            Alert.alert('Erreur', 'Le nom de l\'examen est obligatoire');
+            return;
+        }
+
+        // Ajouter à la liste locale (pour l'instant, pas d'endpoint backend dédié)
+        if (editingExamination) {
+            setExaminationTypes(prev => prev.map(e => 
+                e.nom === editingExamination.nom ? examinationFormData : e
+            ));
+        } else {
+            setExaminationTypes(prev => [...prev, examinationFormData]);
+        }
+
+        // Mettre à jour les sélections
+        if (examinationFormData.categorie === 'analyse') {
+            if (!selectedAnalyses.includes(examinationFormData.nom)) {
+                setSelectedAnalyses(prev => [...prev, examinationFormData.nom]);
+            }
+        } else {
+            if (!selectedImagerie.includes(examinationFormData.nom)) {
+                setSelectedImagerie(prev => [...prev, examinationFormData.nom]);
+            }
+        }
+
+        closeExaminationModal();
+        Alert.alert('Succès', editingExamination ? 'Type d\'examen modifié' : 'Type d\'examen ajouté');
+    };
+
+    const handleDeleteExamination = (exam: ExaminationType) => {
+        Alert.alert(
+            'Confirmer la suppression',
+            `Êtes-vous sûr de vouloir supprimer "${exam.nom}" ?`,
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Supprimer',
+                    style: 'destructive',
+                    onPress: () => {
+                        setExaminationTypes(prev => prev.filter(e => e.nom !== exam.nom));
+                        if (exam.categorie === 'analyse') {
+                            setSelectedAnalyses(prev => prev.filter(n => n !== exam.nom));
+                        } else {
+                            setSelectedImagerie(prev => prev.filter(n => n !== exam.nom));
+                        }
+                        Alert.alert('Succès', 'Type d\'examen supprimé');
+                    },
+                },
+            ]
+        );
     };
 
     // ✅ SUPPRIMÉ : handleScheduleSave (planning hebdomadaire supprimé)
@@ -173,8 +388,9 @@ const LaboratoireFormScreen: React.FC = () => {
             return;
         }
 
-        if (!formData.nom.trim()) {
-            Alert.alert('Erreur', 'Le nom du laboratoire est obligatoire');
+        const nom = formData.partner?.name || formData.nom;
+        if (!nom.trim()) {
+            Alert.alert('Erreur', 'Veuillez sélectionner un partenaire ou saisir le nom du laboratoire');
             setLoading(false);
             return;
         }
@@ -230,18 +446,30 @@ const LaboratoireFormScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Enregistrer un Laboratoire</Text>
+                    <View style={styles.headerContent}>
+                        <Text style={styles.title}>Enregistrer un Laboratoire</Text>
+                        {/* ✅ NOUVEAU: Afficher le nom du partenaire dans l'en-tête */}
+                        {user?.role === 'partenaire' && partnerData && (
+                            <View style={styles.partnerHeader}>
+                                <SafeIcon name="building" size={16} color={modernColors.primary} />
+                                <Text style={styles.partnerName}>{partnerData.name}</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
 
                 <View style={styles.form}>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nom du laboratoire *</Text>
-                        <NativeInput
-                            value={formData.nom}
-                            onChangeText={(text) => setFormData({ ...formData, nom: text })}
-                            placeholder="Ex: Laboratoire Central"
-                        />
-                    </View>
+                    {/* ✅ Masquer les champs redondants pour les partenaires */}
+                    {user?.role !== 'partenaire' && (
+                        <View style={styles.inputGroup}>
+                            <NativeInput
+                                label="Nom du laboratoire *"
+                                value={formData.nom}
+                                onChangeText={(text) => setFormData({ ...formData, nom: text })}
+                                placeholder="Ex: Laboratoire Central"
+                            />
+                        </View>
+                    )}
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Type</Text>
@@ -286,21 +514,34 @@ const LaboratoireFormScreen: React.FC = () => {
                         )}
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Adresse</Text>
-                        <NativeInput
-                            value={formData.adresse}
-                            onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                            placeholder="Adresse complète"
-                            multiline
-                        />
-                    </View>
+                    {/* ✅ Masquer l'adresse pour les partenaires (chargée automatiquement) */}
+                    {user?.role !== 'partenaire' && (
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Adresse</Text>
+                            <NativeInput
+                                value={formData.adresse}
+                                onChangeText={(text) => setFormData({ ...formData, adresse: text })}
+                                placeholder="Adresse complète"
+                                multiline
+                            />
+                        </View>
+                    )}
 
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Quartier"
-                            value={formData.quartier || ''}
-                            onSelect={(value) => setFormData({ ...formData, quartier: value })}
+                            value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''}
+                            onSelect={(location: LocationObject) => {
+                                // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
+                                const quartierValue = location.raw || location.place_name || '';
+                                setFormData({ 
+                                    ...formData, 
+                                    quartier: quartierValue,
+                                    // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
+                                    ville: location.components?.ville || formData.ville,
+                                    pays: location.components?.pays || formData.pays,
+                                });
+                            }}
                             placeholder="Rechercher un quartier (inclut ville et pays)..."
                             scope="neighborhood"
                             enrichWithBackend
@@ -413,11 +654,138 @@ const LaboratoireFormScreen: React.FC = () => {
                         />
                     </View>
 
+                    {/* ✅ NOUVEAU: Section Gestion des types d'examens */}
+                    {serviceId && specializedServiceId && (
+                        <View style={styles.examinationsSection}>
+                            <View style={styles.sectionHeader}>
+                                <View style={styles.sectionTitleContainer}>
+                                    <SafeIcon name="microscope" size={20} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.sectionTitle}>Types d'examens disponibles</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.addButton}
+                                    onPress={() => openExaminationModal()}
+                                >
+                                    <SafeIcon name="plus" size={18} color="#fff" type="lucide" />
+                                    <Text style={styles.addButtonText}>Ajouter</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Statistiques */}
+                            {examinationTypes.length > 0 && (
+                                <View style={styles.statsContainer}>
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>{stats.total}</Text>
+                                        <Text style={styles.statLabel}>Total</Text>
+                                    </View>
+                                    <View style={styles.statDivider} />
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>{stats.analyses}</Text>
+                                        <Text style={styles.statLabel}>Analyses</Text>
+                                    </View>
+                                    <View style={styles.statDivider} />
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>{stats.imagerie}</Text>
+                                        <Text style={styles.statLabel}>Imagerie</Text>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Barre de recherche */}
+                            {examinationTypes.length > 0 && (
+                                <View style={styles.searchContainer}>
+                                    <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
+                                    <NativeInput
+                                        value={searchQuery}
+                                        onChangeText={setSearchQuery}
+                                        placeholder="Rechercher un examen..."
+                                        style={styles.searchInput}
+                                    />
+                                    {searchQuery.trim() && (
+                                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                            <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            )}
+
+                            {loadingExaminations ? (
+                                <Text style={styles.loadingText}>Chargement...</Text>
+                            ) : filteredExaminations.length === 0 ? (
+                                <View style={styles.emptyContainer}>
+                                    <SafeIcon name="file-x" size={48} color="#9CA3AF" type="lucide" />
+                                    <Text style={styles.emptyText}>
+                                        {searchQuery.trim() ? 'Aucun résultat' : 'Aucun type d\'examen enregistré'}
+                                    </Text>
+                                    {!searchQuery.trim() && (
+                                        <Text style={styles.emptyHint}>
+                                            Ajoutez les types d'examens que votre laboratoire propose
+                                        </Text>
+                                    )}
+                                </View>
+                            ) : (
+                                <View style={styles.examinationsList}>
+                                    {filteredExaminations.map((exam, index) => (
+                                        <View key={`${exam.nom}-${index}`} style={styles.examinationCard}>
+                                            <View style={styles.examinationInfo}>
+                                                <View style={styles.examinationHeader}>
+                                                    <Text style={styles.examinationName}>{exam.nom}</Text>
+                                                    <View style={[
+                                                        styles.categoryBadge,
+                                                        exam.categorie === 'analyse' ? styles.badgeAnalyse : styles.badgeImagerie
+                                                    ]}>
+                                                        <Text style={styles.categoryText}>
+                                                            {exam.categorie === 'analyse' ? 'Analyse' : 'Imagerie'}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                                {exam.prix && exam.prix > 0 && (
+                                                    <Text style={styles.examinationPrice}>
+                                                        {exam.prix.toLocaleString()} FCFA
+                                                    </Text>
+                                                )}
+                                                {exam.duree_estimee && (
+                                                    <Text style={styles.examinationDuration}>
+                                                        Durée: {exam.duree_estimee}
+                                                    </Text>
+                                                )}
+                                                {exam.preparation_requise && (
+                                                    <Text style={styles.examinationPrep}>
+                                                        Préparation: {exam.preparation_requise}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                            <View style={styles.examinationActions}>
+                                                <TouchableOpacity
+                                                    style={styles.actionButton}
+                                                    onPress={() => openExaminationModal(exam)}
+                                                >
+                                                    <SafeIcon name="edit" size={18} color={modernColors.primary} type="lucide" />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, styles.deleteButton]}
+                                                    onPress={() => handleDeleteExamination(exam)}
+                                                >
+                                                    <SafeIcon name="trash-2" size={18} color="#DC2626" type="lucide" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+                            {searchQuery.trim() && filteredExaminations.length > 0 && (
+                                <Text style={styles.searchResultsText}>
+                                    {filteredExaminations.length} résultat(s) sur {examinationTypes.length}
+                                </Text>
+                            )}
+                        </View>
+                    )}
+
                     {/* ✅ CORRIGÉ: Utiliser title au lieu de children */}
                     <NativeButton
                         title={loading ? 'Enregistrement...' : 'Enregistrer le Laboratoire'}
                         onPress={handleSubmit}
-                        disabled={loading || !formData.nom.trim()}
+                        disabled={loading || !(formData.partner?.name || formData.nom).trim()}
                         variant="primary"
                         size="large"
                         style={styles.submitButton}
@@ -437,7 +805,124 @@ const LaboratoireFormScreen: React.FC = () => {
                 title="Sélectionner la localisation"
             />
 
-            {/* ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé) */}
+            {/* ✅ NOUVEAU: Modal pour ajouter/modifier un type d'examen */}
+            <Modal
+                visible={showExaminationModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={closeExaminationModal}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>
+                                {editingExamination ? 'Modifier le type d\'examen' : 'Ajouter un type d\'examen'}
+                            </Text>
+                            <TouchableOpacity onPress={closeExaminationModal}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Nom de l'examen *</Text>
+                                <NativeInput
+                                    value={examinationFormData.nom}
+                                    onChangeText={(text) => setExaminationFormData({ ...examinationFormData, nom: text })}
+                                    placeholder="Ex: Analyse de sang complète"
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Catégorie *</Text>
+                                <View style={styles.chipsContainer}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.chip,
+                                            examinationFormData.categorie === 'analyse' && styles.chipSelected,
+                                        ]}
+                                        onPress={() => setExaminationFormData({ ...examinationFormData, categorie: 'analyse' })}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.chipText,
+                                                examinationFormData.categorie === 'analyse' && styles.chipTextSelected,
+                                            ]}
+                                        >
+                                            Analyse
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.chip,
+                                            examinationFormData.categorie === 'imagerie' && styles.chipSelected,
+                                        ]}
+                                        onPress={() => setExaminationFormData({ ...examinationFormData, categorie: 'imagerie' })}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.chipText,
+                                                examinationFormData.categorie === 'imagerie' && styles.chipTextSelected,
+                                            ]}
+                                        >
+                                            Imagerie
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            <View style={styles.row}>
+                                <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                                    <Text style={styles.label}>Prix (FCFA)</Text>
+                                    <NativeInput
+                                        value={examinationFormData.prix?.toString() || ''}
+                                        onChangeText={(text) => setExaminationFormData({ 
+                                            ...examinationFormData, 
+                                            prix: text ? parseFloat(text) : undefined 
+                                        })}
+                                        placeholder="0"
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                                <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                                    <Text style={styles.label}>Durée estimée</Text>
+                                    <NativeInput
+                                        value={examinationFormData.duree_estimee || ''}
+                                        onChangeText={(text) => setExaminationFormData({ ...examinationFormData, duree_estimee: text })}
+                                        placeholder="Ex: 30 min"
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Préparation requise</Text>
+                                <NativeInput
+                                    value={examinationFormData.preparation_requise || ''}
+                                    onChangeText={(text) => setExaminationFormData({ ...examinationFormData, preparation_requise: text })}
+                                    placeholder="Ex: À jeun depuis 12h"
+                                    multiline
+                                />
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Annuler"
+                                onPress={closeExaminationModal}
+                                variant="secondary"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title={editingExamination ? 'Modifier' : 'Ajouter'}
+                                onPress={handleSaveExamination}
+                                variant="primary"
+                                style={styles.modalButton}
+                                disabled={!examinationFormData.nom.trim()}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </>
     );
 };
@@ -564,6 +1049,222 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         marginTop: 24,
+    },
+    // ✅ NOUVEAU: Styles pour la section types d'examens
+    examinationsSection: {
+        marginTop: 24,
+        marginBottom: 16,
+        padding: 16,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    sectionTitleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    addButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: modernColors.primary,
+        borderRadius: 8,
+    },
+    addButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#fff',
+    },
+    statsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    statItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    statValue: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.primary,
+        marginBottom: 4,
+    },
+    statLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    statDivider: {
+        width: 1,
+        height: 40,
+        backgroundColor: '#E5E7EB',
+        marginHorizontal: 8,
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        marginBottom: 12,
+    },
+    searchInput: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    loadingText: {
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+        padding: 16,
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        padding: 32,
+    },
+    emptyText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#374151',
+        marginTop: 12,
+        marginBottom: 8,
+    },
+    emptyHint: {
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    examinationsList: {
+        gap: 12,
+    },
+    examinationCard: {
+        flexDirection: 'row',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    examinationInfo: {
+        flex: 1,
+    },
+    examinationHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    examinationName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+        flex: 1,
+    },
+    categoryBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+    },
+    badgeAnalyse: {
+        backgroundColor: '#EEF2FF',
+    },
+    badgeImagerie: {
+        backgroundColor: '#F0FDF4',
+    },
+    categoryText: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: modernColors.primary,
+    },
+    examinationPrice: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+        marginBottom: 4,
+    },
+    examinationDuration: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    examinationPrep: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontStyle: 'italic',
+    },
+    examinationActions: {
+        flexDirection: 'row',
+        gap: 8,
+        alignItems: 'flex-start',
+    },
+    actionButton: {
+        padding: 8,
+        borderRadius: 6,
+        backgroundColor: '#F3F4F6',
+    },
+    deleteButton: {
+        backgroundColor: '#FEE2E2',
+    },
+    searchResultsText: {
+        fontSize: 12,
+        color: '#6B7280',
+        textAlign: 'center',
+        marginTop: 8,
+        fontStyle: 'italic',
+    },
+    // ✅ NOUVEAU: Styles pour le modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '90%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    modalBody: {
+        padding: 16,
+        maxHeight: 500,
+    },
+    modalFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    modalButton: {
+        flex: 1,
     },
 });
 
