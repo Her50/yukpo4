@@ -816,10 +816,19 @@ const DeepLinkHandler = ({ children }: { children: React.ReactNode }) => {
 const SecondaryStack = () => {
   console.log('[AppNavigator] 📱 Rendu SecondaryStack');
   const { user } = useAuth();
+  
+  // ✅ CORRECTION CRASH: useNavigation doit être appelé inconditionnellement
+  // Mais on vérifie que navigation.navigate existe avant de l'utiliser
   const navigation = useNavigation();
   
   // ✅ NOUVEAU: Rediriger les partenaires vers leur écran spécialisé
   React.useEffect(() => {
+    // ✅ CORRECTION CRASH: Vérifier que navigation et navigate existent
+    if (!navigation || typeof (navigation as any)?.navigate !== 'function') {
+      console.log('[AppNavigator] Navigation non disponible encore, attente...');
+      return;
+    }
+    
     if (user?.role === 'partenaire' && user.partner_type) {
       const partnerTypeToScreen: Record<string, string> = {
         'pharmacie': 'PharmacieForm',
@@ -833,14 +842,19 @@ const SecondaryStack = () => {
         // Petit délai pour laisser le stack se monter
         setTimeout(() => {
           try {
-            (navigation as any).navigate(targetScreen);
+            const nav = navigation as any;
+            if (nav && typeof nav.navigate === 'function') {
+              nav.navigate(targetScreen);
+            } else {
+              console.warn('[AppNavigator] navigation.navigate n\'est pas une fonction');
+            }
           } catch (error) {
             console.error('[AppNavigator] Erreur redirection partenaire:', error);
           }
         }, 500);
       }
     }
-  }, [user?.role, user?.partner_type]);
+  }, [user?.role, user?.partner_type, navigation]);
   
   return (
     <DeepLinkHandler>
