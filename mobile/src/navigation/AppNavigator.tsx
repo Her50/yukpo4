@@ -817,15 +817,22 @@ const SecondaryStack = () => {
   console.log('[AppNavigator] 📱 Rendu SecondaryStack');
   const { user } = useAuth();
   
-  // ✅ CORRECTION CRASH: useNavigation doit être appelé inconditionnellement
+  // ✅ CORRECTION CRASH: useNavigation doit être appelé inconditionnellement (règle des hooks)
   // Mais on vérifie que navigation.navigate existe avant de l'utiliser
   const navigation = useNavigation();
   
   // ✅ NOUVEAU: Rediriger les partenaires vers leur écran spécialisé
   React.useEffect(() => {
-    // ✅ CORRECTION CRASH: Vérifier que navigation et navigate existent
-    if (!navigation || typeof (navigation as any)?.navigate !== 'function') {
+    // ✅ CORRECTION CRASH: Vérifier que navigation et navigate existent AVANT d'utiliser
+    if (!navigation) {
       console.log('[AppNavigator] Navigation non disponible encore, attente...');
+      return;
+    }
+    
+    // Vérifier que navigate est une fonction (peut être undefined si NavigationContainer n'est pas prêt)
+    const navNavigate = (navigation as any)?.navigate;
+    if (typeof navNavigate !== 'function') {
+      console.log('[AppNavigator] navigation.navigate n\'est pas une fonction, attente...');
       return;
     }
     
@@ -840,18 +847,21 @@ const SecondaryStack = () => {
       const targetScreen = partnerTypeToScreen[user.partner_type];
       if (targetScreen) {
         // Petit délai pour laisser le stack se monter
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           try {
+            // Double vérification avant d'appeler navigate
             const nav = navigation as any;
-            if (nav && typeof nav.navigate === 'function') {
+            if (nav && typeof nav?.navigate === 'function') {
               nav.navigate(targetScreen);
             } else {
-              console.warn('[AppNavigator] navigation.navigate n\'est pas une fonction');
+              console.warn('[AppNavigator] navigation.navigate n\'est pas disponible après délai');
             }
           } catch (error) {
             console.error('[AppNavigator] Erreur redirection partenaire:', error);
           }
         }, 500);
+        
+        return () => clearTimeout(timer);
       }
     }
   }, [user?.role, user?.partner_type, navigation]);

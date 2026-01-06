@@ -10,10 +10,24 @@ import { handlePendingDeepLink } from '../utils/deepLinkHandler';
  * Exemple: Ajouter dans HomeScreen ou AppNavigator
  */
 export const useDeepLinkRedirect = () => {
+    // ✅ CORRECTION CRASH: useNavigation doit être appelé inconditionnellement (règle des hooks)
     const navigation = useNavigation();
     const { user } = useAuth();
 
     useEffect(() => {
+        // ✅ CORRECTION CRASH: Vérifier que navigation et navigate existent AVANT d'utiliser
+        if (!navigation) {
+            console.log('[useDeepLinkRedirect] Navigation non disponible encore');
+            return;
+        }
+        
+        // Vérifier que navigate est une fonction (peut être undefined si NavigationContainer n'est pas prêt)
+        const navNavigate = (navigation as any)?.navigate;
+        if (typeof navNavigate !== 'function') {
+            console.log('[useDeepLinkRedirect] navigation.navigate n\'est pas une fonction, attente...');
+            return;
+        }
+        
         // Vérifier s'il y a un deep link en attente seulement si l'utilisateur vient de se connecter
         if (user) {
             const checkDeepLink = async () => {
@@ -29,10 +43,15 @@ export const useDeepLinkRedirect = () => {
 
             // Attendre un peu que la navigation soit prête
             const timer = setTimeout(() => {
-                // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
-                checkDeepLink().catch(error => {
-                    console.error('[useDeepLinkRedirect] Erreur checkDeepLink:', error);
-                });
+                // ✅ CRITIQUE: Vérifier à nouveau que navigation est disponible avant d'appeler
+                const nav = navigation as any;
+                if (nav && typeof nav?.navigate === 'function') {
+                    checkDeepLink().catch(error => {
+                        console.error('[useDeepLinkRedirect] Erreur checkDeepLink:', error);
+                    });
+                } else {
+                    console.warn('[useDeepLinkRedirect] Navigation non disponible après délai');
+                }
             }, 500);
 
             return () => clearTimeout(timer);
