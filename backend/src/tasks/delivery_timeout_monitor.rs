@@ -23,7 +23,7 @@ struct ExpiredSuggestion {
 struct PendingDelivery {
     id: Uuid,
     status: String,
-    _updated_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
     creator_id: Option<i32>,
     recipient_user_id: Option<i32>,
     courier_user_id: Option<i32>,

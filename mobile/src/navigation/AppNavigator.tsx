@@ -306,6 +306,7 @@ const ImmobilierCompareScreenWithSafeArea = withNavigatorSafeArea(ImmobilierComp
 const MyFavoritesScreenWithSafeArea = withNavigatorSafeArea(MyFavoritesScreen);
 const ImmobilierPriceAlertsScreenWithSafeArea = withNavigatorSafeArea(ImmobilierPriceAlertsScreen);
 // ✅ NOUVEAU 2025-01-28: Offres d'emploi avec SafeArea
+const OffresEmploiHomeScreenWithSafeArea = withNavigatorSafeArea(OffresEmploiHomeScreen);
 const OffresEmploiHubScreenWithSafeArea = withNavigatorSafeArea(OffresEmploiHubScreen);
 const OffreSearchScreenWithSafeArea = withNavigatorSafeArea(OffreSearchScreen);
 const CreateOffreScreenWithSafeArea = withNavigatorSafeArea(CreateOffreScreen);
