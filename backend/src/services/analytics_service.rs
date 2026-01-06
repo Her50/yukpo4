@@ -304,8 +304,8 @@ impl AnalyticsService {
             FROM deliveries d
             JOIN services s ON s.id = (SELECT id FROM services WHERE user_id = $1 LIMIT 1)
             WHERE s.user_id = $1
-              AND d.created_at >= $2
-              AND d.created_at <= $3
+              AND d.requested_at >= $2
+              AND d.requested_at <= $3
               AND d.status = 'delivered'
             GROUP BY service_id, product_index
             ORDER BY order_count DESC
@@ -394,8 +394,8 @@ impl AnalyticsService {
             JOIN services s ON s.user_id = $1
             LEFT JOIN delivery_zones dz ON TRUE
             WHERE s.user_id = $1
-              AND d.created_at >= $2
-              AND d.created_at <= $3
+              AND d.requested_at >= $2
+              AND d.requested_at <= $3
               AND d.status = 'delivered'
             GROUP BY dz.id, dz.display_name
             ORDER BY delivery_count DESC
@@ -446,9 +446,9 @@ impl AnalyticsService {
             FROM deliveries d
             JOIN services s ON s.user_id = $1
             WHERE s.user_id = $1
-              AND d.created_at >= $2
-              AND d.created_at <= $3
-            GROUP BY DATE(d.created_at)
+              AND d.requested_at >= $2
+              AND d.requested_at <= $3
+            GROUP BY DATE(d.requested_at)
             ORDER BY date ASC
             "#
         )

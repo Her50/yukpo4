@@ -281,6 +281,7 @@ const LivreScolaireListScreenWithSafeArea = withNavigatorSafeArea(LivreScolaireL
 const LivreScolaireDetailsScreenWithSafeArea = withNavigatorSafeArea(LivreScolaireDetailsScreen);
 const LivreScolaireFormScreenWithSafeArea = withNavigatorSafeArea(LivreScolaireFormScreen);
 // ✅ NOUVEAU 2025-01-28: Orientation scolaire avec SafeArea
+const OrientationScolaireHomeScreenWithSafeArea = withNavigatorSafeArea(OrientationScolaireHomeScreen);
 const OrientationScolaireHubScreenWithSafeArea = withNavigatorSafeArea(OrientationScolaireHubScreen);
 const EtablissementSearchScreenWithSafeArea = withNavigatorSafeArea(EtablissementSearchScreen);
 const EtablissementDetailsScreenWithSafeArea = withNavigatorSafeArea(EtablissementDetailsScreen);

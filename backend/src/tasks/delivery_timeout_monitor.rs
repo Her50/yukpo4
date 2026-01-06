@@ -324,7 +324,7 @@ async fn check_pending_deliveries_without_courier(
         WHERE 
             (d.status::text = 'requested' OR d.status::text = 'awaiting_courier_confirmation')
             AND d.courier_id IS NULL
-            AND d.created_at < NOW() - ($1 || ' minutes')::interval
+            AND d.requested_at < NOW() - ($1 || ' minutes')::interval
             AND d.status::text != 'delivered'
             AND d.status::text != 'cancelled'
             AND d.status::text != 'completed'
