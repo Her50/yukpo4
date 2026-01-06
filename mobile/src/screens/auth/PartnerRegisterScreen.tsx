@@ -10,7 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
+import { CheckCircle, XCircle } from 'phosphor-react-native';
 import { authApi } from '../../services/api';
 import { modernColors, modernStyles } from '../../theme/modernTheme';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
@@ -19,11 +21,10 @@ const PartnerRegisterScreen: React.FC = () => {
   const navigation = useNavigation();
   const [form, setForm] = useState({
     nom: '',
-    prenom: '',
     email: '',
     password: '',
     confirmPassword: '',
-    partner_type: '' as 'pharmacie' | 'hopital' | 'laboratoire' | 'agence de voyage' | '',
+    partner_type: '' as string,
     partner_name: '',
     partner_phone: '',
     partner_address: '',
@@ -32,13 +33,44 @@ const PartnerRegisterScreen: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [passwordErrors, setPasswordErrors] = useState({
+    length: false,
+    uppercase: false,
+    number: false,
+  });
 
+  // ✅ TOUS les types partenaires valides selon le backend
   const partnerTypes = [
     { value: 'pharmacie', label: 'Pharmacie' },
     { value: 'hopital', label: 'Hôpital/Clinique' },
     { value: 'laboratoire', label: 'Laboratoire' },
     { value: 'agence de voyage', label: 'Agence de Voyage' },
+    { value: 'demenagement', label: 'Déménagement' },
+    { value: 'transport', label: 'Transport' },
+    { value: 'assureur', label: 'Assureur' },
+    { value: 'supermarche', label: 'Supermarché' },
+    { value: 'telecom', label: 'Télécom' },
   ];
+
+  // ✅ Validation du mot de passe avec feedback visuel
+  const validatePassword = (password: string) => {
+    const errors = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      number: /\d/.test(password),
+    };
+    setPasswordErrors(errors);
+    return errors.length && errors.uppercase && errors.number;
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setForm({ ...form, password: text });
+    if (text.length > 0) {
+      validatePassword(text);
+    } else {
+      setPasswordErrors({ length: false, uppercase: false, number: false });
+    }
+  };
 
   const handleSubmit = async () => {
     setError('');
@@ -54,6 +86,11 @@ const PartnerRegisterScreen: React.FC = () => {
       return;
     }
 
+    if (!validatePassword(form.password)) {
+      setError('Le mot de passe ne respecte pas tous les critères requis');
+      return;
+    }
+
     if (!form.partner_type) {
       setError('Veuillez sélectionner un type de partenaire');
       return;
@@ -64,18 +101,11 @@ const PartnerRegisterScreen: React.FC = () => {
       return;
     }
 
-    // Validation du mot de passe
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!passwordRegex.test(form.password)) {
-      setError('Mot de passe trop faible : 8 caractères, 1 majuscule, 1 chiffre minimum.');
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await authApi.register({
         nom: form.nom,
-        prenom: form.prenom,
+        prenom: '', // ✅ Supprimé : pas nécessaire pour une structure morale
         email: form.email,
         password: form.password,
         is_partner: true,
@@ -127,15 +157,9 @@ const PartnerRegisterScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Informations personnelles</Text>
           <TextInput
             style={styles.input}
-            placeholder="Nom *"
+            placeholder="Nom complet *"
             value={form.nom}
             onChangeText={(text) => setForm({ ...form, nom: text })}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Prénom *"
-            value={form.prenom}
-            onChangeText={(text) => setForm({ ...form, prenom: text })}
           />
           <TextInput
             style={styles.input}
@@ -145,13 +169,52 @@ const PartnerRegisterScreen: React.FC = () => {
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Mot de passe *"
-            value={form.password}
-            onChangeText={(text) => setForm({ ...form, password: text })}
-            secureTextEntry
-          />
+          
+          {/* ✅ Amélioration : Validation du mot de passe avec feedback visuel */}
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Mot de passe *"
+              value={form.password}
+              onChangeText={handlePasswordChange}
+              secureTextEntry
+            />
+            {form.password.length > 0 && (
+              <View style={styles.passwordCriteria}>
+                <View style={styles.criteriaItem}>
+                  {passwordErrors.length ? (
+                    <CheckCircle size={16} color="#4CAF50" />
+                  ) : (
+                    <XCircle size={16} color="#F44336" />
+                  )}
+                  <Text style={[styles.criteriaText, passwordErrors.length && styles.criteriaTextValid]}>
+                    Au moins 8 caractères
+                  </Text>
+                </View>
+                <View style={styles.criteriaItem}>
+                  {passwordErrors.uppercase ? (
+                    <CheckCircle size={16} color="#4CAF50" />
+                  ) : (
+                    <XCircle size={16} color="#F44336" />
+                  )}
+                  <Text style={[styles.criteriaText, passwordErrors.uppercase && styles.criteriaTextValid]}>
+                    Au moins 1 majuscule
+                  </Text>
+                </View>
+                <View style={styles.criteriaItem}>
+                  {passwordErrors.number ? (
+                    <CheckCircle size={16} color="#4CAF50" />
+                  ) : (
+                    <XCircle size={16} color="#F44336" />
+                  )}
+                  <Text style={[styles.criteriaText, passwordErrors.number && styles.criteriaTextValid]}>
+                    Au moins 1 chiffre
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+
           <TextInput
             style={styles.input}
             placeholder="Confirmer le mot de passe *"
@@ -159,6 +222,11 @@ const PartnerRegisterScreen: React.FC = () => {
             onChangeText={(text) => setForm({ ...form, confirmPassword: text })}
             secureTextEntry
           />
+          {form.confirmPassword.length > 0 && form.password !== form.confirmPassword && (
+            <Text style={styles.passwordMismatchText}>
+              Les mots de passe ne correspondent pas
+            </Text>
+          )}
         </View>
 
         {/* Informations partenaire */}
@@ -166,26 +234,18 @@ const PartnerRegisterScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Informations de votre établissement</Text>
 
           <Text style={styles.label}>Type d'établissement *</Text>
-          <View style={styles.chipsContainer}>
-            {partnerTypes.map((type) => (
-              <TouchableOpacity
-                key={type.value}
-                style={[
-                  styles.chip,
-                  form.partner_type === type.value && styles.chipSelected,
-                ]}
-                onPress={() => setForm({ ...form, partner_type: type.value as any })}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    form.partner_type === type.value && styles.chipTextSelected,
-                  ]}
-                >
-                  {type.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* ✅ Amélioration : Liste déroulante au lieu de chips */}
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={form.partner_type}
+              onValueChange={(value) => setForm({ ...form, partner_type: value })}
+              style={styles.picker}
+            >
+              <Picker.Item label="Sélectionnez un type..." value="" />
+              {partnerTypes.map((type) => (
+                <Picker.Item key={type.value} label={type.label} value={type.value} />
+              ))}
+            </Picker>
           </View>
 
           <TextInput
@@ -292,31 +352,50 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: modernColors.text,
   },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-  },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  // ✅ Nouveau : Styles pour le picker
+  pickerContainer: {
     backgroundColor: modernColors.surface,
     borderWidth: 1,
     borderColor: modernColors.border,
-    marginRight: 8,
-    marginBottom: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+    overflow: 'hidden',
   },
-  chipSelected: {
-    backgroundColor: modernColors.primary,
-    borderColor: modernColors.primary,
-  },
-  chipText: {
-    fontSize: 14,
+  picker: {
+    height: 50,
     color: modernColors.text,
   },
-  chipTextSelected: {
-    color: '#FFF',
+  // ✅ Nouveau : Styles pour la validation du mot de passe
+  passwordContainer: {
+    marginBottom: 12,
+  },
+  passwordCriteria: {
+    marginTop: 8,
+    marginBottom: 8,
+    padding: 12,
+    backgroundColor: modernColors.surface + '80',
+    borderRadius: 8,
+  },
+  criteriaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  criteriaText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: modernColors.textSecondary,
+  },
+  criteriaTextValid: {
+    color: '#4CAF50',
+    fontWeight: '500',
+  },
+  passwordMismatchText: {
+    fontSize: 12,
+    color: '#F44336',
+    marginTop: -8,
+    marginBottom: 8,
+    marginLeft: 4,
   },
   submitButton: {
     backgroundColor: modernColors.primary,
@@ -356,4 +435,3 @@ const styles = StyleSheet.create({
 });
 
 export default PartnerRegisterScreen;
-
