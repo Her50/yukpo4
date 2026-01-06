@@ -31,6 +31,12 @@ export const savePendingDeepLink = async (deepLink: PendingDeepLink): Promise<vo
  */
 export const handlePendingDeepLink = async (navigation: any): Promise<boolean> => {
     try {
+        // ✅ CORRECTION CRASH: Vérifier que navigation et navigate existent AVANT d'utiliser
+        if (!navigation || typeof navigation?.navigate !== 'function') {
+            console.warn('⚠️ Navigation non disponible pour deep link');
+            return false;
+        }
+        
         const pendingData = await SafeStorage.getItem(PENDING_DEEP_LINK_KEY);
 
         if (!pendingData) {
@@ -52,6 +58,12 @@ export const handlePendingDeepLink = async (navigation: any): Promise<boolean> =
 
         // Supprimer de AsyncStorage avant navigation
         await SafeStorage.removeItem(PENDING_DEEP_LINK_KEY);
+
+        // ✅ CORRECTION CRASH: Vérifier à nouveau que navigation.navigate existe avant d'appeler
+        if (typeof navigation?.navigate !== 'function') {
+            console.warn('⚠️ navigation.navigate n\'est pas disponible pour deep link');
+            return false;
+        }
 
         // Rediriger selon le type
         if (deepLink.type === 'product' && deepLink.productId && deepLink.serviceId) {
