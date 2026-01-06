@@ -1,20 +1,21 @@
+// ✅ AMÉLIORATION UX: Écran de création partenaire modernisé avec design similaire à RegisterPage
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ROUTES } from '@/routes/AppRoutesRegistry';
 import { useUser } from '@/hooks/useUser';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '@/config/api';
+import { CheckCircle, XCircle, AlertCircle, User, Building, Envelope, Lock, LockKey, Phone, MapPin } from 'lucide-react';
 
 const PartnerRegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useUser();
   const [form, setForm] = useState({
     nom: '',
-    prenom: '',
     email: '',
     password: '',
     confirmPassword: '',
-    partner_type: '' as 'pharmacie' | 'hopital' | 'laboratoire' | 'agence de voyage' | '',
+    partner_type: '' as 'pharmacie' | 'hopital' | 'laboratoire' | 'agence de voyage' | 'demenagement' | 'transport' | 'assureur' | 'supermarche' | 'telecom' | '',
     partner_name: '',
     partner_phone: '',
     partner_address: '',
@@ -22,14 +23,62 @@ const PartnerRegisterPage: React.FC = () => {
     partner_country: '',
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [passwordErrors, setPasswordErrors] = useState({
+    length: false,
+    uppercase: false,
+    number: false,
+  });
+  const [confirmPasswordMatch, setConfirmPasswordMatch] = useState<boolean | null>(null);
 
+  // ✅ TOUS les types partenaires valides selon le backend
   const partnerTypes = [
     { value: 'pharmacie', label: 'Pharmacie' },
     { value: 'hopital', label: 'Hôpital/Clinique' },
     { value: 'laboratoire', label: 'Laboratoire' },
     { value: 'agence de voyage', label: 'Agence de Voyage' },
+    { value: 'demenagement', label: 'Déménagement' },
+    { value: 'transport', label: 'Transport' },
+    { value: 'assureur', label: 'Assureur' },
+    { value: 'supermarche', label: 'Supermarché' },
+    { value: 'telecom', label: 'Télécom' },
   ];
+
+  // ✅ Validation du mot de passe avec feedback visuel en temps réel
+  const validatePassword = (password: string) => {
+    const errors = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      number: /\d/.test(password),
+    };
+    setPasswordErrors(errors);
+    return errors.length && errors.uppercase && errors.number;
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setForm({ ...form, password: text });
+    if (text.length > 0) {
+      validatePassword(text);
+    } else {
+      setPasswordErrors({ length: false, uppercase: false, number: false });
+    }
+    
+    // ✅ Vérifier la correspondance avec le mot de passe de confirmation
+    if (form.confirmPassword.length > 0) {
+      setConfirmPasswordMatch(text === form.confirmPassword);
+    }
+  };
+
+  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setForm({ ...form, confirmPassword: text });
+    if (text.length > 0) {
+      setConfirmPasswordMatch(text === form.password);
+    } else {
+      setConfirmPasswordMatch(null);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -37,11 +86,16 @@ const PartnerRegisterPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
 
     // Validations
-    if (!form.nom || !form.email || !form.password) {
+    if (!form.nom || !form.email || !form.password || !form.confirmPassword) {
       setError('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    if (!validatePassword(form.password)) {
+      setError('Le mot de passe ne respecte pas tous les critères requis');
       return;
     }
 
@@ -60,13 +114,6 @@ const PartnerRegisterPage: React.FC = () => {
       return;
     }
 
-    // Validation du mot de passe
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!passwordRegex.test(form.password)) {
-      setError('Mot de passe trop faible : 8 caractères, 1 majuscule, 1 chiffre minimum.');
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/auth/register`, {
@@ -74,8 +121,8 @@ const PartnerRegisterPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nom: form.nom,
-          prenom: form.prenom,
-          name: form.nom || form.prenom || `${form.nom} ${form.prenom}`.trim(),
+          prenom: '', // ✅ Supprimé : pas nécessaire pour une structure morale
+          name: form.nom,
           email: form.email,
           password: form.password,
           lang: 'fr',
@@ -99,187 +146,305 @@ const PartnerRegisterPage: React.FC = () => {
         });
       } else {
         const err = await res.json();
-        setError(err.message || "Erreur d'inscription");
-        toast.error(err.message || "Erreur d'inscription");
+        
+        // Détection des erreurs spécifiques
+        let errorMessage = err.message || "Erreur d'inscription";
+        
+        if (err.message?.includes('409') || err.message?.includes('deja utilise') || err.message?.includes('already exists')) {
+          errorMessage = '❌ Cet email est déjà utilisé. Essayez de vous connecter ou utilisez un autre email.';
+        } else if (err.message?.includes('400') || err.message?.includes('validation')) {
+          errorMessage = '❌ Données invalides. Vérifiez vos informations.';
+        } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+          errorMessage = '❌ Problème de connexion. Vérifiez votre internet.';
+        }
+        
+        setError(errorMessage);
+        toast.error(errorMessage);
       }
-    } catch (err) {
-      setError("Échec de la connexion au serveur.");
-      toast.error("Échec de la connexion au serveur.");
+    } catch (err: any) {
+      console.error('[PartnerRegisterPage] Erreur inscription:', err);
+      const errorMessage = err.message?.includes('network') || err.message?.includes('fetch')
+        ? '❌ Problème de connexion. Vérifiez votre internet.'
+        : "Échec de la connexion au serveur.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-yellow-50 pt-24">
-      <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center text-gray-900">
-          Devenir partenaire{" "}
-          <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
-            Yukpo
-          </span>
-        </h1>
-        <p className="text-center text-gray-600 mb-6">
-          Créez votre compte partenaire. Votre compte sera validé par un administrateur.
-        </p>
+    <main className="min-h-screen bg-yellow-50 pt-24 pb-12">
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+            Devenir partenaire{' '}
+            <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
+              Yukpo
+            </span>
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Créez votre compte partenaire. Votre compte sera validé par un administrateur.
+          </p>
+        </div>
 
+        {/* Messages d'erreur */}
         {error && (
-          <div className="mb-4 bg-red-100 text-red-800 px-4 py-2 rounded shadow text-center">
-            ⚠️ {error}
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-red-800 flex-1">{error}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Informations personnelles */}
-          <div className="border-b pb-4 mb-4">
-            <h2 className="text-xl font-semibold mb-4">Informations personnelles</h2>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* ✅ SECTION 1: Informations du responsable (personne physique) */}
+          <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <User className="w-5 h-5 text-orange-500" />
+              <h2 className="text-xl font-semibold text-gray-900">Informations du responsable</h2>
+            </div>
+            <p className="text-sm text-gray-600 mb-6 italic">
+              Vos informations personnelles (contact principal)
+            </p>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                name="nom"
-                placeholder="Nom *"
-                value={form.nom}
-                onChange={handleChange}
-                className="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-                disabled={loading}
-              />
-              <input
-                type="text"
-                name="prenom"
-                placeholder="Prénom *"
-                value={form.prenom}
-                onChange={handleChange}
-                className="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-                disabled={loading}
-              />
-              <input
-                type="email"
-                name="email"
-                placeholder="Email *"
-                value={form.email}
-                onChange={handleChange}
-                className="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-                disabled={loading}
-              />
-              <input
-                type="password"
-                name="password"
-                placeholder="Mot de passe *"
-                value={form.password}
-                onChange={handleChange}
-                className="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-                disabled={loading}
-              />
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirmer le mot de passe *"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                className="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-                disabled={loading}
-              />
+              <div className="relative">
+                <Envelope className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  name="nom"
+                  placeholder="Nom complet du responsable *"
+                  value={form.nom}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  required
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="relative">
+                <Envelope className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Adresse email *"
+                  value={form.email}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  required
+                  disabled={loading}
+                />
+              </div>
+
+              {/* ✅ Amélioration : Validation du mot de passe avec feedback visuel en temps réel */}
+              <div className="relative md:col-span-2">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Mot de passe *"
+                  value={form.password}
+                  onChange={handlePasswordChange}
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  required
+                  disabled={loading}
+                />
+                {form.password.length > 0 && (
+                  <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">Critères du mot de passe :</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {passwordErrors.length ? (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        )}
+                        <span className={`text-xs ${passwordErrors.length ? 'text-green-600 font-medium' : 'text-gray-600'}`}>
+                          Au moins 8 caractères
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {passwordErrors.uppercase ? (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        )}
+                        <span className={`text-xs ${passwordErrors.uppercase ? 'text-green-600 font-medium' : 'text-gray-600'}`}>
+                          Au moins 1 majuscule
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {passwordErrors.number ? (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        )}
+                        <span className={`text-xs ${passwordErrors.number ? 'text-green-600 font-medium' : 'text-gray-600'}`}>
+                          Au moins 1 chiffre
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative md:col-span-2">
+                <LockKey className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Confirmer le mot de passe *"
+                  value={form.confirmPassword}
+                  onChange={handleConfirmPasswordChange}
+                  className={`w-full pl-10 pr-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                    confirmPasswordMatch === false
+                      ? 'border-red-300 bg-red-50'
+                      : confirmPasswordMatch === true
+                      ? 'border-green-300 bg-green-50'
+                      : 'border-gray-300'
+                  }`}
+                  required
+                  disabled={loading}
+                />
+                {form.confirmPassword.length > 0 && confirmPasswordMatch === false && (
+                  <div className="mt-2 flex items-center gap-2 text-red-600">
+                    <XCircle className="w-4 h-4" />
+                    <span className="text-xs font-medium">Les mots de passe ne correspondent pas</span>
+                  </div>
+                )}
+                {form.confirmPassword.length > 0 && confirmPasswordMatch === true && (
+                  <div className="mt-2 flex items-center gap-2 text-green-600">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="text-xs font-medium">Les mots de passe correspondent</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Informations partenaire */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Informations de votre établissement</h2>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Type d'établissement *
-              </label>
-              <select
-                name="partner_type"
-                value={form.partner_type}
-                onChange={handleChange}
-                className="w-full p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-                disabled={loading}
-              >
-                <option value="">Sélectionner un type</option>
-                {partnerTypes.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+          {/* ✅ SECTION 2: Informations de l'établissement (structure) */}
+          <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <Building className="w-5 h-5 text-orange-500" />
+              <h2 className="text-xl font-semibold text-gray-900">Informations de votre établissement</h2>
             </div>
+            <p className="text-sm text-gray-600 mb-6 italic">
+              Détails de votre structure professionnelle
+            </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                name="partner_name"
-                placeholder="Nom de l'établissement *"
-                value={form.partner_name}
-                onChange={handleChange}
-                className="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-                disabled={loading}
-              />
-              <input
-                type="tel"
-                name="partner_phone"
-                placeholder="Téléphone"
-                value={form.partner_phone}
-                onChange={handleChange}
-                className="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                disabled={loading}
-              />
-              <input
-                type="text"
-                name="partner_address"
-                placeholder="Adresse"
-                value={form.partner_address}
-                onChange={handleChange}
-                className="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary md:col-span-2"
-                disabled={loading}
-              />
-              <input
-                type="text"
-                name="partner_city"
-                placeholder="Ville"
-                value={form.partner_city}
-                onChange={handleChange}
-                className="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                disabled={loading}
-              />
-              <input
-                type="text"
-                name="partner_country"
-                placeholder="Pays"
-                value={form.partner_country}
-                onChange={handleChange}
-                className="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                disabled={loading}
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Type d'établissement *
+                </label>
+                <select
+                  name="partner_type"
+                  value={form.partner_type}
+                  onChange={handleChange}
+                  className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  required
+                  disabled={loading}
+                >
+                  <option value="">Sélectionnez un type...</option>
+                  {partnerTypes.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative">
+                  <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    name="partner_name"
+                    placeholder="Nom de l'établissement *"
+                    value={form.partner_name}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="tel"
+                    name="partner_phone"
+                    placeholder="Téléphone de l'établissement"
+                    value={form.partner_phone}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="relative md:col-span-2">
+                  <MapPin className="absolute left-3 top-4 w-5 h-5 text-gray-400" />
+                  <textarea
+                    name="partner_address"
+                    placeholder="Adresse complète"
+                    value={form.partner_address}
+                    onChange={handleChange as any}
+                    rows={3}
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                    disabled={loading}
+                  />
+                </div>
+
+                <input
+                  type="text"
+                  name="partner_city"
+                  placeholder="Ville"
+                  value={form.partner_city}
+                  onChange={handleChange}
+                  className="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  disabled={loading}
+                />
+                <input
+                  type="text"
+                  name="partner_country"
+                  placeholder="Pays"
+                  value={form.partner_country}
+                  onChange={handleChange}
+                  className="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  disabled={loading}
+                />
+              </div>
             </div>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-md transition font-semibold disabled:opacity-50"
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             disabled={loading}
           >
-            {loading ? 'Inscription...' : "S'inscrire comme partenaire"}
+            {loading ? (
+              <>
+                <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                Inscription en cours...
+              </>
+            ) : (
+              "S'inscrire comme partenaire"
+            )}
           </button>
         </form>
 
-        <p className="text-center text-sm mt-6 text-gray-700">
-          <Link to={ROUTES.LOGIN} className="text-primary underline font-medium">
-            Retour à la connexion
-          </Link>
-        </p>
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Vous avez déjà un compte ?{' '}
+            <Link to={ROUTES.LOGIN} className="text-orange-600 hover:text-orange-700 font-medium">
+              Connectez-vous
+            </Link>
+          </p>
+        </div>
       </div>
     </main>
   );
 };
 
 export default PartnerRegisterPage;
-

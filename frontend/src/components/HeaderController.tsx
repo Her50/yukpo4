@@ -330,30 +330,86 @@ const HeaderController: React.FC = () => {
                       🛡 Rôle : <strong>{user.role}</strong>
                     </p>
                     <hr className="my-2 border-gray-200 dark:border-gray-700" />
-                    <Link
-                      to={ROUTES.RECHARGE_TOKENS}
-                      className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-green-600"
-                    >
-                      💳 Recharger tokens
-                    </Link>
-                    <Link
-                      to={ROUTES.MON_SOLDE}
-                      className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                    >
-                      🧾 Historique de consommation
-                    </Link>
-                    <Link
-                      to="/mon-compte"
-                      className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                    >
-                      ⚙️ Paramètres
-                    </Link>
-                    <button
-                      onClick={logout}
-                      className="w-full text-left px-3 py-1 text-red-600 hover:underline mt-2"
-                    >
-                      🚪 Déconnexion
-                    </button>
+                    
+                    {/* ✅ AMÉLIORATION UX ADMIN: Menu simplifié pour les administrateurs */}
+                    {user.role === 'admin' ? (
+                      <>
+                        {/* ✅ SECTION ADMIN: Liens d'administration en priorité */}
+                        <Link
+                          to={ROUTES.DELIVERY_PARTNERS_ADMIN}
+                          className="block px-3 py-2 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded text-orange-600 dark:text-orange-400 font-medium border-l-4 border-orange-500 mb-1"
+                          onClick={() => setOpenProfileMenu(false)}
+                        >
+                          🚚 Gérer les partenaires
+                        </Link>
+                        <Link
+                          to={ROUTES.ADMIN_KYC_VERIFICATION}
+                          className="block px-3 py-2 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded text-orange-600 dark:text-orange-400 font-medium border-l-4 border-orange-500 mb-1"
+                          onClick={() => setOpenProfileMenu(false)}
+                        >
+                          👤 Gestion des rôles
+                        </Link>
+                        <Link
+                          to={ROUTES.DASHBOARD_ADMIN_AUDIT}
+                          className="block px-3 py-2 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded text-orange-600 dark:text-orange-400 font-medium border-l-4 border-orange-500 mb-1"
+                          onClick={() => setOpenProfileMenu(false)}
+                        >
+                          🔍 Audit Sécurité
+                        </Link>
+                        <Link
+                          to={ROUTES.DASHBOARD_ADMIN_API}
+                          className="block px-3 py-2 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded text-orange-600 dark:text-orange-400 font-medium border-l-4 border-orange-500 mb-1"
+                          onClick={() => setOpenProfileMenu(false)}
+                        >
+                          🔧 API Dashboard
+                        </Link>
+                        {/* ✅ SÉPARATEUR VISUEL: Déconnexion toujours visible en bas */}
+                        <hr className="my-2 border-gray-200 dark:border-gray-700" />
+                        <button
+                          onClick={() => {
+                            setOpenProfileMenu(false);
+                            logout();
+                          }}
+                          className="w-full text-left px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded font-medium"
+                        >
+                          🚪 Déconnexion
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* ✅ MENU UTILISATEUR STANDARD: Pour les non-admins */}
+                        <Link
+                          to={ROUTES.RECHARGE_TOKENS}
+                          className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-green-600"
+                          onClick={() => setOpenProfileMenu(false)}
+                        >
+                          💳 Recharger tokens
+                        </Link>
+                        <Link
+                          to={ROUTES.MON_SOLDE}
+                          className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          onClick={() => setOpenProfileMenu(false)}
+                        >
+                          🧾 Historique de consommation
+                        </Link>
+                        <Link
+                          to="/mon-compte"
+                          className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          onClick={() => setOpenProfileMenu(false)}
+                        >
+                          ⚙️ Paramètres
+                        </Link>
+                        <button
+                          onClick={() => {
+                            setOpenProfileMenu(false);
+                            logout();
+                          }}
+                          className="w-full text-left px-3 py-1 text-red-600 hover:underline mt-2"
+                        >
+                          🚪 Déconnexion
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

@@ -808,42 +808,17 @@ const DeliveryShoppingFlow = () => {
 
 // ✅ CORRECTION CRASH: Composant wrapper pour MainStack qui appelle useDeepLinkRedirect
 // pour s'assurer que NavigationContainer est prêt avant d'appeler useNavigation()
+// ⚠️ IMPORTANT: Les hooks doivent être appelés inconditionnellement (pas dans try-catch)
 const MainStackWithDeepLinks = (props: any) => {
   // ✅ CORRECTION CRASH: useDeepLinkRedirect appelé dans un composant enfant du Stack.Navigator
   // pour s'assurer que NavigationContainer est prêt
-  try {
-    useDeepLinkRedirect();
-  } catch (error) {
-    // Si NavigationContainer n'est pas prêt, on ignore silencieusement
-    console.warn('[MainStackWithDeepLinks] NavigationContainer pas encore prêt pour deep links:', error);
-  }
-  return <MainStack {...props} />;
-};
-
-// Stack secondaire avec toutes les routes
-const SecondaryStack = () => {
-  console.log('[AppNavigator] 📱 Rendu SecondaryStack');
+  useDeepLinkRedirect();
+  
+  // ✅ CORRECTION CRASH: Gérer la redirection des partenaires ici où useNavigation() est disponible
+  const navigation = useNavigation();
   const { user } = useAuth();
   
-  // ✅ CORRECTION CRASH: useNavigation doit être appelé inconditionnellement (règle des hooks)
-  // Mais on vérifie que navigation.navigate existe avant de l'utiliser
-  const navigation = useNavigation();
-  
-  // ✅ NOUVEAU: Rediriger les partenaires vers leur écran spécialisé
   React.useEffect(() => {
-    // ✅ CORRECTION CRASH: Vérifier que navigation et navigate existent AVANT d'utiliser
-    if (!navigation) {
-      console.log('[AppNavigator] Navigation non disponible encore, attente...');
-      return;
-    }
-    
-    // Vérifier que navigate est une fonction (peut être undefined si NavigationContainer n'est pas prêt)
-    const navNavigate = (navigation as any)?.navigate;
-    if (typeof navNavigate !== 'function') {
-      console.log('[AppNavigator] navigation.navigate n\'est pas une fonction, attente...');
-      return;
-    }
-    
     if (user?.role === 'partenaire' && user.partner_type) {
       const partnerTypeToScreen: Record<string, string> = {
         'pharmacie': 'PharmacieForm',
@@ -857,15 +832,12 @@ const SecondaryStack = () => {
         // Petit délai pour laisser le stack se monter
         const timer = setTimeout(() => {
           try {
-            // Double vérification avant d'appeler navigate
             const nav = navigation as any;
             if (nav && typeof nav?.navigate === 'function') {
               nav.navigate(targetScreen);
-            } else {
-              console.warn('[AppNavigator] navigation.navigate n\'est pas disponible après délai');
             }
           } catch (error) {
-            console.error('[AppNavigator] Erreur redirection partenaire:', error);
+            console.error('[MainStackWithDeepLinks] Erreur redirection partenaire:', error);
           }
         }, 500);
         
@@ -873,6 +845,28 @@ const SecondaryStack = () => {
       }
     }
   }, [user?.role, user?.partner_type, navigation]);
+  
+  return <MainStack {...props} />;
+};
+
+// Stack secondaire avec toutes les routes
+const SecondaryStack = () => {
+  console.log('[AppNavigator] 📱 Rendu SecondaryStack');
+  const { user } = useAuth();
+  
+  // ✅ CORRECTION CRASH: Supprimer useNavigation() de SecondaryStack car il cause le crash
+  // Le problème est que useNavigation() est appelé dans un composant qui crée un Stack.Navigator
+  // et essaie d'accéder au contexte parent, ce qui peut être undefined au moment du rendu initial
+  // La redirection des partenaires sera gérée dans MainStackWithDeepLinks via useDeepLinkRedirect
+  
+  // ✅ NOUVEAU: Rediriger les partenaires vers leur écran spécialisé
+  // Cette logique sera déplacée dans un composant qui est rendu après que le Stack.Navigator soit monté
+  React.useEffect(() => {
+    if (user?.role === 'partenaire' && user.partner_type) {
+      // La redirection sera gérée par le système de deep links
+      console.log('[AppNavigator] Partenaire détecté, redirection gérée par deep links');
+    }
+  }, [user?.role, user?.partner_type]);
   
   return (
     <Stack.Navigator

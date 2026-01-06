@@ -14,7 +14,54 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
     const { user, logout } = useAuth();
     const [showMenu, setShowMenu] = useState(false);
 
-    const menuItems = [
+    // ✅ AMÉLIORATION UX ADMIN: Menu simplifié pour les administrateurs
+    // Prioriser les liens d'administration et retirer les éléments inutiles
+    const isAdmin = user?.role === 'admin';
+    
+    const menuItems = isAdmin ? [
+        // ✅ SECTION ADMIN: Liens d'administration en priorité
+        {
+            title: 'Gérer les coursiers',
+            icon: '👥',
+            route: 'CourierAdmin',
+            description: 'Valider les candidatures de coursiers',
+            highlighted: true,
+            adminOnly: true
+        },
+        {
+            title: 'Gérer les partenaires',
+            icon: '🚚',
+            route: 'DeliveryPartnersAdmin',
+            description: 'Gérer les partenaires de livraison',
+            highlighted: true,
+            adminOnly: true
+        },
+        {
+            title: 'Gestion des rôles',
+            icon: '👤',
+            route: 'UserRoleManagement',
+            description: 'Gérer les rôles des utilisateurs',
+            highlighted: true,
+            adminOnly: true
+        },
+        {
+            title: '🔥 Configuration Black Friday',
+            icon: '🔥',
+            route: 'BlackFridayAdminConfig',
+            description: 'Gérer les campagnes Black Friday',
+            highlighted: true,
+            adminOnly: true
+        },
+        // ✅ SÉPARATEUR VISUEL: Déconnexion toujours visible en bas
+        {
+            title: 'Déconnexion',
+            icon: '🚪',
+            route: 'logout',
+            description: 'Se déconnecter de l\'application',
+            isSeparator: true
+        }
+    ] : [
+        // ✅ MENU UTILISATEUR STANDARD: Pour les non-admins
         {
             title: 'Mon historique',
             icon: '📊',
@@ -27,41 +74,11 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             route: 'CourierRegistration',
             description: 'Rejoignez notre équipe de coursiers'
         },
-        ...(user?.role === 'admin' ? [
-            {
-                title: 'Gérer les coursiers',
-                icon: '👥',
-                route: 'CourierAdmin',
-                description: 'Valider les candidatures de coursiers (Admin)',
-                highlighted: true
-            },
-            {
-                title: 'Gérer les partenaires',
-                icon: '🚚',
-                route: 'DeliveryPartnersAdmin',
-                description: 'Gérer les partenaires de livraison (Admin)',
-                highlighted: true
-            },
-            {
-                title: 'Gestion des rôles',
-                icon: '👤',
-                route: 'UserRoleManagement',
-                description: 'Gérer les rôles des utilisateurs (Admin)',
-                highlighted: true
-            }
-        ] : []),
         {
             title: 'Contacter le Support',
             icon: '💬',
             route: 'Contact',
             description: 'Besoin d\'aide ?'
-        },
-        {
-            title: '🔥 Configuration Lancement Black Friday',
-            icon: '🔥',
-            route: 'BlackFridayAdminConfig', // ✅ NOUVEAU : Lien vers la configuration de lancement Black Friday (admin)
-            description: 'Gérer le lancement des campagnes Black Friday (Admin)',
-            highlighted: true // ✅ Mettre en évidence
         },
         {
             title: 'Déconnexion',
@@ -243,34 +260,43 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
 
                         {/* Items du menu */}
                         <View style={styles.menuItems}>
-                            {menuItems.map((item, index) => (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={[
-                                        styles.menuItem,
-                                        item.route === 'logout' && styles.logoutItem,
-                                        item.highlighted && styles.highlightedItem
-                                    ]}
-                                    onPress={() => handleMenuItemPress(item)}
-                                >
-                                    <Text style={styles.menuItemIcon}>{item.icon}</Text>
-                                    <View style={styles.menuItemContent}>
-                                        <Text style={[
-                                            styles.menuItemTitle,
-                                            item.route === 'logout' && styles.logoutText,
-                                            item.highlighted && styles.highlightedText
-                                        ]}>
-                                            {item.title}
-                                        </Text>
-                                        <Text style={styles.menuItemDescription}>{item.description}</Text>
-                                    </View>
-                                    {item.highlighted && (
-                                        <View style={styles.highlightedBadge}>
-                                            <Text style={styles.highlightedBadgeText}>⚡</Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            ))}
+                            {menuItems.map((item, index) => {
+                                // ✅ SÉPARATEUR VISUEL: Ajouter un séparateur avant la déconnexion pour les admins
+                                const showSeparator = item.isSeparator && isAdmin && index > 0;
+                                
+                                return (
+                                    <React.Fragment key={index}>
+                                        {showSeparator && (
+                                            <View style={styles.separator} />
+                                        )}
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.menuItem,
+                                                item.route === 'logout' && styles.logoutItem,
+                                                item.highlighted && styles.highlightedItem
+                                            ]}
+                                            onPress={() => handleMenuItemPress(item)}
+                                        >
+                                            <Text style={styles.menuItemIcon}>{item.icon}</Text>
+                                            <View style={styles.menuItemContent}>
+                                                <Text style={[
+                                                    styles.menuItemTitle,
+                                                    item.route === 'logout' && styles.logoutText,
+                                                    item.highlighted && styles.highlightedText
+                                                ]}>
+                                                    {item.title}
+                                                </Text>
+                                                <Text style={styles.menuItemDescription}>{item.description}</Text>
+                                            </View>
+                                            {item.highlighted && (
+                                                <View style={styles.highlightedBadge}>
+                                                    <Text style={styles.highlightedBadgeText}>⚡</Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    </React.Fragment>
+                                );
+                            })}
                         </View>
                     </View>
                 </TouchableOpacity>
@@ -452,6 +478,13 @@ const styles = StyleSheet.create({
     },
     highlightedBadgeText: {
         fontSize: 14,
+    },
+    // ✅ SÉPARATEUR VISUEL: Pour séparer les sections admin de la déconnexion
+    separator: {
+        height: 1,
+        backgroundColor: '#E5E7EB',
+        marginVertical: 8,
+        marginHorizontal: 20,
     },
 });
 
