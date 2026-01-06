@@ -249,6 +249,7 @@ const HopitalHomeScreenWithSafeArea = withNavigatorSafeArea(HopitalHomeScreen);
 const HopitalListScreenWithSafeArea = withNavigatorSafeArea(HopitalListScreen);
 const HopitalDetailsScreenWithSafeArea = withNavigatorSafeArea(HopitalDetailsScreen);
 const LaboratoireSearchScreenWithSafeArea = withNavigatorSafeArea(LaboratoireSearchScreen);
+const LaboratoireHomeScreenWithSafeArea = withNavigatorSafeArea(LaboratoireHomeScreen);
 const LaboratoireListScreenWithSafeArea = withNavigatorSafeArea(LaboratoireListScreen);
 const LaboratoireDetailsScreenWithSafeArea = withNavigatorSafeArea(LaboratoireDetailsScreen);
 // ✅ NOUVEAU: Pharmacie
