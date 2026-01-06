@@ -560,10 +560,10 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         };
 
         // ✅ Utiliser les données en attente si disponibles
-        const data = deliveryDataToUse;
+        const deliveryData = deliveryDataToUse;
         
         // ✅ Validation aller-retour
-        if (data.isRoundTrip && (!data.returnPickupLocation || !data.returnDropoffLocation)) {
+        if (deliveryData.isRoundTrip && (!deliveryData.returnPickupLocation || !deliveryData.returnDropoffLocation)) {
             Alert.alert('Erreur', 'Veuillez sélectionner les points de collecte et de livraison pour le retour');
             return;
         }
@@ -572,58 +572,58 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         try {
             // ✅ Par défaut: "motorcycle" si aucun type spécifié (sera géré par le backend)
         const payload: CreateDeliveryRequestPayload = {
-                preferred_vehicle_type: data.transportMode || undefined, // Backend utilisera "motorcycle" par défaut
-                is_round_trip: data.isRoundTrip || undefined,
+                preferred_vehicle_type: deliveryData.transportMode || undefined, // Backend utilisera "motorcycle" par défaut
+                is_round_trip: deliveryData.isRoundTrip || undefined,
                 // ✅ Planification
-                scheduled_delivery_at: data.isScheduled && data.scheduledDateTime
-                    ? new Date(data.scheduledDateTime).toISOString()
+                scheduled_delivery_at: deliveryData.isScheduled && deliveryData.scheduledDateTime
+                    ? new Date(deliveryData.scheduledDateTime).toISOString()
                     : undefined,
-                matching_mode: data.isScheduled ? data.matchingMode : undefined,
-                ...(data.isRoundTrip && data.returnPickupLocation && data.returnDropoffLocation && {
+                matching_mode: deliveryData.isScheduled ? deliveryData.matchingMode : undefined,
+                ...(deliveryData.isRoundTrip && deliveryData.returnPickupLocation && deliveryData.returnDropoffLocation && {
                     return_pickup: {
-                        latitude: data.returnPickupLocation.latitude,
-                        longitude: data.returnPickupLocation.longitude,
-                        address: data.returnPickupLocation.address,
+                        latitude: deliveryData.returnPickupLocation.latitude,
+                        longitude: deliveryData.returnPickupLocation.longitude,
+                        address: deliveryData.returnPickupLocation.address,
                     },
                     return_dropoff: {
-                        latitude: data.returnDropoffLocation.latitude,
-                        longitude: data.returnDropoffLocation.longitude,
-                        address: data.returnDropoffLocation.address,
+                        latitude: deliveryData.returnDropoffLocation.latitude,
+                        longitude: deliveryData.returnDropoffLocation.longitude,
+                        address: deliveryData.returnDropoffLocation.address,
                     },
                     round_trip_discount_percent: 10, // 10% de réduction par défaut pour aller-retour
                 }),
                 parcel: {
-                    type_id: getParcelTypeId(data.parcelType),
-                    notes: data.notes || `Colis: ${data.parcelType}`,
-                    photos: data.photos || [],
+                    type_id: getParcelTypeId(deliveryData.parcelType),
+                    notes: deliveryData.notes || `Colis: ${deliveryData.parcelType}`,
+                    photos: deliveryData.photos || [],
                     constraints: {
-                        weight: data.weight ? parseFloat(data.weight) : undefined,
-                        volume: data.volume ? parseFloat(data.volume) : undefined,
-                        declared_value: data.declaredValue ? parseFloat(data.declaredValue) : undefined,
-                        number_of_items: data.numberOfItems ? parseInt(data.numberOfItems) : undefined,
+                        weight: deliveryData.weight ? parseFloat(deliveryData.weight) : undefined,
+                        volume: deliveryData.volume ? parseFloat(deliveryData.volume) : undefined,
+                        declared_value: deliveryData.declaredValue ? parseFloat(deliveryData.declaredValue) : undefined,
+                        number_of_items: deliveryData.numberOfItems ? parseInt(deliveryData.numberOfItems) : undefined,
                     },
                 },
                 pickup: {
-                    latitude: data.pickupLocation.latitude,
-                    longitude: data.pickupLocation.longitude,
-                    address: data.pickupLocation.address,
+                    latitude: deliveryData.pickupLocation.latitude,
+                    longitude: deliveryData.pickupLocation.longitude,
+                    address: deliveryData.pickupLocation.address,
                 },
                 dropoff: {
-                    latitude: data.dropoffLocation.latitude,
-                    longitude: data.dropoffLocation.longitude,
-                    address: data.dropoffLocation.address,
+                    latitude: deliveryData.dropoffLocation.latitude,
+                    longitude: deliveryData.dropoffLocation.longitude,
+                    address: deliveryData.dropoffLocation.address,
                 },
                 recipient: {
-                    contact_name: data.recipientName,
-                    contact_phone: data.recipientPhone,
-                    country_code: data.recipientCountryCode || undefined,
-                    consent_granted: data.recipientConsentGranted,
-                    notes: data.recipientInstructions || undefined,
-                    allow_tracking: data.recipientAllowTracking || undefined,
+                    contact_name: deliveryData.recipientName,
+                    contact_phone: deliveryData.recipientPhone,
+                    country_code: deliveryData.recipientCountryCode || undefined,
+                    consent_granted: deliveryData.recipientConsentGranted,
+                    notes: deliveryData.recipientInstructions || undefined,
+                    allow_tracking: deliveryData.recipientAllowTracking || undefined,
                 },
                 metadata: {
                     kind: 'parcel',
-                    parcel_type: data.parcelType,
+                    parcel_type: deliveryData.parcelType,
                 },
                 initial_event_payload: {},
             };
