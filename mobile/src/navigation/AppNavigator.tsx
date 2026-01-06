@@ -436,7 +436,7 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
 const AuthStack = () => {
   console.log('[AppNavigator] 📱 Rendu AuthStack');
   const PartnerRegisterScreen = require('../screens/auth/PartnerRegisterScreen').default;
-  const PartnerRegisterScreenWithSafeArea = withSafeArea(PartnerRegisterScreen);
+  const PartnerRegisterScreenWithSafeArea = withNavigatorSafeArea(PartnerRegisterScreen);
   
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
