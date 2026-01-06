@@ -47,7 +47,7 @@ async fn repeat_pending_delivery_notifications(state: &Arc<AppState>) -> Result<
         AND metadata->>'notification_sent_at' IS NOT NULL
         AND (metadata->>'notification_repeat_interval_seconds')::int = 30
         AND NOW() - (metadata->>'notification_sent_at')::timestamp < INTERVAL '5 minutes'
-        ORDER BY created_at DESC
+        ORDER BY requested_at DESC
         LIMIT 50
         "#
     )
