@@ -1279,6 +1279,212 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         </ScrollView>
     );
 
+    const SummaryStep = (
+        <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+            <Text style={styles.stepTitle}>Récapitulatif</Text>
+            <Text style={styles.stepSubtitle}>Vérifiez les informations avant de confirmer</Text>
+
+            {/* Informations du colis */}
+            <NativeCard style={styles.summaryCard}>
+                <Text style={styles.summaryCardTitle}>Informations du colis</Text>
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Type</Text>
+                    <Text style={styles.summaryValue}>
+                        {parcelType === 'document' ? 'Document' :
+                         parcelType === 'package' ? 'Paquet/Sac' :
+                         parcelType === 'moving' ? 'Déménagement' :
+                         parcelType === 'cake' ? 'Gâteau' : parcelType}
+                    </Text>
+                </View>
+                {numberOfItems && (
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Nombre</Text>
+                        <Text style={styles.summaryValue}>{numberOfItems}</Text>
+                    </View>
+                )}
+                {weight && (
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Poids</Text>
+                        <Text style={styles.summaryValue}>{weight} kg</Text>
+                    </View>
+                )}
+                {volume && (
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Volume</Text>
+                        <Text style={styles.summaryValue}>{volume} L</Text>
+                    </View>
+                )}
+                {declaredValue && (
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Valeur déclarée</Text>
+                        <Text style={styles.summaryValue}>{parseFloat(declaredValue).toLocaleString('fr-FR')} FCFA</Text>
+                    </View>
+                )}
+                {transportMode && (
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Transport</Text>
+                        <Text style={styles.summaryValue}>
+                            {VEHICLE_TRANSPORT_OPTIONS.find(t => t.value === transportMode)?.label || transportMode}
+                        </Text>
+                    </View>
+                )}
+                {isRoundTrip && (
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Aller-retour</Text>
+                        <Text style={styles.summaryValue}>Oui (réduction 10%)</Text>
+                    </View>
+                )}
+                {notes && (
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Notes</Text>
+                        <Text style={styles.summaryValue}>{notes}</Text>
+                    </View>
+                )}
+            </NativeCard>
+
+            {/* Adresses */}
+            <NativeCard style={styles.summaryCard}>
+                <Text style={styles.summaryCardTitle}>Adresses</Text>
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Collecte</Text>
+                    <Text style={[styles.summaryValue, { flex: 2 }]}>
+                        {pickupLocation?.address || 
+                         (pickupLocation ? `${pickupLocation.latitude.toFixed(6)}, ${pickupLocation.longitude.toFixed(6)}` : 'Non défini')}
+                    </Text>
+                </View>
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Livraison</Text>
+                    <Text style={[styles.summaryValue, { flex: 2 }]}>
+                        {dropoffLocation?.address || 
+                         (dropoffLocation ? `${dropoffLocation.latitude.toFixed(6)}, ${dropoffLocation.longitude.toFixed(6)}` : 'Non défini')}
+                    </Text>
+                </View>
+                {estimatedDistance !== null && (
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Distance</Text>
+                        <Text style={styles.summaryValue}>{estimatedDistance.toFixed(1)} km</Text>
+                    </View>
+                )}
+                {isRoundTrip && returnPickupLocation && returnDropoffLocation && (
+                    <>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Collecte retour</Text>
+                            <Text style={[styles.summaryValue, { flex: 2 }]}>
+                                {returnPickupLocation.address || 
+                                 `${returnPickupLocation.latitude.toFixed(6)}, ${returnPickupLocation.longitude.toFixed(6)}`}
+                            </Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Livraison retour</Text>
+                            <Text style={[styles.summaryValue, { flex: 2 }]}>
+                                {returnDropoffLocation.address || 
+                                 `${returnDropoffLocation.latitude.toFixed(6)}, ${returnDropoffLocation.longitude.toFixed(6)}`}
+                            </Text>
+                        </View>
+                        {returnDistance !== null && (
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>Distance retour</Text>
+                                <Text style={styles.summaryValue}>{returnDistance.toFixed(1)} km</Text>
+                            </View>
+                        )}
+                    </>
+                )}
+            </NativeCard>
+
+            {/* Planification */}
+            {isScheduled && (
+                <NativeCard style={styles.summaryCard}>
+                    <Text style={styles.summaryCardTitle}>Planification</Text>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Date</Text>
+                        <Text style={styles.summaryValue}>
+                            {scheduledDateTime.toLocaleDateString('fr-FR', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                            })}
+                        </Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Heure</Text>
+                        <Text style={styles.summaryValue}>
+                            {scheduledDateTime.toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            })}
+                        </Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Matching</Text>
+                        <Text style={styles.summaryValue}>
+                            {matchingMode === 'immediate' ? 'Maintenant' : 'Au moment planifié'}
+                        </Text>
+                    </View>
+                </NativeCard>
+            )}
+
+            {/* Informations destinataire */}
+            <NativeCard style={styles.summaryCard}>
+                <Text style={styles.summaryCardTitle}>Destinataire</Text>
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Nom</Text>
+                    <Text style={styles.summaryValue}>{recipientName}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Téléphone</Text>
+                    <Text style={styles.summaryValue}>{recipientCountryCode} {recipientPhone}</Text>
+                </View>
+                {recipientInstructions && (
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Instructions</Text>
+                        <Text style={[styles.summaryValue, { flex: 2 }]}>{recipientInstructions}</Text>
+                    </View>
+                )}
+            </NativeCard>
+
+            {/* Coûts */}
+            <NativeCard style={styles.summaryCard}>
+                <Text style={styles.summaryCardTitle}>Coûts</Text>
+                {loadingCosts ? (
+                    <Text style={styles.loadingText}>Calcul des coûts...</Text>
+                ) : (
+                    <>
+                        {deliveryCost !== null && (
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>Livraison</Text>
+                                <Text style={styles.summaryValue}>{deliveryCost.toLocaleString('fr-FR')} FCFA</Text>
+                            </View>
+                        )}
+                        {insuranceCost > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>Assurance</Text>
+                                <Text style={styles.summaryValue}>{insuranceCost.toLocaleString('fr-FR')} FCFA</Text>
+                            </View>
+                        )}
+                        <View style={[styles.summaryRow, styles.totalRow]}>
+                            <Text style={styles.totalLabel}>Total</Text>
+                            <Text style={[styles.totalValue, userBalance < (deliveryCost || 0) + insuranceCost && styles.insufficientBalance]}>
+                                {((deliveryCost || 0) + insuranceCost).toLocaleString('fr-FR')} FCFA
+                            </Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Solde disponible</Text>
+                            <Text style={[styles.summaryValue, userBalance < (deliveryCost || 0) + insuranceCost && styles.insufficientBalance]}>
+                                {userBalance.toLocaleString('fr-FR')} FCFA
+                            </Text>
+                        </View>
+                        {userBalance < (deliveryCost || 0) + insuranceCost && (
+                            <Text style={styles.warningText}>
+                                ⚠️ Votre solde est insuffisant. Vous serez redirigé vers la page de recharge.
+                            </Text>
+                        )}
+                    </>
+                )}
+            </NativeCard>
+        </ScrollView>
+    );
+
     const steps = [
         {
             id: 'parcel',

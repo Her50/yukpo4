@@ -16,10 +16,12 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View
 } from 'react-native';
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
-import LocationSelector from '../components/LocationSelector';
+import LocationSelector, { LocationObject } from '../components/LocationSelector';
+import ModernGPSModal from '../components/ModernGPSModal';
 import MediaUploadManager from '../components/MediaUploadManager';
 import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
@@ -58,6 +60,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const [isAddingProductLoading, setIsAddingProductLoading] = useState(false); // ✅ NOUVEAU: État de loading spécifique pour l'ajout de produit
     // ✅ NOUVEAU: Référence au ScrollView principal pour gérer le scroll horizontal des images
     const mainScrollViewRef = useRef<ScrollView>(null);
+    // ✅ NOUVEAU: États pour le modal GPS (pour lieu_produit)
+    const [showGPSModal, setShowGPSModal] = useState(false);
+    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     // ✅ NOUVEAU: États pour le modal de configuration de livraison
     const [showProductDeliveryConfig, setShowProductDeliveryConfig] = useState(false);
     const [productDeliveryConfigData, setProductDeliveryConfigData] = useState<{
@@ -174,6 +179,37 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const prefilledAudios = normalizeMediaList(prefill.audios);
     const prefilledDocuments = normalizeMediaList(prefill.documents);
 
+    // ✅ CORRIGÉ: En mode edit/duplicate, fusionner prefill.images avec mediaData pour s'assurer que tous les médias sont chargés
+    const prefilledImagesFromMediaData = isEditing || isDuplicate 
+        ? combineUnique(
+            prefilledImages,
+            normalizeMediaList(mediaData?.base64_image),
+            normalizeMediaList(mediaData?.image_base64)
+        )
+        : prefilledImages;
+
+    const prefilledVideosFromMediaData = isEditing || isDuplicate
+        ? combineUnique(
+            prefilledVideos,
+            normalizeMediaList(mediaData?.video_base64),
+            normalizeMediaList(mediaData?.videos)
+        )
+        : prefilledVideos;
+
+    const prefilledAudiosFromMediaData = isEditing || isDuplicate
+        ? combineUnique(
+            prefilledAudios,
+            normalizeMediaList(mediaData?.audio_base64)
+        )
+        : prefilledAudios;
+
+    const prefilledDocumentsFromMediaData = isEditing || isDuplicate
+        ? combineUnique(
+            prefilledDocuments,
+            normalizeMediaList(mediaData?.doc_base64)
+        )
+        : prefilledDocuments;
+
     const mergedImageSources = mergeImageSources(
         MAX_PRODUCT_IMAGES,
         mediaData?.base64_image,
@@ -183,10 +219,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         suggestionIA?.service_data?.base64_image
     );
 
-    const initialProductImages = prefilledImages.length > 0 ? prefilledImages : mergedImageSources;
+    const initialProductImages = prefilledImagesFromMediaData.length > 0 ? prefilledImagesFromMediaData : mergedImageSources;
 
     const mergedVideos = combineUnique(
-        prefilledVideos,
+        prefilledVideosFromMediaData,
         normalizeMediaList(mediaData?.video_base64),
         normalizeMediaList(mediaData?.videos),
         normalizeMediaList(suggestionData?.videos)
@@ -194,13 +230,13 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const initialProductVideos = mergedVideos;
 
     const initialProductAudios = combineUnique(
-        prefilledAudios,
+        prefilledAudiosFromMediaData,
         normalizeMediaList(mediaData?.audio_base64),
         normalizeMediaList(suggestionData?.audios)
     );
 
     const initialProductDocuments = combineUnique(
-        prefilledDocuments,
+        prefilledDocumentsFromMediaData,
         normalizeMediaList(mediaData?.doc_base64),
         normalizeMediaList(suggestionData?.documents)
     );
@@ -522,12 +558,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         quantite_disponible: (isEditing || isDuplicate)
             ? (prefill.quantite_disponible !== undefined ? prefill.quantite_disponible : (prefill.stock !== undefined ? prefill.stock : null))
             : (prefill.quantite_disponible ?? prefill.stock ?? null),
-        // ✅ CRITIQUE: Pour les médias, utiliser prefill en priorité pour edit/duplicate
-        // En mode edit/duplicate, utiliser TOUJOURS les médias du prefill (même si vides)
-        images: (isEditing || isDuplicate) ? prefilledImages : initialProductImages,
-        videos: (isEditing || isDuplicate) ? prefilledVideos : initialProductVideos,
-        audios: (isEditing || isDuplicate) ? prefilledAudios : initialProductAudios,
-        documents: (isEditing || isDuplicate) ? prefilledDocuments : initialProductDocuments,
+        // ✅ CRITIQUE: Pour les médias, utiliser prefill fusionné avec mediaData pour edit/duplicate
+        // En mode edit/duplicate, fusionner les médias du prefill avec ceux de mediaData
+        images: (isEditing || isDuplicate) ? prefilledImagesFromMediaData : initialProductImages,
+        videos: (isEditing || isDuplicate) ? prefilledVideosFromMediaData : initialProductVideos,
+        audios: (isEditing || isDuplicate) ? prefilledAudiosFromMediaData : initialProductAudios,
+        documents: (isEditing || isDuplicate) ? prefilledDocumentsFromMediaData : initialProductDocuments,
         characteristic_vector: prefill.characteristic_vector ?? suggestionData?.characteristic_vector ?? null,
         combinaison_brute: prefill.combinaison_brute ?? suggestionData?.combinaison_brute ?? null,
         // ✅ NOUVEAU: Initialiser product_vector et product_labels depuis prefill en priorité
@@ -1530,11 +1566,17 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         throw new Error(jobResult.error);
                                     }
                                     
+                                    // ✅ CORRECTION: Afficher le toast AVANT l'ouverture de la configuration de livraison
                                     // ✅ NOUVEAU: Afficher un toast de succès
                                     toaster.success('✅ Produit créé avec succès !');
                                     
                                     // Rafraîchir la liste des services pour afficher le nouveau produit
-                                    DeviceEventEmitter.emit('service:refresh');
+                                    // ✅ CORRECTION: Ajouter un délai pour laisser la base de données se mettre à jour
+                                    setTimeout(() => {
+                                      DeviceEventEmitter.emit('service:refresh');
+                                      // ✅ NOUVEAU: Émettre aussi un événement spécifique pour les produits
+                                      DeviceEventEmitter.emit('product:created');
+                                    }, 2000);
                                     
                                     // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
                                     const typeOffre = formValues.type_offre || 'produit';
@@ -1549,16 +1591,20 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         console.log('[AjouterProduitSimple] 🚚 Ouverture automatique du modal de configuration de livraison:', {
                                             serviceId: finalServiceId,
                                             productIndex: finalProductIndex,
-                                            productName: productName
+                                            productName: productName,
+                                            isDuplicate: isDuplicate
                                         });
                                         
-                                        // Ouvrir le modal de configuration de livraison
-                                        setShowProductDeliveryConfig(true);
-                                        setProductDeliveryConfigData({
-                                            serviceId: finalServiceId,
-                                            productIndex: finalProductIndex,
-                                            productName: productName,
-                                        });
+                                        // ✅ CORRECTION: Attendre un court délai pour laisser le toast s'afficher avant d'ouvrir le modal
+                                        setTimeout(() => {
+                                            // Ouvrir le modal de configuration de livraison
+                                            setShowProductDeliveryConfig(true);
+                                            setProductDeliveryConfigData({
+                                                serviceId: finalServiceId,
+                                                productIndex: finalProductIndex,
+                                                productName: productName,
+                                            });
+                                        }, 500);
                                         
                                         setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading
                                         return;
@@ -1589,6 +1635,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 // ✅ ANCIEN CODE: Si pas de job_id, traitement synchrone (ancien format)
                                 console.log('[AjouterProduitSimple] ✅ Produit ajouté avec succès (format synchrone):', response);
                                 
+                                // ✅ CORRECTION: Afficher le toast AVANT l'ouverture de la configuration de livraison
                                 // ✅ NOUVEAU: Afficher un toast de succès
                                 toaster.success('✅ Produit créé avec succès !');
 
@@ -1607,16 +1654,31 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     const finalProductIndex = typeof productIndexResult === 'number' ? productIndexResult : parseInt(String(productIndexResult), 10);
                                     const productName = formValues.nom_produit || 'Nouveau produit';
                                     
-                                    // Ouvrir le modal de configuration de livraison
-                                    setShowProductDeliveryConfig(true);
-                                    setProductDeliveryConfigData({
+                                    console.log('[AjouterProduitSimple] 🚚 Ouverture automatique du modal de configuration de livraison (synchrone):', {
                                         serviceId: finalServiceId,
                                         productIndex: finalProductIndex,
                                         productName: productName,
+                                        isDuplicate: isDuplicate
                                     });
                                     
+                                    // ✅ CORRECTION: Attendre un court délai pour laisser le toast s'afficher avant d'ouvrir le modal
+                                    setTimeout(() => {
+                                        // Ouvrir le modal de configuration de livraison
+                                        setShowProductDeliveryConfig(true);
+                                        setProductDeliveryConfigData({
+                                            serviceId: finalServiceId,
+                                            productIndex: finalProductIndex,
+                                            productName: productName,
+                                        });
+                                    }, 500);
+                                    
                                     // Ne pas afficher l'Alert de succès ici, le modal s'ouvrira directement
-                                    DeviceEventEmitter.emit('service:refresh');
+                                    // ✅ CORRECTION: Ajouter un délai pour laisser la base de données se mettre à jour
+                                    setTimeout(() => {
+                                      DeviceEventEmitter.emit('service:refresh');
+                                      // ✅ NOUVEAU: Émettre aussi un événement spécifique pour les produits
+                                      DeviceEventEmitter.emit('product:created');
+                                    }, 2000);
                                     setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading
                                     return;
                                 }
@@ -2068,15 +2130,36 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                         {/* Lieu */}
                         <View style={styles.fieldGroup}>
-                            <LocationSelector
-                                label="Lieu de commercialisation"
-                                value={formValues.lieu_produit}
-                                onSelect={(value) => handleFieldChange('lieu_produit', value)}
-                                placeholder="Ville, quartier, pays..."
-                                scope="all" // ✅ EXPLICITE: Recherche universelle pour lieu (ville, quartier, pays, établissements)
-                                enrichWithBackend={true}
-                                required
-                            />
+                            <Text style={styles.label}>
+                                Lieu de commercialisation <Text style={styles.required}>*</Text>
+                            </Text>
+                            <TouchableOpacity
+                                style={[styles.select, !formValues.lieu_produit && styles.selectPlaceholder]}
+                                onPress={() => {
+                                    // Récupérer la localisation actuelle si disponible
+                                    const currentValue = formValues.lieu_produit;
+                                    if (typeof currentValue === 'object' && currentValue !== null && currentValue.coordinates) {
+                                        setSelectedLocation({ lat: currentValue.coordinates.lat, lng: currentValue.coordinates.lng });
+                                    } else {
+                                        setSelectedLocation(null);
+                                    }
+                                    setShowGPSModal(true);
+                                }}
+                            >
+                                <Text style={[styles.selectText, !formValues.lieu_produit && styles.selectPlaceholderText]}>
+                                    {(() => {
+                                        const currentValue = formValues.lieu_produit;
+                                        if (typeof currentValue === 'object' && currentValue !== null) {
+                                            return currentValue.place_name || currentValue.raw || 'Sélectionner un lieu...';
+                                        }
+                                        return typeof currentValue === 'string' ? currentValue : 'Sélectionner un lieu...';
+                                    })()}
+                                </Text>
+                                <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            </TouchableOpacity>
+                            <Text style={styles.hint}>
+                                💡 Cliquez pour ouvrir la carte et sélectionner ou créer un lieu précis. Le nom complet du lieu sera affiché.
+                            </Text>
                         </View>
 
                         {/* Variabilité de prix - affichée uniquement si l'IA a détecté des variantes */}
@@ -2154,6 +2237,87 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     </NativeCard>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* ✅ NOUVEAU: Modal GPS pour lieu_produit */}
+            <ModernGPSModal
+                visible={showGPSModal}
+                onClose={() => {
+                    setShowGPSModal(false);
+                }}
+                onSelect={async (coordinatesString) => {
+                    // Parser les coordonnées depuis le format string
+                    const firstPoint = coordinatesString.split('|')[0].split(',');
+                    if (firstPoint.length === 2) {
+                        const lat = parseFloat(firstPoint[0]);
+                        const lng = parseFloat(firstPoint[1]);
+                        
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            setSelectedLocation({ lat, lng });
+
+                            // ✅ NOUVEAU: Faire le géocodage inverse pour obtenir le nom complet du lieu
+                            try {
+                                const { reverseGeocodeAsync } = await import('expo-location');
+                                const reverseGeocode = await reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                                
+                                if (reverseGeocode && reverseGeocode.length > 0) {
+                                    const addr = reverseGeocode[0];
+                                    // Construire le nom complet du lieu
+                                    const addressParts = [];
+                                    if (addr.name) addressParts.push(addr.name);
+                                    if (addr.street) addressParts.push(addr.street);
+                                    if (addr.district) addressParts.push(addr.district);
+                                    if (addr.city) addressParts.push(addr.city);
+                                    if (addr.region) addressParts.push(addr.region);
+                                    if (addr.country) addressParts.push(addr.country);
+                                    
+                                    const placeName = addr.name || addr.street || addr.district || addr.city || 'Lieu sélectionné';
+                                    const fullAddress = addressParts.filter(Boolean).join(', ') || placeName;
+                                    
+                                    // Construire un LocationObject avec le nom complet
+                                    const locationObject: LocationObject = {
+                                        raw: fullAddress,
+                                        place_name: placeName, // Nom principal du lieu (établissement, rue, quartier)
+                                        components: {
+                                            quartier: addr.district || undefined,
+                                            ville: addr.city || undefined,
+                                            region: addr.region || undefined,
+                                            pays: addr.country || undefined,
+                                        },
+                                        coordinates: { lat, lng },
+                                    };
+                                    
+                                    // Sauvegarder dans le formulaire
+                                    handleFieldChange('lieu_produit', locationObject);
+                                } else {
+                                    // Fallback si pas de géocodage inverse
+                                    const locationObject: LocationObject = {
+                                        raw: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                                        place_name: 'Lieu sélectionné',
+                                        components: {},
+                                        coordinates: { lat, lng },
+                                    };
+                                    handleFieldChange('lieu_produit', locationObject);
+                                }
+                            } catch (error) {
+                                console.error('[AjouterProduitSimple] Erreur géocodage inverse:', error);
+                                // Fallback en cas d'erreur
+                                const locationObject: LocationObject = {
+                                    raw: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                                    place_name: 'Lieu sélectionné',
+                                    components: {},
+                                    coordinates: { lat, lng },
+                                };
+                                handleFieldChange('lieu_produit', locationObject);
+                            }
+                        }
+                    }
+
+                    setShowGPSModal(false);
+                }}
+                currentLocation={selectedLocation}
+                title="Sélectionner le lieu de commercialisation"
+                allowZoneSelection={false}
+            />
 
             {/* ✅ NOUVEAU: Modal de configuration de livraison */}
             {productDeliveryConfigData && (
@@ -2304,6 +2468,37 @@ const styles = StyleSheet.create({
     },
     variantCalloutTextHighlighted: {
         color: '#E0E7FF',
+    },
+    select: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 8,
+        padding: 12,
+        backgroundColor: '#FFFFFF',
+        minHeight: 50,
+    },
+    selectText: {
+        fontSize: 14,
+        color: modernColors.text,
+        flex: 1,
+    },
+    selectPlaceholder: {
+        borderColor: '#E5E7EB',
+    },
+    selectPlaceholderText: {
+        color: modernColors.textSecondary,
+    },
+    required: {
+        color: modernColors.danger || '#EF4444',
+    },
+    hint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 8,
+        fontStyle: 'italic',
     },
 });
 

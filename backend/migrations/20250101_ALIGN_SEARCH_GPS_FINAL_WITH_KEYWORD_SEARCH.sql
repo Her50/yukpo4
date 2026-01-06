@@ -93,7 +93,8 @@ BEGIN
                     LIMIT 100
                 ),
                 prefiltered_services_for_products AS (
-                    -- ✅ Pré-filtrer services AVANT de décomposer produits
+                    -- ✅ CORRIGÉ 2026-01-06: Pré-filtrer services AVANT de décomposer produits
+                    -- Inclut services avec produits dans service_products OU dans s.data->produits
                     SELECT DISTINCT s.id
                     FROM services s
                     WHERE s.is_active = true
@@ -102,48 +103,51 @@ BEGIN
                         OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', search_query)
                         OR (COALESCE(s.data->'titre_service'->>'valeur', '')) % search_query
                         OR (COALESCE(s.data->'category'->>'valeur', s.category, '')) % search_query
+                        -- ✅ NOUVEAU: Inclure services avec produits dans service_products qui matchent
+                        OR EXISTS (
+                            SELECT 1
+                            FROM service_products p
+                            WHERE p.service_id = s.id
+                            AND p.is_active = true
+                            AND (
+                                unaccent(p.product_name) ILIKE '%' || unaccent(search_query) || '%'
+                                OR to_tsvector('french', p.product_name) @@ plainto_tsquery('french', search_query)
+                            )
+                        )
                     )
                     LIMIT 200
                 ),
                 product_scores AS (
-                    -- ✅ Pré-calculer scores produits SEULEMENT pour services pré-filtrés
+                    -- ✅ CORRIGÉ 2026-01-06: Recherche UNIQUEMENT dans service_products (plus de recherche dans s.data->produits)
                     SELECT 
-                        s.id as service_id,
+                        p.service_id,
                         GREATEST(
-                            CASE WHEN LOWER(unaccent(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', ''))) = LOWER(unaccent(search_query)) THEN 100.0 ELSE 0.0 END,
-                            CASE WHEN unaccent(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', '')) ILIKE unaccent(search_query) || '%' THEN 80.0 ELSE 0.0 END,
-                            CASE WHEN unaccent(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', '')) ILIKE '%' || unaccent(search_query) || '%' THEN 40.0 ELSE 0.0 END,
-                            CASE WHEN LOWER(unaccent(COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', ''))) = LOWER(unaccent(search_query)) THEN 55.0 ELSE 0.0 END,
-                            CASE WHEN unaccent(COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', '')) ILIKE unaccent(search_query) || '%' THEN 45.0 ELSE 0.0 END,
-                            CASE WHEN unaccent(COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', '')) ILIKE '%' || unaccent(search_query) || '%' THEN 35.0 ELSE 0.0 END,
-                            CASE WHEN unaccent(extract_all_product_text(product)) ILIKE '%' || unaccent(search_query) || '%' THEN 30.0 ELSE 0.0 END,
-                            CASE WHEN to_tsvector('french', COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', '')) @@ plainto_tsquery('french', search_query) THEN 25.0 ELSE 0.0 END,
-                            CASE WHEN to_tsvector('french', COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', '')) @@ plainto_tsquery('french', search_query) THEN 20.0 ELSE 0.0 END,
-                            CASE WHEN to_tsvector('french', extract_all_product_text(product)) @@ plainto_tsquery('french', search_query) THEN 15.0 ELSE 0.0 END,
-                            CASE WHEN similarity(unaccent(LOWER(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', ''))), unaccent(LOWER(search_query))) > 0.3 THEN 
-                                similarity(unaccent(LOWER(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', ''))), unaccent(LOWER(search_query))) * 12.0 
+                            CASE WHEN LOWER(unaccent(p.product_name)) = LOWER(unaccent(search_query)) THEN 100.0 ELSE 0.0 END,
+                            CASE WHEN unaccent(p.product_name) ILIKE unaccent(search_query) || '%' THEN 80.0 ELSE 0.0 END,
+                            CASE WHEN unaccent(p.product_name) ILIKE '%' || unaccent(search_query) || '%' THEN 40.0 ELSE 0.0 END,
+                            CASE WHEN LOWER(unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', ''))) = LOWER(unaccent(search_query)) THEN 55.0 ELSE 0.0 END,
+                            CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '')) ILIKE unaccent(search_query) || '%' THEN 45.0 ELSE 0.0 END,
+                            CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '')) ILIKE '%' || unaccent(search_query) || '%' THEN 35.0 ELSE 0.0 END,
+                            CASE WHEN unaccent(extract_all_product_text(p.product_data)) ILIKE '%' || unaccent(search_query) || '%' THEN 30.0 ELSE 0.0 END,
+                            CASE WHEN to_tsvector('french', p.product_name) @@ plainto_tsquery('french', search_query) THEN 25.0 ELSE 0.0 END,
+                            CASE WHEN to_tsvector('french', COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '')) @@ plainto_tsquery('french', search_query) THEN 20.0 ELSE 0.0 END,
+                            CASE WHEN to_tsvector('french', extract_all_product_text(p.product_data)) @@ plainto_tsquery('french', search_query) THEN 15.0 ELSE 0.0 END,
+                            CASE WHEN similarity(unaccent(LOWER(p.product_name)), unaccent(LOWER(search_query))) > 0.3 THEN 
+                                similarity(unaccent(LOWER(p.product_name)), unaccent(LOWER(search_query))) * 12.0 
                             ELSE 0.0 END
                         )::REAL as product_score
                     FROM prefiltered_services_for_products pf
-                    INNER JOIN services s ON s.id = pf.id
-                    CROSS JOIN LATERAL jsonb_array_elements(
-                        CASE 
-                            WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                            THEN s.data->'produits'
-                            WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                            THEN s.data->'produits'->'valeur'
-                            ELSE '[]'::jsonb
-                        END
-                    ) AS product
-                    WHERE (
-                        unaccent(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', '')) ILIKE '%' || unaccent(search_query) || '%'
-                        OR unaccent(COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', '')) ILIKE '%' || unaccent(search_query) || '%'
-                        OR unaccent(extract_all_product_text(product)) ILIKE '%' || unaccent(search_query) || '%'
-                        OR to_tsvector('french', COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', '')) @@ plainto_tsquery('french', search_query)
-                        OR to_tsvector('french', COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', '')) @@ plainto_tsquery('french', search_query)
-                        OR to_tsvector('french', extract_all_product_text(product)) @@ plainto_tsquery('french', search_query)
-                        OR similarity(unaccent(LOWER(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', ''))), unaccent(LOWER(search_query))) > 0.3
-                        OR similarity(unaccent(LOWER(COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', ''))), unaccent(LOWER(search_query))) > 0.3
+                    INNER JOIN service_products p ON p.service_id = pf.id
+                    WHERE p.is_active = true
+                    AND (
+                        unaccent(p.product_name) ILIKE '%' || unaccent(search_query) || '%'
+                        OR unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '')) ILIKE '%' || unaccent(search_query) || '%'
+                        OR unaccent(extract_all_product_text(p.product_data)) ILIKE '%' || unaccent(search_query) || '%'
+                        OR to_tsvector('french', p.product_name) @@ plainto_tsquery('french', search_query)
+                        OR to_tsvector('french', COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '')) @@ plainto_tsquery('french', search_query)
+                        OR to_tsvector('french', extract_all_product_text(p.product_data)) @@ plainto_tsquery('french', search_query)
+                        OR similarity(unaccent(LOWER(p.product_name)), unaccent(LOWER(search_query))) > 0.3
+                        OR similarity(unaccent(LOWER(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', ''))), unaccent(LOWER(search_query))) > 0.3
                     )
                     LIMIT 500
                 ),
@@ -271,6 +275,8 @@ BEGIN
         LIMIT 100
     ),
     prefiltered_services_for_products AS (
+        -- ✅ CORRIGÉ 2026-01-06: Pré-filtrer services AVANT de décomposer produits
+        -- Inclut services avec produits dans service_products OU dans s.data->produits
         SELECT DISTINCT s.id
         FROM services s
         WHERE s.is_active = true
@@ -279,47 +285,51 @@ BEGIN
             OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', search_query)
             OR (COALESCE(s.data->'titre_service'->>'valeur', '')) % search_query
             OR (COALESCE(s.data->'category'->>'valeur', s.category, '')) % search_query
+            -- ✅ NOUVEAU: Inclure services avec produits dans service_products qui matchent
+            OR EXISTS (
+                SELECT 1
+                FROM service_products p
+                WHERE p.service_id = s.id
+                AND p.is_active = true
+                AND (
+                    unaccent(p.product_name) ILIKE '%' || unaccent(search_query) || '%'
+                    OR to_tsvector('french', p.product_name) @@ plainto_tsquery('french', search_query)
+                )
+            )
         )
         LIMIT 200
     ),
     product_scores AS (
+        -- ✅ CORRIGÉ 2026-01-06: Recherche UNIQUEMENT dans service_products (plus de recherche dans s.data->produits)
         SELECT 
-            s.id as service_id,
+            p.service_id,
             GREATEST(
-                CASE WHEN LOWER(unaccent(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', ''))) = LOWER(unaccent(search_query)) THEN 100.0 ELSE 0.0 END,
-                CASE WHEN unaccent(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', '')) ILIKE unaccent(search_query) || '%' THEN 80.0 ELSE 0.0 END,
-                CASE WHEN unaccent(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', '')) ILIKE '%' || unaccent(search_query) || '%' THEN 40.0 ELSE 0.0 END,
-                CASE WHEN LOWER(unaccent(COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', ''))) = LOWER(unaccent(search_query)) THEN 55.0 ELSE 0.0 END,
-                CASE WHEN unaccent(COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', '')) ILIKE unaccent(search_query) || '%' THEN 45.0 ELSE 0.0 END,
-                CASE WHEN unaccent(COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', '')) ILIKE '%' || unaccent(search_query) || '%' THEN 35.0 ELSE 0.0 END,
-                CASE WHEN unaccent(extract_all_product_text(product)) ILIKE '%' || unaccent(search_query) || '%' THEN 30.0 ELSE 0.0 END,
-                CASE WHEN to_tsvector('french', COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', '')) @@ plainto_tsquery('french', search_query) THEN 25.0 ELSE 0.0 END,
-                CASE WHEN to_tsvector('french', COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', '')) @@ plainto_tsquery('french', search_query) THEN 20.0 ELSE 0.0 END,
-                CASE WHEN to_tsvector('french', extract_all_product_text(product)) @@ plainto_tsquery('french', search_query) THEN 15.0 ELSE 0.0 END,
-                CASE WHEN similarity(unaccent(LOWER(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', ''))), unaccent(LOWER(search_query))) > 0.3 THEN 
-                    similarity(unaccent(LOWER(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', ''))), unaccent(LOWER(search_query))) * 12.0 
+                CASE WHEN LOWER(unaccent(p.product_name)) = LOWER(unaccent(search_query)) THEN 100.0 ELSE 0.0 END,
+                CASE WHEN unaccent(p.product_name) ILIKE unaccent(search_query) || '%' THEN 80.0 ELSE 0.0 END,
+                CASE WHEN unaccent(p.product_name) ILIKE '%' || unaccent(search_query) || '%' THEN 40.0 ELSE 0.0 END,
+                CASE WHEN LOWER(unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', ''))) = LOWER(unaccent(search_query)) THEN 55.0 ELSE 0.0 END,
+                CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '')) ILIKE unaccent(search_query) || '%' THEN 45.0 ELSE 0.0 END,
+                CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '')) ILIKE '%' || unaccent(search_query) || '%' THEN 35.0 ELSE 0.0 END,
+                CASE WHEN unaccent(extract_all_product_text(p.product_data)) ILIKE '%' || unaccent(search_query) || '%' THEN 30.0 ELSE 0.0 END,
+                CASE WHEN to_tsvector('french', p.product_name) @@ plainto_tsquery('french', search_query) THEN 25.0 ELSE 0.0 END,
+                CASE WHEN to_tsvector('french', COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '')) @@ plainto_tsquery('french', search_query) THEN 20.0 ELSE 0.0 END,
+                CASE WHEN to_tsvector('french', extract_all_product_text(p.product_data)) @@ plainto_tsquery('french', search_query) THEN 15.0 ELSE 0.0 END,
+                CASE WHEN similarity(unaccent(LOWER(p.product_name)), unaccent(LOWER(search_query))) > 0.3 THEN 
+                    similarity(unaccent(LOWER(p.product_name)), unaccent(LOWER(search_query))) * 12.0 
                 ELSE 0.0 END
             )::REAL as product_score
         FROM prefiltered_services_for_products pf
-        INNER JOIN services s ON s.id = pf.id
-        CROSS JOIN LATERAL jsonb_array_elements(
-            CASE 
-                WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                THEN s.data->'produits'
-                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                THEN s.data->'produits'->'valeur'
-                ELSE '[]'::jsonb
-            END
-        ) AS product
-        WHERE (
-            unaccent(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', '')) ILIKE '%' || unaccent(search_query) || '%'
-            OR unaccent(COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', '')) ILIKE '%' || unaccent(search_query) || '%'
-            OR unaccent(extract_all_product_text(product)) ILIKE '%' || unaccent(search_query) || '%'
-            OR to_tsvector('french', COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', '')) @@ plainto_tsquery('french', search_query)
-            OR to_tsvector('french', COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', '')) @@ plainto_tsquery('french', search_query)
-            OR to_tsvector('french', extract_all_product_text(product)) @@ plainto_tsquery('french', search_query)
-            OR similarity(unaccent(LOWER(COALESCE(product->>'nom_produit', product->>'nom', product->'nom'->>'valeur', ''))), unaccent(LOWER(search_query))) > 0.3
-            OR similarity(unaccent(LOWER(COALESCE(product->>'description_produit', product->>'description', product->'description'->>'valeur', ''))), unaccent(LOWER(search_query))) > 0.3
+        INNER JOIN service_products p ON p.service_id = pf.id
+        WHERE p.is_active = true
+        AND (
+            unaccent(p.product_name) ILIKE '%' || unaccent(search_query) || '%'
+            OR unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '')) ILIKE '%' || unaccent(search_query) || '%'
+            OR unaccent(extract_all_product_text(p.product_data)) ILIKE '%' || unaccent(search_query) || '%'
+            OR to_tsvector('french', p.product_name) @@ plainto_tsquery('french', search_query)
+            OR to_tsvector('french', COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '')) @@ plainto_tsquery('french', search_query)
+            OR to_tsvector('french', extract_all_product_text(p.product_data)) @@ plainto_tsquery('french', search_query)
+            OR similarity(unaccent(LOWER(p.product_name)), unaccent(LOWER(search_query))) > 0.3
+            OR similarity(unaccent(LOWER(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', ''))), unaccent(LOWER(search_query))) > 0.3
         )
         LIMIT 500
     ),
@@ -376,6 +386,7 @@ $$;
 
 COMMENT ON FUNCTION search_services_gps_final IS 
 '✅ ALIGNÉ 2025-01-01: Utilise la même logique que keyword_search_with_gps (autocomplete, produits, unaccent, similarity).
+✅ CORRIGÉ 2026-01-06: Recherche UNIQUEMENT dans service_products (plus de recherche dans s.data->produits JSONB).
 Inclut recherche dans produits et sous-caractéristiques. Gère accents, erreurs de saisie, troncature.';
 
 

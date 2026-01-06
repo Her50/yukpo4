@@ -15,7 +15,9 @@ import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector'; // ✅ NOUVEAU 2026-01-04: Composant de localisation intelligent
+import ModernGPSModal from '../../components/ModernGPSModal'; // ✅ NOUVEAU: Modal GPS pour localisation précise
 import { useAuth } from '../../contexts/AuthContext';
+import { useLocation } from '../../contexts/LocationContext';
 import { apiDelete, apiGet, apiPost, apiPut } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -45,11 +47,14 @@ interface DeliveryPartner {
 const DeliveryPartnersAdminScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { location } = useLocation();
     const [partners, setPartners] = useState<DeliveryPartner[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingPartner, setEditingPartner] = useState<DeliveryPartner | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [showPartnerTypePicker, setShowPartnerTypePicker] = useState(false);
+    const [showGPSModal, setShowGPSModal] = useState(false);
+    const [selectedCity, setSelectedCity] = useState<LocationObject | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -59,12 +64,15 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         address: '',
         city: '',
         country: '',
+        continent: '',
         website: '',
         logo_url: '',
         // ✅ NOUVEAU 2026-01-04: Localisation intelligente du partenaire
         location_latitude: undefined as number | undefined,
         location_longitude: undefined as number | undefined,
         location_address: '' as string | undefined,
+        // ✅ NOUVEAU: GPS précis pour localisation exacte
+        gps: undefined as string | undefined,
         is_active: true,
     });
 
@@ -73,6 +81,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         { value: 'pharmacie', label: 'Pharmacie' },
         { value: 'hopital', label: 'Hôpital' },
         { value: 'laboratoire', label: 'Laboratoire' },
+        { value: 'banquesang', label: 'Banque de Sang' }, // ✅ NOUVEAU: Type partenaire banque de sang
         { value: 'agence de voyage', label: 'Agence de voyage' },
         { value: 'demenagement', label: 'Déménagement' },
         { value: 'transport', label: 'Transport' },
@@ -106,6 +115,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
 
     const handleCreate = () => {
         setEditingPartner(null);
+        setSelectedCity(null);
         setFormData({
             name: '',
             description: '',
@@ -115,11 +125,13 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             address: '',
             city: '',
             country: '',
+            continent: '',
             website: '',
             logo_url: '',
             location_latitude: undefined,
             location_longitude: undefined,
             location_address: '',
+            gps: undefined,
             is_active: true,
         });
         setShowForm(true);
@@ -127,6 +139,15 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
 
     const handleEdit = (partner: DeliveryPartner) => {
         setEditingPartner(partner);
+        // ✅ CORRIGÉ: Initialiser selectedCity avec la ville du partenaire
+        setSelectedCity(partner.city ? {
+            raw: partner.city,
+            place_name: partner.city,
+            components: {
+                ville: partner.city,
+                pays: partner.country,
+            }
+        } : null);
         setFormData({
             name: partner.name,
             description: partner.description || '',
@@ -136,11 +157,15 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             address: partner.address || '',
             city: partner.city || '',
             country: partner.country || '',
+            continent: partner.continent || '',
             website: partner.website || '',
             logo_url: partner.logo_url || '',
             location_latitude: partner.location_latitude,
             location_longitude: partner.location_longitude,
             location_address: partner.location_address || '',
+            gps: partner.location_latitude && partner.location_longitude
+                ? `${partner.location_latitude},${partner.location_longitude}`
+                : undefined,
             is_active: partner.is_active,
         });
         setShowForm(true);
@@ -181,12 +206,24 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         }
 
         try {
+            // ✅ NOUVEAU: Préparer les données avec GPS si disponible
+            const payload = {
+                ...formData,
+                // Si GPS est fourni, extraire lat/lng
+                location_latitude: formData.gps 
+                    ? parseFloat(formData.gps.split(',')[0])
+                    : formData.location_latitude,
+                location_longitude: formData.gps
+                    ? parseFloat(formData.gps.split(',')[1])
+                    : formData.location_longitude,
+            };
+            
             let response;
             if (editingPartner) {
-                response = await apiPut(`/api/delivery/partners/${editingPartner.id}`, formData);
+                response = await apiPut(`/api/delivery/partners/${editingPartner.id}`, payload);
                 Alert.alert('✅ Succès', 'Partenaire mis à jour avec succès');
             } else {
-                response = await apiPost('/api/delivery/partners', formData);
+                response = await apiPost('/api/delivery/partners', payload);
                 Alert.alert('✅ Succès', 'Partenaire créé avec succès');
             }
             
@@ -358,13 +395,14 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                             onChangeText={(text) => setFormData({ ...formData, address: text })}
                             multiline
                         />
-                        {/* ✅ NOUVEAU: Ville avec autocomplétion intelligente */}
+                        {/* ✅ CORRIGÉ: Ville avec autocomplétion intelligente - Affichage correct de la valeur sélectionnée */}
                         <View style={styles.inputContainer}>
                             <Text style={styles.inputLabel}>Ville</Text>
                             <LocationSelector
-                                label="Ville"
-                                value={formData.city ? { raw: formData.city, place_name: formData.city } : ''}
+                                label=""
+                                value={selectedCity || (formData.city ? { raw: formData.city, place_name: formData.city } : '')}
                                 onSelect={(location: LocationObject) => {
+                                    setSelectedCity(location);
                                     setFormData({
                                         ...formData,
                                         city: location.place_name || location.raw || '',
@@ -375,12 +413,17 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                 placeholder="Rechercher une ville..."
                                 scope="city" // ✅ EXPLICITE: Recherche de villes uniquement
                             />
+                            {selectedCity && (
+                                <Text style={styles.locationInfo}>
+                                    ✅ Ville sélectionnée: {selectedCity.place_name || selectedCity.raw}
+                                </Text>
+                            )}
                         </View>
                         {/* ✅ NOUVEAU: Pays avec autocomplétion intelligente */}
                         <View style={styles.inputContainer}>
                             <Text style={styles.inputLabel}>Pays *</Text>
                             <LocationSelector
-                                label="Pays"
+                                label=""
                                 value={formData.country ? { raw: formData.country, place_name: formData.country } : ''}
                                 onSelect={(location: LocationObject) => {
                                     setFormData({
@@ -391,6 +434,28 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                 placeholder="Rechercher un pays..."
                                 scope="all" // ✅ EXPLICITE: Recherche universelle pour pays
                             />
+                        </View>
+                        {/* ✅ NOUVEAU: Localisation GPS précise */}
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>📍 Localisation GPS précise (optionnel)</Text>
+                            <TouchableOpacity
+                                style={styles.gpsButton}
+                                onPress={() => setShowGPSModal(true)}
+                            >
+                                <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                                <Text style={styles.gpsButtonText}>
+                                    {formData.gps ? 'Localisation sélectionnée' : 'Sélectionner sur la carte'}
+                                </Text>
+                                <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
+                            </TouchableOpacity>
+                            {formData.gps && (
+                                <Text style={styles.gpsText}>{formData.gps}</Text>
+                            )}
+                            {formData.location_latitude && formData.location_longitude && !formData.gps && (
+                                <Text style={styles.gpsText}>
+                                    Coordonnées: {formData.location_latitude}, {formData.location_longitude}
+                                </Text>
+                            )}
                         </View>
                         <TextInput
                             style={styles.input}
@@ -445,6 +510,33 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                         </View>
                     </NativeCard>
                 )}
+
+                {/* ✅ NOUVEAU: Modal GPS pour localisation précise */}
+                <ModernGPSModal
+                    visible={showGPSModal}
+                    onClose={() => setShowGPSModal(false)}
+                    onSelect={(coordinates: string) => {
+                        // Extraire lat/lng depuis les coordonnées
+                        const [lat, lng] = coordinates.split(',').map(Number);
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            setFormData(prev => ({
+                                ...prev,
+                                gps: coordinates,
+                                location_latitude: lat,
+                                location_longitude: lng,
+                            }));
+                        }
+                        setShowGPSModal(false);
+                    }}
+                    currentLocation={location ? {
+                        lat: location.coords.latitude,
+                        lng: location.coords.longitude
+                    } : (formData.location_latitude && formData.location_longitude ? {
+                        lat: formData.location_latitude,
+                        lng: formData.location_longitude
+                    } : null)}
+                    title="Sélectionner la localisation GPS précise"
+                />
 
                 {partners.length === 0 ? (
                     <NativeCard style={styles.emptyCard}>
@@ -775,9 +867,31 @@ const styles = StyleSheet.create({
     // ✅ NOUVEAU 2026-01-04: Styles pour la localisation
     locationInfo: {
         fontSize: 12,
-        color: modernColors.textSecondary,
+        color: modernColors.primary,
         marginTop: 8,
-        fontStyle: 'italic',
+        fontWeight: '500',
+    },
+    // ✅ NOUVEAU: Styles pour le bouton GPS
+    gpsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        padding: 12,
+        gap: 12,
+    },
+    gpsButtonText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#111827',
+    },
+    gpsText: {
+        marginTop: 8,
+        fontSize: 12,
+        color: '#6B7280',
     },
     // ✅ NOUVEAU: Styles pour la liste déroulante de type de partenaire
     pickerButton: {

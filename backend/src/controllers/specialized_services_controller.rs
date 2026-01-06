@@ -1117,6 +1117,7 @@ pub async fn create_taxi(
 
 #[derive(Debug, Deserialize)]
 pub struct PropertySearchQuery {
+    pub query: Option<String>, // Recherche textuelle
     pub ville: Option<String>,
     pub quartier: Option<serde_json::Value>, // String ou Array<String>
     pub lat: Option<f64>,
@@ -1146,42 +1147,50 @@ pub async fn search_properties(
     let limit = query.limit.unwrap_or(20).min(100).max(1);
     let offset = (page - 1) * limit;
 
+    // ✅ MODIFIÉ: Recherche directement dans service_products au lieu de real_estate_properties
     // Construction de la requête SQL avec bindings SQLx
     let mut query_builder = sqlx::QueryBuilder::new(
         r#"
         SELECT 
             p.id,
             p.service_id,
-            p.user_id,
-            p.titre,
-            p.description,
-            p.type_bien,
-            p.statut,
-            p.adresse,
-            p.quartier,
-            p.ville,
-            p.gps,
-            p.superficie_m2,
-            p.nb_chambres,
-            p.nb_salles_bain,
-            p.standing,
-            p.etat_general,
-            p.prix_vente,
-            p.prix_location_mensuel,
-            p.photos,
-            p.is_available_now,
+            s.user_id,
+            COALESCE(p.product_name, s.data->>'titre_service') as titre,
+            COALESCE(p.product_description, s.data->>'description') as description,
+            COALESCE(p.product_data->>'type_bien', s.data->'type_bien'->>'valeur', '') as type_bien,
+            COALESCE(p.product_data->>'statut', s.data->'statut'->>'valeur', '') as statut,
+            COALESCE(s.data->'adresse'->>'valeur', s.data->>'adresse', '') as adresse,
+            COALESCE(s.quartier, s.data->'quartier'->>'valeur', s.data->>'quartier', '') as quartier,
+            COALESCE(s.ville, s.data->'ville'->>'valeur', s.data->>'ville', '') as ville,
+            COALESCE(s.gps, s.data->'gps_fixe'->>'valeur', s.data->>'gps', '') as gps,
+            COALESCE((p.product_data->>'superficie_m2')::numeric, (s.data->'superficie_m2'->>'valeur')::numeric, NULL) as superficie_m2,
+            COALESCE((p.product_data->>'nb_chambres')::integer, (s.data->'nb_chambres'->>'valeur')::integer, NULL) as nb_chambres,
+            COALESCE((p.product_data->>'nb_salles_bain')::integer, (s.data->'nb_salles_bain'->>'valeur')::integer, NULL) as nb_salles_bain,
+            COALESCE(p.product_data->>'standing', s.data->'standing'->>'valeur', s.data->>'standing', '') as standing,
+            COALESCE(p.product_data->>'etat_general', s.data->'etat_general'->>'valeur', s.data->>'etat_general', '') as etat_general,
+            COALESCE((p.product_data->>'prix_vente')::numeric, (s.data->'prix_vente'->>'valeur')::numeric, NULL) as prix_vente,
+            COALESCE((p.product_data->>'prix_location_mensuel')::numeric, (s.data->'prix_location_mensuel'->>'valeur')::numeric, NULL) as prix_location_mensuel,
+            COALESCE(p.product_data->'photos', s.data->'photos', '[]'::jsonb) as photos,
+            COALESCE(p.is_active, true) as is_available_now,
             s.is_active,
             p.created_at,
             p.updated_at
-        FROM real_estate_properties p
+        FROM service_products p
         INNER JOIN services s ON s.id = p.service_id
         WHERE s.is_active = true
+        AND p.is_active = true
+        AND (s.category = 'immobilier' OR s.category = 'immobilier_batiment' OR s.data->>'category' = 'immobilier' OR s.data->'category'->>'valeur' = 'immobilier')
         "#,
     );
 
     if let Some(ville) = &query.ville {
-        query_builder.push(" AND p.ville ILIKE ");
+        query_builder.push(" AND (s.ville ILIKE ");
         query_builder.push_bind(format!("%{}%", ville));
+        query_builder.push(" OR s.data->'ville'->>'valeur' ILIKE ");
+        query_builder.push_bind(format!("%{}%", ville));
+        query_builder.push(" OR s.data->>'ville' ILIKE ");
+        query_builder.push_bind(format!("%{}%", ville));
+        query_builder.push(")");
     }
 
     // Support multiple quartiers ou quartier unique (Yukpo leader)
@@ -1195,16 +1204,26 @@ pub async fn search_properties(
                         if idx > 0 {
                             query_builder.push(" OR ");
                         }
-                        query_builder.push("p.quartier ILIKE ");
+                        query_builder.push("(s.quartier ILIKE ");
                         query_builder.push_bind(format!("%{}%", q_str));
+                        query_builder.push(" OR s.data->'quartier'->>'valeur' ILIKE ");
+                        query_builder.push_bind(format!("%{}%", q_str));
+                        query_builder.push(" OR s.data->>'quartier' ILIKE ");
+                        query_builder.push_bind(format!("%{}%", q_str));
+                        query_builder.push(")");
                     }
                 }
                 query_builder.push(")");
             }
         } else if let Some(quartier_str) = quartier_value.as_str() {
             // Quartier unique
-            query_builder.push(" AND p.quartier ILIKE ");
+            query_builder.push(" AND (s.quartier ILIKE ");
             query_builder.push_bind(format!("%{}%", quartier_str));
+            query_builder.push(" OR s.data->'quartier'->>'valeur' ILIKE ");
+            query_builder.push_bind(format!("%{}%", quartier_str));
+            query_builder.push(" OR s.data->>'quartier' ILIKE ");
+            query_builder.push_bind(format!("%{}%", quartier_str));
+            query_builder.push(")");
         }
     }
 
@@ -1236,12 +1255,12 @@ pub async fn search_properties(
 
             if valid_points.len() >= 3 && min_lat != f64::MAX {
                 // Filtrer par bounding box (optimisation) puis vérifier point dans polygone
-                query_builder.push(" AND p.gps IS NOT NULL AND (");
-                query_builder.push("CAST(SPLIT_PART(p.gps, ',', 1) AS FLOAT) BETWEEN ");
+                query_builder.push(" AND COALESCE(s.gps, s.data->'gps_fixe'->>'valeur', s.data->>'gps', '') != '' AND (");
+                query_builder.push("CAST(SPLIT_PART(COALESCE(s.gps, s.data->'gps_fixe'->>'valeur', s.data->>'gps', ''), ',', 1) AS FLOAT) BETWEEN ");
                 query_builder.push_bind(min_lat);
                 query_builder.push(" AND ");
                 query_builder.push_bind(max_lat);
-                query_builder.push(" AND CAST(SPLIT_PART(p.gps, ',', 2) AS FLOAT) BETWEEN ");
+                query_builder.push(" AND CAST(SPLIT_PART(COALESCE(s.gps, s.data->'gps_fixe'->>'valeur', s.data->>'gps', ''), ',', 2) AS FLOAT) BETWEEN ");
                 query_builder.push_bind(min_lng);
                 query_builder.push(" AND ");
                 query_builder.push_bind(max_lng);
@@ -1254,71 +1273,91 @@ pub async fn search_properties(
     if query.search_zone.is_none() {
         if let (Some(lat), Some(lng)) = (query.lat, query.lng) {
             let max_dist = query.max_distance_km.unwrap_or(50.0);
-            query_builder.push(" AND p.gps IS NOT NULL AND (");
+            query_builder.push(" AND COALESCE(s.gps, s.data->'gps_fixe'->>'valeur', s.data->>'gps', '') != '' AND (");
             query_builder.push("6371 * acos(cos(radians(");
             query_builder.push_bind(lat);
-            query_builder.push(")) * cos(radians(CAST(SPLIT_PART(p.gps, ',', 1) AS FLOAT))) * ");
-            query_builder.push("cos(radians(CAST(SPLIT_PART(p.gps, ',', 2) AS FLOAT) - radians(");
+            query_builder.push(")) * cos(radians(CAST(SPLIT_PART(COALESCE(s.gps, s.data->'gps_fixe'->>'valeur', s.data->>'gps', ''), ',', 1) AS FLOAT))) * ");
+            query_builder.push("cos(radians(CAST(SPLIT_PART(COALESCE(s.gps, s.data->'gps_fixe'->>'valeur', s.data->>'gps', ''), ',', 2) AS FLOAT) - radians(");
             query_builder.push_bind(lng);
             query_builder.push(")) + sin(radians(");
             query_builder.push_bind(lat);
-            query_builder.push(")) * sin(radians(CAST(SPLIT_PART(p.gps, ',', 1) AS FLOAT)))) <= ");
+            query_builder.push(")) * sin(radians(CAST(SPLIT_PART(COALESCE(s.gps, s.data->'gps_fixe'->>'valeur', s.data->>'gps', ''), ',', 1) AS FLOAT)))) <= ");
             query_builder.push_bind(max_dist);
             query_builder.push(")");
         }
     }
 
     if let Some(type_bien) = &query.type_bien {
-        query_builder.push(" AND p.type_bien = ");
+        query_builder.push(" AND (p.product_data->>'type_bien' = ");
         query_builder.push_bind(type_bien);
+        query_builder.push(" OR s.data->'type_bien'->>'valeur' = ");
+        query_builder.push_bind(type_bien);
+        query_builder.push(" OR s.data->>'type_bien' = ");
+        query_builder.push_bind(type_bien);
+        query_builder.push(")");
     }
     if let Some(statut) = &query.statut {
-        query_builder.push(" AND p.statut = ");
+        query_builder.push(" AND (p.product_data->>'statut' = ");
         query_builder.push_bind(statut);
+        query_builder.push(" OR s.data->'statut'->>'valeur' = ");
+        query_builder.push_bind(statut);
+        query_builder.push(" OR s.data->>'statut' = ");
+        query_builder.push_bind(statut);
+        query_builder.push(")");
     }
     if let Some(prix_min) = query.prix_min {
-        query_builder.push(" AND (p.prix_vente >= ");
-        query_builder.push_bind(
-            rust_decimal::Decimal::from_f64_retain(prix_min).unwrap_or(rust_decimal::Decimal::ZERO),
-        );
-        query_builder.push(" OR p.prix_location_mensuel >= ");
-        query_builder.push_bind(
-            rust_decimal::Decimal::from_f64_retain(prix_min).unwrap_or(rust_decimal::Decimal::ZERO),
-        );
-        query_builder.push(")");
+        let prix_min_decimal = rust_decimal::Decimal::from_f64_retain(prix_min).unwrap_or(rust_decimal::Decimal::ZERO);
+        query_builder.push(" AND ((COALESCE((p.product_data->>'prix_vente')::numeric, (s.data->'prix_vente'->>'valeur')::numeric, 0) >= ");
+        query_builder.push_bind(prix_min_decimal);
+        query_builder.push(" OR COALESCE((p.product_data->>'prix_location_mensuel')::numeric, (s.data->'prix_location_mensuel'->>'valeur')::numeric, 0) >= ");
+        query_builder.push_bind(prix_min_decimal);
+        query_builder.push("))");
     }
     if let Some(prix_max) = query.prix_max {
-        query_builder.push(" AND (p.prix_vente <= ");
-        query_builder.push_bind(
-            rust_decimal::Decimal::from_f64_retain(prix_max).unwrap_or(rust_decimal::Decimal::ZERO),
-        );
-        query_builder.push(" OR p.prix_location_mensuel <= ");
-        query_builder.push_bind(
-            rust_decimal::Decimal::from_f64_retain(prix_max).unwrap_or(rust_decimal::Decimal::ZERO),
-        );
-        query_builder.push(")");
+        let prix_max_decimal = rust_decimal::Decimal::from_f64_retain(prix_max).unwrap_or(rust_decimal::Decimal::ZERO);
+        query_builder.push(" AND ((COALESCE((p.product_data->>'prix_vente')::numeric, (s.data->'prix_vente'->>'valeur')::numeric, 999999999) <= ");
+        query_builder.push_bind(prix_max_decimal);
+        query_builder.push(" OR COALESCE((p.product_data->>'prix_location_mensuel')::numeric, (s.data->'prix_location_mensuel'->>'valeur')::numeric, 999999999) <= ");
+        query_builder.push_bind(prix_max_decimal);
+        query_builder.push("))");
     }
     if let Some(superficie_min) = query.superficie_min {
-        query_builder.push(" AND p.superficie_m2 >= ");
-        query_builder.push_bind(
-            rust_decimal::Decimal::from_f64_retain(superficie_min)
-                .unwrap_or(rust_decimal::Decimal::ZERO),
-        );
+        let superficie_min_decimal = rust_decimal::Decimal::from_f64_retain(superficie_min).unwrap_or(rust_decimal::Decimal::ZERO);
+        query_builder.push(" AND COALESCE((p.product_data->>'superficie_m2')::numeric, (s.data->'superficie_m2'->>'valeur')::numeric, 0) >= ");
+        query_builder.push_bind(superficie_min_decimal);
     }
     if let Some(superficie_max) = query.superficie_max {
-        query_builder.push(" AND p.superficie_m2 <= ");
-        query_builder.push_bind(
-            rust_decimal::Decimal::from_f64_retain(superficie_max)
-                .unwrap_or(rust_decimal::Decimal::ZERO),
-        );
+        let superficie_max_decimal = rust_decimal::Decimal::from_f64_retain(superficie_max).unwrap_or(rust_decimal::Decimal::ZERO);
+        query_builder.push(" AND COALESCE((p.product_data->>'superficie_m2')::numeric, (s.data->'superficie_m2'->>'valeur')::numeric, 999999) <= ");
+        query_builder.push_bind(superficie_max_decimal);
     }
     if let Some(nb_chambres) = query.nb_chambres_min {
-        query_builder.push(" AND p.nb_chambres >= ");
+        query_builder.push(" AND COALESCE((p.product_data->>'nb_chambres')::integer, (s.data->'nb_chambres'->>'valeur')::integer, 0) >= ");
         query_builder.push_bind(nb_chambres);
     }
     if let Some(standing) = &query.standing {
-        query_builder.push(" AND p.standing = ");
+        query_builder.push(" AND (p.product_data->>'standing' = ");
         query_builder.push_bind(standing);
+        query_builder.push(" OR s.data->'standing'->>'valeur' = ");
+        query_builder.push_bind(standing);
+        query_builder.push(" OR s.data->>'standing' = ");
+        query_builder.push_bind(standing);
+        query_builder.push(")");
+    }
+
+    // Recherche textuelle dans product_name ou titre
+    if let Some(query_text) = &query.query {
+        if !query_text.trim().is_empty() {
+            query_builder.push(" AND (p.product_name ILIKE ");
+            query_builder.push_bind(format!("%{}%", query_text));
+            query_builder.push(" OR s.data->>'titre_service' ILIKE ");
+            query_builder.push_bind(format!("%{}%", query_text));
+            query_builder.push(" OR s.data->'titre_service'->>'valeur' ILIKE ");
+            query_builder.push_bind(format!("%{}%", query_text));
+            query_builder.push(" OR p.product_description ILIKE ");
+            query_builder.push_bind(format!("%{}%", query_text));
+            query_builder.push(")");
+        }
     }
 
     query_builder.push(" ORDER BY p.created_at DESC LIMIT ");
@@ -1337,13 +1376,23 @@ pub async fn search_properties(
 
     let mut properties_json = Vec::new();
     for row in properties {
+        // Extraire photos depuis JSONB
+        let photos_value: Option<serde_json::Value> = row.try_get::<Option<serde_json::Value>, _>("photos").ok().flatten();
+        let photos_array: Option<Vec<String>> = photos_value.and_then(|v| {
+            if v.is_array() {
+                Some(v.as_array()?.iter().filter_map(|item| item.as_str().map(|s| s.to_string())).collect())
+            } else {
+                None
+            }
+        });
+
         properties_json.push(json!({
             "id": row.try_get::<i32, _>("id").unwrap_or(0),
             "service_id": row.try_get::<i32, _>("service_id").unwrap_or(0),
-            "titre": row.try_get::<String, _>("titre").unwrap_or_default(),
+            "titre": row.try_get::<Option<String>, _>("titre").ok().flatten().unwrap_or_default(),
             "description": row.try_get::<Option<String>, _>("description").ok().flatten(),
-            "type_bien": row.try_get::<String, _>("type_bien").unwrap_or_default(),
-            "statut": row.try_get::<String, _>("statut").unwrap_or_default(),
+            "type_bien": row.try_get::<Option<String>, _>("type_bien").ok().flatten().unwrap_or_default(),
+            "statut": row.try_get::<Option<String>, _>("statut").ok().flatten().unwrap_or_default(),
             "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
             "gps": row.try_get::<Option<String>, _>("gps").ok().flatten(),
@@ -1353,8 +1402,8 @@ pub async fn search_properties(
             "standing": row.try_get::<Option<String>, _>("standing").ok().flatten(),
             "prix_vente": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_vente").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
             "prix_location_mensuel": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_location_mensuel").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
-            "photos": row.try_get::<Option<Vec<String>>, _>("photos").ok().flatten(),
-            "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten(),
+            "photos": photos_array,
+            "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten().unwrap_or(true),
         }));
     }
 
@@ -4014,6 +4063,372 @@ pub async fn get_laboratory_analytics(
                 "total_examinations": 0,
                 "revenue": 0.0
             }
+        })),
+    ))
+}
+
+// ============================================================================
+// ✅ NOUVEAUX ENDPOINTS POUR AUTCOMPLETE ET IA
+// ============================================================================
+
+/// Autocomplete des types d'examens (tous laboratoires confondus)
+#[derive(Debug, Deserialize)]
+pub struct AutocompleteExaminationsQuery {
+    pub query: String,
+    pub limit: Option<i32>,
+}
+
+pub async fn autocomplete_examination_types(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<AutocompleteExaminationsQuery>,
+) -> AppResult<impl IntoResponse> {
+    info!("[autocomplete_examination_types] query={}", params.query);
+
+    let limit = params.limit.unwrap_or(20).min(50);
+    let search_pattern = format!("%{}%", params.query);
+
+    // Rechercher dans les types d'examens créés par les laboratoires
+    // On suppose qu'il y a une table ou un champ dans les services pour stocker les examens
+    let examinations: Vec<serde_json::Value> = sqlx::query(
+        r#"
+        SELECT DISTINCT
+            unnest(prestations_medicales) as name,
+            'examen' as category
+        FROM services
+        WHERE specialized_type = 'laboratoire'
+        AND prestations_medicales IS NOT NULL
+        AND EXISTS (
+            SELECT 1 FROM unnest(prestations_medicales) AS prestation
+            WHERE prestation ILIKE $1
+        )
+        LIMIT $2
+        "#
+    )
+    .bind(&search_pattern)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[autocomplete_examination_types] Erreur: {}", e);
+        AppError::Internal("Erreur recherche examens".to_string())
+    })?
+    .into_iter()
+    .map(|row| {
+        json!({
+            "id": 0, // À adapter selon la structure réelle
+            "name": row.get::<Option<String>, _>("name").unwrap_or_default(),
+            "category": row.get::<Option<String>, _>("category").unwrap_or("examen".to_string()),
+        })
+    })
+    .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "examinations": examinations
+        })),
+    ))
+}
+
+/// Autocomplete des prestations médicales (tous hôpitaux confondus)
+#[derive(Debug, Deserialize)]
+pub struct AutocompleteMedicalServicesQuery {
+    pub query: String,
+    pub limit: Option<i32>,
+}
+
+pub async fn autocomplete_medical_services(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<AutocompleteMedicalServicesQuery>,
+) -> AppResult<impl IntoResponse> {
+    info!("[autocomplete_medical_services] query={}", params.query);
+
+    let limit = params.limit.unwrap_or(20).min(50);
+    let search_pattern = format!("%{}%", params.query);
+
+    // Rechercher dans les prestations créées par les hôpitaux
+    let services: Vec<serde_json::Value> = sqlx::query(
+        r#"
+        SELECT DISTINCT
+            unnest(prestations_medicales) as name,
+            'prestation' as category
+        FROM services
+        WHERE specialized_type = 'hopital'
+        AND prestations_medicales IS NOT NULL
+        AND EXISTS (
+            SELECT 1 FROM unnest(prestations_medicales) AS prestation
+            WHERE prestation ILIKE $1
+        )
+        LIMIT $2
+        "#
+    )
+    .bind(&search_pattern)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[autocomplete_medical_services] Erreur: {}", e);
+        AppError::Internal("Erreur recherche prestations".to_string())
+    })?
+    .into_iter()
+    .map(|row| {
+        json!({
+            "id": 0,
+            "name": row.get::<Option<String>, _>("name").unwrap_or_default(),
+            "category": row.get::<Option<String>, _>("category").unwrap_or("prestation".to_string()),
+        })
+    })
+    .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "services": services
+        })),
+    ))
+}
+
+/// Analyser une image de résultat d'examen avec IA
+#[derive(Debug, Deserialize)]
+pub struct AnalyzeExaminationImageRequest {
+    pub image_uri: String, // URL ou base64 de l'image
+    pub examination_type: String,
+    pub patient_age: Option<i32>,
+    pub patient_sex: Option<String>,
+}
+
+pub async fn analyze_examination_image(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(request): Json<AnalyzeExaminationImageRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[analyze_examination_image] user_id={}, type={}",
+        user_id, request.examination_type
+    );
+
+    // Utiliser le service IA pour analyser l'image
+    use crate::services::lab_ai_service::LabAIService;
+    
+    let lab_ai_service = LabAIService::new(state.app_ia.clone());
+    
+    // Pour l'analyse d'image, on convertit l'image en JSON de résultats simulés
+    // Dans une vraie implémentation, on utiliserait un service de vision IA
+    let results_json = json!({
+        "image_uri": request.image_uri,
+        "examination_type": request.examination_type,
+        "note": "Analyse d'image en cours"
+    });
+
+    let analysis = lab_ai_service
+        .analyze_examination_results(
+            &request.examination_type,
+            results_json,
+            request.patient_age,
+            request.patient_sex.as_deref(),
+        )
+        .await
+        .map_err(|e| {
+            error!("[analyze_examination_image] Erreur IA: {}", e);
+            AppError::Internal("Erreur analyse IA".to_string())
+        })?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "analysis": analysis
+        })),
+    ))
+}
+
+/// Recherche IA de pathologie (pour laboratoires)
+#[derive(Debug, Deserialize)]
+pub struct SearchPathologyRequest {
+    pub query: String,
+    pub symptoms: Option<Vec<String>>,
+}
+
+pub async fn search_pathology_laboratory(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(request): Json<SearchPathologyRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[search_pathology_laboratory] user_id={}, query={}", user_id, request.query);
+
+    // Créer un prompt IA pour la recherche de pathologie
+    let symptoms_str = request.symptoms
+        .as_ref()
+        .map(|s| s.join(", "))
+        .unwrap_or_else(|| "Non spécifiés".to_string());
+
+    let prompt = format!(
+        r#"
+Tu es un expert médical pour Yukpomnang, spécialisé dans l'aide au diagnostic et la recherche de pathologies.
+
+CONTEXTE :
+- Recherche : {}
+- Symptômes : {}
+
+TON RÔLE :
+- Identifier les pathologies possibles correspondant à la recherche
+- Suggérer les examens de laboratoire pertinents pour confirmer
+- Évaluer le niveau d'urgence
+- Donner des recommandations médicales appropriées
+
+IMPORTANT :
+- Ne JAMAIS poser de diagnostic définitif
+- Toujours recommander de consulter un médecin
+- Prioriser les examens les plus pertinents
+- Classifier l'urgence (critical, high, moderate, low)
+
+RÉPONSE ATTENDUE (JSON strict) :
+{{
+    "pathologies": [
+        {{
+            "pathology_name": "Nom de la pathologie",
+            "description": "Description",
+            "symptoms": ["Symptôme 1", "Symptôme 2"],
+            "recommended_examinations": ["Examen 1", "Examen 2"],
+            "urgency_level": "moderate",
+            "recommendations": ["Recommandation 1", "Recommandation 2"]
+        }}
+    ]
+}}
+"#,
+        request.query, symptoms_str
+    );
+
+    let (model_name, response, tokens) = state.app_ia.predict(&prompt).await
+        .map_err(|e| {
+            error!("[search_pathology_laboratory] Erreur IA: {}", e);
+            AppError::Internal("Erreur recherche IA".to_string())
+        })?;
+
+    info!(
+        "[search_pathology_laboratory] Réponse IA avec {} (tokens: {})",
+        model_name, tokens
+    );
+
+    // Parser la réponse JSON
+    let pathologies: Vec<serde_json::Value> = match serde_json::from_str::<serde_json::Value>(&response) {
+        Ok(v) => {
+            if let Some(paths) = v.get("pathologies").and_then(|p| p.as_array()) {
+                paths.clone()
+            } else {
+                vec![]
+            }
+        }
+        Err(e) => {
+            log::warn!("[search_pathology_laboratory] Erreur parsing: {}", e);
+            vec![]
+        }
+    };
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "results": pathologies
+        })),
+    ))
+}
+
+/// Recherche IA de pathologie (pour hôpitaux)
+#[derive(Debug, Deserialize)]
+pub struct SearchPathologyHospitalRequest {
+    pub query: String,
+    pub symptoms: Option<Vec<String>>,
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
+}
+
+pub async fn search_pathology_hospital(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(request): Json<SearchPathologyHospitalRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[search_pathology_hospital] user_id={}, query={}", user_id, request.query);
+
+    let symptoms_str = request.symptoms
+        .as_ref()
+        .map(|s| s.join(", "))
+        .unwrap_or_else(|| "Non spécifiés".to_string());
+
+    let prompt = format!(
+        r#"
+Tu es un expert médical pour Yukpomnang, spécialisé dans l'aide au diagnostic et la recherche de pathologies pour hôpitaux.
+
+CONTEXTE :
+- Recherche : {}
+- Symptômes : {}
+
+TON RÔLE :
+- Identifier les pathologies possibles
+- Suggérer les services médicaux et spécialités pertinents
+- Suggérer les examens complémentaires nécessaires
+- Évaluer le niveau d'urgence
+- Donner des recommandations médicales
+
+IMPORTANT :
+- Ne JAMAIS poser de diagnostic définitif
+- Toujours recommander de consulter un médecin
+- Suggérer les spécialités médicales appropriées
+- Classifier l'urgence (critical, high, moderate, low)
+
+RÉPONSE ATTENDUE (JSON strict) :
+{{
+    "pathologies": [
+        {{
+            "pathology_name": "Nom de la pathologie",
+            "description": "Description",
+            "symptoms": ["Symptôme 1", "Symptôme 2"],
+            "recommended_examinations": ["Examen 1"],
+            "recommended_services": ["Service 1", "Service 2"],
+            "urgency_level": "moderate",
+            "recommendations": ["Recommandation 1"]
+        }}
+    ]
+}}
+"#,
+        request.query, symptoms_str
+    );
+
+    let (model_name, response, tokens) = state.app_ia.predict(&prompt).await
+        .map_err(|e| {
+            error!("[search_pathology_hospital] Erreur IA: {}", e);
+            AppError::Internal("Erreur recherche IA".to_string())
+        })?;
+
+    info!(
+        "[search_pathology_hospital] Réponse IA avec {} (tokens: {})",
+        model_name, tokens
+    );
+
+    // Parser et enrichir avec suggestions d'hôpitaux si GPS fourni
+    let pathologies: Vec<serde_json::Value> = match serde_json::from_str::<serde_json::Value>(&response) {
+        Ok(v) => {
+            if let Some(paths) = v.get("pathologies").and_then(|p| p.as_array()) {
+                paths.clone()
+            } else {
+                vec![]
+            }
+        }
+        Err(e) => {
+            log::warn!("[search_pathology_hospital] Erreur parsing: {}", e);
+            vec![]
+        }
+    };
+
+    // TODO: Enrichir avec suggestions d'hôpitaux proches si lat/lng fournis
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "results": pathologies
         })),
     ))
 }

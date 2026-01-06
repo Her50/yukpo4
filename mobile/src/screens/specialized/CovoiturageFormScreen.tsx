@@ -1,3 +1,6 @@
+// ✅ Écran de création/édition de trajets de covoiturage (accessible à tous les utilisateurs)
+// Permet à n'importe quel utilisateur d'intégrer son véhicule pour le covoiturage
+
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -90,16 +93,26 @@ const CovoiturageFormScreen: React.FC = () => {
         }
     };
 
-    // ✅ NOUVEAU : Récupération automatique de la devise depuis depart ou destination
+    // ✅ NOUVEAU : Récupération automatique de la devise depuis depart ou destination (avec GPS comme fallback)
     useEffect(() => {
         const location = formData.depart || formData.destination;
         if (location) {
-            const currency = getCurrencyIntelligently(location);
+            const currency = getCurrencyIntelligently(
+                location,
+                location?.coords ? {
+                    lat: location.coords.latitude,
+                    lng: location.coords.longitude,
+                } : null
+            );
             if (currency) {
                 setFormData(prev => ({ ...prev, devise: currency }));
             }
+        } else if (location?.coords) {
+            // Si pas de départ/destination mais GPS disponible, utiliser la devise depuis GPS
+            // Pour l'instant, fallback XAF (sera amélioré avec reverse geocoding)
+            setFormData(prev => ({ ...prev, devise: 'XAF' }));
         }
-    }, [formData.depart, formData.destination]);
+    }, [formData.depart, formData.destination, location]);
     const [showGPSModalDepart, setShowGPSModalDepart] = useState(false);
     const [showGPSModalDestination, setShowGPSModalDestination] = useState(false);
     const [selectedGPSDepart, setSelectedGPSDepart] = useState<string | null>(null);

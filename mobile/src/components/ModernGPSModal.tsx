@@ -57,6 +57,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     const [showSaveLocationModal, setShowSaveLocationModal] = useState(false);
     const [saveLocationName, setSaveLocationName] = useState('');
     const [savingLocation, setSavingLocation] = useState(false);
+    // ✅ NOUVEAU: Tracker si la sélection vient d'un clic manuel sur la carte
+    const [isManualSelection, setIsManualSelection] = useState(false);
 
     useEffect(() => {
         if (visible) {
@@ -64,13 +66,31 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             requestLocationPermission().catch(error => {
                 console.error('[ModernGPSModal] Erreur requestLocationPermission:', error);
             });
-            if (currentLocation) {
+            
+            // ✅ NOUVEAU: Toujours centrer sur la position GPS courante de l'utilisateur à l'ouverture
+            if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
+                const currentUserLocation = {
+                    lat: userLocation.coords.latitude,
+                    lng: userLocation.coords.longitude,
+                };
+                setSelectedLocation(currentUserLocation);
+                // ✅ NOUVEAU: Réinitialiser isManualSelection à chaque ouverture
+                setIsManualSelection(false);
+                // Obtenir l'adresse par défaut pour cette position
+                getAddressFromCoordinates(currentUserLocation.lat, currentUserLocation.lng).then(addr => {
+                    setAddress(addr);
+                }).catch(() => {
+                    setAddress(`${currentUserLocation.lat.toFixed(6)}, ${currentUserLocation.lng.toFixed(6)}`);
+                });
+            } else if (currentLocation) {
+                // Fallback sur currentLocation si pas de position GPS courante
                 setSelectedLocation(currentLocation);
+                setIsManualSelection(false);
             }
         }
         // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
         return undefined;
-    }, [visible, currentLocation]);
+    }, [visible, userLocation]);
 
     const requestLocationPermission = async () => {
         try {
@@ -101,6 +121,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         }
 
         setLoading(true);
+        // ✅ NOUVEAU: Marquer que c'est une sélection via bouton GPS (pas manuelle)
+        setIsManualSelection(false);
         try {
             // ✅ CORRECTION CRASH: Timeout pour éviter les blocages
             const locationPromise = Location.getCurrentPositionAsync({
@@ -226,6 +248,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             setLoading(true);
             setShowSuggestions(false);
             setSearchQuery(description);
+            // ✅ NOUVEAU: Marquer que c'est une sélection via recherche (pas manuelle)
+            setIsManualSelection(false);
 
             // ✅ NOUVEAU 2026-01-04: Si c'est un lieu sauvegardé, utiliser directement ses coordonnées
             if (suggestion?.is_saved && suggestion?.saved_address) {
@@ -282,6 +306,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
         setLoading(true);
         setShowSuggestions(false);
+        // ✅ NOUVEAU: Marquer que c'est une sélection via recherche (pas manuelle)
+        setIsManualSelection(false);
         try {
             // ✅ NOUVEAU 2026-01-04: Vérifier d'abord dans les lieux sauvegardés
             const savedMatch = savedAddresses.find(addr => 
@@ -315,9 +341,18 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         }
     };
 
-    const handleLocationSelect = (location: { lat: number; lng: number }) => {
+    const handleLocationSelect = async (location: { lat: number; lng: number }) => {
         setSelectedLocation(location);
-        setAddress(`${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`);
+        // ✅ NOUVEAU: Marquer que c'est une sélection manuelle (clic sur la carte)
+        setIsManualSelection(true);
+        // ✅ NOUVEAU: Obtenir automatiquement l'adresse depuis Google lors de la sélection
+        try {
+            const address = await getAddressFromCoordinates(location.lat, location.lng);
+            setAddress(address);
+        } catch (error) {
+            // Fallback sur les coordonnées si le géocodage échoue
+            setAddress(`${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`);
+        }
     };
 
     const handlePolygonPointsChange = (points: { lat: number; lng: number }[]) => {
@@ -325,14 +360,34 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         console.log(`[ModernGPSModal] Points de polygone mis à jour: ${points.length} points`);
     };
 
-    const confirmSelection = () => {
+    const confirmSelection = async () => {
         if (zoneType === 'point') {
             if (!selectedLocation) {
                 Alert.alert('Erreur', 'Veuillez sélectionner une position sur la carte.');
                 return;
             }
-            const coordsString = `${selectedLocation.lat},${selectedLocation.lng}`;
-            onSelect(coordsString);
+            
+            // ✅ NOUVEAU: Ouvrir le modal de nom de lieu UNIQUEMENT si c'est une sélection manuelle (clic sur la carte)
+            // Si c'est une sélection via recherche, retourner directement les coordonnées
+            if (isManualSelection) {
+                // Obtenir l'adresse par défaut depuis Google (géocodage inverse)
+                try {
+                    const defaultAddress = await getAddressFromCoordinates(selectedLocation.lat, selectedLocation.lng);
+                    // Proposer l'adresse comme nom par défaut
+                    setSaveLocationName(defaultAddress);
+                } catch (error) {
+                    // Si le géocodage échoue, utiliser les coordonnées comme nom par défaut
+                    setSaveLocationName(`${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`);
+                }
+                
+                // Ouvrir le modal de sauvegarde de nom
+                setShowSaveLocationModal(true);
+            } else {
+                // Sélection via recherche ou bouton GPS : retourner directement les coordonnées
+                const coordsString = `${selectedLocation.lat},${selectedLocation.lng}`;
+                onSelect(coordsString);
+                onClose();
+            }
         } else {
             if ((selectedPolygon || []).length < 3) {
                 Alert.alert('Erreur', 'Veuillez sélectionner au moins 3 points pour créer une zone.');
@@ -340,8 +395,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             }
             const coordsString = (selectedPolygon || []).map(p => `${p.lat},${p.lng}`).join('|');
             onSelect(coordsString);
+            onClose();
         }
-        onClose();
     };
 
     const toggleMapStyle = () => {
@@ -432,30 +487,31 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                 }
             };
 
-            // Sauvegarder via useSavedAddresses
-            await createAddressFromLocation(
-                locationObject,
-                saveLocationName.trim(),
-                'both',
-                {
-                    is_default_pickup: false,
-                    is_default_dropoff: false
-                }
-            );
-
-            Alert.alert(
-                '✅ Lieu sauvegardé',
-                `Le lieu "${saveLocationName.trim()}" a été sauvegardé avec succès. Vous pourrez le retrouver facilement lors de vos prochaines recherches.`,
-                [{ text: 'OK', onPress: () => {
-                    setShowSaveLocationModal(false);
-                    setSaveLocationName('');
-                }}]
-            );
+            // ✅ NOUVEAU: Optionnel - Sauvegarder le lieu si l'utilisateur le souhaite (pour retrouver facilement)
+            // On peut laisser cette fonctionnalité optionnelle, mais pour l'instant on ne force pas la sauvegarde
+            
+            // Retourner les coordonnées avec le nom du lieu
+            const coordsString = `${selectedLocation.lat},${selectedLocation.lng}`;
+            
+            // Fermer le modal de sauvegarde
+            setShowSaveLocationModal(false);
+            setSaveLocationName('');
+            setSavingLocation(false);
+            
+            // Appeler onSelect avec les coordonnées
+            onSelect(coordsString);
+            
+            // Fermer le modal principal
+            onClose();
         } catch (error: any) {
             console.error('[ModernGPSModal] Erreur sauvegarde lieu:', error);
-            Alert.alert('Erreur', error?.message || 'Impossible de sauvegarder ce lieu.');
-        } finally {
+            // Même en cas d'erreur, on continue avec les coordonnées
+            const coordsString = `${selectedLocation.lat},${selectedLocation.lng}`;
+            setShowSaveLocationModal(false);
+            setSaveLocationName('');
             setSavingLocation(false);
+            onSelect(coordsString);
+            onClose();
         }
     };
 
@@ -691,6 +747,12 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                     zoneType={zoneType}
                                     polygonPoints={selectedPolygon}
                                     onPolygonPointsChange={handlePolygonPointsChange}
+                                    initialRegion={userLocation?.coords?.latitude && userLocation?.coords?.longitude ? {
+                                        latitude: userLocation.coords.latitude,
+                                        longitude: userLocation.coords.longitude,
+                                        latitudeDelta: 0.01,
+                                        longitudeDelta: 0.01,
+                                    } : undefined}
                                 />
                             </ErrorBoundary>
                         </View>
@@ -736,10 +798,14 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     <View style={styles.saveModalOverlay}>
                         <View style={styles.saveModalContainer}>
                             <View style={styles.saveModalHeader}>
-                                <SafeIcon name="bookmark" size={24} color={modernColors.primary} />
-                                <Text style={styles.saveModalTitle}>Sauvegarder ce lieu</Text>
+                                <SafeIcon name="map-pin" size={24} color={modernColors.primary} />
+                                <Text style={styles.saveModalTitle}>Nommer ce lieu</Text>
                                 <TouchableOpacity
-                                    onPress={() => setShowSaveLocationModal(false)}
+                                    onPress={() => {
+                                        // ✅ NOUVEAU: Annuler = fermer le modal GPS sans confirmer
+                                        setShowSaveLocationModal(false);
+                                        setSaveLocationName('');
+                                    }}
                                     style={styles.saveModalCloseButton}
                                 >
                                     <SafeIcon name="x" size={20} color={modernColors.text} />
@@ -748,10 +814,10 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
                             <View style={styles.saveModalContent}>
                                 <Text style={styles.saveModalLabel}>
-                                    Donnez un nom à ce lieu pour le retrouver facilement
+                                    Donnez un nom précis à ce lieu pour votre contexte
                                 </Text>
                                 <Text style={styles.saveModalHint}>
-                                    Ex: "Mon bureau", "Maison", "Restaurant préféré", etc.
+                                    Un nom par défaut vous est proposé. Vous pouvez le modifier selon vos besoins.
                                 </Text>
                                 
                                 <TextInput
@@ -776,6 +842,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                     <TouchableOpacity
                                         style={styles.saveModalCancelButton}
                                         onPress={() => {
+                                            // ✅ NOUVEAU: Annuler = fermer le modal GPS sans confirmer
                                             setShowSaveLocationModal(false);
                                             setSaveLocationName('');
                                         }}
@@ -791,11 +858,11 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                         disabled={!saveLocationName.trim() || savingLocation}
                                     >
                                         {savingLocation ? (
-                                            <Text style={styles.saveModalConfirmText}>Sauvegarde...</Text>
+                                            <Text style={styles.saveModalConfirmText}>Confirmation...</Text>
                                         ) : (
                                             <>
                                                 <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                                <Text style={styles.saveModalConfirmText}>Sauvegarder</Text>
+                                                <Text style={styles.saveModalConfirmText}>Confirmer</Text>
                                             </>
                                         )}
                                     </TouchableOpacity>

@@ -3,8 +3,9 @@ import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/buttons";
 import { useUser } from "@/hooks/useUser";
 import LocationSelector, { LocationObject } from "@/components/ui/LocationSelector";
+import AdvancedGPSModal from "@/components/ui/AdvancedGPSModal";
 import axios from "axios";
-import { Edit2, Plus, Trash2, Truck } from "lucide-react";
+import { Edit2, MapPin, Plus, Trash2, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -39,6 +40,8 @@ const DeliveryPartnersAdminPage = () => {
     const [loading, setLoading] = useState(true);
     const [editingPartner, setEditingPartner] = useState<DeliveryPartner | null>(null);
     const [showForm, setShowForm] = useState(false);
+    const [showGPSModal, setShowGPSModal] = useState(false);
+    const [selectedCity, setSelectedCity] = useState<LocationObject | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -54,6 +57,7 @@ const DeliveryPartnersAdminPage = () => {
         location_latitude: undefined as number | undefined,
         location_longitude: undefined as number | undefined,
         location_address: '' as string | undefined,
+        gps: undefined as string | undefined,
         is_active: true,
     });
 
@@ -103,6 +107,7 @@ const DeliveryPartnersAdminPage = () => {
 
     const handleCreate = () => {
         setEditingPartner(null);
+        setSelectedCity(null);
         setFormData({
             name: '',
             description: '',
@@ -118,6 +123,7 @@ const DeliveryPartnersAdminPage = () => {
             location_latitude: undefined,
             location_longitude: undefined,
             location_address: '',
+            gps: undefined,
             is_active: true,
         });
         setShowForm(true);
@@ -125,6 +131,15 @@ const DeliveryPartnersAdminPage = () => {
 
     const handleEdit = (partner: DeliveryPartner) => {
         setEditingPartner(partner);
+        // ✅ CORRIGÉ: Initialiser selectedCity avec la ville du partenaire
+        setSelectedCity(partner.city ? {
+            raw: partner.city,
+            place_name: partner.city,
+            components: {
+                ville: partner.city,
+                pays: partner.country,
+            }
+        } : null);
         setFormData({
             name: partner.name,
             description: partner.description || '',
@@ -140,6 +155,9 @@ const DeliveryPartnersAdminPage = () => {
             location_latitude: partner.location_latitude,
             location_longitude: partner.location_longitude,
             location_address: partner.location_address || '',
+            gps: partner.location_latitude && partner.location_longitude
+                ? `${partner.location_latitude},${partner.location_longitude}`
+                : undefined,
             is_active: partner.is_active,
         });
         setShowForm(true);
@@ -178,11 +196,23 @@ const DeliveryPartnersAdminPage = () => {
 
         try {
             const token = localStorage.getItem('token');
+            // ✅ NOUVEAU: Préparer les données avec GPS si disponible
+            const payload = {
+                ...formData,
+                // Si GPS est fourni, extraire lat/lng
+                location_latitude: formData.gps 
+                    ? parseFloat(formData.gps.split(',')[0])
+                    : formData.location_latitude,
+                location_longitude: formData.gps
+                    ? parseFloat(formData.gps.split(',')[1])
+                    : formData.location_longitude,
+            };
+            
             let response;
             if (editingPartner) {
                 response = await axios.put(
                     buildUrl(`${API_ENDPOINTS.DELIVERY_PARTNERS || '/api/delivery/partners'}/${editingPartner.id}`),
-                    formData,
+                    payload,
                     {
                         headers: { Authorization: `Bearer ${token}` },
                     }
@@ -191,7 +221,7 @@ const DeliveryPartnersAdminPage = () => {
             } else {
                 response = await axios.post(
                     buildUrl(API_ENDPOINTS.DELIVERY_PARTNERS || '/api/delivery/partners'),
-                    formData,
+                    payload,
                     {
                         headers: { Authorization: `Bearer ${token}` },
                     }
@@ -359,9 +389,10 @@ const DeliveryPartnersAdminPage = () => {
                                         Ville
                                     </label>
                                     <LocationSelector
-                                        label="Ville"
-                                        value={formData.city ? { raw: formData.city, place_name: formData.city } : ''}
+                                        label=""
+                                        value={selectedCity || (formData.city ? { raw: formData.city, place_name: formData.city } : '')}
                                         onSelect={(location) => {
+                                            setSelectedCity(location);
                                             setFormData({
                                                 ...formData,
                                                 city: location.place_name || location.raw || '',
@@ -372,13 +403,18 @@ const DeliveryPartnersAdminPage = () => {
                                         placeholder="Rechercher une ville..."
                                         scope="city" // ✅ EXPLICITE: Recherche de villes uniquement
                                     />
+                                    {selectedCity && (
+                                        <p className="text-sm text-blue-600 mt-1 font-medium">
+                                            ✅ Ville sélectionnée: {selectedCity.place_name || selectedCity.raw}
+                                        </p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Pays *
                                     </label>
                                     <LocationSelector
-                                        label="Pays"
+                                        label=""
                                         value={formData.country ? { raw: formData.country, place_name: formData.country } : ''}
                                         onSelect={(location) => {
                                             setFormData({
@@ -402,6 +438,35 @@ const DeliveryPartnersAdminPage = () => {
                                         onChange={(e) => setFormData({ ...formData, continent: e.target.value })}
                                     />
                                 </div>
+                            </div>
+                            {/* ✅ NOUVEAU: Localisation GPS précise */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    📍 Localisation GPS précise (optionnel)
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowGPSModal(true)}
+                                    className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="w-5 h-5 text-blue-600" />
+                                        <span className="text-sm text-gray-700">
+                                            {formData.gps ? 'Localisation sélectionnée' : 'Sélectionner sur la carte'}
+                                        </span>
+                                    </div>
+                                    <span className="text-gray-400">›</span>
+                                </button>
+                                {formData.gps && (
+                                    <p className="text-sm text-gray-600 mt-1">
+                                        {formData.gps}
+                                    </p>
+                                )}
+                                {formData.location_latitude && formData.location_longitude && !formData.gps && (
+                                    <p className="text-sm text-gray-600 mt-1">
+                                        Coordonnées: {formData.location_latitude}, {formData.location_longitude}
+                                    </p>
+                                )}
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -454,6 +519,31 @@ const DeliveryPartnersAdminPage = () => {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* ✅ NOUVEAU: Modal GPS pour localisation précise */}
+                {showGPSModal && (
+                    <AdvancedGPSModal
+                        onClose={() => setShowGPSModal(false)}
+                        onSelect={(path, previewUrl, metadata) => {
+                            if (path && path.length > 0) {
+                                const firstPoint = path[0];
+                                const gpsString = `${firstPoint.lat},${firstPoint.lng}`;
+                                setFormData(prev => ({
+                                    ...prev,
+                                    gps: gpsString,
+                                    location_latitude: firstPoint.lat,
+                                    location_longitude: firstPoint.lng,
+                                    location_address: metadata?.address || prev.location_address,
+                                }));
+                            }
+                            setShowGPSModal(false);
+                        }}
+                        initialLocation={formData.location_latitude && formData.location_longitude ? {
+                            lat: formData.location_latitude,
+                            lng: formData.location_longitude
+                        } : undefined}
+                    />
                 )}
 
                 {partners.length === 0 ? (

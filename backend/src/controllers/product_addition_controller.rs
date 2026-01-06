@@ -74,6 +74,45 @@ pub async fn process_product_creation(
                 product.id
             );
             
+            // ✅ CORRIGÉ 2026-01-06: Créer une notification pour le prestataire
+            let product_name = product_data
+                .get("nom")
+                .or_else(|| product_data.get("nom_produit"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("Nouveau produit");
+            
+            let notification_data = json!({
+                "service_id": service_id,
+                "product_id": product.id,
+                "product_index": product_index,
+                "product_name": product_name
+            });
+            
+            if let Err(e) = crate::services::notification_service::create_notification(
+                &pool,
+                user_id,
+                crate::services::notification_service::NotificationType::ProductAdded,
+                format!("✅ Nouveau produit créé: {}", product_name),
+                format!(
+                    "Votre produit \"{}\" a été créé avec succès dans votre service.\n\n📦 Index: {}\n🆔 ID: {}",
+                    product_name,
+                    product_index,
+                    product.id
+                ),
+                Some(notification_data),
+            ).await {
+                log::warn!(
+                    "[process_product_creation] ⚠️ Erreur création notification produit: {}",
+                    e
+                );
+            } else {
+                log::info!(
+                    "[process_product_creation] 📧 Notification créée pour produit {} (user_id: {})",
+                    product_index,
+                    user_id
+                );
+            }
+            
             // ✅ NOUVEAU 2026-01-04: Traiter les médias APRÈS création du produit avec le vrai product_id
             let real_product_id = product.id.to_string();
             if !images_to_process.is_empty() {
@@ -610,6 +649,16 @@ async fn _old_add_product_logic(
     
     let product_index = existing_products.len() as i32;
     
+    // Récupérer le user_id du service pour la notification
+    let service_user_id: Option<i32> = sqlx::query_scalar!(
+        "SELECT user_id FROM services WHERE id = $1",
+        service_id
+    )
+    .fetch_optional(&*pool)
+    .await
+    .ok()
+    .flatten();
+    
     // Créer le produit dans la table products
     match products_service.create_product(
         service_id,
@@ -617,6 +666,42 @@ async fn _old_add_product_logic(
         &product_data_cleaned,
     ).await {
         Ok(product) => {
+            // ✅ CORRIGÉ 2026-01-06: Créer une notification pour le prestataire (si user_id disponible)
+            if let Some(user_id) = service_user_id {
+                let product_name = product_data_cleaned
+                    .get("nom")
+                    .or_else(|| product_data_cleaned.get("nom_produit"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Nouveau produit");
+                
+                let notification_data = json!({
+                    "service_id": service_id,
+                    "product_id": product.id,
+                    "product_index": product_index,
+                    "product_name": product_name
+                });
+                
+                if let Err(e) = crate::services::notification_service::create_notification(
+                    &pool,
+                    user_id,
+                    crate::services::notification_service::NotificationType::ProductAdded,
+                    format!("✅ Nouveau produit créé: {}", product_name),
+                    format!(
+                        "Votre produit \"{}\" a été créé avec succès dans votre service.\n\n📦 Index: {}\n🆔 ID: {}",
+                        product_name,
+                        product_index,
+                        product.id
+                    ),
+                    Some(notification_data),
+                ).await {
+                    use crate::utils::log::log_warn;
+                    log_warn(&format!(
+                        "[_old_add_product_logic] ⚠️ Erreur création notification produit: {}",
+                        e
+                    ));
+                }
+            }
+            
             Ok(json!({
                 "product_index": product_index,
                 "product_id": product.id,

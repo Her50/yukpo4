@@ -212,9 +212,13 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                     disabled={readonly}
                 >
                     <div className="text-center">
-                        <Smartphone className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+                        <img 
+                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/MTN_Logo.svg/512px-MTN_Logo.svg.png"
+                            alt="MTN Money"
+                            className="w-12 h-12 mx-auto mb-2 object-contain"
+                        />
                         <p className={`text-sm font-semibold ${selectedType === 'mobile_money' ? 'text-purple-600' : 'text-gray-700'}`}>
-                            Mobile Money
+                            MTN Money
                         </p>
                     </div>
                     {selectedType === 'mobile_money' && (
@@ -232,7 +236,11 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                     disabled={readonly}
                 >
                     <div className="text-center">
-                        <div className="text-3xl mb-2">🍊</div>
+                        <img 
+                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/512px-Orange_logo.svg.png"
+                            alt="Orange Money"
+                            className="w-12 h-12 mx-auto mb-2 object-contain"
+                        />
                         <p className={`text-sm font-semibold ${selectedType === 'orange_money' ? 'text-orange-600' : 'text-gray-700'}`}>
                             Orange Money
                         </p>

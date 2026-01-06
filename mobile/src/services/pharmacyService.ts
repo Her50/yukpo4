@@ -107,12 +107,10 @@ export const pharmacyService = {
         age?: number,
         medicalConditions?: string[]
     ) => {
-        const response = await apiPost<{ interaction: MedicationInteraction }>(
+        const response = await apiPost<{ success: boolean; interaction: MedicationInteraction }>(
             '/api/pharmacies/ai/interactions',
             {
                 medications,
-                age,
-                medical_conditions: medicalConditions,
             }
         );
         return response;
@@ -125,13 +123,13 @@ export const pharmacyService = {
         weight?: number,
         medicalCondition?: string
     ) => {
-        const response = await apiPost<{ dosage: DosageRecommendation }>(
+        const response = await apiPost<{ success: boolean; dosage: DosageRecommendation }>(
             '/api/pharmacies/ai/dosage',
             {
                 medication_name: medicationName,
-                age,
-                weight,
-                medical_condition: medicalCondition,
+                patient_age: age,
+                patient_weight: weight,
+                condition: medicalCondition,
             }
         );
         return response;

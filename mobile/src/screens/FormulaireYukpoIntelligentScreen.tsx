@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  DeviceEventEmitter,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -28,7 +29,7 @@ import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../compone
 import NavigatorToolbar from '../components/NavigatorToolbar';
 // ✅ SUPPRIMÉ: ProductManagerMobile intégré directement dans le formulaire
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
-import LocationSelector from '../components/LocationSelector';
+import LocationSelector, { LocationObject } from '../components/LocationSelector';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
 import ProductFieldSelector from '../components/ProductFieldSelector';
@@ -39,6 +40,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { modernColors } from '../theme/modernTheme';
 import { DynamicField, processIASuggestion } from '../utils/formDispatcher';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
+import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 
 const { width } = Dimensions.get('window');
 
@@ -144,6 +146,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   };
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  // ✅ NOUVEAU: État pour identifier quel champ location est en cours de modification
+  const [gpsModalForField, setGpsModalForField] = useState<string | null>(null);
+  // ✅ NOUVEAU: États pour le modal de configuration de livraison
+  const [showProductDeliveryConfig, setShowProductDeliveryConfig] = useState(false);
+  const [productDeliveryConfigData, setProductDeliveryConfigData] = useState<{
+    serviceId: number;
+    productIndex: number;
+    productName: string;
+  } | null>(null);
   // ✅ SUPPRIMÉ: Duplication produits - Les produits sont maintenant gérés via les champs dynamiques
   const normalizeMediaList = (value: any): any[] => {
     if (!value) {
@@ -2224,6 +2235,49 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     if (field.typeDonnee === 'location') {
+      // ✅ NOUVEAU: Rendu spécial pour lieu_produit avec ModernGPSModal
+      if (field.name === 'lieu_produit' || field.name === 'lieu_commercial' || field.name === 'lieu_commercialisation') {
+        const currentValue = valeursFormulaire[field.name]?.valeur || valeursFormulaire[field.name] || '';
+        // Extraire le nom complet du lieu (place_name) au lieu de seulement la ville
+        const displayText = typeof currentValue === 'object' && currentValue !== null
+          ? (currentValue.place_name || currentValue.raw || '')
+          : (typeof currentValue === 'string' ? currentValue : '');
+        
+        return (
+          <View key={field.name} style={styles.fieldContainer}>
+            <Text style={styles.label}>{field.label} {field.required && <Text style={styles.required}>*</Text>}</Text>
+            <TouchableOpacity
+              style={[styles.select, !displayText && styles.selectPlaceholder]}
+              onPress={() => {
+                // Récupérer la localisation actuelle si disponible
+                const currentValue = valeursFormulaire[field.name]?.valeur || valeursFormulaire[field.name];
+                if (typeof currentValue === 'object' && currentValue !== null && currentValue.coordinates) {
+                  setSelectedLocation({ lat: currentValue.coordinates.lat, lng: currentValue.coordinates.lng });
+                } else {
+                  setSelectedLocation(null);
+                }
+                setGpsModalForField(field.name);
+                setShowGPSModal(true);
+              }}
+            >
+              <Text style={[styles.selectText, !displayText && styles.selectPlaceholderText]}>
+                {displayText || field.placeholder || 'Sélectionner un lieu...'}
+              </Text>
+              <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+            </TouchableOpacity>
+            <View style={styles.hintBox}>
+              <Text style={styles.hintText}>
+                💡 <Text style={styles.hintBold}>Sélection GPS :</Text> Cliquez pour ouvrir la carte et sélectionner ou créer un lieu précis. Le nom complet du lieu sera affiché.
+              </Text>
+            </View>
+            {fieldErrors[field.name] && (
+              <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
+            )}
+          </View>
+        );
+      }
+      
+      // Rendu normal pour les autres champs location
       return (
         <View key={field.name} style={styles.fieldContainer}>
           <LocationSelector
@@ -4060,11 +4114,54 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 setSuccessData({ serviceId: result?.id || result?.service_id || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);
 
+                // ✅ NOUVEAU: Émettre un événement pour rafraîchir les produits
+                // ✅ CORRECTION: Ajouter un délai pour laisser la base de données se mettre à jour
+                setTimeout(() => {
+                  DeviceEventEmitter.emit('service:refresh');
+                  DeviceEventEmitter.emit('product:created');
+                }, 2000);
+
                 // ✅ Marquer la soumission comme terminée
                 setIsSubmitting(false);
                 setLoading(false);
 
-                // Redirection après 3 secondes
+                // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
+                const typeOffre = valeursFormulaire.type_offre || finalServiceData.type_offre?.valeur || 'produit';
+                const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+                const serviceIdCreated = result?.id || result?.service_id;
+                
+                // Vérifier si le service a des produits
+                const hasProducts = finalServiceData.produits && 
+                  finalServiceData.produits.type_donnee === 'listeproduit' &&
+                  Array.isArray(finalServiceData.produits.valeur) &&
+                  finalServiceData.produits.valeur.length > 0;
+                
+                if (!isPrestation && hasProducts && serviceIdCreated) {
+                  // C'est un produit, ouvrir le modal de configuration de livraison pour le premier produit
+                  const firstProductIndex = 0;
+                  const firstProduct = finalServiceData.produits.valeur[0];
+                  const productName = firstProduct?.nom || valeursFormulaire.nom_produit || 'Nouveau produit';
+                  
+                  console.log('[FormulaireYukpoIntelligentScreen] 🚚 Ouverture automatique du modal de configuration de livraison:', {
+                    serviceId: serviceIdCreated,
+                    productIndex: firstProductIndex,
+                    productName: productName
+                  });
+                  
+                  // ✅ CORRECTION: Utiliser le modal au lieu de naviguer vers un écran
+                  // Attendre un court délai pour laisser le toast s'afficher
+                  setTimeout(() => {
+                    setShowProductDeliveryConfig(true);
+                    setProductDeliveryConfigData({
+                      serviceId: typeof serviceIdCreated === 'number' ? serviceIdCreated : parseInt(String(serviceIdCreated), 10),
+                      productIndex: firstProductIndex,
+                      productName: productName
+                    });
+                  }, 1500);
+                  return; // Ne pas rediriger vers Home/MesServices si on ouvre la config livraison
+                }
+
+                // Redirection après 3 secondes (pour les prestations ou si pas de produits)
                 setTimeout(() => {
                   if (fromMesServices) {
                     (navigation as any).navigate('MesServices');
@@ -4331,24 +4428,28 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   {/* Navigation entre blocs (tabs simples sans scroll horizontal) */}
                   <View style={styles.blockNavigation}>
-                    {displayedBlocks.map(({ block, index: originalIndex }) => (
-                      <TouchableOpacity
-                        key={block.id}
-                        style={[
-                          styles.blockTab,
-                          currentBlock === originalIndex && styles.blockTabActive
-                        ]}
-                        onPress={() => goToBlock(originalIndex)}
-                      >
-                        <Text style={styles.blockTabIcon}>{block.icon}</Text>
-                        <Text style={[
-                          styles.blockTabText,
-                          currentBlock === originalIndex && styles.blockTabTextActive
-                        ]}>
-                          {block.title}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {displayedBlocks.map(({ block, index: originalIndex }) => {
+                      // ✅ CORRECTION: Utiliser currentDisplayIndex pour la comparaison au lieu de currentBlock
+                      const isActive = currentDisplayIndex === displayedBlocks.findIndex(item => item.index === originalIndex);
+                      return (
+                        <TouchableOpacity
+                          key={block.id}
+                          style={[
+                            styles.blockTab,
+                            isActive && styles.blockTabActive
+                          ]}
+                          onPress={() => goToBlock(originalIndex)}
+                        >
+                          <Text style={styles.blockTabIcon}>{block.icon}</Text>
+                          <Text style={[
+                            styles.blockTabText,
+                            isActive && styles.blockTabTextActive
+                          ]}>
+                            {block.title}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
 
@@ -4489,29 +4590,136 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       {/* Modal GPS moderne */}
       <ModernGPSModal
         visible={showGPSModal}
-        onClose={() => setShowGPSModal(false)}
-        onSelect={(coordinatesString) => {
+        onClose={() => {
+          setShowGPSModal(false);
+          setGpsModalForField(null);
+        }}
+        onSelect={async (coordinatesString) => {
           // Parser les coordonnées depuis le format string
           // Format: "lat,lng" pour un point ou "lat1,lng1|lat2,lng2|..." pour une zone
           const firstPoint = coordinatesString.split('|')[0].split(',');
           if (firstPoint.length === 2) {
             const lat = parseFloat(firstPoint[0]);
             const lng = parseFloat(firstPoint[1]);
-            setSelectedLocation({ lat, lng });
+            
+            if (!isNaN(lat) && !isNaN(lng)) {
+              setSelectedLocation({ lat, lng });
+
+              // ✅ NOUVEAU: Si c'est pour lieu_produit, faire le géocodage inverse pour obtenir le nom du lieu
+              if (gpsModalForField === 'lieu_produit' || gpsModalForField === 'lieu_commercial' || gpsModalForField === 'lieu_commercialisation') {
+                try {
+                  const { reverseGeocodeAsync } = await import('expo-location');
+                  const reverseGeocode = await reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                  
+                  if (reverseGeocode && reverseGeocode.length > 0) {
+                    const addr = reverseGeocode[0];
+                    // Construire le nom complet du lieu
+                    const addressParts = [];
+                    if (addr.name) addressParts.push(addr.name);
+                    if (addr.street) addressParts.push(addr.street);
+                    if (addr.district) addressParts.push(addr.district);
+                    if (addr.city) addressParts.push(addr.city);
+                    if (addr.region) addressParts.push(addr.region);
+                    if (addr.country) addressParts.push(addr.country);
+                    
+                    const placeName = addr.name || addr.street || addr.district || addr.city || 'Lieu sélectionné';
+                    const fullAddress = addressParts.filter(Boolean).join(', ') || placeName;
+                    
+                    // Construire un LocationObject avec le nom complet
+                    const locationObject: LocationObject = {
+                      raw: fullAddress,
+                      place_name: placeName, // Nom principal du lieu (établissement, rue, quartier)
+                      components: {
+                        quartier: addr.district || undefined,
+                        ville: addr.city || undefined,
+                        region: addr.region || undefined,
+                        pays: addr.country || undefined,
+                      },
+                      coordinates: { lat, lng },
+                    };
+                    
+                    // Sauvegarder dans le formulaire
+                    handleFieldChange(gpsModalForField, {
+                      type_donnee: 'location',
+                      valeur: locationObject,
+                      composants: locationObject.components,
+                      filtrable: true,
+                      origine_champs: 'formulaire'
+                    });
+                  } else {
+                    // Fallback si pas de géocodage inverse
+                    const locationObject: LocationObject = {
+                      raw: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                      place_name: 'Lieu sélectionné',
+                      components: {},
+                      coordinates: { lat, lng },
+                    };
+                    handleFieldChange(gpsModalForField, {
+                      type_donnee: 'location',
+                      valeur: locationObject,
+                      composants: {},
+                      filtrable: true,
+                      origine_champs: 'formulaire'
+                    });
+                  }
+                } catch (error) {
+                  console.error('[FormulaireYukpoIntelligentScreen] Erreur géocodage inverse:', error);
+                  // Fallback en cas d'erreur
+                  const locationObject: LocationObject = {
+                    raw: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                    place_name: 'Lieu sélectionné',
+                    components: {},
+                    coordinates: { lat, lng },
+                  };
+                  handleFieldChange(gpsModalForField, {
+                    type_donnee: 'location',
+                    valeur: locationObject,
+                    composants: {},
+                    filtrable: true,
+                    origine_champs: 'formulaire'
+                  });
+                }
+              } else {
+                // Pour gps_fixe (localisation du service), stocker juste les coordonnées
+                setValeursFormulaire(prev => ({
+                  ...prev,
+                  gps_fixe: coordinatesString
+                }));
+              }
+            }
           }
 
-          // Stocker le format complet (point ou zone)
-          setValeursFormulaire(prev => ({
-            ...prev,
-            gps_fixe: coordinatesString
-          }));
           setShowGPSModal(false);
+          setGpsModalForField(null);
         }}
         currentLocation={selectedLocation}
-        title="Sélection de localisation GPS"
-        allowZoneSelection={true}
+        title={gpsModalForField === 'lieu_produit' || gpsModalForField === 'lieu_commercial' || gpsModalForField === 'lieu_commercialisation' 
+          ? "Sélectionner le lieu de commercialisation" 
+          : "Sélection de localisation GPS"}
+        allowZoneSelection={gpsModalForField !== 'lieu_produit' && gpsModalForField !== 'lieu_commercial' && gpsModalForField !== 'lieu_commercialisation'}
       />
 
+      {/* ✅ NOUVEAU: Modal de configuration de livraison pour les produits */}
+      {productDeliveryConfigData && (
+        <ProductDeliveryConfigModal
+          visible={showProductDeliveryConfig}
+          onClose={() => {
+            setShowProductDeliveryConfig(false);
+            setProductDeliveryConfigData(null);
+            // Après fermeture, rediriger vers Home ou MesServices
+            setTimeout(() => {
+              if (fromMesServices) {
+                (navigation as any).navigate('MesServices');
+              } else {
+                (navigation as any).navigate('Home');
+              }
+            }, 300);
+          }}
+          serviceId={productDeliveryConfigData.serviceId}
+          productIndex={productDeliveryConfigData.productIndex}
+          productName={productDeliveryConfigData.productName}
+        />
+      )}
 
       {/* ✅ SUPPRIMÉ: Modal de duplication de produit - Les produits sont maintenant gérés via les champs dynamiques */}
     </View>

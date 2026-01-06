@@ -56,6 +56,63 @@ const BanqueSangFormScreen: React.FC = () => {
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
     // ✅ SUPPRIMÉ : showScheduleModal et schedule (planning hebdomadaire supprimé)
 
+    // ✅ NOUVEAU: Charger automatiquement les données du partenaire si user.partner_type === 'banquesang'
+    useEffect(() => {
+        const loadPartnerData = async () => {
+            if (user?.role === 'partenaire' && user?.partner_type === 'banquesang') {
+                try {
+                    // Récupérer les données du partenaire depuis /api/partners/me
+                    const response = await apiGet('/api/partners/me');
+                    
+                    if (response.success && response.data) {
+                        const partnerData = response.data;
+                        
+                        // Si le partenaire a déjà une banque de sang, charger ses données
+                        if (partnerData.banque_sang_id) {
+                            const banqueResponse = await apiGet(`/api/banques-sang/${partnerData.banque_sang_id}`);
+                            if (banqueResponse.success && banqueResponse.data) {
+                                const banqueData = banqueResponse.data;
+                                setFormData({
+                                    nom: banqueData.nom || '',
+                                    adresse: banqueData.adresse || '',
+                                    quartier: banqueData.quartier ? { raw: banqueData.quartier, place_name: banqueData.quartier } : null,
+                                    accepte_dons: banqueData.accepte_dons ?? true,
+                                    accepte_demandes: banqueData.accepte_demandes ?? true,
+                                    urgence_24h: banqueData.urgence_24h ?? false,
+                                    telephone: banqueData.telephone || '',
+                                    telephone_urgence: banqueData.telephone_urgence || '',
+                                    whatsapp: banqueData.whatsapp || '',
+                                    email: banqueData.email || '',
+                                });
+                                if (banqueData.service_id) {
+                                    setServiceId(banqueData.service_id);
+                                }
+                                if (banqueData.id) {
+                                    // Mode édition
+                                    (route.params as any).specializedServiceId = banqueData.id;
+                                }
+                            }
+                        } else if (partnerData.service_id) {
+                            // Si le partenaire a un service mais pas encore de banque de sang, pré-remplir avec les infos du service
+                            setServiceId(partnerData.service_id);
+                            setFormData(prev => ({
+                                ...prev,
+                                nom: partnerData.nom || partnerData.titre_service || '',
+                                adresse: partnerData.adresse || '',
+                                telephone: partnerData.telephone || '',
+                                email: partnerData.email || '',
+                            }));
+                        }
+                    }
+                } catch (error: any) {
+                    console.error('[BanqueSangFormScreen] Erreur chargement données partenaire:', error);
+                }
+            }
+        };
+
+        loadPartnerData();
+    }, [user?.role, user?.partner_type]);
+
     // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
     // (compatible avec l'ancien système banqueId)
     useEffect(() => {

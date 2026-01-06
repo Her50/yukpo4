@@ -1,3 +1,6 @@
+// ✅ Écran de création/édition de services taxi (accessible à tous les utilisateurs)
+// Permet à n'importe quel utilisateur d'intégrer son véhicule pour le taxi
+
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';

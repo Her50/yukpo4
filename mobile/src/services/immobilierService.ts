@@ -41,6 +41,8 @@ export interface PropertySearchFilters {
     superficie_max?: number;
     nb_chambres_min?: number;
     standing?: string;
+    page?: number;
+    limit?: number;
 }
 
 export interface PriceEstimate {

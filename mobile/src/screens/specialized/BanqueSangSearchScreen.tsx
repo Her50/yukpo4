@@ -268,6 +268,33 @@ const BanqueSangSearchScreen: React.FC = () => {
                     </View>
                 )}
 
+                {/* ✅ NOUVEAU: Bouton "Devenir donneur" */}
+                <TouchableOpacity
+                    style={styles.becomeDonorBanner}
+                    onPress={() => {
+                        hapticPress();
+                        navigation.navigate('BloodGroupManagement' as never);
+                    }}
+                >
+                    <LinearGradient
+                        colors={['#DC2626', '#F87171']}
+                        style={styles.becomeDonorBannerGradient}
+                    >
+                        <View style={styles.becomeDonorBannerContent}>
+                            <View style={styles.becomeDonorBannerIcon}>
+                                <SafeIcon name="heart" size={24} color="#FFFFFF" type="lucide" />
+                            </View>
+                            <View style={styles.becomeDonorBannerText}>
+                                <Text style={styles.becomeDonorBannerTitle}>Devenir donneur de sang</Text>
+                                <Text style={styles.becomeDonorBannerSubtitle}>
+                                    Enregistrez votre groupe sanguin et sauvez des vies
+                                </Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
+                        </View>
+                    </LinearGradient>
+                </TouchableOpacity>
+
                 {/* ✅ NOUVEAU: Bouton matching intelligent */}
                 {user && (
                     <TouchableOpacity
@@ -947,6 +974,47 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    becomeDonorBanner: {
+        marginTop: 12,
+        marginBottom: 12,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    becomeDonorBannerGradient: {
+        padding: 16,
+    },
+    becomeDonorBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    becomeDonorBannerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    becomeDonorBannerText: {
+        flex: 1,
+    },
+    becomeDonorBannerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    becomeDonorBannerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        lineHeight: 16,
     },
     matchingBanner: {
         marginBottom: 16,

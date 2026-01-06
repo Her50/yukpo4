@@ -69,6 +69,15 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/hopitaux/{id}",
             get(specialized_services_controller::get_hospital_details),
         )
+        // ✅ NOUVEAU: Autocomplete et IA pour hôpitaux
+        .route(
+            "/api/hopitaux/services/autocomplete",
+            get(specialized_services_controller::autocomplete_medical_services),
+        )
+        .route(
+            "/api/hopitaux/ai/search-pathology",
+            post(specialized_services_controller::search_pathology_hospital),
+        )
         .route(
             "/api/laboratoires/search",
             get(specialized_services_controller::search_laboratories),
@@ -859,6 +868,19 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/laboratoires/{id}/analytics",
             get(specialized_services_controller::get_laboratory_analytics),
+        )
+        // ✅ NOUVEAU: Autocomplete et IA pour laboratoires
+        .route(
+            "/api/laboratoires/examinations/autocomplete",
+            get(specialized_services_controller::autocomplete_examination_types),
+        )
+        .route(
+            "/api/laboratoires/examinations/analyze-image",
+            post(specialized_services_controller::analyze_examination_image),
+        )
+        .route(
+            "/api/laboratoires/ai/search-pathology",
+            post(specialized_services_controller::search_pathology_laboratory),
         )
         // ✅ 2025-01-27: Routes Planification Menus
         .route(

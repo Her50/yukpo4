@@ -6,7 +6,7 @@ use tokio::time::{interval, Duration as TokioDuration};
 use uuid::Uuid;
 
 use crate::core::types::AppResult;
-use crate::models::delivery_model::DeliveryStatus;
+use crate::models::delivery_model::{DeliveryCancelReason, DeliveryStatus};
 use crate::services::delivery_service::DeliveryService;
 use crate::services::push_notification_service;
 use crate::state::AppState;
@@ -103,6 +103,9 @@ async fn check_delivery_timeouts(state: Arc<AppState>) -> AppResult<()> {
 
     // ✅ 2. Vérifier les livraisons en attente de confirmation depuis trop longtemps
     check_pending_confirmations(pool, &service).await?;
+
+    // ✅ 3. NOUVEAU : Vérifier les livraisons en attente de coursier depuis trop longtemps
+    check_pending_deliveries_without_courier(pool, &service).await?;
 
     Ok(())
 }
@@ -288,6 +291,102 @@ async fn check_pending_confirmations(pool: &PgPool, _service: &DeliveryService) 
                 )
                 .await;
             }
+        }
+    }
+
+    Ok(())
+}
+
+/// ✅ NOUVEAU : Vérifie les livraisons en attente (Requested/AwaitingCourierConfirmation) sans coursier depuis trop longtemps
+/// Annule automatiquement les livraisons qui restent en attente plus de 30 minutes (configurable)
+async fn check_pending_deliveries_without_courier(
+    pool: &PgPool,
+    service: &DeliveryService,
+) -> AppResult<()> {
+    // Délai maximum avant annulation (30 minutes par défaut, configurable via env)
+    let max_delay_minutes: i32 = std::env::var("DELIVERY_PENDING_TIMEOUT_MINUTES")
+        .unwrap_or_else(|_| "30".to_string())
+        .parse()
+        .unwrap_or(30);
+
+    // Récupérer les livraisons en attente sans coursier depuis plus de max_delay_minutes
+    let expired_deliveries = sqlx::query_as::<_, PendingDelivery>(
+        r#"
+        SELECT 
+            d.id,
+            d.status::text as status,
+            d.updated_at,
+            d.creator_id,
+            d.recipient_user_id,
+            c.user_id as courier_user_id
+        FROM deliveries d
+        LEFT JOIN couriers c ON c.id = d.courier_id
+        WHERE 
+            (d.status::text = 'requested' OR d.status::text = 'awaiting_courier_confirmation')
+            AND d.courier_id IS NULL
+            AND d.created_at < NOW() - ($1 || ' minutes')::interval
+            AND d.status::text != 'delivered'
+            AND d.status::text != 'cancelled'
+            AND d.status::text != 'completed'
+        LIMIT 50
+        "#,
+    )
+    .bind(max_delay_minutes)
+    .fetch_all(pool)
+    .await?;
+
+    for delivery in expired_deliveries {
+        info!(
+            "⏰ Annulation automatique de la livraison {} en attente depuis plus de {} minutes sans coursier",
+            delivery.id,
+            max_delay_minutes
+        );
+
+        // Annuler la livraison avec la raison "NoCourierAvailable"
+        if let Err(e) = service
+            .update_delivery_status(
+                delivery.id,
+                DeliveryStatus::Cancelled,
+                Some(DeliveryCancelReason::NoCourierAvailable),
+                None,
+                Some(serde_json::json!({
+                    "auto_cancelled": true,
+                    "auto_cancel_reason": format!("Timeout: aucune affectation de coursier après {} minutes", max_delay_minutes),
+                    "original_status": delivery.status
+                })),
+            )
+            .await
+        {
+            error!(
+                "❌ Erreur annulation automatique pour livraison {}: {:?}",
+                delivery.id, e
+            );
+        } else {
+            // Envoyer notification au client
+            if let Some(client_id) = delivery.creator_id {
+                let _ = push_notification_service::send_push_notification(
+                    pool,
+                    client_id,
+                    "Livraison annulée".to_string(),
+                    format!(
+                        "Votre livraison #{} a été annulée automatiquement car aucun coursier n'a été trouvé après {} minutes d'attente.",
+                        delivery.id.to_string()[..8].to_uppercase(),
+                        max_delay_minutes
+                    ),
+                    Some(serde_json::json!({
+                        "delivery_id": delivery.id.to_string(),
+                        "type": "delivery_auto_cancelled",
+                        "reason": "no_courier_available"
+                    })),
+                    Some("default".to_string()),
+                )
+                .await;
+            }
+
+            info!(
+                "✅ Annulation automatique réussie pour livraison {}",
+                delivery.id
+            );
         }
     }
 

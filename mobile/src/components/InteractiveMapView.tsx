@@ -24,6 +24,7 @@ interface InteractiveMapViewProps {
     showTraffic?: boolean;
     polygonPoints?: { lat: number; lng: number }[];
     onPolygonPointsChange?: (points: { lat: number; lng: number }[]) => void;
+    initialRegion?: Region; // ✅ NOUVEAU: Permettre de définir la région initiale
 }
 
 export interface InteractiveMapViewRef {
@@ -41,14 +42,29 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
     showTraffic = true,
     polygonPoints = [],
     onPolygonPointsChange,
+    initialRegion, // ✅ NOUVEAU: Région initiale pour centrer la carte
 }, ref) => {
     const mapRef = useRef<MapView>(null);
     const [localPolygonPoints, setLocalPolygonPoints] = useState<{ lat: number; lng: number }[]>(polygonPoints);
-    const [mapRegion, setMapRegion] = useState({
-        latitude: selectedLocation?.lat || 4.031716, // Douala, Cameroun par défaut
-        longitude: selectedLocation?.lng || 9.817201,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
+    const [mapRegion, setMapRegion] = useState(() => {
+        // ✅ NOUVEAU: Utiliser initialRegion en priorité, puis selectedLocation, puis défaut
+        if (initialRegion) {
+            return initialRegion;
+        }
+        if (selectedLocation?.lat && selectedLocation?.lng) {
+            return {
+                latitude: selectedLocation.lat,
+                longitude: selectedLocation.lng,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+            };
+        }
+        return {
+            latitude: 4.031716, // Douala, Cameroun par défaut
+            longitude: 9.817201,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+        };
     });
     const [mapReady, setMapReady] = useState(false);
     const [mapError, setMapError] = useState(false);

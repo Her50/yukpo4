@@ -86,6 +86,7 @@ import CovoiturageDetailsScreen from '../screens/specialized/CovoiturageDetailsS
 import CovoiturageFormScreen from '../screens/specialized/CovoiturageFormScreen';
 import CovoiturageListScreen from '../screens/specialized/CovoiturageListScreen';
 import CovoiturageSearchScreen from '../screens/specialized/CovoiturageSearchScreen';
+import CovoiturageHomeScreen from '../screens/specialized/CovoiturageHomeScreen';
 import HopitalFormScreen from '../screens/specialized/HopitalFormScreen';
 import LaboratoireFormScreen from '../screens/specialized/LaboratoireFormScreen';
 import MesReservationsScreen from '../screens/specialized/MesReservationsScreen';
@@ -102,6 +103,7 @@ import TaxiFormScreen from '../screens/specialized/TaxiFormScreen';
 import { TaxiIntelligentSearchScreen } from '../screens/specialized/TaxiIntelligentSearchScreen';
 import TaxiListScreen from '../screens/specialized/TaxiListScreen';
 import TaxiSearchScreen from '../screens/specialized/TaxiSearchScreen';
+import TaxiHomeScreen from '../screens/specialized/TaxiHomeScreen';
 // ✅ Phase 3: Hôpitaux et Laboratoires
 import HopitalDetailsScreen from '../screens/specialized/HopitalDetailsScreen';
 import HopitalListScreen from '../screens/specialized/HopitalListScreen';
@@ -109,10 +111,13 @@ import HopitalSearchScreen from '../screens/specialized/HopitalSearchScreen';
 import LaboratoireDetailsScreen from '../screens/specialized/LaboratoireDetailsScreen';
 import LaboratoireListScreen from '../screens/specialized/LaboratoireListScreen';
 import LaboratoireSearchScreen from '../screens/specialized/LaboratoireSearchScreen';
+import LaboratoireHomeScreen from '../screens/specialized/LaboratoireHomeScreen';
+import HopitalHomeScreen from '../screens/specialized/HopitalHomeScreen';
 // ✅ NOUVEAU: Écrans Pharmacie
 import PharmacieDetailsScreen from '../screens/specialized/PharmacieDetailsScreen';
 import PharmacieListScreen from '../screens/specialized/PharmacieListScreen';
 import PharmacieSearchScreen from '../screens/specialized/PharmacieSearchScreen';
+import PharmacieHomeScreen from '../screens/specialized/PharmacieHomeScreen';
 // ✅ NOUVEAU: Écrans Banque de sang
 import BanqueSangDetailsScreen from '../screens/specialized/BanqueSangDetailsScreen';
 import BanqueSangListScreen from '../screens/specialized/BanqueSangListScreen';
@@ -130,6 +135,8 @@ import ImmobilierDetailsScreen from '../screens/specialized/ImmobilierDetailsScr
 import ImmobilierListScreen from '../screens/specialized/ImmobilierListScreen';
 import ImmobilierPriceAlertsScreen from '../screens/specialized/ImmobilierPriceAlertsScreen';
 import ImmobilierSearchScreen from '../screens/specialized/ImmobilierSearchScreen';
+import ImmobilierHomeScreen from '../screens/specialized/ImmobilierHomeScreen';
+import ImmobilierFormScreen from '../screens/specialized/ImmobilierFormScreen';
 import MyFavoritesScreen from '../screens/specialized/MyFavoritesScreen';
 import SpecializedSearchScreen from '../screens/SpecializedSearchScreen';
 import SpecializedServicesHubScreen from '../screens/SpecializedServicesHubScreen';
@@ -141,6 +148,7 @@ import MyBloodDonationsScreen from '../screens/specialized/MyBloodDonationsScree
 import BusTicketBookingScreen from '../screens/specialized/BusTicketBookingScreen';
 import BusTicketDetailsScreen from '../screens/specialized/BusTicketDetailsScreen';
 import BusTicketSearchScreen from '../screens/specialized/BusTicketSearchScreen';
+import TicketVoyageHomeScreen from '../screens/specialized/TicketVoyageHomeScreen';
 // ✅ NOUVEAU: Écrans retour bus (aller-retour)
 import BusReturnRequestFormScreen from '../screens/specialized/BusReturnRequestFormScreen';
 import BusReturnRequestsScreen from '../screens/specialized/BusReturnRequestsScreen';
@@ -149,6 +157,7 @@ import LivreScolaireDetailsScreen from '../screens/specialized/LivreScolaireDeta
 import LivreScolaireFormScreen from '../screens/specialized/LivreScolaireFormScreen';
 import LivreScolaireListScreen from '../screens/specialized/LivreScolaireListScreen';
 import LivreScolaireSearchScreen from '../screens/specialized/LivreScolaireSearchScreen';
+import LivreScolaireHomeScreen from '../screens/specialized/LivreScolaireHomeScreen';
 import MesLivresScreen from '../screens/specialized/MesLivresScreen';
 // ✅ NOUVEAU 2025-01-28: Écrans Orientation scolaire
 import ConcoursEntreeScreen from '../screens/orientation/ConcoursEntreeScreen';
@@ -158,6 +167,7 @@ import EtablissementSearchScreen from '../screens/orientation/EtablissementSearc
 import ExperiencesEtudiantsScreen from '../screens/orientation/ExperiencesEtudiantsScreen';
 import FournituresScolairesScreen from '../screens/orientation/FournituresScolairesScreen';
 import OrientationScolaireHubScreen from '../screens/orientation/OrientationScolaireHubScreen';
+import OrientationScolaireHomeScreen from '../screens/orientation/OrientationScolaireHomeScreen';
 import ProgrammesScolairesScreen from '../screens/orientation/ProgrammesScolairesScreen';
 import MesTrocsScreen from '../screens/specialized/MesTrocsScreen';
 import TrocDetailsScreen from '../screens/specialized/TrocDetailsScreen';
@@ -167,13 +177,16 @@ import TrocMatchingScreen from '../screens/specialized/TrocMatchingScreen';
 import CreateOffreScreen from '../screens/offres-emploi/CreateOffreScreen';
 import OffreSearchScreen from '../screens/offres-emploi/OffreSearchScreen';
 import OffresEmploiHubScreen from '../screens/offres-emploi/OffresEmploiHubScreen';
+import OffresEmploiHomeScreen from '../screens/offres-emploi/OffresEmploiHomeScreen';
 import ProfilCandidatScreen from '../screens/offres-emploi/ProfilCandidatScreen';
 // ✅ NOUVEAU 2025-01-27: Écran Bourse du Livre avec IA
 import BourseLivreScreen from '../screens/BourseLivreScreen';
 // ✅ NOUVEAU 2025-01-27: Écrans Planification Menus
 import MenuPlanningHubScreen from '../screens/specialized/MenuPlanningHubScreen';
-// ✅ NOUVEAU: Écrans BayamSelam, Automobile, Assurance
-import BayamSelamSearchScreen from '../screens/specialized/BayamSelamSearchScreen';
+import FamilyProfileScreen from '../screens/specialized/FamilyProfileScreen';
+import RecipeSearchScreen from '../screens/specialized/RecipeSearchScreen';
+// ✅ NOUVEAU: BayamSelam = SupermarketHome (même écran professionnel)
+import SupermarketHomeScreen from '../screens/specialized/SupermarketHomeScreen';
 import AutoServicesSearchScreen from '../screens/specialized/AutoServicesSearchScreen';
 import InsuranceServicesSearchScreen from '../screens/specialized/InsuranceServicesSearchScreen';
 import MenuWeekCalendarScreen from '../screens/specialized/MenuWeekCalendarScreen';
@@ -222,6 +235,7 @@ const AgenceVoyageFormScreenWithSafeArea = withNavigatorSafeArea(AgenceVoyageFor
 const CovoiturageFormScreenWithSafeArea = withNavigatorSafeArea(CovoiturageFormScreen);
 const TaxiFormScreenWithSafeArea = withNavigatorSafeArea(TaxiFormScreen);
 const TaxiSearchScreenWithSafeArea = withNavigatorSafeArea(TaxiSearchScreen);
+const TaxiHomeScreenWithSafeArea = withNavigatorSafeArea(TaxiHomeScreen);
 const TaxiIntelligentSearchScreenWithSafeArea = withNavigatorSafeArea(TaxiIntelligentSearchScreen);
 const TaxiListScreenWithSafeArea = withNavigatorSafeArea(TaxiListScreen);
 const TaxiDetailsScreenWithSafeArea = withNavigatorSafeArea(TaxiDetailsScreen);
@@ -231,6 +245,7 @@ const MesTaxisScreenWithSafeArea = withNavigatorSafeArea(MesTaxisScreen);
 const MyTripsScreenWithSafeArea = withNavigatorSafeArea(MyTripsScreen);
 // ✅ Phase 3: Hôpitaux et Laboratoires
 const HopitalSearchScreenWithSafeArea = withNavigatorSafeArea(HopitalSearchScreen);
+const HopitalHomeScreenWithSafeArea = withNavigatorSafeArea(HopitalHomeScreen);
 const HopitalListScreenWithSafeArea = withNavigatorSafeArea(HopitalListScreen);
 const HopitalDetailsScreenWithSafeArea = withNavigatorSafeArea(HopitalDetailsScreen);
 const LaboratoireSearchScreenWithSafeArea = withNavigatorSafeArea(LaboratoireSearchScreen);
@@ -238,6 +253,7 @@ const LaboratoireListScreenWithSafeArea = withNavigatorSafeArea(LaboratoireListS
 const LaboratoireDetailsScreenWithSafeArea = withNavigatorSafeArea(LaboratoireDetailsScreen);
 // ✅ NOUVEAU: Pharmacie
 const PharmacieSearchScreenWithSafeArea = withNavigatorSafeArea(PharmacieSearchScreen);
+const PharmacieHomeScreenWithSafeArea = withNavigatorSafeArea(PharmacieHomeScreen);
 const PharmacieListScreenWithSafeArea = withNavigatorSafeArea(PharmacieListScreen);
 const PharmacieDetailsScreenWithSafeArea = withNavigatorSafeArea(PharmacieDetailsScreen);
 // ✅ NOUVEAU: Banque de sang
@@ -249,7 +265,9 @@ const BanqueSangDetailsScreenWithSafeArea = withNavigatorSafeArea(BanqueSangDeta
 const AgenceVoyageSearchScreenWithSafeArea = withNavigatorSafeArea(AgenceVoyageSearchScreen);
 const AgenceVoyageListScreenWithSafeArea = withNavigatorSafeArea(AgenceVoyageListScreen);
 const AgenceVoyageDetailsScreenWithSafeArea = withNavigatorSafeArea(AgenceVoyageDetailsScreen);
+const TicketVoyageHomeScreenWithSafeArea = withNavigatorSafeArea(TicketVoyageHomeScreen);
 const CovoiturageSearchScreenWithSafeArea = withNavigatorSafeArea(CovoiturageSearchScreen);
+const CovoiturageHomeScreenWithSafeArea = withNavigatorSafeArea(CovoiturageHomeScreen);
 const CovoiturageListScreenWithSafeArea = withNavigatorSafeArea(CovoiturageListScreen);
 const CovoiturageBookingScreenWithSafeArea = withNavigatorSafeArea(CovoiturageBookingScreen);
 const CovoiturageDetailsScreenWithSafeArea = withNavigatorSafeArea(CovoiturageDetailsScreen);
@@ -257,6 +275,7 @@ const SpecializedSearchScreenWithSafeArea = withNavigatorSafeArea(SpecializedSea
 const SpecializedServicesHubScreenWithSafeArea = withNavigatorSafeArea(SpecializedServicesHubScreen);
 // ✅ NOUVEAU 2025-01-28: Bourse du livre scolaire
 const LivreScolaireSearchScreenWithSafeArea = withNavigatorSafeArea(LivreScolaireSearchScreen);
+const LivreScolaireHomeScreenWithSafeArea = withNavigatorSafeArea(LivreScolaireHomeScreen);
 const LivreScolaireListScreenWithSafeArea = withNavigatorSafeArea(LivreScolaireListScreen);
 const LivreScolaireDetailsScreenWithSafeArea = withNavigatorSafeArea(LivreScolaireDetailsScreen);
 const LivreScolaireFormScreenWithSafeArea = withNavigatorSafeArea(LivreScolaireFormScreen);
@@ -276,6 +295,8 @@ const TrocLiveValidationScreenWithSafeArea = withNavigatorSafeArea(TrocLiveValid
 const MesTrocsScreenWithSafeArea = withNavigatorSafeArea(MesTrocsScreen);
 // ✅ NOUVEAU: Immobilier
 const ImmobilierSearchScreenWithSafeArea = withNavigatorSafeArea(ImmobilierSearchScreen);
+const ImmobilierHomeScreenWithSafeArea = withNavigatorSafeArea(ImmobilierHomeScreen);
+const ImmobilierFormScreenWithSafeArea = withNavigatorSafeArea(ImmobilierFormScreen);
 const ImmobilierListScreenWithSafeArea = withNavigatorSafeArea(ImmobilierListScreen);
 const ImmobilierDetailsScreenWithSafeArea = withNavigatorSafeArea(ImmobilierDetailsScreen);
 const ImmobilierBookingScreenWithSafeArea = withNavigatorSafeArea(ImmobilierBookingScreen);
@@ -289,8 +310,8 @@ const CreateOffreScreenWithSafeArea = withNavigatorSafeArea(CreateOffreScreen);
 const ProfilCandidatScreenWithSafeArea = withNavigatorSafeArea(ProfilCandidatScreen);
 // ✅ NOUVEAU 2025-01-27: Bourse du Livre avec SafeArea
 const BourseLivreScreenWithSafeArea = withNavigatorSafeArea(BourseLivreScreen);
-// ✅ NOUVEAU: BayamSelam, Automobile, Assurance avec SafeArea
-const BayamSelamSearchScreenWithSafeArea = withNavigatorSafeArea(BayamSelamSearchScreen);
+// ✅ NOUVEAU: BayamSelam = SupermarketHome (même écran)
+const SupermarketHomeScreenWithSafeArea = withNavigatorSafeArea(SupermarketHomeScreen);
 const AutoServicesSearchScreenWithSafeArea = withNavigatorSafeArea(AutoServicesSearchScreen);
 const InsuranceServicesSearchScreenWithSafeArea = withNavigatorSafeArea(InsuranceServicesSearchScreen);
 const ReservationScreenWithSafeArea = withNavigatorSafeArea(ReservationScreen);
@@ -342,6 +363,8 @@ const DashboardPrestataireScreenWithSafeArea = withNavigatorSafeArea(DashboardPr
 const CourierDashboardScreenWithSafeArea = withNavigatorSafeArea(require('../screens/delivery/CourierDashboardScreen').default);
 // ✅ NOUVEAU 2025-01-27: Planification Menus
 const MenuPlanningHubScreenWithSafeArea = withNavigatorSafeArea(MenuPlanningHubScreen);
+const FamilyProfileScreenWithSafeArea = withNavigatorSafeArea(FamilyProfileScreen);
+const RecipeSearchScreenWithSafeArea = withNavigatorSafeArea(RecipeSearchScreen);
 const MenuWeekCalendarScreenWithSafeArea = withNavigatorSafeArea(MenuWeekCalendarScreen);
 const ShoppingListScreenWithSafeArea = withNavigatorSafeArea(ShoppingListScreen);
 const RecipeDetailsScreenWithSafeArea = withNavigatorSafeArea(RecipeDetailsScreen);
@@ -392,8 +415,8 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
     'videocreationintro': '➕', // ✅ NOUVEAU: Bouton création vidéo
     'videos': '📹',
     'videosfeed': '📹',
-    'services': '📦', // ✅ MODIFIÉ: Icône package pour Mes Services
-    'mesproduits': '📦', // ✅ NOUVEAU: Alias pour Mes Services
+    'services': '📋', // ✅ MODIFIÉ: Icône clipboard/list pour Mes Services (plus adapté que package)
+    'mesproduits': '📋', // ✅ MODIFIÉ: Alias pour Mes Services avec icône clipboard/list
     'dashboard': '📊',
     'history': '📋',
     'profile': '👤',
@@ -876,7 +899,21 @@ const SecondaryStack = () => {
         <Stack.Screen name="CovoiturageForm" component={CovoiturageFormScreenWithSafeArea} />
         <Stack.Screen name="TaxiForm" component={TaxiFormScreenWithSafeArea} />
         {/* ✅ Phase 3: Routes recherche Taxi et Covoiturage */}
-        <Stack.Screen name="TaxiSearch" component={TaxiSearchScreenWithSafeArea} />
+        <Stack.Screen 
+          name="TaxiSearch" 
+          component={TaxiHomeScreenWithSafeArea}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
+          name="TaxiSearchAdvanced" 
+          component={TaxiSearchScreenWithSafeArea}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Recherche Taxi',
+          }}
+        />
         <Stack.Screen name="TaxiIntelligentSearch" component={TaxiIntelligentSearchScreenWithSafeArea} />
         <Stack.Screen name="TaxiList" component={TaxiListScreenWithSafeArea} />
         <Stack.Screen name="TaxiDetails" component={TaxiDetailsScreenWithSafeArea} />
@@ -884,11 +921,14 @@ const SecondaryStack = () => {
         <Stack.Screen name="TaxiAvailability" component={TaxiAvailabilityScreenWithSafeArea} />
         <Stack.Screen name="MesTaxis" component={MesTaxisScreenWithSafeArea} />
         {/* ✅ Phase 3: Hôpitaux */}
-        <Stack.Screen name="HopitalSearch" component={HopitalSearchScreenWithSafeArea} />
+        <Stack.Screen name="HopitalSearch" component={HopitalHomeScreenWithSafeArea} />
+        <Stack.Screen name="HopitalSearchAdvanced" component={HopitalSearchScreenWithSafeArea} />
         {/* ✅ NOUVEAU: Routes Immobilier */}
-        <Stack.Screen name="ImmobilierSearch" component={ImmobilierSearchScreenWithSafeArea} />
+        <Stack.Screen name="ImmobilierSearch" component={ImmobilierHomeScreenWithSafeArea} />
+        <Stack.Screen name="ImmobilierSearchAdvanced" component={ImmobilierSearchScreenWithSafeArea} />
         <Stack.Screen name="ImmobilierList" component={ImmobilierListScreenWithSafeArea} />
         <Stack.Screen name="ImmobilierDetails" component={ImmobilierDetailsScreenWithSafeArea} />
+        <Stack.Screen name="ImmobilierForm" component={ImmobilierFormScreenWithSafeArea} />
         <Stack.Screen name="ImmobilierBooking" component={ImmobilierBookingScreenWithSafeArea} />
         <Stack.Screen name="ImmobilierCompare" component={ImmobilierCompareScreenWithSafeArea} />
         <Stack.Screen name="MyFavorites" component={MyFavoritesScreenWithSafeArea} />
@@ -896,11 +936,13 @@ const SecondaryStack = () => {
         <Stack.Screen name="HopitalList" component={HopitalListScreenWithSafeArea} />
         <Stack.Screen name="HopitalDetails" component={HopitalDetailsScreenWithSafeArea} />
         {/* ✅ Phase 3: Laboratoires */}
-        <Stack.Screen name="LaboratoireSearch" component={LaboratoireSearchScreenWithSafeArea} />
+        <Stack.Screen name="LaboratoireSearch" component={LaboratoireHomeScreenWithSafeArea} />
+        <Stack.Screen name="LaboratoireSearchAdvanced" component={LaboratoireSearchScreenWithSafeArea} />
         <Stack.Screen name="LaboratoireList" component={LaboratoireListScreenWithSafeArea} />
         <Stack.Screen name="LaboratoireDetails" component={LaboratoireDetailsScreenWithSafeArea} />
         {/* ✅ NOUVEAU: Pharmacie */}
-        <Stack.Screen name="PharmacieSearch" component={PharmacieSearchScreenWithSafeArea} />
+        <Stack.Screen name="PharmacieSearch" component={PharmacieHomeScreenWithSafeArea} />
+        <Stack.Screen name="PharmacieSearchAdvanced" component={PharmacieSearchScreenWithSafeArea} />
         <Stack.Screen name="PharmacieList" component={PharmacieListScreenWithSafeArea} />
         <Stack.Screen name="PharmacieDetails" component={PharmacieDetailsScreenWithSafeArea} />
         {/* ✅ NOUVEAU: Hub services de santé */}
@@ -913,7 +955,21 @@ const SecondaryStack = () => {
         <Stack.Screen name="AgenceVoyageSearch" component={AgenceVoyageSearchScreenWithSafeArea} />
         <Stack.Screen name="AgenceVoyageList" component={AgenceVoyageListScreenWithSafeArea} />
         <Stack.Screen name="AgenceVoyageDetails" component={AgenceVoyageDetailsScreenWithSafeArea} />
-        <Stack.Screen name="CovoiturageSearch" component={CovoiturageSearchScreenWithSafeArea} />
+        <Stack.Screen 
+          name="CovoiturageSearch" 
+          component={CovoiturageHomeScreenWithSafeArea}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
+          name="CovoiturageSearchAdvanced" 
+          component={CovoiturageSearchScreenWithSafeArea}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Recherche Covoiturage',
+          }}
+        />
         <Stack.Screen name="CovoiturageList" component={CovoiturageListScreenWithSafeArea} />
         <Stack.Screen name="CovoiturageDetails" component={CovoiturageDetailsScreenWithSafeArea} />
         <Stack.Screen name="CovoiturageBooking" component={CovoiturageBookingScreenWithSafeArea} />
@@ -921,6 +977,10 @@ const SecondaryStack = () => {
         {/* ✅ NOUVEAU 2025-01-28: Routes Bourse du livre scolaire */}
         <Stack.Screen
           name="LivreScolaireSearch"
+          component={LivreScolaireHomeScreenWithSafeArea}
+        />
+        <Stack.Screen
+          name="LivreScolaireSearchAdvanced"
           component={LivreScolaireSearchScreenWithSafeArea}
           options={{
             ...defaultScreenOptions,
@@ -994,6 +1054,13 @@ const SecondaryStack = () => {
         {/* ✅ NOUVEAU 2025-01-28: Orientation scolaire */}
         <Stack.Screen
           name="OrientationScolaireHub"
+          component={OrientationScolaireHomeScreenWithSafeArea}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="OrientationScolaireHubAdvanced"
           component={OrientationScolaireHubScreenWithSafeArea}
           options={{
             ...defaultScreenOptions,
@@ -1072,6 +1139,22 @@ const SecondaryStack = () => {
           options={{
             ...defaultScreenOptions,
             title: 'Planification Menus',
+          }}
+        />
+        <Stack.Screen
+          name="FamilyProfile"
+          component={FamilyProfileScreenWithSafeArea}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Profil Famille',
+          }}
+        />
+        <Stack.Screen
+          name="RecipeSearch"
+          component={RecipeSearchScreenWithSafeArea}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Recherche de Recettes',
           }}
         />
         <Stack.Screen
@@ -1159,10 +1242,17 @@ const SecondaryStack = () => {
         {/* ✅ NOUVEAU 2025-01-28: Routes offres d'emploi */}
         <Stack.Screen
           name="OffresEmploiHub"
+          component={OffresEmploiHomeScreenWithSafeArea}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="OffresEmploiHubAdvanced"
           component={OffresEmploiHubScreenWithSafeArea}
           options={{
             ...defaultScreenOptions,
-            title: 'Offres d\'Emploi',
+            title: 'Hub Emploi',
           }}
         />
         <Stack.Screen
@@ -1271,14 +1361,35 @@ const SecondaryStack = () => {
         {/* ✅ NOUVEAU: Écrans tickets bus */}
         <Stack.Screen
           name="BusTicketSearch"
-          component={withNavigatorSafeArea(BusTicketSearchScreen)}
-          options={{ title: 'Rechercher un trajet' }}
+          component={TicketVoyageHomeScreenWithSafeArea}
+          options={{ headerShown: false }}
         />
-        {/* ✅ NOUVEAU: BayamSelam, Automobile, Assurance */}
+        <Stack.Screen
+          name="BusTicketSearchAdvanced"
+          component={withNavigatorSafeArea(BusTicketSearchScreen)}
+          options={{ title: 'Recherche avancée' }}
+        />
+        {/* ✅ NOUVEAU: BayamSelam = SupermarketHome (même écran professionnel) */}
         <Stack.Screen
           name="BayamSelamSearch"
-          component={BayamSelamSearchScreenWithSafeArea}
-          options={{ title: 'BayamSelam - Comparateur de prix' }}
+          component={SupermarketHomeScreenWithSafeArea}
+          options={{
+            headerShown: false,
+          }}
+        />
+        {/* ✅ BayamSelamSearchAdvanced redirige aussi vers SupermarketHome */}
+        <Stack.Screen
+          name="BayamSelamSearchAdvanced"
+          component={SupermarketHomeScreenWithSafeArea}
+          options={{ title: 'BayamSelam - Comparateur de prix', headerShown: false }}
+        />
+        <Stack.Screen
+          name="SupermarketHome"
+          component={SupermarketHomeScreenWithSafeArea}
+          options={{ title: 'Supermarché', headerShown: false }}
+          options={{
+            headerShown: false,
+          }}
         />
         <Stack.Screen
           name="AutoServicesSearch"
@@ -1579,6 +1690,7 @@ const AppNavigator: React.FC = () => {
     console.log('[AppNavigator] 🏢 Mode Partenaire - Redirection vers écran spécialisé');
     // Rediriger vers l'écran de gestion du service spécialisé selon le type
     const partnerTypeToScreen: Record<string, string> = {
+      'banquesang': 'BanqueSangForm', // ✅ NOUVEAU: Type partenaire banque de sang
       'pharmacie': 'PharmacieForm',
       'hopital': 'HopitalForm',
       'laboratoire': 'LaboratoireForm',

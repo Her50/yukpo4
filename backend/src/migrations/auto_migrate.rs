@@ -9719,9 +9719,25 @@ pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Er
     if table_exists {
         info!("✅ Table service_products déjà présente");
         
-        // Vérifier et ajouter les colonnes manquantes si nécessaire (pour migrations incrémentales)
-        // Pour l'instant, on suppose que si la table existe, elle a déjà la bonne structure
-        // Des migrations futures pourront ajouter des colonnes si nécessaire
+        // ✅ CORRIGÉ: Créer les index même si la table existe déjà (au cas où ils manqueraient)
+        info!("🔍 Vérification des index service_products...");
+        
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_service_id ON service_products(service_id)")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_active ON service_products(is_active) WHERE is_active = true")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_type ON service_products(product_type)")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_name_gin ON service_products USING GIN(to_tsvector('french', product_name))")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_data_gin ON service_products USING GIN(product_data)")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_service_index ON service_products(service_id, product_index)")
+            .execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_created_at ON service_products(created_at DESC)")
+            .execute(pool).await?;
+        
+        info!("✅ Index service_products vérifiés/créés");
     } else {
         warn!("⚠️ Table service_products manquante, création en cours...");
         

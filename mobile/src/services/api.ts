@@ -163,9 +163,29 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   retryableErrors: ['Network request failed', 'Failed to fetch', 'AbortError'],
 };
 
-const shouldRetry = (error: any, status?: number, config: RetryConfig = DEFAULT_RETRY_CONFIG): boolean => {
+const shouldRetry = (error: any, status?: number, config: RetryConfig = DEFAULT_RETRY_CONFIG, endpoint?: string): boolean => {
+  // ✅ AMÉLIORÉ 2026-01-06: Ne pas retry les timeouts sur les endpoints IA longs
+  // Si c'est un timeout sur un endpoint qui a déjà un timeout long (120s+), 
+  // retry ne servira probablement pas (le backend a vraiment un problème)
+  const isLongTimeoutEndpoint = endpoint && (
+    endpoint.includes('/menus/ai/generate-week') ||
+    endpoint.includes('/preview') ||
+    endpoint.includes('/preview/short') ||
+    endpoint.includes('/services/create')
+  );
+  
   // ✅ NOUVEAU: Retry pour les codes d'erreur spécifiques (TIMEOUT, NETWORK_ERROR)
-  if (error?.code === 'TIMEOUT' || error?.code === 'NETWORK_ERROR') {
+  // Mais pas pour les endpoints avec timeout long (timeout réel = problème backend)
+  if (error?.code === 'TIMEOUT') {
+    // Pour les endpoints avec timeout long, ne pas retry (problème backend réel)
+    if (isLongTimeoutEndpoint) {
+      return false;
+    }
+    // Pour les autres endpoints, retry (peut être erreur réseau temporaire)
+    return true;
+  }
+  
+  if (error?.code === 'NETWORK_ERROR') {
     return true;
   }
 
@@ -177,6 +197,10 @@ const shouldRetry = (error: any, status?: number, config: RetryConfig = DEFAULT_
   // Retry pour les erreurs réseau (vérifier message et toString)
   const errorMessage = error?.message || error?.error || error?.toString() || '';
   if (config.retryableErrors?.some(err => errorMessage.includes(err))) {
+    // ✅ AMÉLIORÉ: Ne pas retry AbortError sur endpoints avec timeout long
+    if (errorMessage.includes('AbortError') && isLongTimeoutEndpoint) {
+      return false;
+    }
     return true;
   }
 
@@ -213,11 +237,11 @@ const apiCallWithRetry = async <T>(
 
       // Si erreur, vérifier si on doit retry
       lastStatus = result.status;
-      // ✅ AMÉLIORÉ: Passer aussi le code d'erreur à shouldRetry
+      // ✅ AMÉLIORÉ: Passer aussi le code d'erreur et l'endpoint à shouldRetry
       const errorToCheck = { ...result, error: result.error || result, code: result.code };
       
       // ✅ CORRIGÉ: Vérifier si on doit retry AVANT de retourner l'erreur
-      if (attempt < maxRetries && shouldRetry(errorToCheck, lastStatus, retryConfig)) {
+      if (attempt < maxRetries && shouldRetry(errorToCheck, lastStatus, retryConfig, endpoint)) {
         // Calculer le délai avec backoff exponentiel (1s, 2s, 4s)
         const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10s
         console.log(`[Mobile API] ⚠️ Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint} (code: ${result.code || 'N/A'}, status: ${result.status || 'N/A'})`);
@@ -234,7 +258,7 @@ const apiCallWithRetry = async <T>(
       lastError = error;
       
       // Vérifier si on doit retry
-      if (attempt < maxRetries && shouldRetry(error, undefined, retryConfig)) {
+      if (attempt < maxRetries && shouldRetry(error, undefined, retryConfig, endpoint)) {
         const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000);
         console.log(`[Mobile API] Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint}`);
         await delay(delayMs);
@@ -301,25 +325,28 @@ const apiCallInternal = async <T>(
     // ✅ CORRIGÉ 2025-12-23: 30s pour /api/mobile-logs (traitement batch peut prendre du temps)
     // ✅ CORRIGÉ 2025-12-23: 30s pour /api/services/*/reviews et /stats (peuvent être lents)
     // ✅ CORRIGÉ 2026-01-02: 120s (2min) pour preview/short (génération vidéo peut prendre 60-90s)
-    const timeoutDuration = endpoint.includes('/services/create')
-      ? 180000
-      : endpoint.includes('/ia/creation-service')
-        ? 90000  // ✅ AUGMENTÉ: 90s pour supporter traitement images + appel IA multimodal
-        : endpoint.includes('/ia/video/timeline-variants')
-          ? 60000  // ✅ 60s pour timeline-variants (génération de variantes peut prendre du temps)
-          : endpoint.includes('/services/') && endpoint.includes('/products')
-            ? 180000  // ✅ AUGMENTÉ: 180s (3min) pour création/modification produit (le backend peut prendre du temps même sans médias)
-            : endpoint.includes('/preview') || endpoint.includes('/preview/short')
-              ? 120000  // ✅ CORRIGÉ 2026-01-02: 120s (2min) pour preview (génération vidéo peut prendre 60-90s)
-            : endpoint.includes('/search/direct')
-              ? 30000  // ✅ 30s pour recherche par image (analyse IA + recherche SQL peut prendre 20-25s)
-            : endpoint.includes('/mobile-logs')
-              ? 30000  // ✅ 30s pour logs mobiles (traitement batch peut prendre du temps)
-            : endpoint.includes('/services/') && (endpoint.includes('/reviews') || endpoint.includes('/stats'))
-              ? 30000  // ✅ 30s pour reviews et stats (peuvent être lents)
-            : endpoint.includes('/prestataire/services')
-              ? 30000  // ✅ 30s pour chargement services (peut être lent avec cache Redis)
-              : 15000;
+    // ✅ CORRIGÉ 2026-01-06: 120s (2min) pour /api/menus/ai/generate-week (génération menu IA peut prendre 60-90s avec géocodage + IA)
+    const timeoutDuration = endpoint.includes('/menus/ai/generate-week')
+      ? 120000  // ✅ CORRIGÉ 2026-01-06: 120s (2min) pour génération menu IA (géocodage + DB + IA peut prendre 60-90s)
+      : endpoint.includes('/services/create')
+        ? 180000
+        : endpoint.includes('/ia/creation-service')
+          ? 90000  // ✅ AUGMENTÉ: 90s pour supporter traitement images + appel IA multimodal
+          : endpoint.includes('/ia/video/timeline-variants')
+            ? 60000  // ✅ 60s pour timeline-variants (génération de variantes peut prendre du temps)
+            : endpoint.includes('/services/') && endpoint.includes('/products')
+              ? 180000  // ✅ AUGMENTÉ: 180s (3min) pour création/modification produit (le backend peut prendre du temps même sans médias)
+              : endpoint.includes('/preview') || endpoint.includes('/preview/short')
+                ? 120000  // ✅ CORRIGÉ 2026-01-02: 120s (2min) pour preview (génération vidéo peut prendre 60-90s)
+              : endpoint.includes('/search/direct')
+                ? 30000  // ✅ 30s pour recherche par image (analyse IA + recherche SQL peut prendre 20-25s)
+              : endpoint.includes('/mobile-logs')
+                ? 30000  // ✅ 30s pour logs mobiles (traitement batch peut prendre du temps)
+              : endpoint.includes('/services/') && (endpoint.includes('/reviews') || endpoint.includes('/stats'))
+                ? 30000  // ✅ 30s pour reviews et stats (peuvent être lents)
+              : endpoint.includes('/prestataire/services')
+                ? 30000  // ✅ 30s pour chargement services (peut être lent avec cache Redis)
+                : 15000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {

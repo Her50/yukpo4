@@ -1,0 +1,1915 @@
+// ✅ Écran Pharmacie MODERNE - Refonte complète avec UX de niveau mondial
+// ÉTAPE 1: Structure de base et header
+
+import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import SafeIcon from '../../components/SafeIcon';
+import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLocation } from '../../contexts/LocationContext';
+import { pharmacyProductService, PharmacyProduct, ProductSearchFilters } from '../../services/pharmacyProductService';
+import { pharmacyService, DosageRecommendation, MedicationInteraction } from '../../services/pharmacyService';
+import { modernColors } from '../../theme/modernTheme';
+import { hapticPress } from '../../utils/hapticFeedback';
+
+type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
+
+const PharmacieHomeScreen: React.FC = () => {
+    const navigation = useNavigation();
+    const { location } = useLocation();
+
+    // États de recherche
+    const [searchQuery, setSearchQuery] = useState('');
+    const [medications, setMedications] = useState<PharmacyProduct[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [totalResults, setTotalResults] = useState(0);
+
+    // États UI
+    const [sortBy, setSortBy] = useState<SortOption>('relevance');
+    const [showFilters, setShowFilters] = useState(false);
+    const [showSortModal, setShowSortModal] = useState(false);
+    const [searchFocused, setSearchFocused] = useState(false);
+
+    // États de filtres
+    const [filters, setFilters] = useState<ProductSearchFilters>({
+        query: '',
+        only_available: true,
+        limit: 20,
+    });
+    const [activeFiltersCount, setActiveFiltersCount] = useState(0);
+
+    // États pour modals IA
+    const [selectedMedication, setSelectedMedication] = useState<PharmacyProduct | null>(null);
+    const [showDosageModal, setShowDosageModal] = useState(false);
+    const [showInteractionsModal, setShowInteractionsModal] = useState(false);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [dosageData, setDosageData] = useState<DosageRecommendation | null>(null);
+    const [interactionsData, setInteractionsData] = useState<MedicationInteraction | null>(null);
+    const [loadingAI, setLoadingAI] = useState(false);
+
+    const sortOptions: { value: SortOption; label: string; icon: string }[] = [
+        { value: 'relevance', label: 'Pertinence', icon: 'star' },
+        { value: 'price_asc', label: 'Prix croissant', icon: 'arrow-up' },
+        { value: 'price_desc', label: 'Prix décroissant', icon: 'arrow-down' },
+        { value: 'distance_asc', label: 'Plus proche', icon: 'map-pin' },
+        { value: 'name_asc', label: 'Nom (A-Z)', icon: 'sort-alpha' },
+    ];
+
+    // Quick filters
+    const quickFilters = [
+        { id: 'proche', label: 'Proche de moi', icon: 'map-pin', distance: 10 },
+        { id: 'disponible', label: 'Disponibles', icon: 'check-circle', available: true },
+        { id: 'prix_bas', label: 'Prix bas', icon: 'tag' },
+    ];
+
+    // Initialiser avec localisation GPS
+    useEffect(() => {
+        if (location?.coords) {
+            setFilters(prev => ({
+                ...prev,
+                lat: location.coords.latitude,
+                lng: location.coords.longitude,
+                radius_km: 20,
+            }));
+        }
+    }, [location]);
+
+    // Charger les médicaments disponibles à l'ouverture
+    useEffect(() => {
+        loadMedications(true);
+    }, []);
+
+    // Compter les filtres actifs
+    useEffect(() => {
+        let count = 0;
+        if (filters.min_price || filters.max_price) count++;
+        if (filters.radius_km && filters.radius_km < 50) count++;
+        if (filters.only_available) count++;
+        setActiveFiltersCount(count);
+    }, [filters]);
+
+    // Charger les médicaments
+    const loadMedications = useCallback(async (initialLoad: boolean = false) => {
+        try {
+            if (initialLoad) {
+                setLoading(true);
+                setError(null);
+            }
+
+            const searchFilters: ProductSearchFilters = {
+                ...filters,
+                query: searchQuery.trim() || 'médicament', // Par défaut, chercher "médicament" pour afficher des résultats
+            };
+
+            const response = await pharmacyProductService.searchProducts(searchFilters);
+            
+            if (response.success && response.data?.products) {
+                let results = response.data.products;
+                
+                // Limiter à 20 résultats pour l'affichage initial
+                if (initialLoad && results.length > 20) {
+                    results = results.slice(0, 20);
+                }
+
+                // Tri côté client
+                if (sortBy !== 'relevance') {
+                    results = [...results].sort((a, b) => {
+                        switch (sortBy) {
+                            case 'price_asc':
+                                return (a.prix || 0) - (b.prix || 0);
+                            case 'price_desc':
+                                return (b.prix || 0) - (a.prix || 0);
+                            case 'distance_asc':
+                                const distA = a.distance_km || Infinity;
+                                const distB = b.distance_km || Infinity;
+                                return distA - distB;
+                            case 'name_asc':
+                                return a.nom_produit.localeCompare(b.nom_produit);
+                            default:
+                                return 0;
+                        }
+                    });
+                }
+                
+                setMedications(results);
+                setTotalResults(results.length);
+            } else {
+                setError('Aucun médicament trouvé');
+                setMedications([]);
+            }
+        } catch (err: any) {
+            console.error('[PharmacieHomeScreen] Erreur chargement:', err);
+            setError(err.message || 'Erreur lors du chargement');
+            setMedications([]);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, [filters, searchQuery, sortBy]);
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        loadMedications(false);
+    };
+
+    const handleMedicationPress = (medication: PharmacyProduct) => {
+        hapticPress();
+        setSelectedMedication(medication);
+        setShowDetailsModal(true);
+    };
+
+    const handleQuickFilter = (filter: typeof quickFilters[0]) => {
+        hapticPress();
+        if (filter.distance) {
+            setFilters(prev => ({
+                ...prev,
+                radius_km: filter.distance,
+            }));
+        }
+        if (filter.available !== undefined) {
+            setFilters(prev => ({
+                ...prev,
+                only_available: filter.available,
+            }));
+        }
+        if (filter.id === 'prix_bas') {
+            setSortBy('price_asc');
+        }
+        loadMedications(false);
+    };
+
+    const clearFilters = () => {
+        hapticPress();
+        setFilters({
+            query: '',
+            only_available: true,
+            limit: 20,
+            lat: location?.coords?.latitude,
+            lng: location?.coords?.longitude,
+            radius_km: 20,
+        });
+        setSearchQuery('');
+        loadMedications(false);
+    };
+
+    const handleSearch = () => {
+        hapticPress();
+        loadMedications(false);
+    };
+
+    // Fonctions IA
+    const handleGetDosage = async (medication: PharmacyProduct) => {
+        hapticPress();
+        setSelectedMedication(medication);
+        setLoadingAI(true);
+        setShowDosageModal(true);
+        
+        try {
+            const response = await pharmacyService.suggestDosage(medication.nom_produit);
+            if (response.success && response.data?.dosage) {
+                setDosageData(response.data.dosage);
+            } else {
+                // Fallback si le backend retourne un format différent
+                const dosage = response.data as any;
+                if (dosage?.dosage || dosage?.frequency) {
+                    setDosageData({
+                        dosage: dosage.dosage || 'Consultez votre médecin',
+                        frequency: dosage.frequency || 'Selon prescription',
+                        duration: dosage.duration || 'Selon prescription',
+                        precautions: [],
+                        warnings: [],
+                    });
+                }
+            }
+        } catch (err: any) {
+            console.error('[PharmacieHomeScreen] Erreur posologie:', err);
+        } finally {
+            setLoadingAI(false);
+        }
+    };
+
+    const handleCheckInteractions = async (medication: PharmacyProduct) => {
+        hapticPress();
+        setSelectedMedication(medication);
+        setLoadingAI(true);
+        setShowInteractionsModal(true);
+        
+        try {
+            const response = await pharmacyService.checkInteractions([medication.nom_produit]);
+            if (response.success && response.data?.interaction) {
+                setInteractionsData(response.data.interaction);
+            } else {
+                // Fallback si le backend retourne un format différent
+                const interaction = response.data as any;
+                if (interaction?.severity || interaction?.description) {
+                    setInteractionsData({
+                        severity: interaction.severity || 'none',
+                        description: interaction.description || 'Aucune interaction connue',
+                        recommendation: interaction.recommendation || 'Consultez votre pharmacien',
+                        alternative_suggestions: interaction.alternative_suggestions || [],
+                    });
+                }
+            }
+        } catch (err: any) {
+            console.error('[PharmacieHomeScreen] Erreur interactions:', err);
+        } finally {
+            setLoadingAI(false);
+        }
+    };
+
+    const formatPrice = (price?: number) => {
+        if (!price) return 'Prix sur demande';
+        return `${price.toLocaleString()} FCFA`;
+    };
+
+    return (
+        <SafeNativeView style={styles.container}>
+            {/* Header sticky avec recherche */}
+            <View style={styles.headerContainer}>
+                <LinearGradient
+                    colors={['#10B981', '#34D399']}
+                    style={styles.headerGradient}
+                >
+                    <View style={styles.headerTop}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                hapticPress();
+                                navigation.goBack();
+                            }}
+                            style={styles.backButton}
+                        >
+                            <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
+                        </TouchableOpacity>
+                        <View style={styles.headerTitleContainer}>
+                            <Text style={styles.headerTitle}>Pharmacie</Text>
+                            {totalResults > 0 && (
+                                <Text style={styles.headerSubtitle}>
+                                    {totalResults} médicament{totalResults > 1 ? 's' : ''} disponible{totalResults > 1 ? 's' : ''}
+                                </Text>
+                            )}
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => {
+                                hapticPress();
+                                setShowFilters(!showFilters);
+                            }}
+                            style={styles.filterButton}
+                        >
+                            <SafeIcon 
+                                name="sliders-h" 
+                                size={22} 
+                                color="#FFFFFF" 
+                                type="lucide" 
+                            />
+                            {activeFiltersCount > 0 && (
+                                <View style={styles.filterBadge}>
+                                    <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Barre de recherche */}
+                    <View style={styles.searchContainer}>
+                        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
+                            <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Rechercher un médicament..."
+                                placeholderTextColor="#9CA3AF"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                onSubmitEditing={handleSearch}
+                                onFocus={() => setSearchFocused(true)}
+                                onBlur={() => setSearchFocused(false)}
+                                returnKeyType="search"
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setSearchQuery('');
+                                        handleSearch();
+                                    }}
+                                    style={styles.clearButton}
+                                >
+                                    <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </View>
+                </LinearGradient>
+
+                {/* Quick filters */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.quickFiltersContainer}
+                    style={styles.quickFiltersScroll}
+                >
+                    {quickFilters.map((filter) => (
+                        <TouchableOpacity
+                            key={filter.id}
+                            style={styles.quickFilterChip}
+                            onPress={() => handleQuickFilter(filter)}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon name={filter.icon} size={16} color="#10B981" type="lucide" />
+                            <Text style={styles.quickFilterText}>{filter.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                {/* Barre d'actions (tri) */}
+                <View style={styles.actionsBar}>
+                    <TouchableOpacity
+                        style={styles.sortButton}
+                        onPress={() => {
+                            hapticPress();
+                            setShowSortModal(true);
+                        }}
+                    >
+                        <SafeIcon name="arrow-up-down" size={18} color="#6B7280" type="lucide" />
+                        <Text style={styles.sortButtonText}>
+                            {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Liste des médicaments */}
+            {loading && medications.length === 0 ? (
+                <View style={styles.centerContainer}>
+                    <ActivityIndicator size="large" color={modernColors.primary} />
+                    <Text style={styles.loadingText}>Recherche de médicaments...</Text>
+                </View>
+            ) : error && medications.length === 0 ? (
+                <View style={styles.centerContainer}>
+                    <SafeIcon name="pill" size={64} color="#9CA3AF" />
+                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={styles.errorSubtext}>
+                        Essayez de modifier vos critères de recherche
+                    </Text>
+                    {activeFiltersCount > 0 && (
+                        <TouchableOpacity
+                            style={styles.clearFiltersButton}
+                            onPress={clearFilters}
+                        >
+                            <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            ) : (
+                <FlatList
+                    data={medications}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
+                        <MedicationCard
+                            medication={item}
+                            onPress={() => handleMedicationPress(item)}
+                            onGetDosage={() => handleGetDosage(item)}
+                            onCheckInteractions={() => handleCheckInteractions(item)}
+                            formatPrice={formatPrice}
+                        />
+                    )}
+                    contentContainerStyle={styles.listContent}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            colors={[modernColors.primary]}
+                        />
+                    }
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <SafeIcon name="pill" size={64} color="#9CA3AF" />
+                            <Text style={styles.emptyText}>Aucun médicament trouvé</Text>
+                            <Text style={styles.emptySubtext}>
+                                Essayez de modifier vos critères de recherche
+                            </Text>
+                            {activeFiltersCount > 0 && (
+                                <TouchableOpacity
+                                    style={styles.clearFiltersButton}
+                                    onPress={clearFilters}
+                                >
+                                    <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    }
+                />
+            )}
+
+            {/* Modal de filtres avancés */}
+            <FiltersModal
+                visible={showFilters}
+                onClose={() => setShowFilters(false)}
+                filters={filters}
+                onFiltersChange={setFilters}
+                location={location}
+                onSearch={handleSearch}
+            />
+
+            {/* Modal de tri */}
+            <SortModal
+                visible={showSortModal}
+                onClose={() => setShowSortModal(false)}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                sortOptions={sortOptions}
+            />
+
+            {/* Modal Posologie IA */}
+            <DosageModal
+                visible={showDosageModal}
+                onClose={() => {
+                    setShowDosageModal(false);
+                    setDosageData(null);
+                }}
+                medication={selectedMedication}
+                dosage={dosageData}
+                loading={loadingAI}
+            />
+
+            {/* Modal Interactions IA */}
+            <InteractionsModal
+                visible={showInteractionsModal}
+                onClose={() => {
+                    setShowInteractionsModal(false);
+                    setInteractionsData(null);
+                }}
+                medication={selectedMedication}
+                interactions={interactionsData}
+                loading={loadingAI}
+            />
+
+            {/* Modal Détails Médicament */}
+            <MedicationDetailsModal
+                visible={showDetailsModal}
+                onClose={() => {
+                    setShowDetailsModal(false);
+                    setSelectedMedication(null);
+                }}
+                medication={selectedMedication}
+                onGetDosage={() => {
+                    setShowDetailsModal(false);
+                    handleGetDosage(selectedMedication!);
+                }}
+                onCheckInteractions={() => {
+                    setShowDetailsModal(false);
+                    handleCheckInteractions(selectedMedication!);
+                }}
+            />
+        </SafeNativeView>
+    );
+};
+
+// Composant Card pour un médicament - À compléter
+interface MedicationCardProps {
+    medication: PharmacyProduct;
+    onPress: () => void;
+    onGetDosage: () => void;
+    onCheckInteractions: () => void;
+    formatPrice: (price?: number) => string;
+}
+
+const MedicationCard: React.FC<MedicationCardProps> = ({ 
+    medication, 
+    onPress, 
+    onGetDosage, 
+    onCheckInteractions,
+    formatPrice 
+}) => {
+    return (
+        <TouchableOpacity style={styles.medicationCard} onPress={onPress} activeOpacity={0.7}>
+            <View style={styles.medicationHeader}>
+                <View style={styles.medicationHeaderLeft}>
+                    <View style={styles.medicationIconContainer}>
+                        <SafeIcon name="pill" size={24} color="#10B981" type="lucide" />
+                    </View>
+                    <View style={styles.medicationInfo}>
+                        <Text style={styles.medicationName} numberOfLines={2}>
+                            {medication.nom_produit}
+                        </Text>
+                        {medication.categorie && (
+                            <Text style={styles.medicationCategory}>{medication.categorie}</Text>
+                        )}
+                    </View>
+                </View>
+                {medication.stock > 0 && (
+                    <View style={styles.stockBadge}>
+                        <Text style={styles.stockText}>
+                            {medication.stock} {medication.unite}
+                        </Text>
+                    </View>
+                )}
+            </View>
+
+            {medication.description && (
+                <Text style={styles.medicationDescription} numberOfLines={2}>
+                    {medication.description}
+                </Text>
+            )}
+
+            <View style={styles.medicationFooter}>
+                <View style={styles.medicationPriceContainer}>
+                    <Text style={styles.medicationPrice}>{formatPrice(medication.prix)}</Text>
+                    {medication.pharmacy_name && (
+                        <Text style={styles.pharmacyName} numberOfLines={1}>
+                            {medication.pharmacy_name}
+                        </Text>
+                    )}
+                    {medication.distance_km && (
+                        <Text style={styles.distanceText}>
+                            {medication.distance_km.toFixed(1)} km
+                        </Text>
+                    )}
+                </View>
+                <View style={styles.medicationActions}>
+                    <TouchableOpacity
+                        style={styles.aiButton}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onGetDosage();
+                        }}
+                    >
+                        <SafeIcon name="brain" size={16} color="#10B981" type="lucide" />
+                        <Text style={styles.aiButtonText}>Posologie</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.aiButton}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onCheckInteractions();
+                        }}
+                    >
+                        <SafeIcon name="alert-triangle" size={16} color="#F59E0B" type="lucide" />
+                        <Text style={styles.aiButtonText}>Interactions</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </TouchableOpacity>
+    );
+};
+
+// Modal de filtres avancés
+interface FiltersModalProps {
+    visible: boolean;
+    onClose: () => void;
+    filters: ProductSearchFilters;
+    onFiltersChange: (filters: ProductSearchFilters) => void;
+    location: any;
+    onSearch: () => void;
+}
+
+const FiltersModal: React.FC<FiltersModalProps> = ({
+    visible,
+    onClose,
+    filters,
+    onFiltersChange,
+    location,
+    onSearch,
+}) => {
+    const [minPrice, setMinPrice] = useState(filters.min_price?.toString() || '');
+    const [maxPrice, setMaxPrice] = useState(filters.max_price?.toString() || '');
+    const [onlyAvailable, setOnlyAvailable] = useState(filters.only_available || true);
+
+    useEffect(() => {
+        if (visible) {
+            setMinPrice(filters.min_price?.toString() || '');
+            setMaxPrice(filters.max_price?.toString() || '');
+            setOnlyAvailable(filters.only_available || true);
+        }
+    }, [visible, filters]);
+
+    const applyFilters = () => {
+        const newFilters: ProductSearchFilters = {
+            ...filters,
+            min_price: minPrice ? parseFloat(minPrice) : undefined,
+            max_price: maxPrice ? parseFloat(maxPrice) : undefined,
+            only_available: onlyAvailable,
+            lat: location?.coords?.latitude,
+            lng: location?.coords?.longitude,
+        };
+        onFiltersChange(newFilters);
+        onSearch();
+        onClose();
+    };
+
+    const clearAll = () => {
+        onFiltersChange({
+            query: '',
+            only_available: true,
+            limit: 20,
+            lat: location?.coords?.latitude,
+            lng: location?.coords?.longitude,
+            radius_km: 20,
+        });
+        setMinPrice('');
+        setMaxPrice('');
+        setOnlyAvailable(true);
+    };
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="slide"
+            onRequestClose={onClose}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Filtres</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+                            <SafeIcon name="x" size={24} color="#111827" type="lucide" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+                        {/* Prix */}
+                        <View style={styles.filterSection}>
+                            <Text style={styles.filterSectionTitle}>Prix (FCFA)</Text>
+                            <View style={styles.rangeInputs}>
+                                <TextInput
+                                    style={styles.rangeInput}
+                                    placeholder="Min"
+                                    value={minPrice}
+                                    onChangeText={setMinPrice}
+                                    keyboardType="numeric"
+                                />
+                                <Text style={styles.rangeSeparator}>-</Text>
+                                <TextInput
+                                    style={styles.rangeInput}
+                                    placeholder="Max"
+                                    value={maxPrice}
+                                    onChangeText={setMaxPrice}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                        </View>
+
+                        {/* Distance */}
+                        {location?.coords && (
+                            <View style={styles.filterSection}>
+                                <Text style={styles.filterSectionTitle}>Distance maximum (km)</Text>
+                                <TextInput
+                                    style={styles.singleInput}
+                                    placeholder="Ex: 20"
+                                    value={filters.radius_km?.toString() || '20'}
+                                    onChangeText={(text) => {
+                                        const value = text ? parseFloat(text) : 20;
+                                        onFiltersChange({
+                                            ...filters,
+                                            radius_km: value,
+                                        });
+                                    }}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                        )}
+
+                        {/* Disponibilité */}
+                        <View style={styles.filterSection}>
+                            <View style={styles.switchRow}>
+                                <View style={styles.switchLabel}>
+                                    <SafeIcon name="check-circle" size={20} color="#10B981" type="lucide" />
+                                    <Text style={styles.switchLabelText}>Uniquement disponibles</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={[styles.switch, onlyAvailable && styles.switchActive]}
+                                    onPress={() => setOnlyAvailable(!onlyAvailable)}
+                                >
+                                    <View style={[styles.switchThumb, onlyAvailable && styles.switchThumbActive]} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </ScrollView>
+
+                    <View style={styles.modalFooter}>
+                        <TouchableOpacity
+                            style={styles.clearButton}
+                            onPress={clearAll}
+                        >
+                            <Text style={styles.clearButtonText}>Tout effacer</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.applyButton}
+                            onPress={applyFilters}
+                        >
+                            <Text style={styles.applyButtonText}>Appliquer</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+// Modal de tri
+interface SortModalProps {
+    visible: boolean;
+    onClose: () => void;
+    sortBy: SortOption;
+    onSortChange: (sort: SortOption) => void;
+    sortOptions: { value: SortOption; label: string; icon: string }[];
+}
+
+const SortModal: React.FC<SortModalProps> = ({
+    visible,
+    onClose,
+    sortBy,
+    onSortChange,
+    sortOptions,
+}) => {
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <TouchableOpacity
+                style={styles.sortModalOverlay}
+                activeOpacity={1}
+                onPress={onClose}
+            >
+                <View style={styles.sortModalContent}>
+                    {sortOptions.map((option) => (
+                        <TouchableOpacity
+                            key={option.value}
+                            style={[
+                                styles.sortOption,
+                                sortBy === option.value && styles.sortOptionActive,
+                            ]}
+                            onPress={() => {
+                                hapticPress();
+                                onSortChange(option.value);
+                                onClose();
+                            }}
+                        >
+                            <SafeIcon
+                                name={option.icon}
+                                size={20}
+                                color={sortBy === option.value ? '#10B981' : '#6B7280'}
+                                type="lucide"
+                            />
+                            <Text
+                                style={[
+                                    styles.sortOptionText,
+                                    sortBy === option.value && styles.sortOptionTextActive,
+                                ]}
+                            >
+                                {option.label}
+                            </Text>
+                            {sortBy === option.value && (
+                                <SafeIcon name="check" size={20} color="#10B981" type="lucide" />
+                            )}
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </TouchableOpacity>
+        </Modal>
+    );
+};
+
+// Modal Posologie IA
+interface DosageModalProps {
+    visible: boolean;
+    onClose: () => void;
+    medication: PharmacyProduct | null;
+    dosage: DosageRecommendation | null;
+    loading: boolean;
+}
+
+const DosageModal: React.FC<DosageModalProps> = ({
+    visible,
+    onClose,
+    medication,
+    dosage,
+    loading,
+}) => {
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="slide"
+            onRequestClose={onClose}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <View style={styles.modalHeaderLeft}>
+                            <View style={styles.modalIconContainer}>
+                                <SafeIcon name="brain" size={24} color="#10B981" type="lucide" />
+                            </View>
+                            <View>
+                                <Text style={styles.modalTitle}>Posologie IA</Text>
+                                {medication && (
+                                    <Text style={styles.modalSubtitle}>{medication.nom_produit}</Text>
+                                )}
+                            </View>
+                        </View>
+                        <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+                            <SafeIcon name="x" size={24} color="#111827" type="lucide" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+                        {loading ? (
+                            <View style={styles.aiLoadingContainer}>
+                                <ActivityIndicator size="large" color="#10B981" />
+                                <Text style={styles.aiLoadingText}>
+                                    Analyse en cours par l'IA...
+                                </Text>
+                            </View>
+                        ) : dosage ? (
+                            <>
+                                <View style={styles.dosageCard}>
+                                    <Text style={styles.dosageLabel}>Dosage</Text>
+                                    <Text style={styles.dosageValue}>{dosage.dosage}</Text>
+                                </View>
+                                <View style={styles.dosageCard}>
+                                    <Text style={styles.dosageLabel}>Fréquence</Text>
+                                    <Text style={styles.dosageValue}>{dosage.frequency}</Text>
+                                </View>
+                                <View style={styles.dosageCard}>
+                                    <Text style={styles.dosageLabel}>Durée</Text>
+                                    <Text style={styles.dosageValue}>{dosage.duration}</Text>
+                                </View>
+                                {dosage.precautions.length > 0 && (
+                                    <View style={styles.warningsCard}>
+                                        <Text style={styles.warningsTitle}>Précautions</Text>
+                                        {dosage.precautions.map((precaution, index) => (
+                                            <View key={index} style={styles.warningItem}>
+                                                <SafeIcon name="info" size={16} color="#3B82F6" type="lucide" />
+                                                <Text style={styles.warningText}>{precaution}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                                {dosage.warnings.length > 0 && (
+                                    <View style={styles.warningsCard}>
+                                        <Text style={styles.warningsTitle}>Avertissements</Text>
+                                        {dosage.warnings.map((warning, index) => (
+                                            <View key={index} style={styles.warningItem}>
+                                                <SafeIcon name="alert-triangle" size={16} color="#EF4444" type="lucide" />
+                                                <Text style={styles.warningText}>{warning}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                                <View style={styles.aiDisclaimer}>
+                                    <SafeIcon name="info" size={16} color="#6B7280" type="lucide" />
+                                    <Text style={styles.aiDisclaimerText}>
+                                        Ces informations sont fournies à titre indicatif. Consultez toujours votre médecin ou pharmacien avant de prendre un médicament.
+                                    </Text>
+                                </View>
+                            </>
+                        ) : (
+                            <View style={styles.aiErrorContainer}>
+                                <SafeIcon name="alert-circle" size={48} color="#EF4444" />
+                                <Text style={styles.aiErrorText}>
+                                    Impossible de charger la posologie
+                                </Text>
+                            </View>
+                        )}
+                    </ScrollView>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+// Modal Interactions IA
+interface InteractionsModalProps {
+    visible: boolean;
+    onClose: () => void;
+    medication: PharmacyProduct | null;
+    interactions: MedicationInteraction | null;
+    loading: boolean;
+}
+
+const InteractionsModal: React.FC<InteractionsModalProps> = ({
+    visible,
+    onClose,
+    medication,
+    interactions,
+    loading,
+}) => {
+    const getSeverityColor = (severity: string) => {
+        switch (severity) {
+            case 'contraindicated':
+                return '#EF4444';
+            case 'major':
+                return '#F59E0B';
+            case 'moderate':
+                return '#FBBF24';
+            case 'minor':
+                return '#10B981';
+            default:
+                return '#6B7280';
+        }
+    };
+
+    const getSeverityLabel = (severity: string) => {
+        switch (severity) {
+            case 'contraindicated':
+                return 'Contre-indiqué';
+            case 'major':
+                return 'Majeure';
+            case 'moderate':
+                return 'Modérée';
+            case 'minor':
+                return 'Mineure';
+            default:
+                return 'Aucune';
+        }
+    };
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="slide"
+            onRequestClose={onClose}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <View style={styles.modalHeaderLeft}>
+                            <View style={styles.modalIconContainer}>
+                                <SafeIcon name="alert-triangle" size={24} color="#F59E0B" type="lucide" />
+                            </View>
+                            <View>
+                                <Text style={styles.modalTitle}>Interactions Médicamenteuses</Text>
+                                {medication && (
+                                    <Text style={styles.modalSubtitle}>{medication.nom_produit}</Text>
+                                )}
+                            </View>
+                        </View>
+                        <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+                            <SafeIcon name="x" size={24} color="#111827" type="lucide" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+                        {loading ? (
+                            <View style={styles.aiLoadingContainer}>
+                                <ActivityIndicator size="large" color="#F59E0B" />
+                                <Text style={styles.aiLoadingText}>
+                                    Vérification des interactions en cours...
+                                </Text>
+                            </View>
+                        ) : interactions ? (
+                            <>
+                                <View style={[styles.severityBadge, { backgroundColor: `${getSeverityColor(interactions.severity)}15` }]}>
+                                    <View style={[styles.severityDot, { backgroundColor: getSeverityColor(interactions.severity) }]} />
+                                    <Text style={[styles.severityLabel, { color: getSeverityColor(interactions.severity) }]}>
+                                        {getSeverityLabel(interactions.severity)}
+                                    </Text>
+                                </View>
+                                <View style={styles.interactionCard}>
+                                    <Text style={styles.interactionDescription}>
+                                        {interactions.description}
+                                    </Text>
+                                </View>
+                                <View style={styles.interactionCard}>
+                                    <Text style={styles.interactionRecommendation}>
+                                        {interactions.recommendation}
+                                    </Text>
+                                </View>
+                                {interactions.alternative_suggestions.length > 0 && (
+                                    <View style={styles.alternativesCard}>
+                                        <Text style={styles.alternativesTitle}>Alternatives suggérées</Text>
+                                        {interactions.alternative_suggestions.map((alt, index) => (
+                                            <View key={index} style={styles.alternativeItem}>
+                                                <SafeIcon name="pill" size={16} color="#10B981" type="lucide" />
+                                                <Text style={styles.alternativeText}>{alt}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                                <View style={styles.aiDisclaimer}>
+                                    <SafeIcon name="info" size={16} color="#6B7280" type="lucide" />
+                                    <Text style={styles.aiDisclaimerText}>
+                                        Cette analyse est fournie à titre informatif. Consultez toujours un professionnel de santé.
+                                    </Text>
+                                </View>
+                            </>
+                        ) : (
+                            <View style={styles.aiErrorContainer}>
+                                <SafeIcon name="alert-circle" size={48} color="#EF4444" />
+                                <Text style={styles.aiErrorText}>
+                                    Impossible de vérifier les interactions
+                                </Text>
+                            </View>
+                        )}
+                    </ScrollView>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+// Modal Détails Médicament
+interface MedicationDetailsModalProps {
+    visible: boolean;
+    onClose: () => void;
+    medication: PharmacyProduct | null;
+    onGetDosage: () => void;
+    onCheckInteractions: () => void;
+}
+
+const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
+    visible,
+    onClose,
+    medication,
+    onGetDosage,
+    onCheckInteractions,
+}) => {
+    if (!medication) return null;
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="slide"
+            onRequestClose={onClose}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Détails du médicament</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+                            <SafeIcon name="x" size={24} color="#111827" type="lucide" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+                        <View style={styles.medicationDetailsHeader}>
+                            <View style={styles.medicationDetailsIcon}>
+                                <SafeIcon name="pill" size={32} color="#10B981" type="lucide" />
+                            </View>
+                            <View style={styles.medicationDetailsInfo}>
+                                <Text style={styles.medicationDetailsName}>{medication.nom_produit}</Text>
+                                {medication.categorie && (
+                                    <Text style={styles.medicationDetailsCategory}>{medication.categorie}</Text>
+                                )}
+                            </View>
+                        </View>
+
+                        {medication.description && (
+                            <View style={styles.detailsSection}>
+                                <Text style={styles.detailsSectionTitle}>Description</Text>
+                                <Text style={styles.detailsSectionText}>{medication.description}</Text>
+                            </View>
+                        )}
+
+                        <View style={styles.detailsSection}>
+                            <Text style={styles.detailsSectionTitle}>Informations</Text>
+                            <View style={styles.detailsRow}>
+                                <Text style={styles.detailsLabel}>Prix:</Text>
+                                <Text style={styles.detailsValue}>
+                                    {medication.prix ? `${medication.prix.toLocaleString()} FCFA` : 'Sur demande'}
+                                </Text>
+                            </View>
+                            <View style={styles.detailsRow}>
+                                <Text style={styles.detailsLabel}>Stock:</Text>
+                                <Text style={styles.detailsValue}>
+                                    {medication.stock} {medication.unite}
+                                </Text>
+                            </View>
+                            {medication.code_barre && (
+                                <View style={styles.detailsRow}>
+                                    <Text style={styles.detailsLabel}>Code-barres:</Text>
+                                    <Text style={styles.detailsValue}>{medication.code_barre}</Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {medication.pharmacy_name && (
+                            <View style={styles.detailsSection}>
+                                <Text style={styles.detailsSectionTitle}>Pharmacie</Text>
+                                <Text style={styles.detailsSectionText}>{medication.pharmacy_name}</Text>
+                                {medication.pharmacy_ville && (
+                                    <Text style={styles.detailsSectionText}>
+                                        {medication.pharmacy_quartier && `${medication.pharmacy_quartier}, `}
+                                        {medication.pharmacy_ville}
+                                    </Text>
+                                )}
+                                {medication.distance_km && (
+                                    <Text style={styles.detailsSectionText}>
+                                        {medication.distance_km.toFixed(1)} km
+                                    </Text>
+                                )}
+                            </View>
+                        )}
+
+                        <View style={styles.aiActionsSection}>
+                            <Text style={styles.aiActionsTitle}>Fonctionnalités IA</Text>
+                            <TouchableOpacity
+                                style={styles.aiActionButton}
+                                onPress={onGetDosage}
+                            >
+                                <SafeIcon name="brain" size={20} color="#10B981" type="lucide" />
+                                <Text style={styles.aiActionButtonText}>Posologie intelligente</Text>
+                                <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.aiActionButton}
+                                onPress={onCheckInteractions}
+                            >
+                                <SafeIcon name="alert-triangle" size={20} color="#F59E0B" type="lucide" />
+                                <Text style={styles.aiActionButtonText}>Vérifier interactions</Text>
+                                <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
+    headerContainer: {
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 4,
+        zIndex: 10,
+    },
+    headerGradient: {
+        paddingTop: 20,
+        paddingBottom: 16,
+        paddingHorizontal: 16,
+    },
+    headerTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    backButton: {
+        marginRight: 12,
+    },
+    headerTitleContainer: {
+        flex: 1,
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    headerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        marginTop: 2,
+    },
+    filterButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    filterBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        backgroundColor: '#EF4444',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+    },
+    filterBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    searchContainer: {
+        marginTop: 8,
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 12,
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    searchBarFocused: {
+        borderColor: '#10B981',
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#111827',
+    },
+    clearButton: {
+        padding: 4,
+    },
+    quickFiltersScroll: {
+        maxHeight: 60,
+    },
+    quickFiltersContainer: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 8,
+    },
+    quickFilterChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#D1FAE5',
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        gap: 6,
+        marginRight: 8,
+    },
+    quickFilterText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#10B981',
+    },
+    actionsBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    sortButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    sortButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    centerContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 32,
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#6B7280',
+    },
+    errorText: {
+        marginTop: 16,
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#EF4444',
+        textAlign: 'center',
+    },
+    errorSubtext: {
+        marginTop: 8,
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    clearFiltersButton: {
+        marginTop: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        backgroundColor: modernColors.primary,
+        borderRadius: 8,
+    },
+    clearFiltersText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    listContent: {
+        padding: 16,
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 32,
+        minHeight: 400,
+    },
+    emptyText: {
+        marginTop: 16,
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    emptySubtext: {
+        marginTop: 8,
+        fontSize: 14,
+        color: '#9CA3AF',
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+    // Medication Card styles
+    medicationCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    medicationHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+    },
+    medicationHeaderLeft: {
+        flexDirection: 'row',
+        flex: 1,
+        gap: 12,
+    },
+    medicationIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#D1FAE5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    medicationInfo: {
+        flex: 1,
+    },
+    medicationName: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    medicationCategory: {
+        fontSize: 12,
+        color: '#6B7280',
+        textTransform: 'uppercase',
+    },
+    stockBadge: {
+        backgroundColor: '#10B981',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+    },
+    stockText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    medicationDescription: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 12,
+        lineHeight: 20,
+    },
+    medicationFooter: {
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    medicationPriceContainer: {
+        marginBottom: 12,
+    },
+    medicationPrice: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#10B981',
+        marginBottom: 4,
+    },
+    pharmacyName: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 2,
+    },
+    distanceText: {
+        fontSize: 12,
+        color: '#9CA3AF',
+    },
+    medicationActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    aiButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        gap: 6,
+    },
+    aiButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '90%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    modalHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        gap: 12,
+    },
+    modalIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#D1FAE5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    modalSubtitle: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginTop: 4,
+    },
+    modalCloseButton: {
+        padding: 4,
+    },
+    modalScroll: {
+        flex: 1,
+    },
+    modalScrollContent: {
+        padding: 20,
+    },
+    filterSection: {
+        marginBottom: 24,
+    },
+    filterSectionTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 12,
+    },
+    rangeInputs: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    rangeInput: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 16,
+        color: '#111827',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    rangeSeparator: {
+        fontSize: 16,
+        color: '#6B7280',
+        fontWeight: '600',
+    },
+    singleInput: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 16,
+        color: '#111827',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    switchRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+    },
+    switchLabel: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
+    },
+    switchLabelText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#111827',
+    },
+    switch: {
+        width: 50,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: '#D1D5DB',
+        justifyContent: 'center',
+        paddingHorizontal: 2,
+    },
+    switchActive: {
+        backgroundColor: '#10B981',
+    },
+    switchThumb: {
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: '#FFFFFF',
+        alignSelf: 'flex-start',
+    },
+    switchThumbActive: {
+        alignSelf: 'flex-end',
+    },
+    modalFooter: {
+        flexDirection: 'row',
+        padding: 20,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+        gap: 12,
+    },
+    clearButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    clearButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    applyButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 8,
+        backgroundColor: '#10B981',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    applyButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    // Sort modal
+    sortModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    sortModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 8,
+        minWidth: 280,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    sortOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        gap: 12,
+        borderRadius: 8,
+    },
+    sortOptionActive: {
+        backgroundColor: '#D1FAE5',
+    },
+    sortOptionText: {
+        flex: 1,
+        fontSize: 16,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    sortOptionTextActive: {
+        color: '#10B981',
+        fontWeight: '600',
+    },
+    // AI Modals styles
+    aiLoadingContainer: {
+        padding: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    aiLoadingText: {
+        marginTop: 16,
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    aiErrorContainer: {
+        padding: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    aiErrorText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#EF4444',
+        textAlign: 'center',
+    },
+    dosageCard: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+    },
+    dosageLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+        textTransform: 'uppercase',
+        marginBottom: 8,
+    },
+    dosageValue: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    warningsCard: {
+        backgroundColor: '#FEF3C7',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+    },
+    warningsTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#92400E',
+        marginBottom: 12,
+    },
+    warningItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        marginBottom: 8,
+    },
+    warningText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#92400E',
+        lineHeight: 20,
+    },
+    aiDisclaimer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 12,
+        padding: 16,
+        gap: 12,
+        marginTop: 12,
+    },
+    aiDisclaimerText: {
+        flex: 1,
+        fontSize: 12,
+        color: '#6B7280',
+        lineHeight: 18,
+    },
+    severityBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 16,
+        gap: 8,
+    },
+    severityDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    severityLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    interactionCard: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+    },
+    interactionDescription: {
+        fontSize: 14,
+        color: '#111827',
+        lineHeight: 20,
+        marginBottom: 8,
+    },
+    interactionRecommendation: {
+        fontSize: 14,
+        color: '#111827',
+        lineHeight: 20,
+        fontWeight: '600',
+    },
+    alternativesCard: {
+        backgroundColor: '#D1FAE5',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+    },
+    alternativesTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#065F46',
+        marginBottom: 12,
+    },
+    alternativeItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    alternativeText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#065F46',
+    },
+    // Medication Details Modal
+    medicationDetailsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        marginBottom: 24,
+        paddingBottom: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    medicationDetailsIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 16,
+        backgroundColor: '#D1FAE5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    medicationDetailsInfo: {
+        flex: 1,
+    },
+    medicationDetailsName: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    medicationDetailsCategory: {
+        fontSize: 14,
+        color: '#6B7280',
+        textTransform: 'uppercase',
+    },
+    detailsSection: {
+        marginBottom: 24,
+    },
+    detailsSectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 12,
+    },
+    detailsSectionText: {
+        fontSize: 14,
+        color: '#6B7280',
+        lineHeight: 20,
+    },
+    detailsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+    },
+    detailsLabel: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    detailsValue: {
+        fontSize: 14,
+        color: '#111827',
+        fontWeight: '600',
+    },
+    aiActionsSection: {
+        marginTop: 8,
+    },
+    aiActionsTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 12,
+    },
+    aiActionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        gap: 12,
+    },
+    aiActionButtonText: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+    },
+});
+
+export default PharmacieHomeScreen;
+

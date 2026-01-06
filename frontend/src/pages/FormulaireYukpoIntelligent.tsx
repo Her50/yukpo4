@@ -21,6 +21,7 @@ import BrandingManager from '@/components/ui/BrandingManager';
 import ProductManager from '@/components/ui/ProductManager';
 import MediaUploadManager from '@/components/ui/MediaUploadManager';
 import LocationSelector, { LocationObject } from '@/components/ui/LocationSelector';
+import ProductDeliveryConfigModal from '@/components/delivery/ProductDeliveryConfigModal';
 import { productsService } from '@/services/productsService';
 
 export default function FormulaireDemandeOuService() {
@@ -66,6 +67,8 @@ export default function FormulaireDemandeOuService() {
   const [showMapModal, setShowMapModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successData, setSuccessData] = useState<{ serviceId: string; cout: number } | null>(null);
+  const [showProductDeliveryConfig, setShowProductDeliveryConfig] = useState(false);
+  const [productDeliveryConfigData, setProductDeliveryConfigData] = useState<{ serviceId: number; productIndex: number; productName: string } | null>(null);
   const { setStats } = useContext(GlobalIAStatsContext);
 
   // Charger les données du service à modifier
@@ -736,13 +739,43 @@ export default function FormulaireDemandeOuService() {
       });
 
       // Stocker les données de succès pour le toast
+      const createdServiceId = result.data?.id || result.data?.service_id || 'nouveau';
       setSuccessData({
-        serviceId: result.data?.id || 'nouveau',
+        serviceId: createdServiceId,
         cout: coutFactureXAF
       });
       setShowSuccessToast(true);
 
-      // Redirection automatique après 5 secondes
+      // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
+      const typeOffre = valeursFormulaire.type_offre || serviceData.type_offre?.valeur || 'produit';
+      const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+      const hasProducts = products && products.length > 0;
+      
+      if (!isPrestation && hasProducts && createdServiceId && createdServiceId !== 'nouveau') {
+        // C'est un produit, ouvrir le modal de configuration de livraison pour le premier produit
+        const firstProductIndex = 0;
+        const firstProduct = products[0];
+        const productName = firstProduct?.name || firstProduct?.nom_produit || valeursFormulaire.nom_produit || 'Nouveau produit';
+        
+        console.log('[FormulaireYukpoIntelligent] 🚚 Ouverture automatique du modal de configuration de livraison:', {
+          serviceId: createdServiceId,
+          productIndex: firstProductIndex,
+          productName: productName
+        });
+        
+        // Attendre un court délai pour laisser le toast s'afficher
+        setTimeout(() => {
+          setShowProductDeliveryConfig(true);
+          setProductDeliveryConfigData({
+            serviceId: typeof createdServiceId === 'number' ? createdServiceId : parseInt(String(createdServiceId), 10),
+            productIndex: firstProductIndex,
+            productName: productName
+          });
+        }, 1500);
+        return; // Ne pas rediriger vers MesServices si on ouvre la config livraison
+      }
+
+      // Redirection automatique après 5 secondes (pour les prestations ou si pas de produits)
       setTimeout(() => {
         navigate('/mes-services');
       }, 5000);

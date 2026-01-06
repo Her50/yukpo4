@@ -144,8 +144,9 @@ const styles = StyleSheet.create({
     },
     toolbarRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start', // ✅ CORRIGÉ: Aligner en haut pour remonter le titre
         justifyContent: 'space-between',
+        paddingTop: 4, // ✅ Ajouter un petit padding pour compenser
     },
     actionButton: {
         width: 36,
@@ -153,10 +154,13 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
+        marginTop: 2, // ✅ CORRIGÉ: Ajouter un petit marginTop pour aligner avec le titre
     },
     titleContainer: {
         flex: 1,
         marginHorizontal: modernStyles.spacing.sm,
+        justifyContent: 'flex-start', // ✅ CORRIGÉ: Aligner le contenu en haut
+        paddingTop: 2, // ✅ CORRIGÉ: Ajouter un petit paddingTop pour remonter le titre
     },
     title: {
         fontSize: 16,
@@ -179,6 +183,7 @@ const styles = StyleSheet.create({
         minHeight: 36,
         alignItems: 'center',
         justifyContent: 'center',
+        marginTop: 2, // ✅ CORRIGÉ: Ajouter un petit marginTop pour aligner avec le titre
     },
 });
 

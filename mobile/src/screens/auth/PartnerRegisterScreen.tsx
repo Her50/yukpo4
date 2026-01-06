@@ -47,6 +47,7 @@ const PartnerRegisterScreen: React.FC = () => {
     { value: 'pharmacie', label: 'Pharmacie' },
     { value: 'hopital', label: 'Hôpital/Clinique' },
     { value: 'laboratoire', label: 'Laboratoire' },
+    { value: 'banquesang', label: 'Banque de Sang' }, // ✅ NOUVEAU: Type partenaire banque de sang
     { value: 'agence de voyage', label: 'Agence de Voyage' },
     { value: 'demenagement', label: 'Déménagement' },
     { value: 'transport', label: 'Transport' },

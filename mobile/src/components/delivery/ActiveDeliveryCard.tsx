@@ -71,6 +71,17 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
     // ✅ Phase 9 - Amélioration 30 : Vérifier si dropoff est pending
     const dropoffPending = delivery.metadata?.dropoff_pending === true;
 
+    // ✅ CORRIGÉ : Filtrer les valeurs invalides pour l'adresse
+    const isValidAddress = (address: string | undefined | null): boolean => {
+        if (!address) return false;
+        const lowerAddress = address.toLowerCase().trim();
+        return lowerAddress !== 'false' && lowerAddress !== 'null' && lowerAddress !== '' && lowerAddress !== 'undefined';
+    };
+
+    const displayAddress = isValidAddress(delivery.dropoff?.address) 
+        ? delivery.dropoff!.address! 
+        : null;
+
     return (
         <NativeCard style={styles.card}>
             <View style={styles.header}>
@@ -108,9 +119,9 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
                                 />
                             )}
                         </View>
-                        {delivery.dropoff?.address && (
+                        {displayAddress && (
                             <Text style={[styles.dropoffAddress, dropoffPending && styles.dropoffAddressPending]}>
-                                {delivery.dropoff.address}
+                                {displayAddress}
                             </Text>
                         )}
                     </View>

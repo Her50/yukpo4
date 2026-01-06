@@ -91,36 +91,22 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const [selectedProductIndex, setSelectedProductIndex] = useState<number | null>(null);
     const [availableProducts, setAvailableProducts] = useState<Array<{index: number, name: string, is_configured: boolean}>>([]);
     const [loadingProducts, setLoadingProducts] = useState(false);
-    // ✅ Phase 9 - Amélioration 32 : Gestion des lieux de stock
-    const [storageLocations, setStorageLocations] = useState<Array<{
-        id: number;
-        name: string;
-        address: string;
-        latitude: number;
-        longitude: number;
-        is_active: boolean;
-    }>>([]);
-    const [loadingLocations, setLoadingLocations] = useState(false);
     // ✅ NOUVEAU: État pour le modal GPS
     const [showGPSModal, setShowGPSModal] = useState(false);
+    const [gpsModalForIndex, setGpsModalForIndex] = useState<number | null>(null); // Index de l'adresse en cours de sélection
     // ✅ NOUVEAU 2026-01-02: État pour le modal de sélection de véhicule
     const [showVehicleModal, setShowVehicleModal] = useState(false);
-    // ✅ NOUVEAU 2026-01-04: État pour stocker plusieurs lieux de stockage avec bouton +
-    const [storageLocationsList, setStorageLocationsList] = useState<Array<{
+    
+    // ✅ NOUVEAU: Array d'adresses de récupération du produit (au moins une obligatoire)
+    const [pickupAddresses, setPickupAddresses] = useState<Array<{
         id: string; // ID temporaire unique pour React key
         address: string;
         location: LocationObject | null;
-        storage_location_id?: number;
-        latitude?: number;
-        longitude?: number;
-        quantity?: number; // ✅ NOUVEAU 2026-01-04: Quantité de stock disponible à ce lieu
+        latitude: number;
+        longitude: number;
     }>>([]);
+    
     const [config, setConfig] = useState({
-        pickup_address: '',
-        pickup_location: null as LocationObject | null, // ✅ NOUVEAU: Objet location complet
-        pickup_latitude: 0,
-        pickup_longitude: 0,
-        storage_location_ids: [] as number[], // ✅ NOUVEAU 2026-01-04: Array de storage_location_id
         required_vehicle_type_id: 0,
         preparation_time_minutes: '', // ✅ NOUVEAU: Temps de préparation en minutes
         weight_kg: '',
@@ -133,15 +119,91 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         billing_partner_label: ''
     });
 
+    // ✅ NOUVEAU: État pour stocker les données du produit
+    const [productData, setProductData] = useState<any>(null);
+
     // ✅ PHASE 4: Charger le produit depuis l'API si nécessaire
     useEffect(() => {
         const loadProduct = async () => {
             if (visible && !isTransversalMode && serviceId && productIndex >= 0) {
                 try {
                     const product = await productsService.getProduct(serviceId, productIndex);
-                    // Le produit est maintenant disponible depuis l'API
-                    // productName est déjà fourni en prop, mais on peut enrichir si nécessaire
+                    setProductData(product);
                     console.log('[ProductDeliveryConfigModal] ✅ Produit chargé depuis API:', product.product_name);
+                    
+                    // ✅ NOUVEAU: Charger lieu_produit depuis product_data si disponible
+                    const lieuProduit = product.product_data?.lieu_produit || product.product_data?.lieu_commercial || product.product_data?.lieu_commercialisation;
+                    if (lieuProduit) {
+                        // Extraire l'adresse textuelle et les coordonnées depuis lieu_produit
+                        let addressText = '';
+                        let latitude = 0;
+                        let longitude = 0;
+                        let locationObj: LocationObject | null = null;
+
+                        // lieu_produit peut être un string (adresse textuelle) ou un objet LocationObject
+                        if (typeof lieuProduit === 'string') {
+                            addressText = lieuProduit;
+                            // Essayer de parser pour extraire les coordonnées si elles sont incluses
+                            locationObj = {
+                                raw: lieuProduit,
+                                place_name: lieuProduit,
+                                components: {},
+                            };
+                        } else if (typeof lieuProduit === 'object' && lieuProduit !== null) {
+                            // Si c'est un objet avec valeur
+                            if (lieuProduit.valeur) {
+                                if (typeof lieuProduit.valeur === 'string') {
+                                    addressText = lieuProduit.valeur;
+                                    locationObj = {
+                                        raw: lieuProduit.valeur,
+                                        place_name: lieuProduit.valeur,
+                                        components: lieuProduit.composants || {},
+                                        coordinates: lieuProduit.coordinates || undefined,
+                                    };
+                                    if (lieuProduit.coordinates) {
+                                        latitude = lieuProduit.coordinates.lat || 0;
+                                        longitude = lieuProduit.coordinates.lng || 0;
+                                    }
+                                } else if (typeof lieuProduit.valeur === 'object' && lieuProduit.valeur.raw) {
+                                    // Format LocationObject complet
+                                    addressText = lieuProduit.valeur.raw || lieuProduit.valeur.place_name || '';
+                                    locationObj = lieuProduit.valeur;
+                                    if (lieuProduit.valeur.coordinates) {
+                                        latitude = lieuProduit.valeur.coordinates.lat || 0;
+                                        longitude = lieuProduit.valeur.coordinates.lng || 0;
+                                    }
+                                }
+                            } else if (lieuProduit.raw || lieuProduit.place_name) {
+                                // Format LocationObject direct
+                                addressText = lieuProduit.raw || lieuProduit.place_name || '';
+                                locationObj = lieuProduit as LocationObject;
+                                if (lieuProduit.coordinates) {
+                                    latitude = lieuProduit.coordinates.lat || 0;
+                                    longitude = lieuProduit.coordinates.lng || 0;
+                                }
+                            }
+                        }
+
+                        // Si on a une adresse textuelle mais pas de coordonnées, on garde quand même l'adresse
+                        // L'utilisateur pourra la compléter avec GPS si nécessaire
+                        if (addressText) {
+                            console.log('[ProductDeliveryConfigModal] ✅ Lieu produit trouvé:', addressText);
+                            // Initialiser pickupAddresses avec cette adresse si pas encore chargée
+                            setPickupAddresses(prev => {
+                                // Ne pas écraser si une config existe déjà
+                                if (prev.length > 0 && prev[0].address) {
+                                    return prev;
+                                }
+                                return [{
+                                    id: `pickup_product_${Date.now()}`,
+                                    address: addressText,
+                                    location: locationObj,
+                                    latitude,
+                                    longitude,
+                                }];
+                            });
+                        }
+                    }
                 } catch (error) {
                     console.warn('[ProductDeliveryConfigModal] Erreur chargement produit depuis API, utilisation productName prop:', error);
                     // Fallback : utiliser productName fourni en prop
@@ -155,81 +217,55 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     useEffect(() => {
         if (visible) {
             loadParcelTypes();
-            loadStorageLocations(); // ✅ Phase 9 - Amélioration 32
             if (!isTransversalMode) {
                 loadExistingConfig();
+            } else {
+                // En mode transversal, initialiser avec une adresse vide
+                setPickupAddresses([{
+                    id: `pickup_${Date.now()}`,
+                    address: '',
+                    location: null,
+                    latitude: 0,
+                    longitude: 0,
+                }]);
             }
         }
     }, [visible, serviceId, productIndex]);
 
-    // ✅ NOUVEAU 2026-01-04: Mettre à jour les adresses des lieux de stockage quand storageLocations est chargé
-    useEffect(() => {
-        if (storageLocations.length > 0 && storageLocationsList.length > 0) {
-            setStorageLocationsList(prev => prev.map(loc => {
-                if (loc.storage_location_id) {
-                    const foundLocation = storageLocations.find(sl => sl.id === loc.storage_location_id);
-                    if (foundLocation && (!loc.address || loc.address === '')) {
-                        const locationObj: LocationObject | null = {
-                            raw: foundLocation.address || '',
-                            place_name: foundLocation.name || foundLocation.address || '',
-                            components: {},
-                            coordinates: { lat: foundLocation.latitude, lng: foundLocation.longitude }
-                        };
-                        return {
-                            ...loc,
-                            address: foundLocation.address || '',
-                            location: locationObj,
-                            latitude: foundLocation.latitude,
-                            longitude: foundLocation.longitude,
-                        };
-                    }
-                }
-                return loc;
-            }));
-        }
-    }, [storageLocations]);
-
-    // ✅ Phase 9 - Amélioration 32 : Charger les lieux de stock
-    const loadStorageLocations = async () => {
-        setLoadingLocations(true);
-        try {
-            const response = await deliveryApi.listStorageLocations();
-            if (response.success && response.data && typeof response.data === 'object' && 'locations' in response.data) {
-                const data = response.data as any;
-                if (Array.isArray(data.locations)) {
-                    setStorageLocations(data.locations);
-                }
-            }
-        } catch (error) {
-            console.error('Erreur chargement lieux de stock:', error);
-        } finally {
-            setLoadingLocations(false);
-        }
-    };
-
-    // ✅ NOUVEAU 2026-01-04: Fonction pour ajouter un nouveau lieu de stockage
-    const handleAddStorageLocation = () => {
-        const newId = `storage_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        setStorageLocationsList(prev => [...prev, {
+    // ✅ NOUVEAU: Fonction pour ajouter une nouvelle adresse de récupération
+    const handleAddPickupAddress = () => {
+        const newId = `pickup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        setPickupAddresses(prev => [...prev, {
             id: newId,
             address: '',
             location: null,
-            storage_location_id: undefined,
-            latitude: undefined,
-            longitude: undefined,
-            quantity: undefined, // ✅ NOUVEAU 2026-01-04: Quantité initiale non définie
+            latitude: 0,
+            longitude: 0,
         }]);
     };
 
-    // ✅ NOUVEAU 2026-01-04: Fonction pour supprimer un lieu de stockage
-    const handleRemoveStorageLocation = (id: string) => {
-        setStorageLocationsList(prev => prev.filter(loc => loc.id !== id));
+    // ✅ NOUVEAU: Fonction pour supprimer une adresse de récupération
+    const handleRemovePickupAddress = (id: string) => {
+        setPickupAddresses(prev => {
+            const filtered = prev.filter(addr => addr.id !== id);
+            // S'assurer qu'il reste au moins une adresse
+            if (filtered.length === 0) {
+                return [{
+                    id: `pickup_${Date.now()}`,
+                    address: '',
+                    location: null,
+                    latitude: 0,
+                    longitude: 0,
+                }];
+            }
+            return filtered;
+        });
     };
 
-    // ✅ NOUVEAU 2026-01-04: Fonction pour mettre à jour un lieu de stockage
-    const handleUpdateStorageLocation = (id: string, updates: Partial<typeof storageLocationsList[0]>) => {
-        setStorageLocationsList(prev => prev.map(loc => 
-            loc.id === id ? { ...loc, ...updates } : loc
+    // ✅ NOUVEAU: Fonction pour mettre à jour une adresse de récupération
+    const handleUpdatePickupAddress = (id: string, updates: Partial<typeof pickupAddresses[0]>) => {
+        setPickupAddresses(prev => prev.map(addr => 
+            addr.id === id ? { ...addr, ...updates } : addr
         ));
     };
 
@@ -269,7 +305,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             if (response.success && response.data && typeof response.data === 'object' && 'config' in response.data) {
                 const data = response.data as any;
                 const c = data.config;
-                // ✅ CORRIGÉ: Construire LocationObject si on a une adresse
+                
+                // ✅ NOUVEAU: Charger l'adresse existante comme première adresse de récupération
                 const pickupAddr = (typeof c.pickup_address === 'string' ? c.pickup_address : '') || '';
                 const pickupLat = (typeof c.pickup_latitude === 'number' ? c.pickup_latitude : 0) || 0;
                 const pickupLng = (typeof c.pickup_longitude === 'number' ? c.pickup_longitude : 0) || 0;
@@ -277,59 +314,30 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 const pickupLocationObj: LocationObject | null = pickupAddr 
                     ? {
                         raw: pickupAddr,
-                        place_name: pickupAddr.split(',')[0].trim(),
+                        place_name: pickupAddr,
                         components: {},
                         coordinates: (pickupLat !== 0 && pickupLng !== 0) ? { lat: pickupLat, lng: pickupLng } : undefined
                     }
                     : null;
                 
-                // ✅ NOUVEAU 2026-01-04: Charger plusieurs lieux de stockage
-                // Support backward compatible: storage_location_id (single) ou storage_location_ids (array)
-                const storageLocationIds: number[] = Array.isArray(c.storage_location_ids) 
-                    ? c.storage_location_ids.filter((id: any) => typeof id === 'number').map((id: number) => id)
-                    : (typeof c.storage_location_id === 'number' ? [c.storage_location_id] : []);
-                
-                // ✅ Construire la liste des lieux de stockage depuis les IDs et quantités
-                // Note: storageLocations peut ne pas être encore chargé, on le fera dans un useEffect
-                const storageLocationQuantities = c.storage_location_quantities || {};
-                const storageLocationsListFromConfig = storageLocationIds.map((id, index) => {
-                    const foundLocation = storageLocations.find(loc => loc.id === id);
-                    const locationObj: LocationObject | null = foundLocation ? {
-                        raw: foundLocation.address || '',
-                        place_name: foundLocation.name || foundLocation.address || '',
-                        components: {},
-                        coordinates: { lat: foundLocation.latitude, lng: foundLocation.longitude }
-                    } : null;
-                    
-                    // ✅ NOUVEAU 2026-01-04: Extraire la quantité depuis storage_location_quantities
-                    const quantity = storageLocationQuantities[id] 
-                        ? (typeof storageLocationQuantities[id] === 'number' 
-                            ? String(storageLocationQuantities[id]) 
-                            : String(storageLocationQuantities[id]))
-                        : undefined;
-                    
-                    return {
-                        id: `storage_${id}_${index}`,
-                        address: foundLocation?.address || '',
-                        location: locationObj,
-                        storage_location_id: id,
-                        latitude: foundLocation?.latitude,
-                        longitude: foundLocation?.longitude,
-                        quantity: quantity, // ✅ NOUVEAU: Charger la quantité
-                    };
-                });
-                
-                // ✅ Charger la liste des lieux de stockage (sera complétée quand storageLocations sera chargé)
-                setStorageLocationsList(storageLocationsListFromConfig);
+                // Initialiser avec l'adresse existante (ou une adresse vide si aucune)
+                setPickupAddresses(pickupAddr ? [{
+                    id: `pickup_existing_${Date.now()}`,
+                    address: pickupAddr,
+                    location: pickupLocationObj,
+                    latitude: pickupLat,
+                    longitude: pickupLng,
+                }] : [{
+                    id: `pickup_${Date.now()}`,
+                    address: '',
+                    location: null,
+                    latitude: 0,
+                    longitude: 0,
+                }]);
                 
                 setConfig({
-                    pickup_address: pickupAddr,
-                    pickup_location: pickupLocationObj,
-                    pickup_latitude: pickupLat,
-                    pickup_longitude: pickupLng,
-                    storage_location_ids: storageLocationIds, // ✅ NOUVEAU 2026-01-04: Array
                     required_vehicle_type_id: (typeof c.required_vehicle_type_id === 'number' ? c.required_vehicle_type_id : 0) || 0,
-                    preparation_time_minutes: c.preparation_time_minutes ? String(c.preparation_time_minutes) : '0', // ✅ NOUVEAU
+                    preparation_time_minutes: c.preparation_time_minutes ? String(c.preparation_time_minutes) : '0',
                     weight_kg: c.weight_kg ? String(c.weight_kg) : '',
                     volume_cm3: c.volume_cm3 ? String(c.volume_cm3) : '',
                     requires_isothermal: typeof c.requires_isothermal === 'boolean' ? c.requires_isothermal : false,
@@ -339,19 +347,108 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     billing_mode: (typeof c.billing_mode === 'string' ? c.billing_mode : 'standard') || 'standard',
                     billing_partner_label: (typeof c.billing_partner_label === 'string' ? c.billing_partner_label : '') || ''
                 });
+            } else {
+                // ✅ NOUVEAU: Si pas de config existante, charger lieu_produit depuis product_data si disponible
+                if (productData?.product_data) {
+                    const lieuProduit = productData.product_data.lieu_produit || productData.product_data.lieu_commercial || productData.product_data.lieu_commercialisation;
+                    if (lieuProduit) {
+                        let addressText = '';
+                        let latitude = 0;
+                        let longitude = 0;
+                        let locationObj: LocationObject | null = null;
+
+                        if (typeof lieuProduit === 'string') {
+                            addressText = lieuProduit;
+                            locationObj = {
+                                raw: lieuProduit,
+                                place_name: lieuProduit,
+                                components: {},
+                            };
+                        } else if (typeof lieuProduit === 'object' && lieuProduit !== null) {
+                            if (lieuProduit.valeur) {
+                                if (typeof lieuProduit.valeur === 'string') {
+                                    addressText = lieuProduit.valeur;
+                                    locationObj = {
+                                        raw: lieuProduit.valeur,
+                                        place_name: lieuProduit.valeur,
+                                        components: lieuProduit.composants || {},
+                                        coordinates: lieuProduit.coordinates || undefined,
+                                    };
+                                    if (lieuProduit.coordinates) {
+                                        latitude = lieuProduit.coordinates.lat || 0;
+                                        longitude = lieuProduit.coordinates.lng || 0;
+                                    }
+                                } else if (typeof lieuProduit.valeur === 'object' && lieuProduit.valeur.raw) {
+                                    addressText = lieuProduit.valeur.raw || lieuProduit.valeur.place_name || '';
+                                    locationObj = lieuProduit.valeur;
+                                    if (lieuProduit.valeur.coordinates) {
+                                        latitude = lieuProduit.valeur.coordinates.lat || 0;
+                                        longitude = lieuProduit.valeur.coordinates.lng || 0;
+                                    }
+                                }
+                            } else if (lieuProduit.raw || lieuProduit.place_name) {
+                                addressText = lieuProduit.raw || lieuProduit.place_name || '';
+                                locationObj = lieuProduit as LocationObject;
+                                if (lieuProduit.coordinates) {
+                                    latitude = lieuProduit.coordinates.lat || 0;
+                                    longitude = lieuProduit.coordinates.lng || 0;
+                                }
+                            }
+                        }
+
+                        if (addressText) {
+                            setPickupAddresses([{
+                                id: `pickup_product_${Date.now()}`,
+                                address: addressText,
+                                location: locationObj,
+                                latitude,
+                                longitude,
+                            }]);
+                            return; // Sortir car on a initialisé avec lieu_produit
+                        }
+                    }
+                }
+                
+                // Si pas de lieu_produit, initialiser avec une adresse vide
+                setPickupAddresses([{
+                    id: `pickup_${Date.now()}`,
+                    address: '',
+                    location: null,
+                    latitude: 0,
+                    longitude: 0,
+                }]);
             }
         } catch (error) {
             console.error('Erreur chargement configuration:', error);
+            // Initialiser avec une adresse vide en cas d'erreur
+            setPickupAddresses([{
+                id: `pickup_${Date.now()}`,
+                address: '',
+                location: null,
+                latitude: 0,
+                longitude: 0,
+            }]);
         }
     };
 
     const handleSave = async () => {
-        // ✅ CORRIGÉ: Validation avec support LocationObject
-        const pickupAddress = config?.pickup_location?.raw || (config && typeof config.pickup_address === 'string' ? config.pickup_address : '');
-        if (!pickupAddress.trim()) {
-            Alert.alert('Erreur', 'L\'adresse de départ est obligatoire');
+        // ✅ NOUVEAU: Valider qu'il y a au moins une adresse de récupération valide
+        const validAddresses = pickupAddresses.filter(addr => 
+            addr.address.trim() && 
+            addr.latitude !== 0 && 
+            addr.longitude !== 0 &&
+            !isNaN(addr.latitude) && 
+            !isNaN(addr.longitude)
+        );
+        
+        if (validAddresses.length === 0) {
+            Alert.alert('Erreur', 'Au moins une adresse de récupération du produit avec coordonnées GPS valides est obligatoire');
             return;
         }
+        
+        // ✅ Utiliser la première adresse valide comme principale (pour compatibilité backend)
+        const primaryAddress = validAddresses[0];
+        
         const vehicleTypeId = typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0;
         if (!vehicleTypeId) {
             Alert.alert('Erreur', 'Le type de véhicule est obligatoire');
@@ -359,11 +456,12 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         }
 
         // ✅ NOUVEAU: Valider le temps de préparation
-        const preparationTime = (config?.preparation_time_minutes && typeof config.preparation_time_minutes === 'string' && config.preparation_time_minutes.trim()) 
-            ? parseInt(config.preparation_time_minutes.trim(), 10) 
-            : 0;
-        if (preparationTime < 0) {
-            Alert.alert('Erreur', 'Le temps de préparation doit être positif ou nul (0 = instantané)');
+        const preparationTimeStr = config?.preparation_time_minutes && typeof config.preparation_time_minutes === 'string' 
+            ? config.preparation_time_minutes.trim() 
+            : '0';
+        const preparationTime = preparationTimeStr ? parseInt(preparationTimeStr, 10) : 0;
+        if (isNaN(preparationTime) || preparationTime < 0) {
+            Alert.alert('Erreur', 'Le temps de préparation doit être un nombre positif ou nul (0 = instantané)');
             return;
         }
 
@@ -381,33 +479,44 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
         setLoading(true);
         try {
-            // ✅ NOUVEAU 2026-01-04: Construire storage_location_ids et storage_location_quantities depuis storageLocationsList
-            const storageLocationIds = storageLocationsList
-                .filter(loc => loc.storage_location_id !== undefined)
-                .map(loc => loc.storage_location_id!);
-            
-            const storageLocationQuantities = storageLocationsList.reduce((acc, loc) => {
-                if (loc.storage_location_id && loc.quantity !== undefined && loc.quantity !== '') {
-                    const qty = parseInt(loc.quantity, 10);
-                    if (!isNaN(qty) && qty > 0) {
-                        acc[loc.storage_location_id] = qty;
-                    }
-                }
-                return acc;
-            }, {} as Record<number, number>);
+            // ✅ CORRIGÉ: Validation approfondie des coordonnées GPS
+            if (primaryAddress.latitude === 0 && primaryAddress.longitude === 0) {
+                Alert.alert('Erreur', 'Les coordonnées GPS de la première adresse de récupération sont invalides. Veuillez sélectionner une adresse avec des coordonnées valides.');
+                setLoading(false);
+                return;
+            }
 
+            // ✅ Validation que les coordonnées sont dans des plages valides
+            if (primaryAddress.latitude < -90 || primaryAddress.latitude > 90 || 
+                primaryAddress.longitude < -180 || primaryAddress.longitude > 180) {
+                Alert.alert('Erreur', 'Les coordonnées GPS sont hors limites. Veuillez sélectionner une adresse valide.');
+                setLoading(false);
+                return;
+            }
+
+            // ✅ VALIDATION CRITIQUE: Vérifier service_id et product_index
+            if (!serviceId || serviceId <= 0) {
+                Alert.alert('Erreur', 'ID de service invalide');
+                setLoading(false);
+                return;
+            }
+            if (!isTransversalMode && (productIndex === null || productIndex === undefined || productIndex < 0)) {
+                Alert.alert('Erreur', 'Index de produit invalide');
+                setLoading(false);
+                return;
+            }
+
+            // ✅ CORRIGÉ: Toujours envoyer preparation_time_minutes (même si 0, car backend le requiert pour is_complete)
             const payload = {
-                service_id: typeof serviceId === 'number' ? serviceId : 0,
-                product_index: typeof productIndex === 'number' ? productIndex : 0,
-                // ✅ CORRIGÉ: Utiliser l'adresse depuis pickup_location si disponible
-                pickup_address: config?.pickup_location?.raw || (config && typeof config.pickup_address === 'string' ? config.pickup_address : ''),
-                pickup_latitude: config?.pickup_location?.coordinates?.lat || (config && typeof config.pickup_latitude === 'number' ? config.pickup_latitude : 0),
-                pickup_longitude: config?.pickup_location?.coordinates?.lng || (config && typeof config.pickup_longitude === 'number' ? config.pickup_longitude : 0),
-                storage_location_id: config && typeof config.storage_location_id === 'number' ? config.storage_location_id : null, // ✅ Phase 9 - Amélioration 32 (backward compatible)
-                storage_location_ids: storageLocationIds.length > 0 ? storageLocationIds : undefined, // ✅ NOUVEAU 2026-01-04: Array de lieux de stock
-                storage_location_quantities: Object.keys(storageLocationQuantities).length > 0 ? storageLocationQuantities : undefined, // ✅ NOUVEAU 2026-01-04: Quantités par lieu
+                service_id: serviceId,
+                product_index: isTransversalMode ? 0 : productIndex, // En mode transversal, sera remplacé dans la boucle
+                // ✅ Utiliser la première adresse valide comme adresse principale (compatibilité backend)
+                pickup_address: primaryAddress.address.trim(),
+                pickup_latitude: primaryAddress.latitude,
+                pickup_longitude: primaryAddress.longitude,
+                // ✅ Nettoyage: Ne plus envoyer storage_location_ids et storage_location_quantities (supprimés)
                 required_vehicle_type_id: config && typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0,
-                preparation_time_minutes: preparationTime > 0 ? preparationTime : undefined, // ✅ NOUVEAU
+                preparation_time_minutes: preparationTime, // ✅ CORRIGÉ: Toujours envoyer (même si 0)
                 weight_kg: (config && typeof config.weight_kg === 'string' && config.weight_kg.trim()) ? parseFloat(config.weight_kg) : undefined,
                 volume_cm3: (config && typeof config.volume_cm3 === 'string' && config.volume_cm3.trim()) ? parseFloat(config.volume_cm3) : undefined,
                 requires_isothermal: config && typeof config.requires_isothermal === 'boolean' ? config.requires_isothermal : false,
@@ -417,6 +526,14 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 billing_mode: typeof config.billing_mode === 'string' ? config.billing_mode : 'standard',
                 billing_partner_label: (typeof config.billing_partner_label === 'string' && config.billing_partner_label.trim()) ? config.billing_partner_label : undefined
             };
+
+            // ✅ DEBUG: Logger le payload pour diagnostiquer les erreurs
+            console.log('[ProductDeliveryConfigModal] Payload de sauvegarde:', {
+                ...payload,
+                pickup_address_length: payload.pickup_address.length,
+                has_valid_coords: payload.pickup_latitude !== 0 && payload.pickup_longitude !== 0,
+                preparation_time: payload.preparation_time_minutes,
+            });
 
             if (isTransversalMode && normalizedAllProducts.length > 0) {
                 let successCount = 0;
@@ -458,7 +575,9 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             }
         } catch (error: any) {
             console.error('Erreur sauvegarde:', error);
-            Alert.alert('Erreur', 'Erreur lors de la sauvegarde de la configuration');
+            // ✅ AMÉLIORÉ: Afficher le message d'erreur détaillé du backend
+            const errorMessage = error?.message || error?.error || error?.response?.data?.message || 'Erreur lors de la sauvegarde de la configuration';
+            Alert.alert('Erreur', errorMessage);
         } finally {
             setLoading(false);
         }
@@ -542,115 +661,78 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         </View>
                     )}
 
-                    {/* ✅ NOUVEAU 2026-01-04: Plusieurs lieux de stockage avec bouton + */}
+                    {/* ✅ NOUVEAU: Adresses de récupération du produit (au moins une obligatoire) */}
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.label}>Lieux de stockage (optionnel)</Text>
+                            <Text style={styles.label}>Adresses de récupération du produit *</Text>
                             <TouchableOpacity
                                 style={styles.addButton}
-                                onPress={handleAddStorageLocation}
+                                onPress={handleAddPickupAddress}
                             >
                                 <SafeIcon name="plus" size={20} color={modernColors.primary} />
                                 <Text style={styles.addButtonText}>Ajouter</Text>
                             </TouchableOpacity>
                         </View>
                         <Text style={styles.hint}>
-                            Lieux où le coursier peut récupérer le produit
+                            Au moins une adresse est obligatoire. Lieux où le coursier peut récupérer le produit.
                         </Text>
                         
-                        {storageLocationsList.length === 0 && (
-                            <TouchableOpacity
-                                style={styles.emptyStorageLocationButton}
-                                onPress={handleAddStorageLocation}
-                            >
-                                <SafeIcon name="plus" size={20} color={modernColors.textSecondary} />
-                                <Text style={styles.emptyStorageLocationText}>Ajouter un lieu de stockage</Text>
-                            </TouchableOpacity>
-                        )}
-                        
-                        {storageLocationsList.map((storageLoc, index) => (
-                            <View key={storageLoc.id} style={styles.storageLocationItem}>
-                                <View style={styles.storageLocationHeader}>
-                                    <Text style={styles.storageLocationLabel}>
-                                        Lieu {index + 1}
+                        {pickupAddresses.map((pickupAddr, index) => (
+                            <View key={pickupAddr.id} style={styles.pickupAddressItem}>
+                                <View style={styles.pickupAddressHeader}>
+                                    <Text style={styles.pickupAddressLabel}>
+                                        Adresse {index + 1}{index === 0 ? ' (principale)' : ''}
                                     </Text>
-                                    {storageLocationsList.length > 0 && (
+                                    {pickupAddresses.length > 1 && (
                                         <TouchableOpacity
                                             style={styles.removeButton}
-                                            onPress={() => handleRemoveStorageLocation(storageLoc.id)}
+                                            onPress={() => handleRemovePickupAddress(pickupAddr.id)}
                                         >
                                             <SafeIcon name="x" size={18} color={modernColors.danger || '#EF4444'} />
                                         </TouchableOpacity>
                                     )}
                                 </View>
-                                <LocationSelector
-                                    label=""
-                                    value={storageLoc.address}
-                                    onSelect={(location: LocationObject) => {
-                                        const address = location.raw || location.place_name || '';
-                                        const coords = location.coordinates;
-                                        
-                                        // Si un lieu de stock existe avec cette adresse, l'utiliser
-                                        const existingLocation = storageLocations.find(loc => 
-                                            loc.address === address || 
-                                            (coords && Math.abs(loc.latitude - coords.lat) < 0.0001 && Math.abs(loc.longitude - coords.lng) < 0.0001)
-                                        );
-                                        
-                                        handleUpdateStorageLocation(storageLoc.id, {
-                                            address,
-                                            location,
-                                            storage_location_id: existingLocation?.id,
-                                            latitude: coords?.lat,
-                                            longitude: coords?.lng,
-                                            // ✅ Préserver la quantité existante lors de la mise à jour du lieu
-                                            quantity: storageLoc.quantity,
-                                        });
-                                    }}
-                                    placeholder="Ville, quartier, pays..."
-                                    enrichWithBackend={true}
-                                    required={false}
-                                />
-                                {/* ✅ NOUVEAU 2026-01-04: Champ quantité de stock pour ce lieu */}
-                                <View style={styles.quantityInputContainer}>
-                                    <Text style={styles.quantityLabel}>Quantité disponible</Text>
-                                    <TextInput
-                                        style={styles.quantityInput}
-                                        value={storageLoc.quantity !== undefined ? String(storageLoc.quantity) : ''}
-                                        onChangeText={(text) => {
-                                            const quantity = text.trim() === '' ? undefined : parseInt(text.replace(/[^0-9]/g, ''), 10);
-                                            handleUpdateStorageLocation(storageLoc.id, {
-                                                quantity: isNaN(quantity as number) ? undefined : quantity,
+                                <TouchableOpacity
+                                    style={[styles.select, !pickupAddr.address && styles.selectPlaceholder]}
+                                    onPress={() => {
+                                        // Récupérer la localisation actuelle si disponible
+                                        if (pickupAddr.location?.coordinates) {
+                                            setSelectedLocation({ 
+                                                lat: pickupAddr.location.coordinates.lat, 
+                                                lng: pickupAddr.location.coordinates.lng 
                                             });
-                                        }}
-                                        placeholder="0"
-                                        keyboardType="numeric"
-                                    />
-                                </View>
+                                        } else if (pickupAddr.latitude !== 0 && pickupAddr.longitude !== 0) {
+                                            setSelectedLocation({ 
+                                                lat: pickupAddr.latitude, 
+                                                lng: pickupAddr.longitude 
+                                            });
+                                        } else {
+                                            setSelectedLocation(null);
+                                        }
+                                        setGpsModalForIndex(index);
+                                        setShowGPSModal(true);
+                                    }}
+                                >
+                                    <Text style={[styles.selectText, !pickupAddr.address && styles.selectPlaceholderText]}>
+                                        {pickupAddr.address || 'Cliquez pour sélectionner le lieu de récupération GPS...'}
+                                    </Text>
+                                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                                </TouchableOpacity>
+                                {/* ✅ CORRIGÉ: Afficher l'adresse textuelle si disponible */}
+                                {pickupAddr.address && (
+                                    <Text style={styles.addressText}>
+                                        📍 {pickupAddr.address}
+                                    </Text>
+                                )}
+                                {/* Afficher les coordonnées GPS seulement si disponibles et si l'adresse textuelle ne les contient pas */}
+                                {pickupAddr.latitude !== 0 && pickupAddr.longitude !== 0 && 
+                                 !pickupAddr.address.includes(pickupAddr.latitude.toFixed(2)) && (
+                                    <Text style={styles.gpsText}>
+                                        Coordonnées: {pickupAddr.latitude.toFixed(6)}, {pickupAddr.longitude.toFixed(6)}
+                                    </Text>
+                                )}
                             </View>
                         ))}
-                        
-                        {loadingLocations && (
-                            <Text style={styles.hint}>Chargement des lieux de stock...</Text>
-                        )}
-                    </View>
-
-                    {/* ✅ CORRIGÉ: Adresse de départ avec ModernGPSModal pour sélection GPS précise */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>Adresse de départ *</Text>
-                        <TouchableOpacity
-                            style={styles.select}
-                            onPress={() => setShowGPSModal(true)}
-                        >
-                            <Text style={[styles.selectText, !config?.pickup_address && styles.selectPlaceholder]}>
-                                {config?.pickup_address || 'Sélectionner la localisation GPS précise...'}
-                            </Text>
-                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                        </TouchableOpacity>
-                        {((typeof config.pickup_latitude === 'number' && config.pickup_latitude !== 0) || (typeof config.pickup_longitude === 'number' && config.pickup_longitude !== 0)) && (
-                            <Text style={styles.gpsText}>
-                                📍 GPS: {typeof config.pickup_latitude === 'number' ? config.pickup_latitude.toFixed(6) : '0.000000'}, {typeof config.pickup_longitude === 'number' ? config.pickup_longitude.toFixed(6) : '0.000000'}
-                            </Text>
-                        )}
                     </View>
 
                     {/* ✅ CORRIGÉ 2026-01-02: Type de véhicule avec modal personnalisé (toutes les options) */}
@@ -850,11 +932,14 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 </ScrollView>
             </View>
 
-            {/* ✅ NOUVEAU: Modal GPS pour sélection précise de l'adresse de départ */}
+            {/* ✅ NOUVEAU: Modal GPS pour sélection précise des adresses de récupération */}
             <ModernGPSModal
                 visible={showGPSModal}
-                onClose={() => setShowGPSModal(false)}
-                onSelect={(coordinatesString) => {
+                onClose={() => {
+                    setShowGPSModal(false);
+                    setGpsModalForIndex(null);
+                }}
+                onSelect={async (coordinatesString) => {
                     // Parser les coordonnées depuis le format string "lat,lng"
                     const firstPoint = coordinatesString.split('|')[0].split(',');
                     if (firstPoint.length === 2) {
@@ -862,32 +947,111 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         const lng = parseFloat(firstPoint[1]);
                         
                         if (!isNaN(lat) && !isNaN(lng)) {
-                            // Construire un LocationObject avec les coordonnées
-                            const locationObj: LocationObject = {
-                                raw: `${lat}, ${lng}`,
-                                place_name: `GPS: ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-                                components: {},
-                                coordinates: { lat, lng }
-                            };
+                            const index = gpsModalForIndex ?? 0;
                             
-                            setConfig(prev => ({
-                                ...prev,
-                                pickup_address: locationObj.raw,
-                                pickup_location: locationObj,
-                                pickup_latitude: lat,
-                                pickup_longitude: lng,
-                            }));
+                            // ✅ NOUVEAU: Faire le géocodage inverse pour obtenir le nom complet du lieu
+                            try {
+                                const { reverseGeocodeAsync } = await import('expo-location');
+                                const reverseGeocode = await reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                                
+                                if (reverseGeocode && reverseGeocode.length > 0) {
+                                    const addr = reverseGeocode[0];
+                                    // Construire le nom complet du lieu
+                                    const addressParts = [];
+                                    if (addr.name) addressParts.push(addr.name);
+                                    if (addr.street) addressParts.push(addr.street);
+                                    if (addr.district) addressParts.push(addr.district);
+                                    if (addr.city) addressParts.push(addr.city);
+                                    if (addr.region) addressParts.push(addr.region);
+                                    if (addr.country) addressParts.push(addr.country);
+                                    
+                                    const placeName = addr.name || addr.street || addr.district || addr.city || 'Lieu sélectionné';
+                                    const fullAddress = addressParts.filter(Boolean).join(', ') || placeName;
+                                    
+                                    // Construire un LocationObject avec le nom complet
+                                    const locationObj: LocationObject = {
+                                        raw: fullAddress,
+                                        place_name: placeName, // Nom principal du lieu (établissement, rue, quartier)
+                                        components: {
+                                            quartier: addr.district || undefined,
+                                            ville: addr.city || undefined,
+                                            region: addr.region || undefined,
+                                            pays: addr.country || undefined,
+                                        },
+                                        coordinates: { lat, lng },
+                                    };
+                                    
+                                    // Trouver l'adresse à mettre à jour
+                                    const currentAddr = pickupAddresses[index];
+                                    if (currentAddr) {
+                                        handleUpdatePickupAddress(currentAddr.id, {
+                                            address: fullAddress,
+                                            location: locationObj,
+                                            latitude: lat,
+                                            longitude: lng,
+                                        });
+                                    }
+                                } else {
+                                    // Fallback si pas de géocodage inverse
+                                    const address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                                    const locationObj: LocationObject = {
+                                        raw: address,
+                                        place_name: 'Lieu sélectionné',
+                                        components: {},
+                                        coordinates: { lat, lng }
+                                    };
+                                    
+                                    const currentAddr = pickupAddresses[index];
+                                    if (currentAddr) {
+                                        handleUpdatePickupAddress(currentAddr.id, {
+                                            address: address,
+                                            location: locationObj,
+                                            latitude: lat,
+                                            longitude: lng,
+                                        });
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('[ProductDeliveryConfigModal] Erreur géocodage inverse:', error);
+                                // Fallback en cas d'erreur
+                                const address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                                const locationObj: LocationObject = {
+                                    raw: address,
+                                    place_name: 'Lieu sélectionné',
+                                    components: {},
+                                    coordinates: { lat, lng }
+                                };
+                                
+                                const currentAddr = pickupAddresses[index];
+                                if (currentAddr) {
+                                    handleUpdatePickupAddress(currentAddr.id, {
+                                        address: address,
+                                        location: locationObj,
+                                        latitude: lat,
+                                        longitude: lng,
+                                    });
+                                }
+                            }
                             
                             setShowGPSModal(false);
+                            setGpsModalForIndex(null);
                         }
                     }
                 }}
                 currentLocation={
-                    (config.pickup_latitude !== 0 && config.pickup_longitude !== 0)
-                        ? { lat: config.pickup_latitude, lng: config.pickup_longitude }
+                    gpsModalForIndex !== null && pickupAddresses[gpsModalForIndex]?.location?.coordinates
+                        ? { 
+                            lat: pickupAddresses[gpsModalForIndex].location.coordinates.lat, 
+                            lng: pickupAddresses[gpsModalForIndex].location.coordinates.lng 
+                        }
+                        : gpsModalForIndex !== null && pickupAddresses[gpsModalForIndex]?.latitude !== 0 && pickupAddresses[gpsModalForIndex]?.longitude !== 0
+                        ? {
+                            lat: pickupAddresses[gpsModalForIndex].latitude,
+                            lng: pickupAddresses[gpsModalForIndex].longitude
+                        }
                         : null
                 }
-                title="Sélectionner l'adresse de départ GPS"
+                title="Sélectionner le lieu de récupération du produit"
                 allowZoneSelection={false}
             />
 
@@ -1036,6 +1200,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     selectPlaceholder: {
+        borderColor: '#E5E7EB',
+    },
+    selectPlaceholderText: {
         color: modernColors.textSecondary,
     },
     checkboxRow: {
@@ -1096,10 +1263,19 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.textSecondary,
     },
+    addressText: {
+        fontSize: 13,
+        color: modernColors.text,
+        marginTop: 8,
+        padding: 8,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 6,
+    },
     gpsText: {
-        fontSize: 12,
+        fontSize: 11,
         color: modernColors.textSecondary,
         marginTop: 4,
+        fontStyle: 'italic',
     },
     actions: {
         flexDirection: 'row',
@@ -1167,7 +1343,7 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
     },
-    // ✅ NOUVEAU 2026-01-04: Styles pour plusieurs lieux de stockage
+    // ✅ Styles pour les adresses de récupération
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1190,37 +1366,21 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         marginLeft: 4,
     },
-    emptyStorageLocationButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        borderWidth: 2,
-        borderColor: '#D1D5DB',
-        borderStyle: 'dashed',
-        borderRadius: 8,
-        backgroundColor: '#F9FAFB',
-    },
-    emptyStorageLocationText: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        marginLeft: 8,
-    },
-    storageLocationItem: {
-        marginBottom: 12,
+    pickupAddressItem: {
+        marginBottom: 16,
         padding: 12,
         backgroundColor: '#F9FAFB',
         borderRadius: 8,
         borderWidth: 1,
         borderColor: '#E5E7EB',
     },
-    storageLocationHeader: {
+    pickupAddressHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: 8,
     },
-    storageLocationLabel: {
+    pickupAddressLabel: {
         fontSize: 13,
         fontWeight: '600',
         color: modernColors.text,

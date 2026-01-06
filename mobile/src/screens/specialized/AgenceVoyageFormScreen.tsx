@@ -89,6 +89,14 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const [editingSchedule, setEditingSchedule] = useState<any | null>(null);
     // ✅ NOUVEAU: Données du partenaire pour affichage dans l'en-tête
     const [partnerData, setPartnerData] = useState<any>(null);
+    const [showPartnerProfileModal, setShowPartnerProfileModal] = useState(false);
+    const [partnerProfileForm, setPartnerProfileForm] = useState({
+        name: '',
+        contact_email: '',
+        contact_phone: '',
+        address: '',
+        website: '',
+    });
     const [scheduleFormData, setScheduleFormData] = useState({
         departure_city: '',
         arrival_city: '',
@@ -291,7 +299,13 @@ const AgenceVoyageFormScreen: React.FC = () => {
     // ✅ NOUVEAU : Récupération automatique de la devise depuis le quartier
     useEffect(() => {
         if (formData.quartier) {
-            const currency = getCurrencyIntelligently(formData.quartier);
+            const currency = getCurrencyIntelligently(
+                formData.quartier,
+                location?.coords ? {
+                    lat: location.coords.latitude,
+                    lng: location.coords.longitude,
+                } : null
+            );
             if (currency) {
                 setFormData(prev => ({ ...prev, devise: currency }));
             }
@@ -620,12 +634,26 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
                         <Text style={styles.title}>Enregistrer une Agence de Voyage</Text>
-                        {/* ✅ NOUVEAU: Afficher le nom du partenaire dans l'en-tête */}
+                        {/* ✅ NOUVEAU: Afficher le nom du partenaire dans l'en-tête avec bouton de modification */}
                         {user?.role === 'partenaire' && partnerData && (
-                            <View style={styles.partnerHeader}>
+                            <TouchableOpacity 
+                                style={styles.partnerHeader}
+                                onPress={() => {
+                                    setPartnerProfileForm({
+                                        name: partnerData.name || '',
+                                        contact_email: partnerData.contact_email || '',
+                                        contact_phone: partnerData.contact_phone || '',
+                                        address: partnerData.address || partnerData.location_address || '',
+                                        website: partnerData.website || '',
+                                    });
+                                    setShowPartnerProfileModal(true);
+                                }}
+                                activeOpacity={0.7}
+                            >
                                 <SafeIcon name="building" size={16} color={modernColors.primary} />
                                 <Text style={styles.partnerName}>{partnerData.name}</Text>
-                            </View>
+                                <SafeIcon name="edit-2" size={14} color={modernColors.primary} type="lucide" />
+                            </TouchableOpacity>
                         )}
                     </View>
                 </View>
@@ -1328,6 +1356,135 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     </View>
                 </View>
             </Modal>
+
+            {/* ✅ NOUVEAU: Modal pour modifier le profil partenaire */}
+            <Modal
+                visible={showPartnerProfileModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowPartnerProfileModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Modifier le profil partenaire</Text>
+                            <TouchableOpacity onPress={() => setShowPartnerProfileModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Nom de l'agence *</Text>
+                                <NativeInput
+                                    value={partnerProfileForm.name}
+                                    onChangeText={(text) => setPartnerProfileForm({ ...partnerProfileForm, name: text })}
+                                    placeholder="Nom de l'agence"
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Email de contact</Text>
+                                <NativeInput
+                                    value={partnerProfileForm.contact_email}
+                                    onChangeText={(text) => setPartnerProfileForm({ ...partnerProfileForm, contact_email: text })}
+                                    placeholder="contact@agence.com"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Téléphone de contact</Text>
+                                <NativeInput
+                                    value={partnerProfileForm.contact_phone}
+                                    onChangeText={(text) => setPartnerProfileForm({ ...partnerProfileForm, contact_phone: text })}
+                                    placeholder="+237 6XX XX XX XX"
+                                    keyboardType="phone-pad"
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Adresse</Text>
+                                <NativeInput
+                                    value={partnerProfileForm.address}
+                                    onChangeText={(text) => setPartnerProfileForm({ ...partnerProfileForm, address: text })}
+                                    placeholder="Adresse complète"
+                                    multiline
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Site web</Text>
+                                <NativeInput
+                                    value={partnerProfileForm.website}
+                                    onChangeText={(text) => setPartnerProfileForm({ ...partnerProfileForm, website: text })}
+                                    placeholder="https://..."
+                                    keyboardType="url"
+                                    autoCapitalize="none"
+                                />
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Annuler"
+                                onPress={() => setShowPartnerProfileModal(false)}
+                                variant="secondary"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title="Enregistrer"
+                                onPress={async () => {
+                                    if (!partnerProfileForm.name.trim()) {
+                                        Alert.alert('Erreur', 'Le nom de l\'agence est obligatoire');
+                                        return;
+                                    }
+
+                                    try {
+                                        setLoading(true);
+                                        const response = await apiPut('/api/partners/me', {
+                                            name: partnerProfileForm.name.trim(),
+                                            contact_email: partnerProfileForm.contact_email.trim() || null,
+                                            contact_phone: partnerProfileForm.contact_phone.trim() || null,
+                                            address: partnerProfileForm.address.trim() || null,
+                                            website: partnerProfileForm.website.trim() || null,
+                                        });
+
+                                        if (response.success) {
+                                            Alert.alert('Succès', 'Profil partenaire mis à jour avec succès');
+                                            // Recharger les données du partenaire
+                                            const refreshResponse = await apiGet('/api/partners/me');
+                                            if (refreshResponse.success && refreshResponse.data) {
+                                                setPartnerData(refreshResponse.data);
+                                                // Mettre à jour aussi formData
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    nom_agence: refreshResponse.data.name || prev.nom_agence,
+                                                    telephone: refreshResponse.data.contact_phone || prev.telephone,
+                                                    email: refreshResponse.data.contact_email || prev.email,
+                                                    adresse: refreshResponse.data.address || refreshResponse.data.location_address || prev.adresse,
+                                                }));
+                                            }
+                                            setShowPartnerProfileModal(false);
+                                        } else {
+                                            Alert.alert('Erreur', response.error || 'Impossible de mettre à jour le profil');
+                                        }
+                                    } catch (error: any) {
+                                        console.error('Erreur mise à jour profil partenaire:', error);
+                                        Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                }}
+                                variant="primary"
+                                style={styles.modalButton}
+                                disabled={loading || !partnerProfileForm.name.trim()}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </>
     );
 };
@@ -1348,10 +1505,29 @@ const styles = StyleSheet.create({
     backButton: {
         marginRight: 12,
     },
+    headerContent: {
+        flex: 1,
+    },
     title: {
         fontSize: 20,
         fontWeight: '700',
         color: '#111827',
+    },
+    partnerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 6,
+        backgroundColor: '#F3F4F6',
+    },
+    partnerName: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+        flex: 1,
     },
     form: {
         padding: 16,

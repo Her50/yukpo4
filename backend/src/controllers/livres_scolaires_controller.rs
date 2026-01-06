@@ -412,3 +412,113 @@ pub async fn get_analytics(
 pub struct AnalyticsQuery {
     pub livre_id: Option<i32>,
 }
+
+// ============================================================================
+// ✅ NOUVEAU: ANALYSE IA D'IMAGE DE LIVRE
+// ============================================================================
+
+/// POST /api/livres-scolaires/ai/analyze-image
+/// Analyser une image de livre pour extraire les caractéristiques
+#[derive(Debug, Deserialize)]
+pub struct AnalyzeBookImageRequest {
+    pub image_uri: String, // URL ou base64 de l'image
+    pub user_lat: Option<f64>,
+    pub user_lng: Option<f64>,
+}
+
+pub async fn analyze_book_image(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(request): Json<AnalyzeBookImageRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[analyze_book_image] User ID: {}, Image URI fournie", user_id);
+
+    // Créer un prompt IA pour analyser l'image et extraire les caractéristiques du livre
+    let prompt = format!(
+        r#"
+Tu es un expert en reconnaissance de livres scolaires pour Yukpomnang.
+
+CONTEXTE :
+- Image de livre fournie par l'utilisateur
+- Localisation utilisateur : lat={}, lng={}
+
+TON RÔLE :
+- Analyser l'image du livre scolaire
+- Extraire TOUTES les caractéristiques visibles :
+  * Titre du livre (exact)
+  * Auteur(s)
+  * Éditeur
+  * ISBN (si visible)
+  * Classe/niveau (ex: "6ème", "5ème", "Terminale")
+  * Matière (Mathématiques, Français, etc.)
+  * État visuel du livre (Neuf, Très bon, Bon, Acceptable)
+  * Description de l'état (détails visibles : pages, couverture, etc.)
+
+IMPORTANT :
+- Sois précis dans l'extraction des informations
+- Si une information n'est pas visible, indique "Non visible"
+- Pour la classe, utilise les formats standards : "6ème", "5ème", "4ème", "3ème", "Seconde", "Première", "Terminale"
+- Pour la matière, utilise les noms standards : "Mathématiques", "Français", "Anglais", "SVT", "Physique-Chimie", "Histoire-Géo", "Philosophie", etc.
+- Pour l'état, évalue visuellement : "Neuf" (aucun signe d'usure), "Très bon" (légère usure), "Bon" (usure modérée), "Acceptable" (usure importante mais utilisable)
+
+RÉPONSE ATTENDUE (JSON strict) :
+{{
+    "titre": "Titre exact du livre",
+    "auteur": "Nom de l'auteur ou null si non visible",
+    "editeur": "Nom de l'éditeur ou null si non visible",
+    "isbn": "ISBN ou null si non visible",
+    "classe_actuelle": "Classe actuelle de l'élève (ex: 6ème) ou null",
+    "classe_souhaitee": "Classe souhaitée (ex: 5ème) ou null",
+    "matiere": "Matière (ex: Mathématiques) ou null",
+    "niveau": "Primaire, Collège ou Lycée ou null",
+    "etat_livre": "Neuf, Très bon, Bon ou Acceptable",
+    "description_etat": "Description détaillée de l'état visible",
+    "confidence": 0.85,
+    "notes": "Notes additionnelles sur l'analyse"
+}}
+"#,
+        request.user_lat.unwrap_or(0.0),
+        request.user_lng.unwrap_or(0.0)
+    );
+
+    // Utiliser directement AppIA pour l'analyse d'image
+    let (model_name, response, tokens) = state.ia.predict(&prompt).await
+        .map_err(|e| {
+            error!("[analyze_book_image] Erreur IA: {}", e);
+            AppError::Internal("Erreur analyse IA".to_string())
+        })?;
+
+    info!(
+        "[analyze_book_image] Analyse effectuée avec {} (tokens: {})",
+        model_name, tokens
+    );
+
+    // Parser la réponse JSON
+    let book_info: serde_json::Value = match serde_json::from_str(&response) {
+        Ok(v) => v,
+        Err(e) => {
+            log::warn!("[analyze_book_image] Erreur parsing JSON: {}", e);
+            // Fallback avec structure minimale
+            json!({
+                "titre": "Livre scolaire",
+                "auteur": null,
+                "editeur": null,
+                "isbn": null,
+                "classe_actuelle": null,
+                "classe_souhaitee": null,
+                "matiere": null,
+                "niveau": null,
+                "etat_livre": "Bon",
+                "description_etat": "État à vérifier",
+                "confidence": 0.5,
+                "notes": "Analyse partielle, vérification manuelle recommandée"
+            })
+        }
+    };
+
+    Ok(Json(json!({
+        "success": true,
+        "book_info": book_info,
+        "image_uri": request.image_uri
+    })))
+}

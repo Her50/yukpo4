@@ -1,6 +1,6 @@
 // Composant pour sélectionner et valider les modes de paiement
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { formatCardNumber, validateCardExpiry, validateCardNumber, validatePhoneNumber } from '../utils/paymentValidation';
 import { NativeInput } from './SafeNativeDesign';
@@ -133,12 +133,23 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                     onPress={() => setSelectedType('mobile_money')}
                     disabled={readonly}
                 >
-                    <Text style={styles.paymentTypeIcon}>📱</Text>
+                    {/* ✅ CORRECTION: Logo MTN Mobile Money au lieu d'emoji */}
+                    <View style={styles.paymentTypeIconContainer}>
+                        <Image
+                            source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/MTN_Logo.svg/512px-MTN_Logo.svg.png' }}
+                            style={styles.paymentTypeIconImage}
+                            resizeMode="contain"
+                            onError={() => {
+                                // Fallback vers emoji si l'image ne charge pas
+                                console.warn('[PaymentMethodSelector] Erreur chargement logo MTN, fallback emoji');
+                            }}
+                        />
+                    </View>
                     <Text style={[
                         styles.paymentTypeText,
                         selectedType === 'mobile_money' && styles.paymentTypeTextActive
                     ]}>
-                        Mobile Money
+                        MTN Money
                     </Text>
                     {selectedType === 'mobile_money' && (
                         <View style={styles.checkmark}>
@@ -155,7 +166,18 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                     onPress={() => setSelectedType('orange_money')}
                     disabled={readonly}
                 >
-                    <Text style={styles.paymentTypeIcon}>🍊</Text>
+                    {/* ✅ CORRECTION: Logo Orange Money au lieu d'emoji */}
+                    <View style={styles.paymentTypeIconContainer}>
+                        <Image
+                            source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/512px-Orange_logo.svg.png' }}
+                            style={styles.paymentTypeIconImage}
+                            resizeMode="contain"
+                            onError={() => {
+                                // Fallback vers emoji si l'image ne charge pas
+                                console.warn('[PaymentMethodSelector] Erreur chargement logo Orange, fallback emoji');
+                            }}
+                        />
+                    </View>
                     <Text style={[
                         styles.paymentTypeText,
                         selectedType === 'orange_money' && styles.paymentTypeTextActive
@@ -380,6 +402,17 @@ const styles = StyleSheet.create({
     },
     paymentTypeIcon: {
         fontSize: 32,
+    },
+    paymentTypeIconContainer: {
+        width: 40,
+        height: 40,
+        marginBottom: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    paymentTypeIconImage: {
+        width: 40,
+        height: 40,
     },
     paymentTypeText: {
         fontSize: 13,

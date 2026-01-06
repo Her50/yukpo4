@@ -54,6 +54,10 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/ai/matching",
             post(livres_scolaires_controller::ai_matching),
         )
+        .route(
+            "/api/bourse-livre/ai/analyze-image",
+            post(livres_scolaires_controller::analyze_book_image),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     Router::new()

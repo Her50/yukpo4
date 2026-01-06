@@ -62,7 +62,7 @@ const SERVICES_DATA: Service[] = [
     { id: 'offres_emploi', title: 'Offres d\'Emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', comingSoon: false },
     // Vie quotidienne
     { id: 'menu_planning', title: 'Mon menu', icon: 'coffee', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', comingSoon: false },
-    { id: 'bayamselam', title: 'BayamSelam', icon: 'trending-down', gradient: ['#10B981', '#34D399'], description: 'Comparatif prix', comingSoon: true },
+    { id: 'bayamselam', title: 'BayamSelam', icon: 'trending-down', gradient: ['#10B981', '#34D399'], description: 'Comparatif prix', comingSoon: false },
     // Immobilier
     { id: 'immo', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], description: 'Biens immobiliers', comingSoon: false },
 ];

@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { modernColors } from '../../theme/modernTheme';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
@@ -59,6 +60,7 @@ export const SupermarketSelectionStep: React.FC<{
     onSortChange,
     loading,
     error,
+    onViewProducts,
 }) => {
         const filtered = React.useMemo(() => {
             let filtered = supermarkets;
@@ -93,13 +95,28 @@ export const SupermarketSelectionStep: React.FC<{
                                 À {selectedSupermarket.distance_km.toFixed(1)} km
                             </Text>
                         )}
-                        <NativeButton
-                            title="Changer"
-                            variant="outline"
-                            size="small"
-                            onPress={() => onSelect(null as any)}
-                            style={styles.changeButton}
-                        />
+                        <View style={styles.selectedActions}>
+                            <NativeButton
+                                title="Changer"
+                                variant="outline"
+                                size="small"
+                                onPress={() => onSelect(null as any)}
+                                style={styles.changeButton}
+                            />
+                            <NativeButton
+                                title="Voir les produits"
+                                variant="primary"
+                                size="small"
+                                onPress={() => {
+                                    if (onViewProducts) {
+                                        onViewProducts(selectedSupermarket);
+                                    } else {
+                                        (navigation as any).navigate('SupermarketHome', { supermarketId: selectedSupermarket.id });
+                                    }
+                                }}
+                                style={styles.viewProductsButton}
+                            />
+                        </View>
                     </NativeCard>
                 </View>
             );
@@ -259,7 +276,7 @@ export const BasketCompositionStep: React.FC<{
                         </View>
                         <TextInput
                             style={styles.input}
-                            placeholder="Prix estimé (FCFA)"
+                            placeholder={`Prix estimé (${detectedCurrency})`}
                             value={newItemPrice}
                             onChangeText={onNewItemPriceChange}
                             keyboardType="numeric"
@@ -302,7 +319,7 @@ export const BasketCompositionStep: React.FC<{
                                     <Text style={styles.basketItemName}>{item.name}</Text>
                                     <Text style={styles.basketItemDetails}>
                                         {item.quantity} {item.unit || 'unité(s)'}
-                                        {item.estimatedPrice && ` • ${item.estimatedPrice.toLocaleString('fr-FR')} FCFA`}
+                                        {item.estimatedPrice && ` • ${item.estimatedPrice.toLocaleString('fr-FR')} ${detectedCurrency}`}
                                     </Text>
                                 </View>
                                 <TouchableOpacity onPress={() => onRemoveItem(item.id)}>
@@ -313,7 +330,7 @@ export const BasketCompositionStep: React.FC<{
                         <NativeCard style={styles.totalCard}>
                             <Text style={styles.totalLabel}>Total estimé</Text>
                             <Text style={styles.totalValue}>
-                                {total.toLocaleString('fr-FR')} FCFA
+                                {total.toLocaleString('fr-FR')} {detectedCurrency}
                             </Text>
                         </NativeCard>
                     </ScrollView>
@@ -679,8 +696,16 @@ const styles = StyleSheet.create({
     locationButton: {
         marginBottom: 0,
     },
-    changeButton: {
+    selectedActions: {
+        flexDirection: 'row',
+        gap: 8,
         marginTop: 12,
+    },
+    changeButton: {
+        flex: 1,
+    },
+    viewProductsButton: {
+        flex: 1,
     },
     errorContainer: {
         flexDirection: 'row',

@@ -1,4 +1,4 @@
-// ✅ NOUVEAU: Écran de création/édition de biens immobiliers pour les prestataires
+// ✅ NOUVEAU: Écran de création/édition de biens immobiliers (accessible à tous les utilisateurs)
 
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
@@ -20,6 +20,8 @@ import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import MediaUploader, { MediaItem } from '../../components/specialized/MediaUploader';
 
 const ImmobilierFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -50,7 +52,13 @@ const ImmobilierFormScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    const [devise, setDevise] = useState('XAF');
+    
+    // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
+    const defaultCurrency = useCurrencyDetection(formData.ville || formData.quartier);
+    const [devise, setDevise] = useState(defaultCurrency);
+    
+    // ✅ NOUVEAU: Gestion des médias (images et vidéos)
+    const [media, setMedia] = useState<MediaItem[]>([]);
 
     const typesBien = ['maison', 'appartement', 'terrain', 'bureau', 'local_commercial'];
     const statuts = ['vente', 'location', 'les_deux'];
@@ -84,15 +92,23 @@ const ImmobilierFormScreen: React.FC = () => {
         }
     }, [formData.titre, serviceId, user?.id]);
 
-    // ✅ Récupération automatique de la devise depuis ville
+    // ✅ Récupération automatique de la devise depuis ville ou quartier (avec GPS comme fallback)
     useEffect(() => {
-        if (formData.ville) {
-            const currency = getCurrencyIntelligently(formData.ville);
+        const locationSource = formData.ville || formData.quartier;
+        if (locationSource) {
+            const currency = getCurrencyIntelligently(locationSource, location?.coords ? {
+                lat: location.coords.latitude,
+                lng: location.coords.longitude,
+            } : null);
             if (currency) {
                 setDevise(currency);
             }
+        } else if (location?.coords) {
+            // Si pas de ville/quartier mais GPS disponible, utiliser la devise détectée depuis GPS
+            const gpsCurrency = useCurrencyDetection();
+            setDevise(gpsCurrency);
         }
-    }, [formData.ville]);
+    }, [formData.ville, formData.quartier, location]);
 
     // ✅ Charger les données existantes si mode='edit'
     useEffect(() => {
@@ -125,6 +141,16 @@ const ImmobilierFormScreen: React.FC = () => {
                         }
                         if (data.service_id) {
                             setServiceId(data.service_id);
+                        }
+                        // Charger les médias existants
+                        if (data.photos && Array.isArray(data.photos)) {
+                            const existingMedia: MediaItem[] = data.photos.map((photo: string) => ({
+                                uri: photo,
+                                type: 'image',
+                                uploaded: true,
+                                uploadUrl: photo,
+                            }));
+                            setMedia(existingMedia);
                         }
                     }
                 } catch (error: any) {
@@ -172,6 +198,14 @@ const ImmobilierFormScreen: React.FC = () => {
         try {
             setLoading(true);
 
+            // ✅ NOUVEAU: Extraire les URLs des médias uploadés
+            const photos = media
+                .filter(item => item.type === 'image' && item.uploadUrl)
+                .map(item => item.uploadUrl!);
+            const videos = media
+                .filter(item => item.type === 'video' && item.uploadUrl)
+                .map(item => item.uploadUrl!);
+
             const payload: any = {
                 service_id: serviceId,
                 titre: formData.titre.trim(),
@@ -191,6 +225,8 @@ const ImmobilierFormScreen: React.FC = () => {
                 etat_general: formData.etat_general || null,
                 prix_vente: formData.prix_vente ? parseFloat(formData.prix_vente) : null,
                 prix_location_mensuel: formData.prix_location_mensuel ? parseFloat(formData.prix_location_mensuel) : null,
+                photos: photos.length > 0 ? photos : null, // ✅ NOUVEAU: Photos uploadées
+                videos: videos.length > 0 ? videos : null, // ✅ NOUVEAU: Vidéos uploadées
             };
 
             let response;
@@ -468,6 +504,18 @@ const ImmobilierFormScreen: React.FC = () => {
                             />
                         </View>
                     )}
+
+                    {/* ✅ NOUVEAU: Upload de médias (images et vidéos) */}
+                    <View style={styles.inputGroup}>
+                        <MediaUploader
+                            media={media}
+                            onMediaChange={setMedia}
+                            maxImages={15}
+                            maxVideos={3}
+                            allowVideos={true}
+                            label="Photos et vidéos du bien"
+                        />
+                    </View>
 
                     <NativeButton
                         title={loading ? 'Enregistrement...' : mode === 'edit' ? 'Modifier le bien' : 'Créer le bien'}

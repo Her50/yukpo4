@@ -604,26 +604,28 @@ const HomeScreen: React.FC = () => {
                                 // hapticPress();
                                 console.log('[HomeScreen] Service pressé:', serviceId);
                                 // ✅ CORRIGÉ: Mapping complet des services spécialisés vers leurs écrans spécifiques
+                                // ⚠️ IMPORTANT: Uniquement écrans UTILISATEURS (Home/Search/List/Details)
+                                // ❌ JAMAIS d'écrans PARTENAIRES (Form/Create/Manage) depuis HomeScreen
                                 const searchRoutes: Record<string, string> = {
-                                    // Services Santé - Navigation directe vers chaque écran spécifique
-                                    'pharmacie': 'PharmacieSearch',
-                                    'hopital': 'HopitalSearch',
-                                    'laboratoire': 'LaboratoireSearch',
-                                    'banque_sang': 'BanqueSangSearch',
-                                    // Services Transport - Navigation directe vers chaque écran spécifique
-                                    'agence_voyage': 'AgenceVoyageSearch',
-                                    'covoiturage': 'CovoiturageSearch',
-                                    'taxi': 'TaxiSearch',
-                                    // Services Éducation
-                                    'orientation_scolaire': 'EtablissementSearch',
-                                    'bourse_livre': 'EtablissementSearch',
-                                    // Services Emploi
-                                    'offres_emploi': 'OffresEmploiHub',
-                                    // Services Vie quotidienne
-                                    'menu_planning': 'MenuPlanningHub',
-                                    'bayamselam': 'BayamSelamSearch',
-                                    // Services Immobilier
-                                    'immo': 'ImmobilierSearch',
+                                    // Services Santé - Navigation directe vers chaque écran spécifique (UTILISATEURS)
+                                    'pharmacie': 'PharmacieSearch',        // ✅ Utilisateur: PharmacieHomeScreen
+                                    'hopital': 'HopitalSearch',            // ✅ Utilisateur: HopitalHomeScreen
+                                    'laboratoire': 'LaboratoireSearch',    // ✅ Utilisateur: LaboratoireHomeScreen
+                                    'banque_sang': 'BanqueSangSearch',     // ✅ Utilisateur: BanqueSangSearchScreen
+                                    // Services Transport - Navigation directe vers chaque écran spécifique (UTILISATEURS)
+                                    'agence_voyage': 'BusTicketSearch',    // ✅ Utilisateur: TicketVoyageHomeScreen
+                                    'covoiturage': 'CovoiturageSearch',    // ✅ Utilisateur: CovoiturageHomeScreen
+                                    'taxi': 'TaxiSearch',                  // ✅ Utilisateur: TaxiHomeScreen
+                                    // Services Éducation (UTILISATEURS)
+                                    'orientation_scolaire': 'OrientationScolaireHub', // ✅ Utilisateur: OrientationScolaireHomeScreen
+                                    'bourse_livre': 'LivreScolaireSearch',           // ✅ Utilisateur: LivreScolaireHomeScreen
+                                    // Services Emploi (UTILISATEURS)
+                                    'offres_emploi': 'OffresEmploiHub',    // ✅ Utilisateur: OffresEmploiHomeScreen
+                                    // Services Vie quotidienne (UTILISATEURS)
+                                    'menu_planning': 'MenuPlanningHub',    // ✅ Utilisateur: MenuPlanningHubScreen
+                                    'bayamselam': 'BayamSelamSearch',      // ✅ Utilisateur: SupermarketHomeScreen
+                                    // Services Immobilier (UTILISATEURS)
+                                    'immo': 'ImmobilierSearch',           // ✅ Utilisateur: ImmobilierHomeScreen
                                 };
                                 const route = searchRoutes[serviceId] || 'Home';
                                 console.log('[HomeScreen] Navigation vers:', route, 'pour service:', serviceId);

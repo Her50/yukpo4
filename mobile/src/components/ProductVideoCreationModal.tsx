@@ -410,10 +410,41 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return;
         }
 
-        if (typeof productToUse.product_index !== 'number' || productToUse.product_index < 0) {
+        // ✅ CORRIGÉ: Extraire product_index de manière robuste (vérifier product_index ET productIndex)
+        const productIndexValue = (() => {
+            // Priorité 1: product_index (standard)
+            if (typeof productToUse.product_index === 'number' && productToUse.product_index >= 0) {
+                return productToUse.product_index;
+            }
+            // Priorité 2: productIndex (alternative)
+            if (typeof productToUse.productIndex === 'number' && productToUse.productIndex >= 0) {
+                return productToUse.productIndex;
+            }
+            // Priorité 3: Essayer de convertir depuis id si format "serviceId_index"
+            if (typeof productToUse.id === 'string' && productToUse.id.includes('_')) {
+                const parts = productToUse.id.split('_');
+                if (parts.length >= 2) {
+                    const lastPart = parts[parts.length - 1];
+                    const parsed = parseInt(lastPart, 10);
+                    if (!isNaN(parsed) && parsed >= 0) {
+                        return parsed;
+                    }
+                }
+            }
+            return null;
+        })();
+
+        if (productIndexValue === null || productIndexValue < 0) {
+            console.error('[ProductVideoCreationModal] ❌ product_index invalide:', {
+                product_id: productToUse.id,
+                product_index: productToUse.product_index,
+                productIndex: productToUse.productIndex,
+                serviceId: productToUse.serviceId,
+                product_name: productToUse.nom || productToUse.titre
+            });
             Alert.alert(
                 'Produit invalide',
-                'Le produit sélectionné n\'a pas d\'index valide. Veuillez sélectionner un autre produit.',
+                'Le produit sélectionné n\'a pas d\'index valide. Veuillez sélectionner un autre produit ou contacter le support.',
                 [{ text: 'OK', onPress: () => setShowAREditor(false) }]
             );
             return;
@@ -435,9 +466,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         setIsUploadingARVideo(true);
         try {
-            // ✅ Utiliser productToUse au lieu de selectedProduct pour garantir la cohérence
+            // ✅ CORRIGÉ: Utiliser productToUse et productIndexValue extrait robustement
             const serviceId = Number(productToUse.serviceId);
-            const productIndex = productToUse.product_index;
+            const productIndex = productIndexValue;
 
             console.log('[ProductVideoCreationModal] 📤 Début upload vidéo AR:', {
                 serviceId,
@@ -2687,10 +2718,41 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     return;
                                 }
 
-                                if (typeof productToUse.product_index !== 'number' || productToUse.product_index < 0) {
+                                // ✅ CORRIGÉ: Extraire product_index de manière robuste (vérifier product_index ET productIndex)
+                                const productIndexValue = (() => {
+                                    // Priorité 1: product_index (standard)
+                                    if (typeof productToUse.product_index === 'number' && productToUse.product_index >= 0) {
+                                        return productToUse.product_index;
+                                    }
+                                    // Priorité 2: productIndex (alternative)
+                                    if (typeof productToUse.productIndex === 'number' && productToUse.productIndex >= 0) {
+                                        return productToUse.productIndex;
+                                    }
+                                    // Priorité 3: Essayer de convertir depuis id si format "serviceId_index"
+                                    if (typeof productToUse.id === 'string' && productToUse.id.includes('_')) {
+                                        const parts = productToUse.id.split('_');
+                                        if (parts.length >= 2) {
+                                            const lastPart = parts[parts.length - 1];
+                                            const parsed = parseInt(lastPart, 10);
+                                            if (!isNaN(parsed) && parsed >= 0) {
+                                                return parsed;
+                                            }
+                                        }
+                                    }
+                                    return null;
+                                })();
+
+                                if (productIndexValue === null || productIndexValue < 0) {
+                                    console.error('[ProductVideoCreationModal] ❌ product_index invalide avant ouverture AR:', {
+                                        product_id: productToUse.id,
+                                        product_index: productToUse.product_index,
+                                        productIndex: productToUse.productIndex,
+                                        serviceId: productToUse.serviceId,
+                                        product_name: productToUse.nom || productToUse.titre
+                                    });
                                     Alert.alert(
                                         'Produit invalide',
-                                        'Le produit sélectionné n\'a pas d\'index valide. Veuillez sélectionner un autre produit.'
+                                        'Le produit sélectionné n\'a pas d\'index valide. Veuillez sélectionner un autre produit ou contacter le support.'
                                     );
                                     return;
                                 }
@@ -2710,10 +2772,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 
                                 // ✅ NOUVEAU: Stocker le produit courant au moment de l'ouverture de l'éditeur AR
                                 // Cela garantit que la vidéo AR sera liée au bon produit même si selectedProduct change
-                                setArEditorProduct(productToUse);
+                                // ✅ CORRIGÉ: Créer un produit normalisé avec product_index garanti
+                                const normalizedProduct = {
+                                    ...productToUse,
+                                    product_index: productIndexValue,
+                                    productIndex: productIndexValue
+                                };
+                                setArEditorProduct(normalizedProduct);
                                 console.log('[ProductVideoCreationModal] 📌 Produit stocké pour AR:', {
                                     serviceId: productToUse.serviceId,
-                                    product_index: productToUse.product_index,
+                                    product_index: productIndexValue,
                                     product_name: productToUse.nom || productToUse.titre
                                 });
                                 

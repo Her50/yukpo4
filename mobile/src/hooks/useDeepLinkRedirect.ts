@@ -34,6 +34,7 @@ export const useDeepLinkRedirect = () => {
         const handlePartnerRedirect = () => {
             if (user?.role === 'partenaire' && user.partner_type) {
                 const partnerTypeToScreen: Record<string, string> = {
+                    'banquesang': 'BanqueSangForm', // ✅ NOUVEAU: Type partenaire banque de sang
                     'pharmacie': 'PharmacieForm',
                     'hopital': 'HopitalForm',
                     'laboratoire': 'LaboratoireForm',

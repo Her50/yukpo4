@@ -80,15 +80,25 @@ const OffresEmploiFormScreen: React.FC = () => {
     const languesOptions = ['Français', 'Anglais', 'Espagnol', 'Allemand', 'Arabe', 'Autre'];
     const permisOptions = ['Permis B', 'Permis A', 'Permis C', 'Permis D', 'Aucun'];
 
-    // ✅ Récupération automatique de la devise depuis lieu_travail
+    // ✅ Récupération automatique de la devise depuis lieu_travail (avec GPS comme fallback)
     useEffect(() => {
         if (formData.lieu_travail) {
-            const currency = getCurrencyIntelligently(formData.lieu_travail);
+            const currency = getCurrencyIntelligently(
+                formData.lieu_travail,
+                location?.coords ? {
+                    lat: location.coords.latitude,
+                    lng: location.coords.longitude,
+                } : null
+            );
             if (currency) {
                 setFormData(prev => ({ ...prev, devise: currency }));
             }
+        } else if (location?.coords) {
+            // Si pas de lieu_travail mais GPS disponible, utiliser la devise depuis GPS
+            // Pour l'instant, fallback XAF (sera amélioré avec reverse geocoding)
+            setFormData(prev => ({ ...prev, devise: 'XAF' }));
         }
-    }, [formData.lieu_travail]);
+    }, [formData.lieu_travail, location]);
 
     // ✅ Charger les données existantes si mode='edit'
     useEffect(() => {

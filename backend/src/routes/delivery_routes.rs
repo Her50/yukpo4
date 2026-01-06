@@ -449,10 +449,10 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/partners/search",
             get(search_partners_autocomplete),
         )
-        // ✅ NOUVEAU: Endpoint pour récupérer les données du partenaire connecté
+        // ✅ NOUVEAU: Endpoint pour récupérer et modifier les données du partenaire connecté
         .route(
             "/api/partners/me",
-            get(get_my_partner_data),
+            get(get_my_partner_data).put(update_my_partner_data),
         )
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
@@ -573,12 +573,13 @@ async fn save_product_delivery_config(
     // ✅ 4. Vérifier si la configuration est complète (tous les champs requis présents)
     let schedule = payload.pickup_availability_schedule.as_object();
     let has_schedule = schedule.map(|s| !s.is_empty()).unwrap_or(false);
+    // ✅ CORRIGÉ: 0 est valide (instantané), donc on vérifie juste que c'est défini (Some) et >= 0
     let has_preparation_time = payload.preparation_time_minutes.is_some() 
-        && payload.preparation_time_minutes.unwrap_or(0) > 0;
+        && payload.preparation_time_minutes.unwrap_or(-1) >= 0;
     let is_complete = !payload.pickup_address.trim().is_empty()
         && payload.required_vehicle_type_id > 0
         && has_schedule
-        && has_preparation_time; // ✅ NOUVEAU: Vérifier que le temps de préparation est défini
+        && has_preparation_time; // ✅ CORRIGÉ: Vérifier que le temps de préparation est défini (peut être 0 pour instantané)
 
     // ✅ NOUVEAU : Stocker le type de véhicule requis dans les métadonnées de la configuration
     // On va utiliser un champ JSONB dans la table pour stocker les métadonnées additionnelles
@@ -5372,6 +5373,81 @@ async fn get_my_partner_data(
             "data": p
         }))),
         None => Err(AppError::NotFound("Partenaire non trouvé. Votre compte n'a pas encore été lié à un partenaire.".into()))
+    }
+}
+
+/// PUT /api/partners/me - Mettre à jour les données du partenaire connecté
+#[derive(Deserialize)]
+struct UpdateMyPartnerDataRequest {
+    name: Option<String>,
+    contact_email: Option<String>,
+    contact_phone: Option<String>,
+    address: Option<String>,
+    website: Option<String>,
+}
+
+async fn update_my_partner_data(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<UpdateMyPartnerDataRequest>,
+) -> AppResult<Json<Value>> {
+    if user.role != "partenaire" {
+        return Err(AppError::Forbidden("Accès réservé aux partenaires".into()));
+    }
+    
+    // Récupérer le partenaire actuel
+    let current_partner: Option<crate::models::delivery_model::DeliveryPartner> = sqlx::query_as(
+        r#"
+        SELECT id, name, description, partner_type, contact_email, contact_phone, address, city, country, 
+               continent, website, logo_url, location_latitude, location_longitude, location_address, 
+               is_active, created_by, created_at, updated_at
+        FROM delivery_partners
+        WHERE user_id = $1
+        LIMIT 1
+        "#
+    )
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await?;
+    
+    let partner_id = match current_partner {
+        Some(p) => p.id,
+        None => return Err(AppError::NotFound("Partenaire non trouvé. Votre compte n'a pas encore été lié à un partenaire.".into())),
+    };
+    
+    // Mettre à jour uniquement les champs fournis
+    let updated = sqlx::query_as::<_, crate::models::delivery_model::DeliveryPartner>(
+        r#"
+        UPDATE delivery_partners
+        SET 
+            name = COALESCE($1, name),
+            contact_email = COALESCE($2, contact_email),
+            contact_phone = COALESCE($3, contact_phone),
+            address = COALESCE($4, address),
+            website = COALESCE($5, website),
+            updated_at = NOW()
+        WHERE id = $6 AND user_id = $7
+        RETURNING id, name, description, partner_type, contact_email, contact_phone, address, city, country, 
+                  continent, website, logo_url, location_latitude, location_longitude, location_address, 
+                  is_active, created_by, created_at, updated_at
+        "#
+    )
+    .bind(payload.name.as_ref().map(|s| s.trim()))
+    .bind(payload.contact_email.as_ref().map(|s| s.trim()))
+    .bind(payload.contact_phone.as_ref().map(|s| s.trim()))
+    .bind(payload.address.as_ref().map(|s| s.trim()))
+    .bind(payload.website.as_ref().map(|s| s.trim()))
+    .bind(partner_id)
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await?;
+    
+    match updated {
+        Some(p) => Ok(Json(json!({
+            "success": true,
+            "data": p
+        }))),
+        None => Err(AppError::NotFound("Partenaire non trouvé ou vous n'avez pas les droits pour le modifier".into()))
     }
 }
 

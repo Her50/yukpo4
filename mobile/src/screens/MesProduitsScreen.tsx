@@ -301,393 +301,108 @@ const MesProduitsScreen: React.FC = () => {
                 return;
             }
 
-            try {
-                // ✅ PHASE 4: Utiliser l'endpoint dédié pour récupérer tous les produits d'un utilisateur
-                const products = await productsService.getProductsByUser(user.id);
-                console.log('[MesProduitsScreen] ✅ Produits récupérés depuis API:', products.length);
+            // ✅ NETTOYÉ: Plus de fallback JSONB - utiliser uniquement service_products
+            const products = await productsService.getProductsByUser(user.id);
+            console.log('[MesProduitsScreen] ✅ Produits récupérés depuis service_products:', products.length);
 
-                // ✅ Convertir les produits de l'API en format ManagedProduct
-                const allProducts: ManagedProduct[] = products.map((product) => {
-                    const productData = product.product_data || {};
-                    return {
-                        id: `${product.service_id}_${product.product_index}`,
-                        rawProductId: product.id.toString(),
-                        serviceId: product.service_id.toString(),
-                        productIndex: product.product_index,
-                        nom: product.product_name || productData.nom || productData.nom_produit || 'Produit sans nom',
-                        prix: product.product_price || productData.prix || productData.prix_produit || 0,
-                        devise: productData.devise || productData.devise_produit || 'XAF',
-                        description: productData.description || productData.description_produit || '',
-                        categorie: product.product_type || productData.categorie || productData.categorie_produit || '',
-                        images: Array.isArray(productData.images) ? productData.images : [],
-                        videos: Array.isArray(productData.videos) ? productData.videos : [],
-                        is_active: product.is_active,
-                        createdAt: product.created_at,
-                        updatedAt: product.updated_at,
-                        // ✅ Préserver toutes les autres données du produit
-                        ...productData,
-                    } as ManagedProduct;
-                });
-
-                // ✅ Trier par date de création (plus récent en premier)
-                allProducts.sort((a, b) => {
-                    const dateA = parseDateToTimestamp(a.createdAt || a.created_at) || 0;
-                    const dateB = parseDateToTimestamp(b.createdAt || b.created_at) || 0;
-                    return dateB - dateA;
-                });
-
-                setProducts(allProducts);
-                console.log('[MesProduitsScreen] ✅ Produits chargés:', allProducts.length);
-            } catch (error) {
-                console.error('[MesProduitsScreen] ❌ Erreur chargement produits depuis API, fallback vers services:', error);
+            // ✅ Convertir les produits de l'API service_products en format ManagedProduct
+            const allProducts: ManagedProduct[] = products.map((product) => {
+                const productData = product.product_data || {};
                 
-                // ✅ FALLBACK: Charger depuis les services si l'API échoue (compatibilité)
-                const servicesResponse = await apiGet('/api/prestataire/services', {
-                    params: {
-                        page: 0,
-                        limit: 20
-                    }
-                });
+                // ✅ product_index est garanti par la table service_products (NOT NULL)
+                if (typeof product.product_index !== 'number' || product.product_index < 0) {
+                    console.error('[MesProduitsScreen] ❌ product_index invalide depuis service_products:', {
+                        product_id: product.id,
+                        service_id: product.service_id,
+                        product_name: product.product_name,
+                        product_index: product.product_index
+                    });
+                    throw new Error(`Produit ${product.id} a un product_index invalide: ${product.product_index}`);
+                }
+                
+                const productIndex = product.product_index;
+                
+                return {
+                    id: `${product.service_id}_${productIndex}`,
+                    rawProductId: product.id.toString(),
+                    serviceId: product.service_id.toString(),
+                    productIndex: productIndex,
+                    product_index: productIndex,
+                    nom: product.product_name || productData.nom || productData.nom_produit || 'Produit sans nom',
+                    prix: product.product_price || productData.prix || productData.prix_produit || 0,
+                    devise: productData.devise || productData.devise_produit || 'XAF',
+                    description: productData.description || productData.description_produit || '',
+                    categorie: product.product_type || productData.categorie || productData.categorie_produit || '',
+                    images: Array.isArray(productData.images) ? productData.images : [],
+                    videos: Array.isArray(productData.videos) ? productData.videos : [],
+                    is_active: product.is_active,
+                    createdAt: product.created_at,
+                    updatedAt: product.updated_at,
+                    // serviceTitre est optionnel (peut être récupéré séparément si nécessaire)
+                    serviceTitre: undefined,
+                    // Préserver toutes les autres données du produit depuis product_data
+                    ...productData,
+                } as ManagedProduct;
+            });
 
-                if (servicesResponse.success && servicesResponse.data) {
-                    const servicesData = Array.isArray(servicesResponse.data)
-                        ? servicesResponse.data
-                        : (servicesResponse.data.data || servicesResponse.data);
-                    console.log('[MesProduitsScreen] 📦 Services reçus (fallback):', servicesData.length);
-                    setServices(servicesData);
+            // Trier par date de création (plus récent en premier)
+            allProducts.sort((a, b) => {
+                const dateA = parseDateToTimestamp(a.createdAt || a.created_at) || 0;
+                const dateB = parseDateToTimestamp(b.createdAt || b.created_at) || 0;
+                return dateB - dateA;
+            });
 
-                    // Extraire tous les produits de tous les services
-                    const allProducts: ManagedProduct[] = [];
-
-                servicesData.forEach((service: any) => {
-                    const serviceId = service.id.toString();
-
-                    // ✅ CORRIGÉ: Extraire serviceTitre de manière robuste pour éviter JSON brut
-                    const extractServiceTitre = (service: any): string => {
-                        // Essayer titre_service.valeur (format structuré)
-                        if (service.data?.titre_service?.valeur) {
-                            const val = service.data.titre_service.valeur;
-                            if (typeof val === 'string' && val.trim()) {
-                                return val.trim();
-                            }
-                        }
-                        // Essayer titre_service directement (string)
-                        if (service.data?.titre_service) {
-                            const val = service.data.titre_service;
-                            if (typeof val === 'string' && val.trim()) {
-                                return val.trim();
-                            }
-                        }
-                        // Essayer titre
-                        if (service.titre) {
-                            const val = service.titre;
-                            if (typeof val === 'string' && val.trim()) {
-                                return val.trim();
-                            }
-                        }
-                        // Essayer data.titre
-                        if (service.data?.titre) {
-                            const val = service.data.titre;
-                            if (typeof val === 'string' && val.trim()) {
-                                return val.trim();
-                            }
-                        }
-                        return 'Service sans titre';
-                    };
-
-                    const serviceTitre = extractServiceTitre(service);
-                    // ✅ CORRIGÉ: Extraire les produits de différentes structures possibles
-                    let produits: any = null;
-
-                    // Format 1: listeproduit avec type_donnee (FormulaireYukpoIntelligentScreen)
-                    if (service.data?.produits?.type_donnee === 'listeproduit' && Array.isArray(service.data.produits.valeur)) {
-                        produits = service.data.produits.valeur;
-                        console.log('[MesProduitsScreen] ✅ Format listeproduit détecté:', produits.length, 'produits');
-                    }
-                    // Format 2: Array direct (AjouterProduitSimple)
-                    else if (Array.isArray(service.data?.produits)) {
-                        produits = service.data.produits;
-                        console.log('[MesProduitsScreen] ✅ Format array direct détecté:', produits.length, 'produits');
-                    }
-                    // Format 3: Objet avec valeur (ancien format)
-                    else if (service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur)) {
-                        produits = service.data.produits.valeur;
-                        console.log('[MesProduitsScreen] ✅ Format valeur détecté:', produits.length, 'produits');
-                    }
-                    // Format 4: service.produits (fallback)
-                    else if (Array.isArray(service.produits?.valeur)) {
-                        produits = service.produits.valeur;
-                    }
-                    else if (Array.isArray(service.produits)) {
-                        produits = service.produits;
-                    }
-
-                    console.log('[MesProduitsScreen] 🔍 Service:', serviceId, 'Titre:', serviceTitre);
-                    console.log('[MesProduitsScreen] 🔍 Produits trouvés:', produits ? (Array.isArray(produits) ? produits.length : 'non-array') : 'null/undefined');
-
-                    const serviceCreatedAtTs = parseDateToTimestamp(
-                        service.created_at || service.createdAt || service.data?.created_at
-                    );
-
-                    if (produits && Array.isArray(produits) && produits.length > 0) {
-                        console.log('[MesProduitsScreen] ✅ Ajout de', produits.length, 'produits du service', serviceId);
-                        produits.forEach((product: any, index: number) => {
-                            // ✅ CORRECTION CRITIQUE: Normaliser le produit pour extraire les valeurs depuis objets structurés
-                            const normalizeProductField = (field: any, fallback?: any): any => {
-                                if (field === null || field === undefined) return fallback;
-                                if (typeof field === 'object' && 'valeur' in field) {
-                                    return field.valeur;
-                                }
-                                return field !== undefined ? field : fallback;
-                            };
-
-                            // ✅ CORRECTION CRITIQUE: Normaliser le produit en préservant TOUS les champs spécialisés
-                            // Commencer par copier tous les champs du produit original
-                            const normalizedProduct: any = { ...product };
-
-                            // ✅ Normaliser les champs de base (extraire depuis objets structurés si nécessaire)
-                            const nomNormalized = normalizeProductField(product.nom);
-                            const nomProduitNormalized = normalizeProductField(product.nom_produit);
-
-                            // ✅ CORRIGÉ: Ne pas mettre chaîne vide, vérifier que la valeur est valide
-                            if (nomNormalized !== undefined && nomNormalized !== null) {
-                                const nomStr = String(nomNormalized).trim();
-                                if (nomStr.length > 0) {
-                                    normalizedProduct.nom = nomStr;
-                                }
-                            }
-                            if (nomProduitNormalized !== undefined && nomProduitNormalized !== null) {
-                                const nomProdStr = String(nomProduitNormalized).trim();
-                                if (nomProdStr.length > 0) {
-                                    normalizedProduct.nom_produit = nomProdStr;
-                                }
-                            }
-
-                            // ✅ CORRIGÉ: Utiliser nom_produit comme fallback pour nom si nom n'existe pas
-                            if ((!normalizedProduct.nom || !normalizedProduct.nom.trim()) && normalizedProduct.nom_produit?.trim()) {
-                                normalizedProduct.nom = normalizedProduct.nom_produit.trim();
-                            }
-                            // ✅ CORRIGÉ: Ne pas définir chaîne vide, laisser undefined pour que le fallback dans l'affichage fonctionne
-
-                            const prixNormalized = normalizeProductField(product.prix);
-                            const prixProduitNormalized = normalizeProductField(product.prix_produit);
-                            if (prixNormalized !== undefined && prixNormalized !== null) normalizedProduct.prix = prixNormalized;
-                            if (prixProduitNormalized !== undefined && prixProduitNormalized !== null) normalizedProduct.prix_produit = prixProduitNormalized;
-
-                            const deviseNormalized = normalizeProductField(product.devise);
-                            const deviseProduitNormalized = normalizeProductField(product.devise_produit);
-                            if (deviseNormalized) normalizedProduct.devise = deviseNormalized;
-                            if (deviseProduitNormalized) normalizedProduct.devise_produit = deviseProduitNormalized;
-                            if (!normalizedProduct.devise && !normalizedProduct.devise_produit) {
-                                normalizedProduct.devise = 'XAF';
-                                normalizedProduct.devise_produit = 'XAF';
-                            }
-
-                            const descriptionNormalized = normalizeProductField(product.description);
-                            const descriptionProduitNormalized = normalizeProductField(product.description_produit);
-                            if (descriptionNormalized !== undefined) normalizedProduct.description = descriptionNormalized;
-                            if (descriptionProduitNormalized !== undefined) normalizedProduct.description_produit = descriptionProduitNormalized;
-
-                            const categorieNormalized = normalizeProductField(product.categorie);
-                            const categorieProduitNormalized = normalizeProductField(product.categorie_produit);
-                            const categoryNormalized = normalizeProductField(product.category);
-                            if (categorieNormalized) normalizedProduct.categorie = categorieNormalized;
-                            if (categorieProduitNormalized) normalizedProduct.categorie_produit = categorieProduitNormalized;
-                            if (categoryNormalized) normalizedProduct.category = categoryNormalized;
-
-                            // ✅ CORRECTION CRITIQUE: Normaliser les champs complexes (sous_caracteristiques, produits, etc.)
-                            if (product.sous_caracteristiques) {
-                                const sousCaracsNormalized = normalizeProductField(product.sous_caracteristiques);
-                                normalizedProduct.sous_caracteristiques = sousCaracsNormalized !== undefined ? sousCaracsNormalized : product.sous_caracteristiques;
-                            }
-
-                            // ✅ CORRECTION CRITIQUE: Normaliser TOUS les autres champs du produit (lieu_produit, variabilite_prix, etc.)
-                            // Pour les produits créés via FormulaireYukpoIntelligentScreen, tous les champs sont dans format { type_donnee: '...', valeur: ... }
-                            Object.keys(product).forEach(key => {
-                                // Ignorer les champs déjà normalisés
-                                if (['nom', 'nom_produit', 'prix', 'prix_produit', 'devise', 'devise_produit',
-                                    'description', 'description_produit', 'categorie', 'categorie_produit', 'category',
-                                    'sous_caracteristiques', 'images', 'videos', 'audios', 'documents',
-                                    'base64_image', 'video_base64', 'audio_base64', 'doc_base64',
-                                    'image_base64'].includes(key)) {
-                                    return;
-                                }
-
-                                // Normaliser les autres champs (lieu_produit, variabilite_prix, etc.)
-                                const fieldValue = product[key];
-                                if (fieldValue !== undefined && fieldValue !== null) {
-                                    const normalized = normalizeProductField(fieldValue);
-                                    if (normalized !== undefined) {
-                                        normalizedProduct[key] = normalized;
-                                    }
-                                }
-                            });
-
-                            // ✅ CORRECTION CRITIQUE: Normaliser TOUS les médias depuis différents formats
-                            const normalizeMediaField = (field: any): any[] => {
-                                if (!field) return [];
-                                if (Array.isArray(field)) return field;
-                                if (typeof field === 'object' && 'valeur' in field && Array.isArray(field.valeur)) {
-                                    return field.valeur;
-                                }
-                                return [];
-                            };
-
-                            // Normaliser images (depuis images, base64_image, image_base64)
-                            const imagesFromImages = normalizeMediaField(product.images);
-                            const imagesFromBase64 = normalizeMediaField(product.base64_image);
-                            const imagesFromImageBase64 = normalizeMediaField(product.image_base64);
-                            const allImages = [...imagesFromImages, ...imagesFromBase64, ...imagesFromImageBase64].filter((img, idx, arr) => arr.indexOf(img) === idx);
-                            if (allImages.length > 0) {
-                                normalizedProduct.images = allImages;
-                                normalizedProduct.base64_image = allImages; // Préserver aussi pour compatibilité
-                            }
-
-                            // Normaliser videos (depuis videos, video_base64)
-                            const videosFromVideos = normalizeMediaField(product.videos);
-                            const videosFromBase64 = normalizeMediaField(product.video_base64);
-                            const allVideos = [...videosFromVideos, ...videosFromBase64].filter((vid, idx, arr) => arr.indexOf(vid) === idx);
-                            if (allVideos.length > 0) {
-                                normalizedProduct.videos = allVideos;
-                                normalizedProduct.video_base64 = allVideos; // Préserver aussi pour compatibilité
-                            }
-
-                            // Normaliser audios (depuis audios, audio_base64)
-                            const audiosFromAudios = normalizeMediaField(product.audios);
-                            const audiosFromBase64 = normalizeMediaField(product.audio_base64);
-                            const allAudios = [...audiosFromAudios, ...audiosFromBase64].filter((aud, idx, arr) => arr.indexOf(aud) === idx);
-                            if (allAudios.length > 0) {
-                                normalizedProduct.audios = allAudios;
-                                normalizedProduct.audio_base64 = allAudios; // Préserver aussi pour compatibilité
-                            }
-
-                            // Normaliser documents (depuis documents, doc_base64)
-                            const docsFromDocs = normalizeMediaField(product.documents);
-                            const docsFromBase64 = normalizeMediaField(product.doc_base64);
-                            const allDocs = [...docsFromDocs, ...docsFromBase64].filter((doc, idx, arr) => arr.indexOf(doc) === idx);
-                            if (allDocs.length > 0) {
-                                normalizedProduct.documents = allDocs;
-                                normalizedProduct.doc_base64 = allDocs; // Préserver aussi pour compatibilité
-                            }
-
-                            // ✅ TOUS les autres champs sont préservés via le spread initial {...product}
-
-                            const productIndex = typeof normalizedProduct.product_index === 'number'
-                                ? normalizedProduct.product_index
-                                : index;
-
-                            const rawProductIdCandidate = normalizedProduct.lifecycle_id
-                                ?? normalizedProduct.product_lifecycle_id
-                                ?? normalizedProduct.productLifecycleId
-                                ?? normalizedProduct.product_id
-                                ?? normalizedProduct.id
-                                ?? null;
-
-                            const numericProductId = resolveNumericId(rawProductIdCandidate);
-
-                            const categoryKey = normalizeCategoryKey(normalizedProduct);
-                            const categoryLabel = getProductTypeLabel(categoryKey);
-
-                            const fallbackTimestamp =
-                                serviceCreatedAtTs || (numericProductId ? numericProductId * 1000 : 0);
-                            const productTimestamp = resolveProductTimestamp(normalizedProduct, fallbackTimestamp);
-
-                            const views = Number(
-                                normalizedProduct.views
-                                ?? normalizedProduct.stats?.views
-                                ?? normalizedProduct.analytics?.views
-                                ?? 0
-                            );
-                            const shares = Number(
-                                normalizedProduct.shares
-                                ?? normalizedProduct.stats?.shares
-                                ?? normalizedProduct.analytics?.shares
-                                ?? 0
-                            );
-                            const saves = Number(
-                                normalizedProduct.saves
-                                ?? normalizedProduct.stats?.favorites
-                                ?? normalizedProduct.analytics?.favorites
-                                ?? normalizedProduct.favoris
-                                ?? 0
-                            );
-
-                            allProducts.push({
-                                ...normalizedProduct,
-                                id: numericProductId ? String(numericProductId) : `${serviceId}_${productIndex}`,
-                                rawProductId: numericProductId ?? undefined,
-                                product_index: productIndex,
-                                category_key: categoryKey,
-                                category_label: categoryLabel,
-                                serviceId,
-                                serviceTitre,
-                                is_active: normalizedProduct.is_active !== undefined ? normalizedProduct.is_active : true,
-                                created_at_ts: productTimestamp,
-                                views,
-                                shares,
-                                saves,
-                            });
-                        });
-                    }
-                });
-
-                allProducts.sort((a, b) => {
-                    const tsA = a.created_at_ts || 0;
-                    const tsB = b.created_at_ts || 0;
-
-                    if (tsA !== tsB) {
-                        return tsB - tsA;
-                    }
-
-                    const rawA = Number(a.rawProductId || 0);
-                    const rawB = Number(b.rawProductId || 0);
-
-                    if (rawA !== rawB) {
-                        return rawB - rawA;
-                    }
-
-                    return (b.product_index ?? 0) - (a.product_index ?? 0);
-                });
-
-                console.log('[MesProduitsScreen] 📦 Total produits extraits:', allProducts.length);
-                setProducts(allProducts);
-            } else {
-                // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et contexte
-                const errorMessage = servicesResponse.error instanceof Error
-                    ? servicesResponse.error.message
-                    : String(servicesResponse.error || 'Erreur inconnue');
-                console.error('[MesProduitsScreen] Erreur chargement services:', {
-                    message: errorMessage,
-                    error: servicesResponse.error,
-                    response: servicesResponse
-                });
-                setServices([]);
-                setProducts([]);
-            }
-            } // ✅ Fermeture du catch block interne (ligne 341)
-        } catch (error) {
-            // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+            setProducts(allProducts);
+            console.log('[MesProduitsScreen] ✅ Produits chargés depuis service_products:', allProducts.length);
+            } catch (error) {
+            // ✅ Erreur lors du chargement - afficher et logger
             const errorMessage = error instanceof Error ? error.message : String(error);
             const errorStack = error instanceof Error ? error.stack : undefined;
-            console.error('[MesProduitsScreen] Erreur:', {
+            console.error('[MesProduitsScreen] ❌ Erreur chargement produits depuis service_products:', {
                 message: errorMessage,
                 stack: errorStack,
-                error: error
+                error
             });
-            Alert.alert('Erreur', 'Impossible de charger vos produits');
-            setServices([]);
             setProducts([]);
+            Alert.alert(
+                'Erreur de chargement',
+                'Impossible de charger les produits. Veuillez réessayer.\n\n' + errorMessage
+            );
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [user?.id]);
 
     useFocusEffect(
         useCallback(() => {
+            // ✅ CORRECTION: Recharger les produits à chaque fois que l'écran est focus
             loadProducts();
         }, [loadProducts])
     );
+
+    // ✅ NOUVEAU: Écouter aussi les événements de création de produit
+    React.useEffect(() => {
+        // ✅ SÉCURITÉ: Vérifier que DeviceEventEmitter existe
+        if (!DeviceEventEmitter || typeof DeviceEventEmitter.addListener !== 'function') {
+            console.warn('[MesProduitsScreen] DeviceEventEmitter.addListener non disponible');
+            return;
+        }
+
+        const subscription = DeviceEventEmitter.addListener('product:created', () => {
+            console.log('[MesProduitsScreen] 📦 Événement product:created reçu, rechargement des produits');
+            if (typeof loadProducts === 'function') {
+                loadProducts(true);
+            }
+        });
+
+        return () => {
+            // ✅ SÉCURITÉ: Vérifier que subscription existe avant de la nettoyer
+            if (subscription && typeof subscription.remove === 'function') {
+                subscription.remove();
+            }
+        };
+    }, [loadProducts]);
 
     const onRefresh = () => {
         loadProducts(true);
@@ -1013,16 +728,61 @@ const MesProduitsScreen: React.FC = () => {
                     onPress: async () => {
                         try {
                             // ✅ PHASE 4: Utiliser l'endpoint API service_products avec serviceId et productIndex
-                            if (!product.serviceId || typeof product.product_index !== 'number') {
+                            // ✅ CORRIGÉ: Vérifier les deux propriétés possibles (product_index et productIndex)
+                            const productIndexValue = product.product_index ?? product.productIndex;
+                            const serviceIdValue = product.serviceId;
+                            
+                            // ✅ CORRIGÉ: Validation robuste des identifiants
+                            if (!serviceIdValue) {
+                                console.error('[MesProduitsScreen] ❌ serviceId manquant pour suppression:', {
+                                    serviceId: serviceIdValue,
+                                    product_index: product.product_index,
+                                    productIndex: product.productIndex,
+                                    product: product
+                                });
                                 Alert.alert(
                                     '❌ Identifiant introuvable',
-                                    'Impossible de supprimer ce produit car les identifiants sont manquants.'
+                                    'Impossible de supprimer ce produit car l\'identifiant du service est manquant.'
                                 );
                                 return;
                             }
 
-                            const serviceId = Number(product.serviceId);
-                            const productIndex = product.product_index;
+                            if (typeof productIndexValue !== 'number' || isNaN(productIndexValue) || productIndexValue < 0) {
+                                console.error('[MesProduitsScreen] ❌ productIndex invalide pour suppression:', {
+                                    serviceId: serviceIdValue,
+                                    product_index: product.product_index,
+                                    productIndex: product.productIndex,
+                                    productIndexValue: productIndexValue,
+                                    product: product
+                                });
+                                Alert.alert(
+                                    '❌ Identifiant introuvable',
+                                    'Impossible de supprimer ce produit car l\'index du produit est invalide.'
+                                );
+                                return;
+                            }
+
+                            const serviceId = Number(serviceIdValue);
+                            if (isNaN(serviceId) || serviceId <= 0) {
+                                console.error('[MesProduitsScreen] ❌ serviceId invalide (ne peut pas être converti en nombre):', {
+                                    serviceIdValue: serviceIdValue,
+                                    serviceId: serviceId,
+                                    product: product
+                                });
+                                Alert.alert(
+                                    '❌ Identifiant introuvable',
+                                    'Impossible de supprimer ce produit car l\'identifiant du service est invalide.'
+                                );
+                                return;
+                            }
+
+                            const productIndex = productIndexValue;
+                            
+                            console.log('[MesProduitsScreen] 🗑️ Suppression produit:', {
+                                serviceId,
+                                productIndex,
+                                productName: product.nom
+                            });
 
                             // ✅ CORRECTION: Supprimer d'abord de l'état local pour feedback immédiat
                             setProducts(prevProducts => prevProducts.filter((p) => {
@@ -1049,10 +809,13 @@ const MesProduitsScreen: React.FC = () => {
                             // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
                             const errorMessage = error instanceof Error ? error.message : (error?.message || 'Impossible de supprimer le produit');
                             const errorStack = error instanceof Error ? error.stack : undefined;
+                            const productIndexValue = product.product_index ?? product.productIndex;
                             console.error('[MesProduitsScreen] Erreur suppression:', {
                                 message: errorMessage,
                                 stack: errorStack,
-                                productId: productIdForDelete,
+                                serviceId: product.serviceId,
+                                productIndex: productIndexValue,
+                                productName: product.nom,
                                 error: error
                             });
                             // ✅ CORRECTION: Recharger en cas d'erreur pour restaurer l'état
@@ -1952,12 +1715,26 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     const renderProductCard = (product: ManagedProduct) => {
-        const priceValue = product.prix !== undefined && product.prix !== null
-            ? (typeof product.prix === 'number'
-                ? `${product.prix.toLocaleString('fr-FR')} ${product.devise || 'FCFA'}`
-                : `${product.prix} ${product.devise || 'FCFA'}`)
-            : product.prix_produit
-                ? `${product.prix_produit} ${product.devise_produit || 'FCFA'}`
+        // ✅ CORRIGÉ: Extraire la devise du produit (priorité: devise_produit > devise)
+        const productCurrency = product.devise_produit || product.devise;
+        
+        const priceValue = product.prix !== undefined && product.prix !== null && product.prix !== 0
+            ? (() => {
+                const prixNum = typeof product.prix === 'number' ? product.prix : parseFloat(String(product.prix)) || 0;
+                const prixFormatted = prixNum.toLocaleString('fr-FR');
+                // ✅ CORRIGÉ: N'afficher la devise que si elle existe, sinon ne pas en mettre
+                return productCurrency && productCurrency.trim() 
+                    ? `${prixFormatted} ${productCurrency.trim()}`
+                    : prixFormatted;
+            })()
+            : product.prix_produit && product.prix_produit !== 0
+                ? (() => {
+                    const prixNum = typeof product.prix_produit === 'number' ? product.prix_produit : parseFloat(String(product.prix_produit)) || 0;
+                    const prixFormatted = prixNum.toLocaleString('fr-FR');
+                    return productCurrency && productCurrency.trim()
+                        ? `${prixFormatted} ${productCurrency.trim()}`
+                        : prixFormatted;
+                })()
                 : null;
 
         const productDescription = product.description
@@ -2044,7 +1821,7 @@ const MesProduitsScreen: React.FC = () => {
 
                     {priceValue && (
                         <View style={styles.productInfoRow}>
-                            <SafeIcon name="dollar-sign" size={14} color="#10B981" />
+                            <SafeIcon name="shopping-cart" size={14} color="#10B981" />
                             <Text style={styles.productPrix}>{priceValue}</Text>
                         </View>
                     )}
@@ -2524,7 +2301,7 @@ const styles = StyleSheet.create({
         elevation: 12,
     },
     headerContainer: {
-        paddingTop: Platform.OS === 'ios' ? 24 : 12,
+        paddingTop: Platform.OS === 'ios' ? 32 : 16, // ✅ CORRIGÉ: Augmenté pour remonter le titre et éviter le masquage par les icônes
         paddingBottom: 8,
         paddingHorizontal: 16,
         backgroundColor: '#FFFFFF',

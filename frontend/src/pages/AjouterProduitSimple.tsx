@@ -97,6 +97,8 @@ const AjouterProduitSimple: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showProductDeliveryConfig, setShowProductDeliveryConfig] = useState(false);
+  const [productDeliveryConfigData, setProductDeliveryConfigData] = useState<{ serviceId: number; productIndex: number; productName: string } | null>(null);
 
   // Vérifier le solde avant création
   const checkBalance = async (): Promise<boolean> => {
@@ -276,9 +278,39 @@ const AjouterProduitSimple: React.FC = () => {
       const response = await apiPost('/api/products/create', productData);
 
       if (response.success) {
-        toast.success('Produit créé avec succès !');
+        // ✅ NOUVEAU: Afficher un toast de succès
+        toast.success('✅ Produit créé avec succès !');
         
-        // Rediriger selon le contexte
+        // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
+        const typeOffre = product.type || 'produit';
+        const isPrestation = typeOffre === 'prestation_service' || typeOffre === 'prestation' || typeOffre === 'service';
+        const createdProductIndex = response.data?.productIndex || response.data?.product_index || 0;
+        
+        if (!isPrestation && serviceId && createdProductIndex !== null && createdProductIndex !== undefined) {
+          // C'est un produit, ouvrir le modal de configuration de livraison
+          const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
+          const finalProductIndex = typeof createdProductIndex === 'number' ? createdProductIndex : parseInt(String(createdProductIndex), 10);
+          const productName = product.name || product.nom_produit || 'Nouveau produit';
+          
+          console.log('[AjouterProduitSimple] 🚚 Ouverture automatique du modal de configuration de livraison:', {
+            serviceId: finalServiceId,
+            productIndex: finalProductIndex,
+            productName: productName
+          });
+          
+          // Attendre un court délai pour laisser le toast s'afficher
+          setTimeout(() => {
+            setShowProductDeliveryConfig(true);
+            setProductDeliveryConfigData({
+              serviceId: finalServiceId,
+              productIndex: finalProductIndex,
+              productName: productName
+            });
+          }, 500);
+          return; // Ne pas rediriger si on ouvre la config livraison
+        }
+        
+        // Rediriger selon le contexte (si pas de config livraison)
         if (serviceId) {
           navigate(`/dashboard/mes-services/${serviceId}`);
         } else {

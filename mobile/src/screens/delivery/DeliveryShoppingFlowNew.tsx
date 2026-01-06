@@ -400,6 +400,10 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
                     onSortChange={setSortBy}
                     loading={loadingSupermarkets}
                     error={errors.supermarket}
+                    onViewProducts={(supermarket) => {
+                        const navigation = require('@react-navigation/native').useNavigation();
+                        (navigation as any).navigate('SupermarketHome', { supermarketId: supermarket.id });
+                    }}
                 />
             ),
             validation: () => !!selectedSupermarket,

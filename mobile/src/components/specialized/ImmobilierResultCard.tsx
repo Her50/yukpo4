@@ -1,8 +1,10 @@
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
+    Dimensions,
     Image,
     Linking,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -13,6 +15,8 @@ import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 interface ImmobilierResultCardProps {
     property: RealEstateProperty;
     onPress?: () => void;
@@ -21,6 +25,8 @@ interface ImmobilierResultCardProps {
 
 const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, onPress, onContact }) => {
     const navigation = useNavigation();
+    const scrollViewRef = useRef<ScrollView>(null);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     const handlePress = () => {
         if (onPress) {
@@ -30,6 +36,12 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
                 propertyId: property.id,
             });
         }
+    };
+
+    const handleScroll = (event: any) => {
+        const scrollPosition = event.nativeEvent.contentOffset.x;
+        const index = Math.round(scrollPosition / SCREEN_WIDTH);
+        setCurrentImageIndex(index);
     };
 
     const formatPrice = (price?: number) => {
@@ -43,15 +55,61 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
         return '🏡';
     };
 
+    const photos = property.photos || [];
+    const hasMultiplePhotos = photos.length > 1;
+
     return (
-        <TouchableOpacity style={styles.card} onPress={handlePress}>
-            {/* Photo principale */}
-            {property.photos && property.photos.length > 0 && (
-                <Image
-                    source={{ uri: mediaService.getImageUrl(property.photos[0]) }}
-                    style={styles.image}
-                    resizeMode="cover"
-                />
+        <TouchableOpacity style={styles.card} onPress={handlePress} activeOpacity={0.9}>
+            {/* ✅ NOUVEAU: Galerie d'images avec swipe */}
+            {photos.length > 0 ? (
+                <View style={styles.imageContainer}>
+                    <ScrollView
+                        ref={scrollViewRef}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onScroll={handleScroll}
+                        scrollEventThrottle={16}
+                        style={styles.imageScrollView}
+                    >
+                        {photos.map((photo, index) => (
+                            <Image
+                                key={index}
+                                source={{ uri: mediaService.getImageUrl(photo, { width: 800, quality: 85 }) }}
+                                style={styles.image}
+                                resizeMode="cover"
+                            />
+                        ))}
+                    </ScrollView>
+                    
+                    {/* Indicateur de pagination */}
+                    {hasMultiplePhotos && (
+                        <View style={styles.pagination}>
+                            {photos.map((_, index) => (
+                                <View
+                                    key={index}
+                                    style={[
+                                        styles.paginationDot,
+                                        index === currentImageIndex && styles.paginationDotActive,
+                                    ]}
+                                />
+                            ))}
+                        </View>
+                    )}
+                    
+                    {/* Badge nombre de photos */}
+                    {hasMultiplePhotos && (
+                        <View style={styles.photoCountBadge}>
+                            <SafeIcon name="image" size={12} color="#fff" type="lucide" />
+                            <Text style={styles.photoCountText}>{photos.length}</Text>
+                        </View>
+                    )}
+                </View>
+            ) : (
+                <View style={styles.imagePlaceholder}>
+                    <SafeIcon name="home" size={48} color="#D1D5DB" />
+                    <Text style={styles.placeholderText}>Aucune photo</Text>
+                </View>
             )}
 
             <View style={styles.content}>
@@ -215,10 +273,68 @@ const styles = StyleSheet.create({
         elevation: 3,
         overflow: 'hidden',
     },
+    imageContainer: {
+        width: '100%',
+        height: 200,
+        position: 'relative',
+    },
+    imageScrollView: {
+        width: '100%',
+        height: 200,
+    },
     image: {
+        width: SCREEN_WIDTH, // Largeur pleine écran pour le swipe
+        height: 200,
+        backgroundColor: '#F3F4F6',
+    },
+    imagePlaceholder: {
         width: '100%',
         height: 200,
         backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    placeholderText: {
+        marginTop: 8,
+        fontSize: 14,
+        color: '#9CA3AF',
+    },
+    pagination: {
+        position: 'absolute',
+        bottom: 12,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 6,
+    },
+    paginationDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    },
+    paginationDotActive: {
+        width: 20,
+        backgroundColor: '#fff',
+    },
+    photoCountBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        gap: 4,
+    },
+    photoCountText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#fff',
     },
     content: {
         padding: 16,

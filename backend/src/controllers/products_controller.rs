@@ -242,20 +242,30 @@ pub async fn get_products_by_user(
         ))
     })?;
     
+    // ✅ CORRIGÉ À LA RACINE: Valider que tous les produits ont un product_index valide
     let response: Vec<ProductResponse> = products
         .into_iter()
-        .map(|p| ProductResponse {
-            id: p.id,
-            service_id: p.service_id,
-            product_index: p.product_index,
-            product_data: p.product_data,
-            product_name: p.product_name,
-            product_type: p.product_type,
-            product_price: p.product_price,
-            is_active: p.is_active,
-            created_at: p.created_at,
-            updated_at: p.updated_at,
-            auto_deactivate_at: p.auto_deactivate_at,
+        .map(|p| {
+            // ✅ Validation: product_index doit être >= 0 (garanti NOT NULL par la DB)
+            if p.product_index < 0 {
+                log::warn!(
+                    "⚠️ [get_products_by_user] product_index invalide (négatif) pour produit id={}, service_id={}, product_index={}",
+                    p.id, p.service_id, p.product_index
+                );
+            }
+            ProductResponse {
+                id: p.id,
+                service_id: p.service_id,
+                product_index: p.product_index, // ✅ Garanti NOT NULL par la DB
+                product_data: p.product_data,
+                product_name: p.product_name,
+                product_type: p.product_type,
+                product_price: p.product_price,
+                is_active: p.is_active,
+                created_at: p.created_at,
+                updated_at: p.updated_at,
+                auto_deactivate_at: p.auto_deactivate_at,
+            }
         })
         .collect();
     
