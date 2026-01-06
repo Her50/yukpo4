@@ -806,10 +806,18 @@ const DeliveryShoppingFlow = () => {
   );
 };
 
-// Composant wrapper pour gérer les deep links après connexion
-const DeepLinkHandler = ({ children }: { children: React.ReactNode }) => {
-  useDeepLinkRedirect(); // ✅ Hook pour redirection automatique après login/register
-  return <>{children}</>;
+// ✅ CORRECTION CRASH: Composant wrapper pour MainStack qui appelle useDeepLinkRedirect
+// pour s'assurer que NavigationContainer est prêt avant d'appeler useNavigation()
+const MainStackWithDeepLinks = (props: any) => {
+  // ✅ CORRECTION CRASH: useDeepLinkRedirect appelé dans un composant enfant du Stack.Navigator
+  // pour s'assurer que NavigationContainer est prêt
+  try {
+    useDeepLinkRedirect();
+  } catch (error) {
+    // Si NavigationContainer n'est pas prêt, on ignore silencieusement
+    console.warn('[MainStackWithDeepLinks] NavigationContainer pas encore prêt pour deep links:', error);
+  }
+  return <MainStack {...props} />;
 };
 
 // Stack secondaire avec toutes les routes
@@ -867,18 +875,18 @@ const SecondaryStack = () => {
   }, [user?.role, user?.partner_type, navigation]);
   
   return (
-    <DeepLinkHandler>
-      <Stack.Navigator
-        screenOptions={defaultScreenOptions} // ✅ PHASE 3: Transitions personnalisées par défaut
-      >
-        <Stack.Screen
-          name="Main"
-          component={MainStack}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.fade, // Transition fade pour l'écran principal
-          }}
-        />
+    <Stack.Navigator
+      screenOptions={defaultScreenOptions} // ✅ PHASE 3: Transitions personnalisées par défaut
+    >
+      {/* ✅ CORRECTION CRASH: MainStackWithDeepLinks wrapper pour appeler useDeepLinkRedirect après que NavigationContainer soit prêt */}
+      <Stack.Screen
+        name="Main"
+        component={MainStackWithDeepLinks}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.fade, // Transition fade pour l'écran principal
+        }}
+      />
         <Stack.Screen
           name="Contact"
           component={ContactScreenWithSafeArea}
@@ -1549,7 +1557,6 @@ const SecondaryStack = () => {
           }}
         />
       </Stack.Navigator>
-    </DeepLinkHandler>
   );
 };
 
