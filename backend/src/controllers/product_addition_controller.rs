@@ -654,7 +654,7 @@ async fn _old_add_product_logic(
         "SELECT user_id FROM services WHERE id = $1",
         service_id
     )
-    .fetch_optional(&*pool)
+    .fetch_optional(&pool)
     .await
     .ok()
     .flatten();

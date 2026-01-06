@@ -17,7 +17,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use log::info;
+use log::{error, info};
 use serde::Deserialize;
 use serde_json::json;
 use sqlx;

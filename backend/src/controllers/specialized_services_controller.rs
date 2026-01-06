@@ -4212,7 +4212,7 @@ pub async fn analyze_examination_image(
     // Utiliser le service IA pour analyser l'image
     use crate::services::lab_ai_service::LabAIService;
     
-    let lab_ai_service = LabAIService::new(state.app_ia.clone());
+    let lab_ai_service = LabAIService::new(state.ia.clone());
     
     // Pour l'analyse d'image, on convertit l'image en JSON de résultats simulés
     // Dans une vraie implémentation, on utiliserait un service de vision IA
@@ -4301,7 +4301,7 @@ RÉPONSE ATTENDUE (JSON strict) :
         request.query, symptoms_str
     );
 
-    let (model_name, response, tokens) = state.app_ia.predict(&prompt).await
+    let (model_name, response, tokens) = state.ia.predict(&prompt).await
         .map_err(|e| {
             error!("[search_pathology_laboratory] Erreur IA: {}", e);
             AppError::Internal("Erreur recherche IA".to_string())
@@ -4396,7 +4396,7 @@ RÉPONSE ATTENDUE (JSON strict) :
         request.query, symptoms_str
     );
 
-    let (model_name, response, tokens) = state.app_ia.predict(&prompt).await
+    let (model_name, response, tokens) = state.ia.predict(&prompt).await
         .map_err(|e| {
             error!("[search_pathology_hospital] Erreur IA: {}", e);
             AppError::Internal("Erreur recherche IA".to_string())
