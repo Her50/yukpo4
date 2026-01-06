@@ -464,9 +464,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                                     </TouchableOpacity>
                                 </View>
                             </View>
-                        </>
-                    ) : (
-                        <>
+
                             {/* Destination */}
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>
