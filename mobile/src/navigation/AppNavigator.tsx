@@ -809,42 +809,16 @@ const DeliveryShoppingFlow = () => {
 // ✅ CORRECTION CRASH: Composant wrapper pour MainStack qui appelle useDeepLinkRedirect
 // pour s'assurer que NavigationContainer est prêt avant d'appeler useNavigation()
 // ⚠️ IMPORTANT: Les hooks doivent être appelés inconditionnellement (pas dans try-catch)
+// ✅ SIMPLIFICATION: Ne pas utiliser useNavigation() directement ici, laisser useDeepLinkRedirect gérer
 const MainStackWithDeepLinks = (props: any) => {
   // ✅ CORRECTION CRASH: useDeepLinkRedirect appelé dans un composant enfant du Stack.Navigator
   // pour s'assurer que NavigationContainer est prêt
+  // useDeepLinkRedirect gère maintenant aussi la redirection des partenaires
   useDeepLinkRedirect();
   
-  // ✅ CORRECTION CRASH: Gérer la redirection des partenaires ici où useNavigation() est disponible
-  const navigation = useNavigation();
-  const { user } = useAuth();
-  
-  React.useEffect(() => {
-    if (user?.role === 'partenaire' && user.partner_type) {
-      const partnerTypeToScreen: Record<string, string> = {
-        'pharmacie': 'PharmacieForm',
-        'hopital': 'HopitalForm',
-        'laboratoire': 'LaboratoireForm',
-        'agence de voyage': 'AgenceVoyageForm',
-      };
-      
-      const targetScreen = partnerTypeToScreen[user.partner_type];
-      if (targetScreen) {
-        // Petit délai pour laisser le stack se monter
-        const timer = setTimeout(() => {
-          try {
-            const nav = navigation as any;
-            if (nav && typeof nav?.navigate === 'function') {
-              nav.navigate(targetScreen);
-            }
-          } catch (error) {
-            console.error('[MainStackWithDeepLinks] Erreur redirection partenaire:', error);
-          }
-        }, 500);
-        
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [user?.role, user?.partner_type, navigation]);
+  // ✅ SIMPLIFICATION: Retirer useNavigation() et la logique de redirection des partenaires
+  // car cela cause le crash "undefined is not a function"
+  // La redirection des partenaires est maintenant gérée dans useDeepLinkRedirect
   
   return <MainStack {...props} />;
 };

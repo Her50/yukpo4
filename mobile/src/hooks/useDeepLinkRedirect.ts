@@ -8,6 +8,8 @@ import { handlePendingDeepLink } from '../utils/deepLinkHandler';
  * À utiliser dans un composant à l'intérieur de NavigationContainer
  * 
  * Exemple: Ajouter dans HomeScreen ou AppNavigator
+ * 
+ * ✅ AMÉLIORATION: Gère aussi la redirection automatique des partenaires vers leur écran spécialisé
  */
 export const useDeepLinkRedirect = () => {
     // ✅ CORRECTION CRASH: useNavigation doit être appelé inconditionnellement (règle des hooks)
@@ -28,6 +30,31 @@ export const useDeepLinkRedirect = () => {
             return;
         }
         
+        // ✅ NOUVEAU: Gérer la redirection des partenaires vers leur écran spécialisé
+        const handlePartnerRedirect = () => {
+            if (user?.role === 'partenaire' && user.partner_type) {
+                const partnerTypeToScreen: Record<string, string> = {
+                    'pharmacie': 'PharmacieForm',
+                    'hopital': 'HopitalForm',
+                    'laboratoire': 'LaboratoireForm',
+                    'agence de voyage': 'AgenceVoyageForm',
+                };
+                
+                const targetScreen = partnerTypeToScreen[user.partner_type];
+                if (targetScreen) {
+                    try {
+                        const nav = navigation as any;
+                        if (nav && typeof nav?.navigate === 'function') {
+                            console.log(`[useDeepLinkRedirect] Redirection partenaire vers ${targetScreen}`);
+                            nav.navigate(targetScreen);
+                        }
+                    } catch (error) {
+                        console.error('[useDeepLinkRedirect] Erreur redirection partenaire:', error);
+                    }
+                }
+            }
+        };
+        
         // Vérifier s'il y a un deep link en attente seulement si l'utilisateur vient de se connecter
         if (user) {
             const checkDeepLink = async () => {
@@ -35,9 +62,14 @@ export const useDeepLinkRedirect = () => {
                     const redirected = await handlePendingDeepLink(navigation);
                     if (redirected) {
                         console.log('✅ Redirection vers deep link en attente effectuée');
+                    } else {
+                        // ✅ NOUVEAU: Si pas de deep link, vérifier si c'est un partenaire à rediriger
+                        handlePartnerRedirect();
                     }
                 } catch (error) {
                     console.error('❌ Erreur redirection deep link:', error);
+                    // ✅ NOUVEAU: En cas d'erreur, essayer quand même la redirection partenaire
+                    handlePartnerRedirect();
                 }
             };
 
