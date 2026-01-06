@@ -60,12 +60,15 @@ const OrientationScolaireHomeScreen: React.FC = () => {
 
     // États IA
     const [showAIModal, setShowAIModal] = useState(false);
-    const [aiMode, setAiMode] = useState<'analyze' | 'recommendations' | 'compare' | null>(null);
+    const [aiMode, setAiMode] = useState<'analyze' | 'recommendations' | 'compare' | 'academic' | null>(null);
     const [profileAnalysis, setProfileAnalysis] = useState<StudentProfileAnalysis | null>(null);
     const [recommendations, setRecommendations] = useState<ProgramRecommendation[]>([]);
     const [loadingAI, setLoadingAI] = useState(false);
     const [hasProfile, setHasProfile] = useState(false);
     const [profileId, setProfileId] = useState<number | null>(null);
+    // ✅ NOUVEAU: États pour recherche académique IA
+    const [academicQuery, setAcademicQuery] = useState('');
+    const [academicResponse, setAcademicResponse] = useState<string | null>(null);
 
     // Charger les données selon l'onglet actif
     useEffect(() => {
@@ -239,6 +242,40 @@ const OrientationScolaireHomeScreen: React.FC = () => {
         }
     };
 
+    // ✅ NOUVEAU: Recherche académique IA
+    const handleAcademicSearch = async () => {
+        if (!academicQuery.trim()) {
+            Alert.alert('Erreur', 'Veuillez saisir votre question');
+            return;
+        }
+
+        hapticPress();
+        setLoadingAI(true);
+
+        try {
+            const { apiPost } = require('../../services/api');
+            // ✅ Utiliser l'endpoint spécifique de recherche académique avec système d'orchestration IA complet
+            const response = await apiPost('/api/orientation/ai/academic-search', {
+                query: academicQuery,
+                context: {
+                    service: 'orientation_scolaire',
+                    domain: 'education',
+                },
+            });
+
+            if (response.success && response.response) {
+                setAcademicResponse(response.response);
+            } else {
+                Alert.alert('Erreur', response.message || 'Impossible d\'obtenir une réponse');
+            }
+        } catch (err: any) {
+            console.error('[OrientationScolaireHomeScreen] Erreur recherche académique:', err);
+            Alert.alert('Erreur', err.message || 'Erreur lors de la recherche');
+        } finally {
+            setLoadingAI(false);
+        }
+    };
+
     const formatDistance = (distance?: number) => {
         if (!distance) return '';
         if (distance < 1) return `${Math.round(distance * 1000)}m`;
@@ -279,22 +316,34 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                                 )}
                             </Text>
                         </View>
-                        <TouchableOpacity
-                            onPress={() => {
-                                hapticPress();
-                                if (hasProfile) {
-                                    handleGetRecommendations();
-                                } else {
-                                    Alert.alert('Profil requis', 'Créez votre profil pour obtenir des recommandations IA', [
-                                        { text: 'Annuler' },
-                                        { text: 'Créer mon profil', onPress: () => navigation.navigate('ProfilEtudiant' as never) },
-                                    ]);
-                                }
-                            }}
-                            style={styles.aiButton}
-                        >
-                            <SafeIcon name="sparkles" size={22} color="#FFFFFF" type="lucide" />
-                        </TouchableOpacity>
+                        <View style={styles.headerActions}>
+                            {/* ✅ NOUVEAU: Bouton pour les établissements */}
+                            <TouchableOpacity
+                                onPress={() => {
+                                    hapticPress();
+                                    (navigation as any).navigate('CreateEtablissement');
+                                }}
+                                style={styles.createButton}
+                            >
+                                <SafeIcon name="plus" size={20} color="#FFFFFF" type="lucide" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    hapticPress();
+                                    if (hasProfile) {
+                                        handleGetRecommendations();
+                                    } else {
+                                        Alert.alert('Profil requis', 'Créez votre profil pour obtenir des recommandations IA', [
+                                            { text: 'Annuler' },
+                                            { text: 'Créer mon profil', onPress: () => navigation.navigate('ProfilEtudiant' as never) },
+                                        ]);
+                                    }
+                                }}
+                                style={styles.aiButton}
+                            >
+                                <SafeIcon name="sparkles" size={22} color="#FFFFFF" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Barre de recherche */}
@@ -322,6 +371,18 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                                 </TouchableOpacity>
                             )}
                         </View>
+                        {/* ✅ NOUVEAU: Bouton recherche académique IA */}
+                        <TouchableOpacity
+                            style={styles.aiSearchButton}
+                            onPress={() => {
+                                hapticPress();
+                                setShowAIModal(true);
+                                setAiMode('academic');
+                            }}
+                        >
+                            <SafeIcon name="brain" size={18} color="#8B5CF6" type="lucide" />
+                            <Text style={styles.aiSearchButtonText}>Recherche académique IA</Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Filtres rapides (établissements) */}
@@ -557,6 +618,8 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                         setAiMode(null);
                         setProfileAnalysis(null);
                         setRecommendations([]);
+                        setAcademicQuery('');
+                        setAcademicResponse(null);
                     }}
                     mode={aiMode}
                     profileAnalysis={profileAnalysis}
@@ -564,6 +627,11 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     loading={loadingAI}
                     hasProfile={hasProfile}
                     onCreateProfile={() => navigation.navigate('ProfilEtudiant' as never)}
+                    // ✅ NOUVEAU: Props pour recherche académique
+                    academicQuery={academicQuery}
+                    academicResponse={academicResponse}
+                    onAcademicQueryChange={setAcademicQuery}
+                    onAcademicSearch={handleAcademicSearch}
                 />
             )}
         </SafeNativeView>
@@ -749,12 +817,17 @@ const FournituresCard: React.FC<FournituresCardProps> = ({ fournitures, onPress 
 interface AIModalProps {
     visible: boolean;
     onClose: () => void;
-    mode: 'analyze' | 'recommendations' | 'compare' | null;
+    mode: 'analyze' | 'recommendations' | 'compare' | 'academic' | null;
     profileAnalysis: StudentProfileAnalysis | null;
     recommendations: ProgramRecommendation[];
     loading: boolean;
     hasProfile: boolean;
     onCreateProfile: () => void;
+    // ✅ NOUVEAU: Props pour recherche académique
+    academicQuery?: string;
+    academicResponse?: string | null;
+    onAcademicQueryChange?: (query: string) => void;
+    onAcademicSearch?: () => void;
 }
 
 const AIModal: React.FC<AIModalProps> = ({
@@ -766,6 +839,10 @@ const AIModal: React.FC<AIModalProps> = ({
     loading,
     hasProfile,
     onCreateProfile,
+    academicQuery = '',
+    academicResponse = null,
+    onAcademicQueryChange,
+    onAcademicSearch,
 }) => {
     return (
         <Modal
@@ -786,7 +863,40 @@ const AIModal: React.FC<AIModalProps> = ({
                     </View>
 
                     <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
-                        {!hasProfile ? (
+                        {/* ✅ NOUVEAU: Mode recherche académique */}
+                        {mode === 'academic' ? (
+                            <View style={styles.academicContainer}>
+                                <Text style={styles.academicTitle}>Recherche Académique IA</Text>
+                                <Text style={styles.academicSubtitle}>
+                                    Posez vos questions sur les cours, programmes, examens, etc.
+                                </Text>
+                                <TextInput
+                                    style={styles.academicInput}
+                                    placeholder="Ex: Comment réussir l'examen de mathématiques en terminale ?"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={academicQuery}
+                                    onChangeText={onAcademicQueryChange}
+                                    multiline
+                                    numberOfLines={4}
+                                />
+                                <TouchableOpacity
+                                    style={styles.academicSearchButton}
+                                    onPress={onAcademicSearch}
+                                    disabled={loading || !academicQuery.trim()}
+                                >
+                                    <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
+                                    <Text style={styles.academicSearchButtonText}>
+                                        {loading ? 'Recherche...' : 'Rechercher'}
+                                    </Text>
+                                </TouchableOpacity>
+                                {academicResponse && (
+                                    <View style={styles.academicResponseContainer}>
+                                        <Text style={styles.academicResponseTitle}>Réponse IA :</Text>
+                                        <Text style={styles.academicResponseText}>{academicResponse}</Text>
+                                    </View>
+                                )}
+                            </View>
+                        ) : !hasProfile ? (
                             <View style={styles.noProfileContainer}>
                                 <SafeIcon name="user" size={64} color="#9CA3AF" />
                                 <Text style={styles.noProfileText}>
@@ -899,6 +1009,18 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.9)',
         marginTop: 2,
     },
+    headerActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    createButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     aiButton: {
         width: 44,
         height: 44,
@@ -906,6 +1028,22 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    aiSearchButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        marginTop: 8,
+        gap: 8,
+    },
+    aiSearchButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#8B5CF6',
     },
     searchContainer: {
         marginTop: 8,
@@ -1259,6 +1397,64 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         textAlign: 'center',
         padding: 32,
+    },
+    // ✅ NOUVEAU: Styles recherche académique
+    academicContainer: {
+        gap: 16,
+    },
+    academicTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    academicSubtitle: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 16,
+    },
+    academicInput: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        color: '#111827',
+        backgroundColor: '#F9FAFB',
+        minHeight: 100,
+        textAlignVertical: 'top',
+    },
+    academicSearchButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#8B5CF6',
+        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        gap: 8,
+    },
+    academicSearchButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    academicResponseContainer: {
+        backgroundColor: '#EEF2FF',
+        borderRadius: 12,
+        padding: 16,
+        marginTop: 16,
+    },
+    academicResponseTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#4F46E5',
+        marginBottom: 12,
+    },
+    academicResponseText: {
+        fontSize: 14,
+        color: '#111827',
+        lineHeight: 22,
     },
 });
 

@@ -136,6 +136,10 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/orientation/analytics",
             get(orientation_scolaire_controller::get_analytics),
         )
+        .route(
+            "/api/orientation/ai/academic-search",
+            post(orientation_scolaire_controller::ai_academic_search),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     Router::new()

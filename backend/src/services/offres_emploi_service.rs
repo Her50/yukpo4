@@ -181,76 +181,63 @@ impl OffresEmploiService {
         let limit = request.limit.unwrap_or(20).min(100).max(1);
         let offset = (page - 1) * limit;
 
-        // Construire la requête SQL dynamiquement
-        let mut query = String::from(
-            "SELECT * FROM offres_emploi WHERE statut = 'active' AND is_active = true",
-        );
-        let mut params: Vec<String> = vec![];
-        let mut param_count = 0;
-
-        if let Some(secteur) = &request.secteur {
-            param_count += 1;
-            query.push_str(&format!(" AND secteur = ${}", param_count));
-            params.push(secteur.clone());
-        }
-
-        if let Some(ref types) = request.type_contrat {
-            if !types.is_empty() {
-                param_count += 1;
-                query.push_str(&format!(
-                    " AND type_contrat = ANY(${}::text[])",
-                    param_count
-                ));
-                params.push(serde_json::to_string(types).unwrap_or_default());
-            }
-        }
-
-        if let Some(remote) = request.remote {
-            param_count += 1;
-            query.push_str(&format!(" AND remote = ${}", param_count));
-            params.push(remote.to_string());
-        }
-
-        // Recherche géographique si GPS fourni
-        if let Some(gps) = &request.gps {
-            if let Some((lat, lng)) = parse_gps(gps) {
-                let distance_km = request.distance_max_km.unwrap_or(50.0);
-                param_count += 1;
-                query.push_str(&format!(
-                    " AND ST_DWithin(location_point, ST_GeogFromText('POINT({} {})'), {})",
-                    lng,
-                    lat,
-                    distance_km * 1000.0
-                ));
-            }
-        }
-
-        query.push_str(" ORDER BY date_publication DESC LIMIT $");
-        param_count += 1;
-        query.push_str(&param_count.to_string());
-        query.push_str(" OFFSET $");
-        param_count += 1;
-        query.push_str(&param_count.to_string());
-
-        // Exécuter la requête (version simplifiée - à améliorer avec filtres dynamiques)
-        let offres = sqlx::query_as::<_, OffreEmploi>(
+        // ✅ CORRECTION: Requête SQL qui récupère TOUTES les offres actives créées
+        // Utiliser une requête SQLx simple mais complète avec filtres optionnels
+        
+        // Construire la requête de base qui récupère toutes les offres actives
+        let mut query = sqlx::query_as::<_, OffreEmploi>(
             r#"
             SELECT * FROM offres_emploi
             WHERE statut = 'active' AND is_active = true
-            ORDER BY date_publication DESC
-            LIMIT $1 OFFSET $2
             "#,
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&self.pool)
-        .await
+        );
+
+        // ✅ Ajouter les filtres dynamiques si présents
+        let mut has_filters = false;
+        let mut where_conditions = vec![];
+
+        // Recherche textuelle (titre, description, secteur, domaine, compétences, tags)
+        if let Some(query_text) = &request.query {
+            if !query_text.trim().is_empty() {
+                let search_pattern = format!("%{}%", query_text.trim());
+                where_conditions.push(format!(
+                    "(titre_poste ILIKE $1 OR description ILIKE $1 OR secteur ILIKE $1 OR COALESCE(domaine, '') ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(COALESCE(competences_requises, ARRAY[]::text[])) AS comp WHERE comp ILIKE $1) OR EXISTS (SELECT 1 FROM unnest(COALESCE(tags, ARRAY[]::text[])) AS tag WHERE tag ILIKE $1))"
+                ));
+                query = sqlx::query_as::<_, OffreEmploi>(&format!(
+                    "SELECT * FROM offres_emploi WHERE statut = 'active' AND is_active = true AND {}",
+                    where_conditions.join(" AND ")
+                ));
+                query = query.bind(&search_pattern);
+                has_filters = true;
+            }
+        }
+
+        // Pour simplifier, on utilise une requête de base qui récupère TOUTES les offres actives
+        // Les filtres avancés peuvent être ajoutés progressivement
+        let offres = if !has_filters {
+            // ✅ REQUÊTE DE BASE: Récupère toutes les offres actives créées
+            sqlx::query_as::<_, OffreEmploi>(
+                r#"
+                SELECT * FROM offres_emploi
+                WHERE statut = 'active' AND is_active = true
+                ORDER BY date_publication DESC
+                LIMIT $1 OFFSET $2
+                "#,
+            )
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await
+        } else {
+            // Avec filtres (à implémenter progressivement)
+            query.bind(limit).bind(offset).fetch_all(&self.pool).await
+        }
         .map_err(|e| {
-            error!("[search_offres] Erreur: {}", e);
+            error!("[search_offres] Erreur SQL: {}", e);
             AppError::Internal(format!("Erreur recherche offres: {}", e))
         })?;
 
-        // Compter le total
+        // Compter le total d'offres actives
         let total: i64 = sqlx::query_scalar::<_, i64>(
             "SELECT COUNT(*)::bigint FROM offres_emploi WHERE statut = 'active' AND is_active = true"
         )
@@ -349,7 +336,8 @@ impl OffresEmploiService {
     /// Construit une clé de cache pour la recherche
     fn build_search_cache_key(&self, request: &SearchOffresRequest) -> String {
         format!(
-            "emploi:search:{}:{}:{}:{}:{}:{}:{}",
+            "emploi:search:{}:{}:{}:{}:{}:{}:{}:{}",
+            request.query.as_deref().unwrap_or("all"),
             request.secteur.as_deref().unwrap_or("all"),
             serde_json::to_string(&request.type_contrat).unwrap_or_default(),
             request

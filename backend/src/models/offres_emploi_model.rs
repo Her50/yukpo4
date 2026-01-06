@@ -229,6 +229,7 @@ pub struct CreateOffreEmploiRequest {
 /// DTO : Recherche d'offres d'emploi
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchOffresRequest {
+    pub query: Option<String>, // ✅ NOUVEAU: Recherche textuelle
     pub secteur: Option<String>,
     pub type_contrat: Option<Vec<String>>,
     pub salaire_min: Option<f64>,

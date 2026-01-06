@@ -12,8 +12,9 @@ use crate::models::offres_emploi_model::{
 use crate::services::{
     alertes_emploi_service::AlertesEmploiService, candidatures_service::CandidaturesService,
     emploi_ai_service::EmploiAIService, matching_emploi_service::MatchingEmploiService,
-    offres_emploi_service::OffresEmploiService, profils_candidats_service::ProfilsCandidatsService,
-    statistiques_emploi_service::StatistiquesEmploiService,
+    notification_service, offres_emploi_service::OffresEmploiService,
+    profils_candidats_service::ProfilsCandidatsService,
+    push_notification_service, statistiques_emploi_service::StatistiquesEmploiService,
 };
 use crate::state::AppState;
 use axum::{
@@ -148,7 +149,112 @@ pub async fn create_candidature(
     );
 
     let service = CandidaturesService::new(state.pg.clone(), Some(state.redis_client.clone()));
-    let candidature = service.create_candidature(user_id, request).await?;
+    let candidature = service.create_candidature(user_id, request.clone()).await?;
+
+    // ✅ NOUVEAU: Envoyer une notification à l'employeur
+    // Récupérer l'ID de l'employeur (entreprise_id de l'offre)
+    let employeur_id: Option<i32> = sqlx::query_scalar(
+        "SELECT entreprise_id FROM offres_emploi WHERE id = $1"
+    )
+    .bind(request.offre_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    if let Some(emp_id) = employeur_id {
+        // Récupérer le titre de l'offre
+        let titre_offre: Option<String> = sqlx::query_scalar(
+            "SELECT titre_poste FROM offres_emploi WHERE id = $1"
+        )
+        .bind(request.offre_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+
+        // Récupérer le nom du candidat
+        let candidat_nom: Option<String> = sqlx::query_scalar(
+            "SELECT nom_complet FROM users WHERE id = $1"
+        )
+        .bind(user_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+
+        // Créer la notification
+        let notification_data = json!({
+            "offre_id": request.offre_id,
+            "candidature_id": candidature.id,
+            "candidat_id": user_id,
+            "titre_offre": titre_offre.unwrap_or_default(),
+        });
+
+        // Utiliser le service de notification si disponible
+        if let Err(e) = notification_service::create_notification(
+            &state.pg,
+            emp_id,
+            notification_service::NotificationType::SystemAlert, // TODO: Créer un type spécifique
+            "Nouvelle candidature".to_string(),
+            format!(
+                "{} a postulé à votre offre: {}",
+                candidat_nom.unwrap_or_else(|| "Un candidat".to_string()),
+                titre_offre.unwrap_or_else(|| "Offre d'emploi".to_string())
+            ),
+            Some(notification_data),
+        )
+        .await
+        {
+            error!("[create_candidature] Erreur notification employeur: {}", e);
+        }
+
+        // Envoyer une push notification
+        let _ = push_notification_service::send_push_notification(
+            &state.pg,
+            emp_id,
+            "Nouvelle candidature".to_string(),
+            format!(
+                "{} a postulé à votre offre: {}",
+                candidat_nom.unwrap_or_else(|| "Un candidat".to_string()),
+                titre_offre.unwrap_or_else(|| "Offre d'emploi".to_string())
+            ),
+            Some(notification_data.clone()),
+        )
+        .await;
+    }
+
+    // ✅ NOUVEAU: Envoyer une notification de confirmation au candidat
+    let titre_offre_candidat: Option<String> = sqlx::query_scalar(
+        "SELECT titre_poste FROM offres_emploi WHERE id = $1"
+    )
+    .bind(request.offre_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    let notification_data_candidat = json!({
+        "offre_id": request.offre_id,
+        "candidature_id": candidature.id,
+        "titre_offre": titre_offre_candidat.unwrap_or_default(),
+    });
+
+    if let Err(e) = notification_service::create_notification(
+        &state.pg,
+        user_id,
+        notification_service::NotificationType::SystemAlert,
+        "Candidature envoyée".to_string(),
+        format!(
+            "Votre candidature pour l'offre \"{}\" a été envoyée avec succès",
+            titre_offre_candidat.unwrap_or_else(|| "Offre d'emploi".to_string())
+        ),
+        Some(notification_data_candidat.clone()),
+    )
+    .await
+    {
+        error!("[create_candidature] Erreur notification candidat: {}", e);
+    }
 
     Ok((
         StatusCode::CREATED,
@@ -424,8 +530,98 @@ pub async fn update_statut_candidature(
 
     let service = CandidaturesService::new(state.pg.clone(), Some(state.redis_client.clone()));
     let candidature = service
-        .update_statut_candidature(candidature_id, request)
+        .update_statut_candidature(candidature_id, request.clone())
         .await?;
+
+    // ✅ NOUVEAU: Envoyer une notification au candidat lors du changement de statut
+    // Récupérer l'ID du candidat
+    let candidat_id: Option<i32> = sqlx::query_scalar(
+        "SELECT candidat_id FROM candidatures WHERE id = $1"
+    )
+    .bind(candidature_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    if let Some(cand_id) = candidat_id {
+        // Récupérer le titre de l'offre
+        let titre_offre: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT o.titre_poste FROM candidatures c
+            JOIN offres_emploi o ON o.id = c.offre_id
+            WHERE c.id = $1
+            "#
+        )
+        .bind(candidature_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+
+        let statut_label = match request.statut.as_str() {
+            "accepted" => "acceptée",
+            "rejected" => "refusée",
+            "reviewed" => "en cours d'examen",
+            _ => "mise à jour",
+        };
+
+        let (title, body) = match request.statut.as_str() {
+            "accepted" => (
+                "Candidature acceptée ! 🎉".to_string(),
+                format!(
+                    "Félicitations ! Votre candidature pour l'offre \"{}\" a été acceptée.",
+                    titre_offre.unwrap_or_else(|| "Offre d'emploi".to_string())
+                ),
+            ),
+            "rejected" => (
+                "Candidature refusée".to_string(),
+                format!(
+                    "Votre candidature pour l'offre \"{}\" n'a pas été retenue.",
+                    titre_offre.unwrap_or_else(|| "Offre d'emploi".to_string())
+                ),
+            ),
+            _ => (
+                "Mise à jour de candidature".to_string(),
+                format!(
+                    "Le statut de votre candidature pour l'offre \"{}\" a été mis à jour: {}",
+                    titre_offre.unwrap_or_else(|| "Offre d'emploi".to_string()),
+                    statut_label
+                ),
+            ),
+        };
+
+        let notification_data = json!({
+            "candidature_id": candidature_id,
+            "offre_id": candidature.offre_id,
+            "statut": request.statut,
+            "titre_offre": titre_offre.unwrap_or_default(),
+        });
+
+        // Créer la notification
+        if let Err(e) = notification_service::create_notification(
+            &state.pg,
+            cand_id,
+            notification_service::NotificationType::SystemAlert,
+            title.clone(),
+            body.clone(),
+            Some(notification_data.clone()),
+        )
+        .await
+        {
+            error!("[update_statut_candidature] Erreur notification candidat: {}", e);
+        }
+
+        // Envoyer une push notification
+        let _ = push_notification_service::send_push_notification(
+            &state.pg,
+            cand_id,
+            title,
+            body,
+            Some(notification_data),
+        )
+        .await;
+    }
 
     Ok((
         StatusCode::OK,

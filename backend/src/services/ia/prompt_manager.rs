@@ -49,6 +49,14 @@ impl PromptManager {
                 .map_err(|e| format!("Erreur lecture prompt assistance_generale: {}", e))?,
         );
 
+        // ✅ NOUVEAU: Prompt pour création d'offre d'emploi
+        prompts.insert(
+            "creation_offre_emploi".to_string(),
+            fs::read_to_string("ia_prompts/creation_offre_emploi_prompt.md")
+                .await
+                .map_err(|e| format!("Erreur lecture prompt creation_offre_emploi: {}", e))?,
+        );
+
         Ok(Self { prompts })
     }
 

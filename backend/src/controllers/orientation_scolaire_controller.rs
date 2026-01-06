@@ -812,3 +812,104 @@ pub async fn get_analytics(
 pub struct AnalyticsQuery {
     pub etablissement_id: Option<i32>,
 }
+
+/// ✅ NOUVEAU: POST /api/orientation/ai/academic-search
+/// Recherche académique IA - Utilise le système d'orchestration IA complet avec prompts réels
+#[derive(Debug, Deserialize)]
+pub struct AcademicSearchRequest {
+    pub query: String,
+    pub context: Option<serde_json::Value>,
+}
+
+pub async fn ai_academic_search(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(request): Json<AcademicSearchRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[ai_academic_search] User ID: {}, Query: {}",
+        user_id, request.query
+    );
+
+    // ✅ UTILISER LE SYSTÈME D'ORCHESTRATION IA COMPLET
+    use crate::services::orientation_scolaire_ai_service::OrientationScolaireAIService;
+
+    let ai_service = OrientationScolaireAIService::new(state.ia.clone());
+    
+    // ✅ CHARGER LE PROMPT SPÉCIFIQUE pour recherche académique depuis le fichier markdown
+    use crate::services::ia::prompt_loader::load_prompt_section_with_vars;
+    use std::collections::HashMap;
+
+    let mut variables = HashMap::new();
+    variables.insert("query".to_string(), request.query.clone());
+    if let Some(context) = &request.context {
+        variables.insert(
+            "context".to_string(),
+            serde_json::to_string(context).unwrap_or_default(),
+        );
+    } else {
+        variables.insert("context".to_string(), "Aucun contexte additionnel".to_string());
+    }
+
+    // Charger le prompt depuis le fichier markdown
+    let prompt = load_prompt_section_with_vars(
+        "orientation_scolaire",
+        "Recherche Académique",
+        &variables,
+    )
+    .await
+    .unwrap_or_else(|e| {
+        log::warn!(
+            "[ai_academic_search] Erreur chargement prompt, utilisation fallback: {}",
+            e
+        );
+        format!(
+            r#"
+Tu es l'assistant académique intelligent de Yukpomnang, spécialisé dans l'orientation scolaire et l'éducation.
+
+Question académique : {}
+
+Réponds de manière précise et détaillée. Adapte tes réponses au système éducatif camerounais/africain.
+"#,
+            request.query
+        )
+    });
+
+    // ✅ APPEL IA RÉEL via app_ia.predict() - Système d'orchestration IA complet
+    let (model_name, response, tokens_consumed) = state.ia.predict(&prompt).await?;
+    
+    log::info!(
+        "[ai_academic_search] ✅ Réponse générée avec {} (tokens: {})",
+        model_name,
+        tokens_consumed
+    );
+
+    // Nettoyer la réponse (extraire le JSON si présent, sinon utiliser le texte directement)
+    let response_text = if response.contains("```json") {
+        // Si la réponse contient du JSON, extraire le texte de la réponse
+        response
+            .split("```json")
+            .nth(1)
+            .and_then(|s| s.split("```").next())
+            .unwrap_or(&response)
+            .trim()
+            .to_string()
+    } else if response.contains("```") {
+        response
+            .split("```")
+            .nth(1)
+            .and_then(|s| s.split("```").next())
+            .unwrap_or(&response)
+            .trim()
+            .to_string()
+    } else {
+        response.trim().to_string()
+    };
+
+    Ok(Json(json!({
+        "success": true,
+        "response": response_text,
+        "tokens_consumed": tokens_consumed,
+        "model_used": model_name
+    })))
+}

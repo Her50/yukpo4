@@ -17,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { hapticPress } from '../../utils/hapticFeedback';
 
 const CreateOffreScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -48,6 +49,11 @@ const CreateOffreScreen: React.FC = () => {
 
     const [competenceInput, setCompetenceInput] = useState('');
     const [tagInput, setTagInput] = useState('');
+    
+    // ✅ NOUVEAU: États pour l'IA
+    const [showAIModal, setShowAIModal] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [loadingAI, setLoadingAI] = useState(false);
 
     const typesContrat = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
     const secteurs = [
@@ -114,6 +120,71 @@ const CreateOffreScreen: React.FC = () => {
         }
     };
 
+    // ✅ NOUVEAU: Fonction pour remplir le formulaire via IA
+    const handleAIFill = async () => {
+        if (!aiPrompt.trim()) {
+            Alert.alert('Erreur', 'Veuillez décrire votre offre d\'emploi');
+            return;
+        }
+
+        try {
+            setLoadingAI(true);
+            // Utiliser l'endpoint d'orchestration IA avec contexte spécifique
+            const response = await apiPost('/api/yukpo', {
+                texte: aiPrompt,
+                type: 'creation_offre_emploi',
+            });
+
+            if (response.success && response.data) {
+                const data = response.data.data || response.data;
+                
+                // Remplir le formulaire avec les données extraites par l'IA
+                setFormData({
+                    ...formData,
+                    titre_poste: data.titre_poste?.valeur || data.titre_poste || formData.titre_poste,
+                    description: data.description?.valeur || data.description || formData.description,
+                    type_contrat: data.type_contrat?.valeur || data.type_contrat || formData.type_contrat,
+                    duree_contrat: data.duree_contrat?.valeur?.toString() || data.duree_contrat?.toString() || formData.duree_contrat,
+                    lieu_travail: data.lieu_travail?.valeur || data.lieu_travail || formData.lieu_travail,
+                    adresse: data.adresse?.valeur || data.adresse || formData.adresse,
+                    gps: data.gps?.valeur || data.gps || formData.gps,
+                    remote: data.remote?.valeur ?? data.remote ?? formData.remote,
+                    remote_partiel: data.remote_partiel?.valeur ?? data.remote_partiel ?? formData.remote_partiel,
+                    salaire_min: data.salaire_min?.valeur?.toString() || data.salaire_min?.toString() || formData.salaire_min,
+                    salaire_max: data.salaire_max?.valeur?.toString() || data.salaire_max?.toString() || formData.salaire_max,
+                    salaire_negociable: data.salaire_negociable?.valeur ?? data.salaire_negociable ?? formData.salaire_negociable,
+                    niveau_etude: data.niveau_etude?.valeur || data.niveau_etude || formData.niveau_etude,
+                    experience_min: data.experience_min?.valeur?.toString() || data.experience_min?.toString() || formData.experience_min,
+                    competences_requises: Array.isArray(data.competences_requises?.valeur) 
+                        ? data.competences_requises.valeur 
+                        : Array.isArray(data.competences_requises) 
+                            ? data.competences_requises 
+                            : formData.competences_requises,
+                    secteur: data.secteur?.valeur || data.secteur || formData.secteur,
+                    domaine: data.domaine?.valeur || data.domaine || formData.domaine,
+                    tags: Array.isArray(data.tags?.valeur) 
+                        ? data.tags.valeur 
+                        : Array.isArray(data.tags) 
+                            ? data.tags 
+                            : formData.tags,
+                    date_limite_candidature: data.date_limite_candidature?.valeur || data.date_limite_candidature || formData.date_limite_candidature,
+                    date_debut_poste: data.date_debut_poste?.valeur || data.date_debut_poste || formData.date_debut_poste,
+                });
+
+                setShowAIModal(false);
+                setAiPrompt('');
+                Alert.alert('Succès', 'Formulaire rempli automatiquement ! Vous pouvez maintenant vérifier et modifier les informations.');
+            } else {
+                Alert.alert('Erreur', response.message || 'Impossible de traiter votre demande');
+            }
+        } catch (error: any) {
+            console.error('[CreateOffreScreen] Erreur IA:', error);
+            Alert.alert('Erreur', error.message || 'Erreur lors du traitement par IA');
+        } finally {
+            setLoadingAI(false);
+        }
+    };
+
     const handleSubmit = async () => {
         if (!formData.titre_poste || !formData.description || !formData.secteur || !formData.lieu_travail) {
             Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
@@ -149,8 +220,19 @@ const CreateOffreScreen: React.FC = () => {
             const response = await apiPost('/api/offres-emploi', payload);
 
             if (response.success) {
+                const offreId = response.data?.id || response.data?.offre_id;
                 Alert.alert('Succès', 'Offre créée avec succès !', [
-                    { text: 'OK', onPress: () => (navigation as any).navigate('MesOffres') },
+                    {
+                        text: 'Voir les candidatures',
+                        onPress: () => {
+                            if (offreId) {
+                                (navigation as any).navigate('OffreCandidatures', { offreId });
+                            } else {
+                                (navigation as any).navigate('MesOffres');
+                            }
+                        },
+                    },
+                    { text: 'OK', style: 'cancel' },
                 ]);
             } else {
                 Alert.alert('Erreur', response.message || 'Erreur lors de la création de l\'offre');
@@ -170,7 +252,32 @@ const CreateOffreScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>Publier une offre</Text>
+                {/* ✅ NOUVEAU: Bouton IA */}
+                <TouchableOpacity
+                    onPress={() => {
+                        hapticPress();
+                        setShowAIModal(true);
+                    }}
+                    style={styles.aiButton}
+                >
+                    <SafeIcon name="sparkles" size={24} color={modernColors.primary} type="lucide" />
+                </TouchableOpacity>
             </View>
+
+            {/* ✅ NOUVEAU: Modal IA */}
+            {showAIModal && (
+                <AIModal
+                    visible={showAIModal}
+                    onClose={() => {
+                        setShowAIModal(false);
+                        setAiPrompt('');
+                    }}
+                    prompt={aiPrompt}
+                    onPromptChange={setAiPrompt}
+                    onFill={handleAIFill}
+                    loading={loadingAI}
+                />
+            )}
 
             <NativeCard style={styles.card}>
                 {/* Titre */}
@@ -373,6 +480,58 @@ const CreateOffreScreen: React.FC = () => {
                     style={styles.submitButton}
                 />
             </NativeCard>
+
+            {/* ✅ NOUVEAU: Section d'accès rapide aux fonctionnalités de gestion */}
+            <View style={styles.quickAccessSection}>
+                <Text style={styles.quickAccessTitle}>Accès rapide</Text>
+                <Text style={styles.quickAccessSubtitle}>
+                    Une fois l'offre publiée, vous pourrez :
+                </Text>
+                
+                <View style={styles.quickAccessButtons}>
+                    <TouchableOpacity
+                        style={styles.quickAccessButton}
+                        onPress={() => {
+                            hapticPress();
+                            (navigation as any).navigate('MesOffres');
+                        }}
+                    >
+                        <SafeIcon name="users" size={24} color={modernColors.primary} type="lucide" />
+                        <Text style={styles.quickAccessButtonText}>Voir mes offres</Text>
+                        <Text style={styles.quickAccessButtonSubtext}>
+                            Gérer vos offres et candidatures
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.quickAccessButton}
+                        onPress={() => {
+                            hapticPress();
+                            (navigation as any).navigate('MesOffres');
+                        }}
+                    >
+                        <SafeIcon name="brain" size={24} color={modernColors.primary} type="lucide" />
+                        <Text style={styles.quickAccessButtonText}>Analyser les CV (IA)</Text>
+                        <Text style={styles.quickAccessButtonSubtext}>
+                            Disponible après publication
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.quickAccessButton}
+                        onPress={() => {
+                            hapticPress();
+                            (navigation as any).navigate('MesOffres');
+                        }}
+                    >
+                        <SafeIcon name="target" size={24} color={modernColors.primary} type="lucide" />
+                        <Text style={styles.quickAccessButtonText}>Matching candidats</Text>
+                        <Text style={styles.quickAccessButtonSubtext}>
+                            Trouver les meilleurs profils
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
         </ScrollView>
     );
 };
@@ -554,6 +713,212 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     submitButton: {
+        marginTop: 8,
+    },
+    aiButton: {
+        marginLeft: 12,
+        padding: 4,
+    },
+    quickAccessSection: {
+        marginTop: 24,
+        marginBottom: 32,
+    },
+    quickAccessTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    quickAccessSubtitle: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        marginBottom: 16,
+    },
+    quickAccessButtons: {
+        gap: 12,
+    },
+    quickAccessButton: {
+        backgroundColor: modernColors.surface,
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    quickAccessButtonText: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    quickAccessButtonSubtext: {
+        flex: 1,
+        fontSize: 12,
+        color: modernColors.textSecondary,
+    },
+});
+
+// ✅ NOUVEAU: Modal IA pour remplir le formulaire
+interface AIModalProps {
+    visible: boolean;
+    onClose: () => void;
+    prompt: string;
+    onPromptChange: (text: string) => void;
+    onFill: () => void;
+    loading: boolean;
+}
+
+const AIModal: React.FC<AIModalProps> = ({
+    visible,
+    onClose,
+    prompt,
+    onPromptChange,
+    onFill,
+    loading,
+}) => {
+    const { Modal } = require('react-native');
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="slide"
+            onRequestClose={onClose}
+        >
+            <View style={aiModalStyles.overlay}>
+                <View style={aiModalStyles.content}>
+                    <View style={aiModalStyles.header}>
+                        <View style={aiModalStyles.headerLeft}>
+                            <SafeIcon name="sparkles" size={24} color={modernColors.primary} type="lucide" />
+                            <Text style={aiModalStyles.title}>Création intelligente avec IA</Text>
+                        </View>
+                        <TouchableOpacity onPress={onClose} style={aiModalStyles.closeButton}>
+                            <SafeIcon name="x" size={24} color="#111827" type="lucide" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView style={aiModalStyles.scroll} contentContainerStyle={aiModalStyles.scrollContent}>
+                        <Text style={aiModalStyles.subtitle}>
+                            Décrivez votre offre d'emploi en quelques phrases. L'IA remplira automatiquement le formulaire pour vous.
+                        </Text>
+
+                        <Text style={aiModalStyles.exampleTitle}>Exemples :</Text>
+                        <View style={aiModalStyles.examples}>
+                            <Text style={aiModalStyles.exampleText}>
+                                • "Je cherche un développeur React Native avec 3 ans d'expérience, CDI à Douala, salaire 200k-300k XAF"
+                            </Text>
+                            <Text style={aiModalStyles.exampleText}>
+                                • "Stage en marketing digital, 6 mois, Yaoundé, télétravail possible"
+                            </Text>
+                            <Text style={aiModalStyles.exampleText}>
+                                • "Recherche comptable Bac+3, CDD 12 mois, Douala, compétences en Sage et Excel"
+                            </Text>
+                        </View>
+
+                        <TextInput
+                            style={aiModalStyles.input}
+                            placeholder="Ex: Je cherche un développeur Full Stack avec expérience en Node.js et React, CDI à Douala, salaire négociable, télétravail possible..."
+                            placeholderTextColor="#9CA3AF"
+                            value={prompt}
+                            onChangeText={onPromptChange}
+                            multiline
+                            numberOfLines={6}
+                            textAlignVertical="top"
+                        />
+
+                        <NativeButton
+                            title={loading ? 'Traitement en cours...' : 'Remplir automatiquement'}
+                            onPress={onFill}
+                            disabled={loading || !prompt.trim()}
+                            style={aiModalStyles.fillButton}
+                        />
+                    </ScrollView>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+const aiModalStyles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    content: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '90%',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    closeButton: {
+        padding: 4,
+    },
+    scroll: {
+        flex: 1,
+    },
+    scrollContent: {
+        padding: 20,
+    },
+    subtitle: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        marginBottom: 20,
+        lineHeight: 20,
+    },
+    exampleTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 12,
+    },
+    examples: {
+        backgroundColor: modernColors.surface,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 20,
+        gap: 12,
+    },
+    exampleText: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        lineHeight: 18,
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        color: modernColors.text,
+        backgroundColor: modernColors.surface,
+        minHeight: 150,
+        textAlignVertical: 'top',
+        marginBottom: 20,
+    },
+    fillButton: {
         marginTop: 8,
     },
 });

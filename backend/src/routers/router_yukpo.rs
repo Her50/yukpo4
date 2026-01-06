@@ -82,6 +82,13 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 ))
         )
         .route(
+            "/api/ia/creation-offre-emploi",
+            post(handle_creation_offre_emploi_direct)
+                .layer(axum::middleware::from_fn_with_state(
+                    state.clone(), check_tokens
+                ))
+        )
+        .route(
             "/api/search/direct",
             post(handle_direct_search)
                 .layer(axum::middleware::from_fn_with_state(
@@ -1188,4 +1195,165 @@ async fn serve_media_file(
             Err(StatusCode::NOT_FOUND)
         }
     }
+}
+
+/// ✅ NOUVEAU: Endpoint pour création d'offre d'emploi directe via IA
+/// Utilise le système d'orchestration IA complet avec prompts réels et appels IA véritables
+async fn handle_creation_offre_emploi_direct(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
+    Json(input): Json<MultiModalInput>,
+) -> AppResult<Json<Value>> {
+    let user_id = user.id;
+    
+    log::info!("[handle_creation_offre_emploi_direct] 📝 ==== Requête création offre d'emploi via IA ====");
+    log::info!("[handle_creation_offre_emploi_direct] User ID: {}", user_id);
+    
+    let user_text = input.texte.clone().unwrap_or_default();
+    
+    if user_text.trim().is_empty() {
+        return Err(AppError::BadRequest("Le texte de description est requis".to_string()));
+    }
+    
+    // ✅ UTILISER LE SYSTÈME D'ORCHESTRATION IA COMPLET
+    use crate::services::ia::OptimizedIAService;
+    
+    let app_ia = state.ia.clone();
+    let optimized_ia = OptimizedIAService::new(app_ia.clone()).await?;
+    
+    // ✅ UTILISER LE PROMPT MANAGER POUR CHARGER LE PROMPT SPÉCIFIQUE
+    use crate::services::ia::prompt_manager::PromptManager;
+    let prompt_manager = PromptManager::new().await?;
+    
+    // Obtenir le prompt spécifique pour création d'offre d'emploi
+    let prompt = prompt_manager
+        .get_intention_prompt("creation_offre_emploi", &user_text)
+        .unwrap_or_else(|| {
+            log::warn!("[handle_creation_offre_emploi_direct] Prompt creation_offre_emploi non trouvé, utilisation fallback");
+            // Fallback si le prompt n'est pas chargé
+            format!(
+                r#"Tu es un assistant spécialisé dans la création d'offres d'emploi pour la plateforme Yukpo.
+
+Analyse la demande utilisateur et génère un JSON avec ces champs :
+- titre_poste (obligatoire)
+- description (obligatoire)
+- type_contrat (obligatoire: CDI, CDD, Stage, Freelance, Temps partiel, Alternance)
+- lieu_travail (obligatoire)
+- secteur (obligatoire: Informatique, Commerce, Santé, Éducation, Finance, Marketing, Ressources Humaines, Ingénierie, Design, Autre)
+- competences_requises (array)
+- salaire_min, salaire_max (en XAF)
+- remote (boolean)
+- niveau_etude, experience_min
+
+Demande utilisateur : {}
+
+Format JSON attendu :
+{{
+  "intention": "creation_offre_emploi",
+  "data": {{
+    "titre_poste": {{"type_donnee": "string", "valeur": "...", "origine_champs": "ia"}},
+    "description": {{"type_donnee": "string", "valeur": "...", "origine_champs": "ia"}},
+    "type_contrat": {{"type_donnee": "string", "valeur": "CDI", "origine_champs": "ia"}},
+    "lieu_travail": {{"type_donnee": "string", "valeur": "...", "origine_champs": "ia"}},
+    "secteur": {{"type_donnee": "string", "valeur": "...", "origine_champs": "ia"}},
+    "competences_requises": {{"type_donnee": "array", "valeur": ["...", "..."], "origine_champs": "ia"}}
+  }}
+}}
+
+RÉPONSE UNIQUEMENT EN JSON VALIDE."#,
+                user_text
+            )
+        });
+    
+    // ✅ UTILISER LE SYSTÈME IA RÉEL avec appels véritables
+    let has_images = input.base64_image.as_ref().map_or(false, |imgs| !imgs.is_empty());
+    
+    log::info!("[handle_creation_offre_emploi_direct] Appel IA avec prompt spécifique (images: {})", has_images);
+    
+    // Appel IA réel via le système existant
+    let (model_name, response, tokens_consumed) = if has_images {
+        log::info!("[handle_creation_offre_emploi_direct] Appel multimodal avec {} image(s)", 
+            input.base64_image.as_ref().map_or(0, |v| v.len()));
+        app_ia.predict_multimodal(&prompt, input.base64_image.clone()).await?
+    } else {
+        log::info!("[handle_creation_offre_emploi_direct] Appel texte uniquement");
+        app_ia.predict(&prompt).await?
+    };
+    
+    log::info!("[handle_creation_offre_emploi_direct] ✅ Modèle IA utilisé: {}", model_name);
+    log::info!("[handle_creation_offre_emploi_direct] ✅ Tokens consommés: {}", tokens_consumed);
+    log::info!("[handle_creation_offre_emploi_direct] Réponse longueur: {} caractères", response.len());
+    
+    // Extraire le JSON de la réponse IA
+    let json_response = if response.contains("```json") {
+        let start = response.find("```json").unwrap_or(0) + 7;
+        let end = response.rfind("```").unwrap_or(response.len());
+        let extracted = response[start..end].trim();
+        if extracted == model_name || extracted.len() < 10 {
+            log::warn!("[handle_creation_offre_emploi_direct] JSON extrait invalide, utiliser réponse complète");
+            response.trim()
+        } else {
+            extracted
+        }
+    } else if response.contains("```") {
+        let start = response.find("```").unwrap_or(0) + 3;
+        let end = response.rfind("```").unwrap_or(response.len());
+        let extracted = response[start..end].trim();
+        if extracted == model_name || extracted.len() < 10 {
+            log::warn!("[handle_creation_offre_emploi_direct] JSON extrait invalide, utiliser réponse complète");
+            response.trim()
+        } else {
+            extracted
+        }
+    } else {
+        response.trim()
+    };
+    
+    // Chercher un objet JSON valide si nécessaire
+    let json_response = if json_response == model_name || (!json_response.starts_with('{') && !json_response.starts_with('[')) {
+        log::warn!("[handle_creation_offre_emploi_direct] Chercher objet JSON dans réponse");
+        if let Some(start) = response.find('{') {
+            if let Some(end) = response.rfind('}') {
+                if end > start {
+                    response[start..=end].trim()
+                } else {
+                    json_response
+                }
+            } else {
+                json_response
+            }
+        } else {
+            log::error!("[handle_creation_offre_emploi_direct] Aucun JSON trouvé dans la réponse");
+            return Err(AppError::Internal("Réponse IA invalide: aucun JSON trouvé".to_string()));
+        }
+    } else {
+        json_response
+    };
+    
+    if json_response.is_empty() || json_response == model_name {
+        log::error!("[handle_creation_offre_emploi_direct] JSON extrait invalide: '{}'", json_response);
+        return Err(AppError::Internal(format!(
+            "Réponse IA invalide: le JSON extrait est vide ou correspond au nom du modèle '{}'",
+            model_name
+        )));
+    }
+    
+    // Parser le JSON
+    let parsed_json: Value = serde_json::from_str(json_response).map_err(|e| {
+        log::error!("[handle_creation_offre_emploi_direct] Erreur parsing JSON: {}", e);
+        log::error!("[handle_creation_offre_emploi_direct] JSON reçu: {}", json_response);
+        AppError::Internal(format!("Erreur parsing JSON IA: {}", e))
+    })?;
+    
+    log::info!("[handle_creation_offre_emploi_direct] ✅ JSON parsé avec succès");
+    
+    // Construire la réponse avec la structure attendue par le frontend
+    let result = json!({
+        "success": true,
+        "data": parsed_json,
+        "tokens_consumed": tokens_consumed,
+        "model_used": model_name,
+    });
+    
+    Ok(Json(result))
 }

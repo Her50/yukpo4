@@ -168,6 +168,7 @@ import ExperiencesEtudiantsScreen from '../screens/orientation/ExperiencesEtudia
 import FournituresScolairesScreen from '../screens/orientation/FournituresScolairesScreen';
 import OrientationScolaireHubScreen from '../screens/orientation/OrientationScolaireHubScreen';
 import OrientationScolaireHomeScreen from '../screens/orientation/OrientationScolaireHomeScreen';
+import CreateEtablissementScreen from '../screens/orientation/CreateEtablissementScreen';
 import ProgrammesScolairesScreen from '../screens/orientation/ProgrammesScolairesScreen';
 import MesTrocsScreen from '../screens/specialized/MesTrocsScreen';
 import TrocDetailsScreen from '../screens/specialized/TrocDetailsScreen';
@@ -178,6 +179,7 @@ import CreateOffreScreen from '../screens/offres-emploi/CreateOffreScreen';
 import OffreSearchScreen from '../screens/offres-emploi/OffreSearchScreen';
 import OffresEmploiHubScreen from '../screens/offres-emploi/OffresEmploiHubScreen';
 import OffresEmploiHomeScreen from '../screens/offres-emploi/OffresEmploiHomeScreen';
+import MesOffresScreen from '../screens/offres-emploi/MesOffresScreen';
 import ProfilCandidatScreen from '../screens/offres-emploi/ProfilCandidatScreen';
 // ✅ NOUVEAU 2025-01-27: Écran Bourse du Livre avec IA
 import BourseLivreScreen from '../screens/BourseLivreScreen';
@@ -283,6 +285,7 @@ const LivreScolaireFormScreenWithSafeArea = withNavigatorSafeArea(LivreScolaireF
 // ✅ NOUVEAU 2025-01-28: Orientation scolaire avec SafeArea
 const OrientationScolaireHomeScreenWithSafeArea = withNavigatorSafeArea(OrientationScolaireHomeScreen);
 const OrientationScolaireHubScreenWithSafeArea = withNavigatorSafeArea(OrientationScolaireHubScreen);
+const CreateEtablissementScreenWithSafeArea = withNavigatorSafeArea(CreateEtablissementScreen);
 const EtablissementSearchScreenWithSafeArea = withNavigatorSafeArea(EtablissementSearchScreen);
 const EtablissementDetailsScreenWithSafeArea = withNavigatorSafeArea(EtablissementDetailsScreen);
 const ProgrammesScolairesScreenWithSafeArea = withNavigatorSafeArea(ProgrammesScolairesScreen);
@@ -310,6 +313,7 @@ const OffresEmploiHomeScreenWithSafeArea = withNavigatorSafeArea(OffresEmploiHom
 const OffresEmploiHubScreenWithSafeArea = withNavigatorSafeArea(OffresEmploiHubScreen);
 const OffreSearchScreenWithSafeArea = withNavigatorSafeArea(OffreSearchScreen);
 const CreateOffreScreenWithSafeArea = withNavigatorSafeArea(CreateOffreScreen);
+const MesOffresScreenWithSafeArea = withNavigatorSafeArea(MesOffresScreen);
 const ProfilCandidatScreenWithSafeArea = withNavigatorSafeArea(ProfilCandidatScreen);
 // ✅ NOUVEAU 2025-01-27: Bourse du Livre avec SafeArea
 const BourseLivreScreenWithSafeArea = withNavigatorSafeArea(BourseLivreScreen);
@@ -1087,6 +1091,14 @@ const SecondaryStack = () => {
           }}
         />
         <Stack.Screen
+          name="CreateEtablissement"
+          component={CreateEtablissementScreenWithSafeArea}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Créer un établissement',
+          }}
+        />
+        <Stack.Screen
           name="ProgrammesList"
           component={ProgrammesScolairesScreenWithSafeArea}
           options={{
@@ -1288,6 +1300,22 @@ const SecondaryStack = () => {
           options={{
             ...defaultScreenOptions,
             title: 'Publier une offre',
+          }}
+        />
+        <Stack.Screen
+          name="MesOffres"
+          component={MesOffresScreenWithSafeArea}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Mes Offres',
+          }}
+        />
+        <Stack.Screen
+          name="OffreCandidatures"
+          component={withNavigatorSafeArea(require('../screens/offres-emploi/OffreCandidaturesScreen').default)}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Candidatures',
           }}
         />
         <Stack.Screen

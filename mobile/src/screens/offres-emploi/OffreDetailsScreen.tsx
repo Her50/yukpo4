@@ -117,13 +117,38 @@ const OffreDetailsScreen: React.FC = () => {
             return;
         }
 
+        // ✅ NOUVEAU: Vérifier si l'utilisateur a un profil candidat
+        try {
+            const { apiGet } = require('../../services/api');
+            const profilResponse = await apiGet('/api/offres-emploi/profil');
+            const hasProfil = profilResponse.success && profilResponse.data;
+            const hasCV = hasProfil && profilResponse.data.cv_url;
+
+            if (!hasProfil || !hasCV) {
+                Alert.alert(
+                    'Profil requis',
+                    'Pour postuler, vous devez créer votre profil candidat et uploader votre CV.',
+                    [
+                        { text: 'Annuler' },
+                        {
+                            text: 'Créer mon profil',
+                            onPress: () => (navigation as any).navigate('ProfilCandidat'),
+                        },
+                    ]
+                );
+                return;
+            }
+        } catch (err) {
+            console.error('[OffreDetailsScreen] Erreur vérification profil:', err);
+        }
+
         try {
             setPostulating(true);
             const response = await apiPost('/api/offres-emploi/candidatures', {
                 offre_id: params.offreId,
             });
             if (response.success) {
-                Alert.alert('Succès', 'Candidature envoyée avec succès !', [
+                Alert.alert('Succès', 'Candidature envoyée avec succès ! Votre CV a été transmis à l\'employeur.', [
                     { text: 'OK', onPress: () => (navigation as any).navigate('MesCandidatures') },
                 ]);
             } else {
@@ -276,6 +301,16 @@ const OffreDetailsScreen: React.FC = () => {
                     disabled={postulating}
                     style={styles.postulerButton}
                 />
+                {/* ✅ NOUVEAU: Lien rapide vers le profil candidat */}
+                <TouchableOpacity
+                    style={styles.profilLink}
+                    onPress={() => {
+                        (navigation as any).navigate('ProfilCandidat');
+                    }}
+                >
+                    <SafeIcon name="edit" size={16} color={modernColors.primary} type="lucide" />
+                    <Text style={styles.profilLinkText}>Mettre à jour mon CV</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -457,6 +492,19 @@ const styles = StyleSheet.create({
     },
     postulerButton: {
         width: '100%',
+    },
+    profilLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 12,
+        paddingVertical: 12,
+        gap: 8,
+    },
+    profilLinkText: {
+        fontSize: 14,
+        color: modernColors.primary,
+        fontWeight: '600',
     },
 });
 

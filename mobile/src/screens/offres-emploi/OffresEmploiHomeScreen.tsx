@@ -1,6 +1,6 @@
 // ✅ Écran Offres d'Emploi MODERNE - Refonte complète avec UX professionnelle
-// Séparation claire : Recherche d'emploi vs Création d'offre
-// Toutes les fonctionnalités IA opérationnelles
+// Focus sur la recherche d'emploi avec fonctionnalités IA avancées
+// Création d'offre accessible via bouton (navigation vers CreateOffre)
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -21,20 +21,13 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
-import { offreEmploiService, OffreEmploi, SearchOffresFilters, CreateOffreRequest, CVAnalysis, SalaryPrediction, FormationSuggestion } from '../../services/offreEmploiService';
+import { offreEmploiService, OffreEmploi, SearchOffresFilters, CVAnalysis, SalaryPrediction, FormationSuggestion } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
-
-type ViewMode = 'search' | 'create';
 
 const OffresEmploiHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
-
-    // Mode d'affichage : recherche ou création
-    const [viewMode, setViewMode] = useState<ViewMode>('search');
 
     // États de recherche
     const [searchQuery, setSearchQuery] = useState('');
@@ -43,17 +36,6 @@ const OffresEmploiHomeScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [totalResults, setTotalResults] = useState(0);
-
-    // États pour création d'offre
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [creating, setCreating] = useState(false);
-    const [offreForm, setOffreForm] = useState<Partial<CreateOffreRequest>>({
-        type_contrat: 'CDI',
-        devise: 'FCFA',
-        remote: false,
-        remote_partiel: false,
-        salaire_negociable: false,
-    });
 
     // États pour fonctionnalités IA
     const [showAIModal, setShowAIModal] = useState(false);
@@ -65,10 +47,8 @@ const OffresEmploiHomeScreen: React.FC = () => {
 
     // Charger les offres à l'ouverture (proximité)
     useEffect(() => {
-        if (viewMode === 'search') {
-            loadOffres(true);
-        }
-    }, [viewMode]);
+        loadOffres(true);
+    }, []);
 
     const loadOffres = useCallback(async (initialLoad: boolean = false) => {
         try {
@@ -118,108 +98,50 @@ const OffresEmploiHomeScreen: React.FC = () => {
         loadOffres(false);
     };
 
-    const handleCreateOffre = async () => {
-        if (!offreForm.titre_poste?.trim() || !offreForm.description?.trim() || !offreForm.secteur?.trim()) {
-            Alert.alert('Erreur', 'Veuillez remplir les champs obligatoires (titre, description, secteur)');
-            return;
-        }
-
-        hapticPress();
-        setCreating(true);
-
-        try {
-            const response = await offreEmploiService.createOffre(offreForm as CreateOffreRequest);
-            if (response.success) {
-                Alert.alert('Succès', 'Offre créée avec succès !', [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            setShowCreateModal(false);
-                            setOffreForm({
-                                type_contrat: 'CDI',
-                                devise: detectedCurrency, // ✅ Utilise la devise détectée
-                                remote: false,
-                                remote_partiel: false,
-                                salaire_negociable: false,
-                            });
-                            setViewMode('search');
-                            loadOffres(true);
-                        },
-                    },
-                ]);
-            } else {
-                Alert.alert('Erreur', 'Impossible de créer l\'offre');
-            }
-        } catch (err: any) {
-            console.error('[OffresEmploiHomeScreen] Erreur création:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la création');
-        } finally {
-            setCreating(false);
-        }
-    };
-
-    // Fonctions IA
+    // Fonctions IA améliorées
     const handleAnalyzeCV = async () => {
         hapticPress();
         setAiMode('cv');
         setLoadingAI(true);
         setShowAIModal(true);
 
-        // TODO: Permettre à l'utilisateur de sélectionner/uploader un CV
-        Alert.alert(
-            'Analyse CV',
-            'Veuillez d\'abord uploader votre CV dans votre profil',
-            [
-                { text: 'Annuler', onPress: () => setShowAIModal(false) },
-                { text: 'Aller au profil', onPress: () => navigation.navigate('ProfilCandidat' as never) },
-            ]
-        );
-        setLoadingAI(false);
+        try {
+            // Naviguer vers l'écran d'analyse CV IA
+            (navigation as any).navigate('AICVAnalysis');
+            setShowAIModal(false);
+        } catch (err: any) {
+            console.error('[OffresEmploiHomeScreen] Erreur navigation analyse CV:', err);
+            Alert.alert(
+                'Analyse CV',
+                'Veuillez d\'abord uploader votre CV dans votre profil',
+                [
+                    { text: 'Annuler', onPress: () => setShowAIModal(false) },
+                    { text: 'Aller au profil', onPress: () => navigation.navigate('ProfilCandidat' as never) },
+                ]
+            );
+        } finally {
+            setLoadingAI(false);
+        }
     };
 
     const handlePredictSalary = async () => {
         hapticPress();
-        setAiMode('salary');
-        setLoadingAI(true);
-        setShowAIModal(true);
-
-        // Utiliser les valeurs du formulaire si en mode création
-        if (viewMode === 'create' && offreForm.titre_poste && offreForm.secteur) {
-            try {
-                const response = await offreEmploiService.predictSalary(
-                    offreForm.titre_poste,
-                    offreForm.secteur,
-                    offreForm.experience_min || 0,
-                    offreForm.competences_requises || [],
-                    offreForm.lieu_travail
-                );
-                if (response.success && response.data?.prediction) {
-                    setSalaryPrediction(response.data.prediction);
-                }
-            } catch (err: any) {
-                console.error('[OffresEmploiHomeScreen] Erreur prédiction:', err);
-            }
-        }
-        setLoadingAI(false);
+        // Naviguer vers l'écran de prédiction salaire IA
+        (navigation as any).navigate('AISalaryPrediction');
     };
 
     const handleSuggestFormations = async () => {
         hapticPress();
-        setAiMode('formations');
-        setLoadingAI(true);
-        setShowAIModal(true);
-
-        // TODO: Récupérer les compétences manquantes depuis le profil ou l'analyse CV
-        Alert.alert('Suggestions Formations', 'Fonctionnalité à venir');
-        setLoadingAI(false);
+        // Naviguer vers l'écran de suggestions formations IA
+        (navigation as any).navigate('AISuggestFormations');
     };
 
     const formatSalary = (min?: number, max?: number, devise?: string) => {
-        const currency = devise || detectedCurrency; // ✅ Utilise la devise détectée si non fournie
+        const currency = devise || 'FCFA';
         if (!min && !max) return 'Salaire non spécifié';
-        if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ${devise}`;
-        if (min) return `À partir de ${min.toLocaleString()} ${devise}`;
-        return `Jusqu'à ${max?.toLocaleString()} ${devise}`;
+        if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
+        if (min) return `À partir de ${min.toLocaleString()} ${currency}`;
+        return `Jusqu'à ${max?.toLocaleString()} ${currency}`;
     };
 
     return (
@@ -241,106 +163,131 @@ const OffresEmploiHomeScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>
-                                {viewMode === 'search' ? 'Recherche d\'Emploi' : 'Créer une Offre'}
-                            </Text>
-                            {viewMode === 'search' && totalResults > 0 && (
+                            <Text style={styles.headerTitle}>Recherche d'Emploi</Text>
+                            {totalResults > 0 && (
                                 <Text style={styles.headerSubtitle}>
                                     {totalResults} offre{totalResults > 1 ? 's' : ''} disponible{totalResults > 1 ? 's' : ''}
                                 </Text>
                             )}
                         </View>
+                        {/* ✅ Bouton pour créer une offre (comme Immobilier) */}
                         <TouchableOpacity
                             onPress={() => {
                                 hapticPress();
-                                setViewMode(viewMode === 'search' ? 'create' : 'search');
+                                (navigation as any).navigate('CreateOffre');
                             }}
-                            style={styles.modeToggle}
+                            style={styles.createButton}
                         >
-                            <SafeIcon 
-                                name={viewMode === 'search' ? 'briefcase' : 'search'} 
-                                size={22} 
-                                color="#FFFFFF" 
-                                type="lucide" 
-                            />
+                            <SafeIcon name="plus" size={20} color="#FFFFFF" type="lucide" />
                         </TouchableOpacity>
                     </View>
 
-                    {/* Barre de recherche (mode recherche) */}
-                    {viewMode === 'search' && (
-                        <View style={styles.searchContainer}>
-                            <View style={styles.searchBar}>
-                                <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
-                                <TextInput
-                                    style={styles.searchInput}
-                                    placeholder="Rechercher un emploi (titre, secteur, compétences)..."
-                                    placeholderTextColor="#9CA3AF"
-                                    value={searchQuery}
-                                    onChangeText={setSearchQuery}
-                                    onSubmitEditing={handleSearch}
-                                    returnKeyType="search"
-                                />
-                                {searchQuery.length > 0 && (
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            setSearchQuery('');
-                                            handleSearch();
-                                        }}
-                                        style={styles.clearButton}
-                                    >
-                                        <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
-                                    </TouchableOpacity>
-                                )}
-                            </View>
+                    {/* Barre de recherche */}
+                    <View style={styles.searchContainer}>
+                        <View style={styles.searchBar}>
+                            <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Rechercher un emploi (titre, secteur, compétences)..."
+                                placeholderTextColor="#9CA3AF"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                onSubmitEditing={handleSearch}
+                                returnKeyType="search"
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setSearchQuery('');
+                                        handleSearch();
+                                    }}
+                                    style={styles.clearButton}
+                                >
+                                    <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
+                                </TouchableOpacity>
+                            )}
                         </View>
-                    )}
+                    </View>
 
-                    {/* Actions rapides (mode recherche) */}
-                    {viewMode === 'search' && (
-                        <View style={styles.quickActions}>
-                            <TouchableOpacity
-                                style={styles.quickActionButton}
-                                onPress={() => {
-                                    hapticPress();
-                                    navigation.navigate('OffreMatching' as never);
-                                }}
-                            >
-                                <SafeIcon name="target" size={16} color="#FFFFFF" type="lucide" />
-                                <Text style={styles.quickActionText}>Matchings</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.quickActionButton}
-                                onPress={() => {
-                                    hapticPress();
-                                    navigation.navigate('MesCandidatures' as never);
-                                }}
-                            >
-                                <SafeIcon name="file-text" size={16} color="#FFFFFF" type="lucide" />
-                                <Text style={styles.quickActionText}>Mes candidatures</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-
-                    {/* Bouton créer offre (mode recherche) */}
-                    {viewMode === 'search' && (
+                    {/* Actions rapides IA et fonctionnalités */}
+                    <View style={styles.quickActions}>
                         <TouchableOpacity
-                            style={styles.createButton}
+                            style={styles.quickActionButton}
                             onPress={() => {
                                 hapticPress();
-                                setViewMode('create');
+                                (navigation as any).navigate('ProfilCandidat');
                             }}
                         >
-                            <SafeIcon name="plus" size={20} color="#6366F1" type="lucide" />
-                            <Text style={styles.createButtonText}>Publier une offre</Text>
+                            <SafeIcon name="user" size={16} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.quickActionText}>Mon CV</Text>
                         </TouchableOpacity>
-                    )}
+                        <TouchableOpacity
+                            style={styles.quickActionButton}
+                            onPress={handleAnalyzeCV}
+                        >
+                            <SafeIcon name="file-text" size={16} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.quickActionText}>Analyser CV</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.quickActionButton}
+                            onPress={handlePredictSalary}
+                        >
+                            <SafeIcon name="dollar-sign" size={16} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.quickActionText}>Salaire IA</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.quickActionButton}
+                            onPress={handleSuggestFormations}
+                        >
+                            <SafeIcon name="graduation-cap" size={16} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.quickActionText}>Formations</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* ✅ NOUVEAU: Suggestions d'offres basées sur le profil */}
+                    <TouchableOpacity
+                        style={styles.suggestionsButton}
+                        onPress={async () => {
+                            hapticPress();
+                            try {
+                                const { apiGet } = require('../../services/api');
+                                const response = await apiGet('/api/offres-emploi/matching/offres?min_score=60&limit=10');
+                                if (response.success && response.data && response.data.length > 0) {
+                                    (navigation as any).navigate('OffreList', {
+                                        offres: response.data,
+                                        title: 'Offres recommandées pour vous',
+                                    });
+                                } else {
+                                    Alert.alert(
+                                        'Aucune suggestion',
+                                        'Créez votre profil candidat pour recevoir des suggestions personnalisées d\'offres.',
+                                        [
+                                            { text: 'Annuler' },
+                                            { text: 'Créer mon profil', onPress: () => (navigation as any).navigate('ProfilCandidat') },
+                                        ]
+                                    );
+                                }
+                            } catch (err: any) {
+                                console.error('[OffresEmploiHomeScreen] Erreur suggestions:', err);
+                                Alert.alert(
+                                    'Suggestions',
+                                    'Créez votre profil candidat pour recevoir des suggestions personnalisées.',
+                                    [
+                                        { text: 'Annuler' },
+                                        { text: 'Créer mon profil', onPress: () => (navigation as any).navigate('ProfilCandidat') },
+                                    ]
+                                );
+                            }
+                        }}
+                    >
+                        <SafeIcon name="sparkles" size={20} color="#6366F1" type="lucide" />
+                        <Text style={styles.suggestionsButtonText}>Voir les offres recommandées</Text>
+                    </TouchableOpacity>
                 </LinearGradient>
             </View>
 
-            {/* Contenu selon le mode */}
-            {viewMode === 'search' ? (
-                // Mode recherche : Liste des offres
-                loading && offres.length === 0 ? (
+            {/* Contenu : Liste des offres */}
+            {loading && offres.length === 0 ? (
                     <View style={styles.centerContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
                         <Text style={styles.loadingText}>Recherche d'offres...</Text>
@@ -392,17 +339,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                             </View>
                         }
                     />
-                )
-            ) : (
-                // Mode création : Formulaire
-                <CreateOffreForm
-                    offreForm={offreForm}
-                    onFormChange={setOffreForm}
-                    onCreate={handleCreateOffre}
-                    creating={creating}
-                    onPredictSalary={handlePredictSalary}
-                />
-            )}
+                )}
 
             {/* Modal IA */}
             {showAIModal && (
@@ -494,155 +431,6 @@ const OffreCard: React.FC<OffreCardProps> = ({ offre, onPress, onApply, formatSa
                 </TouchableOpacity>
             </View>
         </TouchableOpacity>
-    );
-};
-
-// Formulaire de création d'offre
-interface CreateOffreFormProps {
-    offreForm: Partial<CreateOffreRequest>;
-    onFormChange: (form: Partial<CreateOffreRequest>) => void;
-    onCreate: () => void;
-    creating: boolean;
-    onPredictSalary: () => void;
-}
-
-const CreateOffreForm: React.FC<CreateOffreFormProps> = ({
-    offreForm,
-    onFormChange,
-    onCreate,
-    creating,
-    onPredictSalary,
-}) => {
-    return (
-        <ScrollView style={styles.formContainer} contentContainerStyle={styles.formContent}>
-            <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Informations principales *</Text>
-                <NativeInput
-                    placeholder="Titre du poste *"
-                    value={offreForm.titre_poste || ''}
-                    onChangeText={(text) => onFormChange({ ...offreForm, titre_poste: text })}
-                    style={styles.formInput}
-                />
-                <NativeInput
-                    placeholder="Description du poste *"
-                    value={offreForm.description || ''}
-                    onChangeText={(text) => onFormChange({ ...offreForm, description: text })}
-                    multiline
-                    numberOfLines={6}
-                    style={[styles.formInput, styles.formTextArea]}
-                />
-                <NativeInput
-                    placeholder="Secteur d'activité *"
-                    value={offreForm.secteur || ''}
-                    onChangeText={(text) => onFormChange({ ...offreForm, secteur: text })}
-                    style={styles.formInput}
-                />
-            </View>
-
-            <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Type de contrat</Text>
-                <View style={styles.contractTypes}>
-                    {['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'].map((type) => (
-                        <TouchableOpacity
-                            key={type}
-                            style={[
-                                styles.contractChip,
-                                offreForm.type_contrat === type && styles.contractChipActive,
-                            ]}
-                            onPress={() => onFormChange({ ...offreForm, type_contrat: type })}
-                        >
-                            <Text
-                                style={[
-                                    styles.contractChipText,
-                                    offreForm.type_contrat === type && styles.contractChipTextActive,
-                                ]}
-                            >
-                                {type}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            </View>
-
-            <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Localisation</Text>
-                <LocationSelector
-                    value={offreForm.lieu_travail as LocationObject | string || ''}
-                    onChange={(value) => {
-                        // Extraire le texte du lieu depuis LocationObject
-                        const lieuStr = typeof value === 'string' 
-                            ? value 
-                            : (value as LocationObject)?.place_name || (value as LocationObject)?.raw || '';
-                        onFormChange({ ...offreForm, lieu_travail: lieuStr });
-                    }}
-                    placeholder="Lieu de travail *"
-                    style={styles.formInput}
-                />
-                <View style={styles.checkboxRow}>
-                    <TouchableOpacity
-                        style={styles.checkbox}
-                        onPress={() => onFormChange({ ...offreForm, remote: !offreForm.remote })}
-                    >
-                        {offreForm.remote && <SafeIcon name="check" size={16} color="#6366F1" type="lucide" />}
-                    </TouchableOpacity>
-                    <Text style={styles.checkboxLabel}>Télétravail possible</Text>
-                </View>
-            </View>
-
-            <View style={styles.formSection}>
-                <View style={styles.salaryHeader}>
-                    <Text style={styles.formSectionTitle}>Salaire</Text>
-                    <TouchableOpacity
-                        style={styles.aiButtonSmall}
-                        onPress={onPredictSalary}
-                    >
-                        <SafeIcon name="brain" size={14} color="#6366F1" type="lucide" />
-                        <Text style={styles.aiButtonSmallText}>IA</Text>
-                    </TouchableOpacity>
-                </View>
-                <View style={styles.salaryInputs}>
-                    <NativeInput
-                        placeholder="Min (FCFA)"
-                        value={offreForm.salaire_min?.toString() || ''}
-                        onChangeText={(text) => onFormChange({ ...offreForm, salaire_min: text ? parseFloat(text) : undefined })}
-                        keyboardType="numeric"
-                        style={styles.salaryInput}
-                    />
-                    <NativeInput
-                        placeholder="Max (FCFA)"
-                        value={offreForm.salaire_max?.toString() || ''}
-                        onChangeText={(text) => onFormChange({ ...offreForm, salaire_max: text ? parseFloat(text) : undefined })}
-                        keyboardType="numeric"
-                        style={styles.salaryInput}
-                    />
-                </View>
-            </View>
-
-            <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Exigences</Text>
-                <NativeInput
-                    placeholder="Niveau d'étude"
-                    value={offreForm.niveau_etude || ''}
-                    onChangeText={(text) => onFormChange({ ...offreForm, niveau_etude: text })}
-                    style={styles.formInput}
-                />
-                <NativeInput
-                    placeholder="Années d'expérience minimum"
-                    value={offreForm.experience_min?.toString() || ''}
-                    onChangeText={(text) => onFormChange({ ...offreForm, experience_min: text ? parseInt(text) : undefined })}
-                    keyboardType="numeric"
-                    style={styles.formInput}
-                />
-            </View>
-
-            <NativeButton
-                title={creating ? 'Création en cours...' : 'Publier l\'offre'}
-                onPress={onCreate}
-                variant="primary"
-                disabled={creating}
-                style={styles.submitButton}
-            />
-        </ScrollView>
     );
 };
 
@@ -790,13 +578,14 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.9)',
         marginTop: 2,
     },
-    modeToggle: {
+    createButton: {
         width: 44,
         height: 44,
         borderRadius: 22,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
+        marginLeft: 8,
     },
     searchContainer: {
         marginTop: 8,
@@ -831,15 +620,15 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         borderRadius: 8,
         paddingVertical: 10,
-        paddingHorizontal: 12,
-        gap: 6,
+        paddingHorizontal: 8,
+        gap: 4,
     },
     quickActionText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         color: '#FFFFFF',
     },
-    createButton: {
+    suggestionsButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -850,7 +639,7 @@ const styles = StyleSheet.create({
         marginTop: 12,
         gap: 8,
     },
-    createButtonText: {
+    suggestionsButtonText: {
         fontSize: 16,
         fontWeight: '700',
         color: '#6366F1',
@@ -1001,105 +790,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
         color: '#FFFFFF',
-    },
-    // Form styles
-    formContainer: {
-        flex: 1,
-    },
-    formContent: {
-        padding: 16,
-    },
-    formSection: {
-        marginBottom: 24,
-    },
-    formSectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 12,
-    },
-    formInput: {
-        marginBottom: 12,
-    },
-    formTextArea: {
-        minHeight: 120,
-        textAlignVertical: 'top',
-    },
-    contractTypes: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    contractChip: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6',
-        borderWidth: 2,
-        borderColor: 'transparent',
-    },
-    contractChipActive: {
-        backgroundColor: '#EEF2FF',
-        borderColor: '#6366F1',
-    },
-    contractChipText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#6B7280',
-    },
-    contractChipTextActive: {
-        color: '#6366F1',
-    },
-    checkboxRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 8,
-        gap: 8,
-    },
-    checkbox: {
-        width: 24,
-        height: 24,
-        borderRadius: 6,
-        borderWidth: 2,
-        borderColor: '#6366F1',
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-    },
-    checkboxLabel: {
-        fontSize: 14,
-        color: '#111827',
-    },
-    salaryHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    aiButtonSmall: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#EEF2FF',
-        borderRadius: 8,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        gap: 4,
-    },
-    aiButtonSmallText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#6366F1',
-    },
-    salaryInputs: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    salaryInput: {
-        flex: 1,
-    },
-    submitButton: {
-        marginTop: 8,
-        marginBottom: 32,
     },
     // Modal styles
     modalOverlay: {
