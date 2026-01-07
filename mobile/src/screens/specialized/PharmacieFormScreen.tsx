@@ -674,10 +674,17 @@ const PharmacieFormScreen: React.FC = () => {
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
                         <Text style={styles.title}>Enregistrer une Pharmacie</Text>
-                        {/* ✅ NOUVEAU: Afficher le nom du partenaire dans l'en-tête */}
+                        {/* ✅ NOUVEAU: Afficher le nom et logo du partenaire dans l'en-tête */}
                         {user?.role === 'partenaire' && partnerData && (
                             <View style={styles.partnerHeader}>
-                                <SafeIcon name="building" size={16} color={modernColors.primary} />
+                                {partnerData.logo_url ? (
+                                    <Image
+                                        source={{ uri: partnerData.logo_url }}
+                                        style={styles.partnerLogo}
+                                    />
+                                ) : (
+                                    <SafeIcon name="building" size={16} color={modernColors.primary} />
+                                )}
                                 <Text style={styles.partnerName}>{partnerData.name}</Text>
                             </View>
                         )}
@@ -1297,6 +1304,12 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: modernColors.primary,
         marginLeft: 6,
+    },
+    partnerLogo: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 8,
     },
     form: {
         padding: 16,

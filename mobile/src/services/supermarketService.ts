@@ -210,5 +210,20 @@ export const supermarketService = {
         );
         return response;
     },
+
+    // ✅ NOUVEAU: Récupérer les produits tendances
+    getTrendingProducts: async (latitude?: number, longitude?: number, radiusKm?: number) => {
+        const response = await apiGet<{ success: boolean; products: SupermarketProduct[]; total: number }>(
+            '/api/supermarkets/products/trending',
+            {
+                params: {
+                    lat: latitude,
+                    lng: longitude,
+                    radius_km: radiusKm,
+                },
+            }
+        );
+        return response;
+    },
 };
 

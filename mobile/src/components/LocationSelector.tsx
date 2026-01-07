@@ -419,7 +419,7 @@ export interface LocationObject {
 }
 
 interface LocationSelectorProps {
-    label: string;
+    label?: string;  // ✅ Optionnel pour éviter les crashes
     value: string | LocationObject;  // ✅ Supporte string (ancien) ou objet (nouveau)
     onSelect: (value: LocationObject) => void;  // ✅ Retourne toujours objet
     placeholder?: string;
@@ -430,10 +430,15 @@ interface LocationSelectorProps {
 }
 
 // ✅ NOUVEAU: Fonction pour déterminer automatiquement le scope basé sur le label
-const determineScopeFromLabel = (label: string, providedScope?: PlaceScope | 'all'): PlaceScope | 'all' => {
+const determineScopeFromLabel = (label?: string, providedScope?: PlaceScope | 'all'): PlaceScope | 'all' => {
     // Si un scope est explicitement fourni, l'utiliser
     if (providedScope) {
         return providedScope;
+    }
+    
+    // Si pas de label, retourner 'all' par défaut
+    if (!label || typeof label !== 'string') {
+        return 'all';
     }
     
     // Sinon, déterminer le scope basé sur le label
@@ -480,7 +485,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     const defaultPlaceholder = placeholder || (
         finalScope === 'city' ? 'Rechercher une ville...' :
         finalScope === 'neighborhood' ? 'Rechercher un quartier...' :
-        finalScope === 'all' && label.toLowerCase().includes('pays') ? 'Rechercher un pays...' :
+        finalScope === 'all' && label && typeof label === 'string' && label.toLowerCase().includes('pays') ? 'Rechercher un pays...' :
         'Rechercher un lieu, ville, quartier...'
     );
     
@@ -583,9 +588,11 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
     return (
         <View style={styles.container}>
-            <Text style={styles.label}>
-                {label} {required && <Text style={styles.required}>*</Text>}
-            </Text>
+            {label && (
+                <Text style={styles.label}>
+                    {label} {required && <Text style={styles.required}>*</Text>}
+                </Text>
+            )}
             <TouchableOpacity
                 style={[styles.selector, !displayValue && styles.selectorPlaceholder]}
                 onPress={() => setOpen(true)}

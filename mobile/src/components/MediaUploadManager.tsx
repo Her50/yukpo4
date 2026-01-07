@@ -40,6 +40,17 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
   // ✅ Protection contre undefined - toujours utiliser des tableaux
   const images = imagesProp || [];
   const videos = videosProp || [];
+  
+  // ✅ NOUVEAU: Log pour diagnostiquer les médias reçus
+  React.useEffect(() => {
+    console.log('[MediaUploadManager] 📸 Médias reçus:', {
+      images_count: images.length,
+      videos_count: videos.length,
+      images_type: Array.isArray(images) ? 'array' : typeof images,
+      videos_type: Array.isArray(videos) ? 'array' : typeof videos,
+      first_image: images[0] ? (typeof images[0] === 'string' ? images[0].substring(0, 50) + '...' : typeof images[0]) : 'none',
+    });
+  }, [images.length, videos.length]);
 
   const [uploading, setUploading] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState<string | null>(null);

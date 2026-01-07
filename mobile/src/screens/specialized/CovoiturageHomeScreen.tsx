@@ -48,16 +48,18 @@ const CovoiturageHomeScreen: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [totalResults, setTotalResults] = useState(0);
 
-    // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
-    const detectedCurrency = useCurrencyDetection(
-        typeof trajetForm.depart === 'object' ? trajetForm.depart : 
-        typeof trajetForm.destination === 'object' ? trajetForm.destination : 
-        undefined
-    );
-
     // États pour création de trajet
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [creating, setCreating] = useState(false);
+    
+    // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
+    // Utiliser les états depart/destination qui sont déjà définis
+    const detectedCurrency = useCurrencyDetection(
+        typeof depart === 'object' ? depart : 
+        typeof destination === 'object' ? destination : 
+        undefined
+    );
+    
     const [trajetForm, setTrajetForm] = useState<Partial<CreateCovoiturageRequest>>({
         nombre_places: 4,
         places_disponibles: 3,
@@ -189,9 +191,9 @@ const CovoiturageHomeScreen: React.FC = () => {
 
         try {
             const trajetData: CreateCovoiturageRequest = {
-                service_id: trajetForm.service_id,
-                depart: trajetForm.depart,
-                destination: trajetForm.destination,
+                service_id: trajetForm.service_id!,
+                depart: trajetForm.depart!.trim(),
+                destination: trajetForm.destination!.trim(),
                 gps_depart: trajetForm.gps_depart,
                 gps_destination: trajetForm.gps_destination,
                 date_depart: trajetForm.date_depart || dateDepart.toISOString(),
@@ -252,7 +254,7 @@ const CovoiturageHomeScreen: React.FC = () => {
 
     const formatPrice = (price: number, devise?: string) => {
         const currency = devise || detectedCurrency; // ✅ Utilise la devise détectée si non fournie
-        return `${price.toLocaleString()} ${devise}`;
+        return `${price.toLocaleString()} ${currency}`;
     };
 
     return (
@@ -322,10 +324,11 @@ const CovoiturageHomeScreen: React.FC = () => {
                                         <SafeIcon name="map-pin" size={16} color="#3B82F6" type="lucide" />
                                     </View>
                                     <LocationSelector
+                                        label="Départ"
                                         value={depart}
-                                        onChange={setDepart}
+                                        onSelect={(location) => setDepart(location)}
                                         placeholder="Départ"
-                                        style={styles.locationSelector}
+                                        scope="all"
                                     />
                                 </View>
                                 <View style={styles.swapButton}>
@@ -346,10 +349,11 @@ const CovoiturageHomeScreen: React.FC = () => {
                                         <SafeIcon name="map-pin" size={16} color="#EF4444" type="lucide" />
                                     </View>
                                     <LocationSelector
+                                        label="Destination"
                                         value={destination}
-                                        onChange={setDestination}
+                                        onSelect={(location) => setDestination(location)}
                                         placeholder="Destination"
-                                        style={styles.locationSelector}
+                                        scope="all"
                                     />
                                 </View>
                             </View>
@@ -488,11 +492,11 @@ const TrajetCard: React.FC<TrajetCardProps> = ({ trajet, onPress, onReserve, for
                     </View>
                     <View style={styles.routeInfo}>
                         <Text style={styles.routeDepart} numberOfLines={1}>
-                            {trajet.depart}
+                            {trajet.depart || 'Départ non spécifié'}
                         </Text>
                         <View style={styles.routeLineHorizontal} />
                         <Text style={styles.routeDestination} numberOfLines={1}>
-                            {trajet.destination}
+                            {trajet.destination || 'Destination non spécifiée'}
                         </Text>
                     </View>
                 </View>
@@ -618,16 +622,17 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                             <SafeIcon name="map-pin" size={16} color="#3B82F6" type="lucide" />
                         </View>
                         <LocationSelector
+                            label="Lieu de départ"
                             value={trajetForm.depart as LocationObject | string || ''}
-                            onChange={(value) => {
-                                const departStr = typeof value === 'string' ? value : (value as LocationObject)?.place_name || '';
-                                const gps = typeof value === 'object' && (value as LocationObject)?.geometry?.coordinates
-                                    ? `${(value as LocationObject).geometry.coordinates[1]},${(value as LocationObject).geometry.coordinates[0]}`
+                            onSelect={(location) => {
+                                const departStr = location?.place_name || '';
+                                const gps = location?.geometry?.coordinates
+                                    ? `${location.geometry.coordinates[1]},${location.geometry.coordinates[0]}`
                                     : undefined;
                                 onFormChange({ ...trajetForm, depart: departStr, gps_depart: gps });
                             }}
                             placeholder="Lieu de départ *"
-                            style={styles.locationSelector}
+                            scope="all"
                         />
                     </View>
                     <View style={styles.locationInput}>
@@ -635,16 +640,17 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                             <SafeIcon name="map-pin" size={16} color="#EF4444" type="lucide" />
                         </View>
                         <LocationSelector
+                            label="Destination"
                             value={trajetForm.destination as LocationObject | string || ''}
-                            onChange={(value) => {
-                                const destStr = typeof value === 'string' ? value : (value as LocationObject)?.place_name || '';
-                                const gps = typeof value === 'object' && (value as LocationObject)?.geometry?.coordinates
-                                    ? `${(value as LocationObject).geometry.coordinates[1]},${(value as LocationObject).geometry.coordinates[0]}`
+                            onSelect={(location) => {
+                                const destStr = location?.place_name || '';
+                                const gps = location?.geometry?.coordinates
+                                    ? `${location.geometry.coordinates[1]},${location.geometry.coordinates[0]}`
                                     : undefined;
                                 onFormChange({ ...trajetForm, destination: destStr, gps_destination: gps });
                             }}
                             placeholder="Destination *"
-                            style={styles.locationSelector}
+                            scope="all"
                         />
                     </View>
                 </View>

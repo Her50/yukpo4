@@ -1222,7 +1222,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>Ville de départ *</Text>
                                 <LocationSelector
-                                    label=""
+                                    label="Ville de départ"
                                     value={scheduleFormData.departure_city ? { raw: scheduleFormData.departure_city, place_name: scheduleFormData.departure_city } : ''}
                                     onSelect={(location: LocationObject) => {
                                         setScheduleFormData({
@@ -1239,7 +1239,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>Ville d'arrivée *</Text>
                                 <LocationSelector
-                                    label=""
+                                    label="Ville d'arrivée"
                                     value={scheduleFormData.arrival_city ? { raw: scheduleFormData.arrival_city, place_name: scheduleFormData.arrival_city } : ''}
                                     onSelect={(location: LocationObject) => {
                                         setScheduleFormData({

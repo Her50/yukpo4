@@ -218,7 +218,11 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         if (visible) {
             loadParcelTypes();
             if (!isTransversalMode) {
-                loadExistingConfig();
+                // ✅ CORRIGÉ: Attendre que productData soit chargé avant de charger la config existante
+                // pour éviter d'écraser l'adresse du produit
+                if (productData) {
+                    loadExistingConfig();
+                }
             } else {
                 // En mode transversal, initialiser avec une adresse vide
                 setPickupAddresses([{
@@ -230,7 +234,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 }]);
             }
         }
-    }, [visible, serviceId, productIndex]);
+    }, [visible, serviceId, productIndex, productData]);
 
     // ✅ NOUVEAU: Fonction pour ajouter une nouvelle adresse de récupération
     const handleAddPickupAddress = () => {
@@ -311,29 +315,37 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 const pickupLat = (typeof c.pickup_latitude === 'number' ? c.pickup_latitude : 0) || 0;
                 const pickupLng = (typeof c.pickup_longitude === 'number' ? c.pickup_longitude : 0) || 0;
                 
-                const pickupLocationObj: LocationObject | null = pickupAddr 
-                    ? {
-                        raw: pickupAddr,
-                        place_name: pickupAddr,
-                        components: {},
-                        coordinates: (pickupLat !== 0 && pickupLng !== 0) ? { lat: pickupLat, lng: pickupLng } : undefined
+                // ✅ CORRIGÉ: Ne pas écraser si une adresse du produit existe déjà
+                setPickupAddresses(prev => {
+                    // Si une adresse existe déjà (depuis lieu_produit), ne pas l'écraser
+                    if (prev.length > 0 && prev[0].address && prev[0].latitude !== 0 && prev[0].longitude !== 0) {
+                        return prev;
                     }
-                    : null;
-                
-                // Initialiser avec l'adresse existante (ou une adresse vide si aucune)
-                setPickupAddresses(pickupAddr ? [{
-                    id: `pickup_existing_${Date.now()}`,
-                    address: pickupAddr,
-                    location: pickupLocationObj,
-                    latitude: pickupLat,
-                    longitude: pickupLng,
-                }] : [{
-                    id: `pickup_${Date.now()}`,
-                    address: '',
-                    location: null,
-                    latitude: 0,
-                    longitude: 0,
-                }]);
+                    
+                    // Sinon, utiliser l'adresse de la config existante ou créer une adresse vide
+                    const pickupLocationObj: LocationObject | null = pickupAddr 
+                        ? {
+                            raw: pickupAddr,
+                            place_name: pickupAddr,
+                            components: {},
+                            coordinates: (pickupLat !== 0 && pickupLng !== 0) ? { lat: pickupLat, lng: pickupLng } : undefined
+                        }
+                        : null;
+                    
+                    return pickupAddr ? [{
+                        id: `pickup_existing_${Date.now()}`,
+                        address: pickupAddr,
+                        location: pickupLocationObj,
+                        latitude: pickupLat,
+                        longitude: pickupLng,
+                    }] : [{
+                        id: `pickup_${Date.now()}`,
+                        address: '',
+                        location: null,
+                        latitude: 0,
+                        longitude: 0,
+                    }];
+                });
                 
                 setConfig({
                     required_vehicle_type_id: (typeof c.required_vehicle_type_id === 'number' ? c.required_vehicle_type_id : 0) || 0,
@@ -695,20 +707,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                 <TouchableOpacity
                                     style={[styles.select, !pickupAddr.address && styles.selectPlaceholder]}
                                     onPress={() => {
-                                        // Récupérer la localisation actuelle si disponible
-                                        if (pickupAddr.location?.coordinates) {
-                                            setSelectedLocation({ 
-                                                lat: pickupAddr.location.coordinates.lat, 
-                                                lng: pickupAddr.location.coordinates.lng 
-                                            });
-                                        } else if (pickupAddr.latitude !== 0 && pickupAddr.longitude !== 0) {
-                                            setSelectedLocation({ 
-                                                lat: pickupAddr.latitude, 
-                                                lng: pickupAddr.longitude 
-                                            });
-                                        } else {
-                                            setSelectedLocation(null);
-                                        }
+                                        // ✅ CORRIGÉ: Pas besoin de setSelectedLocation, le modal utilise directement currentLocation
                                         setGpsModalForIndex(index);
                                         setShowGPSModal(true);
                                     }}

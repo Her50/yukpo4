@@ -595,7 +595,7 @@ impl StudioService {
 
         // ✅ CORRECTION RACINE: Charger les assets dynamiques pour enrichir les scènes sans médias
         let session_assets = self.load_assets(session_id).await.unwrap_or_default();
-        let timeline_model = build_preview_timeline(&session.timeline, &session_assets)?;
+        let timeline_model = build_preview_timeline(&session.timeline, &session_assets, &self.pool, &session.session).await?;
         let request = RenderJobRequest {
             job_id: None,
             timeline: Arc::new(timeline_model.clone()),
@@ -735,7 +735,7 @@ impl StudioService {
 
         // ✅ CORRECTION RACINE: Charger les assets dynamiques pour enrichir les scènes sans médias
         let session_assets = self.load_assets(session_id).await.unwrap_or_default();
-        let timeline_model = build_preview_timeline(&short_clips, &session_assets)?;
+        let timeline_model = build_preview_timeline(&short_clips, &session_assets, &self.pool, &session.session).await?;
         
         // ✅ OPTIMISATION RACINE: Pour les previews courtes, utiliser quick preview en priorité (plus rapide)
         // Quick preview est optimisé pour les previews courtes (< 5s) et est généralement plus rapide que Remotion
@@ -969,7 +969,13 @@ impl StudioService {
 }
 
 /// ✅ AMÉLIORÉ: Construit une timeline avec fallback vers assets dynamiques si les clips n'ont pas de médias
-fn build_preview_timeline(clips: &[StudioTimelineClipRecord], session_assets: &[StudioDynamicAssetRecord]) -> AppResult<ImmersiveTimeline> {
+/// ✅ CORRECTION RACINE: Charge automatiquement les médias depuis la DB si les scènes n'en ont pas
+async fn build_preview_timeline(
+    clips: &[StudioTimelineClipRecord], 
+    session_assets: &[StudioDynamicAssetRecord],
+    pool: &PgPool,
+    session: &StudioSessionRecord,
+) -> AppResult<ImmersiveTimeline> {
     let mut scenes: Vec<ImmersiveScene> = Vec::with_capacity(clips.len());
     let mut asset_index = 0;
 
@@ -1288,6 +1294,99 @@ fn build_preview_timeline(clips: &[StudioTimelineClipRecord], session_assets: &[
         ));
     }
 
+    // ✅ CORRECTION RACINE: Charger automatiquement les médias depuis la DB si les scènes n'en ont pas
+    if let Some(service_id) = session.service_id {
+        let mut scenes_updated = 0;
+        for scene in &mut scenes {
+            // Si la scène n'a pas de médias, essayer de charger depuis la DB
+            if scene.assets.video_url.is_none() 
+                && scene.assets.background_url.is_none() 
+                && scene.assets.product_image_url.is_none() {
+                
+                // Extraire product_index depuis le payload de la scène si disponible
+                let product_index: Option<i32> = clips.iter()
+                    .find(|clip| clip.id.to_string() == scene.id.trim_start_matches("clip-"))
+                    .and_then(|clip| {
+                        clip.payload.get("product_index")
+                            .or_else(|| clip.payload.get("productIndex"))
+                            .and_then(|v| v.as_i64())
+                            .map(|idx| idx as i32)
+                    });
+
+                // ✅ CORRECTION RACINE: Charger les médias depuis la DB avec les bonnes colonnes
+                let media_result: Result<Vec<(String, String)>, _> = sqlx::query(
+                    r#"
+                    SELECT path, COALESCE(media_type, type) as media_type
+                    FROM media
+                    WHERE service_id = $1
+                    AND (product_index = $2 OR product_index IS NULL OR $2 IS NULL)
+                    AND (type IN ('image', 'video') OR COALESCE(media_type, type) IN ('image', 'video'))
+                    ORDER BY 
+                        CASE WHEN product_index = $2 THEN 0 ELSE 1 END,
+                        uploaded_at DESC
+                    LIMIT 3
+                    "#
+                )
+                .bind(service_id)
+                .bind(product_index)
+                .map(|row: sqlx::postgres::PgRow| {
+                    let path: String = row.get(0);
+                    let media_type: String = row.get(1);
+                    (path, media_type)
+                })
+                .fetch_all(pool)
+                .await;
+
+                if let Ok(media_list) = media_result {
+                    if !media_list.is_empty() {
+                        // Construire l'URL de base pour les médias
+                        let api_base_url = std::env::var("API_BASE_URL")
+                            .unwrap_or_else(|_| std::env::var("UPLOAD_BASE_URL")
+                                .unwrap_or_else(|_| "http://localhost:3000".to_string()));
+                        
+                        for (media_path, media_type) in media_list {
+                            let media_url = if media_path.starts_with("http://") || media_path.starts_with("https://") {
+                                media_path
+                            } else {
+                                format!("{}/api/media/{}", api_base_url.trim_end_matches('/'), media_path.trim_start_matches('/'))
+                            };
+
+                            if media_type == "video" && scene.assets.video_url.is_none() {
+                                scene.assets.video_url = Some(media_url);
+                                scenes_updated += 1;
+                                info!(
+                                    "[build_preview_timeline] ✅ Média vidéo chargé automatiquement depuis DB pour scène {}: {}",
+                                    scene.id, media_url
+                                );
+                                break;
+                            } else if media_type == "image" {
+                                if scene.assets.product_image_url.is_none() {
+                                    scene.assets.product_image_url = Some(media_url.clone());
+                                    scenes_updated += 1;
+                                    info!(
+                                        "[build_preview_timeline] ✅ Média image chargé automatiquement depuis DB pour scène {}: {}",
+                                        scene.id, media_url
+                                    );
+                                }
+                                if scene.assets.background_url.is_none() {
+                                    scene.assets.background_url = Some(media_url);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if scenes_updated > 0 {
+            info!(
+                "[build_preview_timeline] ✅ {} scène(s) enrichie(s) avec médias chargés automatiquement depuis la DB",
+                scenes_updated
+            );
+        }
+    }
+
     // ✅ NOUVEAU: Validation finale - vérifier qu'au moins une scène a un média
     let scenes_with_media: Vec<_> = scenes.iter()
         .filter(|scene| {
@@ -1317,16 +1416,23 @@ fn build_preview_timeline(clips: &[StudioTimelineClipRecord], session_assets: &[
             scene_details.join(" | ")
         );
         
-        // ✅ AMÉLIORÉ: Message d'erreur plus clair avec instructions
+        // ✅ AMÉLIORÉ: Message d'erreur plus clair avec instructions et suggestions
+        let service_id_hint = session.service_id
+            .map(|sid| format!(" Pour le service {}, ", sid))
+            .unwrap_or_default();
+        
         let error_message = if scenes.len() == 1 {
             format!(
-                "Aucun média n'a été ajouté à votre vidéo. Veuillez d'abord ajouter au moins une image ou une vidéo depuis la médiathèque produit avant de générer le preview. Scène actuelle: {}",
+                "Aucun média n'a été ajouté à votre vidéo.{}vérifiez que:\n1. Le service a des produits avec des médias (images/vidéos)\n2. Les médias ont été uploadés via /api/prestataire/upload/{}\n3. Les médias sont accessibles dans la médiathèque produit\n\nScène actuelle: {}\n\n💡 Astuce: Utilisez l'API /api/media/product/{{service_id}}/{{product_index}}/images pour vérifier les médias disponibles.",
+                service_id_hint,
+                session.service_id.map(|s| s.to_string()).unwrap_or_else(|| "service_id".to_string()),
                 scenes[0].id
             )
         } else {
             format!(
-                "Aucune des {} scènes de votre timeline ne contient de média valide (vidéo, image ou arrière-plan). Veuillez d'abord ajouter des médias aux scènes depuis la médiathèque produit avant de générer le preview.",
-                scenes.len()
+                "Aucune des {} scènes de votre timeline ne contient de média valide (vidéo, image ou arrière-plan).{}vérifiez que:\n1. Le service a des produits avec des médias\n2. Les médias ont été uploadés correctement\n3. Les médias sont attachés aux scènes dans la timeline\n\n💡 Astuce: Utilisez l'API /api/studio/sessions/{{session_id}}/timeline pour ajouter des médias aux scènes.",
+                scenes.len(),
+                service_id_hint
             )
         };
         

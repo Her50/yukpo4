@@ -714,6 +714,7 @@ pub async fn generate_product_video(
         );
     }
 
+    // ✅ CORRECTION RACINE: Vérifier d'abord si le service a des produits
     let product_snapshot: Option<ProductConnectorSnapshot> = match state
         .commerce_connector
         .snapshot_by_index(service_id, product_index)
@@ -721,10 +722,18 @@ pub async fn generate_product_video(
     {
         Ok(snapshot) => Some(snapshot),
         Err(err) => {
-            warn!(
-                "[VideoGeneration] Impossible de charger le snapshot produit {}:{} ({err})",
-                service_id, product_index
-            );
+            // ✅ AMÉLIORÉ: Message plus informatif avec suggestions
+            if err.to_string().contains("index") || err.to_string().contains("Not Found") {
+                warn!(
+                    "[VideoGeneration] ⚠️ Service {} n'a pas de produit à l'index {} (le service peut ne pas avoir de produits ou l'index est invalide). Erreur: {err}",
+                    service_id, product_index
+                );
+            } else {
+                warn!(
+                    "[VideoGeneration] ⚠️ Impossible de charger le snapshot produit {}:{} ({err})",
+                    service_id, product_index
+                );
+            }
             None
         }
     };

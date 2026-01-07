@@ -32,25 +32,57 @@ export const useDeepLinkRedirect = () => {
         
         // ✅ NOUVEAU: Gérer la redirection des partenaires vers leur écran spécialisé
         const handlePartnerRedirect = () => {
-            if (user?.role === 'partenaire' && user.partner_type) {
-                const partnerTypeToScreen: Record<string, string> = {
-                    'banquesang': 'BanqueSangForm', // ✅ NOUVEAU: Type partenaire banque de sang
-                    'pharmacie': 'PharmacieForm',
-                    'hopital': 'HopitalForm',
-                    'laboratoire': 'LaboratoireForm',
-                    'agence de voyage': 'AgenceVoyageForm',
-                };
-                
-                const targetScreen = partnerTypeToScreen[user.partner_type];
-                if (targetScreen) {
+            if (user?.role === 'partenaire') {
+                if (user.partner_type) {
+                    console.log(`[useDeepLinkRedirect] 🏢 Partenaire identifié: type="${user.partner_type}"`);
+                    // ✅ NOUVEAU: Mapping complet de tous les types de partenaires vers leurs écrans
+                    const partnerTypeToScreen: Record<string, string> = {
+                        'banquesang': 'BanqueSangForm',
+                        'pharmacie': 'PharmacieForm',
+                        'hopital': 'HopitalForm',
+                        'laboratoire': 'LaboratoireForm',
+                        'agence de voyage': 'AgenceVoyageForm',
+                        // ✅ Types sans écran dédié : redirection vers écran générique
+                        'etablissementscolaire': 'GestionServicesSpecialises',
+                        'demenagement': 'GestionServicesSpecialises',
+                        'transport': 'GestionServicesSpecialises',
+                        'assureur': 'GestionServicesSpecialises',
+                        'supermarche': 'GestionServicesSpecialises',
+                        'telecom': 'GestionServicesSpecialises',
+                        'livraison': 'GestionServicesSpecialises',
+                    };
+                    
+                    const targetScreen = partnerTypeToScreen[user.partner_type];
+                    if (targetScreen) {
+                        try {
+                            const nav = navigation as any;
+                            if (nav && typeof nav?.navigate === 'function') {
+                                console.log(`[useDeepLinkRedirect] ✅ Redirection partenaire "${user.partner_type}" vers ${targetScreen}`);
+                                nav.navigate(targetScreen);
+                            }
+                        } catch (error) {
+                            console.error('[useDeepLinkRedirect] ❌ Erreur redirection partenaire:', error);
+                        }
+                    } else {
+                        console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire "${user.partner_type}" non mappé, redirection vers écran générique`);
+                        try {
+                            const nav = navigation as any;
+                            if (nav && typeof nav?.navigate === 'function') {
+                                nav.navigate('GestionServicesSpecialises');
+                            }
+                        } catch (error) {
+                            console.error('[useDeepLinkRedirect] ❌ Erreur redirection écran générique:', error);
+                        }
+                    }
+                } else {
+                    console.warn('[useDeepLinkRedirect] ⚠️ Partenaire sans type - redirection vers écran générique');
                     try {
                         const nav = navigation as any;
                         if (nav && typeof nav?.navigate === 'function') {
-                            console.log(`[useDeepLinkRedirect] Redirection partenaire vers ${targetScreen}`);
-                            nav.navigate(targetScreen);
+                            nav.navigate('GestionServicesSpecialises');
                         }
                     } catch (error) {
-                        console.error('[useDeepLinkRedirect] Erreur redirection partenaire:', error);
+                        console.error('[useDeepLinkRedirect] ❌ Erreur redirection écran générique:', error);
                     }
                 }
             }

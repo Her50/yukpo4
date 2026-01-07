@@ -160,6 +160,9 @@ pub struct RegisterInput {
     pub partner_address: Option<String>, // Adresse de la structure
     pub partner_city: Option<String>, // Ville
     pub partner_country: Option<String>, // Pays
+    pub partner_logo: Option<String>, // ✅ NOUVEAU: Logo du partenaire (base64)
+    pub partner_lat: Option<f64>, // ✅ NOUVEAU: Latitude GPS
+    pub partner_lng: Option<f64>, // ✅ NOUVEAU: Longitude GPS
 }
 
 /// ? Inscription manuelle
@@ -189,19 +192,28 @@ pub async fn register_user(
         "user"
     };
     
-    // ✅ NOUVEAU: Valider partner_type si c'est un partenaire
+    // ✅ RENFORCÉ: Validation stricte du partner_type - OBLIGATOIRE pour un partenaire
     if user_role == "partenaire" {
         let valid_types = ["pharmacie", "hopital", "laboratoire", "agence de voyage", 
-                          "demenagement", "transport", "assureur", "supermarche", "telecom"];
-        if let Some(ref pt) = payload.partner_type {
-            if !valid_types.contains(&pt.as_str()) {
+                          "demenagement", "transport", "assureur", "supermarche", "telecom",
+                          "etablissementscolaire", "banquesang"];
+        
+        // ✅ Validation stricte: partner_type doit être présent et non vide
+        match &payload.partner_type {
+            Some(pt) if !pt.trim().is_empty() => {
+                let pt_trimmed = pt.trim();
+                if !valid_types.iter().any(|&vt| vt == pt_trimmed) {
+                    return Err(AppError::BadRequest(
+                        format!("Type de partenaire invalide: '{}'. Types valides: {}", 
+                               pt_trimmed, valid_types.join(", "))
+                    ));
+                }
+            }
+            _ => {
                 return Err(AppError::BadRequest(
-                    format!("Type de partenaire invalide. Types valides: {}", 
-                           valid_types.join(", "))
+                    "Le type d'établissement est obligatoire pour créer un compte partenaire. Veuillez sélectionner un type d'établissement.".into()
                 ));
             }
-        } else {
-            return Err(AppError::BadRequest("partner_type est requis pour un partenaire".into()));
         }
         
         if payload.partner_name.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true) {
@@ -303,6 +315,159 @@ pub async fn register_user(
             return Err(e.into());
         }
     };
+    // ✅ NOUVEAU: Si c'est un partenaire, créer l'enregistrement dans delivery_partners
+    let mut logo_url: Option<String> = None;
+    if user_role == "partenaire" {
+        // ✅ NOUVEAU: Uploader le logo si fourni
+        if let Some(ref logo_base64) = payload.partner_logo {
+            if !logo_base64.trim().is_empty() {
+                use base64::{engine::general_purpose::STANDARD, Engine};
+                use uuid::Uuid;
+                
+                // Extraire les données base64
+                let base64_data = if logo_base64.starts_with("data:image") {
+                    logo_base64.split(',').nth(1).unwrap_or(logo_base64)
+                } else {
+                    logo_base64
+                };
+                
+                // Décoder le base64
+                let decoded = STANDARD.decode(base64_data)
+                    .map_err(|e| AppError::BadRequest(format!("Logo base64 invalide: {}", e)))?;
+                
+                // Déterminer le type MIME et l'extension
+                let mime_type = if logo_base64.contains("image/png") {
+                    ("image/png", "png")
+                } else if logo_base64.contains("image/jpeg") || logo_base64.contains("image/jpg") {
+                    ("image/jpeg", "jpg")
+                } else if logo_base64.contains("image/webp") {
+                    ("image/webp", "webp")
+                } else {
+                    ("image/jpeg", "jpg") // Par défaut
+                };
+                
+                // Créer le chemin de stockage
+                let storage_key = format!("partners/{}/logo_{}.{}", new.id, Uuid::new_v4(), mime_type.1);
+                
+                // Uploader vers S3/Wasabi ou stockage local
+                match state.media_storage.store_bytes(&decoded, &storage_key, Some(mime_type.0)).await {
+                    Ok(location) => {
+                        logo_url = Some(location.storage_path);
+                        info!("[register_user] ✅ Logo partenaire uploadé: {}", logo_url.as_ref().unwrap());
+                    }
+                    Err(e) => {
+                        error!("[register_user] ⚠️ Erreur upload logo partenaire: {}. Le partenaire sera créé sans logo.", e);
+                        // Ne pas bloquer l'inscription si l'upload du logo échoue
+                    }
+                }
+            }
+        }
+        
+        // ✅ NOUVEAU: Créer l'enregistrement dans delivery_partners
+        let partner_name = payload.partner_name.as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| AppError::BadRequest("partner_name est requis pour un partenaire".into()))?;
+        
+        let partner_country = payload.partner_country.as_deref().unwrap_or("");
+        
+        // ✅ Vérifier si un partenaire existe déjà pour cet utilisateur
+        let existing_partner: Option<i32> = sqlx::query_scalar(
+            "SELECT id FROM delivery_partners WHERE created_by = $1 LIMIT 1"
+        )
+        .bind(new.id)
+        .fetch_optional(db)
+        .await?;
+        
+        let _partner_result = if existing_partner.is_some() {
+            // Mettre à jour le partenaire existant
+            sqlx::query(
+                r#"
+                UPDATE delivery_partners SET
+                    name = $1,
+                    partner_type = $2::delivery_partner_type,
+                    contact_email = $3,
+                    contact_phone = $4,
+                    address = $5,
+                    city = $6,
+                    country = $7,
+                    logo_url = $8,
+                    location_latitude = $9,
+                    location_longitude = $10,
+                    location_address = $11,
+                    updated_at = NOW()
+                WHERE created_by = $12
+                "#
+            )
+            .bind(partner_name)
+            .bind(payload.partner_type.as_deref().unwrap_or("livraison"))
+            .bind(Some(payload.email.as_str()))
+            .bind(payload.partner_phone.as_deref())
+            .bind(payload.partner_address.as_deref())
+            .bind(payload.partner_city.as_deref())
+            .bind(partner_country)
+            .bind(logo_url.as_deref())
+            .bind(payload.partner_lat)
+            .bind(payload.partner_lng)
+            .bind(payload.partner_address.as_deref())
+            .bind(new.id)
+            .execute(db)
+            .await
+        } else {
+            // Créer un nouveau partenaire
+            sqlx::query(
+                r#"
+                INSERT INTO delivery_partners (
+                    name, description, partner_type, contact_email, contact_phone, address,
+                    city, country, continent, website, logo_url, location_latitude, location_longitude,
+                    location_address, is_active, created_by
+                )
+                VALUES ($1, $2, $3::delivery_partner_type, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                ON CONFLICT (name, country) DO UPDATE SET
+                    created_by = EXCLUDED.created_by,
+                    partner_type = EXCLUDED.partner_type,
+                    contact_email = EXCLUDED.contact_email,
+                    contact_phone = EXCLUDED.contact_phone,
+                    address = EXCLUDED.address,
+                    city = EXCLUDED.city,
+                    logo_url = EXCLUDED.logo_url,
+                    location_latitude = EXCLUDED.location_latitude,
+                    location_longitude = EXCLUDED.location_longitude,
+                    location_address = EXCLUDED.location_address,
+                    updated_at = NOW()
+                "#
+            )
+            .bind(partner_name)
+            .bind(None::<String>) // description
+            .bind(payload.partner_type.as_deref().unwrap_or("livraison"))
+            .bind(Some(payload.email.as_str()))
+            .bind(payload.partner_phone.as_deref())
+            .bind(payload.partner_address.as_deref())
+            .bind(payload.partner_city.as_deref())
+            .bind(partner_country)
+            .bind(None::<String>) // continent
+            .bind(None::<String>) // website
+            .bind(logo_url.as_deref())
+            .bind(payload.partner_lat)
+            .bind(payload.partner_lng)
+            .bind(payload.partner_address.as_deref())
+            .bind(false) // is_active = false (en attente de validation)
+            .bind(new.id) // created_by
+            .execute(db)
+            .await
+        };
+        
+        match _partner_result {
+            Ok(_) => {
+                info!("[register_user] ✅ Partenaire créé dans delivery_partners pour user_id={}", new.id);
+            }
+            Err(e) => {
+                error!("[register_user] ⚠️ Erreur création partenaire dans delivery_partners: {}. L'utilisateur est créé mais le partenaire devra être créé manuellement.", e);
+                // Ne pas bloquer l'inscription si la création du partenaire échoue
+            }
+        }
+    }
+    
     if let Err(e) = send_verification_email(&payload.email).await {
         error!("[register_user] Erreur envoi email: {e:?}");
     }

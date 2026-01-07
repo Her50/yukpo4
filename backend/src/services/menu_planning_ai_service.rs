@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 /// ✅ CORRECTION 2: Nettoie la réponse JSON en enlevant les markdown code blocks
 /// L'IA peut retourner du JSON dans un bloc markdown (```json\n...\n```)
+/// ✅ AMÉLIORATION: Gère aussi les JSON tronqués en les complétant
 fn clean_json_response(response: &str) -> String {
     let mut cleaned = response.trim().to_string();
     
@@ -31,8 +32,131 @@ fn clean_json_response(response: &str) -> String {
         cleaned = cleaned.strip_suffix("```").unwrap_or(&cleaned).trim().to_string();
     }
     
+    // ✅ NOUVEAU: Compléter le JSON si tronqué
+    cleaned = complete_truncated_json(&cleaned);
+    
     // Enlever les sauts de ligne en début/fin
     cleaned.trim().to_string()
+}
+
+/// ✅ NOUVEAU: Complète un JSON tronqué en fermant les structures ouvertes
+/// Gère les cas où le JSON est coupé au milieu d'une chaîne, d'un objet ou d'un array
+fn complete_truncated_json(json_str: &str) -> String {
+    let mut result = json_str.to_string();
+    
+    // Vérifier si le JSON est valide d'abord
+    if serde_json::from_str::<serde_json::Value>(&result).is_ok() {
+        return result; // JSON déjà valide, pas besoin de compléter
+    }
+    
+    // Compter les accolades et crochets ouverts/fermés
+    let mut open_braces = 0;
+    let mut close_braces = 0;
+    let mut open_brackets = 0;
+    let mut close_brackets = 0;
+    let mut in_string = false;
+    let mut escape_next = false;
+    
+    // Parcourir pour compter correctement (en tenant compte des strings)
+    for ch in result.chars() {
+        if escape_next {
+            escape_next = false;
+            continue;
+        }
+        
+        match ch {
+            '"' => in_string = !in_string,
+            '\\' if in_string => escape_next = true,
+            '{' if !in_string => open_braces += 1,
+            '}' if !in_string => close_braces += 1,
+            '[' if !in_string => open_brackets += 1,
+            ']' if !in_string => close_brackets += 1,
+            _ => {}
+        }
+    }
+    
+    // Si on est dans une string à la fin, fermer la string
+    if in_string {
+        // Trouver la dernière quote ouverte et fermer la string
+        let mut last_quote_pos = 0;
+        let mut in_str = false;
+        let mut esc = false;
+        
+        for (i, ch) in result.char_indices() {
+            if esc {
+                esc = false;
+                continue;
+            }
+            if ch == '\\' && in_str {
+                esc = true;
+                continue;
+            }
+            if ch == '"' {
+                in_str = !in_str;
+                if in_str {
+                    last_quote_pos = i;
+                }
+            }
+        }
+        
+        // Si on est toujours dans une string à la fin, fermer la string
+        if in_str {
+            result.push('"');
+        }
+    }
+    
+    // Trouver le dernier objet/array incomplet et le fermer proprement
+    let mut brace_depth = 0;
+    let mut bracket_depth = 0;
+    let mut in_str = false;
+    let mut esc = false;
+    let mut last_comma_pos = 0;
+    
+    for (i, ch) in result.char_indices() {
+        if esc {
+            esc = false;
+            continue;
+        }
+        
+        match ch {
+            '"' => in_str = !in_str,
+            '\\' if in_str => esc = true,
+            '{' if !in_str => {
+                brace_depth += 1;
+                last_comma_pos = i;
+            }
+            '}' if !in_str => brace_depth -= 1,
+            '[' if !in_str => {
+                bracket_depth += 1;
+                last_comma_pos = i;
+            }
+            ']' if !in_str => bracket_depth -= 1,
+            ',' if !in_str && (brace_depth > 0 || bracket_depth > 0) => {
+                last_comma_pos = i;
+            }
+            _ => {}
+        }
+    }
+    
+    // Si on a des structures ouvertes, les fermer
+    // Mais d'abord, retirer la dernière virgule si on est dans un objet/array
+    if last_comma_pos > 0 && (brace_depth > 0 || bracket_depth > 0) {
+        // Vérifier si on a une virgule juste avant la fin
+        let trimmed = result.trim_end();
+        if trimmed.ends_with(',') {
+            result = trimmed.trim_end_matches(',').to_string();
+        }
+    }
+    
+    // Fermer les structures ouvertes dans l'ordre inverse
+    for _ in 0..bracket_depth {
+        result.push(']');
+    }
+    for _ in 0..brace_depth {
+        result.push('}');
+    }
+    
+    result
 }
 
 /// Profil famille pour personnalisation
@@ -394,6 +518,13 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
 - Respecter strictement les allergies
 - Varier les types de plats
 - RESPECTER la localité culinaire (pas de cuisines inadaptées)
+
+⚠️ IMPORTANT - JSON COMPLET REQUIS :
+- Tu DOIS générer un JSON COMPLET et VALIDE pour les 7 jours (Lundi à Dimanche)
+- Le JSON DOIT se terminer par }} pour fermer correctement toutes les structures
+- Ne JAMAIS tronquer le JSON au milieu d'une chaîne, d'un objet ou d'un array
+- Si tu atteins une limite, génère un JSON valide en fermant toutes les structures ouvertes
+- Le JSON DOIT être parseable sans erreur
 - RESPECTER la saisonnalité (uniquement ingrédients de saison)
 - RESPECTER la variation (éviter les répétitions)
 "#,

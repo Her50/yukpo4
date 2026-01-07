@@ -14,6 +14,15 @@ export interface ExaminationType {
     laboratory_name?: string;
 }
 
+export interface LaboratoryAvailability {
+    service_id: number;
+    service_title: string;
+    available_examinations: string[];
+    current_schedule?: { [key: string]: any };
+    is_24h: boolean;
+    distance_km?: number;
+}
+
 export interface ExaminationResult {
     id: number;
     examination_id: number;
@@ -129,6 +138,37 @@ export const laboratoryService = {
     getExaminationResults: async (examinationId: number) => {
         const response = await apiGet<{ success: boolean; results: ExaminationResult }>(
             `/api/laboratoires/examinations/${examinationId}/results`
+        );
+        return response;
+    },
+
+    // ✅ Recherche avec système de disponibilité (utilise search_with_scheduling)
+    searchWithAvailability: async (
+        query: string,
+        location?: { lat: number; lng: number },
+        maxDistance?: number
+    ) => {
+        const response = await apiGet<{
+            results: Array<{
+                service_id: number;
+                product_data: any;
+                relevance_score: number;
+                distance_km?: number;
+                is_available_now: boolean;
+                availability_info: string;
+            }>;
+            total: number;
+            search_intent: string;
+        }>(
+            '/api/search/scheduling',
+            {
+                params: {
+                    query,
+                    lat: location?.lat,
+                    lng: location?.lng,
+                    max_distance: maxDistance || 50,
+                }
+            }
         );
         return response;
     },

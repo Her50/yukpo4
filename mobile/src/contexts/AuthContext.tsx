@@ -200,6 +200,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Sauvegarder le token
           await SafeStorage.setItem('auth_token', token);
 
+          const partnerType = decoded.partner_type || (response.data as any)?.partner_type;
+          
+          // ✅ NOUVEAU: Log pour confirmer l'identification du partenaire
+          if (decoded.role === 'partenaire' && partnerType) {
+            console.log(`[AuthContext] ✅ Partenaire identifié: type="${partnerType}"`);
+          } else if (decoded.role === 'partenaire' && !partnerType) {
+            console.warn('[AuthContext] ⚠️ Partenaire sans type - redirection vers écran générique');
+          }
+
           const userData: User = {
             id: String(decoded.sub),
             email: decoded.email,
@@ -210,7 +219,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             photo: '',
             token: token,
             // ✅ NOUVEAU: Récupérer partner_type depuis la réponse ou le JWT
-            partner_type: decoded.partner_type || (response.data as any)?.partner_type,
+            partner_type: partnerType,
           };
 
           setUser(userData);

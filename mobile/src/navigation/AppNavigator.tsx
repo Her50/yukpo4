@@ -189,6 +189,8 @@ import FamilyProfileScreen from '../screens/specialized/FamilyProfileScreen';
 import RecipeSearchScreen from '../screens/specialized/RecipeSearchScreen';
 // ✅ NOUVEAU: BayamSelam = SupermarketHome (même écran professionnel)
 import SupermarketHomeScreen from '../screens/specialized/SupermarketHomeScreen';
+import BayamSelamSearchScreen from '../screens/specialized/BayamSelamSearchScreen';
+import BayamSelamResultsScreen from '../screens/specialized/BayamSelamResultsScreen';
 import AutoServicesSearchScreen from '../screens/specialized/AutoServicesSearchScreen';
 import InsuranceServicesSearchScreen from '../screens/specialized/InsuranceServicesSearchScreen';
 import MenuWeekCalendarScreen from '../screens/specialized/MenuWeekCalendarScreen';
@@ -319,6 +321,8 @@ const ProfilCandidatScreenWithSafeArea = withNavigatorSafeArea(ProfilCandidatScr
 const BourseLivreScreenWithSafeArea = withNavigatorSafeArea(BourseLivreScreen);
 // ✅ NOUVEAU: BayamSelam = SupermarketHome (même écran)
 const SupermarketHomeScreenWithSafeArea = withNavigatorSafeArea(SupermarketHomeScreen);
+const BayamSelamSearchScreenWithSafeArea = withNavigatorSafeArea(BayamSelamSearchScreen);
+const BayamSelamResultsScreenWithSafeArea = withNavigatorSafeArea(BayamSelamResultsScreen);
 const AutoServicesSearchScreenWithSafeArea = withNavigatorSafeArea(AutoServicesSearchScreen);
 const InsuranceServicesSearchScreenWithSafeArea = withNavigatorSafeArea(InsuranceServicesSearchScreen);
 const ReservationScreenWithSafeArea = withNavigatorSafeArea(ReservationScreen);
@@ -1400,10 +1404,17 @@ const SecondaryStack = () => {
           component={withNavigatorSafeArea(BusTicketSearchScreen)}
           options={{ title: 'Recherche avancée' }}
         />
-        {/* ✅ NOUVEAU: BayamSelam = SupermarketHome (même écran professionnel) */}
+        {/* ✅ NOUVEAU: BayamSelam - Recherche et résultats */}
         <Stack.Screen
           name="BayamSelamSearch"
-          component={SupermarketHomeScreenWithSafeArea}
+          component={BayamSelamSearchScreenWithSafeArea}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="BayamSelamResults"
+          component={BayamSelamResultsScreenWithSafeArea}
           options={{
             headerShown: false,
           }}
@@ -1720,12 +1731,21 @@ const AppNavigator: React.FC = () => {
   if (user.role === 'partenaire' && user.partner_type) {
     console.log('[AppNavigator] 🏢 Mode Partenaire - Redirection vers écran spécialisé');
     // Rediriger vers l'écran de gestion du service spécialisé selon le type
+    // ✅ NOUVEAU: Mapping complet de tous les types de partenaires vers leurs écrans
     const partnerTypeToScreen: Record<string, string> = {
-      'banquesang': 'BanqueSangForm', // ✅ NOUVEAU: Type partenaire banque de sang
+      'banquesang': 'BanqueSangForm',
       'pharmacie': 'PharmacieForm',
       'hopital': 'HopitalForm',
       'laboratoire': 'LaboratoireForm',
       'agence de voyage': 'AgenceVoyageForm',
+      // ✅ Types sans écran dédié : redirection vers écran générique
+      'etablissementscolaire': 'GestionServicesSpecialises',
+      'demenagement': 'GestionServicesSpecialises',
+      'transport': 'GestionServicesSpecialises',
+      'assureur': 'GestionServicesSpecialises',
+      'supermarche': 'GestionServicesSpecialises',
+      'telecom': 'GestionServicesSpecialises',
+      'livraison': 'GestionServicesSpecialises',
     };
     
     const targetScreen = partnerTypeToScreen[user.partner_type] || 'GestionServicesSpecialises';

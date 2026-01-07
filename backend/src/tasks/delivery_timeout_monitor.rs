@@ -23,7 +23,7 @@ struct ExpiredSuggestion {
 struct PendingDelivery {
     id: Uuid,
     status: String,
-    updated_at: DateTime<Utc>,
+    _updated_at: DateTime<Utc>, // Utilisé dans les requêtes SQL pour filtrer, mais pas dans le code Rust
     creator_id: Option<i32>,
     recipient_user_id: Option<i32>,
     courier_user_id: Option<i32>,

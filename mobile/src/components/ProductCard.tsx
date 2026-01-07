@@ -197,13 +197,21 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       ? splitWithFallback(rawLocationVector, ',')
       : [];
 
-  const chosenLocation = productData.chosen_location ||
+  // ✅ CORRIGÉ 2026-01-07: Éviter d'afficher "false" - filtrer les valeurs booléennes
+  const chosenLocationRaw = productData.chosen_location ||
     locationVector[0] ||
     productData.adresse ||
     productData.address ||
     service?.data?.adresse?.valeur ||
     service?.data?.adresse_service?.valeur ||
     '';
+  
+  // ✅ Filtrer les valeurs booléennes et null/undefined
+  const chosenLocation = (typeof chosenLocationRaw === 'string' && chosenLocationRaw !== 'false' && chosenLocationRaw.trim() !== '')
+    ? chosenLocationRaw
+    : (typeof chosenLocationRaw === 'string' && chosenLocationRaw !== 'false')
+      ? chosenLocationRaw
+      : '';
 
   const hasVariant = productData.has_variant || false;
   const variants = productData.variants || [];
@@ -306,25 +314,41 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     product.id ||
     (serviceId ? `${serviceId}_${productIndex}` : null);
 
-  // ✅ CORRIGÉ 2026-01-04: Toujours considérer comme produit si c'est dans une liste de produits
-  // Les produits depuis service_products n'ont pas nécessairement un type défini
-  // Si product.product_data existe, c'est probablement un produit depuis service_products
-  const isProduct = product.product_data 
-    ? true // ✅ Produit depuis service_products (product_data existe)
-    : (productData.type !== 'prestation_service' &&
-       productData.type !== 'service' &&
-       productData.type !== 'service_prestation' &&
-       (productData.type === undefined || productData.type === null || productData.type === ''));
+  // ✅ CORRIGÉ 2026-01-07: Distinction stricte entre produits et prestations
+  // Le bouton "Me livrer" ne doit s'afficher QUE pour les produits, jamais pour les prestations
+  const serviceType = service?.data?.type?.valeur || service?.data?.type || service?.category || '';
+  const productType = productData.type || productData.product_type || '';
+  
+  // ✅ Vérifier si c'est une prestation de service (ne doit PAS avoir le bouton "Me livrer")
+  const isPrestation = 
+    serviceType === 'prestation_service' ||
+    serviceType === 'service' ||
+    serviceType === 'service_prestation' ||
+    productType === 'prestation_service' ||
+    productType === 'service' ||
+    productType === 'service_prestation' ||
+    (service?.data?.titre_service?.valeur && !product.product_data && !productData.nom && !productData.name);
+  
+  // ✅ C'est un produit si :
+  // 1. product.product_data existe (produit depuis service_products)
+  // 2. OU le type n'est PAS une prestation ET il y a des données de produit (nom, prix, etc.)
+  const isProduct = !isPrestation && (
+    product.product_data !== undefined || // Produit depuis service_products
+    (productData.nom || productData.name || productData.titre) || // A un nom de produit
+    (productData.prix !== undefined || productData.price !== undefined) // A un prix
+  );
 
-  // ✅ RESTAURÉ: Conditions strictes pour l'affichage du bouton "Me livrer"
-  // Le bouton s'affiche uniquement si la livraison est explicitement activée
-  const deliveryEnabled = productData.delivery_enabled !== false &&
+  // ✅ CORRIGÉ 2026-01-07: Conditions strictes pour l'affichage du bouton "Me livrer"
+  // Le bouton s'affiche UNIQUEMENT pour les produits (jamais pour les prestations)
+  // ET uniquement si la livraison est explicitement activée
+  const deliveryEnabled = isProduct && // ✅ CRITIQUE: Uniquement pour les produits
+    serviceId && // ✅ S'assurer qu'il y a un serviceId
+    productData.delivery_enabled !== false &&
     productData.livraison !== false &&
     productData.delivery_enabled !== 'false' &&
     productData.livraison !== 'false' &&
     (service?.data?.livraison?.valeur !== false && service?.data?.livraison?.valeur !== 'false') &&
-    (service?.data?.delivery_enabled !== false && service?.data?.delivery_enabled !== 'false') &&
-    isProduct && serviceId; // ✅ S'assurer que c'est un produit et qu'il y a un serviceId
+    (service?.data?.delivery_enabled !== false && service?.data?.delivery_enabled !== 'false');
 
   const displayPrice = hasVariant && variants.length > 0
     ? Math.min(...variants.map((v: any) => v.prix || 0))
@@ -704,7 +728,13 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
               )}
 
               <Text style={styles.productName} numberOfLines={2}>
-                {productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
+                {(() => {
+                  const nom = productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur;
+                  // ✅ CORRIGÉ 2026-01-07: Éviter d'afficher "false" ou autres valeurs booléennes
+                  if (typeof nom === 'boolean') return 'Produit';
+                  if (nom === 'false' || nom === false) return 'Produit';
+                  return nom || 'Produit';
+                })()}
               </Text>
 
               {prestataire.nom && (
@@ -727,7 +757,13 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     </View>
                   )}
                   <Text style={styles.prestataireName} numberOfLines={1}>
-                    {prestataire.nom}
+                    {(() => {
+                      const nom = prestataire.nom;
+                      // ✅ CORRIGÉ 2026-01-07: Éviter d'afficher "false" ou autres valeurs booléennes
+                      if (typeof nom === 'boolean') return 'Prestataire';
+                      if (nom === 'false' || nom === false) return 'Prestataire';
+                      return nom || 'Prestataire';
+                    })()}
                   </Text>
                   <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
                 </TouchableOpacity>
@@ -738,7 +774,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   <View style={styles.locationRow}>
                     <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
                     <Text style={styles.locationTextPrimary} numberOfLines={1}>
-                      {chosenLocation}
+                      {chosenLocation || 'Localisation non spécifiée'}
                     </Text>
                     {countryFlag && (
                       <Text style={styles.locationFlag}>{countryFlag}</Text>
@@ -805,7 +841,12 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   <View style={styles.sectionHeader}>
                     <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
                     <Text style={styles.sectionTitle}>
-                      Prix selon {productData.variant_dimension || 'variante'}
+                      Prix selon {(() => {
+                        const dim = productData.variant_dimension;
+                        // ✅ CORRIGÉ 2026-01-07: Éviter d'afficher "false"
+                        if (typeof dim === 'boolean' || dim === 'false' || dim === false) return 'variante';
+                        return dim || 'variante';
+                      })()}
                     </Text>
                   </View>
 

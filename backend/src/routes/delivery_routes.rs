@@ -5359,7 +5359,7 @@ async fn get_my_partner_data(
                continent, website, logo_url, location_latitude, location_longitude, location_address, 
                is_active, created_by, created_at, updated_at
         FROM delivery_partners
-        WHERE user_id = $1
+        WHERE created_by = $1
         LIMIT 1
         "#
     )
@@ -5368,10 +5368,19 @@ async fn get_my_partner_data(
     .await?;
     
     match partner {
-        Some(p) => Ok(Json(json!({
-            "success": true,
-            "data": p
-        }))),
+        Some(mut p) => {
+            // ✅ NOUVEAU: Transformer logo_url en URL CDN publique si nécessaire
+            if let Some(ref logo_path) = p.logo_url {
+                if !logo_path.starts_with("http://") && !logo_path.starts_with("https://") {
+                    p.logo_url = Some(state.media_storage.build_public_url(logo_path));
+                }
+            }
+            
+            Ok(Json(json!({
+                "success": true,
+                "data": p
+            })))
+        },
         None => Err(AppError::NotFound("Partenaire non trouvé. Votre compte n'a pas encore été lié à un partenaire.".into()))
     }
 }

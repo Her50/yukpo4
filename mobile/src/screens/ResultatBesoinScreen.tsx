@@ -1247,7 +1247,15 @@ const ResultatBesoinScreen: React.FC = () => {
 
     const { data: batchData, loading: batchLoading } = useServicesBatchData(serviceIdsForBatch, serviceCreatedAtsMap);
 
-    // ✅ CORRIGÉ 2025-01-02: Fonction pour rendre ProductCard avec les props mémorisées et ref stable
+    // ✅ CORRIGÉ 2026-01-07: Mémoriser userLocation pour éviter les re-créations d'objets
+    const userLocationMemo = useMemo(() => {
+        return location?.coords ? {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+        } : null;
+    }, [location?.coords?.latitude, location?.coords?.longitude]);
+
+    // ✅ CORRIGÉ 2026-01-07: Fonction pour rendre ProductCard avec les props mémorisées et ref stable
     // ✅ CORRIGÉ: Mémoriser renderProductCard avec dépendances correctes pour éviter les re-renders
     const renderProductCard = useCallback((product: any) => {
         const service = product._service;
@@ -1256,19 +1264,13 @@ const ResultatBesoinScreen: React.FC = () => {
         const prestataireFromMap = service?.user_id ? prestatairesRef.current.get(service.user_id) : null;
         const prestataire = prestataireFromProduct || prestataireFromMap || null;
 
-        // ✅ CORRIGÉ: Passer userLocation pour le calcul de distance
-        const userLocationForProduct = location?.coords ? {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude
-        } : null;
-
         return (
             <ProductCard
                 key={`product-${product._serviceId || service?.id}-${product.nom || product.name || 'default'}`}
                 product={product}
                 service={service}
                 prestataire={prestataire}
-                userLocation={userLocationForProduct}
+                userLocation={userLocationMemo}
                 onPress={() => {
                     setSelectedProduct(product);
                     setSelectedService(service);
@@ -1282,7 +1284,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [location]); // ✅ Ajout de location comme dépendance pour le calcul de distance
+    }, [userLocationMemo]); // ✅ Utiliser userLocationMemo au lieu de location directement
 
     // ✅ CORRECTION 2025-01-02: Composant mémorisé pour éviter les re-renders inutiles
     const ServiceCardComponent = React.memo(({ service }: { service: Service }) => {
@@ -1355,6 +1357,10 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
+                removeClippedSubviews={true}
+                initialNumToRender={5}
+                maxToRenderPerBatch={5}
+                windowSize={10}
             >
             {/* Header avec bouton retour */}
             <View style={styles.header}>

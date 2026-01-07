@@ -22,6 +22,8 @@ const { width } = Dimensions.get('window');
 
 interface MenuPlanningHubScreenProps { }
 
+type MenuPeriod = '1_week' | '2_weeks' | '1_month';
+
 const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const navigation = useNavigation();
     const [loading, setLoading] = useState(false);
@@ -29,6 +31,8 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const [profile, setProfile] = useState<FamilyProfile | null>(null);
     const [currentMenu, setCurrentMenu] = useState<WeeklyMenu | null>(null);
     const [hasProfile, setHasProfile] = useState(false);
+    const [menuPeriod, setMenuPeriod] = useState<MenuPeriod>('1_week');
+    const [showPeriodSelector, setShowPeriodSelector] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -64,7 +68,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     };
 
     const handleGenerateMenu = async () => {
-        if (!hasProfile) {
+        if (!hasProfile || !profile) {
             Alert.alert(
                 'Profil requis',
                 'Veuillez d\'abord configurer votre profil famille',
@@ -81,19 +85,39 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
         try {
             setLoading(true);
-            const response = await menuPlanningService.generateWeeklyMenu();
+            
+            // Calculer la date de début selon la période choisie
+            const today = new Date();
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay() + 1); // Lundi de cette semaine
+            
+            // Générer le menu avec le profil utilisateur réel
+            const response = await menuPlanningService.generateWeeklyMenu(
+                weekStart.toISOString().split('T')[0],
+                {
+                    ...profile,
+                    // S'assurer que toutes les données du profil sont passées
+                    total_members: profile.total_members,
+                    allergies: profile.allergies || [],
+                    preferences: profile.preferences || [],
+                    budget_monthly: profile.budget_monthly,
+                    dietary_restrictions: profile.dietary_restrictions || [],
+                }
+            );
 
             if (response.success && response.data) {
                 setCurrentMenu(response.data.menu);
+                setShowPeriodSelector(false);
                 Alert.alert(
                     'Menu généré !',
-                    'Votre menu hebdomadaire a été généré avec succès',
+                    `Votre menu ${menuPeriod === '1_week' ? 'hebdomadaire' : menuPeriod === '2_weeks' ? 'bi-hebdomadaire (15 jours)' : 'mensuel'} a été généré avec succès`,
                     [
                         {
                             text: 'Voir le menu',
                             onPress: () => {
                                 navigation.navigate('MenuWeekCalendar' as never, {
                                     menu: response.data.menu,
+                                    period: menuPeriod,
                                 } as never);
                             },
                         },
@@ -166,7 +190,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             <Text style={styles.profileText}>
                                 👥 {profile.total_members} personne{profile.total_members > 1 ? 's' : ''}
                             </Text>
-                            {profile.allergies.length > 0 && (
+                            {profile.allergies && profile.allergies.length > 0 && (
                                 <Text style={styles.profileText}>
                                     ⚠️ Allergies : {profile.allergies.join(', ')}
                                 </Text>
@@ -174,6 +198,11 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             {profile.budget_monthly && (
                                 <Text style={styles.profileText}>
                                     💰 Budget : {profile.budget_monthly.toLocaleString()} FCFA/mois
+                                </Text>
+                            )}
+                            {profile.preferences && profile.preferences.length > 0 && (
+                                <Text style={styles.profileText}>
+                                    🍽️ Préférences : {profile.preferences.join(', ')}
                                 </Text>
                             )}
                         </View>
@@ -238,13 +267,63 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     <NativeCard style={styles.generateCard}>
                         <SafeIcon name="ChefHat" size={48} color={modernColors.primary} type="lucide" />
                         <Text style={styles.generateTitle}>
-                            Générez votre menu hebdomadaire
+                            Générez votre menu personnalisé
                         </Text>
                         <Text style={styles.generateSubtitle}>
                             Notre IA vous propose un menu personnalisé selon vos préférences et votre budget
                         </Text>
+                        
+                        {/* Sélecteur de période */}
+                        <View style={styles.periodSelector}>
+                            <Text style={styles.periodLabel}>Période du menu :</Text>
+                            <View style={styles.periodButtons}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.periodButton,
+                                        menuPeriod === '1_week' && styles.periodButtonActive
+                                    ]}
+                                    onPress={() => setMenuPeriod('1_week')}
+                                >
+                                    <Text style={[
+                                        styles.periodButtonText,
+                                        menuPeriod === '1_week' && styles.periodButtonTextActive
+                                    ]}>
+                                        1 semaine
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.periodButton,
+                                        menuPeriod === '2_weeks' && styles.periodButtonActive
+                                    ]}
+                                    onPress={() => setMenuPeriod('2_weeks')}
+                                >
+                                    <Text style={[
+                                        styles.periodButtonText,
+                                        menuPeriod === '2_weeks' && styles.periodButtonTextActive
+                                    ]}>
+                                        15 jours
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.periodButton,
+                                        menuPeriod === '1_month' && styles.periodButtonActive
+                                    ]}
+                                    onPress={() => setMenuPeriod('1_month')}
+                                >
+                                    <Text style={[
+                                        styles.periodButtonText,
+                                        menuPeriod === '1_month' && styles.periodButtonTextActive
+                                    ]}>
+                                        1 mois
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
                         <NativeButton
-                            title="Générer le menu"
+                            title={`Générer le menu (${menuPeriod === '1_week' ? '1 semaine' : menuPeriod === '2_weeks' ? '15 jours' : '1 mois'})`}
                             onPress={handleGenerateMenu}
                             loading={loading}
                             style={styles.generateButton}
@@ -438,6 +517,44 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#111827',
         marginTop: 8,
+    },
+    periodSelector: {
+        width: '100%',
+        marginBottom: 20,
+    },
+    periodLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    periodButtons: {
+        flexDirection: 'row',
+        gap: 8,
+        justifyContent: 'center',
+    },
+    periodButton: {
+        flex: 1,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+    },
+    periodButtonActive: {
+        borderColor: modernColors.primary,
+        backgroundColor: '#EEF2FF',
+    },
+    periodButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    periodButtonTextActive: {
+        color: modernColors.primary,
     },
 });
 

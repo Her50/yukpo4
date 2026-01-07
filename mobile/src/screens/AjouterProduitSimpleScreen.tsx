@@ -12,6 +12,7 @@ import {
     Alert,
     DeviceEventEmitter,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -69,6 +70,16 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         serviceId: number;
         productIndex: number;
         productName: string;
+    } | null>(null);
+    
+    // ✅ NOUVEAU: États pour la modal de confirmation de création de produit
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successModalData, setSuccessModalData] = useState<{
+        serviceId: number;
+        productIndex: number;
+        productName: string;
+        isPrestation: boolean;
+        isDuplicate?: boolean; // ✅ NOUVEAU: Indique si c'est une duplication
     } | null>(null);
 
     // ✅ FONCTION HELPER: Extraire valeur avec fallback intelligent (IDENTIQUE AU GRAND FORMULAIRE)
@@ -646,6 +657,60 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     }, [mode, prefill, initialFormValues]);
 
     const [formValues, setFormValues] = useState<any>(initialFormValues);
+    
+    // ✅ NOUVEAU: Mettre à jour formValues quand prefill ou mediaData changent en mode édition
+    React.useEffect(() => {
+        if (isEditing || isDuplicate) {
+            // Recalculer les médias depuis prefill et mediaData à chaque fois que prefill ou mediaData changent
+            const currentPrefilledImages = normalizeMediaList(prefill.images);
+            const currentPrefilledVideos = normalizeMediaList(prefill.videos);
+            const currentPrefilledAudios = normalizeMediaList(prefill.audios);
+            const currentPrefilledDocuments = normalizeMediaList(prefill.documents);
+            
+            const currentMediaDataImages = combineUnique(
+                normalizeMediaList(mediaData?.base64_image),
+                normalizeMediaList(mediaData?.image_base64)
+            );
+            const currentMediaDataVideos = combineUnique(
+                normalizeMediaList(mediaData?.video_base64),
+                normalizeMediaList(mediaData?.videos)
+            );
+            const currentMediaDataAudios = normalizeMediaList(mediaData?.audio_base64);
+            const currentMediaDataDocuments = normalizeMediaList(mediaData?.doc_base64);
+            
+            const updatedImages = combineUnique(currentPrefilledImages, currentMediaDataImages);
+            const updatedVideos = combineUnique(currentPrefilledVideos, currentMediaDataVideos);
+            const updatedAudios = combineUnique(currentPrefilledAudios, currentMediaDataAudios);
+            const updatedDocuments = combineUnique(currentPrefilledDocuments, currentMediaDataDocuments);
+            
+            console.log('[AjouterProduitSimple] 🔄 Mise à jour formValues avec médias en mode édition:', {
+                prefill_images: currentPrefilledImages.length,
+                mediaData_images: currentMediaDataImages.length,
+                final_images: updatedImages.length,
+                prefill_videos: currentPrefilledVideos.length,
+                mediaData_videos: currentMediaDataVideos.length,
+                final_videos: updatedVideos.length,
+                first_image: updatedImages[0] ? (typeof updatedImages[0] === 'string' ? updatedImages[0].substring(0, 50) + '...' : typeof updatedImages[0]) : 'none',
+            });
+            
+            // ✅ CORRIGÉ: Mettre à jour seulement si les médias ont changé
+            setFormValues((prev: any) => {
+                const imagesChanged = JSON.stringify(prev.images || []) !== JSON.stringify(updatedImages);
+                const videosChanged = JSON.stringify(prev.videos || []) !== JSON.stringify(updatedVideos);
+                
+                if (imagesChanged || videosChanged) {
+                    return {
+                        ...prev,
+                        images: updatedImages,
+                        videos: updatedVideos,
+                        audios: updatedAudios,
+                        documents: updatedDocuments,
+                    };
+                }
+                return prev;
+            });
+        }
+    }, [isEditing, isDuplicate, prefill, mediaData]);
 
     // ✅ NOUVEAU 2025-11-21: Charger les combinaisons préférées par l'IA via session_id
     // ✅ CORRIGÉ: Charger aussi si sous_caracteristiques est vide (pour afficher les caractéristiques)
@@ -1566,142 +1631,102 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         throw new Error(jobResult.error);
                                     }
                                     
-                                    // ✅ CORRECTION: Afficher le toast AVANT l'ouverture de la configuration de livraison
-                                    // ✅ NOUVEAU: Afficher un toast de succès
-                                    toaster.success('✅ Produit créé avec succès !');
+                                    // ✅ NOUVEAU: Afficher la modal de confirmation au lieu du toast
+                                    const typeOffre = formValues.type_offre || 'produit';
+                                    const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
                                     
                                     // Rafraîchir la liste des services pour afficher le nouveau produit
-                                    // ✅ CORRECTION: Ajouter un délai pour laisser la base de données se mettre à jour
                                     setTimeout(() => {
                                       DeviceEventEmitter.emit('service:refresh');
                                       // ✅ NOUVEAU: Émettre aussi un événement spécifique pour les produits
                                       DeviceEventEmitter.emit('product:created');
                                     }, 2000);
                                     
-                                    // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
-                                    const typeOffre = formValues.type_offre || 'produit';
-                                    const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
-                                    
                                     if (!isPrestation && jobResult.productIndex !== null && serviceId) {
-                                        // C'est un produit, ouvrir le modal de configuration de livraison
+                                        // C'est un produit, préparer les données pour la modal de confirmation
                                         const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
                                         const finalProductIndex = jobResult.productIndex;
                                         const productName = formValues.nom_produit || 'Nouveau produit';
                                         
-                                        console.log('[AjouterProduitSimple] 🚚 Ouverture automatique du modal de configuration de livraison:', {
+                                        // Afficher la modal de confirmation
+                                        setSuccessModalData({
                                             serviceId: finalServiceId,
                                             productIndex: finalProductIndex,
                                             productName: productName,
-                                            isDuplicate: isDuplicate
+                                            isPrestation: false,
+                                            isDuplicate: isDuplicate, // ✅ NOUVEAU: Indiquer si c'est une duplication
                                         });
-                                        
-                                        // ✅ CORRECTION: Attendre un court délai pour laisser le toast s'afficher avant d'ouvrir le modal
-                                        setTimeout(() => {
-                                            // Ouvrir le modal de configuration de livraison
-                                            setShowProductDeliveryConfig(true);
-                                            setProductDeliveryConfigData({
-                                                serviceId: finalServiceId,
-                                                productIndex: finalProductIndex,
-                                                productName: productName,
-                                            });
-                                        }, 500);
-                                        
-                                        setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading
-                                        return;
+                                        setShowSuccessModal(true);
+                                    } else {
+                                        // C'est une prestation, afficher juste la modal de confirmation sans option de livraison
+                                        setSuccessModalData({
+                                            serviceId: typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
+                                            productIndex: -1,
+                                            productName: formValues.nom_produit || 'Nouvelle prestation',
+                                            isPrestation: true,
+                                            isDuplicate: isDuplicate, // ✅ NOUVEAU: Indiquer si c'est une duplication
+                                        });
+                                        setShowSuccessModal(true);
                                     }
                                     
-                                    // Pour les prestations ou si productIndex n'est pas disponible, afficher l'Alert normal
-                                    Alert.alert(
-                                        isDuplicate ? '✅ Produit dupliqué' : '✅ Produit créé',
-                                        `${isDuplicate ? 'Votre produit dupliqué' : 'Votre nouveau produit'} a été ajouté au service avec succès !\n\n` +
-                                        `💰 Coût: ${costPaid.toLocaleString('fr-FR')} FCFA\n` +
-                                        `💳 Nouveau solde: ${newBalanceValue.toLocaleString('fr-FR')} FCFA\n` +
-                                        `📦 Index produit: ${jobResult.productIndex ?? 'non communiqué'}`,
-                                        [
-                                            {
-                                                text: 'OK',
-                                                onPress: () => {
-                                                    // Retour vers gestion des services
-                                                    DeviceEventEmitter.emit('service:refresh');
-                                                    (navigation as any).navigate('Main', { screen: 'Services' });
-                                                }
-                                            }
-                                        ]
-                                    );
-                                    setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading après succès
+                                    setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading
                                     return;
                                 }
                                 
                                 // ✅ ANCIEN CODE: Si pas de job_id, traitement synchrone (ancien format)
                                 console.log('[AjouterProduitSimple] ✅ Produit ajouté avec succès (format synchrone):', response);
                                 
-                                // ✅ CORRECTION: Afficher le toast AVANT l'ouverture de la configuration de livraison
-                                // ✅ NOUVEAU: Afficher un toast de succès
-                                toaster.success('✅ Produit créé avec succès !');
-
-                                // ✅ ÉTAPE 5 : Afficher le résultat (IDENTIQUE AU GRAND FORMULAIRE)
+                                // ✅ NOUVEAU: Afficher la modal de confirmation au lieu du toast
                                 const productIndexResult =
                                     responseData.product_index ??
                                     (typeof responseData === 'object' && responseData.data ? responseData.data.product_index : undefined);
                                 
-                                // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
+                                // ✅ NOUVEAU: Si c'est un produit (pas une prestation), préparer l'ouverture de la configuration de livraison
                                 const typeOffre = formValues.type_offre || 'produit';
                                 const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
                                 
+                                // Rafraîchir la liste des services pour afficher le nouveau produit
+                                setTimeout(() => {
+                                  DeviceEventEmitter.emit('service:refresh');
+                                  // ✅ NOUVEAU: Émettre aussi un événement spécifique pour les produits
+                                  DeviceEventEmitter.emit('product:created');
+                                }, 2000);
+                                
                                 if (!isPrestation && productIndexResult !== undefined && serviceId) {
-                                    // C'est un produit, ouvrir le modal de configuration de livraison
+                                    // C'est un produit, préparer les données pour la modal de confirmation
                                     const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
                                     const finalProductIndex = typeof productIndexResult === 'number' ? productIndexResult : parseInt(String(productIndexResult), 10);
                                     const productName = formValues.nom_produit || 'Nouveau produit';
                                     
-                                    console.log('[AjouterProduitSimple] 🚚 Ouverture automatique du modal de configuration de livraison (synchrone):', {
+                                    // Afficher la modal de confirmation
+                                    setSuccessModalData({
                                         serviceId: finalServiceId,
                                         productIndex: finalProductIndex,
                                         productName: productName,
-                                        isDuplicate: isDuplicate
+                                        isPrestation: false,
+                                        isDuplicate: isDuplicate, // ✅ NOUVEAU: Indiquer si c'est une duplication
                                     });
-                                    
-                                    // ✅ CORRECTION: Attendre un court délai pour laisser le toast s'afficher avant d'ouvrir le modal
-                                    setTimeout(() => {
-                                        // Ouvrir le modal de configuration de livraison
-                                        setShowProductDeliveryConfig(true);
-                                        setProductDeliveryConfigData({
-                                            serviceId: finalServiceId,
-                                            productIndex: finalProductIndex,
-                                            productName: productName,
-                                        });
-                                    }, 500);
-                                    
-                                    // Ne pas afficher l'Alert de succès ici, le modal s'ouvrira directement
-                                    // ✅ CORRECTION: Ajouter un délai pour laisser la base de données se mettre à jour
-                                    setTimeout(() => {
-                                      DeviceEventEmitter.emit('service:refresh');
-                                      // ✅ NOUVEAU: Émettre aussi un événement spécifique pour les produits
-                                      DeviceEventEmitter.emit('product:created');
-                                    }, 2000);
-                                    setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading
-                                    return;
+                                    setShowSuccessModal(true);
+                                } else {
+                                    // C'est une prestation, afficher juste la modal de confirmation sans option de livraison
+                                    setSuccessModalData({
+                                        serviceId: typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
+                                        productIndex: -1,
+                                        productName: formValues.nom_produit || 'Nouvelle prestation',
+                                        isPrestation: true,
+                                        isDuplicate: isDuplicate, // ✅ NOUVEAU: Indiquer si c'est une duplication
+                                    });
+                                    setShowSuccessModal(true);
                                 }
                                 
-                                // Pour les prestations ou si productIndexResult n'est pas disponible, afficher l'Alert normal
-                                Alert.alert(
-                                    isDuplicate ? '✅ Produit dupliqué' : '✅ Produit créé',
-                                    `${isDuplicate ? 'Votre produit dupliqué' : 'Votre nouveau produit'} a été ajouté au service avec succès !\n\n` +
-                                    `💰 Coût: ${costPaid.toLocaleString('fr-FR')} FCFA\n` +
-                                    `💳 Nouveau solde: ${newBalanceValue.toLocaleString('fr-FR')} FCFA\n` +
-                                    `📦 Index produit: ${productIndexResult ?? 'non communiqué'}`,
-                                    [
-                                        {
-                                            text: 'OK',
-                                            onPress: () => {
-                                                // Retour vers gestion des services
-                                                DeviceEventEmitter.emit('service:refresh');
-                                                (navigation as any).navigate('Main', { screen: 'Services' });
-                                            }
-                                        }
-                                    ]
-                                );
-                                setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading après succès
+                                // Rafraîchir la liste des services pour afficher le nouveau produit
+                                setTimeout(() => {
+                                  DeviceEventEmitter.emit('service:refresh');
+                                  DeviceEventEmitter.emit('product:created');
+                                }, 2000);
+                                
+                                setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading
+                                return;
                             } catch (error: any) {
                                 console.error('[AjouterProduitSimple] ❌ Erreur:', {
                                     message: error?.message,
@@ -2191,6 +2216,18 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         {/* Photos et vidéos */}
                         <View style={[styles.fieldGroup, { overflow: 'visible' }]}>
                             <Text style={styles.label}>Photos et vidéos</Text>
+                            {(() => {
+                                const imagesToPass = formValues.images || [];
+                                const videosToPass = formValues.videos || [];
+                                console.log('[AjouterProduitSimple] 📸 Passage des médias à MediaUploadManager:', {
+                                    images_count: imagesToPass.length,
+                                    videos_count: videosToPass.length,
+                                    isEditing,
+                                    isDuplicate,
+                                    first_image: imagesToPass[0] ? (typeof imagesToPass[0] === 'string' ? imagesToPass[0].substring(0, 50) + '...' : typeof imagesToPass[0]) : 'none',
+                                });
+                                return null;
+                            })()}
                             <MediaUploadManager
                                 images={formValues.images || []}
                                 videos={formValues.videos || []}
@@ -2318,6 +2355,59 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 title="Sélectionner le lieu de commercialisation"
                 allowZoneSelection={false}
             />
+
+            {/* ✅ NOUVEAU: Modal de confirmation de création de produit */}
+            <Modal
+                visible={showSuccessModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => {
+                    setShowSuccessModal(false);
+                    setSuccessModalData(null);
+                }}
+            >
+                <View style={styles.successModalOverlay}>
+                    <View style={styles.successModalContent}>
+                        <View style={styles.successModalIcon}>
+                            <Text style={styles.successModalIconText}>✅</Text>
+                        </View>
+                        <Text style={styles.successModalTitle}>
+                            {successModalData?.isDuplicate 
+                                ? (successModalData?.isPrestation ? 'Prestation dupliquée avec succès !' : 'Produit dupliqué avec succès !')
+                                : (successModalData?.isPrestation ? 'Prestation créée avec succès !' : 'Produit créé avec succès !')}
+                        </Text>
+                        <Text style={styles.successModalMessage}>
+                            {successModalData?.isPrestation 
+                                ? (successModalData?.isDuplicate 
+                                    ? 'Votre prestation a été dupliquée avec succès.'
+                                    : 'Votre prestation a été ajoutée à votre service.')
+                                : (successModalData?.isDuplicate
+                                    ? 'Votre produit a été dupliqué et ajouté à votre service avec succès.'
+                                    : 'Votre produit a été ajouté à votre service avec succès.')}
+                        </Text>
+                        <NativeButton
+                            title="Ok"
+                            variant="primary"
+                            onPress={() => {
+                                setShowSuccessModal(false);
+                                
+                                // Si c'est un produit (pas une prestation), ouvrir le modal de configuration de livraison
+                                if (successModalData && !successModalData.isPrestation && successModalData.productIndex >= 0) {
+                                    setProductDeliveryConfigData({
+                                        serviceId: successModalData.serviceId,
+                                        productIndex: successModalData.productIndex,
+                                        productName: successModalData.productName,
+                                    });
+                                    setShowProductDeliveryConfig(true);
+                                }
+                                
+                                setSuccessModalData(null);
+                            }}
+                            style={styles.successModalButton}
+                        />
+                    </View>
+                </View>
+            </Modal>
 
             {/* ✅ NOUVEAU: Modal de configuration de livraison */}
             {productDeliveryConfigData && (
@@ -2499,6 +2589,60 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         marginTop: 8,
         fontStyle: 'italic',
+    },
+    // ✅ NOUVEAU: Styles pour la modal de confirmation de création de produit
+    successModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    successModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    successModalIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#F0FDF4',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    successModalIconText: {
+        fontSize: 32,
+    },
+    successModalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    successModalMessage: {
+        fontSize: 16,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        marginBottom: 24,
+        lineHeight: 22,
+    },
+    successModalButton: {
+        width: '100%',
+        minWidth: 200,
     },
 });
 

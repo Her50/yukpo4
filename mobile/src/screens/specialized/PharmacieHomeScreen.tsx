@@ -15,7 +15,10 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Image,
+    Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
@@ -24,6 +27,7 @@ import { pharmacyService, DosageRecommendation, MedicationInteraction } from '..
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import { useAIServices } from '../../hooks/useAIServices';
+import { imageAnalysisService } from '../../services/imageAnalysisService';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
 
@@ -68,6 +72,11 @@ const PharmacieHomeScreen: React.FC = () => {
     const [aiResponse, setAiResponse] = useState<string | null>(null);
     const [showAIChat, setShowAIChat] = useState(false);
     const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+    
+    // États pour analyse d'image
+    const [selectedMedicationImage, setSelectedMedicationImage] = useState<string | null>(null);
+    const [imageAnalysisResult, setImageAnalysisResult] = useState<any | null>(null);
+    const [analyzingImage, setAnalyzingImage] = useState(false);
 
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [
         { value: 'relevance', label: 'Pertinence', icon: 'star' },
@@ -277,6 +286,96 @@ const PharmacieHomeScreen: React.FC = () => {
             setAiSuggestions([]);
         }
     }, [searchQuery, medications]);
+
+    // Fonction pour analyser une image de médicament
+    const handleAnalyzeMedicationImage = async (source: 'camera' | 'gallery') => {
+        hapticPress();
+        
+        try {
+            let result;
+            
+            if (source === 'camera') {
+                const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+                if (cameraStatus !== 'granted') {
+                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
+                    return;
+                }
+                
+                result = await ImagePicker.launchCameraAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: true,
+                });
+            } else {
+                const { status: galleryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (galleryStatus !== 'granted') {
+                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
+                    return;
+                }
+                
+                result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: true,
+                });
+            }
+
+            if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                const base64Image = `data:image/jpeg;base64,${asset.base64}`;
+                setSelectedMedicationImage(asset.uri);
+                setAnalyzingImage(true);
+                setImageAnalysisResult(null);
+
+                // Analyser l'image avec l'IA
+                const analysisResponse = await imageAnalysisService.analyzePharmacyImage(base64Image);
+
+                if (analysisResponse.success && analysisResponse.data) {
+                    setImageAnalysisResult(analysisResponse.data.analysis);
+                    // Afficher le résultat dans le chat IA
+                    setAiResponse(
+                        `Analyse du médicament:\n\n${analysisResponse.data.analysis.description || analysisResponse.data.analysis.interpretation || 'Analyse complétée'}\n\n` +
+                        (analysisResponse.data.analysis.recommendations ? 
+                            `Recommandations:\n${analysisResponse.data.analysis.recommendations.join('\n')}` : '')
+                    );
+                    setShowAIChat(true);
+                } else {
+                    Alert.alert(
+                        'Erreur',
+                        analysisResponse.error || 'Impossible d\'analyser l\'image du médicament'
+                    );
+                }
+            }
+        } catch (err: any) {
+            console.error('[PharmacieHomeScreen] Erreur analyse image:', err);
+            Alert.alert('Erreur', err.message || 'Erreur lors de l\'analyse de l\'image');
+        } finally {
+            setAnalyzingImage(false);
+        }
+    };
+
+    const showImageSourcePicker = () => {
+        Alert.alert(
+            'Analyser un médicament',
+            'Comment souhaitez-vous ajouter l\'image du médicament?',
+            [
+                {
+                    text: 'Prendre une photo',
+                    onPress: () => handleAnalyzeMedicationImage('camera'),
+                },
+                {
+                    text: 'Choisir depuis la galerie',
+                    onPress: () => handleAnalyzeMedicationImage('gallery'),
+                },
+                {
+                    text: 'Annuler',
+                    style: 'cancel',
+                },
+            ]
+        );
+    };
 
     // Fonctions IA
     const handleGetDosage = async (medication: PharmacyProduct) => {
@@ -494,6 +593,40 @@ const PharmacieHomeScreen: React.FC = () => {
 
                     {showAIChat && (
                         <View style={styles.aiChatContainer}>
+                            {/* Bouton analyse d'image */}
+                            <TouchableOpacity
+                                style={styles.aiImageButton}
+                                onPress={showImageSourcePicker}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="camera" size={20} color="#059669" type="lucide" />
+                                <Text style={styles.aiImageButtonText}>
+                                    {analyzingImage ? 'Analyse en cours...' : 'Analyser un médicament (photo)'}
+                                </Text>
+                                {analyzingImage && (
+                                    <ActivityIndicator size="small" color="#059669" style={{ marginLeft: 8 }} />
+                                )}
+                            </TouchableOpacity>
+
+                            {/* Aperçu image sélectionnée */}
+                            {selectedMedicationImage && (
+                                <View style={styles.imagePreviewContainer}>
+                                    <Image 
+                                        source={{ uri: selectedMedicationImage }} 
+                                        style={styles.imagePreview}
+                                    />
+                                    <TouchableOpacity
+                                        style={styles.removeImageButton}
+                                        onPress={() => {
+                                            setSelectedMedicationImage(null);
+                                            setImageAnalysisResult(null);
+                                        }}
+                                    >
+                                        <SafeIcon name="x" size={16} color="#FFFFFF" type="lucide" />
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+
                             {/* Suggestions rapides */}
                             {aiSuggestions.length > 0 && (
                                 <View style={styles.aiSuggestionsContainer}>
@@ -2220,6 +2353,45 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#059669',
         fontWeight: '600',
+    },
+    aiImageButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ECFDF5',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#D1FAE5',
+    },
+    aiImageButtonText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#059669',
+        marginLeft: 12,
+    },
+    imagePreviewContainer: {
+        position: 'relative',
+        marginBottom: 12,
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    imagePreview: {
+        width: '100%',
+        height: 200,
+        borderRadius: 12,
+    },
+    removeImageButton: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

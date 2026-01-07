@@ -21,6 +21,7 @@ import { busTicketService, BusTicketSearchFilters, BusTicketSearchResult } from 
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
+import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'time_asc' | 'time_desc' | 'date_asc';
 
@@ -454,6 +455,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                 setAgencyName={setAgencyName}
                 location={location}
                 onSearch={handleSearch}
+                detectedCurrency={detectedCurrency}
             />
 
             {/* Modal de tri */}
@@ -578,6 +580,7 @@ interface FiltersModalProps {
     setAgencyName: (name: string) => void;
     location: any;
     onSearch: () => void;
+    detectedCurrency?: string; // ✅ Ajout pour éviter les erreurs de référence
 }
 
 const FiltersModal: React.FC<FiltersModalProps> = ({
@@ -597,6 +600,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
     setAgencyName,
     location,
     onSearch,
+    detectedCurrency = 'XAF', // ✅ Valeur par défaut pour éviter les erreurs
 }) => {
     const applyFilters = () => {
         const newFilters: BusTicketSearchFilters = {
@@ -652,6 +656,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                         <View style={styles.filterSection}>
                             <Text style={styles.filterSectionTitle}>Ville de départ</Text>
                             <LocationSelector
+                                label="Ville de départ"
                                 value={typeof departureCity === 'string' ? (departureCity ? { raw: departureCity, place_name: departureCity } : '') : departureCity}
                                 onSelect={(location: LocationObject) => setDepartureCity(location)}
                                 placeholder="Rechercher une ville..."
@@ -664,6 +669,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                         <View style={styles.filterSection}>
                             <Text style={styles.filterSectionTitle}>Ville d'arrivée</Text>
                             <LocationSelector
+                                label="Ville d'arrivée"
                                 value={typeof arrivalCity === 'string' ? (arrivalCity ? { raw: arrivalCity, place_name: arrivalCity } : '') : arrivalCity}
                                 onSelect={(location: LocationObject) => setArrivalCity(location)}
                                 placeholder="Rechercher une ville..."

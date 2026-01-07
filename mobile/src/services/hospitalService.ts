@@ -14,6 +14,16 @@ export interface MedicalService {
     speciality?: string;
 }
 
+export interface MedicalServiceAvailability {
+    service_id: number;
+    service_title: string;
+    available_services: string[];
+    current_schedule?: { [key: string]: any };
+    is_24h: boolean;
+    has_blood_bank: boolean;
+    distance_km?: number;
+}
+
 export interface PathologySearchResult {
     pathology_name: string;
     description: string;
@@ -49,6 +59,26 @@ export const hospitalService = {
                 symptoms,
                 lat: location?.lat,
                 lng: location?.lng,
+            }
+        );
+        return response;
+    },
+
+    // ✅ Recherche de services médicaux disponibles (avec système de disponibilité)
+    searchAvailableMedicalServices: async (
+        service?: string,
+        location?: { lat: number; lng: number },
+        maxDistance?: number
+    ) => {
+        const response = await apiGet<MedicalServiceAvailability[]>(
+            '/api/search/medical-services',
+            {
+                params: {
+                    service,
+                    lat: location?.lat,
+                    lng: location?.lng,
+                    max_distance: maxDistance || 50,
+                }
             }
         );
         return response;

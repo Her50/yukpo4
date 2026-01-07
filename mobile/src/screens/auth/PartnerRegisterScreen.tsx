@@ -2,10 +2,11 @@
 // ✅ AMÉLIORATION UX: Écran de création partenaire modernisé avec design similaire à RegisterScreen
 import { useNavigation } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
-import { CheckCircle, XCircle, WarningCircle, Building, User, Envelope, Lock, LockKey, Phone, MapPin } from 'phosphor-react-native';
+import { CheckCircle, XCircle, WarningCircle, Building, Envelope, Lock, LockKey, Phone, MapPin, Image as ImageIcon } from 'phosphor-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,23 +16,31 @@ import {
   View,
 } from 'react-native';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { authApi } from '../../services/api';
 import { theme } from '../../theme/theme';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
+import ModernGPSModal from '../../components/ModernGPSModal';
 
 const PartnerRegisterScreen: React.FC = () => {
   const navigation = useNavigation();
   const [form, setForm] = useState({
-    nom: '',
+    partner_name: '',
     email: '',
     password: '',
     confirmPassword: '',
     partner_type: '' as string,
-    partner_name: '',
     partner_phone: '',
     partner_address: '',
-    partner_city: null as LocationObject | null,
+    partner_gps: null as { lat: number; lng: number } | null,
     partner_country: '',
+    partner_logo: null as string | null, // ✅ NOUVEAU: Logo du partenaire (base64)
+    // ✅ NOUVEAU: Champs spécifiques pour établissementscolaire
+    etablissement_type: '' as string, // primaire, secondaire, superieur, formation
+    filieres: [] as string[],
+    programmes_scolaires: [] as string[],
+    concours_organises: [] as string[],
+    anciennes_epreuves: [] as string[],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,13 +50,16 @@ const PartnerRegisterScreen: React.FC = () => {
     number: false,
   });
   const [confirmPasswordMatch, setConfirmPasswordMatch] = useState<boolean | null>(null);
+  const [showGPSModal, setShowGPSModal] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // ✅ TOUS les types partenaires valides selon le backend
   const partnerTypes = [
     { value: 'pharmacie', label: 'Pharmacie' },
     { value: 'hopital', label: 'Hôpital/Clinique' },
     { value: 'laboratoire', label: 'Laboratoire' },
-    { value: 'banquesang', label: 'Banque de Sang' }, // ✅ NOUVEAU: Type partenaire banque de sang
+    { value: 'banquesang', label: 'Banque de Sang' },
+    { value: 'etablissementscolaire', label: 'Établissement Scolaire' }, // ✅ NOUVEAU: Type partenaire établissement scolaire
     { value: 'agence de voyage', label: 'Agence de Voyage' },
     { value: 'demenagement', label: 'Déménagement' },
     { value: 'transport', label: 'Transport' },
@@ -90,11 +102,51 @@ const PartnerRegisterScreen: React.FC = () => {
     }
   };
 
+  // ✅ NOUVEAU: Fonction pour sélectionner et uploader le logo
+  const handlePickLogo = async () => {
+    try {
+      setUploadingLogo(true);
+      
+      // Demander les permissions
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert(
+          'Permission refusée',
+          'Vous devez autoriser l\'accès à la galerie pour ajouter un logo.'
+        );
+        setUploadingLogo(false);
+        return;
+      }
+
+      // Lancer le sélecteur d'image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images' as any,
+        allowsEditing: true,
+        aspect: [1, 1], // Logo carré
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        if (asset.base64) {
+          const imageBase64 = `data:image/jpeg;base64,${asset.base64}`;
+          setForm({ ...form, partner_logo: imageBase64 });
+        }
+      }
+    } catch (error: any) {
+      console.error('[PartnerRegisterScreen] Erreur sélection logo:', error);
+      Alert.alert('Erreur', 'Impossible de sélectionner le logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setError(null);
 
     // Validations
-    if (!form.nom || !form.email || !form.password || !form.confirmPassword) {
+    if (!form.partner_name || !form.email || !form.password || !form.confirmPassword) {
       setError('Veuillez remplir tous les champs obligatoires');
       return;
     }
@@ -109,21 +161,23 @@ const PartnerRegisterScreen: React.FC = () => {
       return;
     }
 
-    if (!form.partner_type) {
-      setError('Veuillez sélectionner un type de partenaire');
+    // ✅ RENFORCÉ: Validation stricte du type de partenaire
+    if (!form.partner_type || form.partner_type.trim() === '') {
+      setError('⚠️ Le type d\'établissement est obligatoire. Veuillez sélectionner un type de partenaire.');
       return;
     }
 
-    if (!form.partner_name) {
-      setError('Le nom de votre établissement est obligatoire');
+    // ✅ Validation spécifique pour établissementscolaire
+    if (form.partner_type === 'etablissementscolaire' && !form.etablissement_type) {
+      setError('Veuillez sélectionner le type d\'établissement scolaire');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await authApi.register({
-        nom: form.nom,
-        prenom: '', // ✅ Supprimé : pas nécessaire pour une structure morale
+      const registerData: any = {
+        nom: form.partner_name, // Nom du partenaire utilisé comme nom de compte
+        prenom: '', // Pas nécessaire pour une structure morale
         email: form.email,
         password: form.password,
         is_partner: true,
@@ -131,9 +185,29 @@ const PartnerRegisterScreen: React.FC = () => {
         partner_name: form.partner_name,
         partner_phone: form.partner_phone,
         partner_address: form.partner_address,
-        partner_city: form.partner_city?.place_name || form.partner_city?.raw,
-        partner_country: form.partner_country || form.partner_city?.components?.pays,
-      });
+        partner_country: form.partner_country,
+      };
+
+      // Ajouter les coordonnées GPS si disponibles
+      if (form.partner_gps) {
+        registerData.partner_lat = form.partner_gps.lat;
+        registerData.partner_lng = form.partner_gps.lng;
+      }
+
+      // ✅ NOUVEAU: Ajouter le logo si disponible
+      if (form.partner_logo) {
+        registerData.partner_logo = form.partner_logo;
+      }
+
+      // ✅ Ajouter les champs spécifiques pour établissementscolaire
+      if (form.partner_type === 'etablissementscolaire') {
+        registerData.etablissement_type = form.etablissement_type;
+        registerData.filieres = form.filieres;
+        registerData.programmes_scolaires = form.programmes_scolaires;
+        registerData.concours_organises = form.concours_organises;
+      }
+
+      const response = await authApi.register(registerData);
 
       if (response.success || response.token) {
         Alert.alert(
@@ -190,28 +264,104 @@ const PartnerRegisterScreen: React.FC = () => {
           </Card>
         )}
 
-        {/* ✅ SECTION 1: Informations du responsable (personne physique) */}
+        {/* ✅ SECTION: Informations du partenaire */}
         <Card style={styles.formCard}>
           <Card.Content>
             <View style={styles.sectionHeader}>
-              <User size={20} color={theme.colors.primary} />
-              <Title style={styles.sectionTitle}>Informations du responsable</Title>
+              <Building size={20} color={theme.colors.primary} />
+              <Title style={styles.sectionTitle}>Informations de votre établissement</Title>
             </View>
             <Paragraph style={styles.sectionSubtitle}>
-              Vos informations personnelles (contact principal)
+              Détails de votre structure professionnelle
             </Paragraph>
 
+            <Text style={styles.label}>
+              Type d'établissement <Text style={styles.requiredAsterisk}>*</Text>
+            </Text>
+            <View style={[styles.pickerContainer, !form.partner_type && styles.pickerContainerRequired]}>
+              <Picker
+                selectedValue={form.partner_type}
+                onValueChange={(value) => setForm({ ...form, partner_type: value })}
+                style={styles.picker}
+                required
+              >
+                <Picker.Item label="Sélectionnez un type..." value="" />
+                {partnerTypes.map((type) => (
+                  <Picker.Item key={type.value} label={type.label} value={type.value} />
+                ))}
+              </Picker>
+            </View>
+            {!form.partner_type && (
+              <Text style={styles.helperText}>
+                ⚠️ Ce champ est obligatoire. Vous devez sélectionner un type d'établissement pour créer un compte partenaire.
+              </Text>
+            )}
+
             <TextInput
-              label="Nom complet du responsable *"
-              value={form.nom}
-              onChangeText={(text) => setForm({ ...form, nom: text })}
+              label="Nom de l'établissement *"
+              value={form.partner_name}
+              onChangeText={(text) => setForm({ ...form, partner_name: text })}
               disabled={loading}
               style={styles.input}
-              left={<TextInput.Icon icon={() => <User size={20} color={theme.colors.textSecondary} />} />}
+              left={<TextInput.Icon icon={() => <Building size={20} color={theme.colors.textSecondary} />} />}
             />
 
             <TextInput
-              label="Adresse email *"
+              label="Téléphone de l'établissement"
+              value={form.partner_phone}
+              onChangeText={(text) => setForm({ ...form, partner_phone: text })}
+              keyboardType="phone-pad"
+              disabled={loading}
+              style={styles.input}
+              left={<TextInput.Icon icon={() => <Phone size={20} color={theme.colors.textSecondary} />} />}
+            />
+
+            {/* ✅ NOUVEAU: Champ de téléchargement de logo */}
+            <Text style={styles.label}>Logo de l'établissement</Text>
+            <TouchableOpacity
+              onPress={handlePickLogo}
+              disabled={loading || uploadingLogo}
+              style={[styles.logoUploadButton, uploadingLogo && styles.logoUploadButtonDisabled]}
+            >
+              {form.partner_logo ? (
+                <View style={styles.logoPreview}>
+                  <Image source={{ uri: form.partner_logo }} style={styles.logoImage} />
+                  <TouchableOpacity
+                    onPress={() => setForm({ ...form, partner_logo: null })}
+                    style={styles.removeLogoButton}
+                  >
+                    <Text style={styles.removeLogoText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.logoPlaceholder}>
+                  <ImageIcon size={40} color={theme.colors.textSecondary} />
+                  <Text style={styles.logoPlaceholderText}>
+                    {uploadingLogo ? 'Chargement...' : 'Télécharger un logo'}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* ✅ Adresse avec GPS moderne */}
+            <TouchableOpacity
+              onPress={() => setShowGPSModal(true)}
+              disabled={loading}
+              style={[styles.input, styles.gpsButton]}
+            >
+              <View style={styles.gpsButtonContent}>
+                <MapPin size={20} color={theme.colors.textSecondary} />
+                <Text style={[styles.gpsButtonText, !form.partner_address && styles.gpsButtonTextPlaceholder]}>
+                  {form.partner_address || 'Sélectionner l\'adresse avec GPS *'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Informations de connexion du partenaire */}
+            <View style={styles.divider} />
+
+            <TextInput
+              label="Adresse email du partenaire *"
               value={form.email}
               onChangeText={(text) => setForm({ ...form, email: text })}
               keyboardType="email-address"
@@ -300,80 +450,75 @@ const PartnerRegisterScreen: React.FC = () => {
                 </View>
               )}
             </View>
-          </Card.Content>
-        </Card>
 
-        {/* ✅ SECTION 2: Informations de l'établissement (structure) */}
-        <Card style={styles.formCard}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              <Building size={20} color={theme.colors.primary} />
-              <Title style={styles.sectionTitle}>Informations de votre établissement</Title>
-            </View>
-            <Paragraph style={styles.sectionSubtitle}>
-              Détails de votre structure professionnelle
-            </Paragraph>
+            {/* ✅ NOUVEAU: Champs conditionnels pour établissementscolaire */}
+            {form.partner_type === 'etablissementscolaire' && (
+              <>
+                <Text style={styles.label}>Type d'établissement scolaire *</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={form.etablissement_type}
+                    onValueChange={(value) => setForm({ ...form, etablissement_type: value })}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Sélectionnez..." value="" />
+                    <Picker.Item label="Primaire" value="primaire" />
+                    <Picker.Item label="Secondaire" value="secondaire" />
+                    <Picker.Item label="Supérieur (Université)" value="superieur" />
+                    <Picker.Item label="École de Formation" value="formation" />
+                  </Picker>
+                </View>
 
-            <Text style={styles.label}>Type d'établissement *</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={form.partner_type}
-                onValueChange={(value) => setForm({ ...form, partner_type: value })}
-                style={styles.picker}
-              >
-                <Picker.Item label="Sélectionnez un type..." value="" />
-                {partnerTypes.map((type) => (
-                  <Picker.Item key={type.value} label={type.label} value={type.value} />
-                ))}
-              </Picker>
-            </View>
+                <TextInput
+                  label="Filières proposées (séparées par des virgules)"
+                  value={form.filieres.join(', ')}
+                  onChangeText={(text) => setForm({ ...form, filieres: text.split(',').map(f => f.trim()).filter(Boolean) })}
+                  placeholder="Ex: Sciences, Littérature, Technique, Commerce..."
+                  multiline
+                  numberOfLines={2}
+                  disabled={loading}
+                  style={[styles.input, styles.textArea]}
+                />
 
-            <TextInput
-              label="Nom de l'établissement *"
-              value={form.partner_name}
-              onChangeText={(text) => setForm({ ...form, partner_name: text })}
-              disabled={loading}
-              style={styles.input}
-              left={<TextInput.Icon icon={() => <Building size={20} color={theme.colors.textSecondary} />} />}
-            />
+                <TextInput
+                  label="Programmes scolaires (séparés par des virgules)"
+                  value={form.programmes_scolaires.join(', ')}
+                  onChangeText={(text) => setForm({ ...form, programmes_scolaires: text.split(',').map(p => p.trim()).filter(Boolean) })}
+                  placeholder="Ex: Baccalauréat, BTS, Licence, Master..."
+                  multiline
+                  numberOfLines={2}
+                  disabled={loading}
+                  style={[styles.input, styles.textArea]}
+                />
 
-            <TextInput
-              label="Téléphone de l'établissement"
-              value={form.partner_phone}
-              onChangeText={(text) => setForm({ ...form, partner_phone: text })}
-              keyboardType="phone-pad"
-              disabled={loading}
-              style={styles.input}
-              left={<TextInput.Icon icon={() => <Phone size={20} color={theme.colors.textSecondary} />} />}
-            />
-
-            <TextInput
-              label="Adresse complète"
-              value={form.partner_address}
-              onChangeText={(text) => setForm({ ...form, partner_address: text })}
-              multiline
-              numberOfLines={3}
-              disabled={loading}
-              style={[styles.input, styles.textArea]}
-              left={<TextInput.Icon icon={() => <MapPin size={20} color={theme.colors.textSecondary} />} />}
-            />
-
-            <LocationSelector
-              label="Ville"
-              value={form.partner_city}
-              onChange={(location) => setForm({ ...form, partner_city: location })}
-              scope="city"
-            />
+                <TextInput
+                  label="Concours organisés (séparés par des virgules)"
+                  value={form.concours_organises.join(', ')}
+                  onChangeText={(text) => setForm({ ...form, concours_organises: text.split(',').map(c => c.trim()).filter(Boolean) })}
+                  placeholder="Ex: Concours d'entrée en 6ème, Concours d'entrée en 1ère..."
+                  multiline
+                  numberOfLines={2}
+                  disabled={loading}
+                  style={[styles.input, styles.textArea]}
+                />
+              </>
+            )}
           </Card.Content>
         </Card>
 
         <TouchableOpacity
           onPress={handleSubmit}
-          disabled={loading}
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+          disabled={loading || !form.partner_type || form.partner_type.trim() === ''}
+          style={[
+            styles.submitButton, 
+            (loading || !form.partner_type || form.partner_type.trim() === '') && styles.submitButtonDisabled
+          ]}
         >
           <Text style={styles.submitButtonText}>
-            {loading ? 'Inscription en cours...' : "S'inscrire comme partenaire"}
+            {loading ? 'Inscription en cours...' : 
+             (!form.partner_type || form.partner_type.trim() === '') ? 
+             'Sélectionnez un type d\'établissement' : 
+             "S'inscrire comme partenaire"}
           </Text>
         </TouchableOpacity>
 
@@ -384,6 +529,54 @@ const PartnerRegisterScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Modal GPS moderne pour sélectionner l'adresse */}
+      <ModernGPSModal
+        visible={showGPSModal}
+        onClose={() => setShowGPSModal(false)}
+        onSelect={async (coordinatesString) => {
+          try {
+            // Parser les coordonnées depuis le format string "lat,lng"
+            const firstPoint = coordinatesString.split('|')[0].split(',');
+            if (firstPoint.length === 2) {
+              const lat = parseFloat(firstPoint[0]);
+              const lng = parseFloat(firstPoint[1]);
+              
+              if (!isNaN(lat) && !isNaN(lng)) {
+                // Stocker les coordonnées GPS
+                setForm({ ...form, partner_gps: { lat, lng } });
+                
+                // Faire un géocodage inverse pour obtenir l'adresse
+                try {
+                  const geocodeResult = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                  if (geocodeResult.length > 0) {
+                    const address = geocodeResult[0];
+                    const formattedAddress = `${address.street || ''} ${address.streetNumber || ''}, ${address.city || ''}, ${address.region || ''}, ${address.country || ''}`.trim();
+                    setForm({ ...form, partner_address: formattedAddress, partner_gps: { lat, lng } });
+                    if (address.country) {
+                      setForm(prev => ({ ...prev, partner_country: address.country || '' }));
+                    }
+                  } else {
+                    // Fallback si pas de résultat de géocodage
+                    setForm({ ...form, partner_address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`, partner_gps: { lat, lng } });
+                  }
+                } catch (geocodeError) {
+                  console.warn('[PartnerRegisterScreen] Erreur géocodage inverse:', geocodeError);
+                  // Fallback avec coordonnées
+                  setForm({ ...form, partner_address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`, partner_gps: { lat, lng } });
+                }
+              }
+            }
+            setShowGPSModal(false);
+          } catch (error) {
+            console.error('[PartnerRegisterScreen] Erreur sélection GPS:', error);
+            Alert.alert('Erreur', 'Impossible de traiter la localisation sélectionnée');
+          }
+        }}
+        currentLocation={form.partner_gps}
+        title="Sélectionner l'adresse de l'établissement"
+        allowZoneSelection={false}
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -474,6 +667,22 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
     color: theme.colors.text,
+  },
+  pickerContainerRequired: {
+    borderColor: '#F44336',
+    borderWidth: 2,
+    backgroundColor: '#FFEBEE',
+  },
+  requiredAsterisk: {
+    color: '#F44336',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  helperText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#F44336',
+    fontStyle: 'italic',
   },
   passwordContainer: {
     marginBottom: 16,
@@ -576,6 +785,87 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     color: '#F44336',
     fontWeight: '500',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: 20,
+  },
+  gpsButton: {
+    marginBottom: 16,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 8,
+    padding: 0,
+    minHeight: 56,
+    justifyContent: 'center',
+  },
+  gpsButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  gpsButtonText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: theme.colors.text,
+  },
+  gpsButtonTextPlaceholder: {
+    color: theme.colors.textSecondary,
+  },
+  logoUploadButton: {
+    marginBottom: 16,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 120,
+  },
+  logoUploadButtonDisabled: {
+    opacity: 0.5,
+  },
+  logoPreview: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  removeLogoButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#F44336',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeLogoText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  logoPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoPlaceholderText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
   },
 });
 

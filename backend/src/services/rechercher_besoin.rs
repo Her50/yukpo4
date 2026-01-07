@@ -174,6 +174,8 @@ async fn search_services_fallback(
         })?;
 
     // ✅ OPTIMISÉ: Calculer les scores pour tous les services trouvés (une seule fois au lieu de N fois)
+    // ✅ NOTE: Le score des produits est calculé dans la requête SQL via service_products
+    // Plus besoin de calculer manuellement ici car service_products est déjà utilisé dans la requête SQL principale
     let mut all_results = Vec::new();
     for service in services {
         let data: Value = service.data;
@@ -220,55 +222,9 @@ async fn search_services_fallback(
                 }
             }
 
-            // Bonus pour correspondance dans les produits
-            if let Some(produits) = data.get("produits") {
-                let produits_array = if produits.is_array() {
-                    produits.as_array()
-                } else if let Some(valeur) = produits.get("valeur") {
-                    valeur.as_array()
-                } else {
-                    None
-                };
-
-                if let Some(produits_arr) = produits_array {
-                    for product in produits_arr {
-                        // Nom du produit (poids élevé)
-                        if let Some(nom) = product.get("nom").and_then(|v| v.as_str()) {
-                            if nom.to_lowercase().contains(&term_lower) {
-                                score += 0.4;
-                            }
-                        } else if let Some(name) = product.get("name").and_then(|v| v.as_str()) {
-                            if name.to_lowercase().contains(&term_lower) {
-                                score += 0.4;
-                            }
-                        }
-                        // Description du produit
-                        if let Some(desc) = product.get("description").and_then(|v| v.as_str()) {
-                            if desc.to_lowercase().contains(&term_lower) {
-                                score += 0.25;
-                            }
-                        }
-                        // Type de produit
-                        if let Some(ptype) = product.get("type").and_then(|v| v.as_str()) {
-                            if ptype.to_lowercase().contains(&term_lower) {
-                                score += 0.3;
-                            }
-                        }
-                        // Marque
-                        if let Some(marque) = product.get("marque").and_then(|v| v.as_str()) {
-                            if marque.to_lowercase().contains(&term_lower) {
-                                score += 0.25;
-                            }
-                        }
-                        // Modèle
-                        if let Some(modele) = product.get("modele").and_then(|v| v.as_str()) {
-                            if modele.to_lowercase().contains(&term_lower) {
-                                score += 0.25;
-                            }
-                        }
-                    }
-                }
-            }
+            // ✅ SUPPRIMÉ: Bonus pour correspondance dans les produits depuis service.data->produits
+            // Le score des produits est maintenant calculé dans la requête SQL via service_products
+            // Plus besoin de calculer manuellement ici car service_products est déjà utilisé dans la requête SQL
         }
 
         // Bonus pour services récents
@@ -679,7 +635,15 @@ pub async fn rechercher_besoin_direct(
         usage_count: Option<i32>, // ✅ CORRIGÉ: INTEGER (INT4) dans DB, pas i64 (INT8)
     }
 
-    let (service_user_info_map_result, product_info_map_result, media_map_result) = tokio::join!(
+    // ✅ NOUVEAU 2026-01-07: Structure pour récupérer les produits depuis service_products
+    #[derive(sqlx::FromRow)]
+    struct ServiceProductRow {
+        service_id: i32,
+        product_index: i32,
+        product_data: serde_json::Value,
+    }
+
+    let (service_user_info_map_result, product_info_map_result, media_map_result, service_products_map_result) = tokio::join!(
         // BATCH QUERY 1: Récupérer les informations service ET utilisateur
         async {
             sqlx::query_as::<_, ServiceUserInfoRow>(
@@ -743,7 +707,7 @@ pub async fn rechercher_besoin_direct(
                     >>()
             })
         },
-        // BATCH QUERY 2: Récupérer les informations produit
+        // BATCH QUERY 2: Récupérer les informations produit depuis autocomplete_characteristics
         async {
             sqlx::query_as::<_, ProductInfoRow>(
                 r#"
@@ -833,12 +797,54 @@ pub async fn rechercher_besoin_direct(
                 }
                 media_map
             })
+        },
+        // ✅ NOUVEAU BATCH QUERY 4: Récupérer les produits depuis service_products (nouveau système)
+        async {
+            sqlx::query_as::<_, ServiceProductRow>(
+                r#"
+                SELECT 
+                    service_id,
+                    product_index,
+                    product_data
+                FROM service_products
+                WHERE service_id = ANY($1::int[])
+                AND is_active = true
+                ORDER BY service_id, product_index ASC
+                "#,
+            )
+            .bind(&service_ids)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| {
+                crate::core::types::AppError::Internal(format!(
+                    "Erreur batch query service_products: {}",
+                    e
+                ))
+            })
+            .map(|rows| {
+                let mut products_map: HashMap<i32, Vec<serde_json::Value>> = HashMap::new();
+                for row in rows {
+                    let service_id = row.service_id;
+                    let mut product_data = row.product_data;
+                    // ✅ Ajouter product_index et service_id au product_data pour compatibilité
+                    if let Some(obj) = product_data.as_object_mut() {
+                        obj.insert("product_index".to_string(), json!(row.product_index));
+                        obj.insert("service_id".to_string(), json!(service_id));
+                    }
+                    products_map
+                        .entry(service_id)
+                        .or_insert_with(Vec::new)
+                        .push(product_data);
+                }
+                products_map
+            })
         }
     );
 
     let service_user_info_map = service_user_info_map_result?;
     let product_info_map = product_info_map_result?;
     let media_map = media_map_result?;
+    let service_products_map = service_products_map_result?; // ✅ NOUVEAU: Produits depuis service_products
 
     // Créer user_info_map pour compatibilité avec le code existant
     let user_info_map: HashMap<i32, (i32, Option<String>, Option<String>)> = service_user_info_map
@@ -1057,204 +1063,220 @@ pub async fn rechercher_besoin_direct(
             }
         }
 
-        // ✅ NOUVEAU: Extraire aussi les images/vidéos et variations depuis service.data.produits si disponibles
-        // Le ProductCard cherche aussi dans product.images, product.videos, product.variants, product.has_variant
-        if let Some(data_obj) = matched_service.data.as_object() {
-            // Chercher dans data.produits (array ou object avec valeur)
-            if let Some(produits) = data_obj.get("produits") {
-                let produits_array = if produits.is_array() {
-                    Some(produits.as_array().unwrap())
-                } else if let Some(valeur) = produits.get("valeur") {
-                    valeur.as_array()
+        // ✅ CORRIGÉ 2026-01-07: Utiliser UNIQUEMENT les produits depuis service_products (nouveau système)
+        // Remplacer complètement service.data->produits par les produits depuis service_products
+        // Plus de lien avec l'ancien système (service.data->produits)
+        if let Some(service_products_list) = service_products_map.get(&service_id) {
+            if !service_products_list.is_empty() {
+                // Convertir les produits depuis service_products en format compatible
+                let produits_from_table: Vec<Value> = service_products_list.iter().cloned().collect();
+                
+                // Récupérer data ou le créer
+                let data_value = enriched_result.get_mut("data").cloned();
+                let mut data_obj = if let Some(d) = data_value {
+                    if let Some(obj) = d.as_object() {
+                        obj.clone()
+                    } else {
+                        serde_json::Map::new()
+                    }
                 } else {
-                    None
+                    serde_json::Map::new()
                 };
-
-                if let Some(produits_arr) = produits_array {
-                    // Prendre le premier produit pour les images/vidéos/variations
-                    if let Some(first_product) = produits_arr.first() {
-                        if let Some(product_obj) = first_product.as_object() {
-                            // Extraire images du produit
-                            if let Some(product_images) = product_obj.get("images") {
-                                if product_images.is_array() {
-                                    let images_vec: Vec<String> = product_images
-                                        .as_array()
-                                        .unwrap()
-                                        .iter()
-                                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                        .collect();
-                                    if !images_vec.is_empty() {
-                                        // Fusionner avec les images existantes
-                                        let existing_images: Vec<serde_json::Value> =
-                                            enriched_result["images"]
-                                                .as_array()
-                                                .map(|arr| arr.iter().cloned().collect())
-                                                .unwrap_or_else(Vec::new);
-                                        let mut merged = existing_images;
-                                        for img in images_vec {
-                                            // ✅ OPTIMISÉ: Transformer le chemin en URL CDN si media_storage disponible
-                                            let img_url = if let Some(ref storage) = media_storage {
-                                                if !img.starts_with("http://") && !img.starts_with("https://") {
-                                                    storage.build_public_url(&img)
-                                                } else {
-                                                    img.clone()
-                                                }
+                
+                // ✅ REMPLACER complètement produits par ceux de service_products (pas de fusion avec ancien système)
+                data_obj.insert("produits".to_string(), json!({
+                    "type_donnee": "array",
+                    "valeur": produits_from_table
+                }));
+                
+                // Mettre à jour enriched_result avec le data modifié
+                enriched_result["data"] = json!(data_obj);
+                
+                // ✅ CORRIGÉ 2026-01-07: Extraire les images/vidéos et variations depuis les produits service_products
+                // Le ProductCard cherche dans product.images, product.videos, product.variants, product.has_variant
+                // Prendre le premier produit pour les images/vidéos/variations
+                if let Some(first_product) = service_products_list.first() {
+                    if let Some(product_obj) = first_product.as_object() {
+                        // Extraire images du produit
+                        if let Some(product_images) = product_obj.get("images") {
+                            if product_images.is_array() {
+                                let images_vec: Vec<String> = product_images
+                                    .as_array()
+                                    .unwrap()
+                                    .iter()
+                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                    .collect();
+                                if !images_vec.is_empty() {
+                                    // Fusionner avec les images existantes
+                                    let existing_images: Vec<serde_json::Value> =
+                                        enriched_result["images"]
+                                            .as_array()
+                                            .map(|arr| arr.iter().cloned().collect())
+                                            .unwrap_or_else(Vec::new);
+                                    let mut merged = existing_images;
+                                    for img in images_vec {
+                                        // ✅ OPTIMISÉ: Transformer le chemin en URL CDN si media_storage disponible
+                                        let img_url = if let Some(ref storage) = media_storage {
+                                            if !img.starts_with("http://") && !img.starts_with("https://") {
+                                                storage.build_public_url(&img)
                                             } else {
                                                 img.clone()
-                                            };
-                                            let img_json = json!(img_url);
-                                            if !merged.contains(&img_json) {
-                                                merged.push(img_json);
                                             }
+                                        } else {
+                                            img.clone()
+                                        };
+                                        let img_json = json!(img_url);
+                                        if !merged.contains(&img_json) {
+                                            merged.push(img_json);
                                         }
-                                        enriched_result["images"] = json!(merged);
                                     }
+                                    enriched_result["images"] = json!(merged);
                                 }
                             }
-                            // Extraire vidéos du produit
-                            if let Some(product_videos) = product_obj.get("videos") {
-                                if product_videos.is_array() {
-                                    let videos_vec: Vec<String> = product_videos
-                                        .as_array()
-                                        .unwrap()
-                                        .iter()
-                                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                        .collect();
-                                    if !videos_vec.is_empty() {
-                                        // Fusionner avec les vidéos existantes
-                                        let existing_videos: Vec<serde_json::Value> =
-                                            enriched_result["videos"]
-                                                .as_array()
-                                                .map(|arr| arr.iter().cloned().collect())
-                                                .unwrap_or_else(Vec::new);
-                                        let mut merged = existing_videos;
-                                        for vid in videos_vec {
-                                            // ✅ OPTIMISÉ: Transformer le chemin en URL CDN si media_storage disponible
-                                            let vid_url = if let Some(ref storage) = media_storage {
-                                                if !vid.starts_with("http://") && !vid.starts_with("https://") {
-                                                    storage.build_public_url(&vid)
-                                                } else {
-                                                    vid.clone()
-                                                }
+                        }
+                        // Extraire vidéos du produit
+                        if let Some(product_videos) = product_obj.get("videos") {
+                            if product_videos.is_array() {
+                                let videos_vec: Vec<String> = product_videos
+                                    .as_array()
+                                    .unwrap()
+                                    .iter()
+                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                    .collect();
+                                if !videos_vec.is_empty() {
+                                    // Fusionner avec les vidéos existantes
+                                    let existing_videos: Vec<serde_json::Value> =
+                                        enriched_result["videos"]
+                                            .as_array()
+                                            .map(|arr| arr.iter().cloned().collect())
+                                            .unwrap_or_else(Vec::new);
+                                    let mut merged = existing_videos;
+                                    for vid in videos_vec {
+                                        // ✅ OPTIMISÉ: Transformer le chemin en URL CDN si media_storage disponible
+                                        let vid_url = if let Some(ref storage) = media_storage {
+                                            if !vid.starts_with("http://") && !vid.starts_with("https://") {
+                                                storage.build_public_url(&vid)
                                             } else {
                                                 vid.clone()
-                                            };
-                                            let vid_json = json!(vid_url);
-                                            if !merged.contains(&vid_json) {
-                                                merged.push(vid_json);
                                             }
-                                        }
-                                        enriched_result["videos"] = json!(merged);
-                                    }
-                                }
-                            }
-
-                            // ✅ AMÉLIORÉ 2025-11-29: Extraire les variations de prix du produit depuis multiple sources
-                            let mut has_variants = false;
-
-                            // 1. Chercher dans variants (format standard)
-                            if let Some(variants) = product_obj.get("variants") {
-                                if variants.is_array() && variants.as_array().unwrap().len() > 0 {
-                                    enriched_result["has_variant"] = json!(true);
-                                    enriched_result["variants"] = variants.clone();
-                                    has_variants = true;
-                                    // Extraire aussi variant_dimension si disponible
-                                    if let Some(variant_dimension) =
-                                        product_obj.get("variant_dimension")
-                                    {
-                                        enriched_result["variant_dimension"] =
-                                            variant_dimension.clone();
-                                    } else if let Some(variant_dimension) =
-                                        product_obj.get("dimension")
-                                    {
-                                        enriched_result["variant_dimension"] =
-                                            variant_dimension.clone();
-                                    }
-                                }
-                            }
-
-                            // 2. Si variants manquant, chercher dans variations (format alternatif)
-                            if !has_variants {
-                                if let Some(variations) = product_obj.get("variations") {
-                                    if variations.is_array()
-                                        && variations.as_array().unwrap().len() > 0
-                                    {
-                                        enriched_result["has_variant"] = json!(true);
-                                        enriched_result["variants"] = variations.clone();
-                                        has_variants = true;
-                                    }
-                                }
-                            }
-
-                            // 3. ✅ NOUVEAU: Si toujours manquant, chercher dans variation_prix ou variabilite_prix
-                            if !has_variants {
-                                if let Some(variation_prix) = product_obj.get("variation_prix") {
-                                    // Format: variation_prix peut être un objet avec modalites
-                                    if let Some(modalites) = variation_prix.get("modalites") {
-                                        if modalites.is_array()
-                                            && modalites.as_array().unwrap().len() > 0
-                                        {
-                                            // Transformer modalites en format variants
-                                            let variants: Vec<serde_json::Value> = modalites.as_array().unwrap()
-                                                .iter()
-                                                .filter_map(|m| {
-                                                    if let Some(modalite_obj) = m.as_object() {
-                                                        Some(json!({
-                                                            "prix": modalite_obj.get("prix").or_else(|| modalite_obj.get("price")),
-                                                            "devise": modalite_obj.get("devise").or_else(|| modalite_obj.get("currency")).unwrap_or(&json!("XAF")),
-                                                            "stock": modalite_obj.get("stock"),
-                                                            "dimension": modalite_obj.get("dimension").or_else(|| modalite_obj.get("variant_dimension")),
-                                                        }))
-                                                    } else {
-                                                        None
-                                                    }
-                                                })
-                                                .collect();
-                                            if !variants.is_empty() {
-                                                enriched_result["has_variant"] = json!(true);
-                                                enriched_result["variants"] = json!(variants);
-                                                if let Some(dimension) =
-                                                    variation_prix.get("dimension")
-                                                {
-                                                    enriched_result["variant_dimension"] =
-                                                        dimension.clone();
-                                                }
-                                            }
+                                        } else {
+                                            vid.clone()
+                                        };
+                                        let vid_json = json!(vid_url);
+                                        if !merged.contains(&vid_json) {
+                                            merged.push(vid_json);
                                         }
                                     }
-                                } else if let Some(variabilite_prix) =
-                                    product_obj.get("variabilite_prix")
+                                    enriched_result["videos"] = json!(merged);
+                                }
+                            }
+                        }
+
+                        // ✅ AMÉLIORÉ 2025-11-29: Extraire les variations de prix du produit depuis multiple sources
+                        let mut has_variants = false;
+
+                        // 1. Chercher dans variants (format standard)
+                        if let Some(variants) = product_obj.get("variants") {
+                            if variants.is_array() && variants.as_array().unwrap().len() > 0 {
+                                enriched_result["has_variant"] = json!(true);
+                                enriched_result["variants"] = variants.clone();
+                                has_variants = true;
+                                // Extraire aussi variant_dimension si disponible
+                                if let Some(variant_dimension) =
+                                    product_obj.get("variant_dimension")
                                 {
-                                    // Format: variabilite_prix peut être un objet avec modalites
-                                    if let Some(modalites) = variabilite_prix.get("modalites") {
-                                        if modalites.is_array()
-                                            && modalites.as_array().unwrap().len() > 0
-                                        {
-                                            // Transformer modalites en format variants
-                                            let variants: Vec<serde_json::Value> = modalites.as_array().unwrap()
-                                                .iter()
-                                                .filter_map(|m| {
-                                                    if let Some(modalite_obj) = m.as_object() {
-                                                        Some(json!({
-                                                            "prix": modalite_obj.get("prix").or_else(|| modalite_obj.get("price")),
-                                                            "devise": modalite_obj.get("devise").or_else(|| modalite_obj.get("currency")).unwrap_or(&json!("XAF")),
-                                                            "stock": modalite_obj.get("stock"),
-                                                            "dimension": modalite_obj.get("dimension").or_else(|| modalite_obj.get("variant_dimension")),
-                                                        }))
-                                                    } else {
-                                                        None
-                                                    }
-                                                })
-                                                .collect();
-                                            if !variants.is_empty() {
-                                                enriched_result["has_variant"] = json!(true);
-                                                enriched_result["variants"] = json!(variants);
-                                                if let Some(dimension) =
-                                                    variabilite_prix.get("dimension")
-                                                {
-                                                    enriched_result["variant_dimension"] =
-                                                        dimension.clone();
+                                    enriched_result["variant_dimension"] =
+                                        variant_dimension.clone();
+                                } else if let Some(variant_dimension) =
+                                    product_obj.get("dimension")
+                                {
+                                    enriched_result["variant_dimension"] =
+                                        variant_dimension.clone();
+                                }
+                            }
+                        }
+
+                        // 2. Si variants manquant, chercher dans variations (format alternatif)
+                        if !has_variants {
+                            if let Some(variations) = product_obj.get("variations") {
+                                if variations.is_array()
+                                    && variations.as_array().unwrap().len() > 0
+                                {
+                                    enriched_result["has_variant"] = json!(true);
+                                    enriched_result["variants"] = variations.clone();
+                                    has_variants = true;
+                                }
+                            }
+                        }
+
+                        // 3. ✅ NOUVEAU: Si toujours manquant, chercher dans variation_prix ou variabilite_prix
+                        if !has_variants {
+                            if let Some(variation_prix) = product_obj.get("variation_prix") {
+                                // Format: variation_prix peut être un objet avec modalites
+                                if let Some(modalites) = variation_prix.get("modalites") {
+                                    if modalites.is_array()
+                                        && modalites.as_array().unwrap().len() > 0
+                                    {
+                                        // Transformer modalites en format variants
+                                        let variants: Vec<serde_json::Value> = modalites.as_array().unwrap()
+                                            .iter()
+                                            .filter_map(|m| {
+                                                if let Some(modalite_obj) = m.as_object() {
+                                                    Some(json!({
+                                                        "prix": modalite_obj.get("prix").or_else(|| modalite_obj.get("price")),
+                                                        "devise": modalite_obj.get("devise").or_else(|| modalite_obj.get("currency")).unwrap_or(&json!("XAF")),
+                                                        "stock": modalite_obj.get("stock"),
+                                                        "dimension": modalite_obj.get("dimension").or_else(|| modalite_obj.get("variant_dimension")),
+                                                    }))
+                                                } else {
+                                                    None
                                                 }
+                                            })
+                                            .collect();
+                                        if !variants.is_empty() {
+                                            enriched_result["has_variant"] = json!(true);
+                                            enriched_result["variants"] = json!(variants);
+                                            if let Some(dimension) =
+                                                variation_prix.get("dimension")
+                                            {
+                                                enriched_result["variant_dimension"] =
+                                                    dimension.clone();
+                                            }
+                                        }
+                                    }
+                                }
+                            } else if let Some(variabilite_prix) =
+                                product_obj.get("variabilite_prix")
+                            {
+                                // Format: variabilite_prix peut être un objet avec modalites
+                                if let Some(modalites) = variabilite_prix.get("modalites") {
+                                    if modalites.is_array()
+                                        && modalites.as_array().unwrap().len() > 0
+                                    {
+                                        // Transformer modalites en format variants
+                                        let variants: Vec<serde_json::Value> = modalites.as_array().unwrap()
+                                            .iter()
+                                            .filter_map(|m| {
+                                                if let Some(modalite_obj) = m.as_object() {
+                                                    Some(json!({
+                                                        "prix": modalite_obj.get("prix").or_else(|| modalite_obj.get("price")),
+                                                        "devise": modalite_obj.get("devise").or_else(|| modalite_obj.get("currency")).unwrap_or(&json!("XAF")),
+                                                        "stock": modalite_obj.get("stock"),
+                                                        "dimension": modalite_obj.get("dimension").or_else(|| modalite_obj.get("variant_dimension")),
+                                                    }))
+                                                } else {
+                                                    None
+                                                }
+                                            })
+                                            .collect();
+                                        if !variants.is_empty() {
+                                            enriched_result["has_variant"] = json!(true);
+                                            enriched_result["variants"] = json!(variants);
+                                            if let Some(dimension) =
+                                                variabilite_prix.get("dimension")
+                                            {
+                                                enriched_result["variant_dimension"] =
+                                                    dimension.clone();
                                             }
                                         }
                                     }

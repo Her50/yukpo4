@@ -3,22 +3,17 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Modal,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import { NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector'; // ✅ NOUVEAU 2026-01-04: Composant de localisation intelligent
-import ModernGPSModal from '../../components/ModernGPSModal'; // ✅ NOUVEAU: Modal GPS pour localisation précise
 import { useAuth } from '../../contexts/AuthContext';
-import { useLocation } from '../../contexts/LocationContext';
-import { apiDelete, apiGet, apiPost, apiPut } from '../../services/api';
+import { apiDelete, apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 interface DeliveryPartner {
@@ -47,48 +42,9 @@ interface DeliveryPartner {
 const DeliveryPartnersAdminScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
-    const { location } = useLocation();
     const [partners, setPartners] = useState<DeliveryPartner[]>([]);
     const [loading, setLoading] = useState(true);
-    const [editingPartner, setEditingPartner] = useState<DeliveryPartner | null>(null);
-    const [showForm, setShowForm] = useState(false);
-    const [showPartnerTypePicker, setShowPartnerTypePicker] = useState(false);
-    const [showGPSModal, setShowGPSModal] = useState(false);
-    const [selectedCity, setSelectedCity] = useState<LocationObject | null>(null);
-    const [formData, setFormData] = useState({
-        name: '',
-        description: '',
-        partner_type: 'livraison', // ✅ NOUVEAU 2026-01-04: Type de partenaire par défaut
-        contact_email: '',
-        contact_phone: '',
-        address: '',
-        city: '',
-        country: '',
-        continent: '',
-        website: '',
-        logo_url: '',
-        // ✅ NOUVEAU 2026-01-04: Localisation intelligente du partenaire
-        location_latitude: undefined as number | undefined,
-        location_longitude: undefined as number | undefined,
-        location_address: '' as string | undefined,
-        // ✅ NOUVEAU: GPS précis pour localisation exacte
-        gps: undefined as string | undefined,
-        is_active: true,
-    });
 
-    const partnerTypes = [
-        { value: 'livraison', label: 'Livraison' },
-        { value: 'pharmacie', label: 'Pharmacie' },
-        { value: 'hopital', label: 'Hôpital' },
-        { value: 'laboratoire', label: 'Laboratoire' },
-        { value: 'banquesang', label: 'Banque de Sang' }, // ✅ NOUVEAU: Type partenaire banque de sang
-        { value: 'agence de voyage', label: 'Agence de voyage' },
-        { value: 'demenagement', label: 'Déménagement' },
-        { value: 'transport', label: 'Transport' },
-        { value: 'assureur', label: 'Assureur' }, // ✅ NOUVEAU 2026-01-04
-        { value: 'supermarche', label: 'Supermarché' }, // ✅ NOUVEAU 2026-01-04
-        { value: 'telecom', label: 'Télécom' }, // ✅ NOUVEAU 2026-01-04
-    ];
 
     useEffect(() => {
         if (user?.role !== 'admin') {
@@ -114,61 +70,14 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
     };
 
     const handleCreate = () => {
-        setEditingPartner(null);
-        setSelectedCity(null);
-        setFormData({
-            name: '',
-            description: '',
-            partner_type: 'livraison', // ✅ NOUVEAU 2026-01-04: Type par défaut
-            contact_email: '',
-            contact_phone: '',
-            address: '',
-            city: '',
-            country: '',
-            continent: '',
-            website: '',
-            logo_url: '',
-            location_latitude: undefined,
-            location_longitude: undefined,
-            location_address: '',
-            gps: undefined,
-            is_active: true,
-        });
-        setShowForm(true);
+        // ✅ NOUVEAU: Naviguer vers l'écran de création de partenaire
+        navigation.navigate('PartnerRegister' as never);
     };
 
     const handleEdit = (partner: DeliveryPartner) => {
-        setEditingPartner(partner);
-        // ✅ CORRIGÉ: Initialiser selectedCity avec la ville du partenaire
-        setSelectedCity(partner.city ? {
-            raw: partner.city,
-            place_name: partner.city,
-            components: {
-                ville: partner.city,
-                pays: partner.country,
-            }
-        } : null);
-        setFormData({
-            name: partner.name,
-            description: partner.description || '',
-            partner_type: partner.partner_type || 'livraison', // ✅ NOUVEAU 2026-01-04: Type de partenaire
-            contact_email: partner.contact_email || '',
-            contact_phone: partner.contact_phone || '',
-            address: partner.address || '',
-            city: partner.city || '',
-            country: partner.country || '',
-            continent: partner.continent || '',
-            website: partner.website || '',
-            logo_url: partner.logo_url || '',
-            location_latitude: partner.location_latitude,
-            location_longitude: partner.location_longitude,
-            location_address: partner.location_address || '',
-            gps: partner.location_latitude && partner.location_longitude
-                ? `${partner.location_latitude},${partner.location_longitude}`
-                : undefined,
-            is_active: partner.is_active,
-        });
-        setShowForm(true);
+        // ✅ NOUVEAU: Pour l'édition, on peut aussi naviguer vers l'écran de création avec les données pré-remplies
+        // Pour l'instant, on garde juste la suppression et on utilise l'écran de création pour créer de nouveaux partenaires
+        Alert.alert('Information', 'L\'édition des partenaires sera disponible prochainement via l\'écran de création.');
     };
 
     const handleDelete = async (partnerId: number) => {
@@ -195,52 +104,6 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         );
     };
 
-    const handleSave = async () => {
-        if (!formData.name.trim()) {
-            Alert.alert('Erreur', 'Le nom est requis');
-            return;
-        }
-        if (!formData.country.trim()) {
-            Alert.alert('Erreur', 'Le pays est requis');
-            return;
-        }
-
-        try {
-            // ✅ NOUVEAU: Préparer les données avec GPS si disponible
-            const payload = {
-                ...formData,
-                // Si GPS est fourni, extraire lat/lng
-                location_latitude: formData.gps 
-                    ? parseFloat(formData.gps.split(',')[0])
-                    : formData.location_latitude,
-                location_longitude: formData.gps
-                    ? parseFloat(formData.gps.split(',')[1])
-                    : formData.location_longitude,
-            };
-            
-            let response;
-            if (editingPartner) {
-                response = await apiPut(`/api/delivery/partners/${editingPartner.id}`, payload);
-                Alert.alert('✅ Succès', 'Partenaire mis à jour avec succès');
-            } else {
-                response = await apiPost('/api/delivery/partners', payload);
-                Alert.alert('✅ Succès', 'Partenaire créé avec succès');
-            }
-            
-            // ✅ CORRECTION: Vérifier que la réponse est valide
-            console.log('[DeliveryPartnersAdminScreen] Réponse sauvegarde:', response);
-            
-            setShowForm(false);
-            // ✅ CORRECTION: Recharger la liste après un court délai pour s'assurer que la DB est à jour
-            setTimeout(() => {
-                loadPartners();
-            }, 500);
-        } catch (error: any) {
-            console.error('[DeliveryPartnersAdminScreen] Erreur sauvegarde:', error);
-            const errorMessage = error?.response?.data?.error || error?.message || 'Impossible de sauvegarder le partenaire';
-            Alert.alert('Erreur', errorMessage);
-        }
-    };
 
     if (loading) {
         return (
@@ -265,278 +128,6 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                         <SafeIcon name="plus" size={24} color={modernColors.primary} />
                     </TouchableOpacity>
                 </View>
-
-                {showForm && (
-                    <NativeCard style={styles.formCard}>
-                        <Text style={styles.formTitle}>
-                            {editingPartner ? 'Modifier le partenaire' : 'Nouveau partenaire'}
-                        </Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Nom *"
-                            value={formData.name}
-                            onChangeText={(text) => setFormData({ ...formData, name: text })}
-                        />
-                        <TextInput
-                            style={[styles.input, styles.textArea]}
-                            placeholder="Description"
-                            value={formData.description}
-                            onChangeText={(text) => setFormData({ ...formData, description: text })}
-                            multiline
-                            numberOfLines={3}
-                        />
-                        {/* ✅ NOUVEAU 2026-01-04: Sélecteur de type de partenaire - Liste déroulante */}
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Type de partenaire *</Text>
-                            <TouchableOpacity
-                                style={styles.pickerButton}
-                                onPress={() => setShowPartnerTypePicker(true)}
-                            >
-                                <Text style={[
-                                    styles.pickerButtonText,
-                                    !formData.partner_type && styles.pickerButtonPlaceholder
-                                ]}>
-                                    {formData.partner_type 
-                                        ? partnerTypes.find(t => t.value === formData.partner_type)?.label || formData.partner_type
-                                        : 'Sélectionner un type...'}
-                                </Text>
-                                <SafeIcon name="chevron-down" size={18} color={modernColors.textSecondary} />
-                            </TouchableOpacity>
-                            
-                            {/* Modal pour sélectionner le type */}
-                            <Modal
-                                visible={showPartnerTypePicker}
-                                transparent
-                                animationType="slide"
-                                onRequestClose={() => setShowPartnerTypePicker(false)}
-                            >
-                                <View style={styles.modalOverlay}>
-                                    <View style={styles.modalContent}>
-                                        <View style={styles.modalHeader}>
-                                            <Text style={styles.modalTitle}>Sélectionner un type de partenaire</Text>
-                                            <TouchableOpacity onPress={() => setShowPartnerTypePicker(false)}>
-                                                <SafeIcon name="x" size={24} color={modernColors.text} />
-                                            </TouchableOpacity>
-                                        </View>
-                                        <ScrollView style={styles.modalList}>
-                                            {partnerTypes.map((type) => (
-                                                <TouchableOpacity
-                                                    key={type.value}
-                                                    style={[
-                                                        styles.modalOption,
-                                                        formData.partner_type === type.value && styles.modalOptionSelected
-                                                    ]}
-                                                    onPress={() => {
-                                                        setFormData({ ...formData, partner_type: type.value });
-                                                        setShowPartnerTypePicker(false);
-                                                    }}
-                                                >
-                                                    <Text style={[
-                                                        styles.modalOptionText,
-                                                        formData.partner_type === type.value && styles.modalOptionTextSelected
-                                                    ]}>
-                                                        {type.label}
-                                                    </Text>
-                                                    {formData.partner_type === type.value && (
-                                                        <SafeIcon name="check" size={18} color={modernColors.primary} />
-                                                    )}
-                                                </TouchableOpacity>
-                                            ))}
-                                        </ScrollView>
-                                    </View>
-                                </View>
-                            </Modal>
-                        </View>
-                        {/* ✅ NOUVEAU 2026-01-04: Sélecteur de localisation intelligent */}
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Localisation du partenaire</Text>
-                            <LocationSelector
-                                label=""
-                                value={formData.location_address ? { raw: formData.location_address, place_name: formData.location_address } : ''}
-                                onSelect={(location: LocationObject) => {
-                                    setFormData({
-                                        ...formData,
-                                        location_latitude: location.coordinates?.lat,
-                                        location_longitude: location.coordinates?.lng,
-                                        location_address: location.raw || location.place_name || '',
-                                        // ✅ NOUVEAU: Extraire ville et pays depuis les composants si disponibles
-                                        city: location.components?.ville || formData.city,
-                                        country: location.components?.pays || formData.country,
-                                    });
-                                }}
-                                placeholder="Rechercher l'adresse du partenaire..."
-                                scope="all" // ✅ EXPLICITE: Recherche universelle pour adresse/lieu
-                            />
-                            {formData.location_address && (
-                                <Text style={styles.locationInfo}>
-                                    📍 {formData.location_address}
-                                </Text>
-                            )}
-                        </View>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Email de contact"
-                            value={formData.contact_email}
-                            onChangeText={(text) => setFormData({ ...formData, contact_email: text })}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Téléphone de contact"
-                            value={formData.contact_phone}
-                            onChangeText={(text) => setFormData({ ...formData, contact_phone: text })}
-                            keyboardType="phone-pad"
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Adresse"
-                            value={formData.address}
-                            onChangeText={(text) => setFormData({ ...formData, address: text })}
-                            multiline
-                        />
-                        {/* ✅ CORRIGÉ: Ville avec autocomplétion intelligente - Affichage correct de la valeur sélectionnée */}
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Ville</Text>
-                            <LocationSelector
-                                label=""
-                                value={selectedCity || (formData.city ? { raw: formData.city, place_name: formData.city } : '')}
-                                onSelect={(location: LocationObject) => {
-                                    setSelectedCity(location);
-                                    setFormData({
-                                        ...formData,
-                                        city: location.place_name || location.raw || '',
-                                        // ✅ Extraire le pays depuis les composants si disponible
-                                        country: location.components?.pays || formData.country,
-                                    });
-                                }}
-                                placeholder="Rechercher une ville..."
-                                scope="city" // ✅ EXPLICITE: Recherche de villes uniquement
-                            />
-                            {selectedCity && (
-                                <Text style={styles.locationInfo}>
-                                    ✅ Ville sélectionnée: {selectedCity.place_name || selectedCity.raw}
-                                </Text>
-                            )}
-                        </View>
-                        {/* ✅ NOUVEAU: Pays avec autocomplétion intelligente */}
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Pays *</Text>
-                            <LocationSelector
-                                label=""
-                                value={formData.country ? { raw: formData.country, place_name: formData.country } : ''}
-                                onSelect={(location: LocationObject) => {
-                                    setFormData({
-                                        ...formData,
-                                        country: location.place_name || location.raw || '',
-                                    });
-                                }}
-                                placeholder="Rechercher un pays..."
-                                scope="all" // ✅ EXPLICITE: Recherche universelle pour pays
-                            />
-                        </View>
-                        {/* ✅ NOUVEAU: Localisation GPS précise */}
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>📍 Localisation GPS précise (optionnel)</Text>
-                            <TouchableOpacity
-                                style={styles.gpsButton}
-                                onPress={() => setShowGPSModal(true)}
-                            >
-                                <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                                <Text style={styles.gpsButtonText}>
-                                    {formData.gps ? 'Localisation sélectionnée' : 'Sélectionner sur la carte'}
-                                </Text>
-                                <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
-                            </TouchableOpacity>
-                            {formData.gps && (
-                                <Text style={styles.gpsText}>{formData.gps}</Text>
-                            )}
-                            {formData.location_latitude && formData.location_longitude && !formData.gps && (
-                                <Text style={styles.gpsText}>
-                                    Coordonnées: {formData.location_latitude}, {formData.location_longitude}
-                                </Text>
-                            )}
-                        </View>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Continent (ex: Afrique, Europe, Asie...)"
-                            value={formData.continent}
-                            onChangeText={(text) => setFormData({ ...formData, continent: text })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Site web"
-                            value={formData.website}
-                            onChangeText={(text) => setFormData({ ...formData, website: text })}
-                            keyboardType="url"
-                            autoCapitalize="none"
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="URL du logo"
-                            value={formData.logo_url}
-                            onChangeText={(text) => setFormData({ ...formData, logo_url: text })}
-                            keyboardType="url"
-                            autoCapitalize="none"
-                        />
-                        <View style={styles.switchContainer}>
-                            <Text style={styles.switchLabel}>Actif</Text>
-                            <TouchableOpacity
-                                style={[
-                                    styles.switch,
-                                    formData.is_active && styles.switchActive,
-                                ]}
-                                onPress={() => setFormData({ ...formData, is_active: !formData.is_active })}
-                            >
-                                <View
-                                    style={[
-                                        styles.switchThumb,
-                                        formData.is_active && styles.switchThumbActive,
-                                    ]}
-                                />
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.formActions}>
-                            <NativeButton
-                                title="Annuler"
-                                variant="outline"
-                                onPress={() => setShowForm(false)}
-                            />
-                            <NativeButton
-                                title={editingPartner ? 'Modifier' : 'Créer'}
-                                variant="primary"
-                                onPress={handleSave}
-                            />
-                        </View>
-                    </NativeCard>
-                )}
-
-                {/* ✅ NOUVEAU: Modal GPS pour localisation précise */}
-                <ModernGPSModal
-                    visible={showGPSModal}
-                    onClose={() => setShowGPSModal(false)}
-                    onSelect={(coordinates: string) => {
-                        // Extraire lat/lng depuis les coordonnées
-                        const [lat, lng] = coordinates.split(',').map(Number);
-                        if (!isNaN(lat) && !isNaN(lng)) {
-                            setFormData(prev => ({
-                                ...prev,
-                                gps: coordinates,
-                                location_latitude: lat,
-                                location_longitude: lng,
-                            }));
-                        }
-                        setShowGPSModal(false);
-                    }}
-                    currentLocation={location ? {
-                        lat: location.coords.latitude,
-                        lng: location.coords.longitude
-                    } : (formData.location_latitude && formData.location_longitude ? {
-                        lat: formData.location_latitude,
-                        lng: formData.location_longitude
-                    } : null)}
-                    title="Sélectionner la localisation GPS précise"
-                />
 
                 {partners.length === 0 ? (
                     <NativeCard style={styles.emptyCard}>

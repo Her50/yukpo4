@@ -2,14 +2,13 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/buttons";
 import { useUser } from "@/hooks/useUser";
-import LocationSelector, { LocationObject } from "@/components/ui/LocationSelector";
-import AdvancedGPSModal from "@/components/ui/AdvancedGPSModal";
 import axios from "axios";
-import { Edit2, MapPin, Plus, Trash2, Truck } from "lucide-react";
+import { Edit2, Plus, Trash2, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { API_ENDPOINTS, buildUrl } from "../../config/api.config";
+import { ROUTES } from "@/routes/AppRoutesRegistry";
 
 interface DeliveryPartner {
     id: number;
@@ -38,41 +37,6 @@ const DeliveryPartnersAdminPage = () => {
     const { user, isLoading } = useUser();
     const [partners, setPartners] = useState<DeliveryPartner[]>([]);
     const [loading, setLoading] = useState(true);
-    const [editingPartner, setEditingPartner] = useState<DeliveryPartner | null>(null);
-    const [showForm, setShowForm] = useState(false);
-    const [showGPSModal, setShowGPSModal] = useState(false);
-    const [selectedCity, setSelectedCity] = useState<LocationObject | null>(null);
-    const [formData, setFormData] = useState({
-        name: '',
-        description: '',
-        partner_type: 'livraison',
-        contact_email: '',
-        contact_phone: '',
-        address: '',
-        city: '',
-        country: '',
-        continent: '',
-        website: '',
-        logo_url: '',
-        location_latitude: undefined as number | undefined,
-        location_longitude: undefined as number | undefined,
-        location_address: '' as string | undefined,
-        gps: undefined as string | undefined,
-        is_active: true,
-    });
-
-    const partnerTypes = [
-        { value: 'livraison', label: 'Livraison' },
-        { value: 'pharmacie', label: 'Pharmacie' },
-        { value: 'hopital', label: 'Hôpital' },
-        { value: 'laboratoire', label: 'Laboratoire' },
-        { value: 'agence de voyage', label: 'Agence de voyage' },
-        { value: 'demenagement', label: 'Déménagement' },
-        { value: 'transport', label: 'Transport' },
-        { value: 'assureur', label: 'Assureur' },
-        { value: 'supermarche', label: 'Supermarché' },
-        { value: 'telecom', label: 'Télécom' },
-    ];
 
     useEffect(() => {
         if (!isLoading && (!user || user.role !== 'admin')) {
@@ -106,61 +70,14 @@ const DeliveryPartnersAdminPage = () => {
     };
 
     const handleCreate = () => {
-        setEditingPartner(null);
-        setSelectedCity(null);
-        setFormData({
-            name: '',
-            description: '',
-            partner_type: 'livraison',
-            contact_email: '',
-            contact_phone: '',
-            address: '',
-            city: '',
-            country: '',
-            continent: '',
-            website: '',
-            logo_url: '',
-            location_latitude: undefined,
-            location_longitude: undefined,
-            location_address: '',
-            gps: undefined,
-            is_active: true,
-        });
-        setShowForm(true);
+        // ✅ NOUVEAU: Naviguer vers l'écran de création de partenaire
+        navigate(ROUTES.PARTNER_REGISTER);
     };
 
     const handleEdit = (partner: DeliveryPartner) => {
-        setEditingPartner(partner);
-        // ✅ CORRIGÉ: Initialiser selectedCity avec la ville du partenaire
-        setSelectedCity(partner.city ? {
-            raw: partner.city,
-            place_name: partner.city,
-            components: {
-                ville: partner.city,
-                pays: partner.country,
-            }
-        } : null);
-        setFormData({
-            name: partner.name,
-            description: partner.description || '',
-            partner_type: partner.partner_type || 'livraison',
-            contact_email: partner.contact_email || '',
-            contact_phone: partner.contact_phone || '',
-            address: partner.address || '',
-            city: partner.city || '',
-            country: partner.country || '',
-            continent: partner.continent || '',
-            website: partner.website || '',
-            logo_url: partner.logo_url || '',
-            location_latitude: partner.location_latitude,
-            location_longitude: partner.location_longitude,
-            location_address: partner.location_address || '',
-            gps: partner.location_latitude && partner.location_longitude
-                ? `${partner.location_latitude},${partner.location_longitude}`
-                : undefined,
-            is_active: partner.is_active,
-        });
-        setShowForm(true);
+        // ✅ NOUVEAU: Pour l'édition, on peut aussi naviguer vers l'écran de création avec les données pré-remplies
+        // Pour l'instant, on garde juste la suppression et on utilise l'écran de création pour créer de nouveaux partenaires
+        toast.error('L\'édition des partenaires sera disponible prochainement via l\'écran de création.');
     };
 
     const handleDelete = async (partnerId: number) => {
@@ -184,65 +101,6 @@ const DeliveryPartnersAdminPage = () => {
         }
     };
 
-    const handleSave = async () => {
-        if (!formData.name.trim()) {
-            toast.error('Le nom est requis');
-            return;
-        }
-        if (!formData.country.trim()) {
-            toast.error('Le pays est requis');
-            return;
-        }
-
-        try {
-            const token = localStorage.getItem('token');
-            // ✅ NOUVEAU: Préparer les données avec GPS si disponible
-            const payload = {
-                ...formData,
-                // Si GPS est fourni, extraire lat/lng
-                location_latitude: formData.gps 
-                    ? parseFloat(formData.gps.split(',')[0])
-                    : formData.location_latitude,
-                location_longitude: formData.gps
-                    ? parseFloat(formData.gps.split(',')[1])
-                    : formData.location_longitude,
-            };
-            
-            let response;
-            if (editingPartner) {
-                response = await axios.put(
-                    buildUrl(`${API_ENDPOINTS.DELIVERY_PARTNERS || '/api/delivery/partners'}/${editingPartner.id}`),
-                    payload,
-                    {
-                        headers: { Authorization: `Bearer ${token}` },
-                    }
-                );
-                toast.success('Partenaire mis à jour avec succès');
-            } else {
-                response = await axios.post(
-                    buildUrl(API_ENDPOINTS.DELIVERY_PARTNERS || '/api/delivery/partners'),
-                    payload,
-                    {
-                        headers: { Authorization: `Bearer ${token}` },
-                    }
-                );
-                toast.success('Partenaire créé avec succès');
-            }
-            
-            // ✅ CORRECTION: Vérifier que la réponse est valide
-            console.log('[DeliveryPartnersAdminPage] Réponse sauvegarde:', response);
-            
-            setShowForm(false);
-            // ✅ CORRECTION: Recharger la liste après un court délai pour s'assurer que la DB est à jour
-            setTimeout(() => {
-                loadPartners();
-            }, 500);
-        } catch (error: any) {
-            console.error('[DeliveryPartnersAdminPage] Erreur sauvegarde:', error);
-            const errorMessage = error?.response?.data?.error || error?.message || 'Impossible de sauvegarder le partenaire';
-            toast.error(errorMessage);
-        }
-    };
 
     if (isLoading || loading) {
         return (
@@ -270,281 +128,6 @@ const DeliveryPartnersAdminPage = () => {
                         Nouveau partenaire
                     </Button>
                 </div>
-
-                {showForm && (
-                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                        <h2 className="text-xl font-semibold mb-4">
-                            {editingPartner ? 'Modifier le partenaire' : 'Nouveau partenaire'}
-                        </h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Nom *
-                                </label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="Nom du partenaire"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Description
-                                </label>
-                                <textarea
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="Description du partenaire"
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    rows={3}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Type de partenaire *
-                                </label>
-                                <select
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                                    value={formData.partner_type}
-                                    onChange={(e) => setFormData({ ...formData, partner_type: e.target.value })}
-                                >
-                                    <option value="">Sélectionner un type...</option>
-                                    {partnerTypes.map((type) => (
-                                        <option key={type.value} value={type.value}>
-                                            {type.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Adresse de localisation
-                                </label>
-                                <LocationSelector
-                                    label="Lieu"
-                                    value={formData.location_address ? { raw: formData.location_address, place_name: formData.location_address } : ''}
-                                    onSelect={(location) => {
-                                        setFormData({
-                                            ...formData,
-                                            location_latitude: location.coordinates?.lat,
-                                            location_longitude: location.coordinates?.lng,
-                                            location_address: location.raw || location.place_name || '',
-                                            // ✅ NOUVEAU: Extraire ville et pays depuis les composants si disponibles
-                                            city: location.components?.ville || formData.city,
-                                            country: location.components?.pays || formData.country,
-                                        });
-                                    }}
-                                    placeholder="Rechercher l'adresse du partenaire..."
-                                    scope="all" // ✅ EXPLICITE: Recherche universelle pour adresse/lieu
-                                />
-                                {formData.location_address && (
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        📍 {formData.location_address}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Email de contact
-                                    </label>
-                                    <input
-                                        type="email"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="contact@partenaire.com"
-                                        value={formData.contact_email}
-                                        onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Téléphone de contact
-                                    </label>
-                                    <input
-                                        type="tel"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="+237 6XX XXX XXX"
-                                        value={formData.contact_phone}
-                                        onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Adresse
-                                </label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="Adresse complète"
-                                    value={formData.address}
-                                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Ville
-                                    </label>
-                                    <LocationSelector
-                                        label=""
-                                        value={selectedCity || (formData.city ? { raw: formData.city, place_name: formData.city } : '')}
-                                        onSelect={(location) => {
-                                            setSelectedCity(location);
-                                            setFormData({
-                                                ...formData,
-                                                city: location.place_name || location.raw || '',
-                                                // ✅ Extraire le pays depuis les composants si disponible
-                                                country: location.components?.pays || formData.country,
-                                            });
-                                        }}
-                                        placeholder="Rechercher une ville..."
-                                        scope="city" // ✅ EXPLICITE: Recherche de villes uniquement
-                                    />
-                                    {selectedCity && (
-                                        <p className="text-sm text-blue-600 mt-1 font-medium">
-                                            ✅ Ville sélectionnée: {selectedCity.place_name || selectedCity.raw}
-                                        </p>
-                                    )}
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Pays *
-                                    </label>
-                                    <LocationSelector
-                                        label=""
-                                        value={formData.country ? { raw: formData.country, place_name: formData.country } : ''}
-                                        onSelect={(location) => {
-                                            setFormData({
-                                                ...formData,
-                                                country: location.place_name || location.raw || '',
-                                            });
-                                        }}
-                                        placeholder="Rechercher un pays..."
-                                        scope="all" // ✅ EXPLICITE: Recherche universelle pour pays
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Continent
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="Afrique, Europe, Asie..."
-                                        value={formData.continent}
-                                        onChange={(e) => setFormData({ ...formData, continent: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            {/* ✅ NOUVEAU: Localisation GPS précise */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    📍 Localisation GPS précise (optionnel)
-                                </label>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowGPSModal(true)}
-                                    className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <MapPin className="w-5 h-5 text-blue-600" />
-                                        <span className="text-sm text-gray-700">
-                                            {formData.gps ? 'Localisation sélectionnée' : 'Sélectionner sur la carte'}
-                                        </span>
-                                    </div>
-                                    <span className="text-gray-400">›</span>
-                                </button>
-                                {formData.gps && (
-                                    <p className="text-sm text-gray-600 mt-1">
-                                        {formData.gps}
-                                    </p>
-                                )}
-                                {formData.location_latitude && formData.location_longitude && !formData.gps && (
-                                    <p className="text-sm text-gray-600 mt-1">
-                                        Coordonnées: {formData.location_latitude}, {formData.location_longitude}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Site web
-                                    </label>
-                                    <input
-                                        type="url"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="https://..."
-                                        value={formData.website}
-                                        onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        URL du logo
-                                    </label>
-                                    <input
-                                        type="url"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="https://..."
-                                        value={formData.logo_url}
-                                        onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.is_active}
-                                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                    />
-                                    <span className="text-sm font-medium text-gray-700">Actif</span>
-                                </label>
-                            </div>
-                            <div className="flex gap-3 pt-4">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setShowForm(false)}
-                                    className="flex-1"
-                                >
-                                    Annuler
-                                </Button>
-                                <Button onClick={handleSave} className="flex-1">
-                                    {editingPartner ? 'Modifier' : 'Créer'}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ✅ NOUVEAU: Modal GPS pour localisation précise */}
-                {showGPSModal && (
-                    <AdvancedGPSModal
-                        onClose={() => setShowGPSModal(false)}
-                        onSelect={(path, previewUrl, metadata) => {
-                            if (path && path.length > 0) {
-                                const firstPoint = path[0];
-                                const gpsString = `${firstPoint.lat},${firstPoint.lng}`;
-                                setFormData(prev => ({
-                                    ...prev,
-                                    gps: gpsString,
-                                    location_latitude: firstPoint.lat,
-                                    location_longitude: firstPoint.lng,
-                                    location_address: metadata?.address || prev.location_address,
-                                }));
-                            }
-                            setShowGPSModal(false);
-                        }}
-                        initialLocation={formData.location_latitude && formData.location_longitude ? {
-                            lat: formData.location_latitude,
-                            lng: formData.location_longitude
-                        } : undefined}
-                    />
-                )}
 
                 {partners.length === 0 ? (
                     <div className="bg-white rounded-lg shadow-md p-12 text-center">
@@ -620,5 +203,3 @@ const DeliveryPartnersAdminPage = () => {
 };
 
 export default DeliveryPartnersAdminPage;
-
-

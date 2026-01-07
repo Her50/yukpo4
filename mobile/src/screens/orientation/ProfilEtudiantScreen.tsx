@@ -1,46 +1,41 @@
-// ✅ Écran Profil Étudiant pour Orientation Scolaire (Mobile)
+// ✅ Écran Profil Étudiant REFONDU - Champ descriptif simple avec audio
+// Pas de données personnelles, juste description du profil académique
 
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
+import * as Audio from 'expo-av';
+import SafeIcon from '../../components/SafeIcon';
+import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
-import { CreateOrUpdateStudentProfileRequest, orientationScolaireApi } from '../../services/orientationScolaireApi';
-import { modernColors, modernStyles } from '../../theme/modernTheme';
+import { orientationScolaireService } from '../../services/orientationScolaireService';
+import { apiPost } from '../../services/api';
+import { modernColors } from '../../theme/modernTheme';
+import { hapticPress } from '../../utils/hapticFeedback';
 
 const ProfilEtudiantScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [profile, setProfile] = useState<any>(null);
-
-    // État du formulaire
-    const [nomComplet, setNomComplet] = useState('');
-    const [dateNaissance, setDateNaissance] = useState('');
-    const [ville, setVille] = useState('');
-    const [region, setRegion] = useState('');
-    const [niveauActuel, setNiveauActuel] = useState('');
-    const [classeActuelle, setClasseActuelle] = useState('');
-    const [etablissementActuel, setEtablissementActuel] = useState('');
-    const [moyenneGenerale, setMoyenneGenerale] = useState('');
-    const [classement, setClassement] = useState('');
-    const [effectifClasse, setEffectifClasse] = useState('');
-    const [matieresPreferees, setMatieresPreferees] = useState<string[]>([]);
-    const [objectifsCarriere, setObjectifsCarriere] = useState<string[]>([]);
-    const [budgetMax, setBudgetMax] = useState('');
-
-    const niveaux = ['Primaire', 'Collège', 'Lycée', 'Supérieur'];
-    const classes = ['6ème', '5ème', '4ème', '3ème', 'Seconde', 'Première', 'Terminale', 'Bac+1', 'Bac+2', 'Bac+3', 'Bac+4', 'Bac+5'];
-    const matieres = ['Mathématiques', 'Français', 'Anglais', 'Physique', 'Chimie', 'SVT', 'Histoire', 'Géographie', 'Philosophie', 'Économie'];
+    const [profileDescription, setProfileDescription] = useState('');
+    const [recommendation, setRecommendation] = useState<string | null>(null);
+    
+    // États pour l'enregistrement audio
+    const [recording, setRecording] = useState<Audio.Recording | null>(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const recordingTimer = useRef<NodeJS.Timeout | null>(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -51,22 +46,16 @@ const ProfilEtudiantScreen: React.FC = () => {
     const loadProfile = async () => {
         try {
             setLoading(true);
-            const existingProfile = await orientationScolaireApi.getMyProfile();
-            if (existingProfile) {
-                setProfile(existingProfile);
-                setNomComplet(existingProfile.nom_complet);
-                setDateNaissance(existingProfile.date_naissance || '');
-                setVille(existingProfile.ville || '');
-                setRegion(existingProfile.region || '');
-                setNiveauActuel(existingProfile.niveau_actuel || '');
-                setClasseActuelle(existingProfile.classe_actuelle || '');
-                setEtablissementActuel(existingProfile.etablissement_actuel || '');
-                setMoyenneGenerale(existingProfile.moyenne_generale?.toString() || '');
-                setClassement(existingProfile.classement?.toString() || '');
-                setEffectifClasse(existingProfile.effectif_classe?.toString() || '');
-                setMatieresPreferees(existingProfile.matieres_preferees || []);
-                setObjectifsCarriere(existingProfile.objectifs_carriere || []);
-                setBudgetMax(existingProfile.budget_max?.toString() || '');
+            const response = await orientationScolaireService.getMyProfile();
+            if (response.success && response.data?.profile) {
+                const profile = response.data.profile;
+                // Charger la description si elle existe
+                if (profile.description_profil) {
+                    setProfileDescription(profile.description_profil);
+                }
+                if (profile.recommendation_ia) {
+                    setRecommendation(profile.recommendation_ia);
+                }
             }
         } catch (error: any) {
             console.error('[ProfilEtudiant] Erreur chargement profil:', error);
@@ -75,34 +64,134 @@ const ProfilEtudiantScreen: React.FC = () => {
         }
     };
 
+    // Démarrer l'enregistrement audio
+    const startRecording = async () => {
+        try {
+            hapticPress();
+            const permission = await Audio.requestPermissionsAsync();
+            if (permission.status !== 'granted') {
+                Alert.alert('Permission requise', 'Veuillez autoriser l\'accès au microphone');
+                return;
+            }
+
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+            });
+
+            const { recording: newRecording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
+
+            setRecording(newRecording);
+            setIsRecording(true);
+            setRecordingDuration(0);
+
+            // Timer pour la durée
+            recordingTimer.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+
+        } catch (error: any) {
+            console.error('[ProfilEtudiant] Erreur démarrage enregistrement:', error);
+            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
+        }
+    };
+
+    // Arrêter l'enregistrement et transcrire
+    const stopRecording = async () => {
+        try {
+            hapticPress();
+            if (!recording) return;
+
+            setIsRecording(false);
+            if (recordingTimer.current) {
+                clearInterval(recordingTimer.current);
+                recordingTimer.current = null;
+            }
+
+            await recording.stopAndUnloadAsync();
+            const uri = recording.getURI();
+            setRecording(null);
+            setRecordingDuration(0);
+
+            if (!uri) {
+                Alert.alert('Erreur', 'Aucun enregistrement disponible');
+                return;
+            }
+
+            // Convertir l'audio en base64 et transcrire
+            setIsTranscribing(true);
+            try {
+                // Lire le fichier audio et le convertir en base64
+                const response = await fetch(uri);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                
+                reader.onloadend = async () => {
+                    const base64Audio = (reader.result as string).split(',')[1];
+                    
+                    try {
+                        // Appeler l'API de transcription
+                        const transcribeResponse = await apiPost('/api/ia/transcribe', {
+                            audio_base64: base64Audio,
+                            language: 'fr',
+                            format: 'base64',
+                        });
+
+                        if (transcribeResponse.success && transcribeResponse.data?.transcription) {
+                            const transcription = transcribeResponse.data.transcription;
+                            setProfileDescription(prev => prev ? `${prev}\n${transcription}` : transcription);
+                            Alert.alert('Succès', 'Audio transcrit avec succès');
+                        } else {
+                            Alert.alert('Erreur', 'Impossible de transcrire l\'audio');
+                        }
+                    } catch (err: any) {
+                        console.error('[ProfilEtudiant] Erreur transcription:', err);
+                        Alert.alert('Erreur', 'Erreur lors de la transcription');
+                    } finally {
+                        setIsTranscribing(false);
+                    }
+                };
+
+                reader.onerror = () => {
+                    setIsTranscribing(false);
+                    Alert.alert('Erreur', 'Impossible de lire le fichier audio');
+                };
+
+                reader.readAsDataURL(blob);
+            } catch (err: any) {
+                console.error('[ProfilEtudiant] Erreur conversion audio:', err);
+                setIsTranscribing(false);
+                Alert.alert('Erreur', 'Impossible de convertir l\'audio');
+            }
+        } catch (error: any) {
+            console.error('[ProfilEtudiant] Erreur arrêt enregistrement:', error);
+            Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement');
+        }
+    };
+
     const handleSave = async () => {
-        if (!nomComplet.trim()) {
-            Alert.alert('Erreur', 'Le nom complet est requis');
+        if (!profileDescription.trim()) {
+            Alert.alert('Erreur', 'Veuillez décrire votre profil académique');
             return;
         }
 
         try {
             setSaving(true);
-            const request: CreateOrUpdateStudentProfileRequest = {
-                nom_complet: nomComplet,
-                date_naissance: dateNaissance || undefined,
-                ville: ville || undefined,
-                region: region || undefined,
-                niveau_actuel: niveauActuel || undefined,
-                classe_actuelle: classeActuelle || undefined,
-                etablissement_actuel: etablissementActuel || undefined,
-                moyenne_generale: moyenneGenerale ? parseFloat(moyenneGenerale) : undefined,
-                classement: classement ? parseInt(classement, 10) : undefined,
-                effectif_classe: effectifClasse ? parseInt(effectifClasse, 10) : undefined,
-                matieres_preferees: matieresPreferees.length > 0 ? matieresPreferees : undefined,
-                objectifs_carriere: objectifsCarriere.length > 0 ? objectifsCarriere : undefined,
-                budget_max: budgetMax ? parseFloat(budgetMax) : undefined,
-            };
+            
+            // Sauvegarder le profil avec la description
+            const response = await orientationScolaireService.createOrUpdateProfile({
+                description_profil: profileDescription.trim(),
+            });
 
-            await orientationScolaireApi.createOrUpdateProfile(request);
-            Alert.alert('Succès', 'Profil enregistré avec succès', [
-                { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
+            if (response.success) {
+                // Demander une recommandation IA
+                Alert.alert('Profil enregistré', 'Génération de la recommandation IA en cours...');
+                await generateRecommendation();
+            } else {
+                Alert.alert('Erreur', 'Impossible d\'enregistrer le profil');
+            }
         } catch (error: any) {
             console.error('[ProfilEtudiant] Erreur sauvegarde:', error);
             Alert.alert('Erreur', 'Impossible d\'enregistrer le profil');
@@ -111,218 +200,165 @@ const ProfilEtudiantScreen: React.FC = () => {
         }
     };
 
-    const toggleMatiere = (matiere: string) => {
-        setMatieresPreferees(prev => {
-            if (prev.includes(matiere)) {
-                return prev.filter(m => m !== matiere);
+    const generateRecommendation = async () => {
+        try {
+            setLoading(true);
+            
+            // Appeler l'API pour générer une recommandation d'orientation
+            const response = await apiPost('/api/orientation/ai/generate-recommendation', {
+                profile_description: profileDescription.trim(),
+            });
+
+            if (response.success && response.data?.recommendation) {
+                setRecommendation(response.data.recommendation);
+                
+                // Sauvegarder la recommandation dans le profil
+                await orientationScolaireService.createOrUpdateProfile({
+                    description_profil: profileDescription.trim(),
+                    recommendation_ia: response.data.recommendation,
+                });
             } else {
-                return [...prev, matiere];
+                Alert.alert('Erreur', 'Impossible de générer la recommandation');
             }
-        });
+        } catch (error: any) {
+            console.error('[ProfilEtudiant] Erreur génération recommandation:', error);
+            Alert.alert('Erreur', 'Erreur lors de la génération de la recommandation');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    if (loading) {
+    const formatDuration = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    if (loading && !profileDescription) {
         return (
-            <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
-            </View>
+            <SafeNativeView style={styles.container}>
+                <View style={styles.centerContainer}>
+                    <ActivityIndicator size="large" color={modernColors.primary} />
+                    <Text style={styles.loadingText}>Chargement...</Text>
+                </View>
+            </SafeNativeView>
         );
     }
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Mon Profil Étudiant</Text>
-                <Text style={styles.subtitle}>
-                    Complétez votre profil pour obtenir des recommandations personnalisées
-                </Text>
-            </View>
-
-            <NativeCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Informations personnelles</Text>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Nom complet *</Text>
-                    <NativeInput
-                        placeholder="Votre nom complet"
-                        value={nomComplet}
-                        onChangeText={setNomComplet}
-                    />
+        <SafeNativeView style={styles.container}>
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+                <View style={styles.header}>
+                    <Text style={styles.title}>Mon Profil Étudiant</Text>
+                    <Text style={styles.subtitle}>
+                        Décrivez votre profil académique pour obtenir des recommandations d'orientation intelligentes
+                    </Text>
                 </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Date de naissance</Text>
-                    <NativeInput
-                        placeholder="YYYY-MM-DD"
-                        value={dateNaissance}
-                        onChangeText={setDateNaissance}
-                    />
-                </View>
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Description de votre profil</Text>
+                    <Text style={styles.sectionDescription}>
+                        Précisez votre niveau scolaire, votre filière/série, les matières où vous êtes performant et celles où vous avez des difficultés.
+                    </Text>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Ville</Text>
-                    <NativeInput
-                        placeholder="Votre ville"
-                        value={ville}
-                        onChangeText={setVille}
-                    />
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Région</Text>
-                    <NativeInput
-                        placeholder="Votre région"
-                        value={region}
-                        onChangeText={setRegion}
-                    />
-                </View>
-            </NativeCard>
-
-            <NativeCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Informations académiques</Text>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Niveau actuel</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
-                        {niveaux.map(niveau => (
-                            <TouchableOpacity
-                                key={niveau}
-                                style={[
-                                    styles.chip,
-                                    niveauActuel === niveau && styles.chipActive
-                                ]}
-                                onPress={() => setNiveauActuel(niveau)}
-                            >
-                                <Text style={[
-                                    styles.chipText,
-                                    niveauActuel === niveau && styles.chipTextActive
-                                ]}>
-                                    {niveau}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Classe actuelle</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
-                        {classes.map(classe => (
-                            <TouchableOpacity
-                                key={classe}
-                                style={[
-                                    styles.chip,
-                                    classeActuelle === classe && styles.chipActive
-                                ]}
-                                onPress={() => setClasseActuelle(classe)}
-                            >
-                                <Text style={[
-                                    styles.chipText,
-                                    classeActuelle === classe && styles.chipTextActive
-                                ]}>
-                                    {classe}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Établissement actuel</Text>
-                    <NativeInput
-                        placeholder="Nom de votre établissement"
-                        value={etablissementActuel}
-                        onChangeText={setEtablissementActuel}
-                    />
-                </View>
-
-                <View style={styles.row}>
-                    <View style={[styles.inputGroup, styles.halfWidth]}>
-                        <Text style={styles.label}>Moyenne générale</Text>
-                        <NativeInput
-                            placeholder="Ex: 15.5"
-                            value={moyenneGenerale}
-                            onChangeText={setMoyenneGenerale}
-                            keyboardType="numeric"
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.textInput}
+                            placeholder="Ex: Je suis en classe de Terminale, série D. Je suis très performant en Mathématiques et Physique-Chimie, mais j'ai des difficultés en Français et Histoire. J'aimerais faire des études d'ingénierie..."
+                            placeholderTextColor="#9CA3AF"
+                            value={profileDescription}
+                            onChangeText={setProfileDescription}
+                            multiline
+                            numberOfLines={8}
+                            textAlignVertical="top"
                         />
                     </View>
 
-                    <View style={[styles.inputGroup, styles.halfWidth]}>
-                        <Text style={styles.label}>Classement</Text>
-                        <NativeInput
-                            placeholder="Ex: 5"
-                            value={classement}
-                            onChangeText={setClassement}
-                            keyboardType="numeric"
-                        />
+                    {/* Bouton audio */}
+                    <View style={styles.audioContainer}>
+                        {!isRecording ? (
+                            <TouchableOpacity
+                                style={styles.audioButton}
+                                onPress={startRecording}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="mic" size={20} color="#FFFFFF" type="lucide" />
+                                <Text style={styles.audioButtonText}>Enregistrer en audio</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={styles.recordingContainer}>
+                                <View style={styles.recordingIndicator}>
+                                    <View style={styles.recordingDot} />
+                                    <Text style={styles.recordingText}>
+                                        Enregistrement... {formatDuration(recordingDuration)}
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.stopButton}
+                                    onPress={stopRecording}
+                                    activeOpacity={0.7}
+                                >
+                                    <SafeIcon name="square" size={18} color="#FFFFFF" type="lucide" />
+                                    <Text style={styles.stopButtonText}>Arrêter</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                        {isTranscribing && (
+                            <View style={styles.transcribingContainer}>
+                                <ActivityIndicator size="small" color="#8B5CF6" />
+                                <Text style={styles.transcribingText}>Transcription en cours...</Text>
+                            </View>
+                        )}
                     </View>
                 </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Effectif de la classe</Text>
-                    <NativeInput
-                        placeholder="Ex: 40"
-                        value={effectifClasse}
-                        onChangeText={setEffectifClasse}
-                        keyboardType="numeric"
-                    />
+                {/* Recommandation IA */}
+                {recommendation && (
+                    <View style={styles.recommendationCard}>
+                        <View style={styles.recommendationHeader}>
+                            <SafeIcon name="sparkles" size={24} color="#8B5CF6" type="lucide" />
+                            <Text style={styles.recommendationTitle}>Recommandation IA</Text>
+                        </View>
+                        <Text style={styles.recommendationText}>{recommendation}</Text>
+                    </View>
+                )}
+
+                <View style={styles.actions}>
+                    <TouchableOpacity
+                        style={[styles.saveButton, (!profileDescription.trim() || saving) && styles.saveButtonDisabled]}
+                        onPress={handleSave}
+                        disabled={!profileDescription.trim() || saving}
+                        activeOpacity={0.8}
+                    >
+                        {saving ? (
+                            <>
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                                <Text style={styles.saveButtonText}>Enregistrement...</Text>
+                            </>
+                        ) : (
+                            <>
+                                <SafeIcon name="save" size={18} color="#FFFFFF" type="lucide" />
+                                <Text style={styles.saveButtonText}>Enregistrer et obtenir recommandation</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
                 </View>
-            </NativeCard>
-
-            <NativeCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Matières préférées</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
-                    {matieres.map(matiere => (
-                        <TouchableOpacity
-                            key={matiere}
-                            style={[
-                                styles.chip,
-                                matieresPreferees.includes(matiere) && styles.chipActive
-                            ]}
-                            onPress={() => toggleMatiere(matiere)}
-                        >
-                            <Text style={[
-                                styles.chipText,
-                                matieresPreferees.includes(matiere) && styles.chipTextActive
-                            ]}>
-                                {matiere}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </NativeCard>
-
-            <NativeCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Budget maximum (XAF)</Text>
-                <NativeInput
-                    placeholder="Ex: 500000"
-                    value={budgetMax}
-                    onChangeText={setBudgetMax}
-                    keyboardType="numeric"
-                />
-            </NativeCard>
-
-            <View style={styles.actions}>
-                <NativeButton
-                    title={saving ? 'Enregistrement...' : 'Enregistrer le profil'}
-                    onPress={handleSave}
-                    variant="primary"
-                    disabled={saving}
-                    style={styles.saveButton}
-                />
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </SafeNativeView>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: modernColors.background,
+        backgroundColor: '#F9FAFB',
+    },
+    scrollView: {
+        flex: 1,
     },
     scrollContent: {
         padding: 16,
+        paddingBottom: 32,
     },
     centerContainer: {
         flex: 1,
@@ -331,78 +367,179 @@ const styles = StyleSheet.create({
     },
     loadingText: {
         marginTop: 12,
-        color: modernColors.textSecondary,
+        fontSize: 14,
+        color: '#6B7280',
     },
     header: {
         marginBottom: 24,
     },
     title: {
         fontSize: 28,
-        fontWeight: 'bold',
-        color: modernColors.text,
+        fontWeight: '700',
+        color: '#111827',
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 14,
-        color: modernColors.textSecondary,
+        color: '#6B7280',
+        lineHeight: 20,
     },
     card: {
-        marginBottom: 16,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
         padding: 20,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
     },
     sectionTitle: {
         fontSize: 18,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 16,
-    },
-    inputGroup: {
-        marginBottom: 16,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
+        fontWeight: '700',
+        color: '#111827',
         marginBottom: 8,
     },
-    row: {
-        flexDirection: 'row',
-        gap: 12,
+    sectionDescription: {
+        fontSize: 14,
+        color: '#6B7280',
+        lineHeight: 20,
+        marginBottom: 16,
     },
-    halfWidth: {
-        flex: 1,
+    inputContainer: {
+        marginBottom: 16,
     },
-    chipContainer: {
+    textInput: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        color: '#111827',
+        backgroundColor: '#F9FAFB',
+        minHeight: 200,
+        textAlignVertical: 'top',
+    },
+    audioContainer: {
         marginTop: 8,
     },
-    chip: {
+    audioButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#8B5CF6',
+        borderRadius: 12,
+        paddingVertical: 12,
         paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: modernStyles.borderRadius.full,
-        backgroundColor: modernColors.background,
+        gap: 8,
+    },
+    audioButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    recordingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#FEF2F2',
+        borderRadius: 12,
+        padding: 12,
         borderWidth: 1,
-        borderColor: modernColors.border,
-        marginRight: 8,
+        borderColor: '#FECACA',
     },
-    chipActive: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
+    recordingIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
     },
-    chipText: {
+    recordingDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#EF4444',
+    },
+    recordingText: {
         fontSize: 14,
-        color: modernColors.text,
+        fontWeight: '600',
+        color: '#991B1B',
     },
-    chipTextActive: {
-        color: '#fff',
+    stopButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#EF4444',
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        gap: 6,
+    },
+    stopButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    transcribingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 8,
+    },
+    transcribingText: {
+        fontSize: 13,
+        color: '#4F46E5',
+        fontWeight: '500',
+    },
+    recommendationCard: {
+        backgroundColor: '#EEF2FF',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+    },
+    recommendationHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    recommendationTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#4F46E5',
+    },
+    recommendationText: {
+        fontSize: 15,
+        color: '#1E1B4B',
+        lineHeight: 24,
     },
     actions: {
-        marginTop: 24,
-        marginBottom: 32,
+        marginTop: 8,
     },
     saveButton: {
-        marginBottom: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#8B5CF6',
+        borderRadius: 12,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        gap: 8,
+    },
+    saveButtonDisabled: {
+        opacity: 0.5,
+    },
+    saveButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
 });
 
 export default ProfilEtudiantScreen;
-

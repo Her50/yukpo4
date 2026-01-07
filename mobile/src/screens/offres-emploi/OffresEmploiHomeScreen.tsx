@@ -149,7 +149,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
             {/* Header sticky avec mode toggle */}
             <View style={styles.headerContainer}>
                 <LinearGradient
-                    colors={viewMode === 'search' ? ['#6366F1', '#8B5CF6'] : ['#EC4899', '#F472B6']}
+                    colors={['#6366F1', '#8B5CF6']}
                     style={styles.headerGradient}
                 >
                     <View style={styles.headerTop}>

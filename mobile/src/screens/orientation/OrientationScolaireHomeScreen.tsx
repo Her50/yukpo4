@@ -128,11 +128,18 @@ const OrientationScolaireHomeScreen: React.FC = () => {
         };
 
         if (selectedType) filters.type_etablissement = selectedType;
+        // ✅ NOUVEAU: Recherche par nom d'établissement ou formation spécifique
+        if (searchQuery.trim()) {
+            filters.search = searchQuery.trim();
+        }
         if (location?.coords) {
             filters.gps_lat = location.coords.latitude;
             filters.gps_lon = location.coords.longitude;
             filters.rayon_km = 50;
         }
+
+        // ✅ NOUVEAU: Rechercher uniquement dans les partenaires établissementscolaire
+        filters.partner_type = 'etablissementscolaire';
 
         const response = await orientationScolaireService.searchEtablissements(filters);
         if (response.success && response.data?.data) {
@@ -256,15 +263,17 @@ const OrientationScolaireHomeScreen: React.FC = () => {
             const { apiPost } = require('../../services/api');
             // ✅ Utiliser l'endpoint spécifique de recherche académique avec système d'orchestration IA complet
             const response = await apiPost('/api/orientation/ai/academic-search', {
-                query: academicQuery,
+                query: academicQuery.trim(),
                 context: {
                     service: 'orientation_scolaire',
                     domain: 'education',
                 },
             });
 
-            if (response.success && response.response) {
-                setAcademicResponse(response.response);
+            if (response.success) {
+                // Le backend peut retourner response.response ou response.data.response
+                const aiResponse = response.response || response.data?.response || response.data?.message || 'Réponse non disponible';
+                setAcademicResponse(aiResponse);
             } else {
                 Alert.alert('Erreur', response.message || 'Impossible d\'obtenir une réponse');
             }
@@ -317,16 +326,6 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                             </Text>
                         </View>
                         <View style={styles.headerActions}>
-                            {/* ✅ NOUVEAU: Bouton pour les établissements */}
-                            <TouchableOpacity
-                                onPress={() => {
-                                    hapticPress();
-                                    (navigation as any).navigate('CreateEtablissement');
-                                }}
-                                style={styles.createButton}
-                            >
-                                <SafeIcon name="plus" size={20} color="#FFFFFF" type="lucide" />
-                            </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={() => {
                                     hapticPress();
@@ -378,7 +377,10 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                                 hapticPress();
                                 setShowAIModal(true);
                                 setAiMode('academic');
+                                setAcademicQuery('');
+                                setAcademicResponse(null);
                             }}
+                            activeOpacity={0.7}
                         >
                             <SafeIcon name="brain" size={18} color="#8B5CF6" type="lucide" />
                             <Text style={styles.aiSearchButtonText}>Recherche académique IA</Text>

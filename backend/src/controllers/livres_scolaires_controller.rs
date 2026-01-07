@@ -481,11 +481,26 @@ RÉPONSE ATTENDUE (JSON strict) :
         request.user_lng.unwrap_or(0.0)
     );
 
-    // Utiliser directement AppIA pour l'analyse d'image
-    let (model_name, response, tokens) = state.ia.predict(&prompt).await
+    // ✅ AMÉLIORÉ: Utiliser l'analyse multimodale pour analyser l'image
+    // Extraire l'image base64 si c'est un data URI
+    let image_base64 = if request.image_uri.starts_with("data:image") {
+        // Extraire la partie base64 après la virgule (format: data:image/jpeg;base64,<base64_data>)
+        if let Some(base64_part) = request.image_uri.split(',').nth(1) {
+            base64_part.to_string()
+        } else {
+            // Si pas de virgule, utiliser l'URI complète
+            request.image_uri.clone()
+        }
+    } else {
+        // Si c'est une URL, on pourrait télécharger l'image, mais pour l'instant on utilise juste l'URI
+        request.image_uri.clone()
+    };
+    
+    let images = vec![image_base64];
+    let (model_name, response, tokens) = state.ia.predict_multimodal(&prompt, Some(images)).await
         .map_err(|e| {
-            error!("[analyze_book_image] Erreur IA: {}", e);
-            AppError::Internal("Erreur analyse IA".to_string())
+            error!("[analyze_book_image] Erreur IA multimodale: {}", e);
+            AppError::Internal("Erreur analyse IA multimodale".to_string())
         })?;
 
     info!(

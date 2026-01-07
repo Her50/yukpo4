@@ -30,20 +30,46 @@ const RecipeSearchScreen: React.FC = () => {
 
         try {
             setLoading(true);
-            // Pour l'instant, générer une recette avec l'IA
-            const response = await menuPlanningService.generateRecipe(searchQuery.trim());
+            setRecipes([]); // Réinitialiser les résultats précédents
             
-            if (response.success && response.data?.recipe) {
+            // ✅ AMÉLIORÉ: Ajouter un timeout explicite pour éviter les chargements infinis
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('La génération de la recette prend trop de temps. Veuillez réessayer.')), 95000); // 95s (légèrement inférieur au timeout API)
+            });
+            
+            // Générer une recette avec l'IA
+            const responsePromise = menuPlanningService.generateRecipe(searchQuery.trim());
+            const response = await Promise.race([responsePromise, timeoutPromise]) as any;
+            
+            if (response && response.success && response.data?.recipe) {
                 // Naviguer vers les détails de la recette
                 navigation.navigate('RecipeDetails' as never, {
                     recipe: response.data.recipe,
                 } as never);
-            } else {
+            } else if (response && !response.success) {
                 Alert.alert('Erreur', response.error || 'Impossible de générer la recette');
+            } else {
+                Alert.alert('Erreur', 'Réponse invalide du serveur');
             }
         } catch (error: any) {
             console.error('[RecipeSearch] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            
+            // ✅ AMÉLIORÉ: Messages d'erreur plus spécifiques
+            let errorMessage = 'Une erreur est survenue';
+            if (error.message) {
+                errorMessage = error.message;
+            } else if (error.error) {
+                errorMessage = error.error;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            
+            // Vérifier si c'est un timeout
+            if (errorMessage.includes('temps') || errorMessage.includes('timeout') || error.code === 'ABORT_ERR') {
+                errorMessage = 'La génération prend trop de temps. Veuillez réessayer avec un nom de recette plus simple.';
+            }
+            
+            Alert.alert('Erreur', errorMessage);
         } finally {
             setLoading(false);
         }
@@ -119,7 +145,8 @@ const RecipeSearchScreen: React.FC = () => {
                 {loading && (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Génération de la recette...</Text>
+                        <Text style={styles.loadingText}>Génération de la recette en cours...</Text>
+                        <Text style={styles.loadingSubtext}>Cela peut prendre jusqu'à 90 secondes</Text>
                     </View>
                 )}
 
@@ -220,6 +247,13 @@ const styles = StyleSheet.create({
         marginTop: 12,
         fontSize: 14,
         color: modernColors.textSecondary,
+        fontWeight: '600',
+    },
+    loadingSubtext: {
+        marginTop: 4,
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
     },
     infoCard: {
         flexDirection: 'row',

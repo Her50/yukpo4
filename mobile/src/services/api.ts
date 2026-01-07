@@ -169,6 +169,7 @@ const shouldRetry = (error: any, status?: number, config: RetryConfig = DEFAULT_
   // retry ne servira probablement pas (le backend a vraiment un problème)
   const isLongTimeoutEndpoint = endpoint && (
     endpoint.includes('/menus/ai/generate-week') ||
+    endpoint.includes('/menus/ai/generate-recipe') ||
     endpoint.includes('/preview') ||
     endpoint.includes('/preview/short') ||
     endpoint.includes('/services/create')
@@ -326,9 +327,12 @@ const apiCallInternal = async <T>(
     // ✅ CORRIGÉ 2025-12-23: 30s pour /api/services/*/reviews et /stats (peuvent être lents)
     // ✅ CORRIGÉ 2026-01-02: 120s (2min) pour preview/short (génération vidéo peut prendre 60-90s)
     // ✅ CORRIGÉ 2026-01-06: 120s (2min) pour /api/menus/ai/generate-week (génération menu IA peut prendre 60-90s avec géocodage + IA)
+    // ✅ CORRIGÉ 2026-01-07: 90s pour /api/menus/ai/generate-recipe (génération recette IA peut prendre 30-60s)
     const timeoutDuration = endpoint.includes('/menus/ai/generate-week')
       ? 120000  // ✅ CORRIGÉ 2026-01-06: 120s (2min) pour génération menu IA (géocodage + DB + IA peut prendre 60-90s)
-      : endpoint.includes('/services/create')
+      : endpoint.includes('/menus/ai/generate-recipe')
+        ? 90000  // ✅ CORRIGÉ 2026-01-07: 90s pour génération recette IA (peut prendre 30-60s)
+        : endpoint.includes('/services/create')
         ? 180000
         : endpoint.includes('/ia/creation-service')
           ? 90000  // ✅ AUGMENTÉ: 90s pour supporter traitement images + appel IA multimodal

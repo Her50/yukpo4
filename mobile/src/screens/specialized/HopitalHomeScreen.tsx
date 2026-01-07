@@ -22,9 +22,12 @@ import * as ImagePicker from 'expo-image-picker';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
-import { hospitalService, MedicalService, PathologySearchResult } from '../../services/hospitalService';
+import { hospitalService, MedicalService, PathologySearchResult, MedicalServiceAvailability } from '../../services/hospitalService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { imageAnalysisService, ImageAnalysisResult } from '../../services/imageAnalysisService';
+
+type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
 
 const HopitalHomeScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -33,9 +36,15 @@ const HopitalHomeScreen: React.FC = () => {
     // États de recherche
     const [searchQuery, setSearchQuery] = useState('');
     const [services, setServices] = useState<MedicalService[]>([]);
+    const [availableServices, setAvailableServices] = useState<MedicalServiceAvailability[]>([]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [useAvailability, setUseAvailability] = useState(true); // Utiliser le système de disponibilité par défaut
+
+    // États UI - Tri intelligent
+    const [sortBy, setSortBy] = useState<SortOption>('relevance');
+    const [showSortModal, setShowSortModal] = useState(false);
 
     // États autocomplete
     const [autocompleteQuery, setAutocompleteQuery] = useState('');
@@ -51,6 +60,21 @@ const HopitalHomeScreen: React.FC = () => {
     const [loadingAI, setLoadingAI] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [imageAnalysis, setImageAnalysis] = useState<any | null>(null);
+
+    // Options de tri
+    const sortOptions: { value: SortOption; label: string; icon: string }[] = [
+        { value: 'relevance', label: 'Pertinence', icon: 'star' },
+        { value: 'price_asc', label: 'Prix croissant', icon: 'arrow-up' },
+        { value: 'price_desc', label: 'Prix décroissant', icon: 'arrow-down' },
+        { value: 'distance_asc', label: 'Plus proche', icon: 'map-pin' },
+        { value: 'name_asc', label: 'Nom (A-Z)', icon: 'type' },
+    ];
+
+    // Obtenir l'icône du tri courant
+    const getCurrentSortIcon = () => {
+        const currentOption = sortOptions.find(o => o.value === sortBy);
+        return currentOption?.icon || 'arrow-up-down';
+    };
 
     // Debounce pour autocomplete
     useEffect(() => {
@@ -85,10 +109,45 @@ const HopitalHomeScreen: React.FC = () => {
         setSearchQuery(service.name);
         setAutocompleteQuery(service.name);
         setShowAutocomplete(false);
-        // Navigation vers recherche d'hôpitaux avec ce service
-        navigation.navigate('HopitalList' as never, { 
-            serviceType: service.name 
-        } as never);
+        
+        // Rechercher les services disponibles avec système de disponibilité
+        if (useAvailability && location?.coords) {
+            loadAvailableServices(service.name);
+        } else {
+            // Navigation vers recherche d'hôpitaux avec ce service
+            navigation.navigate('HopitalList' as never, { 
+                serviceType: service.name 
+            } as never);
+        }
+    };
+
+    // Charger les services disponibles avec système de disponibilité
+    const loadAvailableServices = async (serviceName?: string) => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            const response = await hospitalService.searchAvailableMedicalServices(
+                serviceName || searchQuery || undefined,
+                location?.coords ? {
+                    lat: location.coords.latitude,
+                    lng: location.coords.longitude
+                } : undefined,
+                50 // 50km par défaut
+            );
+            
+            if (response.success && response.data) {
+                setAvailableServices(response.data);
+            } else {
+                setAvailableServices([]);
+            }
+        } catch (err: any) {
+            console.error('[HopitalHomeScreen] Erreur chargement disponibilité:', err);
+            setError('Erreur lors du chargement des services disponibles');
+            setAvailableServices([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSearchPathology = async () => {
@@ -121,29 +180,93 @@ const HopitalHomeScreen: React.FC = () => {
         }
     };
 
-    const handlePickImage = async () => {
+    const handlePickImage = async (source: 'camera' | 'gallery') => {
         hapticPress();
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
-            return;
-        }
+        
+        try {
+            let result;
+            
+            if (source === 'camera') {
+                // Demander permission caméra
+                const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+                if (cameraStatus !== 'granted') {
+                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
+                    return;
+                }
+                
+                result = await ImagePicker.launchCameraAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: true,
+                });
+            } else {
+                // Demander permission galerie
+                const { status: galleryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (galleryStatus !== 'granted') {
+                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
+                    return;
+                }
+                
+                result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: true,
+                });
+            }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 0.8,
-            base64: true,
-        });
+            if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                const base64Image = `data:image/jpeg;base64,${asset.base64}`;
+                setSelectedImage(asset.uri);
+                setAiMode('image');
+                setShowAIModal(true);
+                setLoadingAI(true);
+                setImageAnalysis(null);
 
-        if (!result.canceled && result.assets[0]) {
-            const asset = result.assets[0];
-            const base64Image = `data:image/jpeg;base64,${asset.base64}`;
-            setSelectedImage(asset.uri);
-            // Pour les hôpitaux, on peut analyser des images de radiologie, échographie, etc.
-            // TODO: Implémenter l'analyse d'image pour hôpitaux si nécessaire
-            Alert.alert('Info', 'Analyse d\'image pour hôpitaux à implémenter');
+                // Analyser l'image avec l'IA
+                const analysisResponse = await imageAnalysisService.analyzeHospitalImage(
+                    base64Image,
+                    'general'
+                );
+
+                if (analysisResponse.success && analysisResponse.data) {
+                    setImageAnalysis(analysisResponse.data.analysis);
+                } else {
+                    Alert.alert(
+                        'Erreur',
+                        analysisResponse.error || 'Impossible d\'analyser l\'image'
+                    );
+                }
+            }
+        } catch (err: any) {
+            console.error('[HopitalHomeScreen] Erreur sélection image:', err);
+            Alert.alert('Erreur', err.message || 'Erreur lors de la sélection de l\'image');
+        } finally {
+            setLoadingAI(false);
         }
+    };
+
+    const showImageSourcePicker = () => {
+        Alert.alert(
+            'Choisir une source',
+            'Comment souhaitez-vous ajouter l\'image?',
+            [
+                {
+                    text: 'Caméra',
+                    onPress: () => handlePickImage('camera'),
+                },
+                {
+                    text: 'Galerie',
+                    onPress: () => handlePickImage('gallery'),
+                },
+                {
+                    text: 'Annuler',
+                    style: 'cancel',
+                },
+            ]
+        );
     };
 
     return (
@@ -151,7 +274,7 @@ const HopitalHomeScreen: React.FC = () => {
             {/* Header sticky avec recherche */}
             <View style={styles.headerContainer}>
                 <LinearGradient
-                    colors={['#EF4444', '#F87171']}
+                    colors={['#F87171', '#FB923C']}
                     style={styles.headerGradient}
                 >
                     <View style={styles.headerTop}>
@@ -225,7 +348,7 @@ const HopitalHomeScreen: React.FC = () => {
                                             style={styles.autocompleteItem}
                                             onPress={() => handleServiceSelect(item)}
                                         >
-                                            <SafeIcon name="activity" size={18} color="#EF4444" type="lucide" />
+                                            <SafeIcon name="activity" size={18} color="#DC2626" type="lucide" />
                                             <View style={styles.autocompleteItemText}>
                                                 <Text style={styles.autocompleteItemName}>{item.name}</Text>
                                                 {item.category && (
@@ -248,7 +371,7 @@ const HopitalHomeScreen: React.FC = () => {
                     <View style={styles.quickActions}>
                         <TouchableOpacity
                             style={styles.quickActionButton}
-                            onPress={handlePickImage}
+                            onPress={showImageSourcePicker}
                         >
                             <SafeIcon name="image" size={18} color="#FFFFFF" type="lucide" />
                             <Text style={styles.quickActionText}>Analyser image</Text>
@@ -265,14 +388,109 @@ const HopitalHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
                 </LinearGradient>
+
+                {/* Barre d'actions (tri) */}
+                <View style={styles.actionsBar}>
+                    <TouchableOpacity
+                        style={styles.sortButton}
+                        onPress={() => {
+                            hapticPress();
+                            setShowSortModal(true);
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <SafeIcon 
+                            name={getCurrentSortIcon()} 
+                            size={18} 
+                            color="#6B7280" 
+                            type="lucide" 
+                        />
+                        <Text style={styles.sortButtonText}>
+                            {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
-            {/* Contenu principal - À compléter dans les prochaines étapes */}
-            <View style={styles.content}>
-                <Text style={styles.placeholderText}>
-                    Recherchez une prestation médicale ou utilisez les fonctionnalités IA
-                </Text>
-            </View>
+            {/* Contenu principal */}
+            {loading && availableServices.length === 0 ? (
+                <View style={styles.content}>
+                    <ActivityIndicator size="large" color="#DC2626" />
+                    <Text style={styles.placeholderText}>Recherche des services disponibles...</Text>
+                </View>
+            ) : availableServices.length > 0 ? (
+                <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+                    <View style={styles.availabilityHeader}>
+                        <SafeIcon name="check-circle" size={20} color="#DC2626" type="lucide" />
+                        <Text style={styles.availabilityHeaderText}>
+                            {availableServices.length} service{availableServices.length > 1 ? 's' : ''} disponible{availableServices.length > 1 ? 's' : ''} maintenant
+                        </Text>
+                    </View>
+                    {availableServices.map((service) => (
+                        <View key={service.service_id} style={styles.serviceCard}>
+                            <View style={styles.serviceCardHeader}>
+                                <Text style={styles.serviceCardTitle}>{service.service_title}</Text>
+                                {service.is_24h && (
+                                    <View style={styles.badge24h}>
+                                        <Text style={styles.badge24hText}>24h/24</Text>
+                                    </View>
+                                )}
+                            </View>
+                            {service.available_services.length > 0 && (
+                                <View style={styles.servicesList}>
+                                    <Text style={styles.servicesListTitle}>Services disponibles :</Text>
+                                    {service.available_services.slice(0, 5).map((s, index) => (
+                                        <Text key={index} style={styles.serviceItem}>• {s}</Text>
+                                    ))}
+                                    {service.available_services.length > 5 && (
+                                        <Text style={styles.serviceItemMore}>
+                                            +{service.available_services.length - 5} autres
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
+                            {service.distance_km !== undefined && (
+                                <Text style={styles.distanceText}>
+                                    📍 {service.distance_km.toFixed(1)} km
+                                </Text>
+                            )}
+                            {service.has_blood_bank && (
+                                <View style={styles.bloodBankBadge}>
+                                    <SafeIcon name="droplet" size={16} color="#DC2626" type="lucide" />
+                                    <Text style={styles.bloodBankText}>Banque de sang</Text>
+                                </View>
+                            )}
+                        </View>
+                    ))}
+                </ScrollView>
+            ) : (
+                <View style={styles.content}>
+                    <Text style={styles.placeholderText}>
+                        Recherchez une prestation médicale ou utilisez les fonctionnalités IA
+                    </Text>
+                    {useAvailability && location?.coords && (
+                        <TouchableOpacity
+                            style={styles.searchAvailableButton}
+                            onPress={() => loadAvailableServices()}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.searchAvailableButtonText}>
+                                Rechercher les services disponibles maintenant
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
+
+            {/* Modal de tri */}
+            <SortModal
+                visible={showSortModal}
+                onClose={() => setShowSortModal(false)}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                sortOptions={sortOptions}
+            />
 
             {/* Modal IA */}
             {showAIModal && (
@@ -345,30 +563,65 @@ const AIModal: React.FC<AIModalProps> = ({
                     <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
                         {mode === 'pathology' ? (
                             <>
-                                <TextInput
-                                    style={styles.pathologyInput}
-                                    placeholder="Décrivez vos symptômes ou recherchez une pathologie..."
-                                    value={pathologyQuery}
-                                    onChangeText={onPathologyQueryChange}
-                                    multiline
-                                />
-                                <TouchableOpacity
-                                    style={styles.searchButton}
-                                    onPress={onSearchPathology}
-                                    disabled={loading}
-                                >
-                                    {loading ? (
-                                        <ActivityIndicator color="#FFFFFF" />
-                                    ) : (
-                                        <>
-                                            <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
-                                            <Text style={styles.searchButtonText}>Rechercher</Text>
-                                        </>
+                                <View style={styles.pathologySearchContainer}>
+                                    <Text style={styles.pathologySearchTitle}>
+                                        Recherche Pathologie IA
+                                    </Text>
+                                    <Text style={styles.pathologySearchSubtitle}>
+                                        Décrivez vos symptômes ou recherchez une pathologie pour obtenir des recommandations médicales
+                                    </Text>
+                                    
+                                    <View style={styles.pathologyInputContainer}>
+                                        <TextInput
+                                            style={styles.pathologyInput}
+                                            placeholder="Ex: Maux de tête, fièvre, douleurs abdominales..."
+                                            placeholderTextColor="#9CA3AF"
+                                            value={pathologyQuery}
+                                            onChangeText={onPathologyQueryChange}
+                                            multiline
+                                            numberOfLines={4}
+                                            textAlignVertical="top"
+                                            editable={!loading}
+                                        />
+                                    </View>
+                                    
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.searchButton,
+                                            (!pathologyQuery.trim() || loading) && styles.searchButtonDisabled
+                                        ]}
+                                        onPress={onSearchPathology}
+                                        disabled={!pathologyQuery.trim() || loading}
+                                        activeOpacity={0.7}
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <ActivityIndicator color="#FFFFFF" size="small" />
+                                                <Text style={styles.searchButtonText}>Analyse en cours...</Text>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                                                <Text style={styles.searchButtonText}>Analyser avec l'IA</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                    
+                                    {!pathologyQuery.trim() && (
+                                        <Text style={styles.pathologyHint}>
+                                            💡 Exemples : "Douleurs thoraciques", "Fièvre persistante", "Troubles digestifs"
+                                        </Text>
                                     )}
-                                </TouchableOpacity>
+                                </View>
 
                                 {pathologyResults.length > 0 && (
                                     <View style={styles.resultsContainer}>
+                                        <View style={styles.resultsHeader}>
+                                            <SafeIcon name="check-circle" size={20} color="#DC2626" type="lucide" />
+                                            <Text style={styles.resultsHeaderText}>
+                                                {pathologyResults.length} résultat{pathologyResults.length > 1 ? 's' : ''} trouvé{pathologyResults.length > 1 ? 's' : ''}
+                                            </Text>
+                                        </View>
                                         {pathologyResults.map((result, index) => (
                                             <View key={index} style={styles.pathologyCard}>
                                                 <View style={styles.pathologyHeader}>
@@ -447,16 +700,73 @@ const AIModal: React.FC<AIModalProps> = ({
                                 )}
                                 {loading ? (
                                     <View style={styles.loadingContainer}>
-                                        <ActivityIndicator size="large" color="#EF4444" />
+                                        <ActivityIndicator size="large" color="#DC2626" />
                                         <Text style={styles.loadingText}>Analyse en cours...</Text>
                                     </View>
                                 ) : imageAnalysis ? (
                                     <View style={styles.analysisContainer}>
-                                        <Text style={styles.analysisTitle}>Résultats de l'analyse</Text>
-                                        <Text style={styles.interpretation}>{imageAnalysis.interpretation}</Text>
+                                        <View style={styles.analysisHeader}>
+                                            <SafeIcon name="check-circle" size={24} color="#DC2626" type="lucide" />
+                                            <Text style={styles.analysisTitle}>Rapport d'analyse IA</Text>
+                                        </View>
+                                        
+                                        {imageAnalysis.description && (
+                                            <View style={styles.analysisSection}>
+                                                <Text style={styles.analysisSectionTitle}>Description</Text>
+                                                <Text style={styles.analysisText}>{imageAnalysis.description}</Text>
+                                            </View>
+                                        )}
+                                        
+                                        {imageAnalysis.interpretation && (
+                                            <View style={styles.analysisSection}>
+                                                <Text style={styles.analysisSectionTitle}>Interprétation</Text>
+                                                <Text style={styles.analysisText}>{imageAnalysis.interpretation}</Text>
+                                            </View>
+                                        )}
+                                        
+                                        {imageAnalysis.tags && imageAnalysis.tags.length > 0 && (
+                                            <View style={styles.analysisSection}>
+                                                <Text style={styles.analysisSectionTitle}>Éléments détectés</Text>
+                                                <View style={styles.tagsContainer}>
+                                                    {imageAnalysis.tags.map((tag, index) => (
+                                                        <View key={index} style={styles.tag}>
+                                                            <Text style={styles.tagText}>{tag}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        )}
+                                        
+                                        {imageAnalysis.recommendations && imageAnalysis.recommendations.length > 0 && (
+                                            <View style={styles.analysisSection}>
+                                                <Text style={styles.analysisSectionTitle}>Recommandations</Text>
+                                                {imageAnalysis.recommendations.map((rec, index) => (
+                                                    <View key={index} style={styles.recommendationItem}>
+                                                        <SafeIcon name="check" size={16} color="#DC2626" type="lucide" />
+                                                        <Text style={styles.recommendationText}>{rec}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        )}
+                                        
+                                        {imageAnalysis.confidence && (
+                                            <View style={styles.confidenceContainer}>
+                                                <Text style={styles.confidenceLabel}>
+                                                    Confiance: {Math.round(imageAnalysis.confidence * 100)}%
+                                                </Text>
+                                            </View>
+                                        )}
                                     </View>
                                 ) : (
-                                    <Text style={styles.placeholderText}>Aucune analyse disponible</Text>
+                                    <View style={styles.emptyAnalysisContainer}>
+                                        <SafeIcon name="image" size={48} color="#9CA3AF" type="lucide" />
+                                        <Text style={styles.placeholderText}>
+                                            Sélectionnez une image pour l'analyser avec l'IA
+                                        </Text>
+                                        <Text style={styles.placeholderSubtext}>
+                                            Prenez une photo ou choisissez depuis votre galerie
+                                        </Text>
+                                    </View>
                                 )}
                             </>
                         )}
@@ -579,7 +889,7 @@ const styles = StyleSheet.create({
     },
     autocompleteItemSpeciality: {
         fontSize: 12,
-        color: '#EF4444',
+        color: '#DC2626',
         marginTop: 2,
         fontWeight: '600',
     },
@@ -649,34 +959,85 @@ const styles = StyleSheet.create({
     modalScrollContent: {
         padding: 20,
     },
+    pathologySearchContainer: {
+        marginBottom: 20,
+    },
+    pathologySearchTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    pathologySearchSubtitle: {
+        fontSize: 14,
+        color: '#6B7280',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    pathologyInputContainer: {
+        marginBottom: 16,
+    },
     pathologyInput: {
         backgroundColor: '#F9FAFB',
         borderRadius: 12,
         padding: 16,
         fontSize: 16,
         color: '#111827',
-        minHeight: 100,
+        minHeight: 120,
+        maxHeight: 200,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
         textAlignVertical: 'top',
-        marginBottom: 16,
+    },
+    pathologyHint: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        textAlign: 'center',
+        marginTop: 12,
+        fontStyle: 'italic',
     },
     searchButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#EF4444',
+        backgroundColor: '#DC2626',
         borderRadius: 12,
-        paddingVertical: 14,
+        paddingVertical: 16,
         paddingHorizontal: 20,
         gap: 8,
-        marginBottom: 20,
+        shadowColor: '#DC2626',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    searchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        shadowOpacity: 0,
+        elevation: 0,
     },
     searchButtonText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#FFFFFF',
     },
     resultsContainer: {
         gap: 12,
+        marginTop: 8,
+    },
+    resultsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    resultsHeaderText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
     },
     pathologyCard: {
         backgroundColor: '#F9FAFB',
@@ -684,7 +1045,7 @@ const styles = StyleSheet.create({
         padding: 16,
         marginBottom: 12,
         borderLeftWidth: 4,
-        borderLeftColor: '#EF4444',
+        borderLeftColor: '#DC2626',
     },
     pathologyHeader: {
         flexDirection: 'row',
@@ -797,7 +1158,7 @@ const styles = StyleSheet.create({
     },
     hospitalSpeciality: {
         fontSize: 12,
-        color: '#EF4444',
+        color: '#DC2626',
         marginBottom: 4,
     },
     hospitalDistance: {
@@ -836,13 +1197,87 @@ const styles = StyleSheet.create({
         color: '#6B7280',
     },
     analysisContainer: {
-        gap: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+    },
+    analysisHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 20,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
     },
     analysisTitle: {
         fontSize: 20,
         fontWeight: '700',
         color: '#111827',
-        marginBottom: 12,
+    },
+    analysisSection: {
+        marginBottom: 20,
+    },
+    analysisSectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    analysisText: {
+        fontSize: 14,
+        color: '#6B7280',
+        lineHeight: 20,
+    },
+    tagsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    tag: {
+        backgroundColor: '#FEE2E2',
+        borderRadius: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+    },
+    tagText: {
+        fontSize: 12,
+        color: '#DC2626',
+        fontWeight: '600',
+    },
+    recommendationItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        marginBottom: 8,
+    },
+    recommendationText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#6B7280',
+        lineHeight: 20,
+    },
+    confidenceContainer: {
+        marginTop: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    confidenceLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontWeight: '600',
+    },
+    emptyAnalysisContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 32,
+    },
+    placeholderSubtext: {
+        fontSize: 14,
+        color: '#9CA3AF',
+        textAlign: 'center',
+        marginTop: 8,
     },
     interpretation: {
         fontSize: 16,
@@ -850,7 +1285,133 @@ const styles = StyleSheet.create({
         lineHeight: 24,
         marginBottom: 16,
     },
+    // Styles pour tri
+    actionsBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+    },
+    sortButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    sortButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    sortModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    sortModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 8,
+        minWidth: 280,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    sortOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        gap: 12,
+        borderRadius: 8,
+    },
+    sortOptionActive: {
+        backgroundColor: '#FEE2E2',
+    },
+    sortOptionText: {
+        flex: 1,
+        fontSize: 16,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    sortOptionTextActive: {
+        color: '#DC2626',
+        fontWeight: '600',
+    },
 });
+
+// Modal de tri
+interface SortModalProps {
+    visible: boolean;
+    onClose: () => void;
+    sortBy: SortOption;
+    onSortChange: (sort: SortOption) => void;
+    sortOptions: { value: SortOption; label: string; icon: string }[];
+}
+
+const SortModal: React.FC<SortModalProps> = ({
+    visible,
+    onClose,
+    sortBy,
+    onSortChange,
+    sortOptions,
+}) => {
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <TouchableOpacity
+                style={styles.sortModalOverlay}
+                activeOpacity={1}
+                onPress={onClose}
+            >
+                <View style={styles.sortModalContent}>
+                    {sortOptions.map((option) => (
+                        <TouchableOpacity
+                            key={option.value}
+                            style={[
+                                styles.sortOption,
+                                sortBy === option.value && styles.sortOptionActive,
+                            ]}
+                            onPress={() => {
+                                hapticPress();
+                                onSortChange(option.value);
+                                onClose();
+                            }}
+                        >
+                            <SafeIcon
+                                name={option.icon}
+                                size={20}
+                                color={sortBy === option.value ? '#DC2626' : '#6B7280'}
+                                type="lucide"
+                            />
+                            <Text
+                                style={[
+                                    styles.sortOptionText,
+                                    sortBy === option.value && styles.sortOptionTextActive,
+                                ]}
+                            >
+                                {option.label}
+                            </Text>
+                            {sortBy === option.value && (
+                                <SafeIcon name="check" size={20} color="#DC2626" type="lucide" />
+                            )}
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </TouchableOpacity>
+        </Modal>
+    );
+};
 
 export default HopitalHomeScreen;
 

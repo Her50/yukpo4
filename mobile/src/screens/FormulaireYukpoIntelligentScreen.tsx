@@ -8,6 +8,7 @@ import {
   DeviceEventEmitter,
   Dimensions,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -244,6 +245,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [gps, setGps] = useState<string | undefined>(undefined);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successData, setSuccessData] = useState<ServiceData | null>(null);
+  // ✅ NOUVEAU: États pour la modal de confirmation de création de produit
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalData, setSuccessModalData] = useState<{
+    serviceId: number;
+    productIndex: number;
+    productName: string;
+    isPrestation: boolean;
+    cout?: number;
+  } | null>(null);
   // ✅ SUPPRIMÉ: products et setProducts - Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
 
@@ -4112,7 +4122,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // Les tickets de voyage sont gérés via les champs autocomplete et date dans le formulaire
 
                 setSuccessData({ serviceId: result?.id || result?.service_id || 'nouveau', cout: coutReel });
-                setShowSuccessToast(true);
 
                 // ✅ NOUVEAU: Émettre un événement pour rafraîchir les produits
                 // ✅ CORRECTION: Ajouter un délai pour laisser la base de données se mettre à jour
@@ -4125,7 +4134,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 setIsSubmitting(false);
                 setLoading(false);
 
-                // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
+                // ✅ NOUVEAU: Si c'est un produit (pas une prestation), préparer l'ouverture de la configuration de livraison
                 const typeOffre = valeursFormulaire.type_offre || finalServiceData.type_offre?.valeur || 'produit';
                 const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
                 const serviceIdCreated = result?.id || result?.service_id;
@@ -4137,38 +4146,32 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   finalServiceData.produits.valeur.length > 0;
                 
                 if (!isPrestation && hasProducts && serviceIdCreated) {
-                  // C'est un produit, ouvrir le modal de configuration de livraison pour le premier produit
+                  // C'est un produit, préparer les données pour la modal de confirmation
                   const firstProductIndex = 0;
                   const firstProduct = finalServiceData.produits.valeur[0];
                   const productName = firstProduct?.nom || valeursFormulaire.nom_produit || 'Nouveau produit';
                   
-                  console.log('[FormulaireYukpoIntelligentScreen] 🚚 Ouverture automatique du modal de configuration de livraison:', {
-                    serviceId: serviceIdCreated,
+                  // Afficher la modal de confirmation
+                  setSuccessModalData({
+                    serviceId: typeof serviceIdCreated === 'number' ? serviceIdCreated : parseInt(String(serviceIdCreated), 10),
                     productIndex: firstProductIndex,
-                    productName: productName
+                    productName: productName,
+                    isPrestation: false,
+                    cout: coutReel,
                   });
-                  
-                  // ✅ CORRECTION: Utiliser le modal au lieu de naviguer vers un écran
-                  // Attendre un court délai pour laisser le toast s'afficher
-                  setTimeout(() => {
-                    setShowProductDeliveryConfig(true);
-                    setProductDeliveryConfigData({
-                      serviceId: typeof serviceIdCreated === 'number' ? serviceIdCreated : parseInt(String(serviceIdCreated), 10),
-                      productIndex: firstProductIndex,
-                      productName: productName
-                    });
-                  }, 1500);
-                  return; // Ne pas rediriger vers Home/MesServices si on ouvre la config livraison
+                  setShowSuccessModal(true);
+                  return; // Ne pas rediriger vers Home/MesServices si on affiche la modal
+                } else {
+                  // C'est une prestation ou pas de produits, afficher juste la modal de confirmation
+                  setSuccessModalData({
+                    serviceId: typeof serviceIdCreated === 'number' ? serviceIdCreated : parseInt(String(serviceIdCreated), 10),
+                    productIndex: -1,
+                    productName: 'Service',
+                    isPrestation: true,
+                    cout: coutReel,
+                  });
+                  setShowSuccessModal(true);
                 }
-
-                // Redirection après 3 secondes (pour les prestations ou si pas de produits)
-                setTimeout(() => {
-                  if (fromMesServices) {
-                    (navigation as any).navigate('MesServices');
-                  } else {
-                    (navigation as any).navigate('Home');
-                  }
-                }, 3000);
 
               } catch (innerError: any) {
                 console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur création:', innerError);
@@ -4566,26 +4569,65 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Toast de succès */}
-      {showSuccessToast && (
-        <View style={styles.successOverlay}>
-          <View style={styles.successContainer}>
-            <LinearGradient
-              colors={modernColors.successGradient}
-              style={styles.successGradient}
-            >
-              <SafeIcon name="check" size={60} color="#fff" />
-            </LinearGradient>
-            <Text style={styles.successTitle}>Service créé avec succès !</Text>
-            <Text style={styles.successText}>
-              Coût: {successData?.cout} tokens
+      {/* ✅ NOUVEAU: Modal de confirmation de création de produit/service */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowSuccessModal(false);
+          setSuccessModalData(null);
+          // Rediriger après fermeture
+          if (fromMesServices) {
+            (navigation as any).navigate('MesServices');
+          } else {
+            (navigation as any).navigate('Home');
+          }
+        }}
+      >
+        <View style={styles.successModalOverlay}>
+          <View style={styles.successModalContent}>
+            <View style={styles.successModalIcon}>
+              <Text style={styles.successModalIconText}>✅</Text>
+            </View>
+            <Text style={styles.successModalTitle}>
+              {successModalData?.isPrestation ? 'Service créé avec succès !' : 'Produit créé avec succès !'}
             </Text>
-            <Text style={styles.successSubtext}>
-              Redirection en cours...
+            <Text style={styles.successModalMessage}>
+              {successModalData?.isPrestation 
+                ? `Votre service a été créé avec succès.${successModalData?.cout ? `\nCoût: ${successModalData.cout} tokens` : ''}`
+                : 'Votre produit a été ajouté à votre service avec succès.'}
             </Text>
+            <NativeButton
+              title="Ok"
+              variant="primary"
+              onPress={() => {
+                setShowSuccessModal(false);
+                
+                // Si c'est un produit (pas une prestation), ouvrir le modal de configuration de livraison
+                if (successModalData && !successModalData.isPrestation && successModalData.productIndex >= 0) {
+                  setProductDeliveryConfigData({
+                    serviceId: successModalData.serviceId,
+                    productIndex: successModalData.productIndex,
+                    productName: successModalData.productName,
+                  });
+                  setShowProductDeliveryConfig(true);
+                } else {
+                  // Rediriger vers Home ou MesServices
+                  if (fromMesServices) {
+                    (navigation as any).navigate('MesServices');
+                  } else {
+                    (navigation as any).navigate('Home');
+                  }
+                }
+                
+                setSuccessModalData(null);
+              }}
+              style={styles.successModalButton}
+            />
           </View>
         </View>
-      )}
+      </Modal>
 
       {/* Modal GPS moderne */}
       <ModernGPSModal
@@ -5114,6 +5156,61 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  // ✅ NOUVEAU: Styles pour la modal de confirmation de création de produit/service
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  successModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  successModalIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  successModalIconText: {
+    fontSize: 32,
+  },
+  successModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: modernColors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  successModalMessage: {
+    fontSize: 16,
+    color: modernColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  successModalButton: {
+    width: '100%',
+    minWidth: 200,
+  },
+  // ✅ ANCIEN: Styles pour l'overlay de succès (désactivé, remplacé par modal)
   successOverlay: {
     position: 'absolute',
     top: 0,
