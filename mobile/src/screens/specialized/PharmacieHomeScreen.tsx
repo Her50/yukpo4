@@ -23,6 +23,7 @@ import { pharmacyProductService, PharmacyProduct, ProductSearchFilters } from '.
 import { pharmacyService, DosageRecommendation, MedicationInteraction } from '../../services/pharmacyService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useAIServices } from '../../hooks/useAIServices';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
 
@@ -61,13 +62,26 @@ const PharmacieHomeScreen: React.FC = () => {
     const [interactionsData, setInteractionsData] = useState<MedicationInteraction | null>(null);
     const [loadingAI, setLoadingAI] = useState(false);
 
+    // États pour assistant IA conversationnel
+    const { askAI, loading: aiLoading } = useAIServices();
+    const [aiQuestion, setAiQuestion] = useState('');
+    const [aiResponse, setAiResponse] = useState<string | null>(null);
+    const [showAIChat, setShowAIChat] = useState(false);
+    const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [
         { value: 'relevance', label: 'Pertinence', icon: 'star' },
         { value: 'price_asc', label: 'Prix croissant', icon: 'arrow-up' },
         { value: 'price_desc', label: 'Prix décroissant', icon: 'arrow-down' },
         { value: 'distance_asc', label: 'Plus proche', icon: 'map-pin' },
-        { value: 'name_asc', label: 'Nom (A-Z)', icon: 'sort-alpha' },
+        { value: 'name_asc', label: 'Nom (A-Z)', icon: 'type' },
     ];
+
+    // Obtenir l'icône du tri courant
+    const getCurrentSortIcon = () => {
+        const currentOption = sortOptions.find(o => o.value === sortBy);
+        return currentOption?.icon || 'arrow-up-down';
+    };
 
     // Quick filters
     const quickFilters = [
@@ -211,6 +225,59 @@ const PharmacieHomeScreen: React.FC = () => {
         loadMedications(false);
     };
 
+    // Fonction pour poser une question à l'IA
+    const handleAskAI = async () => {
+        if (!aiQuestion.trim()) return;
+        
+        hapticPress();
+        setAiResponse(null);
+        
+        try {
+            const context = {
+                category: 'pharmacie',
+                currentSearch: searchQuery,
+                medications: medications.slice(0, 5).map(m => m.nom_produit),
+                location: location?.coords ? {
+                    lat: location.coords.latitude,
+                    lng: location.coords.longitude
+                } : null
+            };
+            
+            const response = await askAI(aiQuestion, context);
+            if (response) {
+                setAiResponse(response.message);
+                setAiSuggestions(response.suggestions || []);
+            }
+        } catch (err: any) {
+            console.error('[PharmacieHomeScreen] Erreur IA:', err);
+            setAiResponse('Désolé, je n\'ai pas pu traiter votre question. Veuillez réessayer.');
+        }
+    };
+
+    // Générer des suggestions IA basées sur la recherche
+    useEffect(() => {
+        if (searchQuery.length > 3 && medications.length > 0) {
+            // Générer des suggestions intelligentes basées sur les résultats
+            const suggestions: string[] = [];
+            const firstMed = medications[0];
+            if (firstMed) {
+                suggestions.push(`Quels sont les effets secondaires de ${firstMed.nom_produit}?`);
+                suggestions.push(`Comment prendre ${firstMed.nom_produit}?`);
+                suggestions.push(`Y a-t-il des interactions avec ${firstMed.nom_produit}?`);
+            }
+            setAiSuggestions(suggestions);
+        } else if (searchQuery.length === 0) {
+            // Suggestions générales quand pas de recherche
+            setAiSuggestions([
+                'Quels médicaments pour la fièvre?',
+                'Comment traiter un mal de tête?',
+                'Quels sont les médicaments disponibles près de moi?'
+            ]);
+        } else {
+            setAiSuggestions([]);
+        }
+    }, [searchQuery, medications]);
+
     // Fonctions IA
     const handleGetDosage = async (medication: PharmacyProduct) => {
         hapticPress();
@@ -281,7 +348,7 @@ const PharmacieHomeScreen: React.FC = () => {
             {/* Header sticky avec recherche */}
             <View style={styles.headerContainer}>
                 <LinearGradient
-                    colors={['#10B981', '#34D399']}
+                    colors={['#6EE7B7', '#34D399']}
                     style={styles.headerGradient}
                 >
                     <View style={styles.headerTop}>
@@ -305,12 +372,13 @@ const PharmacieHomeScreen: React.FC = () => {
                         <TouchableOpacity
                             onPress={() => {
                                 hapticPress();
-                                setShowFilters(!showFilters);
+                                setShowFilters(true);
                             }}
                             style={styles.filterButton}
+                            activeOpacity={0.7}
                         >
                             <SafeIcon 
-                                name="sliders-h" 
+                                name="filter" 
                                 size={22} 
                                 color="#FFFFFF" 
                                 type="lucide" 
@@ -367,7 +435,7 @@ const PharmacieHomeScreen: React.FC = () => {
                             onPress={() => handleQuickFilter(filter)}
                             activeOpacity={0.7}
                         >
-                            <SafeIcon name={filter.icon} size={16} color="#10B981" type="lucide" />
+                            <SafeIcon name={filter.icon} size={16} color="#6EE7B7" type="lucide" />
                             <Text style={styles.quickFilterText}>{filter.label}</Text>
                         </TouchableOpacity>
                     ))}
@@ -381,12 +449,123 @@ const PharmacieHomeScreen: React.FC = () => {
                             hapticPress();
                             setShowSortModal(true);
                         }}
+                        activeOpacity={0.7}
                     >
-                        <SafeIcon name="arrow-up-down" size={18} color="#6B7280" type="lucide" />
+                        <SafeIcon 
+                            name={getCurrentSortIcon()} 
+                            size={18} 
+                            color="#6B7280" 
+                            type="lucide" 
+                        />
                         <Text style={styles.sortButtonText}>
                             {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
                         </Text>
                     </TouchableOpacity>
+                </View>
+
+                {/* Section Assistant IA */}
+                <View style={styles.aiSection}>
+                    <TouchableOpacity
+                        style={styles.aiToggleButton}
+                        onPress={() => {
+                            hapticPress();
+                            setShowAIChat(!showAIChat);
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.aiToggleContent}>
+                            <View style={styles.aiIconContainer}>
+                                <SafeIcon name="brain" size={20} color="#059669" type="lucide" />
+                            </View>
+                            <View style={styles.aiToggleTextContainer}>
+                                <Text style={styles.aiToggleTitle}>Assistant IA Pharmacie</Text>
+                                <Text style={styles.aiToggleSubtitle}>
+                                    Posez vos questions sur les médicaments
+                                </Text>
+                            </View>
+                            <SafeIcon 
+                                name={showAIChat ? "chevron-up" : "chevron-down"} 
+                                size={20} 
+                                color="#6B7280" 
+                                type="lucide" 
+                            />
+                        </View>
+                    </TouchableOpacity>
+
+                    {showAIChat && (
+                        <View style={styles.aiChatContainer}>
+                            {/* Suggestions rapides */}
+                            {aiSuggestions.length > 0 && (
+                                <View style={styles.aiSuggestionsContainer}>
+                                    <Text style={styles.aiSuggestionsTitle}>Suggestions :</Text>
+                                    <ScrollView 
+                                        horizontal 
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={styles.aiSuggestionsScroll}
+                                    >
+                                        {aiSuggestions.map((suggestion, index) => (
+                                            <TouchableOpacity
+                                                key={index}
+                                                style={styles.aiSuggestionChip}
+                                                onPress={() => {
+                                                    setAiQuestion(suggestion);
+                                                    handleAskAI();
+                                                }}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Text style={styles.aiSuggestionText}>{suggestion}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+
+                            {/* Champ de question IA */}
+                            <View style={styles.aiInputContainer}>
+                                <TextInput
+                                    style={styles.aiInput}
+                                    placeholder="Ex: Quels sont les effets secondaires de ce médicament?"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={aiQuestion}
+                                    onChangeText={setAiQuestion}
+                                    multiline
+                                    maxLength={500}
+                                />
+                                <TouchableOpacity
+                                    style={[styles.aiSendButton, (!aiQuestion.trim() || aiLoading) && styles.aiSendButtonDisabled]}
+                                    onPress={handleAskAI}
+                                    disabled={!aiQuestion.trim() || aiLoading}
+                                    activeOpacity={0.7}
+                                >
+                                    {aiLoading ? (
+                                        <ActivityIndicator size="small" color="#FFFFFF" />
+                                    ) : (
+                                        <SafeIcon name="send" size={18} color="#FFFFFF" type="lucide" />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Réponse IA */}
+                            {aiResponse && (
+                                <View style={styles.aiResponseContainer}>
+                                    <View style={styles.aiResponseHeader}>
+                                        <SafeIcon name="brain" size={16} color="#059669" type="lucide" />
+                                        <Text style={styles.aiResponseTitle}>Réponse IA</Text>
+                                    </View>
+                                    <Text style={styles.aiResponseText}>{aiResponse}</Text>
+                                    <TouchableOpacity
+                                        style={styles.aiClearButton}
+                                        onPress={() => {
+                                            setAiResponse(null);
+                                            setAiQuestion('');
+                                        }}
+                                    >
+                                        <Text style={styles.aiClearButtonText}>Nouvelle question</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                    )}
                 </View>
             </View>
 
@@ -538,7 +717,7 @@ const MedicationCard: React.FC<MedicationCardProps> = ({
             <View style={styles.medicationHeader}>
                 <View style={styles.medicationHeaderLeft}>
                     <View style={styles.medicationIconContainer}>
-                        <SafeIcon name="pill" size={24} color="#10B981" type="lucide" />
+                        <SafeIcon name="pill" size={24} color="#059669" type="lucide" />
                     </View>
                     <View style={styles.medicationInfo}>
                         <Text style={styles.medicationName} numberOfLines={2}>
@@ -586,7 +765,7 @@ const MedicationCard: React.FC<MedicationCardProps> = ({
                             onGetDosage();
                         }}
                     >
-                        <SafeIcon name="brain" size={16} color="#10B981" type="lucide" />
+                        <SafeIcon name="brain" size={16} color="#059669" type="lucide" />
                         <Text style={styles.aiButtonText}>Posologie</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -726,7 +905,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                         <View style={styles.filterSection}>
                             <View style={styles.switchRow}>
                                 <View style={styles.switchLabel}>
-                                    <SafeIcon name="check-circle" size={20} color="#10B981" type="lucide" />
+                                    <SafeIcon name="check-circle" size={20} color="#059669" type="lucide" />
                                     <Text style={styles.switchLabelText}>Uniquement disponibles</Text>
                                 </View>
                                 <TouchableOpacity
@@ -804,7 +983,7 @@ const SortModal: React.FC<SortModalProps> = ({
                             <SafeIcon
                                 name={option.icon}
                                 size={20}
-                                color={sortBy === option.value ? '#10B981' : '#6B7280'}
+                                color={sortBy === option.value ? '#059669' : '#6B7280'}
                                 type="lucide"
                             />
                             <Text
@@ -816,7 +995,7 @@ const SortModal: React.FC<SortModalProps> = ({
                                 {option.label}
                             </Text>
                             {sortBy === option.value && (
-                                <SafeIcon name="check" size={20} color="#10B981" type="lucide" />
+                                <SafeIcon name="check" size={20} color="#059669" type="lucide" />
                             )}
                         </TouchableOpacity>
                     ))}
@@ -854,7 +1033,7 @@ const DosageModal: React.FC<DosageModalProps> = ({
                     <View style={styles.modalHeader}>
                         <View style={styles.modalHeaderLeft}>
                             <View style={styles.modalIconContainer}>
-                                <SafeIcon name="brain" size={24} color="#10B981" type="lucide" />
+                                <SafeIcon name="brain" size={24} color="#059669" type="lucide" />
                             </View>
                             <View>
                                 <Text style={styles.modalTitle}>Posologie IA</Text>
@@ -871,7 +1050,7 @@ const DosageModal: React.FC<DosageModalProps> = ({
                     <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
                         {loading ? (
                             <View style={styles.aiLoadingContainer}>
-                                <ActivityIndicator size="large" color="#10B981" />
+                                <ActivityIndicator size="large" color="#059669" />
                                 <Text style={styles.aiLoadingText}>
                                     Analyse en cours par l'IA...
                                 </Text>
@@ -1102,7 +1281,7 @@ const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
                     <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
                         <View style={styles.medicationDetailsHeader}>
                             <View style={styles.medicationDetailsIcon}>
-                                <SafeIcon name="pill" size={32} color="#10B981" type="lucide" />
+                                <SafeIcon name="pill" size={32} color="#059669" type="lucide" />
                             </View>
                             <View style={styles.medicationDetailsInfo}>
                                 <Text style={styles.medicationDetailsName}>{medication.nom_produit}</Text>
@@ -1165,7 +1344,7 @@ const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
                                 style={styles.aiActionButton}
                                 onPress={onGetDosage}
                             >
-                                <SafeIcon name="brain" size={20} color="#10B981" type="lucide" />
+                                <SafeIcon name="brain" size={20} color="#059669" type="lucide" />
                                 <Text style={styles.aiActionButtonText}>Posologie intelligente</Text>
                                 <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
                             </TouchableOpacity>
@@ -1266,7 +1445,7 @@ const styles = StyleSheet.create({
         borderColor: 'transparent',
     },
     searchBarFocused: {
-        borderColor: '#10B981',
+        borderColor: '#6EE7B7',
     },
     searchInput: {
         flex: 1,
@@ -1287,7 +1466,7 @@ const styles = StyleSheet.create({
     quickFilterChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#D1FAE5',
+        backgroundColor: '#ECFDF5',
         borderRadius: 20,
         paddingHorizontal: 16,
         paddingVertical: 8,
@@ -1297,7 +1476,7 @@ const styles = StyleSheet.create({
     quickFilterText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#10B981',
+        color: '#059669',
     },
     actionsBar: {
         flexDirection: 'row',
@@ -1404,7 +1583,7 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#D1FAE5',
+        backgroundColor: '#ECFDF5',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1423,7 +1602,7 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
     },
     stockBadge: {
-        backgroundColor: '#10B981',
+        backgroundColor: '#059669',
         borderRadius: 12,
         paddingHorizontal: 12,
         paddingVertical: 6,
@@ -1450,7 +1629,7 @@ const styles = StyleSheet.create({
     medicationPrice: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#10B981',
+        color: '#059669',
         marginBottom: 4,
     },
     pharmacyName: {
@@ -1512,7 +1691,7 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#D1FAE5',
+        backgroundColor: '#ECFDF5',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1601,7 +1780,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 2,
     },
     switchActive: {
-        backgroundColor: '#10B981',
+        backgroundColor: '#059669',
     },
     switchThumb: {
         width: 26,
@@ -1637,7 +1816,7 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 14,
         borderRadius: 8,
-        backgroundColor: '#10B981',
+        backgroundColor: '#059669',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1673,7 +1852,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     sortOptionActive: {
-        backgroundColor: '#D1FAE5',
+        backgroundColor: '#ECFDF5',
     },
     sortOptionText: {
         flex: 1,
@@ -1682,7 +1861,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     sortOptionTextActive: {
-        color: '#10B981',
+        color: '#059669',
         fontWeight: '600',
     },
     // AI Modals styles
@@ -1837,7 +2016,7 @@ const styles = StyleSheet.create({
         width: 64,
         height: 64,
         borderRadius: 16,
-        backgroundColor: '#D1FAE5',
+        backgroundColor: '#ECFDF5',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1908,6 +2087,139 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#111827',
+    },
+    // Styles pour Assistant IA
+    aiSection: {
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    aiToggleButton: {
+        padding: 16,
+    },
+    aiToggleContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    aiIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#ECFDF5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    aiToggleTextContainer: {
+        flex: 1,
+    },
+    aiToggleTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 2,
+    },
+    aiToggleSubtitle: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    aiChatContainer: {
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    aiSuggestionsContainer: {
+        marginBottom: 12,
+    },
+    aiSuggestionsTitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+        marginBottom: 8,
+        textTransform: 'uppercase',
+    },
+    aiSuggestionsScroll: {
+        gap: 8,
+    },
+    aiSuggestionChip: {
+        backgroundColor: '#ECFDF5',
+        borderRadius: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: '#D1FAE5',
+    },
+    aiSuggestionText: {
+        fontSize: 12,
+        color: '#059669',
+        fontWeight: '500',
+    },
+    aiInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        gap: 8,
+        marginBottom: 12,
+    },
+    aiInput: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 14,
+        color: '#111827',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        minHeight: 44,
+        maxHeight: 100,
+    },
+    aiSendButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#059669',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    aiSendButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        opacity: 0.5,
+    },
+    aiResponseContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    aiResponseHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    aiResponseTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#059669',
+    },
+    aiResponseText: {
+        fontSize: 14,
+        color: '#111827',
+        lineHeight: 20,
+        marginBottom: 12,
+    },
+    aiClearButton: {
+        alignSelf: 'flex-start',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+    },
+    aiClearButtonText: {
+        fontSize: 12,
+        color: '#059669',
+        fontWeight: '600',
     },
 });
 

@@ -183,12 +183,16 @@ pub async fn create_candidature(
         .ok()
         .flatten();
 
+        // Préparer les valeurs pour les notifications
+        let titre_offre_str = titre_offre.clone().unwrap_or_else(|| "Offre d'emploi".to_string());
+        let candidat_nom_str = candidat_nom.clone().unwrap_or_else(|| "Un candidat".to_string());
+        
         // Créer la notification
         let notification_data = json!({
             "offre_id": request.offre_id,
             "candidature_id": candidature.id,
             "candidat_id": user_id,
-            "titre_offre": titre_offre.unwrap_or_default(),
+            "titre_offre": titre_offre_str.clone(),
         });
 
         // Utiliser le service de notification si disponible
@@ -199,10 +203,10 @@ pub async fn create_candidature(
             "Nouvelle candidature".to_string(),
             format!(
                 "{} a postulé à votre offre: {}",
-                candidat_nom.unwrap_or_else(|| "Un candidat".to_string()),
-                titre_offre.unwrap_or_else(|| "Offre d'emploi".to_string())
+                candidat_nom_str.clone(),
+                titre_offre_str.clone()
             ),
-            Some(notification_data),
+            Some(notification_data.clone()),
         )
         .await
         {
@@ -216,10 +220,11 @@ pub async fn create_candidature(
             "Nouvelle candidature".to_string(),
             format!(
                 "{} a postulé à votre offre: {}",
-                candidat_nom.unwrap_or_else(|| "Un candidat".to_string()),
-                titre_offre.unwrap_or_else(|| "Offre d'emploi".to_string())
+                candidat_nom_str,
+                titre_offre_str
             ),
-            Some(notification_data.clone()),
+            Some(notification_data),
+            None, // sound
         )
         .await;
     }
@@ -234,10 +239,11 @@ pub async fn create_candidature(
     .ok()
     .flatten();
 
+    let titre_offre_candidat_str = titre_offre_candidat.clone().unwrap_or_else(|| "Offre d'emploi".to_string());
     let notification_data_candidat = json!({
         "offre_id": request.offre_id,
         "candidature_id": candidature.id,
-        "titre_offre": titre_offre_candidat.unwrap_or_default(),
+        "titre_offre": titre_offre_candidat_str.clone(),
     });
 
     if let Err(e) = notification_service::create_notification(
@@ -247,7 +253,7 @@ pub async fn create_candidature(
         "Candidature envoyée".to_string(),
         format!(
             "Votre candidature pour l'offre \"{}\" a été envoyée avec succès",
-            titre_offre_candidat.unwrap_or_else(|| "Offre d'emploi".to_string())
+            titre_offre_candidat_str
         ),
         Some(notification_data_candidat.clone()),
     )
@@ -559,6 +565,7 @@ pub async fn update_statut_candidature(
         .ok()
         .flatten();
 
+        let titre_offre_str = titre_offre.clone().unwrap_or_else(|| "Offre d'emploi".to_string());
         let statut_label = match request.statut.as_str() {
             "accepted" => "acceptée",
             "rejected" => "refusée",
@@ -571,21 +578,21 @@ pub async fn update_statut_candidature(
                 "Candidature acceptée ! 🎉".to_string(),
                 format!(
                     "Félicitations ! Votre candidature pour l'offre \"{}\" a été acceptée.",
-                    titre_offre.unwrap_or_else(|| "Offre d'emploi".to_string())
+                    titre_offre_str.clone()
                 ),
             ),
             "rejected" => (
                 "Candidature refusée".to_string(),
                 format!(
                     "Votre candidature pour l'offre \"{}\" n'a pas été retenue.",
-                    titre_offre.unwrap_or_else(|| "Offre d'emploi".to_string())
+                    titre_offre_str.clone()
                 ),
             ),
             _ => (
                 "Mise à jour de candidature".to_string(),
                 format!(
                     "Le statut de votre candidature pour l'offre \"{}\" a été mis à jour: {}",
-                    titre_offre.unwrap_or_else(|| "Offre d'emploi".to_string()),
+                    titre_offre_str.clone(),
                     statut_label
                 ),
             ),
@@ -595,7 +602,7 @@ pub async fn update_statut_candidature(
             "candidature_id": candidature_id,
             "offre_id": candidature.offre_id,
             "statut": request.statut,
-            "titre_offre": titre_offre.unwrap_or_default(),
+            "titre_offre": titre_offre_str,
         });
 
         // Créer la notification
@@ -619,6 +626,7 @@ pub async fn update_statut_candidature(
             title,
             body,
             Some(notification_data),
+            None, // sound
         )
         .await;
     }

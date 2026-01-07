@@ -834,7 +834,7 @@ pub async fn ai_academic_search(
     // ✅ UTILISER LE SYSTÈME D'ORCHESTRATION IA COMPLET
     use crate::services::orientation_scolaire_ai_service::OrientationScolaireAIService;
 
-    let ai_service = OrientationScolaireAIService::new(state.ia.clone());
+    let _ai_service = OrientationScolaireAIService::new(state.ia.clone());
     
     // ✅ CHARGER LE PROMPT SPÉCIFIQUE pour recherche académique depuis le fichier markdown
     use crate::services::ia::prompt_loader::load_prompt_section_with_vars;

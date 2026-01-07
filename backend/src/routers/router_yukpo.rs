@@ -1219,7 +1219,7 @@ async fn handle_creation_offre_emploi_direct(
     use crate::services::ia::OptimizedIAService;
     
     let app_ia = state.ia.clone();
-    let optimized_ia = OptimizedIAService::new(app_ia.clone()).await?;
+    let _optimized_ia = OptimizedIAService::new(app_ia.clone()).await?;
     
     // ✅ UTILISER LE PROMPT MANAGER POUR CHARGER LE PROMPT SPÉCIFIQUE
     use crate::services::ia::prompt_manager::PromptManager;

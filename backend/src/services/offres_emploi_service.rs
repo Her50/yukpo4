@@ -184,37 +184,36 @@ impl OffresEmploiService {
         // ✅ CORRECTION: Requête SQL qui récupère TOUTES les offres actives créées
         // Utiliser une requête SQLx simple mais complète avec filtres optionnels
         
-        // Construire la requête de base qui récupère toutes les offres actives
-        let mut query = sqlx::query_as::<_, OffreEmploi>(
-            r#"
-            SELECT * FROM offres_emploi
-            WHERE statut = 'active' AND is_active = true
-            "#,
-        );
-
         // ✅ Ajouter les filtres dynamiques si présents
-        let mut has_filters = false;
         let mut where_conditions = vec![];
 
         // Recherche textuelle (titre, description, secteur, domaine, compétences, tags)
-        if let Some(query_text) = &request.query {
+        let search_pattern = if let Some(query_text) = &request.query {
             if !query_text.trim().is_empty() {
-                let search_pattern = format!("%{}%", query_text.trim());
-                where_conditions.push(format!(
-                    "(titre_poste ILIKE $1 OR description ILIKE $1 OR secteur ILIKE $1 OR COALESCE(domaine, '') ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(COALESCE(competences_requises, ARRAY[]::text[])) AS comp WHERE comp ILIKE $1) OR EXISTS (SELECT 1 FROM unnest(COALESCE(tags, ARRAY[]::text[])) AS tag WHERE tag ILIKE $1))"
-                ));
-                query = sqlx::query_as::<_, OffreEmploi>(&format!(
-                    "SELECT * FROM offres_emploi WHERE statut = 'active' AND is_active = true AND {}",
-                    where_conditions.join(" AND ")
-                ));
-                query = query.bind(&search_pattern);
-                has_filters = true;
+                Some(format!("%{}%", query_text.trim()))
+            } else {
+                None
             }
-        }
+        } else {
+            None
+        };
 
-        // Pour simplifier, on utilise une requête de base qui récupère TOUTES les offres actives
-        // Les filtres avancés peuvent être ajoutés progressivement
-        let offres = if !has_filters {
+        // Construire la requête SQL avec filtres si nécessaire
+        let offres = if let Some(ref pattern) = search_pattern {
+            where_conditions.push(format!(
+                "(titre_poste ILIKE $1 OR description ILIKE $1 OR secteur ILIKE $1 OR COALESCE(domaine, '') ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(COALESCE(competences_requises, ARRAY[]::text[])) AS comp WHERE comp ILIKE $1) OR EXISTS (SELECT 1 FROM unnest(COALESCE(tags, ARRAY[]::text[])) AS tag WHERE tag ILIKE $1))"
+            ));
+            let query_sql = format!(
+                "SELECT * FROM offres_emploi WHERE statut = 'active' AND is_active = true AND {} ORDER BY date_publication DESC LIMIT $2 OFFSET $3",
+                where_conditions.join(" AND ")
+            );
+            sqlx::query_as::<_, OffreEmploi>(&query_sql)
+                .bind(pattern)
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(&self.pool)
+                .await
+        } else {
             // ✅ REQUÊTE DE BASE: Récupère toutes les offres actives créées
             sqlx::query_as::<_, OffreEmploi>(
                 r#"
@@ -228,9 +227,6 @@ impl OffresEmploiService {
             .bind(offset)
             .fetch_all(&self.pool)
             .await
-        } else {
-            // Avec filtres (à implémenter progressivement)
-            query.bind(limit).bind(offset).fetch_all(&self.pool).await
         }
         .map_err(|e| {
             error!("[search_offres] Erreur SQL: {}", e);
