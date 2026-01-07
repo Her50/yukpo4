@@ -50,10 +50,10 @@ fn complete_truncated_json(json_str: &str) -> String {
     }
     
     // Compter les accolades et crochets ouverts/fermés
-    let mut open_braces = 0;
-    let mut close_braces = 0;
-    let mut open_brackets = 0;
-    let mut close_brackets = 0;
+    let mut _open_braces = 0;
+    let mut _close_braces = 0;
+    let mut _open_brackets = 0;
+    let mut _close_brackets = 0;
     let mut in_string = false;
     let mut escape_next = false;
     
@@ -67,10 +67,10 @@ fn complete_truncated_json(json_str: &str) -> String {
         match ch {
             '"' => in_string = !in_string,
             '\\' if in_string => escape_next = true,
-            '{' if !in_string => open_braces += 1,
-            '}' if !in_string => close_braces += 1,
-            '[' if !in_string => open_brackets += 1,
-            ']' if !in_string => close_brackets += 1,
+            '{' if !in_string => _open_braces += 1,
+            '}' if !in_string => _close_braces += 1,
+            '[' if !in_string => _open_brackets += 1,
+            ']' if !in_string => _close_brackets += 1,
             _ => {}
         }
     }
@@ -78,7 +78,7 @@ fn complete_truncated_json(json_str: &str) -> String {
     // Si on est dans une string à la fin, fermer la string
     if in_string {
         // Trouver la dernière quote ouverte et fermer la string
-        let mut last_quote_pos = 0;
+        let mut _last_quote_pos = 0;
         let mut in_str = false;
         let mut esc = false;
         
@@ -94,7 +94,7 @@ fn complete_truncated_json(json_str: &str) -> String {
             if ch == '"' {
                 in_str = !in_str;
                 if in_str {
-                    last_quote_pos = i;
+                    _last_quote_pos = i;
                 }
             }
         }

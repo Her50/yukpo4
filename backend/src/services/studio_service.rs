@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::{FromRow, PgPool, Postgres, Transaction};
+use sqlx::{FromRow, PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
 
 use crate::{
@@ -1352,11 +1352,12 @@ async fn build_preview_timeline(
                             };
 
                             if media_type == "video" && scene.assets.video_url.is_none() {
+                                let media_url_clone = media_url.clone();
                                 scene.assets.video_url = Some(media_url);
                                 scenes_updated += 1;
                                 info!(
                                     "[build_preview_timeline] ✅ Média vidéo chargé automatiquement depuis DB pour scène {}: {}",
-                                    scene.id, media_url
+                                    scene.id, media_url_clone
                                 );
                                 break;
                             } else if media_type == "image" {
