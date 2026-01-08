@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { apiGet, apiPost, apiPut, apiDelete } from '../services/api';
 import { LocationObject } from '../components/LocationSelector';
 
@@ -61,21 +61,45 @@ export const useSavedAddresses = (addressType?: 'pickup' | 'dropoff' | 'both') =
     const [addresses, setAddresses] = useState<UserSavedAddress[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    
+    // ✅ OPTIMISATION: Référence pour éviter les appels multiples simultanés
+    const fetchingRef = useRef(false);
+    const lastFetchTimeRef = useRef<number>(0);
+    const CACHE_DURATION_MS = 15000; // ✅ OPTIMISÉ: Cache de 15 secondes pour éviter les appels trop fréquents
+    const addressTypeRef = useRef<string | undefined>(addressType); // ✅ Garder une référence stable
 
     /**
      * Charger les adresses sauvegardées
      */
-    const fetchAddresses = useCallback(async () => {
+    const fetchAddresses = useCallback(async (force = false) => {
+        // ✅ OPTIMISATION: Éviter les appels multiples simultanés
+        if (fetchingRef.current && !force) {
+            console.log('[useSavedAddresses] Appel déjà en cours, ignoré');
+            return;
+        }
+        
+        // ✅ OPTIMISATION: Cache de 15 secondes pour éviter les appels trop fréquents
+        const now = Date.now();
+        if (!force && now - lastFetchTimeRef.current < CACHE_DURATION_MS) {
+            console.log('[useSavedAddresses] Cache encore valide, ignoré');
+            return;
+        }
+        
+        // ✅ OPTIMISATION: Utiliser la référence stable pour éviter les changements de dépendance
+        const currentAddressType = addressTypeRef.current;
+        
+        fetchingRef.current = true;
         setLoading(true);
         setError(null);
         try {
-            const params = addressType ? `?address_type=${addressType}` : '';
+            const params = currentAddressType ? `?address_type=${currentAddressType}` : '';
             const response = await apiGet<SavedAddressesResponse>(
                 `/api/delivery/saved-addresses${params}`
             );
             
             if (response.success && response.addresses) {
                 setAddresses(response.addresses);
+                lastFetchTimeRef.current = now;
             } else {
                 setAddresses([]);
             }
@@ -85,8 +109,9 @@ export const useSavedAddresses = (addressType?: 'pickup' | 'dropoff' | 'both') =
             setAddresses([]);
         } finally {
             setLoading(false);
+            fetchingRef.current = false;
         }
-    }, [addressType]);
+    }, []); // ✅ OPTIMISÉ: Dépendances vides pour éviter les re-renders
 
     /**
      * Créer une nouvelle adresse sauvegardée
@@ -101,8 +126,8 @@ export const useSavedAddresses = (addressType?: 'pickup' | 'dropoff' | 'both') =
             );
             
             if (response.success && response.address) {
-                // Recharger la liste
-                await fetchAddresses();
+                // Recharger la liste (forcer pour ignorer le cache)
+                await fetchAddresses(true);
                 return response.address;
             } else {
                 throw new Error(response.error || 'Erreur lors de la création de l\'adresse');
@@ -192,8 +217,8 @@ export const useSavedAddresses = (addressType?: 'pickup' | 'dropoff' | 'both') =
             );
             
             if (response.success && response.address) {
-                // Recharger la liste
-                await fetchAddresses();
+                // Recharger la liste (forcer pour ignorer le cache)
+                await fetchAddresses(true);
                 return response.address;
             } else {
                 throw new Error(response.error || 'Erreur lors de la mise à jour');
@@ -219,8 +244,8 @@ export const useSavedAddresses = (addressType?: 'pickup' | 'dropoff' | 'both') =
             );
             
             if (response.success) {
-                // Recharger la liste
-                await fetchAddresses();
+                // Recharger la liste (forcer pour ignorer le cache)
+                await fetchAddresses(true);
             } else {
                 throw new Error('Erreur lors de la suppression');
             }
@@ -249,8 +274,8 @@ export const useSavedAddresses = (addressType?: 'pickup' | 'dropoff' | 'both') =
             );
             
             if (response.success && response.address) {
-                // Recharger la liste
-                await fetchAddresses();
+                // Recharger la liste (forcer pour ignorer le cache)
+                await fetchAddresses(true);
                 return response.address;
             } else {
                 throw new Error(response.error || 'Erreur lors de la définition de l\'adresse par défaut');
@@ -295,10 +320,19 @@ export const useSavedAddresses = (addressType?: 'pickup' | 'dropoff' | 'both') =
             .slice(0, limit);
     }, [addresses]);
 
-    // Charger les adresses au montage
+    // ✅ OPTIMISÉ: Mettre à jour la référence quand addressType change
     useEffect(() => {
-        fetchAddresses();
-    }, [fetchAddresses]);
+        addressTypeRef.current = addressType;
+    }, [addressType]);
+
+    // ✅ OPTIMISÉ: Charger les adresses au montage et quand addressType change vraiment
+    useEffect(() => {
+        // Ne charger que si le cache est expiré ou si c'est le premier chargement
+        const now = Date.now();
+        if (now - lastFetchTimeRef.current >= CACHE_DURATION_MS || lastFetchTimeRef.current === 0) {
+            fetchAddresses();
+        }
+    }, [addressType, fetchAddresses]); // ✅ Recharger seulement si addressType change vraiment
 
     return {
         addresses,

@@ -236,11 +236,7 @@ const RegisterScreen: React.FC = () => {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Title style={styles.title}>
             Créer un compte{' '}
@@ -356,8 +352,7 @@ const RegisterScreen: React.FC = () => {
             <Text style={styles.footerLink}>Connectez-vous</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScreen>
   );
 };
 

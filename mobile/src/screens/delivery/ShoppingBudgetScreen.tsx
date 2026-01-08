@@ -1,6 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Alert, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, BackHandler, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
 import WalletAlertBanner from '../../components/delivery/WalletAlertBanner';
@@ -48,7 +49,7 @@ const ShoppingBudgetScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
-            <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            <KeyboardAwareScreen contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                 <DeliveryAvatarBubble
                     mood='focused'
                     message='Définis ton budget et ajoute des instructions spécifiques.'
@@ -81,7 +82,7 @@ const ShoppingBudgetScreen: React.FC = () => {
                         placeholder='Ajoute des précisions : préférences de marque, alternatives, code de caisse...'
                     />
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <View style={styles.footer}>
                 <NativeButton title='Choisir pick-up & drop-off' onPress={handleContinue} />

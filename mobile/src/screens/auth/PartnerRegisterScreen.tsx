@@ -7,14 +7,12 @@ import React, { useState } from 'react';
 import {
   Alert,
   Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -239,11 +237,8 @@ const PartnerRegisterScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <>
+    <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Title style={styles.title}>
             Devenir partenaire{' '}
@@ -528,7 +523,7 @@ const PartnerRegisterScreen: React.FC = () => {
             <Text style={styles.footerLink}>Connectez-vous</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+    </KeyboardAwareScreen>
 
       {/* Modal GPS moderne pour sélectionner l'adresse */}
       <ModernGPSModal
@@ -577,7 +572,7 @@ const PartnerRegisterScreen: React.FC = () => {
         title="Sélectionner l'adresse de l'établissement"
         allowZoneSelection={false}
       />
-    </KeyboardAvoidingView>
+    </>
   );
 };
 

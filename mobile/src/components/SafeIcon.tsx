@@ -306,9 +306,29 @@ const iconToEmoji: { [key: string]: string } = {
     'Map': '🗺️',
     'map-pin': '📍',
     'MapPin': '📍',
+    'ticket': '🎫',
+    'Ticket': '🎫',
+    'building': '🏢',
+    'Building': '🏢',
+    'building-2': '🏢',
+    'Building2': '🏢',
+    'sliders': '🎚️',
+    'Sliders': '🎚️',
+    'sliders-h': '🎚️',
+    'SlidersH': '🎚️',
+    'sliders-horizontal': '🎚️',
+    'arrow-up-down': '↕️',
+    'ArrowUpDown': '↕️',
+    'arrow-up-down-icon': '↕️',
+    'calendar-days': '📅',
+    'CalendarDays': '📅',
+    'calendar-range': '📆',
+    'CalendarRange': '📆',
+    'calendar-check': '📅✅',
+    'CalendarCheck': '📅✅',
 
     // Défaut
-    'default': '📱'
+    'default': '❓'
 };
 
 // Fonction pour convertir kebab-case en PascalCase (ex: message-circle -> MessageCircle)

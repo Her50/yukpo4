@@ -4,12 +4,12 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
     Alert,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import RealEstateAIFeatures from '../../components/RealEstateAIFeatures';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
@@ -221,7 +221,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                 </View>
             </LinearGradient>
 
-            <ScrollView
+            <KeyboardAwareScreen
                 style={styles.content}
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
@@ -609,7 +609,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                         • Vérifiez les photos et visites virtuelles avant de réserver une visite
                     </Text>
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <ModernGPSModal
                 visible={showGPSModal || showZoneSelector}

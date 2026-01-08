@@ -4,12 +4,12 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
     Alert,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
@@ -183,7 +183,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                 </View>
             </LinearGradient>
 
-            <ScrollView
+            <KeyboardAwareScreen
                 style={styles.content}
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
@@ -512,7 +512,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                         • Les livres neufs sont généralement plus chers mais en meilleur état
                     </Text>
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <ModernGPSModal
                 visible={showGPSModal}

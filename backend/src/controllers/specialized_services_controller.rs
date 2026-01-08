@@ -3245,8 +3245,9 @@ pub async fn search_taxis(
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
 
+    // ✅ CORRIGÉ: Filtrer uniquement les taxis publiés (is_active = true) - utiliser taxis_ville
     let mut query = QueryBuilder::new(
-        "SELECT s.*, t.* FROM services s INNER JOIN taxis t ON t.service_id = s.id WHERE 1=1",
+        "SELECT s.*, t.* FROM services s INNER JOIN taxis_ville t ON t.service_id = s.id WHERE s.is_active = true",
     );
 
     if let Some(ref ville) = params.ville {
@@ -3297,7 +3298,7 @@ pub async fn get_taxi_details(
     info!("[get_taxi_details] taxi_id={}", taxi_id);
 
     let taxi = sqlx::query(
-        "SELECT s.*, t.* FROM services s INNER JOIN taxis t ON t.service_id = s.id WHERE s.id = $1",
+        "SELECT s.*, t.* FROM services s INNER JOIN taxis_ville t ON t.service_id = s.id WHERE s.id = $1 AND s.is_active = true",
     )
     .bind(taxi_id)
     .fetch_optional(&state.pg)
@@ -3344,7 +3345,10 @@ pub async fn search_covoiturages(
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
 
-    let mut query = QueryBuilder::new("SELECT s.*, c.* FROM services s INNER JOIN covoiturages c ON c.service_id = s.id WHERE 1=1");
+    // ✅ CORRIGÉ: Filtrer uniquement les trajets publiés (is_active = true) et futurs
+    let mut query = QueryBuilder::new(
+        "SELECT s.*, c.* FROM services s INNER JOIN covoiturages c ON c.service_id = s.id WHERE s.is_active = true AND c.date_depart >= CURRENT_DATE"
+    );
 
     if let Some(ref depart) = params.depart {
         query.push(" AND c.depart ILIKE ");
@@ -3355,7 +3359,7 @@ pub async fn search_covoiturages(
         query.push_bind(format!("%{}%", destination));
     }
 
-    query.push(" ORDER BY c.date_depart DESC LIMIT ");
+    query.push(" ORDER BY c.date_depart ASC, c.heure_depart ASC LIMIT ");
     query.push_bind(limit);
     query.push(" OFFSET ");
     query.push_bind(offset);
@@ -3426,7 +3430,8 @@ pub async fn get_covoiturage_details(
         covoiturage_id
     );
 
-    let covoiturage = sqlx::query("SELECT s.*, c.* FROM services s INNER JOIN covoiturages c ON c.service_id = s.id WHERE s.id = $1")
+    // ✅ CORRIGÉ: Filtrer uniquement les trajets publiés
+    let covoiturage = sqlx::query("SELECT s.*, c.* FROM services s INNER JOIN covoiturages c ON c.service_id = s.id WHERE s.id = $1 AND s.is_active = true")
         .bind(covoiturage_id)
         .fetch_optional(&state.pg)
         .await

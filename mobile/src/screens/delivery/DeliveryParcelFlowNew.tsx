@@ -12,12 +12,12 @@ import {
     Animated,
     FlatList,
     Modal,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import HapticTouchable from '../../components/delivery/HapticTouchable';
 import StepWizardForm from '../../components/delivery/StepWizardForm';
 import MediaUploadManager from '../../components/MediaUploadManager';
@@ -670,7 +670,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
     // Composants d'étapes
     const ParcelInfoStep = (
-        <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+        <KeyboardAwareScreen style={styles.stepContent} showsVerticalScrollIndicator={false}>
             <Text style={styles.stepTitle}>Informations du colis</Text>
             <Text style={styles.stepSubtitle}>Décrivez votre colis pour une meilleure estimation</Text>
 
@@ -1022,7 +1022,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     allowVideo={false}
                 />
             </View>
-        </ScrollView>
+        </KeyboardAwareScreen>
     );
 
     // ✅ NOUVEAU : Handler pour sélection d'adresse de collecte sauvegardée ou GPS

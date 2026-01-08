@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { menuPlanningService } from '../../services/menuPlanningService';
@@ -95,7 +95,7 @@ const RecipeSearchScreen: React.FC = () => {
     ];
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
@@ -157,7 +157,7 @@ const RecipeSearchScreen: React.FC = () => {
                     </Text>
                 </NativeCard>
             </View>
-        </ScrollView>
+        </KeyboardAwareScreen>
     );
 };
 

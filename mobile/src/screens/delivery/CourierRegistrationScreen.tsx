@@ -5,13 +5,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import PaymentMethodSelector from '../../components/PaymentMethodSelector';
@@ -546,10 +546,9 @@ const CourierRegistrationScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            <ScrollView 
+            <KeyboardAwareScreen 
                 style={styles.scroll} 
                 contentContainerStyle={styles.scrollContent}
-                nestedScrollEnabled={true}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={true}
@@ -968,7 +967,7 @@ const CourierRegistrationScreen: React.FC = () => {
                         disabled={loading}
                     />
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
         </SafeNativeView>
     );
 };

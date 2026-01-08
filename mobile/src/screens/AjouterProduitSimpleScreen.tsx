@@ -11,15 +11,15 @@ import {
     ActivityIndicator,
     Alert,
     DeviceEventEmitter,
-    KeyboardAvoidingView,
     Modal,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
 import LocationSelector, { LocationObject } from '../components/LocationSelector';
 import ModernGPSModal from '../components/ModernGPSModal';
@@ -60,7 +60,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [isAddingProductLoading, setIsAddingProductLoading] = useState(false); // ✅ NOUVEAU: État de loading spécifique pour l'ajout de produit
     // ✅ NOUVEAU: Référence au ScrollView principal pour gérer le scroll horizontal des images
-    const mainScrollViewRef = useRef<ScrollView>(null);
+    const mainScrollViewRef = useRef<KeyboardAwareScrollView>(null);
     // ✅ NOUVEAU: États pour le modal GPS (pour lieu_produit)
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -1874,10 +1874,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             colors={[modernColors.background, '#F3F4F6']}
             style={styles.container}
         >
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={styles.keyboardView}
-            >
+            <View style={styles.keyboardView}>
                 <NavigatorToolbar
                     title={toolbarTitle}
                     subtitle={toolbarSubtitle}
@@ -1886,15 +1883,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     backIcon="back"
                 />
 
-                <ScrollView
-                    ref={mainScrollViewRef}
+                <KeyboardAwareScreen
+                    innerRef={mainScrollViewRef}
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
-                    nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll horizontal des images dans MediaUploadManager
-                    keyboardShouldPersistTaps="handled" // ✅ OPTIMISATION: Éviter les conflits de clavier
-                    scrollEventThrottle={16} // ✅ OPTIMISATION: Limiter la fréquence des événements de scroll
-                    removeClippedSubviews={true} // ✅ OPTIMISATION: Améliorer les performances
+                    keyboardShouldPersistTaps="handled"
                 >
                     {/* Carte principale */}
                     <NativeCard style={styles.mainCard}>
@@ -2272,8 +2266,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             </View>
                         )}
                     </NativeCard>
-                </ScrollView>
-            </KeyboardAvoidingView>
+                </KeyboardAwareScreen>
+            </View>
 
             {/* ✅ NOUVEAU: Modal GPS pour lieu_produit */}
             <ModernGPSModal

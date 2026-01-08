@@ -36,9 +36,10 @@
 
 ### 3. Paramètres Économiques Réalistes
 
-#### Abonnements
-- **Prix** : 2,000 FCFA/mois par produit/service
-- **Revenu annuel** : 24,000 FCFA par produit actif
+#### Système de Tokens
+- **Système** : Achat de tokens selon utilisation (pay-per-use)
+- **Coût moyen équivalent** : ~2,000 FCFA/mois par produit/service
+- **Revenu annuel moyen** : ~24,000 FCFA par produit actif (basé sur utilisation moyenne)
 
 #### Commissions
 - **Livraisons** : Minimum 100 FCFA par livraison
@@ -91,7 +92,7 @@ Tous les documents ont été convertis en format Word (.docx) avec les modificat
 - **1,2 milliard FCFA revenus** (vs 1,8 milliard) - Conservateur
 
 ### Paramètres Économiques Validés
-- Abonnements : 2,000 FCFA/mois (marché local)
+- Système tokens : Équivalent ~2,000 FCFA/mois en moyenne (marché local, pay-per-use)
 - Commissions : 5% ventes, 100+ FCFA livraisons (compétitif)
 - Publicités : 15K-30K FCFA/vidéo (marché local)
 

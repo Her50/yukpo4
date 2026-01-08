@@ -7,15 +7,15 @@ import {
   Alert,
   DeviceEventEmitter,
   Dimensions,
-  KeyboardAvoidingView,
   Modal,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { apiGet, apiPost } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
 // ✅ NOUVEAU 2025-11-02: Gestionnaire upload images/vidéos dédié
@@ -64,7 +64,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, logout } = useAuth();
-  const mainScrollViewRef = React.useRef<ScrollView>(null);
+  const mainScrollViewRef = React.useRef<KeyboardAwareScrollView>(null);
   const blockRefs = React.useRef<Record<number, View | null>>({});
   const blockPositions = React.useRef<Record<number, number>>({});
 
@@ -4283,7 +4283,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       <View style={styles.scrollView}>
         {/* Étape 1: Génération du formulaire */}
         {activeStep === 1 && (
-          <ScrollView
+          <KeyboardAwareScreen
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
           >
@@ -4400,16 +4400,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 disabled={loading}
               />
             </View>
-          </ScrollView>
+          </KeyboardAwareScreen>
         )}
 
         {/* Étape 2: Formulaire avec navigation par blocs */}
         {activeStep === 2 && (
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-          >
+          <View style={{ flex: 1 }}>
             {/* Navigation par blocs - Sticky */}
             {blocks.length > 0 && (
               <>
@@ -4457,15 +4453,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 </View>
 
                 {/* ✅ CORRIGÉ 2025-12-23: Afficher UNIQUEMENT le bloc actif (currentBlock) */}
-                <ScrollView
-                  ref={mainScrollViewRef}
+                <KeyboardAwareScreen
+                  innerRef={mainScrollViewRef}
                   style={{ flex: 1 }}
                   contentContainerStyle={styles.contentContainer}
                   showsVerticalScrollIndicator={true}
                   keyboardShouldPersistTaps="handled"
-                  keyboardDismissMode="on-drag"
-                  nestedScrollEnabled={false}
-                  bounces={Platform.OS === 'ios'}
                 >
                   {displayedBlocks
                     .filter(({ index: blockIndex }) => blockIndex === currentBlock) // ✅ CRITIQUE: Filtrer pour n'afficher que le bloc actif
@@ -4562,10 +4555,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       <View style={styles.navButtonPlaceholder} />
                     )}
                   </View>
-                </ScrollView>
+                </KeyboardAwareScreen>
               </>
             )}
-          </KeyboardAvoidingView>
+          </View>
         )}
       </View>
 

@@ -119,6 +119,48 @@ Ce dossier contient tous les documents professionnels destinés aux investisseur
 
 ---
 
+### 8. [Plan Financier 3 Ans](./08_PLAN_FINANCIER_3_ANS.md)
+**Simulation réaliste charges et production** - Plan financier détaillé 2026-2028.
+
+**Contenu** :
+- Production/Revenus détaillés mensuels (2026-2028)
+- Charges détaillées par poste (variables + fixes)
+- Cash flow et trésorerie
+- Tableau de bord financier 3 ans
+- Ratios clés et métriques
+- Points de vigilance par année
+
+**Utilisation** : Analyse financière approfondie, validation charges et revenus, planification trésorerie.
+
+---
+
+### 9. [Timeline de Lancement](./TIMELINE_LANCEMENT.md)
+**Calendrier opérationnel détaillé** - Dates clés et objectifs par phase.
+
+**Contenu** :
+- Timeline critique (Financement, Recrutement, Lancement)
+- Objectifs réalistes par trimestre
+- Checklist pré-lancement
+- Métriques de succès par phase
+
+**Utilisation** : Planification opérationnelle, suivi milestones, gestion projet.
+
+---
+
+### 10. [Références et Sources](./REFERENCES_SOURCES.md)
+**Sources des données** - Liste complète des références pour tous les chiffres.
+
+**Contenu** :
+- Sources démographiques (UN, World Bank)
+- Sources économiques (IMF, African Development Bank)
+- Sources digitales (GSMA, ITU)
+- Sources sectorielles (Statista, McKinsey)
+- Benchmarks concurrentiels
+
+**Utilisation** : Validation crédibilité des chiffres, référence pour due diligence.
+
+---
+
 ## 🎯 UTILISATION RECOMMANDÉE
 
 ### Pour Première Approche
@@ -127,40 +169,41 @@ Ce dossier contient tous les documents professionnels destinés aux investisseur
 
 ### Pour Due Diligence
 1. **Business Plan** : Analyse complète
-2. **Projections Financières** : Évaluation financière
-3. **Analyse de Marché** : Validation marché
-4. **Plan Marketing** : Stratégie croissance
-5. **Plan Opérationnel** : Exécution
+2. **Plan Financier 3 Ans** : Simulation charges et production
+3. **Projections Financières** : Évaluation financière
+4. **Analyse de Marché** : Validation marché
+5. **Plan Marketing** : Stratégie croissance
+6. **Plan Opérationnel** : Exécution
+7. **Timeline de Lancement** : Planification opérationnelle
+8. **Références et Sources** : Validation crédibilité
 
 ---
 
 ## 📊 RÉSUMÉ CHIFFRES CLÉS
 
 ### Marché
-- **TAM** : $150+ milliards
-- **SAM** : $45 milliards
-- **SOM (5 ans)** : $2.5 milliards
+- **TAM** : 90+ billions FCFA
+- **SAM** : 27 billions FCFA
+- **SOM (5 ans)** : 1,5 billion FCFA
 
 ### Financement
-- **Série A** : $3.5M-$5M (2026)
-- **Série B** : $12M-$15M (2027)
-- **Série C** : $30M-$40M (2028)
-- **Série D** : $60M-$80M (2029)
+- **Série A** : 2,1-3 milliards FCFA (2026)
+- **Série B** : 7,2-9 milliards FCFA (2027)
+- **Série C** : 18-24 milliards FCFA (2028)
+- **Série D** : 36-48 milliards FCFA (2029)
 
-### Projections Revenus
-- **2026** : $2.5M
-- **2027** : $12M
-- **2028** : $35M
-- **2029** : $85M
-- **2030** : $180M+
+### Projections Revenus (3 Ans - Réalistes)
+- **2026** : 1,2 milliard FCFA (Charges : 1,4 milliard, EBITDA : -200M)
+- **2027** : 6,5 milliards FCFA (Charges : 5,85 milliards, EBITDA : +650M)
+- **2028** : 18 milliards FCFA (Charges : 14,4 milliards, EBITDA : +3,6 milliards)
 
 ### ROI Investisseurs
 - **Conservateur** : 10-15x sur 5 ans
 - **Optimiste** : 20-30x sur 5 ans
 
 ### Valorisation Projetée
-- **2026 (Série A)** : $25M-$37.5M
-- **2030 (Exit)** : $500M-$1B
+- **2026 (Série A)** : 15-22,5 milliards FCFA
+- **2030 (Exit)** : 300-600 milliards FCFA
 
 ---
 

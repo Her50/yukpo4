@@ -5,12 +5,12 @@ import {
     BackHandler,
     FlatList,
     Modal,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { deliveryApi } from '../../services/api';
@@ -305,7 +305,7 @@ const StorageLocationsScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                        <KeyboardAwareScreen style={styles.modalBody} showsVerticalScrollIndicator={false}>
                             <View style={styles.formGroup}>
                                 <Text style={styles.label}>Nom du lieu de stock *</Text>
                                 <NativeInput
@@ -387,7 +387,7 @@ const StorageLocationsScreen: React.FC = () => {
                                     <Text style={styles.checkboxLabel}>Lieu de stock actif</Text>
                                 </TouchableOpacity>
                             </View>
-                        </ScrollView>
+                        </KeyboardAwareScreen>
 
                         <View style={styles.modalFooter}>
                             <NativeButton

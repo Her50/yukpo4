@@ -26,6 +26,8 @@ import { laboratoryService, ExaminationType, LabAnalysisResult, PathologySearchR
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 
+type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
+
 const LaboratoireHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
@@ -53,6 +55,10 @@ const LaboratoireHomeScreen: React.FC = () => {
     const [loadingAI, setLoadingAI] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [imageAnalysis, setImageAnalysis] = useState<LabAnalysisResult | null>(null);
+
+    // États de tri
+    const [sortBy, setSortBy] = useState<SortOption>('relevance');
+    const [showSortModal, setShowSortModal] = useState(false);
 
     // Options de tri
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [

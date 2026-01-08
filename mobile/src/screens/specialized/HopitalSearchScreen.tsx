@@ -4,13 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
     Alert,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
@@ -208,7 +208,7 @@ const HopitalSearchScreen: React.FC = () => {
                 </View>
             </LinearGradient>
 
-            <ScrollView
+            <KeyboardAwareScreen
                 style={styles.content}
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
@@ -617,7 +617,7 @@ const HopitalSearchScreen: React.FC = () => {
                         • En cas d'urgence vitale, appelez directement le 118
                     </Text>
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <ModernGPSModal
                 visible={showGPSModal}

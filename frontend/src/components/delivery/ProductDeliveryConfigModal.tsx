@@ -31,6 +31,7 @@ interface DeliveryConfig {
     pickup_longitude: number;
     storage_location_id?: number; // ✅ Phase 9 - Amélioration 32
     required_vehicle_type_id: number;
+    preparation_time_minutes?: number; // ✅ Temps de préparation en minutes (obligatoire pour configuration complète)
     weight_kg?: number;
     volume_cm3?: number;
     requires_isothermal: boolean;
@@ -72,6 +73,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         pickup_longitude: 0,
         storage_location_id: undefined, // ✅ Phase 9 - Amélioration 32
         required_vehicle_type_id: 0,
+        preparation_time_minutes: 0, // ✅ Par défaut 0 (instantané) - toujours défini
         weight_kg: undefined,
         volume_cm3: undefined,
         requires_isothermal: false,
@@ -174,6 +176,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         pickup_longitude: data.config.pickup_longitude || 0,
                         storage_location_id: data.config.storage_location_id || undefined, // ✅ Phase 9 - Amélioration 32
                         required_vehicle_type_id: data.config.required_vehicle_type_id || 0,
+                        preparation_time_minutes: data.config.preparation_time_minutes ?? 0, // ✅ Temps de préparation (0 par défaut si undefined)
                         weight_kg: data.config.weight_kg,
                         volume_cm3: data.config.volume_cm3,
                         requires_isothermal: data.config.requires_isothermal || false,
@@ -215,6 +218,15 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             });
             return;
         }
+        // ✅ Validation: preparation_time_minutes doit être >= 0 (0 = instantané, toujours défini)
+        const preparationTime = config.preparation_time_minutes ?? 0; // ✅ Toujours 0 par défaut
+        if (preparationTime < 0) {
+            toast({
+                title: "Erreur",
+                description: "Le temps de préparation ne peut pas être négatif (0 pour instantané)",
+            });
+            return;
+        }
 
         setLoading(true);
         try {
@@ -241,6 +253,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                 pickup_longitude: config.pickup_longitude,
                                 storage_location_id: config.storage_location_id || null, // ✅ Phase 9 - Amélioration 32
                                 required_vehicle_type_id: config.required_vehicle_type_id,
+                                preparation_time_minutes: config.preparation_time_minutes ?? 0, // ✅ Temps de préparation (0 par défaut si undefined)
                                 weight_kg: config.weight_kg,
                                 volume_cm3: config.volume_cm3,
                                 requires_isothermal: config.requires_isothermal,
@@ -292,6 +305,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         pickup_longitude: config.pickup_longitude,
                         storage_location_id: config.storage_location_id || null, // ✅ Phase 9 - Amélioration 32
                         required_vehicle_type_id: config.required_vehicle_type_id,
+                        preparation_time_minutes: config.preparation_time_minutes ?? 0, // ✅ Temps de préparation (0 par défaut si undefined)
                         weight_kg: config.weight_kg,
                         volume_cm3: config.volume_cm3,
                         requires_isothermal: config.requires_isothermal,
@@ -311,10 +325,19 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     onSuccess?.();
                     onClose();
                 } else {
+                    let errorMessage = "Erreur lors de la sauvegarde";
+                    try {
                     const error = await response.json();
+                        errorMessage = error.message || error.error || errorMessage;
+                        console.error('[ProductDeliveryConfigModal] Erreur backend:', error);
+                    } catch (e) {
+                        console.error('[ProductDeliveryConfigModal] Erreur parsing réponse:', e);
+                        errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+                    }
                     toast({
                         title: "Erreur",
-                        description: error.message || "Erreur lors de la sauvegarde",
+                        description: errorMessage,
+                        variant: "destructive"
                     });
                 }
             }
@@ -437,6 +460,25 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                     </option>
                                 ))}
                             </select>
+                        </div>
+
+                        {/* Temps de préparation */}
+                        <div>
+                            <Label>Temps de préparation (minutes) *</Label>
+                            <Input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={config.preparation_time_minutes ?? 0}
+                                onChange={(e) => setConfig(prev => ({ 
+                                    ...prev, 
+                                    preparation_time_minutes: e.target.value ? parseInt(e.target.value) || 0 : 0 // ✅ Toujours 0 par défaut si vide
+                                }))}
+                                placeholder="0 pour instantané, ou nombre de minutes"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Temps nécessaire pour préparer le produit avant la collecte (0 = disponible immédiatement, valeur par défaut)
+                            </p>
                         </div>
 
                         {/* Poids et volume */}

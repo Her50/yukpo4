@@ -46,7 +46,7 @@ const OffreSearchScreen: React.FC = () => {
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
             <Text style={styles.title}>Rechercher une offre</Text>
 
             <NativeCard style={styles.card}>
@@ -143,7 +143,7 @@ const OffreSearchScreen: React.FC = () => {
                     style={styles.searchButton}
                 />
             </NativeCard>
-        </ScrollView>
+        </KeyboardAwareScreen>
     );
 };
 

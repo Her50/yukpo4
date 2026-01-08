@@ -199,10 +199,8 @@ BEGIN
                 p_departure_date IS NULL OR
                 p.date_depart::date = p_departure_date
             )
-            AND (
-                p_departure_date IS NULL OR
-                p.date_depart::date >= CURRENT_DATE
-            )
+            -- ✅ CORRIGÉ: Toujours filtrer les voyages passés (programmés uniquement)
+            AND p.date_depart::date >= CURRENT_DATE
     )
     SELECT 
         ad.id AS agency_id,

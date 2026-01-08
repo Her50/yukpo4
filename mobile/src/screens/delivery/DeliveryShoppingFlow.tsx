@@ -6,13 +6,13 @@ import {
     Alert,
     Linking,
     Modal,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { VEHICLE_TRANSPORT_OPTIONS } from '../../config/deliveryConfig';
@@ -496,7 +496,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                     </LinearGradient>
 
                     {/* Content */}
-                    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                    <KeyboardAwareScreen style={styles.content} showsVerticalScrollIndicator={false}>
                         {/* Sélection supermarché */}
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
@@ -923,7 +923,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                 textAlignVertical="top"
                             />
                         </View>
-                    </ScrollView>
+                    </KeyboardAwareScreen>
 
                     {/* Footer */}
                     <View style={styles.footer}>

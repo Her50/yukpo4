@@ -9,253 +9,292 @@
 
 ## 🏢 STRUCTURE ORGANISATIONNELLE
 
+### ⚠️ APPROCHE PROGRESSIVE - CROISSANCE ÉCHELONNÉE
+
+**Phase Initiale (Lancement - Q1 2026) : Effectif Minimal de 5 Personnes Maximum**
+
+Au lancement, Yukpomnang démarre avec un **effectif minimal et réaliste de 5 personnes maximum** pour optimiser les coûts et valider le modèle économique. L'équipe s'étendra **progressivement** au fur et à mesure de la croissance de l'application et de l'augmentation des revenus.
+
+**Stratégie de Croissance Progressive**
+- **Q1 2026 (Lancement)** : 5 personnes maximum (équipe fondatrice + essentiel)
+- **Q2-Q3 2026** : Extension à 15-20 personnes (selon traction)
+- **Q4 2026** : Extension à 30-40 personnes (selon croissance)
+- **2027** : Extension à 80-100 personnes (expansion 3 pays)
+- **2028** : Extension à 200+ personnes (expansion francophone)
+
+**Priorité Recrutement : Agents Commerciaux**
+
+Le recrutement prioritaire se concentre sur les **agents commerciaux** pour :
+- Acquisition de commerçants partenaires
+- Onboarding et support commerçants
+- Développement du réseau de partenaires
+- Expansion géographique
+
+---
+
 ### Direction (C-Level)
 
 #### CEO (Chief Executive Officer)
 - **Rôle** : Vision stratégique, relations investisseurs, leadership
 - **Profil** : Expérience tech/startup, connaissance marché africain
 - **Recrutement** : Q1 2026
-- **Salaire** : $120K-$150K/an + equity
+- **Salaire** : 72 millions FCFA-90 millions FCFA/an + equity
 
 #### CTO (Chief Technology Officer)
 - **Rôle** : Direction technique, architecture, innovation
 - **Profil** : Expertise Rust/React, scaling, IA
 - **Statut** : Fondateur ou recrutement Q1 2026
-- **Salaire** : $100K-$130K/an + equity
+- **Salaire** : 60 millions FCFA-78 millions FCFA/an + equity
 
 #### CFO (Chief Financial Officer)
 - **Rôle** : Finance, comptabilité, légal, fundraising
 - **Profil** : Expérience startup, financement, Afrique
 - **Recrutement** : Q2-Q3 2026
-- **Salaire** : $90K-$120K/an + equity
+- **Salaire** : 54 millions FCFA-72 millions FCFA/an + equity
 
 #### CMO (Chief Marketing Officer)
 - **Rôle** : Marketing, communication, branding, croissance
 - **Profil** : Expérience croissance, marché africain, digital
 - **Recrutement** : Q1-Q2 2026
-- **Salaire** : $90K-$120K/an + equity
+- **Salaire** : 54 millions FCFA-72 millions FCFA/an + equity
 
 ---
 
 ### Départements
 
-#### 1. TECHNIQUE (15-20 personnes en 2026)
+#### 1. TECHNIQUE (Croissance Progressive)
+
+**Phase Initiale (Q1 2026) : 2-3 Personnes Maximum**
+- **Fondateur Technique** : CTO/Lead Developer (1 personne)
+- **Développeur Full-Stack** : Backend + Frontend (1 personne)
+- **Développeur Mobile** : iOS/Android (1 personne) - Optionnel selon besoin
+
+**Extension Progressive (Q2-Q4 2026) : 8-12 Personnes**
+- Backend Developers (Rust) : 2-3 personnes
+- Frontend Developers (React) : 2-3 personnes
+- Mobile Developers (React Native) : 2-3 personnes
+- DevOps Engineer : 1 personne
+- QA Engineer : 1 personne
+
+**Extension 2027 : 15-20 Personnes**
 
 **Backend Developers (Rust)**
 - **Nombre** : 5-6 personnes
 - **Rôles** : API, services, infrastructure
 - **Profil** : Senior (3-5 ans expérience)
-- **Salaire** : $50K-$80K/an
+- **Salaire** : 30 millions FCFA-48 millions FCFA/an
 
 **Frontend Developers (React)**
 - **Nombre** : 4-5 personnes
 - **Rôles** : Web app, UI/UX, intégrations
 - **Profil** : Mid-Senior (2-4 ans)
-- **Salaire** : $40K-$70K/an
+- **Salaire** : 24 millions FCFA-42 millions FCFA/an
 
 **Mobile Developers (React Native)**
 - **Nombre** : 3-4 personnes
 - **Rôles** : iOS, Android, Expo
 - **Profil** : Mid-Senior (2-4 ans)
-- **Salaire** : $45K-$75K/an
+- **Salaire** : 27 millions FCFA-45 millions FCFA/an
 
 **DevOps Engineers**
 - **Nombre** : 2-3 personnes
 - **Rôles** : Infrastructure, CI/CD, monitoring
 - **Profil** : Senior (3-5 ans)
-- **Salaire** : $55K-$85K/an
+- **Salaire** : 33 millions FCFA-51 millions FCFA/an
 
 **Data Engineers**
 - **Nombre** : 1-2 personnes
 - **Rôles** : Analytics, data pipeline, IA
 - **Profil** : Mid-Senior (2-4 ans)
-- **Salaire** : $50K-$80K/an
+- **Salaire** : 30 millions FCFA-48 millions FCFA/an
 
 **QA Engineers**
 - **Nombre** : 2 personnes
 - **Rôles** : Tests, qualité, automation
 - **Profil** : Mid (2-3 ans)
-- **Salaire** : $35K-$60K/an
+- **Salaire** : 21 millions FCFA-36 millions FCFA/an
 
-**Budget Technique 2026** : $1.2M-$1.8M
+**Budget Technique 2026** : 720 millions FCFA-1.1 billions FCFA---
 
----
+#### 2. OPÉRATIONS (Croissance Progressive - PRIORITÉ AGENTS COMMERCIAUX)
 
-#### 2. OPÉRATIONS (25-30 personnes en 2026)
+**Phase Initiale (Q1 2026) : 2-3 Personnes Maximum - FOCUS AGENTS COMMERCIAUX**
+
+**🎯 PRIORITÉ ABSOLUE : Agents Commerciaux (2 personnes minimum)**
+- **Rôle** : Acquisition commerçants, onboarding, développement partenaires
+- **Profil** : Expérience commerciale, relationnel, connaissance marché local
+- **Objectif** : Recruter 50-100 commerçants partenaires en Q1
+- **Salaire** : 12 millions FCFA-21 millions FCFA/an + commissions
+- **Budget** : 30 millions FCFA-48 millions FCFA**Extension Progressive (Q2-Q4 2026) : 15-20 Personnes**
+
+**Agents Commerciaux (8-10 personnes) - PRIORITÉ**
+- **Nombre** : 8-10 personnes (recrutement prioritaire)
+- **Rôles** : Acquisition commerçants, onboarding, support, expansion géographique
+- **Profil** : Expérience commerciale, relationnel, multilingue
+- **Salaire** : 12 millions FCFA-21 millions FCFA/an + commissions
+- **Budget** : 120 millions FCFA-240 millions FCFA**Support Client**
+- **Nombre** : 3-4 personnes (extension selon volume)
+- **Rôles** : Chat, email, résolution problèmes
+- **Profil** : Junior-Mid, multilingue (FR, EN)
+- **Salaire** : 9 millions FCFA-18 millions FCFA/an
+- **Budget** : 36 millions FCFA-90 millions FCFA**Gestion Coursiers**
+- **Nombre** : 2-3 personnes
+- **Rôles** : Recrutement, formation, suivi
+- **Profil** : Mid, logistique
+- **Salaire** : 15 millions FCFA-24 millions FCFA/an
+- **Budget** : 36 millions FCFA-90 millions FCFA**Extension 2027 : 25-30 Personnes**
 
 **Support Client**
 - **Nombre** : 12-15 personnes
 - **Rôles** : Chat, email, téléphone, résolution problèmes
 - **Profil** : Junior-Mid, multilingue (FR, EN)
-- **Salaire** : $15K-$30K/an
-- **Budget** : $300K-$500K
-
-**Gestion Coursiers**
+- **Salaire** : 9 millions FCFA-18 millions FCFA/an
+- **Budget** : 180 millions FCFA-300 millions FCFA**Gestion Coursiers**
 - **Nombre** : 5-6 personnes
 - **Rôles** : Recrutement, formation, suivi, évaluation
 - **Profil** : Mid, logistique
-- **Salaire** : $25K-$40K/an
-- **Budget** : $150K-$250K
-
-**Relations Partenaires**
+- **Salaire** : 15 millions FCFA-24 millions FCFA/an
+- **Budget** : 90 millions FCFA-150 millions FCFA**Relations Partenaires**
 - **Nombre** : 5-6 personnes
 - **Rôles** : Onboarding commerçants, support, croissance
 - **Profil** : Mid, commercial
-- **Salaire** : $30K-$50K/an
-- **Budget** : $200K-$350K
-
-**Logistique**
+- **Salaire** : 18 millions FCFA-30 millions FCFA/an
+- **Budget** : 120 millions FCFA-210 millions FCFA**Logistique**
 - **Nombre** : 3-4 personnes
 - **Rôles** : Optimisation routes, suivi livraisons, analytics
 - **Profil** : Mid-Senior, logistique/analytics
-- **Salaire** : $35K-$55K/an
-- **Budget** : $120K-$200K
+- **Salaire** : 21 millions FCFA-33 millions FCFA/an
+- **Budget** : 72 millions FCFA-120 millions FCFA**Budget Opérations 2026** : 462 millions FCFA-780 millions FCFA---
 
-**Budget Opérations 2026** : $770K-$1.3M
+#### 3. MARKETING (Croissance Progressive)
 
----
+**Phase Initiale (Q1 2026) : 1 Personne Maximum**
+- **Responsable Marketing** : CMO ou Marketing Manager (1 personne)
+- **Rôles** : Stratégie, campagnes digitales, contenu
+- **Budget** : 30 millions FCFA-48 millions FCFA**Extension Progressive (Q2-Q4 2026) : 5-8 Personnes**
+- Digital Marketing : 2-3 personnes
+- Content Creation : 1-2 personnes
+- Community Management : 1-2 personnes
 
-#### 3. MARKETING (10-15 personnes en 2026)
+**Extension 2027 : 10-15 Personnes**
 
 **Digital Marketing**
 - **Nombre** : 4-5 personnes
 - **Rôles** : Campagnes, SEO, social media, analytics
 - **Profil** : Mid-Senior (2-4 ans)
-- **Salaire** : $35K-$60K/an
-- **Budget** : $200K-$350K
-
-**Content Creation**
+- **Salaire** : 21 millions FCFA-36 millions FCFA/an
+- **Budget** : 120 millions FCFA-210 millions FCFA**Content Creation**
 - **Nombre** : 3-4 personnes
 - **Rôles** : Vidéos, articles, design, créatif
 - **Profil** : Mid, créatif
-- **Salaire** : $30K-$50K/an
-- **Budget** : $120K-$220K
-
-**Community Management**
+- **Salaire** : 18 millions FCFA-30 millions FCFA/an
+- **Budget** : 72 millions FCFA-132 millions FCFA**Community Management**
 - **Nombre** : 2-3 personnes
 - **Rôles** : Réseaux sociaux, engagement, modération
 - **Profil** : Junior-Mid
-- **Salaire** : $20K-$35K/an
-- **Budget** : $60K-$120K
-
-**PR & Communication**
+- **Salaire** : 12 millions FCFA-21 millions FCFA/an
+- **Budget** : 36 millions FCFA-72 millions FCFA**PR & Communication**
 - **Nombre** : 1-2 personnes
 - **Rôles** : Relations presse, événements, branding
 - **Profil** : Mid-Senior
-- **Salaire** : $40K-$70K/an
-- **Budget** : $50K-$150K
+- **Salaire** : 24 millions FCFA-42 millions FCFA/an
+- **Budget** : 30 millions FCFA-90 millions FCFA**Budget Marketing 2026** : 258 millions FCFA-504 millions FCFA---
 
-**Budget Marketing 2026** : $430K-$840K
+#### 4. BUSINESS DEVELOPMENT (Extension Progressive)
 
----
+**Phase Initiale (Q1 2026) : Intégré dans Agents Commerciaux**
+- Les agents commerciaux gèrent également les partenariats B2B initiaux
 
-#### 4. BUSINESS DEVELOPMENT (8-12 personnes en 2026)
+**Extension Progressive (Q2-Q4 2026) : 3-5 Personnes**
+- Partenariats B2B : 2-3 personnes
+- Relations Commerçants : 1-2 personnes (complément agents commerciaux)
+
+**Extension 2027 : 8-12 Personnes**
 
 **Partenariats B2B**
 - **Nombre** : 4-5 personnes
 - **Rôles** : Supermarchés, pharmacies, entreprises
 - **Profil** : Senior, commercial
-- **Salaire** : $40K-$70K/an + commissions
-- **Budget** : $250K-$450K
-
-**Expansion Géographique**
+- **Salaire** : 24 millions FCFA-42 millions FCFA/an + commissions
+- **Budget** : 150 millions FCFA-270 millions FCFA**Expansion Géographique**
 - **Nombre** : 2-3 personnes
 - **Rôles** : Recherche marché, lancement nouveaux pays
 - **Profil** : Senior, stratégie
-- **Salaire** : $50K-$80K/an
-- **Budget** : $120K-$250K
-
-**Relations Commerçants**
+- **Salaire** : 30 millions FCFA-48 millions FCFA/an
+- **Budget** : 72 millions FCFA-150 millions FCFA**Relations Commerçants**
 - **Nombre** : 2-4 personnes
 - **Rôles** : Onboarding, support, croissance
 - **Profil** : Mid, commercial
-- **Salaire** : $30K-$50K/an
-- **Budget** : $80K-$200K
+- **Salaire** : 18 millions FCFA-30 millions FCFA/an
+- **Budget** : 48 millions FCFA-120 millions FCFA**Budget Business Development 2026** : 270 millions FCFA-540 millions FCFA---
 
-**Budget Business Development 2026** : $450K-$900K
+#### 5. FINANCE & ADMIN (Extension Progressive)
 
----
+**Phase Initiale (Q1 2026) : 0-1 Personne**
+- Comptabilité externalisée ou part-time (1 personne)
+- Budget : 12 millions FCFA-24 millions FCFA**Extension Progressive (Q2-Q4 2026) : 2-3 Personnes**
+- Comptabilité : 1 personne
+- Administration : 1 personne
+- RH : 1 personne (part-time)
 
-#### 5. FINANCE & ADMIN (5-8 personnes en 2026)
+**Extension 2027 : 5-8 Personnes**
 
 **Comptabilité**
 - **Nombre** : 2 personnes
 - **Rôles** : Comptabilité, reporting, fiscalité
 - **Profil** : Mid-Senior, comptable certifié
-- **Salaire** : $35K-$55K/an
-- **Budget** : $80K-$120K
-
-**RH**
+- **Salaire** : 21 millions FCFA-33 millions FCFA/an
+- **Budget** : 48 millions FCFA-72 millions FCFA**RH**
 - **Nombre** : 2 personnes
 - **Rôles** : Recrutement, onboarding, administration
 - **Profil** : Mid
-- **Salaire** : $30K-$50K/an
-- **Budget** : $70K-$110K
-
-**Légal**
+- **Salaire** : 18 millions FCFA-30 millions FCFA/an
+- **Budget** : 42 millions FCFA-66 millions FCFA**Légal**
 - **Nombre** : 1 personne (part-time ou consultant)
 - **Rôles** : Contrats, conformité, réglementation
 - **Profil** : Senior, avocat
-- **Salaire** : $40K-$60K/an (part-time)
-- **Budget** : $50K-$70K
-
-**Administration**
+- **Salaire** : 24 millions FCFA-36 millions FCFA/an (part-time)
+- **Budget** : 30 millions FCFA-42 millions FCFA**Administration**
 - **Nombre** : 1-2 personnes
 - **Rôles** : Administration générale, bureaux
 - **Profil** : Junior-Mid
-- **Salaire** : $20K-$35K/an
-- **Budget** : $30K-$80K
-
-**Budget Finance & Admin 2026** : $230K-$380K
-
----
+- **Salaire** : 12 millions FCFA-21 millions FCFA/an
+- **Budget** : 18 millions FCFA-48 millions FCFA**Budget Finance & Admin 2026** : 138 millions FCFA-228 millions FCFA---
 
 ## 📍 BUREAUX ET INFRASTRUCTURE
 
 ### Bureau Principal - Cameroun (Yaoundé ou Douala)
 
-#### Q1 2026
-- **Surface** : 200-300 m²
-- **Capacité** : 30-40 personnes
-- **Coût location** : $2,000-$3,500/mois
-- **Équipement** : $30,000-$50,000 (meubles, tech)
-- **Budget annuel** : $54,000-$92,000
-
-#### Q3-Q4 2026 (Expansion)
+#### Q1 2026 (Phase Initiale)
+- **Surface** : 50-100 m² (bureau minimal)
+- **Capacité** : 5-10 personnes
+- **Coût location** : 300K FCFA-600K FCFA/mois
+- **Équipement** : 6 millions FCFA-12 millions FCFA(meubles, tech essentiel)
+- **Budget annuel** : 9 millions FCFA-19 millions FCFA#### Q2-Q3 2026 (Extension selon Croissance)
+- **Surface** : 150-200 m²
+- **Capacité** : 15-25 personnes
+- **Coût location** : 900K FCFA-1 millions FCFA/mois
+- **Équipement** : 12 millions FCFA-24 millions FCFA- **Budget annuel** : 22 millions FCFA-42 millions FCFA#### Q3-Q4 2026 (Expansion)
 - **Surface** : 400-500 m²
 - **Capacité** : 60-80 personnes
-- **Coût location** : $4,000-$6,000/mois
-- **Équipement** : $50,000-$80,000
-- **Budget annuel** : $98,000-$152,000
-
----
+- **Coût location** : 2 millions FCFA-3 millions FCFA/mois
+- **Équipement** : 30 millions FCFA-48 millions FCFA- **Budget annuel** : 58 millions FCFA-91 millions FCFA---
 
 ### Bureaux Régionaux
 
 #### Côte d'Ivoire (Abidjan) - Q1 2027
 - **Surface** : 300-400 m²
 - **Capacité** : 40-50 personnes
-- **Coût location** : $3,000-$4,500/mois
-- **Équipement** : $40,000-$60,000
-- **Budget annuel** : $76,000-$114,000
-
-#### Sénégal (Dakar) - Q3 2027
+- **Coût location** : 1 millions FCFA-2 millions FCFA/mois
+- **Équipement** : 24 millions FCFA-36 millions FCFA- **Budget annuel** : 45 millions FCFA-68 millions FCFA#### Sénégal (Dakar) - Q3 2027
 - **Surface** : 250-350 m²
 - **Capacité** : 30-40 personnes
-- **Coût location** : $2,500-$3,500/mois
-- **Équipement** : $35,000-$50,000
-- **Budget annuel** : $65,000-$92,000
-
-#### Autres Pays (2028-2029)
-- **Budget par bureau** : $50K-$100K/an
+- **Coût location** : 1 millions FCFA-2 millions FCFA/mois
+- **Équipement** : 21 millions FCFA-30 millions FCFA- **Budget annuel** : 39 millions FCFA-55 millions FCFA#### Autres Pays (2028-2029)
+- **Budget par bureau** : 30 millions FCFA-60 millions FCFA/an
 - **Nombre** : 5-10 bureaux selon expansion
 
-**Budget Bureaux Total 2026** : $75,000  
-**Budget Bureaux Total 2027** : $200,000  
-**Budget Bureaux Total 2028** : $500,000  
-**Budget Bureaux Total 2029** : $1,200,000
-
----
+**Budget Bureaux Total 2026** : 45 millions FCFA**Budget Bureaux Total 2027** : 120 millions FCFA**Budget Bureaux Total 2028** : 300 millions FCFA**Budget Bureaux Total 2029** : 720 millions FCFA---
 
 ## 💻 INFRASTRUCTURE TECHNOLOGIQUE
 
@@ -264,55 +303,38 @@
 #### 2026
 - **Cloud Provider** : AWS / Render
 - **Services** : Compute, storage, database, CDN
-- **Budget mensuel** : $8,000-$12,000
-- **Budget annuel** : $96,000-$144,000
-
-#### 2027
-- **Budget mensuel** : $20,000-$30,000
-- **Budget annuel** : $240,000-$360,000
-
-#### 2028
-- **Budget mensuel** : $50,000-$75,000
-- **Budget annuel** : $600,000-$900,000
-
-#### 2029
-- **Budget mensuel** : $120,000-$180,000
-- **Budget annuel** : $1,440,000-$2,160,000
-
----
+- **Budget mensuel** : 4 millions FCFA-7 millions FCFA- **Budget annuel** : 57 millions FCFA-86 millions FCFA#### 2027
+- **Budget mensuel** : 12 millions FCFA-18 millions FCFA- **Budget annuel** : 144 millions FCFA-216 millions FCFA#### 2028
+- **Budget mensuel** : 30 millions FCFA-45 millions FCFA- **Budget annuel** : 360 millions FCFA-540 millions FCFA#### 2029
+- **Budget mensuel** : 72 millions FCFA-108 millions FCFA- **Budget annuel** : 864 millions FCFA-1.3 billions FCFA---
 
 ### Outils & Licences
 
 #### Développement
-- **GitHub/GitLab** : $50-$200/mois
-- **CI/CD** : $100-$500/mois
-- **Monitoring** : $200-$1,000/mois
-- **Total** : $4,200-$20,400/an
+- **GitHub/GitLab** : 30K FCFA-120K FCFA/mois
+- **CI/CD** : 60K FCFA-300K FCFA/mois
+- **Monitoring** : 120K FCFA-600K FCFA/mois
+- **Total** : 2 millions FCFA-12 millions FCFA/an
 
 #### Communication
-- **Slack** : $100-$500/mois
-- **Zoom** : $50-$200/mois
-- **Email** : $50-$200/mois
-- **Total** : $2,400-$10,800/an
+- **Slack** : 60K FCFA-300K FCFA/mois
+- **Zoom** : 30K FCFA-120K FCFA/mois
+- **Email** : 30K FCFA-120K FCFA/mois
+- **Total** : 1 millions FCFA-6 millions FCFA/an
 
 #### Productivité
-- **Google Workspace** : $100-$500/mois
-- **Notion/Confluence** : $50-$300/mois
-- **Design** : $50-$200/mois (Figma, etc.)
-- **Total** : $2,400-$12,000/an
+- **Google Workspace** : 60K FCFA-300K FCFA/mois
+- **Notion/Confluence** : 30K FCFA-180K FCFA/mois
+- **Design** : 30K FCFA-120K FCFA/mois (Figma, etc.)
+- **Total** : 1 millions FCFA-7 millions FCFA/an
 
 #### Analytics & Marketing
 - **Google Analytics** : Gratuit
-- **Mixpanel/Amplitude** : $200-$2,000/mois
-- **Email marketing** : $100-$500/mois
-- **Total** : $3,600-$30,000/an
+- **Mixpanel/Amplitude** : 120K FCFA-1 millions FCFA/mois
+- **Email marketing** : 60K FCFA-300K FCFA/mois
+- **Total** : 2 millions FCFA-18 millions FCFA/an
 
-**Budget Outils Total 2026** : $12,600-$73,200  
-**Budget Outils Total 2027** : $25,000-$150,000  
-**Budget Outils Total 2028** : $60,000-$350,000  
-**Budget Outils Total 2029** : $150,000-$800,000
-
----
+**Budget Outils Total 2026** : 7 millions FCFA-43 millions FCFA**Budget Outils Total 2027** : 15 millions FCFA-90 millions FCFA**Budget Outils Total 2028** : 36 millions FCFA-210 millions FCFA**Budget Outils Total 2029** : 90 millions FCFA-480 millions FCFA---
 
 ## 🚚 OPÉRATIONS LIVRAISON
 
@@ -320,11 +342,9 @@
 
 #### Recrutement
 - **Processus** : Application → Vérification (KYC) → Formation → Activation
-- **Coût par coursier** : $50-$100 (vérification, formation)
+- **Coût par coursier** : 30K FCFA-60K FCFA(vérification, formation)
 - **Objectif 2026** : 2,500 coursiers
-- **Budget** : $125,000-$250,000
-
-#### Formation
+- **Budget** : 75 millions FCFA-150 millions FCFA#### Formation
 - **Modules** : En ligne, vidéos, quiz
 - **Coût** : Intégré dans recrutement
 - **Suivi** : Évaluations régulières
@@ -340,8 +360,8 @@
 
 #### IA de Routing
 - **Développement** : Intégré dans technique
-- **Maintenance** : $20,000-$40,000/an
-- **Amélioration continue** : $30,000-$60,000/an
+- **Maintenance** : 12 millions FCFA-24 millions FCFA/an
+- **Amélioration continue** : 18 millions FCFA-36 millions FCFA/an
 
 #### Suivi Temps Réel
 - **GPS Tracking** : Intégré dans app
@@ -357,7 +377,7 @@
 #### Chat en App (24/7)
 - **Équipe** : 8-10 personnes (rotation)
 - **Outils** : Intercom, Zendesk, ou custom
-- **Coût outils** : $200-$1,000/mois
+- **Coût outils** : 120K FCFA-600K FCFA/mois
 - **Budget personnel** : Intégré dans opérations
 
 #### Email
@@ -366,7 +386,7 @@
 - **Budget personnel** : Intégré dans opérations
 
 #### Téléphone
-- **Ligne dédiée** : $100-$300/mois
+- **Ligne dédiée** : 60K FCFA-180K FCFA/mois
 - **Équipe** : 2-3 personnes
 - **Budget personnel** : Intégré dans opérations
 
@@ -374,7 +394,7 @@
 - **Équipe** : 2 personnes (community management)
 - **Budget personnel** : Intégré dans marketing
 
-**Budget Support Client 2026** : $300K-$500K (personnel) + $5K-$15K (outils)
+**Budget Support Client 2026** : 180 millions FCFA-300 millions FCFA(personnel) + 3 millions FCFA-9 millions FCFA(outils)
 
 ---
 
@@ -385,8 +405,8 @@
 #### Infrastructure
 - **SSL/TLS** : Intégré cloud
 - **Firewall** : Intégré cloud
-- **DDoS Protection** : Cloudflare, $20-$200/mois
-- **Budget** : $240-$2,400/an
+- **DDoS Protection** : Cloudflare, 12K FCFA-120K FCFA/mois
+- **Budget** : 144K FCFA-1 millions FCFA/an
 
 #### Authentification
 - **JWT sécurisé** : Développement interne
@@ -402,8 +422,7 @@
 
 #### RGPD / Lois Locales
 - **Veille juridique** : Consultant légal
-- **Audits** : Annuels, $10,000-$20,000
-- **Budget** : $15,000-$30,000/an
+- **Audits** : Annuels, 6 millions FCFA-12 millions FCFA- **Budget** : 9 millions FCFA-18 millions FCFA/an
 
 #### Paiements (PCI-DSS)
 - **Compliance** : Via processeur paiement (Stripe, etc.)
@@ -431,17 +450,15 @@
 #### Infrastructure
 - **Logs** : CloudWatch, Datadog, etc.
 - **Métriques** : Prometheus, Grafana
-- **Alertes** : PagerDuty, $20-$100/mois
-- **Budget** : $500-$2,000/mois = $6,000-$24,000/an
+- **Alertes** : PagerDuty, 12K FCFA-60K FCFA/mois
+- **Budget** : 300K FCFA-1 millions FCFA/mois = 3 millions FCFA-14 millions FCFA/an
 
 #### Application
-- **APM** : New Relic, Datadog, $200-$2,000/mois
-- **Error Tracking** : Sentry, $50-$500/mois
-- **Budget** : $3,000-$30,000/an
+- **APM** : New Relic, Datadog, 120K FCFA-1 millions FCFA/mois
+- **Error Tracking** : Sentry, 30K FCFA-300K FCFA/mois
+- **Budget** : 1 millions FCFA-18 millions FCFA/an
 
-**Budget Monitoring 2026** : $9,000-$54,000
-
----
+**Budget Monitoring 2026** : 5 millions FCFA-32 millions FCFA---
 
 ## 📈 CROISSANCE ÉQUIPE (2026-2029)
 
@@ -466,44 +483,16 @@
 ## 💰 BUDGET OPÉRATIONNEL TOTAL
 
 ### 2026
-- **Personnel** : $2.5M-$4.5M
-- **Bureaux** : $75K
-- **Infrastructure Cloud** : $100K-$150K
-- **Outils & Licences** : $15K-$75K
-- **Support Client** : $300K-$500K
-- **Sécurité & Conformité** : $20K-$35K
-- **Monitoring** : $10K-$55K
-- **TOTAL** : **$3M-$5.3M**
+- **Personnel** : 1.5 billions FCFA-2.7 billions FCFA- **Bureaux** : 45 millions FCFA- **Infrastructure Cloud** : 60 millions FCFA-90 millions FCFA- **Outils & Licences** : 9 millions FCFA-45 millions FCFA- **Support Client** : 180 millions FCFA-300 millions FCFA- **Sécurité & Conformité** : 12 millions FCFA-21 millions FCFA- **Monitoring** : 6 millions FCFA-33 millions FCFA- **TOTAL** : **1.8 billions FCFA-3.2 billions FCFA**
 
 ### 2027
-- **Personnel** : $6M-$10M
-- **Bureaux** : $200K
-- **Infrastructure Cloud** : $250K-$400K
-- **Outils & Licences** : $30K-$200K
-- **Support Client** : $800K-$1.2M
-- **Sécurité & Conformité** : $40K-$70K
-- **Monitoring** : $25K-$100K
-- **TOTAL** : **$7.3M-$12M**
+- **Personnel** : 3.6 billions FCFA-6.0 billions FCFA- **Bureaux** : 120 millions FCFA- **Infrastructure Cloud** : 150 millions FCFA-240 millions FCFA- **Outils & Licences** : 18 millions FCFA-120 millions FCFA- **Support Client** : 480 millions FCFA-720 millions FCFA- **Sécurité & Conformité** : 24 millions FCFA-42 millions FCFA- **Monitoring** : 15 millions FCFA-60 millions FCFA- **TOTAL** : **4.4 billions FCFA-7.2 billions FCFA**
 
 ### 2028
-- **Personnel** : $15M-$25M
-- **Bureaux** : $500K
-- **Infrastructure Cloud** : $650K-$1M
-- **Outils & Licences** : $70K-$400K
-- **Support Client** : $2M-$3M
-- **Sécurité & Conformité** : $80K-$150K
-- **Monitoring** : $60K-$250K
-- **TOTAL** : **$18.4M-$30M**
+- **Personnel** : 9.0 billions FCFA-15.0 billions FCFA- **Bureaux** : 300 millions FCFA- **Infrastructure Cloud** : 390 millions FCFA-600 millions FCFA- **Outils & Licences** : 42 millions FCFA-240 millions FCFA- **Support Client** : 1.2 billions FCFA-1.8 billions FCFA- **Sécurité & Conformité** : 48 millions FCFA-90 millions FCFA- **Monitoring** : 36 millions FCFA-150 millions FCFA- **TOTAL** : **11.0 billions FCFA-18.0 billions FCFA**
 
 ### 2029
-- **Personnel** : $35M-$55M
-- **Bureaux** : $1.2M
-- **Infrastructure Cloud** : $1.5M-$2.5M
-- **Outils & Licences** : $200K-$900K
-- **Support Client** : $5M-$8M
-- **Sécurité & Conformité** : $200K-$400K
-- **Monitoring** : $150K-$600K
-- **TOTAL** : **$43M-$68M**
+- **Personnel** : 21.0 billions FCFA-33.0 billions FCFA- **Bureaux** : 720 millions FCFA- **Infrastructure Cloud** : 900 millions FCFA-1.5 billions FCFA- **Outils & Licences** : 120 millions FCFA-540 millions FCFA- **Support Client** : 3.0 billions FCFA-4.8 billions FCFA- **Sécurité & Conformité** : 120 millions FCFA-240 millions FCFA- **Monitoring** : 90 millions FCFA-360 millions FCFA- **TOTAL** : **25.8 billions FCFA-40.8 billions FCFA**
 
 ---
 

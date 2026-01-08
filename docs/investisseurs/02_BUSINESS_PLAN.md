@@ -35,7 +35,7 @@ Faciliter l'accès aux produits, services et solutions essentielles pour les pop
 - **2027** : Présence dans 3 pays (Cameroun, Côte d'Ivoire, Sénégal)
 - **2028** : Expansion dans 10+ pays francophones
 - **2029** : Leadership panafricain (20+ pays)
-- **2030** : $180M+ de revenus, position de marché dominante
+- **2030** : 108+ milliards FCFA de revenus, position de marché dominante
 
 ---
 
@@ -115,7 +115,69 @@ Yukpomnang a été développé pour répondre aux défis d'accès aux services e
 - Gestion de panier
 - Paiements sécurisés
 
-### 2.3 Différenciation Concurrentielle
+### 2.3 Les Deux Problématiques Critiques que Nous Résolvons
+
+#### PROBLÉMATIQUE #1 : L'INVISIBILITÉ DIGITALE DES COMMERCES LOCAUX AFRICAINS
+
+**Le Problème Réel**
+
+En Afrique, **85% des commerces locaux** (petits commerces, pharmacies, restaurants, services) n'ont **aucune présence digitale**. Ces commerces représentent pourtant **70% de l'économie informelle** et génèrent des milliards de FCFA, mais restent **invisibles** pour les consommateurs qui cherchent leurs produits et services.
+
+**Impact Économique**
+
+- **Perte de revenus** : 30-40% du chiffre d'affaires potentiel perdu
+- **Coûts marketing inaccessibles** : Site web (500K-2M FCFA), Vidéo (200K-1M FCFA)
+- **Fracture digitale** : Seuls les grands groupes peuvent se permettre une présence digitale
+- **Découverte impossible** : Consommateurs ne trouvent pas les commerces, même à proximité
+
+**Notre Solution**
+
+1. **Création Automatique de Présence Digitale** : En 5 minutes, fiche complète avec IA - **GRATUIT**
+2. **Génération Vidéo Publicitaire Automatisée** : Vidéos TikTok/Reels-like en 2 minutes - **15K-30K FCFA** (vs 200K-1M FCFA)
+3. **Visibilité Géolocalisée** : Apparition automatique dans recherches de proximité
+4. **Outils Marketing Accessibles** : Promotion, offres, analytics à portée de tous
+
+**Impact Transformateur**
+
+- **85% des commerces locaux** peuvent enfin avoir une présence digitale
+- **Réduction de 90% des coûts marketing** (de 1M FCFA à 100K FCFA/an)
+- **Augmentation de 25-35% du chiffre d'affaires** pour commerces actifs
+- **Création de millions d'emplois** dans l'économie digitale locale
+
+---
+
+#### PROBLÉMATIQUE #2 : LA FRACTURE D'ACCÈS AUX SERVICES ESSENTIELS EN AFRIQUE
+
+**Le Problème Réel**
+
+L'accès aux services essentiels (santé, éducation, transport, immobilier, aide ménagère) est **fragmenté, coûteux et inefficace**. Les populations doivent utiliser **5-10 applications différentes** pour répondre à leurs besoins quotidiens, avec des **coûts de recherche et déplacement** représentant **15-25% de leur budget mensuel**.
+
+**Impact Social et Économique**
+
+- **Fragmentation extrême** : Chaque besoin = app différente = perte de temps, confusion, coûts multiples
+- **Coûts cachés énormes** : Recherche + déplacements = **50K-150K FCFA/mois** par ménage
+- **Accessibilité limitée** : Services difficiles à trouver, surtout zones périurbaines/rurales
+- **Barrières linguistiques** : 60% de la population exclue (langues locales non supportées)
+- **Manque de transparence** : Prix, disponibilité, qualité = information opaque
+
+**Notre Solution Intégrée**
+
+1. **Une Seule App pour Tous les Besoins** : Livraisons, santé, éducation, transport, immobilier, aide ménagère, e-commerce
+2. **Géolocalisation Intelligente** : Trouver les services les plus proches en temps réel
+3. **Accessibilité Multilingue** : Support de **15+ langues africaines** + français, anglais, arabe, portugais
+4. **Transparence Totale** : Prix, disponibilité, avis, temps d'attente en temps réel
+5. **Réduction des Coûts** : **Économie de 40-60%** sur recherche et déplacement
+
+**Impact Transformateur**
+
+- **Réduction de 50% du temps** passé à chercher des services
+- **Économie de 40-60%** sur coûts recherche/déplacement (50K-90K FCFA/mois économisés)
+- **Accessibilité pour 100% de la population** grâce au multilingue et accessibilité
+- **Amélioration qualité de vie** : Accès facilité = meilleure santé, éducation, logement
+
+---
+
+### 2.4 Différenciation Concurrentielle
 
 #### Avantages Techniques
 1. **IA Propriétaire** : Algorithmes de création et recommandation uniques
@@ -136,24 +198,24 @@ Yukpomnang a été développé pour répondre aux défis d'accès aux services e
 ### 3.1 Taille du Marché
 
 #### Marché Total Adressable (TAM)
-- **E-commerce Afrique** : $75 milliards (2026) → $150 milliards (2030)
-- **Services de livraison** : $12 milliards → $25 milliards
-- **Services de santé** : $25 milliards → $50 milliards
-- **Transport** : $18 milliards → $35 milliards
-- **Immobilier** : $20 milliards → $40 milliards
-- **TOTAL TAM** : $150+ milliards
+- **E-commerce Afrique** : 45 billions FCFA (2026) → 90 billions FCFA (2030)
+- **Services de livraison** : 7,2 billions FCFA → 15 billions FCFA
+- **Services de santé** : 15 billions FCFA → 30 billions FCFA
+- **Transport** : 10,8 billions FCFA → 21 billions FCFA
+- **Immobilier** : 12 billions FCFA → 24 billions FCFA
+- **TOTAL TAM** : 90+ billions FCFA
 
 #### Marché Adressable Serviceable (SAM)
-- **Cameroun** : $8 milliards
-- **Côte d'Ivoire** : $12 milliards
-- **Sénégal** : $6 milliards
-- **Autres pays francophones** : $19 milliards
-- **TOTAL SAM** : $45 milliards
+- **Cameroun** : 4,8 billions FCFA
+- **Côte d'Ivoire** : 7,2 billions FCFA
+- **Sénégal** : 3,6 billions FCFA
+- **Autres pays francophones** : 11,4 billions FCFA
+- **TOTAL SAM** : 27 billions FCFA
 
 #### Marché Obtenable (SOM) - 5 ans
 - **Part de marché réaliste** : 5-6%
-- **SOM 5 ans** : $2.5 milliards
-- **Objectif 2030** : $180M+ de revenus
+- **SOM 5 ans** : 1,5 billion FCFA
+- **Objectif 2030** : 108+ milliards FCFA de revenus
 
 ### 3.2 Croissance du Marché
 
@@ -202,7 +264,7 @@ Yukpomnang a été développé pour répondre aux défis d'accès aux services e
 **Consommateurs**
 - **18-45 ans** : 65% du marché
 - **Urbains** : 70% (Yaoundé, Douala, Abidjan, Dakar)
-- **Classe moyenne** : Revenus $500-$2000/mois
+- **Classe moyenne** : Revenus 300,000-1,200,000 FCFA/mois
 - **Tech-savvy** : Utilisateurs smartphones actifs
 
 **Commerçants/Prestataires**
@@ -226,40 +288,39 @@ Yukpomnang a été développé pour répondre aux défis d'accès aux services e
 - **Commission transaction** : 15-20% du montant
 - **Frais de service coursiers** : 10-15% de leur revenu
 - **Frais express** : +5-10% pour livraisons <30min
-- **Projection 2026** : $750K-$875K
-- **Projection 2027** : $3.6M-$4.2M
-
-#### 4.1.2 Publicité et Promotion (25-30% des revenus)
-- **Création vidéos publicitaires** : $50-$200/vidéo
-- **Placement publicitaire** : $500-$5000/mois selon visibilité
+- **Projection 2026** : 450 millions FCFA-525 millions FCFA- **Projection 2027** : 2.2 billions FCFA-2.5 billions FCFA#### 4.1.2 Publicité et Promotion (25-30% des revenus)
+- **Création vidéos publicitaires** : 30K FCFA-120K FCFA/vidéo
+- **Placement publicitaire** : 300K FCFA-3 millions FCFA/mois selon visibilité
 - **Promotion produits** : 5-10% du montant promotion
-- **Projection 2026** : $625K-$750K
-- **Projection 2027** : $3M-$3.6M
+- **Projection 2026** : 375 millions FCFA-450 millions FCFA- **Projection 2027** : 1.8 billions FCFA-2.2 billions FCFA#### 4.1.3 Achat de Tokens (15-20% des revenus)
 
-#### 4.1.3 Abonnements Premium (15-20% des revenus)
-- **Commerçants** : $29-$99/mois selon plan
-- **Fonctionnalités IA avancées** : $49-$199/mois
-- **Analytics et insights** : $99-$299/mois
-- **Projection 2026** : $375K-$500K
-- **Projection 2027** : $1.8M-$2.4M
+**Système de Tokens (Pay-Per-Use)**
 
-#### 4.1.4 Services Spécialisés (10-15% des revenus)
+Yukpomnang utilise un **système de tokens** où les commerçants achètent des tokens pour utiliser les fonctionnalités de la plateforme :
+
+- **Modèle** : Pay-per-use (pas d'abonnement mensuel)
+- **Achat de tokens** : Les commerçants achètent des tokens selon leurs besoins
+- **Utilisation** :
+  - Création de produits/services (consommation selon complexité)
+  - Maintien en ligne des produits (débit continu pour visibilité)
+  - Actions supplémentaires (clics, promotions, mises à jour)
+- **Équivalence** : 1 FCFA = 1 token
+- **Coût moyen équivalent** : ~2,000 FCFA/mois par produit/service actif (basé sur utilisation moyenne)
+- **Avantages** : Flexibilité totale, pas d'engagement, paiement selon usage réel
+- **Commerçants** : 17K FCFA-59K FCFA/mois selon plan
+- **Fonctionnalités IA avancées** : 29K FCFA-119K FCFA/mois
+- **Analytics et insights** : 59K FCFA-179K FCFA/mois
+- **Projection 2026** : 225 millions FCFA-300 millions FCFA- **Projection 2027** : 1.1 billions FCFA-1.4 billions FCFA#### 4.1.4 Services Spécialisés (10-15% des revenus)
 - **Commissions santé** : 8-12% par transaction
 - **Commissions éducation** : 10-15% par inscription
 - **Commissions transport** : 12-18% par trajet
 - **Commissions immobilier** : 2-5% par transaction
 - **Aide ménagère** : 15-20% par service
-- **Projection 2026** : $250K-$375K
-- **Projection 2027** : $1.2M-$1.8M
-
-#### 4.1.5 E-Commerce (10-15% des revenus)
+- **Projection 2026** : 150 millions FCFA-225 millions FCFA- **Projection 2027** : 720 millions FCFA-1.1 billions FCFA#### 4.1.5 E-Commerce (10-15% des revenus)
 - **Commissions supermarchés** : 8-12% par vente
 - **Frais de transaction** : 2-3% du montant
-- **Abonnements partenaires** : $199-$499/mois
-- **Projection 2026** : $250K-$375K
-- **Projection 2027** : $1.2M-$1.8M
-
-### 4.2 Structure des Coûts
+- **Achat de tokens pour partenaires** : Équivalent 119K FCFA-299K FCFA/mois selon utilisation
+- **Projection 2026** : 150 millions FCFA-225 millions FCFA- **Projection 2027** : 720 millions FCFA-1.1 billions FCFA### 4.2 Structure des Coûts
 
 #### Coûts Variables (40-45% des revenus)
 - **Commissions coursiers** : 60-70% des revenus livraison
@@ -277,24 +338,16 @@ Yukpomnang a été développé pour répondre aux défis d'accès aux services e
 ### 4.3 Projections de Rentabilité
 
 #### 2026 (Cameroun)
-- **Revenus** : $2.5M
-- **Coûts** : $2.8M
-- **EBITDA** : -$300K (investissement croissance)
+- **Revenus** : 1.5 billions FCFA- **Coûts** : 1.7 billions FCFA- **EBITDA** : -180 millions FCFA(investissement croissance)
 
 #### 2027 (3 pays)
-- **Revenus** : $12M
-- **Coûts** : $10.8M
-- **EBITDA** : +$1.2M (10% marge)
+- **Revenus** : 7.2 billions FCFA- **Coûts** : 6.5 billions FCFA- **EBITDA** : +720 millions FCFA(10% marge)
 
 #### 2028 (10+ pays)
-- **Revenus** : $35M
-- **Coûts** : $28M
-- **EBITDA** : +$7M (20% marge)
+- **Revenus** : 21.0 billions FCFA- **Coûts** : 16.8 billions FCFA- **EBITDA** : +4.2 billions FCFA(20% marge)
 
 #### 2029 (20+ pays)
-- **Revenus** : $85M
-- **Coûts** : $63.75M
-- **EBITDA** : +$21.25M (25% marge)
+- **Revenus** : 51.0 billions FCFA- **Coûts** : 38.2 billions FCFA- **EBITDA** : +12.8 billions FCFA(25% marge)
 
 ---
 
@@ -335,15 +388,14 @@ Yukpomnang a été développé pour répondre aux défis d'accès aux services e
 - **Radio/TV** : Spots publicitaires
 
 #### Référencement (10-15% du budget)
-- **Programme de parrainage** : $5-10 par nouveau utilisateur
+- **Programme de parrainage** : 3K FCFA-10 par nouveau utilisateur
 - **Récompenses utilisateurs** : Points, réductions
 - **Marketing viral** : Challenges, concours
 
 ### 5.3 Stratégie de Rétention
 
 #### Programmes Fidélité
-- **Points de fidélité** : 1 point = $0.01
-- **Niveaux utilisateurs** : Bronze, Argent, Or, Platine
+- **Points de fidélité** : 1 point = 6 FCFA- **Niveaux utilisateurs** : Bronze, Argent, Or, Platine
 - **Avantages** : Réductions, livraisons gratuites, priorité
 
 #### Engagement
@@ -360,12 +412,12 @@ Yukpomnang a été développé pour répondre aux défis d'accès aux services e
 
 #### Utilisateurs
 - **Gratuit** : Accès de base
-- **Premium** : $4.99/mois (avantages exclusifs)
+- **Premium** : 2K FCFA/mois (avantages exclusifs)
 
 #### Commerçants
 - **Starter** : Gratuit (commission 20%)
-- **Professional** : $29/mois (commission 15%)
-- **Enterprise** : $99/mois (commission 12% + features)
+- **Professional** : 17K FCFA/mois (commission 15%)
+- **Enterprise** : 59K FCFA/mois (commission 12% + features)
 
 #### Coursiers
 - **Gratuit** : Inscription
@@ -447,50 +499,74 @@ Yukpomnang a été développé pour répondre aux défis d'accès aux services e
 
 #### Départements
 
-**Technique** (15-20 personnes)
-- Backend developers (Rust)
-- Frontend developers (React)
-- Mobile developers (React Native)
-- DevOps engineers
-- Data engineers
-- QA engineers
+**⚠️ APPROCHE PROGRESSIVE - CROISSANCE ÉCHELONNÉE**
 
-**Opérations** (25-30 personnes)
-- Support client
-- Gestion coursiers
-- Relations partenaires
-- Logistique
+**Phase Initiale (Q1 2026) : 5 Personnes Maximum**
+- **Fondateur(s)** : 1-2 personnes (CTO/CEO)
+- **Agents Commerciaux** : 2-3 personnes (PRIORITÉ ABSOLUE)
+  - Acquisition commerçants, onboarding, développement partenaires
+  - Objectif : 50-100 commerçants partenaires en Q1
 
-**Marketing** (10-15 personnes)
-- Digital marketing
-- Content creation
-- Community management
-- PR & Communication
+**Extension Progressive (Q2-Q4 2026) : 15-25 Personnes**
 
-**Business Development** (8-12 personnes)
-- Partenariats B2B
-- Expansion géographique
-- Relations commerçants
+**Agents Commerciaux** (8-10 personnes) - RECRUTEMENT PRIORITAIRE
+- Acquisition commerçants, onboarding, support, expansion géographique
 
-**Finance & Admin** (5-8 personnes)
-- Comptabilité
-- RH
-- Légal
-- Administration
+**Technique** (3-5 personnes)
+- Backend developers (Rust) : 1-2
+- Frontend developers (React) : 1-2
+- Mobile developers (React Native) : 1
 
-### 7.2 Recrutement (2026-2027)
+**Support Client** (2-3 personnes)
+- Chat, email, résolution problèmes
 
-#### Priorités Q1-Q2 2026
-- CEO expérimenté
-- CMO avec expérience Afrique
-- 5-8 développeurs seniors
-- 10-15 support client
+**Marketing** (2-3 personnes)
+- Digital marketing, content creation
 
-#### Priorités Q3-Q4 2026
-- CFO
-- 10-12 développeurs
-- 15-20 opérations
-- 8-10 marketing
+**Extension 2027 : 50-80 Personnes**
+
+**Agents Commerciaux** (20-30 personnes) - PRIORITÉ EXPANSION
+- Support client (8-10)
+- Gestion coursiers (3-4)
+- Relations partenaires (5-6)
+- Logistique (2-3)
+
+**Technique** (12-15 personnes)
+- Backend, Frontend, Mobile, DevOps, QA
+
+**Marketing** (8-10 personnes)
+- Digital, Content, Community, PR
+
+**Business Development** (5-8 personnes)
+- Partenariats B2B, Expansion, Relations commerçants
+
+**Finance & Admin** (3-5 personnes)
+- Comptabilité, RH, Légal, Administration
+
+### 7.2 Recrutement (2026-2027) - Croissance Progressive
+
+#### Priorités Q1 2026 (Lancement) - 5 Personnes Maximum
+- **PRIORITÉ ABSOLUE** : 2-3 Agents Commerciaux
+  - Acquisition commerçants, onboarding, développement partenaires
+  - Objectif : 50-100 commerçants partenaires avant lancement
+- Fondateur(s) : 1-2 personnes (CTO/CEO)
+- Développeur essentiel : 1 personne (si nécessaire)
+
+#### Priorités Q2-Q3 2026 (Extension selon Traction)
+- **PRIORITÉ** : Extension Agents Commerciaux (6-8 personnes supplémentaires)
+- Développeurs : 2-3 personnes
+- Support Client : 2-3 personnes
+- Marketing : 1-2 personnes
+
+#### Priorités Q4 2026 (Croissance)
+- **PRIORITÉ** : Agents Commerciaux (total 10-12 personnes)
+- Développeurs : 2-3 personnes supplémentaires
+- Support Client : 2-3 personnes supplémentaires
+- Marketing : 1-2 personnes supplémentaires
+
+#### Priorités 2027 (Expansion 3 Pays)
+- **PRIORITÉ** : Agents Commerciaux (20-30 personnes total)
+- Extension complète tous départements selon besoins expansion
 
 ### 7.3 Culture d'Entreprise
 
@@ -507,51 +583,27 @@ Yukpomnang a été développé pour répondre aux défis d'accès aux services e
 
 ### 8.1 Besoins de Financement
 
-#### Série A : $3.5M - $5M (2026)
+#### Série A : 2.1 billions FCFA- 3.0 billions FCFA(2026)
 
 **Répartition** :
-- **40%** ($1.4M-$2M) : Développement produit
-- **30%** ($1.05M-$1.5M) : Marketing et acquisition
-- **15%** ($525K-$750K) : Recrutement équipe
-- **10%** ($350K-$500K) : Infrastructure
-- **5%** ($175K-$250K) : Réserve opérationnelle
+- **40%** (840 millions FCFA-1.2 billions FCFA) : Développement produit
+- **30%** (630 millions FCFA-900 millions FCFA) : Marketing et acquisition
+- **15%** (315 millions FCFA-450 millions FCFA) : Recrutement équipe
+- **10%** (210 millions FCFA-300 millions FCFA) : Infrastructure
+- **5%** (105 millions FCFA-150 millions FCFA) : Réserve opérationnelle
 
 #### Roadmap Financement
-- **Série A** (Q1 2026) : $3.5M-$5M
-- **Série B** (Q3 2027) : $12M-$15M
-- **Série C** (Q2 2028) : $30M-$40M
-- **Série D** (Q1 2029) : $60M-$80M
-
-### 8.2 Projections Financières (5 ans)
+- **Série A** (Q1 2026) : 2.1 billions FCFA-3.0 billions FCFA- **Série B** (Q3 2027) : 7.2 billions FCFA-9.0 billions FCFA- **Série C** (Q2 2028) : 18.0 billions FCFA-24.0 billions FCFA- **Série D** (Q1 2029) : 36.0 billions FCFA-48.0 billions FCFA### 8.2 Projections Financières (5 ans)
 
 Voir document détaillé : `03_PROJECTIONS_FINANCIERES.md`
 
 ### 8.3 Utilisation des Fonds Série A
 
-#### Développement Produit ($1.4M-$2M)
-- Amélioration IA : $300K
-- Développement mobile : $400K
-- Infrastructure cloud : $300K
-- Vidéo génération : $200K
-- Autres features : $200K-$800K
-
-#### Marketing ($1.05M-$1.5M)
-- Campagnes digitales : $600K-$900K
-- Influenceurs : $200K-$300K
-- Événements : $150K-$200K
-- PR & Communication : $100K
-
-#### Recrutement ($525K-$750K)
-- Salaires 6-12 mois : $400K-$600K
-- Recrutement : $50K-$75K
-- Formation : $75K
-
-#### Infrastructure ($350K-$500K)
-- Cloud & serveurs : $200K-$300K
-- Outils & licences : $100K-$150K
-- Bureaux : $50K
-
----
+#### Développement Produit (840 millions FCFA-1.2 billions FCFA)
+- Amélioration IA : 180 millions FCFA- Développement mobile : 240 millions FCFA- Infrastructure cloud : 180 millions FCFA- Vidéo génération : 120 millions FCFA- Autres features : 120 millions FCFA-480 millions FCFA#### Marketing (630 millions FCFA-900 millions FCFA)
+- Campagnes digitales : 360 millions FCFA-540 millions FCFA- Influenceurs : 120 millions FCFA-180 millions FCFA- Événements : 90 millions FCFA-120 millions FCFA- PR & Communication : 60 millions FCFA#### Recrutement (315 millions FCFA-450 millions FCFA)
+- Salaires 6-12 mois : 240 millions FCFA-360 millions FCFA- Recrutement : 30 millions FCFA-45 millions FCFA- Formation : 45 millions FCFA#### Infrastructure (210 millions FCFA-300 millions FCFA)
+- Cloud & serveurs : 120 millions FCFA-180 millions FCFA- Outils & licences : 60 millions FCFA-90 millions FCFA- Bureaux : 30 millions FCFA---
 
 ## 9. ANALYSE DES RISQUES
 

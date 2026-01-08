@@ -1193,6 +1193,33 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
+            
+            // ✅ Détection spécifique des erreurs de limite de tokens
+            if error_text.contains("context_length_exceeded") || error_text.contains("maximum context length") {
+                log::error!(
+                    "[AppIA] ❌ Limite de tokens dépassée pour le modèle {}. Erreur: {}",
+                    model.name,
+                    error_text
+                );
+                return Err(format!(
+                    "Le prompt est trop long pour le modèle {} (limite de tokens dépassée). Veuillez réduire la taille de votre demande.",
+                    model.name
+                ).into());
+            }
+            
+            // ✅ Détection des erreurs de rate limit
+            if error_text.contains("rate_limit_exceeded") || error_text.contains("TPM") {
+                log::error!(
+                    "[AppIA] ❌ Rate limit dépassé pour le modèle {}. Erreur: {}",
+                    model.name,
+                    error_text
+                );
+                return Err(format!(
+                    "Limite de requêtes par minute dépassée pour le modèle {}. Veuillez réessayer dans quelques instants.",
+                    model.name
+                ).into());
+            }
+            
             return Err(format!("OpenAI API error: {}", error_text).into());
         }
 

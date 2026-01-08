@@ -4,13 +4,13 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
@@ -242,7 +242,7 @@ const OffresEmploiFormScreen: React.FC = () => {
 
     return (
         <>
-            <ScrollView style={styles.container}>
+            <KeyboardAwareScreen style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
@@ -551,7 +551,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                         style={styles.submitButton}
                     />
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <ModernGPSModal
                 visible={showGPSModal}

@@ -39,21 +39,27 @@ fn clean_json_response(response: &str) -> String {
     cleaned.trim().to_string()
 }
 
-/// ✅ NOUVEAU: Complète un JSON tronqué en fermant les structures ouvertes
+/// ✅ AMÉLIORÉ: Complète un JSON tronqué en fermant les structures ouvertes
 /// Gère les cas où le JSON est coupé au milieu d'une chaîne, d'un objet ou d'un array
 fn complete_truncated_json(json_str: &str) -> String {
-    let mut result = json_str.to_string();
+    let mut result = json_str.trim().to_string();
     
     // Vérifier si le JSON est valide d'abord
     if serde_json::from_str::<serde_json::Value>(&result).is_ok() {
         return result; // JSON déjà valide, pas besoin de compléter
     }
     
-    // Compter les accolades et crochets ouverts/fermés
-    let mut _open_braces = 0;
-    let mut _close_braces = 0;
-    let mut _open_brackets = 0;
-    let mut _close_brackets = 0;
+    // ✅ AMÉLIORATION: Si le JSON se termine par des caractères incomplets, les enlever
+    // Enlever les caractères de fin incomplets (virgules, deux-points, etc.)
+    while result.ends_with(',') || result.ends_with(':') || result.ends_with(' ') {
+        result.pop();
+    }
+    
+    // Compter les accolades et crochets ouverts/fermés correctement
+    let mut open_braces: i32 = 0;
+    let mut close_braces: i32 = 0;
+    let mut open_brackets: i32 = 0;
+    let mut close_brackets: i32 = 0;
     let mut in_string = false;
     let mut escape_next = false;
     
@@ -67,13 +73,17 @@ fn complete_truncated_json(json_str: &str) -> String {
         match ch {
             '"' => in_string = !in_string,
             '\\' if in_string => escape_next = true,
-            '{' if !in_string => _open_braces += 1,
-            '}' if !in_string => _close_braces += 1,
-            '[' if !in_string => _open_brackets += 1,
-            ']' if !in_string => _close_brackets += 1,
+            '{' if !in_string => open_braces += 1,
+            '}' if !in_string => close_braces += 1,
+            '[' if !in_string => open_brackets += 1,
+            ']' if !in_string => close_brackets += 1,
             _ => {}
         }
     }
+    
+    // Calculer les structures à fermer
+    let braces_to_close = open_braces.saturating_sub(close_braces);
+    let brackets_to_close = open_brackets.saturating_sub(close_brackets);
     
     // Si on est dans une string à la fin, fermer la string
     if in_string {
@@ -105,55 +115,82 @@ fn complete_truncated_json(json_str: &str) -> String {
         }
     }
     
-    // Trouver le dernier objet/array incomplet et le fermer proprement
-    let mut brace_depth = 0;
-    let mut bracket_depth = 0;
-    let mut in_str = false;
-    let mut esc = false;
-    let mut last_comma_pos = 0;
-    
-    for (i, ch) in result.char_indices() {
-        if esc {
-            esc = false;
-            continue;
-        }
-        
-        match ch {
-            '"' => in_str = !in_str,
-            '\\' if in_str => esc = true,
-            '{' if !in_str => {
-                brace_depth += 1;
-                last_comma_pos = i;
-            }
-            '}' if !in_str => brace_depth -= 1,
-            '[' if !in_str => {
-                bracket_depth += 1;
-                last_comma_pos = i;
-            }
-            ']' if !in_str => bracket_depth -= 1,
-            ',' if !in_str && (brace_depth > 0 || bracket_depth > 0) => {
-                last_comma_pos = i;
-            }
-            _ => {}
-        }
+    // ✅ AMÉLIORÉ: Retirer la dernière virgule si présente (pour éviter erreur de syntaxe)
+    let trimmed = result.trim_end();
+    if trimmed.ends_with(',') {
+        result = trimmed.trim_end_matches(',').trim().to_string();
     }
     
-    // Si on a des structures ouvertes, les fermer
-    // Mais d'abord, retirer la dernière virgule si on est dans un objet/array
-    if last_comma_pos > 0 && (brace_depth > 0 || bracket_depth > 0) {
-        // Vérifier si on a une virgule juste avant la fin
-        let trimmed = result.trim_end();
-        if trimmed.ends_with(',') {
-            result = trimmed.trim_end_matches(',').to_string();
-        }
-    }
-    
-    // Fermer les structures ouvertes dans l'ordre inverse
-    for _ in 0..bracket_depth {
+    // ✅ AMÉLIORÉ: Fermer les structures ouvertes dans l'ordre inverse (d'abord les tableaux, puis les objets)
+    // Fermer d'abord les tableaux ouverts
+    for _ in 0..brackets_to_close {
         result.push(']');
     }
-    for _ in 0..brace_depth {
+    // Puis fermer les objets ouverts
+    for _ in 0..braces_to_close {
         result.push('}');
+    }
+    
+    // ✅ NOUVEAU: Vérifier à nouveau si le JSON est maintenant valide
+    // Si toujours invalide, essayer une approche plus agressive
+    if serde_json::from_str::<serde_json::Value>(&result).is_err() {
+        // Si le JSON est toujours invalide, essayer de trouver où il se termine vraiment
+        // et compléter depuis là
+        log::warn!("[MenuPlanningAIService] JSON toujours invalide après complétion, tentative de réparation avancée");
+        
+        // Trouver la dernière structure complète et fermer depuis là
+        let mut last_valid_pos = 0;
+        let mut test_str = String::new();
+        let chars: Vec<char> = result.chars().collect();
+        
+        for i in (0..chars.len()).rev() {
+            test_str.insert(0, chars[i]);
+            if serde_json::from_str::<serde_json::Value>(&test_str).is_ok() {
+                last_valid_pos = i;
+                break;
+            }
+        }
+        
+        if last_valid_pos > 0 && last_valid_pos < result.len() {
+            // Prendre seulement la partie valide et compléter
+            result = result[..=last_valid_pos].to_string();
+            // Recompter et fermer
+            let mut ob: i32 = 0;
+            let mut cb: i32 = 0;
+            let mut oa: i32 = 0;
+            let mut ca: i32 = 0;
+            let mut in_s = false;
+            let mut esc = false;
+            
+            for ch in result.chars() {
+                if esc {
+                    esc = false;
+                    continue;
+                }
+                match ch {
+                    '"' => in_s = !in_s,
+                    '\\' if in_s => esc = true,
+                    '{' if !in_s => ob += 1,
+                    '}' if !in_s => cb += 1,
+                    '[' if !in_s => oa += 1,
+                    ']' if !in_s => ca += 1,
+                    _ => {}
+                }
+            }
+            
+            // Retirer dernière virgule si présente
+            if result.trim_end().ends_with(',') {
+                result = result.trim_end().trim_end_matches(',').trim().to_string();
+            }
+            
+            // Fermer les structures
+            for _ in 0..(oa.saturating_sub(ca)) {
+                result.push(']');
+            }
+            for _ in 0..(ob.saturating_sub(cb)) {
+                result.push('}');
+            }
+        }
     }
     
     result

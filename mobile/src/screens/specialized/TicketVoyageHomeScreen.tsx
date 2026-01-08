@@ -308,13 +308,64 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Barre de recherche */}
+                    {/* ✅ NOUVEAU: Champs ville de départ et ville d'arrivée directement dans le header */}
                     <View style={styles.searchContainer}>
-                        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
+                        <View style={styles.citiesRow}>
+                            <View style={styles.cityInputContainer}>
+                                <Text style={styles.cityLabel}>
+                                    <SafeIcon name="map-pin" size={12} color="#FFFFFF" type="lucide" /> Départ
+                                </Text>
+                                <LocationSelector
+                                    label=""
+                                    value={typeof departureCity === 'string' ? (departureCity ? { raw: departureCity, place_name: departureCity } : '') : departureCity}
+                                    onSelect={(location: LocationObject) => {
+                                        hapticPress();
+                                        setDepartureCity(location);
+                                        handleSearch();
+                                    }}
+                                    placeholder="Ville de départ"
+                                    scope="city"
+                                    enrichWithBackend={true}
+                                />
+                            </View>
+                            <View style={styles.swapButtonContainer}>
+                                <TouchableOpacity
+                                    style={styles.swapButton}
+                                    onPress={() => {
+                                        hapticPress();
+                                        const temp = departureCity;
+                                        setDepartureCity(arrivalCity);
+                                        setArrivalCity(temp);
+                                        handleSearch();
+                                    }}
+                                >
+                                    <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.cityInputContainer}>
+                                <Text style={styles.cityLabel}>
+                                    <SafeIcon name="navigation" size={12} color="#FFFFFF" type="lucide" /> Arrivée
+                                </Text>
+                                <LocationSelector
+                                    label=""
+                                    value={typeof arrivalCity === 'string' ? (arrivalCity ? { raw: arrivalCity, place_name: arrivalCity } : '') : arrivalCity}
+                                    onSelect={(location: LocationObject) => {
+                                        hapticPress();
+                                        setArrivalCity(location);
+                                        handleSearch();
+                                    }}
+                                    placeholder="Ville d'arrivée"
+                                    scope="city"
+                                    enrichWithBackend={true}
+                                />
+                            </View>
+                        </View>
+                        {/* Barre de recherche textuelle (optionnelle) */}
+                        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused, { marginTop: 12 }]}>
                             <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher une ville, agence..."
+                                placeholder="Rechercher une agence, numéro de bus..."
                                 placeholderTextColor="#9CA3AF"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
@@ -905,6 +956,34 @@ const styles = StyleSheet.create({
     },
     searchContainer: {
         marginTop: 8,
+    },
+    citiesRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        gap: 8,
+    },
+    cityInputContainer: {
+        flex: 1,
+    },
+    cityLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: 'rgba(255, 255, 255, 0.9)',
+        marginBottom: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    swapButtonContainer: {
+        paddingBottom: 4,
+    },
+    swapButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     searchBar: {
         flexDirection: 'row',

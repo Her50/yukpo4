@@ -4,13 +4,13 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
@@ -256,7 +256,7 @@ const ImmobilierFormScreen: React.FC = () => {
 
     return (
         <>
-            <ScrollView style={styles.container}>
+            <KeyboardAwareScreen style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
@@ -526,7 +526,7 @@ const ImmobilierFormScreen: React.FC = () => {
                         style={styles.submitButton}
                     />
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <ModernGPSModal
                 visible={showGPSModal}

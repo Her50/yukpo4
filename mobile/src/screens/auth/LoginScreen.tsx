@@ -8,14 +8,12 @@ import { useState } from 'react';
 import {
   Alert,
   Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { modernColors, modernStyles, modernTheme } from '../../theme/modernTheme';
@@ -142,11 +140,7 @@ const LoginScreen: React.FC = () => {
       colors={modernColors.primaryGradient}
       style={styles.gradientContainer}
     >
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
             <Title style={styles.title}>
               Connexion{' '}
@@ -273,8 +267,7 @@ const LoginScreen: React.FC = () => {
               En cas de problème, contactez notre support à support@yukpo.com
             </Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScreen>
     </LinearGradient>
   );
 };

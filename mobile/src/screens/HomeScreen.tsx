@@ -34,7 +34,119 @@ import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 import { modernColors } from '../theme/modernTheme';
-import { hapticError } from '../utils/hapticFeedback';
+import { hapticError, hapticPress } from '../utils/hapticFeedback';
+
+// ✅ NOUVEAU: Composant pour bouton don de sang avec animation élégante
+const BloodDonationButton: React.FC<{ onPress: () => void }> = ({ onPress }) => {
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const opacityAnim = useRef(new Animated.Value(1)).current;
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+
+    // Animation de pulsation continue et élégante
+    React.useEffect(() => {
+        // Animation de pulsation pour l'effet de lueur
+        const pulseAnimation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 1.3,
+                    duration: 1500,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 1,
+                    duration: 1500,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+
+        // Animation de pulsation pour l'icône (scale)
+        const scaleAnimation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(scaleAnim, {
+                    toValue: 1.12,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(scaleAnim, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+
+        // Animation de clignotement d'opacité élégant
+        const opacityAnimation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacityAnim, {
+                    toValue: 0.7,
+                    duration: 1300,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(opacityAnim, {
+                    toValue: 1,
+                    duration: 1300,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+
+        // Démarrer toutes les animations
+        pulseAnimation.start();
+        scaleAnimation.start();
+        opacityAnimation.start();
+
+        // Nettoyer les animations au démontage
+        return () => {
+            pulseAnimation.stop();
+            scaleAnimation.stop();
+            opacityAnimation.stop();
+        };
+    }, []);
+
+    return (
+        <TouchableOpacity
+            style={styles.bloodDonationButton}
+            onPress={() => {
+                hapticPress();
+                onPress();
+            }}
+            activeOpacity={0.8}
+        >
+            {/* Effet de lueur animée en arrière-plan */}
+            <Animated.View
+                style={[
+                    styles.bloodDonationGlow,
+                    {
+                        transform: [{ scale: pulseAnim }],
+                        opacity: opacityAnim.interpolate({
+                            inputRange: [0.7, 1],
+                            outputRange: [0.2, 0.5],
+                        }),
+                    },
+                ]}
+            />
+            {/* Contenu du bouton avec animation */}
+            <Animated.View
+                style={[
+                    styles.bloodDonationButtonContent,
+                    {
+                        transform: [{ scale: scaleAnim }],
+                        opacity: opacityAnim,
+                    },
+                ]}
+            >
+                <SafeIcon
+                    name="heart"
+                    size={22}
+                    color="#DC2626"
+                    type="lucide"
+                />
+            </Animated.View>
+        </TouchableOpacity>
+    );
+};
 
 // NOUVEAU: Composant pour menu promotions regroupé
 const PromotionsMenu: React.FC<{ navigate: (route: string) => boolean }> = ({ navigate }) => {
@@ -494,8 +606,14 @@ const HomeScreen: React.FC = () => {
                         </Text>
                     </View>
 
-                    {/* Colonne droite: Livraison + Chat + Notifications */}
+                    {/* Colonne droite: Don de sang + Livraison + Chat + Notifications */}
                     <View style={styles.headerRight}>
+                        {/* ✅ NOUVEAU: Bouton don de sang avec animation élégante */}
+                        <BloodDonationButton
+                            onPress={() => {
+                                navigate('BanqueSangSearch');
+                            }}
+                        />
                         <TouchableOpacity
                             style={styles.deliveryButton}
                             onPress={() => {
@@ -757,6 +875,39 @@ const styles = StyleSheet.create({
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    // ✅ NOUVEAU: Styles pour bouton don de sang avec animation
+    bloodDonationButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FEE2E2', // Fond rose clair pour attirer l'attention
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+        borderWidth: 1.5,
+        borderColor: '#DC2626', // Bordure rouge pour visibilité
+        shadowColor: '#DC2626',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    bloodDonationButtonContent: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 2,
+    },
+    bloodDonationGlow: {
+        position: 'absolute',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#DC2626',
+        opacity: 0.4,
+        zIndex: 1,
     },
     deliveryButton: {
         width: 40, // ✅ CORRIGÉ: Même taille que les autres boutons

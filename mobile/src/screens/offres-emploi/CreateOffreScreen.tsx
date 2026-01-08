@@ -3,7 +3,6 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
     Alert,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
@@ -11,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
@@ -246,7 +246,7 @@ const CreateOffreScreen: React.FC = () => {
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
@@ -532,7 +532,7 @@ const CreateOffreScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
             </View>
-        </ScrollView>
+        </KeyboardAwareScreen>
     );
 };
 

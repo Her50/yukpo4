@@ -3649,27 +3649,51 @@ impl DeliveryRepository {
         address_type: Option<&str>, // 'pickup', 'dropoff', 'both', ou None pour tous
     ) -> AppResult<Vec<UserSavedAddress>> {
         let addresses = if let Some(addr_type) = address_type {
-            sqlx::query_as::<_, UserSavedAddress>(
-                r#"
-                SELECT id, user_id, label, address_type, address, latitude, longitude,
-                       location_data, contact_name, contact_phone, instructions,
-                       building_number, floor, apartment, is_default_pickup,
-                       is_default_dropoff, usage_count, last_used_at, is_active,
-                       created_at, updated_at
-                FROM user_saved_addresses
-                WHERE user_id = $1 
-                  AND is_active = TRUE
-                  AND (address_type = $2 OR address_type = 'both')
-                ORDER BY 
-                    CASE WHEN address_type = $2 AND (is_default_pickup = TRUE OR is_default_dropoff = TRUE) THEN 0 ELSE 1 END,
-                    last_used_at DESC NULLS LAST,
-                    label ASC
-                "#,
-            )
-            .bind(user_id)
-            .bind(addr_type)
-            .fetch_all(&self.pool)
-            .await?
+            // ✅ CORRIGÉ: Si address_type='both', retourner toutes les adresses (pickup, dropoff, both)
+            // Sinon, retourner seulement celles du type demandé + celles avec 'both'
+            if addr_type == "both" {
+                sqlx::query_as::<_, UserSavedAddress>(
+                    r#"
+                    SELECT id, user_id, label, address_type, address, latitude, longitude,
+                           location_data, contact_name, contact_phone, instructions,
+                           building_number, floor, apartment, is_default_pickup,
+                           is_default_dropoff, usage_count, last_used_at, is_active,
+                           created_at, updated_at
+                    FROM user_saved_addresses
+                    WHERE user_id = $1 
+                      AND is_active = TRUE
+                    ORDER BY 
+                        CASE WHEN is_default_pickup = TRUE OR is_default_dropoff = TRUE THEN 0 ELSE 1 END,
+                        last_used_at DESC NULLS LAST,
+                        label ASC
+                    "#,
+                )
+                .bind(user_id)
+                .fetch_all(&self.pool)
+                .await?
+            } else {
+                sqlx::query_as::<_, UserSavedAddress>(
+                    r#"
+                    SELECT id, user_id, label, address_type, address, latitude, longitude,
+                           location_data, contact_name, contact_phone, instructions,
+                           building_number, floor, apartment, is_default_pickup,
+                           is_default_dropoff, usage_count, last_used_at, is_active,
+                           created_at, updated_at
+                    FROM user_saved_addresses
+                    WHERE user_id = $1 
+                      AND is_active = TRUE
+                      AND (address_type = $2 OR address_type = 'both')
+                    ORDER BY 
+                        CASE WHEN address_type = $2 AND (is_default_pickup = TRUE OR is_default_dropoff = TRUE) THEN 0 ELSE 1 END,
+                        last_used_at DESC NULLS LAST,
+                        label ASC
+                    "#,
+                )
+                .bind(user_id)
+                .bind(addr_type)
+                .fetch_all(&self.pool)
+                .await?
+            }
         } else {
             sqlx::query_as::<_, UserSavedAddress>(
                 r#"

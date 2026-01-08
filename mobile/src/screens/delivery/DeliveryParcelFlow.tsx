@@ -5,13 +5,13 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import MediaUploadManager from '../../components/MediaUploadManager';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import NativeDatePicker from '../../components/NativeDatePicker';
@@ -475,7 +475,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                     </LinearGradient>
 
                     {/* Content */}
-                    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                    <KeyboardAwareScreen style={styles.content} showsVerticalScrollIndicator={false}>
                         {/* Type de colis */}
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
@@ -1067,7 +1067,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                 )}
                             </View>
                         </View>
-                    </ScrollView>
+                    </KeyboardAwareScreen>
 
                     {/* Footer */}
                     <View style={styles.footer}>

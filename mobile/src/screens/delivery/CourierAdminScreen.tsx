@@ -5,13 +5,13 @@ import {
     Alert,
     FlatList,
     Modal,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
@@ -327,7 +327,7 @@ const CourierAdminScreen: React.FC = () => {
                         </View>
 
                         {selectedApplication && (
-                            <ScrollView style={styles.modalBody}>
+                            <KeyboardAwareScreen style={styles.modalBody}>
                                 <NativeCard style={styles.detailCard}>
                                     <Text style={styles.detailLabel}>Candidat</Text>
                                     <Text style={styles.detailValue}>
@@ -449,7 +449,7 @@ const CourierAdminScreen: React.FC = () => {
                                         />
                                     </View>
                                 ) : null}
-                            </ScrollView>
+                            </KeyboardAwareScreen>
                         )}
                     </View>
                 </View>

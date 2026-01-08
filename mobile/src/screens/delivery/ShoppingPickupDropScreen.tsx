@@ -1,6 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, BackHandler, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
 import ModernGPSModal from '../../components/ModernGPSModal';
@@ -97,7 +98,7 @@ const ShoppingPickupDropScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
-            <ScrollView contentContainerStyle={styles.scroll}>
+            <KeyboardAwareScreen contentContainerStyle={styles.scroll}>
                 <DeliveryAvatarBubble
                     mood='excited'
                     message='Sélectionne le supermarché et l’adresse du destinataire.'
@@ -158,7 +159,7 @@ const ShoppingPickupDropScreen: React.FC = () => {
                     <Text style={styles.infoTitle}>Estimation du trajet</Text>
                     <Text style={styles.infoText}>Le temps total est calculé lors de la confirmation.</Text>
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <View style={styles.footer}>
                 <NativeButton title='Récapitulatif' onPress={handleContinue} />

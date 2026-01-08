@@ -476,7 +476,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                                             <Text style={styles.actionButtonText}>Rechercher créneaux</Text>
                                         </TouchableOpacity>
 
-                                        {availableSlots.length > 0 && (
+                                        {availableSlots.length > 0 ? (
                                             <View style={styles.resultCard}>
                                                 <Text style={styles.resultSubtitle}>
                                                     {availableSlots.length} créneau(x) disponible(s)
@@ -491,15 +491,15 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                                                         )}
                                                         {slot.available && (
                                                             <TouchableOpacity style={styles.bookSlotButton}>
-                                                <Text style={styles.bookSlotText}>Réserver</Text>
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                ))}
-                            </View>
-                                        ) : availableSlots.length === 0 && selectedDate && (
+                                                                <Text style={styles.bookSlotText}>Réserver</Text>
+                                                            </TouchableOpacity>
+                                                        )}
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        ) : availableSlots.length === 0 && selectedDate ? (
                                             <Text style={styles.infoText}>Aucun créneau disponible pour cette date</Text>
-                                        )}
+                                        ) : null}
                                     </>
                                 ) : (
                                     <Text style={styles.infoText}>

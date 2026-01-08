@@ -7,22 +7,25 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Image,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+
+const TAXI_FORM_STORAGE_KEY = '@taxi_last_form_data';
 
 const TaxiFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -59,22 +62,35 @@ const TaxiFormScreen: React.FC = () => {
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
 
-    // ✅ NOUVEAU : Fonction pour sélectionner une image du véhicule
-    const pickVehicleImage = async () => {
+    // ✅ AMÉLIORÉ: Fonction pour sélectionner une image du véhicule (galerie ou caméra)
+    const pickVehicleImage = async (source: 'gallery' | 'camera') => {
         try {
-            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!permissionResult.granted) {
-                Alert.alert('Permission refusée', 'Permission d\'accès à la galerie refusée');
-                return;
+            if (source === 'camera') {
+                const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+                if (!permissionResult.granted) {
+                    Alert.alert('Permission refusée', 'Permission d\'accès à la caméra refusée');
+                    return;
+                }
+            } else {
+                const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (!permissionResult.granted) {
+                    Alert.alert('Permission refusée', 'Permission d\'accès à la galerie refusée');
+                    return;
+                }
             }
 
-            // ✅ CORRIGÉ: Utiliser 'images' as any pour éviter les erreurs TypeScript
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: 'images' as any,
-                allowsEditing: true,
-                quality: 0.8,
-                base64: true,
-            });
+            const result = source === 'camera'
+                ? await ImagePicker.launchCameraAsync({
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: true,
+                })
+                : await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: 'images' as any,
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: true,
+                });
 
             if (!result.canceled && result.assets[0]) {
                 const base64 = result.assets[0].base64;
@@ -100,6 +116,74 @@ const TaxiFormScreen: React.FC = () => {
             }
         }
     }, [selectedZones]);
+
+    // ✅ NOUVEAU : Charger les données sauvegardées au montage
+    useEffect(() => {
+        const loadSavedFormData = async () => {
+            try {
+                const savedData = await AsyncStorage.getItem(TAXI_FORM_STORAGE_KEY);
+                if (savedData) {
+                    const parsed = JSON.parse(savedData);
+                    // Restaurer les données sauf si on est en mode edit
+                    if (mode !== 'edit') {
+                        setFormData(prev => ({
+                            ...prev,
+                            nom_chauffeur: parsed.nom_chauffeur || prev.nom_chauffeur,
+                            telephone: parsed.telephone || prev.telephone,
+                            whatsapp: parsed.whatsapp || prev.whatsapp,
+                            type_vehicule: parsed.type_vehicule || prev.type_vehicule,
+                            marque_modele: parsed.marque_modele || prev.marque_modele,
+                            immatriculation: parsed.immatriculation || prev.immatriculation,
+                            couleur: parsed.couleur || prev.couleur,
+                            annee: parsed.annee || prev.annee,
+                            tarif_base: parsed.tarif_base || prev.tarif_base,
+                            tarif_par_km: parsed.tarif_par_km || prev.tarif_par_km,
+                            paiement_cash: parsed.paiement_cash !== undefined ? parsed.paiement_cash : prev.paiement_cash,
+                            paiement_mobile_money: parsed.paiement_mobile_money !== undefined ? parsed.paiement_mobile_money : prev.paiement_mobile_money,
+                            paiement_carte: parsed.paiement_carte !== undefined ? parsed.paiement_carte : prev.paiement_carte,
+                            climatisation: parsed.climatisation !== undefined ? parsed.climatisation : prev.climatisation,
+                            wifi: parsed.wifi !== undefined ? parsed.wifi : prev.wifi,
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error('[TaxiFormScreen] Erreur chargement données sauvegardées:', error);
+            }
+        };
+        loadSavedFormData();
+    }, [mode]);
+
+    // ✅ NOUVEAU : Sauvegarder les données du formulaire à chaque modification
+    useEffect(() => {
+        const saveFormData = async () => {
+            try {
+                const dataToSave = {
+                    nom_chauffeur: formData.nom_chauffeur,
+                    telephone: formData.telephone,
+                    whatsapp: formData.whatsapp,
+                    type_vehicule: formData.type_vehicule,
+                    marque_modele: formData.marque_modele,
+                    immatriculation: formData.immatriculation,
+                    couleur: formData.couleur,
+                    annee: formData.annee,
+                    tarif_base: formData.tarif_base,
+                    tarif_par_km: formData.tarif_par_km,
+                    paiement_cash: formData.paiement_cash,
+                    paiement_mobile_money: formData.paiement_mobile_money,
+                    paiement_carte: formData.paiement_carte,
+                    climatisation: formData.climatisation,
+                    wifi: formData.wifi,
+                };
+                await AsyncStorage.setItem(TAXI_FORM_STORAGE_KEY, JSON.stringify(dataToSave));
+            } catch (error) {
+                console.error('[TaxiFormScreen] Erreur sauvegarde données:', error);
+            }
+        };
+        // Sauvegarder seulement si on n'est pas en mode edit
+        if (mode !== 'edit') {
+            saveFormData();
+        }
+    }, [formData.nom_chauffeur, formData.telephone, formData.whatsapp, formData.type_vehicule, formData.marque_modele, formData.immatriculation, formData.couleur, formData.annee, formData.tarif_base, formData.tarif_par_km, formData.paiement_cash, formData.paiement_mobile_money, formData.paiement_carte, formData.climatisation, formData.wifi, mode]);
 
     // ✅ Créer automatiquement un service si serviceId manquant
     useEffect(() => {
@@ -287,7 +371,7 @@ const TaxiFormScreen: React.FC = () => {
 
     return (
         <>
-            <ScrollView style={styles.container}>
+            <KeyboardAwareScreen style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
@@ -373,7 +457,7 @@ const TaxiFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    {/* ✅ NOUVEAU : Image du véhicule */}
+                    {/* ✅ AMÉLIORÉ : Image du véhicule (galerie ou caméra) */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Photo du véhicule</Text>
                         {formData.image_vehicule ? (
@@ -390,13 +474,22 @@ const TaxiFormScreen: React.FC = () => {
                                 </TouchableOpacity>
                             </View>
                         ) : (
-                            <TouchableOpacity
-                                style={styles.imagePickerButton}
-                                onPress={pickVehicleImage}
-                            >
-                                <SafeIcon name="camera" size={24} color={modernColors.primary} />
-                                <Text style={styles.imagePickerText}>Ajouter une photo du véhicule</Text>
-                            </TouchableOpacity>
+                            <View style={styles.imagePickerContainer}>
+                                <TouchableOpacity
+                                    style={styles.imagePickerButton}
+                                    onPress={() => pickVehicleImage('camera')}
+                                >
+                                    <SafeIcon name="camera" size={24} color={modernColors.primary} />
+                                    <Text style={styles.imagePickerText}>Prendre une photo</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.imagePickerButton}
+                                    onPress={() => pickVehicleImage('gallery')}
+                                >
+                                    <SafeIcon name="image" size={24} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.imagePickerText}>Choisir depuis la galerie</Text>
+                                </TouchableOpacity>
+                            </View>
                         )}
                     </View>
 
@@ -593,7 +686,7 @@ const TaxiFormScreen: React.FC = () => {
                         style={styles.submitButton}
                     />
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             {/* Modals */}
             <ModernGPSModal
@@ -723,7 +816,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    imagePickerContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 8,
+    },
     imagePickerButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -734,7 +833,6 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#E5E7EB',
         borderStyle: 'dashed',
-        marginTop: 8,
     },
     imagePickerText: {
         fontSize: 14,

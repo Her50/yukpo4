@@ -220,6 +220,7 @@ export const BasketCompositionStep: React.FC<{
     showAddForm: boolean;
     onToggleAddForm: () => void;
     error?: string;
+    detectedCurrency?: string; // ✅ Ajout pour éviter les erreurs de référence
 }> = ({
     basketItems,
     onAddItem,
@@ -235,6 +236,7 @@ export const BasketCompositionStep: React.FC<{
     showAddForm,
     onToggleAddForm,
     error,
+    detectedCurrency = 'XAF', // ✅ Valeur par défaut pour éviter les erreurs
 }) => {
         const total = React.useMemo(() => {
             return basketItems.reduce((sum, item) => sum + (item.estimatedPrice || 0) * item.quantity, 0);

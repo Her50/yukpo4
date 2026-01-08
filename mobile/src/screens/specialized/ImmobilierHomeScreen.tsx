@@ -503,6 +503,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                 statuts={statuts}
                 standings={standings}
                 location={location}
+                detectedCurrency={detectedCurrency}
             />
 
             {/* Modal de tri */}
@@ -527,6 +528,7 @@ interface FiltersModalProps {
     statuts: Array<{ value: string; label: string }>;
     standings: string[];
     location: any;
+    detectedCurrency?: string; // ✅ Ajout pour éviter les erreurs de référence
 }
 
 const FiltersModal: React.FC<FiltersModalProps> = ({
@@ -538,6 +540,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
     statuts,
     standings,
     location,
+    detectedCurrency = 'XAF', // ✅ Valeur par défaut pour éviter les erreurs
 }) => {
     const [localFilters, setLocalFilters] = useState<PropertySearchFilters>(filters);
     const [prixMin, setPrixMin] = useState(filters.prix_min?.toString() || '');

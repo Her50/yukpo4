@@ -4,13 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
     Alert,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
@@ -188,7 +188,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                 </View>
             </LinearGradient>
 
-            <ScrollView
+            <KeyboardAwareScreen
                 style={styles.content}
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
@@ -555,7 +555,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                         • Certaines agences proposent des réservations en ligne
                     </Text>
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <ModernGPSModal
                 visible={showGPSModal}

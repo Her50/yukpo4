@@ -19,7 +19,9 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import SafeIcon from '../../components/SafeIcon';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { covoiturageService, Covoiturage, SearchCovoituragesFilters, CreateCovoiturageRequest } from '../../services/covoiturageService';
 import { modernColors } from '../../theme/modernTheme';
@@ -32,7 +34,15 @@ type ViewMode = 'search' | 'create';
 
 const CovoiturageHomeScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { user } = useAuth();
     const { location } = useLocation();
+    
+    // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
+    // Le statut chauffeur peut être dans user.role, user.is_driver, ou user.driver_status
+    const isDriverValidated = user?.role === 'driver' || 
+                              (user as any)?.is_driver === true || 
+                              (user as any)?.driver_status === 'validated' ||
+                              (user as any)?.driver_status === 'approved';
 
     // Mode d'affichage : recherche ou création
     const [viewMode, setViewMode] = useState<ViewMode>('search');
@@ -285,19 +295,40 @@ const CovoiturageHomeScreen: React.FC = () => {
                                 </Text>
                             )}
                         </View>
-                        {/* ✅ NOUVEAU: Bouton pour accéder au formulaire de configuration véhicule (accessible à tous) */}
+                        {/* ✅ AMÉLIORÉ: Bouton conditionnel selon statut chauffeur */}
                         {viewMode === 'search' && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    hapticPress();
-                                    (navigation as any).navigate('CovoiturageForm', {
-                                        mode: 'create',
-                                    });
-                                }}
-                                style={styles.createButton}
-                            >
-                                <SafeIcon name="car" size={20} color="#FFFFFF" type="lucide" />
-                            </TouchableOpacity>
+                            <>
+                                {!isDriverValidated ? (
+                                    // Bouton d'enregistrement chauffeur si non validé
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            hapticPress();
+                                            (navigation as any).navigate('PartnerRegister', {
+                                                partner_type: 'chauffeur',
+                                            });
+                                        }}
+                                        style={styles.registerDriverButton}
+                                    >
+                                        <SafeIcon name="user-plus" size={18} color="#FFFFFF" type="lucide" />
+                                        <Text style={styles.registerDriverText} numberOfLines={1}>
+                                            Devenir chauffeur
+                                        </Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    // Bouton + pour publier un trajet si chauffeur validé
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            hapticPress();
+                                            (navigation as any).navigate('CovoiturageForm', {
+                                                mode: 'create',
+                                            });
+                                        }}
+                                        style={styles.createButton}
+                                    >
+                                        <SafeIcon name="plus" size={22} color="#FFFFFF" type="lucide" />
+                                    </TouchableOpacity>
+                                )}
+                            </>
                         )}
                         <TouchableOpacity
                             onPress={() => {
@@ -307,7 +338,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             style={styles.modeToggle}
                         >
                             <SafeIcon 
-                                name={viewMode === 'search' ? 'plus' : 'search'} 
+                                name={viewMode === 'search' ? 'search' : 'search'} 
                                 size={22} 
                                 color="#FFFFFF" 
                                 type="lucide" 
@@ -596,7 +627,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
     location,
 }) => {
     return (
-        <ScrollView style={styles.formContainer} contentContainerStyle={styles.formContent}>
+        <KeyboardAwareScreen style={styles.formContainer} contentContainerStyle={styles.formContent}>
             {!trajetForm.service_id && (
                 <View style={styles.serviceWarning}>
                     <SafeIcon name="info" size={20} color="#F59E0B" type="lucide" />
@@ -762,7 +793,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                 disabled={creating}
                 style={styles.submitButton}
             />
-        </ScrollView>
+        </KeyboardAwareScreen>
     );
 };
 
@@ -805,6 +836,32 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: 'rgba(255, 255, 255, 0.9)',
         marginTop: 2,
+    },
+    createButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
+    },
+    registerDriverButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        marginRight: 8,
+        maxWidth: 140,
+    },
+    registerDriverText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     modeToggle: {
         width: 44,

@@ -28,6 +28,7 @@ import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';
 import { useScreenEnter } from '../../utils/animations';
 import { LocationObject } from '../../components/LocationSelector';
 import { UserSavedAddress } from '../../hooks/useSavedAddresses';
+import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 
 interface DeliveryShoppingFlowNewProps {
     visible: boolean;
@@ -66,6 +67,13 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
     onSuccess,
 }) => {
     const { location: userLocation } = useLocation();
+    // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
+    const detectedCurrency = useCurrencyDetection(
+        dropoffLocation ? { 
+            latitude: dropoffLocation.latitude, 
+            longitude: dropoffLocation.longitude 
+        } : undefined
+    );
     const [loading, setLoading] = useState(false);
     const [loadingLocation, setLoadingLocation] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -428,6 +436,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
                     showAddForm={showAddItem}
                     onToggleAddForm={() => setShowAddItem(!showAddItem)}
                     error={errors.basket}
+                    detectedCurrency={detectedCurrency}
                 />
             ),
             validation: () => basketItems.length > 0,

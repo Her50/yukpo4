@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Modal,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
@@ -11,6 +10,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import BusModelForm, { BusModel } from '../../components/bus/BusModelForm';
 import CompanySelector, { Company } from '../../components/CompanySelector';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
@@ -627,7 +627,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
 
     return (
         <>
-            <ScrollView style={styles.container}>
+            <KeyboardAwareScreen style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
@@ -1175,7 +1175,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     }}
                     initialModel={editingModelIndex !== null ? busModels[editingModelIndex] : undefined}
                 />
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             {/* Modals */}
             <ModernGPSModal

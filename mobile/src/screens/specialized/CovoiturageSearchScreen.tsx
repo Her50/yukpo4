@@ -6,13 +6,13 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Platform,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import CovoiturageMapView from '../../components/covoiturage/CovoiturageMapView';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
@@ -281,7 +281,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <ScrollView
+                <KeyboardAwareScreen
                     style={styles.content}
                     contentContainerStyle={styles.contentContainer}
                     showsVerticalScrollIndicator={false}
@@ -390,84 +390,93 @@ const CovoiturageSearchScreen: React.FC = () => {
                             )}
                         </View>
 
-                        {/* Départ */}
+                        {/* ✅ AMÉLIORÉ: Champs départ et destination compacts côte à côte */}
                         {!searchNearby && (
-                            <>
-                                <View style={styles.sectionHeader}>
-                                    <SafeIcon name="map-pin" size={18} color="#10B981" type="lucide" />
-                                    <Text style={styles.sectionSubtitle}>📍 Lieu de départ</Text>
+                            <View style={styles.routeContainer}>
+                                <View style={styles.routeRow}>
+                                    {/* Départ */}
+                                    <View style={styles.routeInputContainer}>
+                                        <Text style={styles.routeLabel}>
+                                            <SafeIcon name="map-pin" size={12} color="#10B981" type="lucide" /> Départ
+                                        </Text>
+                                        <LocationSelector
+                                            label=""
+                                            value={typeof villeDepart === 'string' ? (villeDepart ? { raw: villeDepart, place_name: villeDepart } : '') : villeDepart}
+                                            onSelect={(location: LocationObject) => {
+                                                setVilleDepart(location);
+                                            }}
+                                            placeholder="Ville de départ"
+                                            scope="city"
+                                            enrichWithBackend={true}
+                                            required={true}
+                                        />
+                                    </View>
+                                    
+                                    {/* Bouton d'échange */}
+                                    <TouchableOpacity
+                                        style={styles.swapButton}
+                                        onPress={() => {
+                                            hapticPress();
+                                            const tempVille = villeDepart;
+                                            const tempQuartier = quartierDepart;
+                                            setVilleDepart(villeDestination);
+                                            setQuartierDepart(quartierDestination);
+                                            setVilleDestination(tempVille);
+                                            setQuartierDestination(tempQuartier);
+                                        }}
+                                    >
+                                        <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
+                                    </TouchableOpacity>
+                                    
+                                    {/* Destination */}
+                                    <View style={styles.routeInputContainer}>
+                                        <Text style={styles.routeLabel}>
+                                            <SafeIcon name="navigation" size={12} color="#10B981" type="lucide" /> Arrivée
+                                        </Text>
+                                        <LocationSelector
+                                            label=""
+                                            value={typeof villeDestination === 'string' ? (villeDestination ? { raw: villeDestination, place_name: villeDestination } : '') : villeDestination}
+                                            onSelect={(location: LocationObject) => {
+                                                setVilleDestination(location);
+                                            }}
+                                            placeholder="Ville d'arrivée"
+                                            scope="city"
+                                            enrichWithBackend={true}
+                                            required={true}
+                                        />
+                                    </View>
                                 </View>
                                 
-                                {/* Ville de départ */}
-                                <View style={styles.inputGroup}>
-                                    <LocationSelector
-                                        label="Ville de départ *"
-                                        value={typeof villeDepart === 'string' ? (villeDepart ? { raw: villeDepart, place_name: villeDepart } : '') : villeDepart}
-                                        onSelect={(location: LocationObject) => {
-                                            setVilleDepart(location);
-                                        }}
-                                        placeholder="Rechercher une ville de départ..."
-                                        scope="city"
-                                        enrichWithBackend={true}
-                                        required={true}
-                                    />
+                                {/* Quartiers (optionnels, plus compacts) */}
+                                <View style={styles.neighborhoodsRow}>
+                                    <View style={styles.neighborhoodInputContainer}>
+                                        <LocationSelector
+                                            label=""
+                                            value={typeof quartierDepart === 'string' ? (quartierDepart ? { raw: quartierDepart, place_name: quartierDepart } : '') : quartierDepart}
+                                            onSelect={(location: LocationObject) => {
+                                                setQuartierDepart(location);
+                                            }}
+                                            placeholder="Quartier départ (opt.)"
+                                            scope="neighborhood"
+                                            cityContext={typeof villeDepart === 'string' ? villeDepart : (villeDepart as LocationObject)?.components?.ville || (villeDepart as LocationObject)?.place_name || ''}
+                                            enrichWithBackend={true}
+                                        />
+                                    </View>
+                                    <View style={styles.neighborhoodInputContainer}>
+                                        <LocationSelector
+                                            label=""
+                                            value={typeof quartierDestination === 'string' ? (quartierDestination ? { raw: quartierDestination, place_name: quartierDestination } : '') : quartierDestination}
+                                            onSelect={(location: LocationObject) => {
+                                                setQuartierDestination(location);
+                                            }}
+                                            placeholder="Quartier arrivée (opt.)"
+                                            scope="neighborhood"
+                                            cityContext={typeof villeDestination === 'string' ? villeDestination : (villeDestination as LocationObject)?.components?.ville || (villeDestination as LocationObject)?.place_name || ''}
+                                            enrichWithBackend={true}
+                                        />
+                                    </View>
                                 </View>
-
-                                {/* Quartier de départ */}
-                                <View style={styles.inputGroup}>
-                                    <LocationSelector
-                                        label="Quartier de départ (optionnel)"
-                                        value={typeof quartierDepart === 'string' ? (quartierDepart ? { raw: quartierDepart, place_name: quartierDepart } : '') : quartierDepart}
-                                        onSelect={(location: LocationObject) => {
-                                            setQuartierDepart(location);
-                                        }}
-                                        placeholder="Rechercher un quartier de départ..."
-                                        scope="neighborhood"
-                                        cityContext={typeof villeDepart === 'string' ? villeDepart : (villeDepart as LocationObject)?.components?.ville || (villeDepart as LocationObject)?.place_name || ''}
-                                        enrichWithBackend={true}
-                                    />
-                                </View>
-                            </>
-                        )}
-
-                        {/* Destination */}
-                        {!searchNearby && (
-                            <>
-                                <View style={styles.sectionHeader}>
-                                    <SafeIcon name="navigation" size={18} color="#10B981" type="lucide" />
-                                    <Text style={styles.sectionSubtitle}>🎯 Destination</Text>
-                                </View>
-                                
-                                {/* Ville de destination */}
-                                <View style={styles.inputGroup}>
-                                    <LocationSelector
-                                        label="Ville de destination *"
-                                        value={typeof villeDestination === 'string' ? (villeDestination ? { raw: villeDestination, place_name: villeDestination } : '') : villeDestination}
-                                        onSelect={(location: LocationObject) => {
-                                            setVilleDestination(location);
-                                        }}
-                                        placeholder="Rechercher une ville de destination..."
-                                        scope="city"
-                                        enrichWithBackend={true}
-                                        required={true}
-                                    />
-                                </View>
-
-                                {/* Quartier de destination */}
-                                <View style={styles.inputGroup}>
-                                    <LocationSelector
-                                        label="Quartier de destination (optionnel)"
-                                        value={typeof quartierDestination === 'string' ? (quartierDestination ? { raw: quartierDestination, place_name: quartierDestination } : '') : quartierDestination}
-                                        onSelect={(location: LocationObject) => {
-                                            setQuartierDestination(location);
-                                        }}
-                                        placeholder="Rechercher un quartier de destination..."
-                                        scope="neighborhood"
-                                        cityContext={typeof villeDestination === 'string' ? villeDestination : (villeDestination as LocationObject)?.components?.ville || (villeDestination as LocationObject)?.place_name || ''}
-                                        enrichWithBackend={true}
-                                    />
-                                </View>
-                            </>
+                            </View>
                         )}
 
                         {/* Date départ */}
@@ -718,7 +727,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                             • Les trajets à proximité sont mis à jour en temps réel
                         </Text>
                     </View>
-                </ScrollView>
+                </KeyboardAwareScreen>
             )}
         </SafeNativeView>
     );
@@ -796,6 +805,44 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#111827',
+    },
+    // ✅ NOUVEAU: Styles pour champs route compacts
+    routeContainer: {
+        marginBottom: 20,
+    },
+    routeRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        gap: 8,
+    },
+    routeInputContainer: {
+        flex: 1,
+    },
+    routeLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    swapButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#10B981',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    neighborhoodsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+    neighborhoodInputContainer: {
+        flex: 1,
     },
     quickSearchesGrid: {
         flexDirection: 'row',

@@ -12,41 +12,65 @@
 # Yukpomnang
 ## Plateforme Intelligente de Services Multi-Secteurs en Afrique
 
-**Levée de fonds Série A : $3.5M - $5M**
+**Levée de fonds Série A : 2.1 billions FCFA- 3.0 billions FCFA**
 
 *Tous vos services essentiels, une seule app*
 
 ---
 
-## SLIDE 2 : PROBLÈME
+## SLIDE 2 : PROBLÈME #1 - L'INVISIBILITÉ DIGITALE DES COMMERCES LOCAUX
 
-### Les Défis d'Accès aux Services en Afrique
+### 🚨 85% des Commerces Locaux Africains sont Invisibles Numériquement
 
-#### Fragmentation
-- **Services dispersés** : Chaque besoin = app différente
-- **Manque d'intégration** : Expérience fragmentée
-- **Inefficacité** : Perte de temps, coûts élevés
+**Le Problème**
 
-#### Visibilité Limitée
-- **Commerces locaux invisibles** : Pas de présence digitale
-- **Manque de découverte** : Difficile de trouver services
-- **Pas de promotion** : Pas d'outils marketing
+- **85% des commerces locaux** (petits commerces, pharmacies, restaurants) = **AUCUNE présence digitale**
+- **70% de l'économie informelle** = **Invisible** pour les consommateurs
+- **Perte de 30-40% du chiffre d'affaires potentiel** faute de visibilité
 
-#### Accès aux Services Essentiels
-- **Santé** : Difficultés accès pharmacies, hôpitaux
-- **Éducation** : Manque de visibilité établissements
-- **Transport** : Services fragmentés, peu fiables
-- **Immobilier** : Processus complexes, peu transparents
+**Pourquoi ?**
 
-#### Opportunité
-- **Marché $150+ milliards** : Croissance 15-20%/an
-- **Digitalisation accélérée** : Post-COVID adoption
-- **Classe moyenne émergente** : +15M/an
-- **Infrastructure** : 4G/5G, smartphones, fintech
+- **Coûts marketing inaccessibles** : Site web = 500K-2M FCFA, Vidéo = 200K-1M FCFA
+- **Complexité technique** : Créer une présence digitale = expertise + temps + argent
+- **Fracture digitale** : Seuls les grands groupes peuvent se le permettre
+
+**Impact**
+
+- **Milliards de FCFA perdus** chaque année
+- **Inégalité économique massive** : Grands groupes vs petits commerces
+- **Découverte impossible** : Consommateurs ne trouvent pas les commerces, même à proximité
 
 ---
 
-## SLIDE 3 : SOLUTION
+## SLIDE 3 : PROBLÈME #2 - LA FRACTURE D'ACCÈS AUX SERVICES ESSENTIELS
+
+### 🚨 Services Fragmentés, Coûteux et Inaccessibles
+
+**Le Problème**
+
+- **5-10 applications différentes** pour répondre aux besoins quotidiens
+- **Coûts cachés énormes** : Recherche + déplacements = 50K-150K FCFA/mois par ménage
+- **Accessibilité limitée** : Services difficiles à trouver, surtout zones périurbaines/rurales
+- **Barrières linguistiques** : 60% de la population exclue (langues locales non supportées)
+- **Manque de transparence** : Prix, disponibilité, qualité = information opaque
+
+**Impact**
+
+- **Perte de temps** : 2-3 heures/jour à chercher des services
+- **Coûts élevés** : 15-25% du budget mensuel en recherche/déplacement
+- **Exclusion sociale** : Populations rurales, analphabètes, handicapées exclues
+- **Qualité de vie dégradée** : Accès difficile = santé, éducation, logement compromis
+
+**Opportunité**
+
+- **Marché 90K FCFA+ milliards** : Croissance 15-20%/an
+- **1,4 milliard d'habitants** → **2,5 milliards en 2050**
+- **70% pénétration smartphone**, **85% couverture 4G**
+- **Timing parfait** : Infrastructure prête, adoption mobile, demande croissante
+
+---
+
+## SLIDE 4 : SOLUTION
 
 ### Yukpomnang : L'Écosystème Complet
 
@@ -86,26 +110,16 @@
 
 ---
 
-## SLIDE 4 : MARCHÉ
+## SLIDE 5 : MARCHÉ
 
 ### Opportunité Massive
 
-#### TAM : $150+ Milliards
-- **E-commerce** : $75B → $150B (2030)
-- **Livraison** : $12B → $25B
-- **Santé** : $25B → $50B
-- **Transport** : $18B → $35B
-- **Immobilier** : $20B → $40B
-
-#### SAM : $45 Milliards
-- **Cameroun** : $8B
-- **Côte d'Ivoire** : $12B
-- **Sénégal** : $6B
-- **Autres francophones** : $19B
-
-#### SOM : $2.5 Milliards (5 ans)
+#### TAM : 90K FCFA+ Milliards
+- **E-commerce** : 45000.0 billions FCFA→ 90000.0 billions FCFA(2030)
+- **Livraison** : 7200.0 billions FCFA→ 15000.0 billions FCFA- **Santé** : 15000.0 billions FCFA→ 30000.0 billions FCFA- **Transport** : 10800.0 billions FCFA→ 21000.0 billions FCFA- **Immobilier** : 12000.0 billions FCFA→ 24000.0 billions FCFA#### SAM : 27K FCFAMilliards
+- **Cameroun** : 4800.0 billions FCFA- **Côte d'Ivoire** : 7200.0 billions FCFA- **Sénégal** : 3600.0 billions FCFA- **Autres francophones** : 11400.0 billions FCFA#### SOM : 1K FCFAMilliards (5 ans)
 - **Part de marché réaliste** : 5-6%
-- **Objectif 2030** : $180M+ revenus
+- **Objectif 2030** : 108.0 billions FCFA+ revenus
 
 #### Croissance
 - **Pénétration mobile** : 80%+ (croissance 5-8%/an)
@@ -122,27 +136,17 @@
 #### 1. Commissions Livraisons (35%)
 - **15-20%** par transaction
 - **Frais coursiers** : 10-15%
-- **Projection 2026** : $875K
-
-#### 2. Publicité & Promotion (30%)
-- **Création vidéos** : $50-$200/vidéo
-- **Placement pub** : $500-$5000/mois
-- **Projection 2026** : $750K
-
-#### 3. Abonnements Premium (20%)
-- **Commerçants** : $29-$99/mois
-- **IA avancée** : $49-$199/mois
-- **Projection 2026** : $500K
-
-#### 4. Services Spécialisés (10%)
+- **Projection 2026** : 525 millions FCFA#### 2. Publicité & Promotion (30%)
+- **Création vidéos** : 30K FCFA-120K FCFA/vidéo
+- **Placement pub** : 300K FCFA-3 millions FCFA/mois
+- **Projection 2026** : 450 millions FCFA#### 3. Achat de Tokens (20%)
+- **Commerçants** : 17K FCFA-59K FCFA/mois
+- **IA avancée** : 29K FCFA-119K FCFA/mois
+- **Projection 2026** : 300 millions FCFA#### 4. Services Spécialisés (10%)
 - **Commissions** : 8-18% selon service
-- **Projection 2026** : $250K
-
-#### 5. E-Commerce (5%)
+- **Projection 2026** : 150 millions FCFA#### 5. E-Commerce (5%)
 - **Commissions** : 8-12% par vente
-- **Projection 2026** : $125K
-
-**TOTAL REVENUS 2026** : **$2.5M**
+- **Projection 2026** : 75 millions FCFA**TOTAL REVENUS 2026** : **1.5 billions FCFA**
 
 ---
 
@@ -171,7 +175,7 @@
 #### Objectifs 2026
 - **500K utilisateurs** actifs
 - **50K partenaires** (commerçants + coursiers)
-- **$2.5M revenus**
+- **1.5 billions FCFArevenus**
 - **150K transactions/mois**
 
 ---
@@ -211,25 +215,25 @@
 - **Q1** : Beta, partenariats
 - **Q2** : Lancement officiel
 - **Q3-Q4** : Expansion nationale
-- **Objectif** : 500K utilisateurs, $2.5M revenus
+- **Objectif** : 500K utilisateurs, 1.5 billions FCFArevenus
 
 #### 2027 : Expansion 3 Pays
 - **Q1** : Côte d'Ivoire
 - **Q3** : Sénégal
-- **Objectif** : 2.5M utilisateurs, $12M revenus
+- **Objectif** : 2.5M utilisateurs, 7.2 billions FCFArevenus
 
 #### 2028 : Consolidation Francophone
 - **Expansion** : 10+ pays francophones
-- **Objectif** : 7M utilisateurs, $35M revenus
+- **Objectif** : 7M utilisateurs, 21.0 billions FCFArevenus
 
 #### 2029 : Leadership Panafricain
 - **Anglophone** : Nigeria, Ghana, Kenya, etc.
 - **Lusophone** : Angola, Mozambique
-- **Objectif** : 18M utilisateurs, $85M revenus
+- **Objectif** : 18M utilisateurs, 51.0 billions FCFArevenus
 
 #### 2030 : Leader Consolidé
 - **25+ pays** : Présence panafricaine
-- **Objectif** : 40M utilisateurs, $180M+ revenus
+- **Objectif** : 40M utilisateurs, 108.0 billions FCFA+ revenus
 
 ---
 
@@ -257,28 +261,26 @@
 
 ## SLIDE 10 : FINANCEMENT
 
-### Série A : $3.5M - $5M
+### Série A : 2.1 billions FCFA- 3.0 billions FCFA#### Utilisation des Fonds
 
-#### Utilisation des Fonds
-
-**40% - Développement Produit ($1.4M-$2M)**
+**40% - Développement Produit (840 millions FCFA-1.2 billions FCFA)**
 - IA avancée, mobile, infrastructure, vidéo
 
-**30% - Marketing & Acquisition ($1.05M-$1.5M)**
+**30% - Marketing & Acquisition (630 millions FCFA-900 millions FCFA)**
 - Campagnes digitales, influenceurs, événements
 
-**15% - Recrutement ($525K-$750K)**
+**15% - Recrutement (315 millions FCFA-450 millions FCFA)**
 - Équipe clé, développeurs, opérations
 
-**10% - Infrastructure ($350K-$500K)**
+**10% - Infrastructure (210 millions FCFA-300 millions FCFA)**
 - Cloud, outils, bureaux
 
-**5% - Réserve ($175K-$250K)**
+**5% - Réserve (105 millions FCFA-150 millions FCFA)**
 - Trésorerie, imprévus
 
 #### Runway
 - **Durée** : 12-18 mois
-- **Objectif** : $2.5M revenus, 500K utilisateurs
+- **Objectif** : 1.5 billions FCFArevenus, 500K utilisateurs
 - **Milestone** : Préparation Série B
 
 ---
@@ -289,16 +291,15 @@
 
 | Année | Revenus | Croissance | EBITDA | Marge |
 |-------|---------|------------|--------|-------|
-| **2026** | $2.5M | - | -$300K | -12% |
-| **2027** | $12M | +380% | +$2.4M | +20% |
-| **2028** | $35M | +192% | +$7M | +20% |
-| **2029** | $85M | +143% | +$21.25M | +25% |
-| **2030** | $180M | +112% | +$54M | +30% |
+| **2026** | 1.5 billions FCFA| - | -180 millions FCFA| -12% |
+| **2027** | 7.2 billions FCFA| +380% | +1.4 billions FCFA| +20% |
+| **2028** | 21.0 billions FCFA| +192% | +4.2 billions FCFA| +20% |
+| **2029** | 51.0 billions FCFA| +143% | +12.8 billions FCFA| +25% |
+| **2030** | 108.0 billions FCFA| +112% | +32.4 billions FCFA| +30% |
 
 #### Métriques Clés
-- **CAC** : <$8 (2026), <$5 (2029)
-- **LTV** : $80-$120
-- **LTV/CAC** : >10x
+- **CAC** : <4K FCFA(2026), <3K FCFA(2029)
+- **LTV** : 48K FCFA-72K FCFA- **LTV/CAC** : >10x
 - **Take Rate** : 11-13%
 
 ---
@@ -309,23 +310,19 @@
 
 | Année | Revenus | Multiple | Valorisation |
 |-------|---------|----------|--------------|
-| **2026 (Série A)** | $2.5M | 10-15x | $25M-$37.5M |
-| **2027 (Série B)** | $12M | 8-12x | $96M-$144M |
-| **2028 (Série C)** | $35M | 6-10x | $210M-$350M |
-| **2029 (Série D)** | $85M | 5-8x | $425M-$680M |
-| **2030 (Exit)** | $180M | 4-6x | $720M-$1.08B |
+| **2026 (Série A)** | 1.5 billions FCFA| 10-15x | 15.0 billions FCFA-22.5 billions FCFA|
+| **2027 (Série B)** | 7.2 billions FCFA| 8-12x | 57.6 billions FCFA-86.4 billions FCFA|
+| **2028 (Série C)** | 21.0 billions FCFA| 6-10x | 126.0 billions FCFA-210.0 billions FCFA|
+| **2029 (Série D)** | 51.0 billions FCFA| 5-8x | 255.0 billions FCFA-408.0 billions FCFA|
+| **2030 (Exit)** | 108.0 billions FCFA| 4-6x | 432.0 billions FCFA-648.0 billions FCFA|
 
 ### Retour sur Investissement
 
 #### Scénario Conservateur
 - **ROI Série A** : 10-15x sur 5 ans
-- **Valorisation 2030** : $500M-$600M
-
-#### Scénario Optimiste
+- **Valorisation 2030** : 300.0 billions FCFA-360.0 billions FCFA#### Scénario Optimiste
 - **ROI Série A** : 20-30x sur 5 ans
-- **Valorisation 2030** : $800M-$1B
-
-### Options de Sortie
+- **Valorisation 2030** : 480.0 billions FCFA-600.0 billions FCFA### Options de Sortie
 - **Acquisition** : Géants tech (Google, Meta, Amazon, Jumia)
 - **IPO** : Introduction en bourse
 - **Merger** : Fusion avec autre plateforme
@@ -366,12 +363,12 @@
 - **Taux d'adoption** : 15-20% croissance mensuelle
 - **Rétention** : 60% (30j), 40% (90j)
 - **Engagement** : 8-12 sessions/mois
-- **ARPU** : $0.40-$0.50/mois
+- **ARPU** : 240 FCFA-300 FCFA/mois
 
 #### Business
-- **GMV** : $20M (2026) → $1.6B (2030)
+- **GMV** : 12.0 billions FCFA(2026) → 960.0 billions FCFA(2030)
 - **Take Rate** : 11-13%
-- **CAC** : <$8 (2026) → <$5 (2029)
+- **CAC** : <4K FCFA(2026) → <3K FCFA(2029)
 - **LTV/CAC** : >10x
 
 #### Opérationnelles
@@ -406,7 +403,7 @@
 ### Rejoignez-Nous dans cette Aventure
 
 #### Opportunité Unique
-- **Marché en croissance** : $150+ milliards
+- **Marché en croissance** : 90K FCFA+ milliards
 - **Technologie différenciante** : IA, performance, innovation
 - **Première mover** : Avantage concurrentiel
 - **Impact social** : Transformation des vies

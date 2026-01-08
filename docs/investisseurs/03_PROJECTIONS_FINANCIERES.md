@@ -4,7 +4,7 @@
 **Date**: Janvier 2026  
 **Version**: 3.0 - Révisée avec Paramètres Réalistes  
 **Confidentialité**: Document confidentiel  
-**Taux de change** : 1 USD = 600 FCFA (approximatif)
+**Taux de change** : 1 FCFA = 600 FCFA (approximatif)
 
 ---
 
@@ -12,10 +12,24 @@
 
 ### Structure de Revenus par Catégorie
 
-#### 1. Abonnements Produits/Services
-- **Prix abonnement** : 2,000 FCFA/mois par produit/service en ligne
-- **Revenu mensuel** : 2,000 FCFA × nombre de produits actifs
-- **Revenu annuel** : 24,000 FCFA par produit/service actif
+#### 1. Utilisation de Tokens pour Produits/Services
+
+**Système de Tokens (Pay-Per-Use)**
+
+Yukpomnang utilise un **système de tokens** (et non un système d'abonnement) où les commerçants achètent des tokens pour utiliser les fonctionnalités de la plateforme :
+
+- **Achat de tokens** : Les commerçants achètent des tokens selon leurs besoins (pas d'engagement mensuel)
+- **Utilisation des tokens** :
+  - Création de produits/services : Consommation de tokens selon complexité
+  - Maintien en ligne : Tokens débités pour maintenir la visibilité des produits
+  - Actions supplémentaires : Clics, promotions, mises à jour
+- **Équivalence** : 1 FCFA = 1 token dans le système de balance
+- **Coût moyen équivalent** : ~2,000 FCFA/mois par produit/service actif (basé sur utilisation moyenne observée)
+- **Avantages** : Flexibilité totale, pas d'engagement, paiement selon usage réel
+
+**Projections Revenus**
+- **Revenu mensuel moyen** : ~2,000 FCFA × nombre de produits actifs
+- **Revenu annuel moyen** : ~24,000 FCFA par produit/service actif (basé sur utilisation moyenne)
 
 #### 2. Commissions sur Livraisons
 - **Commission minimum** : 100 FCFA par livraison
@@ -37,28 +51,40 @@
 
 ## 📊 RÉSUMÉ EXÉCUTIF FINANCIER
 
-### Objectifs Clés - Basés sur les Produits/Services (Révisés)
+### Objectifs Clés - Basés sur les Produits/Services (Révisés - Plan 3 Ans)
 
-- **2026** : 1,2 milliard FCFA revenus, -200 millions FCFA EBITDA
-  - **30,000 produits/services actifs** (abonnements) - Objectif réaliste
-  - **800,000 livraisons** - Objectif réaliste
-  - **600,000 ventes produits** - Objectif réaliste
-  - **200,000 utilisateurs actifs** - Objectif réaliste
-  - **GMV** : 12 milliards FCFA
+#### 2026 - Année 1 : Lancement Cameroun
+- **Revenus** : 1,2 milliard FCFA
+- **Charges** : 1,4 milliard FCFA
+- **EBITDA** : -200 millions FCFA (investissement croissance)
+- **30,000 produits/services actifs** (utilisant tokens) - Objectif réaliste
+- **200,000 utilisateurs actifs** - Objectif réaliste
+- **800,000 livraisons** - Objectif réaliste
+- **600,000 ventes produits** - Objectif réaliste
+- **GMV** : 12 milliards FCFA
+- **Trésorerie fin année** : 1,8 milliard FCFA (après Série A)
 
-- **2027** : 6,5 milliards FCFA revenus, +650 millions FCFA EBITDA (10% marge)
-  - **120,000 produits/services actifs** - Objectif réaliste
-  - **3,5 millions de livraisons** - Objectif réaliste
-  - **2,5 millions de ventes produits** - Objectif réaliste
-  - **800,000 utilisateurs actifs** - Objectif réaliste
-  - **GMV** : 55 milliards FCFA
+#### 2027 - Année 2 : Expansion 3 Pays
+- **Revenus** : 6,5 milliards FCFA
+- **Charges** : 5,85 milliards FCFA
+- **EBITDA** : +650 millions FCFA (10% marge)
+- **120,000 produits/services actifs** - Objectif réaliste
+- **800,000 utilisateurs actifs** - Objectif réaliste
+- **3,5 millions de livraisons** - Objectif réaliste
+- **2,5 millions de ventes produits** - Objectif réaliste
+- **GMV** : 55 milliards FCFA
+- **Trésorerie fin année** : 8,95 milliards FCFA (après Série B)
 
-- **2028** : 18 milliards FCFA revenus, +3,6 milliards FCFA EBITDA (20% marge)
-  - **400,000 produits/services actifs** - Objectif réaliste
-  - **10 millions de livraisons** - Objectif réaliste
-  - **8 millions de ventes produits** - Objectif réaliste
-  - **2,500,000 utilisateurs actifs** - Objectif réaliste
-  - **GMV** : 150 milliards FCFA
+#### 2028 - Année 3 : Expansion Francophone
+- **Revenus** : 18 milliards FCFA
+- **Charges** : 14,4 milliards FCFA
+- **EBITDA** : +3,6 milliards FCFA (20% marge)
+- **400,000 produits/services actifs** - Objectif réaliste
+- **2,500,000 utilisateurs actifs** - Objectif réaliste
+- **10 millions de livraisons** - Objectif réaliste
+- **8 millions de ventes produits** - Objectif réaliste
+- **GMV** : 150 milliards FCFA
+- **Trésorerie fin année** : 30,55 milliards FCFA (après Série C)
 
 - **2029** : 60 milliards FCFA revenus, +15 milliards FCFA EBITDA (25% marge)
   - **3,5 millions de produits/services actifs**
@@ -92,7 +118,7 @@
 
 | Source | Volume | Unité | Revenu/Unité | Revenus (FCFA) | % Total |
 |--------|--------|-------|--------------|---------------|---------|
-| **Abonnements Produits** | 30,000 | Produits actifs | 24,000/an | 720 millions | 60% |
+| **Achat Tokens Produits** | 30,000 | Produits actifs | ~24,000/an | 720 millions | 60% |
 | **Commissions Livraisons** | 800,000 | Livraisons | 150 FCFA | 120 millions | 10% |
 | **Commissions Ventes** | 600,000 | Ventes | 400 FCFA | 240 millions | 20% |
 | **Publicité & Vidéos** | - | - | - | 100 millions | 8% |
@@ -105,7 +131,7 @@
 - **Total** : 100 millions FCFA
 
 #### Hypothèses 2026 - Objectifs Réalistes
-- **Produits/services actifs** : 30,000 (abonnements 2,000 FCFA/mois) - Objectif atteignable
+- **Produits/services actifs** : 30,000 (utilisation tokens, équivalent ~2,000 FCFA/mois) - Objectif atteignable
 - **Utilisateurs actifs** : 200,000 - Objectif réaliste
 - **Livraisons** : 800,000 (commission moyenne 150 FCFA) - Objectif réaliste
 - **Ventes produits** : 600,000 (commission 5% = 400 FCFA en moyenne) - Objectif réaliste
@@ -154,7 +180,7 @@
 
 | Source | Volume | Unité | Revenu/Unité | Revenus (FCFA) | % Total |
 |--------|--------|-------|--------------|---------------|---------|
-| **Abonnements Produits** | 600,000 | Produits actifs | 24,000/an | 14,4 milliards | 17% |
+| **Achat Tokens Produits** | 600,000 | Produits actifs | ~24,000/an | 14,4 milliards | 17% |
 | **Commissions Livraisons** | 5,500,000 | Livraisons | 150 FCFA | 825 millions | 10% |
 | **Commissions Ventes** | 4,200,000 | Ventes | 400 FCFA | 1,68 milliard | 20% |
 | **Publicité & Vidéos** | - | - | - | 3,5 milliards | 42% |
@@ -183,7 +209,7 @@
 
 | Source | Volume | Unité | Revenu/Unité | Revenus (FCFA) | % Total |
 |--------|--------|-------|--------------|---------------|---------|
-| **Abonnements Produits** | 1,500,000 | Produits actifs | 24,000/an | 36 milliards | 15% |
+| **Achat Tokens Produits** | 1,500,000 | Produits actifs | ~24,000/an | 36 milliards | 15% |
 | **Commissions Livraisons** | 16,000,000 | Livraisons | 150 FCFA | 2,4 milliards | 10% |
 | **Commissions Ventes** | 12,500,000 | Ventes | 400 FCFA | 5 milliards | 20% |
 | **Publicité & Vidéos** | - | - | - | 10,2 milliards | 41% |
@@ -212,7 +238,7 @@
 
 | Source | Volume | Unité | Revenu/Unité | Revenus (FCFA) | % Total |
 |--------|--------|-------|--------------|---------------|---------|
-| **Abonnements Produits** | 3,500,000 | Produits actifs | 24,000/an | 84 milliards | 14% |
+| **Achat Tokens Produits** | 3,500,000 | Produits actifs | ~24,000/an | 84 milliards | 14% |
 | **Commissions Livraisons** | 40,000,000 | Livraisons | 150 FCFA | 6 milliards | 10% |
 | **Commissions Ventes** | 30,000,000 | Ventes | 400 FCFA | 12 milliards | 20% |
 | **Publicité & Vidéos** | - | - | - | 24,6 milliards | 41% |
@@ -241,7 +267,7 @@
 
 | Source | Volume | Unité | Revenu/Unité | Revenus (FCFA) | % Total |
 |--------|--------|-------|--------------|---------------|---------|
-| **Abonnements Produits** | 7,500,000 | Produits actifs | 24,000/an | 180 milliards | 14% |
+| **Achat Tokens Produits** | 7,500,000 | Produits actifs | ~24,000/an | 180 milliards | 14% |
 | **Commissions Livraisons** | 85,000,000 | Livraisons | 150 FCFA | 12,75 milliards | 10% |
 | **Commissions Ventes** | 65,000,000 | Ventes | 400 FCFA | 26 milliards | 20% |
 | **Publicité & Vidéos** | - | - | - | 54,2 milliards | 41% |
@@ -510,7 +536,7 @@
 - **Modèle éprouvé** : Inspiré des leaders mondiaux, adapté Afrique
 - **Multi-sources revenus** : Réduction risques
 - **Évaluation basée produits** : Métriques tangibles et scalables
-- **Paramètres réalistes** : Abonnements 2,000 FCFA/mois, commissions 5%, livraisons 100+ FCFA
+- **Paramètres réalistes** : Utilisation tokens équivalent ~2,000 FCFA/mois en moyenne, commissions 5%, livraisons 100+ FCFA
 
 ### Retour sur Investissement
 - **ROI Série A** : 10-15x sur 5 ans (conservateur)
@@ -535,7 +561,7 @@
 - **Croissance livraison** : Research and Markets (2024), McKinsey & Company (2023)
 
 ### Paramètres Économiques
-- **Abonnement 2,000 FCFA/mois** : Basé sur analyse marché local et benchmarks internationaux
+- **Utilisation tokens équivalent ~2,000 FCFA/mois** : Basé sur analyse marché local et benchmarks internationaux (système pay-per-use avec tokens)
 - **Commission livraison 100+ FCFA** : Analyse coûts opérationnels et prix marché
 - **Commission vente 5%** : Positionnement compétitif vs Jumia (15-20%), Glovo (25-30%)
 - **Prix vidéo publicitaire** : Analyse marché création contenu (15,000-30,000 FCFA)
@@ -554,7 +580,7 @@ Les projections sont basées sur :
 5. **Paramètres réalistes** : Prix et commissions basés sur analyse marché local
 
 ### Taux de Change
-- **1 USD = 600 FCFA** : Banque Centrale des États de l'Afrique de l'Ouest (BCEAO), Banque des États de l'Afrique Centrale (BEAC) - Janvier 2026
+- **1 FCFA = 600 FCFA** : Banque Centrale des États de l'Afrique de l'Ouest (BCEAO), Banque des États de l'Afrique Centrale (BEAC) - Janvier 2026
 
 *Pour la liste complète des références, voir le document "REFERENCES_SOURCES.md"*
 
@@ -562,6 +588,6 @@ Les projections sont basées sur :
 
 *Document confidentiel - Propriété de Yukpomnang - Janvier 2026*
 
-*Note : Tous les montants sont exprimés en FCFA (Franc CFA). Taux de change approximatif : 1 USD = 600 FCFA.*
+*Note : Tous les montants sont exprimés en FCFA (Franc CFA). Taux de change approximatif : 1 FCFA = 600 FCFA.*
 
 *Version 3.0 - Révisée avec paramètres économiques réalistes basés sur analyse marché local.*

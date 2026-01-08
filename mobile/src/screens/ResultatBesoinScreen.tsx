@@ -6,12 +6,12 @@ import {
     Alert,
     Linking,
     RefreshControl,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import CategoryFilters from '../components/CategoryFilters';
 import ChatInputMobile from '../components/ChatInputMobile';
 import ChatModalMobile from '../components/ChatModalMobile';
@@ -1349,7 +1349,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            <ScrollView
+            <KeyboardAwareScreen
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
@@ -1692,7 +1692,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     setSelectedService(null);
                 }}
             />
-            </ScrollView>
+            </KeyboardAwareScreen>
         </SafeNativeView>
     );
 };

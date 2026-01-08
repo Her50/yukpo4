@@ -5,7 +5,6 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Image,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -13,6 +12,7 @@ import {
     ActivityIndicator,
     Modal,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import * as ImagePicker from 'expo-image-picker';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
@@ -359,7 +359,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
     return (
         <>
-            <ScrollView style={styles.container}>
+            <KeyboardAwareScreen style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
@@ -646,7 +646,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                         disabled={loading}
                     />
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <ModernGPSModal
                 visible={showGPSModal}

@@ -18,7 +18,7 @@
 - **Classe moyenne** : +15 millions/an [^3]
 
 #### Croissance Économique
-- **PIB Afrique** : $3.4 trillions (2026) [^4]
+- **PIB Afrique** : 2K FCFAtrillions (2026) [^4]
 - **Croissance moyenne** : 4-5% par an [^5]
 - **Secteurs en croissance** : Tech, services, e-commerce [^5]
 
@@ -32,67 +32,67 @@
 
 ## 📈 TAILLE DU MARCHÉ (TAM/SAM/SOM)
 
-### TAM (Total Addressable Market) : $150+ Milliards
+### TAM (Total Addressable Market) : 90K FCFA+ Milliards
 
 #### E-Commerce
-- **Marché total** : $75 milliards (2026) → $150 milliards (2030) [^8]
+- **Marché total** : 45K FCFA (2026) → 90K FCFA (2030) [^8]
 - **Croissance** : 20-25% CAGR [^8]
 - **Facteurs** : Digitalisation, classe moyenne, infrastructure
 
 #### Services de Livraison
-- **Marché total** : $12 milliards (2026) → $25 milliards (2030) [^9]
+- **Marché total** : 7K FCFA (2026) → 15K FCFA (2030) [^9]
 - **Croissance** : 25-30% CAGR [^9]
 - **Facteurs** : E-commerce, demande express, urbanisation
 
 #### Services de Santé
-- **Marché total** : $25 milliards (2026) → $50 milliards (2030) [^10]
+- **Marché total** : 15K FCFA (2026) → 30K FCFA (2030) [^10]
 - **Croissance** : 8-10% CAGR [^10]
 - **Facteurs** : Population, accès, digitalisation
 
 #### Transport
-- **Marché total** : $18 milliards (2026) → $35 milliards (2030) [^11]
+- **Marché total** : 10K FCFA (2026) → 21K FCFA (2030) [^11]
 - **Croissance** : 12-15% CAGR [^11]
 - **Facteurs** : Urbanisation, mobilité, on-demand
 
 #### Immobilier
-- **Marché total** : $20 milliards (2026) → $40 milliards (2030) [^12]
+- **Marché total** : 12K FCFA (2026) → 24K FCFA (2030) [^12]
 - **Croissance** : 10-12% CAGR [^12]
 - **Facteurs** : Urbanisation, classe moyenne, digitalisation
 
-**TOTAL TAM** : $150+ milliards
+**TOTAL TAM** : 90K FCFA+ milliards
 
 ---
 
-### SAM (Serviceable Addressable Market) : $45 Milliards
+### SAM (Serviceable Addressable Market) : 27K FCFAMilliards
 
 #### Cameroun
 - **Population** : 28 millions [^13]
-- **PIB** : $45 milliards [^13]
-- **Marché adressable** : $8 milliards [^14]
+- **PIB** : 27K FCFA [^13]
+- **Marché adressable** : 4K FCFA [^14]
 - **Facteurs** : Bilingue (FR/EN), économie diversifiée, urbanisation
 
 #### Côte d'Ivoire
 - **Population** : 28 millions [^13]
-- **PIB** : $70 milliards [^13]
-- **Marché adressable** : $12 milliards [^14]
+- **PIB** : 42K FCFA [^13]
+- **Marché adressable** : 7K FCFA [^14]
 - **Facteurs** : Hub économique, croissance rapide, Abidjan
 
 #### Sénégal
 - **Population** : 17 millions [^13]
-- **PIB** : $27 milliards [^13]
-- **Marché adressable** : $6 milliards [^14]
+- **PIB** : 16K FCFA [^13]
+- **Marché adressable** : 3K FCFA [^14]
 - **Facteurs** : Stabilité, digitalisation, Dakar
 
 #### Autres Pays Francophones
 - **Gabon, Bénin, Togo, Mali, Burkina Faso, etc.**
 - **Population totale** : 50+ millions
-- **Marché adressable** : $19 milliards
+- **Marché adressable** : 11K FCFA
 
-**TOTAL SAM** : $45 milliards
+**TOTAL SAM** : 27K FCFA
 
 ---
 
-### SOM (Serviceable Obtainable Market) : $2.5 Milliards (5 ans)
+### SOM (Serviceable Obtainable Market) : 1K FCFAMilliards (5 ans)
 
 #### Hypothèses Conservatrices
 - **Part de marché** : 5-6% dans pays cibles
@@ -100,13 +100,13 @@
 - **Adoption progressive** : 5 ans pour atteindre objectif
 
 #### Projection 5 Ans
-- **2026** : $20M GMV → $2.5M revenus
-- **2027** : $100M GMV → $12M revenus
-- **2028** : $300M GMV → $35M revenus
-- **2029** : $750M GMV → $85M revenus
-- **2030** : $1.6B GMV → $180M revenus
+- **2026** : 12.0 billions FCFAGMV → 1.5 billions FCFArevenus
+- **2027** : 60.0 billions FCFAGMV → 7.2 billions FCFArevenus
+- **2028** : 180.0 billions FCFAGMV → 21.0 billions FCFArevenus
+- **2029** : 450.0 billions FCFAGMV → 51.0 billions FCFArevenus
+- **2030** : 960.0 billions FCFAGMV → 108.0 billions FCFArevenus
 
-**SOM 5 ans** : $2.5+ milliards (GMV)
+**SOM 5 ans** : 1K FCFA+ milliards (GMV)
 
 ---
 
@@ -118,25 +118,25 @@
 - **Taille** : 30% du marché
 - **Caractéristiques** : Tech-savvy, revenus moyens, urbains
 - **Besoins** : Rapidité, qualité, prix compétitifs
-- **Valeur** : $100-150 LTV
+- **Valeur** : 60K FCFA-150 LTV
 
 #### Segment 2 : Familles (30-45 ans)
 - **Taille** : 35% du marché
 - **Caractéristiques** : Stabilité, revenus moyens-élevés
 - **Besoins** : Fiabilité, sécurité, services complets
-- **Valeur** : $120-180 LTV
+- **Valeur** : 72K FCFA-180 LTV
 
 #### Segment 3 : Étudiants (18-25 ans)
 - **Taille** : 20% du marché
 - **Caractéristiques** : Budget limité, très tech-savvy
 - **Besoins** : Prix bas, promotions, rapidité
-- **Valeur** : $60-90 LTV
+- **Valeur** : 36K FCFA-90 LTV
 
 #### Segment 4 : Seniors (45+ ans)
 - **Taille** : 15% du marché
 - **Caractéristiques** : Revenus stables, moins tech-savvy
 - **Besoins** : Simplicité, support, fiabilité
-- **Valeur** : $80-120 LTV
+- **Valeur** : 48K FCFA-120 LTV
 
 ### Commerçants/Prestataires
 
@@ -144,19 +144,19 @@
 - **Taille** : 70% du marché
 - **Caractéristiques** : Petits commerces, besoin visibilité
 - **Besoins** : Accès marché, outils simples, coûts bas
-- **Valeur** : $500-2000/an par commerçant
+- **Valeur** : 300K FCFA-2000/an par commerçant
 
 #### Segment 2 : Chaînes Régionales
 - **Taille** : 20% du marché
 - **Caractéristiques** : Multi-points, structurés
 - **Besoins** : Solutions enterprise, analytics, intégration
-- **Valeur** : $5000-15000/an par chaîne
+- **Valeur** : 3 millions FCFA-15000/an par chaîne
 
 #### Segment 3 : Grandes Entreprises
 - **Taille** : 10% du marché
 - **Caractéristiques** : Multinationales, budgets importants
 - **Besoins** : Solutions sur-mesure, support dédié
-- **Valeur** : $20000-50000/an par entreprise
+- **Valeur** : 12 millions FCFA-50000/an par entreprise
 
 ---
 
@@ -169,7 +169,7 @@
 **Forces**
 - **Brand** : Leader e-commerce Afrique
 - **Infrastructure** : Réseau logistique établi
-- **Capital** : $1+ milliard levé
+- **Capital** : 600 FCFA+ milliard levé
 - **Présence** : 11 pays africains
 
 **Faiblesses**
@@ -444,7 +444,7 @@
 
 ### Opportunité de Marché
 
-Yukpomnang opère dans un **marché en croissance exponentielle** ($150+ milliards TAM) avec :
+Yukpomnang opère dans un **marché en croissance exponentielle** (90K FCFA+ milliards TAM) avec :
 - **Digitalisation accélérée** : Adoption services digitaux
 - **Croissance démographique** : Population jeune, urbaine
 - **Classe moyenne émergente** : Pouvoir d'achat croissant
@@ -461,11 +461,11 @@ Yukpomnang opère dans un **marché en croissance exponentielle** ($150+ milliar
 ### Potentiel de Croissance
 
 **Projection conservatrice** :
-- **2026** : $2.5M revenus (Cameroun)
-- **2027** : $12M revenus (3 pays)
-- **2028** : $35M revenus (10+ pays)
-- **2029** : $85M revenus (20+ pays)
-- **2030** : $180M+ revenus (Leader)
+- **2026** : 1.5 billions FCFArevenus (Cameroun)
+- **2027** : 7.2 billions FCFArevenus (3 pays)
+- **2028** : 21.0 billions FCFArevenus (10+ pays)
+- **2029** : 51.0 billions FCFArevenus (20+ pays)
+- **2030** : 108.0 billions FCFA+ revenus (Leader)
 
 **ROI Investisseurs** : 10-15x sur 5 ans (conservateur), 20-30x (optimiste)
 

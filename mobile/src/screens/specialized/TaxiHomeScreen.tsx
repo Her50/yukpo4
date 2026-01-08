@@ -18,7 +18,9 @@ import {
     View,
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { taxiService, Taxi, SearchTaxisFilters, CreateTaxiRequest } from '../../services/taxiService';
 import { modernColors } from '../../theme/modernTheme';
@@ -31,13 +33,21 @@ type ViewMode = 'search' | 'create';
 
 const TaxiHomeScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { user } = useAuth();
     const { location } = useLocation();
+    
+    // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
+    const isDriverValidated = user?.role === 'driver' || 
+                              (user as any)?.is_driver === true || 
+                              (user as any)?.driver_status === 'validated' ||
+                              (user as any)?.driver_status === 'approved';
 
     // Mode d'affichage : recherche ou création
     const [viewMode, setViewMode] = useState<ViewMode>('search');
 
     // États de recherche
-    const [searchLocation, setSearchLocation] = useState<LocationObject | string>('');
+    const [depart, setDepart] = useState<LocationObject | string>('');
+    const [destination, setDestination] = useState<LocationObject | string>('');
     const [taxis, setTaxis] = useState<Taxi[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -47,7 +57,9 @@ const TaxiHomeScreen: React.FC = () => {
 
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
     const detectedCurrency = useCurrencyDetection(
-        typeof searchLocation === 'object' ? searchLocation : undefined
+        typeof depart === 'object' ? depart : 
+        typeof destination === 'object' ? destination : 
+        undefined
     );
 
     // États pour création de service taxi
@@ -123,22 +135,18 @@ const TaxiHomeScreen: React.FC = () => {
                 page: 1,
             };
 
-            // ✅ Utiliser LocationSelector pour extraire ville/quartier
-            if (searchLocation) {
-                if (typeof searchLocation === 'string' && searchLocation.trim()) {
-                    // Fallback pour texte simple
-                    const parts = searchLocation.trim().split(',').map(s => s.trim());
-                    if (parts.length > 0) filters.ville = parts[0];
-                    if (parts.length > 1) filters.quartier = parts[1];
-                } else if (typeof searchLocation === 'object') {
-                    const location = searchLocation as LocationObject;
-                    if (location.components?.ville) filters.ville = location.components.ville;
-                    if (location.components?.quartier) filters.quartier = location.components.quartier;
-                    // Si pas de composants mais place_name, utiliser comme ville
-                    if (!filters.ville && location.place_name) {
-                        filters.ville = location.place_name;
-                    }
-                }
+            // ✅ AMÉLIORÉ: Utiliser départ et destination séparément
+            const departStr = typeof depart === 'string' ? depart : (depart as LocationObject)?.place_name || '';
+            const destinationStr = typeof destination === 'string' ? destination : (destination as LocationObject)?.place_name || '';
+            
+            if (departStr.trim()) {
+                const parts = departStr.trim().split(',').map(s => s.trim());
+                if (parts.length > 0) filters.ville = parts[0];
+                if (parts.length > 1) filters.quartier = parts[1];
+            } else if (typeof depart === 'object') {
+                const location = depart as LocationObject;
+                if (location.components?.ville) filters.ville = location.components.ville;
+                if (location.components?.quartier) filters.quartier = location.components.quartier;
             }
 
             if (location?.coords) {
@@ -287,19 +295,40 @@ const TaxiHomeScreen: React.FC = () => {
                                 </Text>
                             )}
                         </View>
-                        {/* ✅ NOUVEAU: Bouton pour accéder au formulaire de configuration véhicule (accessible à tous) */}
+                        {/* ✅ AMÉLIORÉ: Bouton conditionnel selon statut chauffeur */}
                         {viewMode === 'search' && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    hapticPress();
-                                    (navigation as any).navigate('TaxiForm', {
-                                        mode: 'create',
-                                    });
-                                }}
-                                style={styles.createButton}
-                            >
-                                <SafeIcon name="car" size={20} color="#FFFFFF" type="lucide" />
-                            </TouchableOpacity>
+                            <>
+                                {!isDriverValidated ? (
+                                    // Bouton d'enregistrement chauffeur si non validé
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            hapticPress();
+                                            (navigation as any).navigate('PartnerRegister', {
+                                                partner_type: 'chauffeur',
+                                            });
+                                        }}
+                                        style={styles.registerDriverButton}
+                                    >
+                                        <SafeIcon name="user-plus" size={18} color="#FFFFFF" type="lucide" />
+                                        <Text style={styles.registerDriverText} numberOfLines={1}>
+                                            Devenir chauffeur
+                                        </Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    // Bouton + pour publier un service si chauffeur validé
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            hapticPress();
+                                            (navigation as any).navigate('TaxiForm', {
+                                                mode: 'create',
+                                            });
+                                        }}
+                                        style={styles.createButton}
+                                    >
+                                        <SafeIcon name="plus" size={22} color="#FFFFFF" type="lucide" />
+                                    </TouchableOpacity>
+                                )}
+                            </>
                         )}
                         <TouchableOpacity
                             onPress={() => {
@@ -309,7 +338,7 @@ const TaxiHomeScreen: React.FC = () => {
                             style={styles.modeToggle}
                         >
                             <SafeIcon 
-                                name={viewMode === 'search' ? 'plus' : 'search'} 
+                                name={viewMode === 'search' ? 'search' : 'search'} 
                                 size={22} 
                                 color="#FFFFFF" 
                                 type="lucide" 
@@ -317,30 +346,64 @@ const TaxiHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Barre de recherche (mode recherche) */}
+                    {/* ✅ AMÉLIORÉ: Barre de recherche avec départ/destination (mode recherche) */}
                     {viewMode === 'search' && (
                         <View style={styles.searchContainer}>
-                            <View style={styles.searchBar}>
-                                <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
-                                <LocationSelector
-                                    value={searchLocation}
-                                    onChange={setSearchLocation}
-                                    placeholder="Ville, quartier..."
-                                    style={styles.locationSelector}
-                                />
-                                {searchLocation && (
+                            {/* Champs départ et destination compacts */}
+                            <View style={styles.routeContainer}>
+                                <View style={styles.routeRow}>
+                                    {/* Départ */}
+                                    <View style={styles.routeInputContainer}>
+                                        <Text style={styles.routeLabel}>
+                                            <SafeIcon name="map-pin" size={12} color="#FFFFFF" type="lucide" /> Départ
+                                        </Text>
+                                        <View style={styles.locationInputCompact}>
+                                            <SafeIcon name="map-pin" size={16} color="#06B6D4" type="lucide" />
+                                            <LocationSelector
+                                                label=""
+                                                value={depart}
+                                                onSelect={(location) => setDepart(location)}
+                                                placeholder="Votre position"
+                                                scope="all"
+                                                style={styles.locationSelectorCompact}
+                                            />
+                                        </View>
+                                    </View>
+                                    
+                                    {/* Bouton d'échange */}
                                     <TouchableOpacity
+                                        style={styles.swapButton}
                                         onPress={() => {
-                                            setSearchLocation('');
-                                            handleSearch();
+                                            hapticPress();
+                                            const temp = depart;
+                                            setDepart(destination);
+                                            setDestination(temp);
                                         }}
-                                        style={styles.clearButton}
                                     >
-                                        <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
+                                        <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
                                     </TouchableOpacity>
-                                )}
+                                    
+                                    {/* Destination */}
+                                    <View style={styles.routeInputContainer}>
+                                        <Text style={styles.routeLabel}>
+                                            <SafeIcon name="navigation" size={12} color="#FFFFFF" type="lucide" /> Destination
+                                        </Text>
+                                        <View style={[styles.locationInputCompact, styles.locationInputDest]}>
+                                            <SafeIcon name="navigation" size={16} color="#EF4444" type="lucide" />
+                                            <LocationSelector
+                                                label=""
+                                                value={destination}
+                                                onSelect={(location) => setDestination(location)}
+                                                placeholder="Où allez-vous ?"
+                                                scope="all"
+                                                style={styles.locationSelectorCompact}
+                                            />
+                                        </View>
+                                    </View>
+                                </View>
                             </View>
 
+                            {/* Filtres et bouton recherche */}
                             <View style={styles.filtersRow}>
                                 <TouchableOpacity
                                     style={[styles.filterChip, availableOnly && styles.filterChipActive]}
@@ -365,6 +428,7 @@ const TaxiHomeScreen: React.FC = () => {
                                 style={styles.searchButton}
                                 onPress={handleSearch}
                             >
+                                <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
                                 <Text style={styles.searchButtonText}>Rechercher</Text>
                             </TouchableOpacity>
                         </View>
@@ -416,6 +480,14 @@ const TaxiHomeScreen: React.FC = () => {
                                         ]
                                     );
                                 }}
+                                onBook={() => {
+                                    hapticPress();
+                                    navigation.navigate('TaxiBooking' as never, { 
+                                        taxiId: item.id,
+                                        depart: typeof depart === 'object' ? (depart as LocationObject)?.place_name : depart,
+                                        destination: typeof destination === 'object' ? (destination as LocationObject)?.place_name : destination,
+                                    } as never);
+                                }}
                                 formatPrice={formatPrice}
                                 formatDistance={formatDistance}
                             />
@@ -461,11 +533,12 @@ interface TaxiCardProps {
     taxi: Taxi;
     onPress: () => void;
     onCall: () => void;
+    onBook: () => void;
     formatPrice: (price?: number) => string;
     formatDistance: (distance?: number) => string;
 }
 
-const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, formatPrice, formatDistance }) => {
+const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onBook, formatPrice, formatDistance }) => {
     return (
         <TouchableOpacity style={styles.taxiCard} onPress={onPress} activeOpacity={0.7}>
             <View style={styles.taxiHeader}>
@@ -552,16 +625,27 @@ const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, formatPrice,
                         <Text style={styles.ratingText}>{taxi.rating.toFixed(1)}</Text>
                     </View>
                 )}
-                <TouchableOpacity
-                    style={styles.callButton}
-                    onPress={(e) => {
-                        e.stopPropagation();
-                        onCall();
-                    }}
-                >
-                    <SafeIcon name="phone" size={16} color="#FFFFFF" type="lucide" />
-                    <Text style={styles.callButtonText}>Appeler</Text>
-                </TouchableOpacity>
+                <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                        style={styles.callButton}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onCall();
+                        }}
+                    >
+                        <SafeIcon name="phone" size={16} color="#FFFFFF" type="lucide" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.bookButton}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onBook();
+                        }}
+                    >
+                        <SafeIcon name="navigation" size={16} color="#FFFFFF" type="lucide" />
+                        <Text style={styles.bookButtonText}>Réserver</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </TouchableOpacity>
     );
@@ -584,7 +668,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
     location,
 }) => {
     return (
-        <ScrollView style={styles.formContainer} contentContainerStyle={styles.formContent}>
+        <KeyboardAwareScreen style={styles.formContainer} contentContainerStyle={styles.formContent}>
             <View style={styles.formSection}>
                 <Text style={styles.formSectionTitle}>Informations du chauffeur *</Text>
                 <NativeInput
@@ -722,7 +806,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
                 disabled={creating}
                 style={styles.submitButton}
             />
-        </ScrollView>
+        </KeyboardAwareScreen>
     );
 };
 
@@ -765,6 +849,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginRight: 8,
     },
+    registerDriverButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        marginRight: 8,
+        maxWidth: 140,
+    },
+    registerDriverText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
     headerTitle: {
         fontSize: 24,
         fontWeight: '700',
@@ -785,6 +886,51 @@ const styles = StyleSheet.create({
     },
     searchContainer: {
         marginTop: 8,
+    },
+    // ✅ NOUVEAU: Styles pour champs route compacts
+    routeContainer: {
+        marginBottom: 12,
+    },
+    routeRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        gap: 8,
+    },
+    routeInputContainer: {
+        flex: 1,
+    },
+    routeLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: 'rgba(255, 255, 255, 0.9)',
+        marginBottom: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    locationInputCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        gap: 8,
+    },
+    locationInputDest: {
+        backgroundColor: '#FEF2F2',
+    },
+    locationSelectorCompact: {
+        flex: 1,
+    },
+    swapButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 4,
     },
     searchBar: {
         flexDirection: 'row',
@@ -836,11 +982,14 @@ const styles = StyleSheet.create({
         color: '#06B6D4',
     },
     searchButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
         paddingVertical: 14,
         paddingHorizontal: 20,
-        alignItems: 'center',
     },
     searchButtonText: {
         fontSize: 16,
@@ -1052,16 +1201,33 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#F59E0B',
     },
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
     callButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#10B981',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    callButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    bookButton: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#06B6D4',
         borderRadius: 8,
         paddingVertical: 10,
-        paddingHorizontal: 20,
-        gap: 8,
+        paddingHorizontal: 16,
+        gap: 6,
     },
-    callButtonText: {
+    bookButtonText: {
         fontSize: 14,
         fontWeight: '700',
         color: '#FFFFFF',

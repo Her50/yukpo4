@@ -4,13 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
     Alert,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
@@ -161,7 +161,7 @@ const TaxiSearchScreen: React.FC = () => {
                 </View>
             </LinearGradient>
 
-            <ScrollView
+            <KeyboardAwareScreen
                 style={styles.content}
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
@@ -400,7 +400,7 @@ const TaxiSearchScreen: React.FC = () => {
                         • Les tarifs sont estimés selon la distance et le type de véhicule
                     </Text>
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <ModernGPSModal
                 visible={showGPSModal}

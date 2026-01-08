@@ -8,22 +8,26 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Image,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+
+const COVOITURAGE_FORM_STORAGE_KEY = '@covoiturage_last_form_data';
 
 const CovoiturageFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -33,6 +37,9 @@ const CovoiturageFormScreen: React.FC = () => {
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
+    
+    // ✅ NOUVEAU: Détection automatique de devise
+    const detectedCurrency = useCurrencyDetection(formData.depart || formData.destination || null);
 
     const [formData, setFormData] = useState({
         depart: null as LocationObject | null,
@@ -41,8 +48,7 @@ const CovoiturageFormScreen: React.FC = () => {
         heure_depart: '08:00',
         type_vehicule: '',
         marque_modele: '',
-        nombre_places: '4',
-        places_disponibles: '4',
+        places_disponibles: '3', // ✅ Valeur par défaut 3
         prix_par_place: '',
         devise: 'XAF', // ✅ Sera récupéré automatiquement depuis depart/destination
         bagages_autorises: true,
@@ -59,24 +65,38 @@ const CovoiturageFormScreen: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
     const [showRecurrenceEndDatePicker, setShowRecurrenceEndDatePicker] = useState(false);
 
-    // ✅ NOUVEAU : Fonction pour sélectionner une image du véhicule
-    const pickVehicleImage = async () => {
+    // ✅ AMÉLIORÉ: Fonction pour sélectionner une image du véhicule (galerie ou caméra)
+    const pickVehicleImage = async (source: 'gallery' | 'camera') => {
         try {
-            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!permissionResult.granted) {
-                Alert.alert('Permission refusée', 'Permission d\'accès à la galerie refusée');
-                return;
+            if (source === 'camera') {
+                const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+                if (!permissionResult.granted) {
+                    Alert.alert('Permission refusée', 'Permission d\'accès à la caméra refusée');
+                    return;
+                }
+            } else {
+                const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (!permissionResult.granted) {
+                    Alert.alert('Permission refusée', 'Permission d\'accès à la galerie refusée');
+                    return;
+                }
             }
 
-            // ✅ CORRIGÉ: Utiliser 'images' as any pour éviter les erreurs TypeScript
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: 'images' as any,
-                allowsEditing: true,
-                quality: 0.8,
-                base64: true,
-            });
+            const result = source === 'camera'
+                ? await ImagePicker.launchCameraAsync({
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: true,
+                })
+                : await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: 'images' as any,
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: true,
+                });
 
             if (!result.canceled && result.assets[0]) {
                 const base64 = result.assets[0].base64;
@@ -93,26 +113,66 @@ const CovoiturageFormScreen: React.FC = () => {
         }
     };
 
-    // ✅ NOUVEAU : Récupération automatique de la devise depuis depart ou destination (avec GPS comme fallback)
+    // ✅ NOUVEAU : Mise à jour automatique de la devise depuis détection intelligente
     useEffect(() => {
-        const location = formData.depart || formData.destination;
-        if (location) {
-            const currency = getCurrencyIntelligently(
-                location,
-                location?.coords ? {
-                    lat: location.coords.latitude,
-                    lng: location.coords.longitude,
-                } : null
-            );
-            if (currency) {
-                setFormData(prev => ({ ...prev, devise: currency }));
-            }
-        } else if (location?.coords) {
-            // Si pas de départ/destination mais GPS disponible, utiliser la devise depuis GPS
-            // Pour l'instant, fallback XAF (sera amélioré avec reverse geocoding)
-            setFormData(prev => ({ ...prev, devise: 'XAF' }));
+        if (detectedCurrency && detectedCurrency !== formData.devise) {
+            setFormData(prev => ({ ...prev, devise: detectedCurrency }));
         }
-    }, [formData.depart, formData.destination, location]);
+    }, [detectedCurrency]);
+
+    // ✅ NOUVEAU : Charger les données sauvegardées au montage
+    useEffect(() => {
+        const loadSavedFormData = async () => {
+            try {
+                const savedData = await AsyncStorage.getItem(COVOITURAGE_FORM_STORAGE_KEY);
+                if (savedData) {
+                    const parsed = JSON.parse(savedData);
+                    // Restaurer les données sauf si on est en mode edit
+                    if (mode !== 'edit') {
+                        setFormData(prev => ({
+                            ...prev,
+                            type_vehicule: parsed.type_vehicule || prev.type_vehicule,
+                            marque_modele: parsed.marque_modele || prev.marque_modele,
+                            places_disponibles: parsed.places_disponibles || prev.places_disponibles,
+                            prix_par_place: parsed.prix_par_place || prev.prix_par_place,
+                            bagages_autorises: parsed.bagages_autorises !== undefined ? parsed.bagages_autorises : prev.bagages_autorises,
+                            animaux_autorises: parsed.animaux_autorises !== undefined ? parsed.animaux_autorises : prev.animaux_autorises,
+                            fumeur_autorise: parsed.fumeur_autorise !== undefined ? parsed.fumeur_autorise : prev.fumeur_autorise,
+                            climatisation: parsed.climatisation !== undefined ? parsed.climatisation : prev.climatisation,
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error('[CovoiturageFormScreen] Erreur chargement données sauvegardées:', error);
+            }
+        };
+        loadSavedFormData();
+    }, [mode]);
+
+    // ✅ NOUVEAU : Sauvegarder les données du formulaire à chaque modification
+    useEffect(() => {
+        const saveFormData = async () => {
+            try {
+                const dataToSave = {
+                    type_vehicule: formData.type_vehicule,
+                    marque_modele: formData.marque_modele,
+                    places_disponibles: formData.places_disponibles,
+                    prix_par_place: formData.prix_par_place,
+                    bagages_autorises: formData.bagages_autorises,
+                    animaux_autorises: formData.animaux_autorises,
+                    fumeur_autorise: formData.fumeur_autorise,
+                    climatisation: formData.climatisation,
+                };
+                await AsyncStorage.setItem(COVOITURAGE_FORM_STORAGE_KEY, JSON.stringify(dataToSave));
+            } catch (error) {
+                console.error('[CovoiturageFormScreen] Erreur sauvegarde données:', error);
+            }
+        };
+        // Sauvegarder seulement si on n'est pas en mode edit
+        if (mode !== 'edit') {
+            saveFormData();
+        }
+    }, [formData.type_vehicule, formData.marque_modele, formData.places_disponibles, formData.prix_par_place, formData.bagages_autorises, formData.animaux_autorises, formData.fumeur_autorise, formData.climatisation, mode]);
     const [showGPSModalDepart, setShowGPSModalDepart] = useState(false);
     const [showGPSModalDestination, setShowGPSModalDestination] = useState(false);
     const [selectedGPSDepart, setSelectedGPSDepart] = useState<string | null>(null);
@@ -186,8 +246,7 @@ const CovoiturageFormScreen: React.FC = () => {
                             type_vehicule: data.type_vehicule || '',
                             marque_modele: data.marque_modele || '',
                             image_vehicule: data.image_vehicule || null,
-                            nombre_places: data.nombre_places ? String(data.nombre_places) : '4',
-                            places_disponibles: data.places_disponibles ? String(data.places_disponibles) : '4',
+                            places_disponibles: data.places_disponibles ? String(data.places_disponibles) : '3',
                             prix_par_place: data.prix_par_place ? String(data.prix_par_place) : '',
                             devise: data.devise || 'XAF',
                             bagages_autorises: data.bagages_autorises !== undefined ? data.bagages_autorises : true,
@@ -296,8 +355,7 @@ const CovoiturageFormScreen: React.FC = () => {
                 heure_depart: formData.heure_depart,
                 type_vehicule: formData.type_vehicule || null,
                 marque_modele: formData.marque_modele || null,
-                nombre_places: parseInt(formData.nombre_places) || 4,
-                places_disponibles: parseInt(formData.places_disponibles) || 4,
+                places_disponibles: parseInt(formData.places_disponibles) || 3,
                 prix_par_place: parseInt(formData.prix_par_place) || 0,
                 devise: formData.devise,
                 bagages_autorises: formData.bagages_autorises,
@@ -343,7 +401,7 @@ const CovoiturageFormScreen: React.FC = () => {
 
     return (
         <>
-            <ScrollView style={styles.container}>
+            <KeyboardAwareScreen style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
@@ -352,94 +410,139 @@ const CovoiturageFormScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.form}>
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Ville de départ *"
-                            value={formData.depart ? (typeof formData.depart === 'string' ? { raw: formData.depart, place_name: formData.depart } : formData.depart) : ''}
-                            onSelect={(location: LocationObject) => {
-                                const departValue = location.raw || location.place_name || '';
-                                setFormData({ ...formData, depart: departValue });
-                            }}
-                            placeholder="Rechercher une ville de départ..."
-                            scope="city"
-                            enrichWithBackend
-                            required
-                        />
-                        <TouchableOpacity
-                            style={styles.gpsButton}
-                            onPress={() => setShowGPSModalDepart(true)}
-                        >
-                            <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
-                            <Text style={styles.gpsButtonText}>
-                                {selectedGPSDepart ? 'GPS sélectionné' : 'Sélectionner GPS départ'}
-                            </Text>
-                        </TouchableOpacity>
-                        {selectedGPSDepart && (
-                            <Text style={styles.gpsText}>{selectedGPSDepart}</Text>
-                        )}
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Destination *"
-                            value={formData.destination ? (typeof formData.destination === 'string' ? { raw: formData.destination, place_name: formData.destination } : formData.destination) : ''}
-                            onSelect={(location: LocationObject) => {
-                                const destinationValue = location.raw || location.place_name || '';
-                                setFormData({ ...formData, destination: destinationValue });
-                            }}
-                            placeholder="Rechercher une ville de destination..."
-                            scope="city"
-                            enrichWithBackend
-                            required
-                        />
-                        <TouchableOpacity
-                            style={styles.gpsButton}
-                            onPress={() => setShowGPSModalDestination(true)}
-                        >
-                            <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
-                            <Text style={styles.gpsButtonText}>
-                                {selectedGPSDestination ? 'GPS sélectionné' : 'Sélectionner GPS destination'}
-                            </Text>
-                        </TouchableOpacity>
-                        {selectedGPSDestination && (
-                            <Text style={styles.gpsText}>{selectedGPSDestination}</Text>
-                        )}
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Date de départ *</Text>
-                        <TouchableOpacity
-                            style={styles.dateButton}
-                            onPress={() => setShowDatePicker(true)}
-                        >
-                            <Text style={styles.dateButtonText}>
-                                {formData.date_depart.toLocaleDateString('fr-FR')}
-                            </Text>
-                            <SafeIcon name="calendar" size={20} color={modernColors.primary} />
-                        </TouchableOpacity>
-                        {showDatePicker && (
-                            <DateTimePicker
-                                value={formData.date_depart}
-                                mode="date"
-                                display="default"
-                                minimumDate={new Date()}
-                                onChange={(event, selectedDate) => {
-                                    setShowDatePicker(false);
-                                    if (selectedDate) {
-                                        setFormData({ ...formData, date_depart: selectedDate });
-                                    }
+                    {/* ✅ AMÉLIORÉ: Champs départ et destination compacts côte à côte */}
+                    <View style={styles.routeContainer}>
+                        <View style={styles.routeRow}>
+                            {/* Départ */}
+                            <View style={styles.routeInputContainer}>
+                                <Text style={styles.routeLabel}>
+                                    <SafeIcon name="map-pin" size={12} color={modernColors.primary} type="lucide" /> Départ *
+                                </Text>
+                                <LocationSelector
+                                    label=""
+                                    value={formData.depart ? (typeof formData.depart === 'string' ? { raw: formData.depart, place_name: formData.depart } : formData.depart) : ''}
+                                    onSelect={(location: LocationObject) => {
+                                        setFormData({ ...formData, depart: location });
+                                    }}
+                                    placeholder="Ville de départ"
+                                    scope="city"
+                                    enrichWithBackend
+                                    required
+                                />
+                            </View>
+                            
+                            {/* Bouton d'échange */}
+                            <TouchableOpacity
+                                style={styles.swapButton}
+                                onPress={() => {
+                                    const temp = formData.depart;
+                                    const tempGPS = selectedGPSDepart;
+                                    setFormData({ ...formData, depart: formData.destination, destination: temp });
+                                    setSelectedGPSDepart(selectedGPSDestination);
+                                    setSelectedGPSDestination(tempGPS);
                                 }}
-                            />
-                        )}
+                            >
+                                <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
+                            </TouchableOpacity>
+                            
+                            {/* Destination */}
+                            <View style={styles.routeInputContainer}>
+                                <Text style={styles.routeLabel}>
+                                    <SafeIcon name="navigation" size={12} color={modernColors.primary} type="lucide" /> Arrivée *
+                                </Text>
+                                <LocationSelector
+                                    label=""
+                                    value={formData.destination ? (typeof formData.destination === 'string' ? { raw: formData.destination, place_name: formData.destination } : formData.destination) : ''}
+                                    onSelect={(location: LocationObject) => {
+                                        setFormData({ ...formData, destination: location });
+                                    }}
+                                    placeholder="Ville d'arrivée"
+                                    scope="city"
+                                    enrichWithBackend
+                                    required
+                                />
+                            </View>
+                        </View>
+                        
+                        {/* GPS (optionnel, plus compact) */}
+                        <View style={styles.gpsRow}>
+                            <TouchableOpacity
+                                style={styles.gpsButtonCompact}
+                                onPress={() => setShowGPSModalDepart(true)}
+                            >
+                                <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                                <Text style={styles.gpsButtonTextCompact}>
+                                    {selectedGPSDepart ? 'GPS départ' : 'GPS départ'}
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.gpsButtonCompact}
+                                onPress={() => setShowGPSModalDestination(true)}
+                            >
+                                <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                                <Text style={styles.gpsButtonTextCompact}>
+                                    {selectedGPSDestination ? 'GPS arrivée' : 'GPS arrivée'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Heure de départ *</Text>
-                        <NativeInput
-                            value={formData.heure_depart}
-                            onChangeText={(text) => setFormData({ ...formData, heure_depart: text })}
-                            placeholder="08:00"
-                        />
+
+                    {/* ✅ AMÉLIORÉ: Date et heure côte à côte */}
+                    <View style={styles.row}>
+                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                            <Text style={styles.label}>Date de départ *</Text>
+                            <TouchableOpacity
+                                style={styles.dateButton}
+                                onPress={() => setShowDatePicker(true)}
+                            >
+                                <Text style={styles.dateButtonText}>
+                                    {formData.date_depart.toLocaleDateString('fr-FR')}
+                                </Text>
+                                <SafeIcon name="calendar" size={20} color={modernColors.primary} />
+                            </TouchableOpacity>
+                            {showDatePicker && (
+                                <DateTimePicker
+                                    value={formData.date_depart}
+                                    mode="date"
+                                    display="default"
+                                    minimumDate={new Date()}
+                                    onChange={(event, selectedDate) => {
+                                        setShowDatePicker(false);
+                                        if (selectedDate) {
+                                            setFormData({ ...formData, date_depart: selectedDate });
+                                        }
+                                    }}
+                                />
+                            )}
+                        </View>
+                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                            <Text style={styles.label}>Heure de départ *</Text>
+                            <TouchableOpacity
+                                style={styles.dateButton}
+                                onPress={() => setShowTimePicker(true)}
+                            >
+                                <Text style={styles.dateButtonText}>
+                                    {formData.heure_depart || '08:00'}
+                                </Text>
+                                <SafeIcon name="clock" size={20} color={modernColors.primary} type="lucide" />
+                            </TouchableOpacity>
+                            {showTimePicker && (
+                                <DateTimePicker
+                                    value={new Date(`2000-01-01T${formData.heure_depart || '08:00'}`)}
+                                    mode="time"
+                                    display="default"
+                                    onChange={(event, selectedTime) => {
+                                        setShowTimePicker(false);
+                                        if (selectedTime) {
+                                            const hours = String(selectedTime.getHours()).padStart(2, '0');
+                                            const minutes = String(selectedTime.getMinutes()).padStart(2, '0');
+                                            setFormData({ ...formData, heure_depart: `${hours}:${minutes}` });
+                                        }
+                                    }}
+                                />
+                            )}
+                        </View>
                     </View>
 
                     <View style={styles.row}>
@@ -461,7 +564,7 @@ const CovoiturageFormScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* ✅ NOUVEAU : Image du véhicule */}
+                    {/* ✅ AMÉLIORÉ : Image du véhicule (galerie ou caméra) */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Photo du véhicule</Text>
                         {formData.image_vehicule ? (
@@ -478,54 +581,60 @@ const CovoiturageFormScreen: React.FC = () => {
                                 </TouchableOpacity>
                             </View>
                         ) : (
-                            <TouchableOpacity
-                                style={styles.imagePickerButton}
-                                onPress={pickVehicleImage}
-                            >
-                                <SafeIcon name="camera" size={24} color={modernColors.primary} />
-                                <Text style={styles.imagePickerText}>Ajouter une photo du véhicule</Text>
-                            </TouchableOpacity>
+                            <View style={styles.imagePickerContainer}>
+                                <TouchableOpacity
+                                    style={styles.imagePickerButton}
+                                    onPress={() => pickVehicleImage('camera')}
+                                >
+                                    <SafeIcon name="camera" size={24} color={modernColors.primary} />
+                                    <Text style={styles.imagePickerText}>Prendre une photo</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.imagePickerButton}
+                                    onPress={() => pickVehicleImage('gallery')}
+                                >
+                                    <SafeIcon name="image" size={24} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.imagePickerText}>Choisir depuis la galerie</Text>
+                                </TouchableOpacity>
+                            </View>
                         )}
                     </View>
 
+                    {/* ✅ AMÉLIORÉ: Places disponibles et Prix sur deux colonnes avec devise intelligente */}
                     <View style={styles.row}>
                         <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Nombre de places</Text>
-                            <NativeInput
-                                value={formData.nombre_places}
-                                onChangeText={(text) => setFormData({ ...formData, nombre_places: text })}
-                                placeholder="4"
-                                keyboardType="numeric"
-                            />
-                        </View>
-                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Places disponibles</Text>
+                            <Text style={styles.label}>Places disponibles *</Text>
                             <NativeInput
                                 value={formData.places_disponibles}
-                                onChangeText={(text) => setFormData({ ...formData, places_disponibles: text })}
-                                placeholder="4"
+                                onChangeText={(text) => {
+                                    // ✅ Permettre la saisie d'une seule place
+                                    const numValue = text.replace(/[^0-9]/g, '');
+                                    if (numValue === '' || (parseInt(numValue) >= 1 && parseInt(numValue) <= 20)) {
+                                        setFormData({ ...formData, places_disponibles: numValue });
+                                    }
+                                }}
+                                placeholder="3"
                                 keyboardType="numeric"
-                            />
-                        </View>
-                    </View>
-
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Prix par place *</Text>
-                            <NativeInput
-                                value={formData.prix_par_place}
-                                onChangeText={(text) => setFormData({ ...formData, prix_par_place: text })}
-                                placeholder="5000"
-                                keyboardType="numeric"
+                                editable={true}
                             />
                         </View>
                         <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Devise</Text>
-                            <NativeInput
-                                value={formData.devise}
-                                onChangeText={(text) => setFormData({ ...formData, devise: text })}
-                                placeholder="XAF"
-                            />
+                            <Text style={styles.label}>Prix par place *</Text>
+                            <View style={styles.priceInputContainer}>
+                                <NativeInput
+                                    value={formData.prix_par_place}
+                                    onChangeText={(text) => {
+                                        const numValue = text.replace(/[^0-9]/g, '');
+                                        setFormData({ ...formData, prix_par_place: numValue });
+                                    }}
+                                    placeholder="5000"
+                                    keyboardType="numeric"
+                                    style={styles.priceInput}
+                                />
+                                <View style={styles.currencyBadge}>
+                                    <Text style={styles.currencyText}>{formData.devise || detectedCurrency}</Text>
+                                </View>
+                            </View>
                         </View>
                     </View>
 
@@ -759,7 +868,10 @@ const CovoiturageFormScreen: React.FC = () => {
                             loading ||
                             !formData.depart ||
                             !formData.destination ||
+                            !formData.heure_depart ||
                             !formData.prix_par_place.trim() ||
+                            !formData.places_disponibles ||
+                            parseInt(formData.places_disponibles) < 1 ||
                             (formData.is_recurring && (!formData.recurrence_type || (formData.recurrence_type === 'weekly' && formData.recurrence_days.length === 0)))
                         }
                         variant="primary"
@@ -767,7 +879,7 @@ const CovoiturageFormScreen: React.FC = () => {
                         style={styles.submitButton}
                     />
                 </View>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             {/* Modals */}
             <ModernGPSModal
@@ -807,6 +919,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
+        // ✅ Pas de bouton "créer un service" - header simple
     },
     backButton: {
         marginRight: 12,
@@ -897,7 +1010,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    imagePickerContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 8,
+    },
     imagePickerButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -908,7 +1027,6 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#E5E7EB',
         borderStyle: 'dashed',
-        marginTop: 8,
     },
     imagePickerText: {
         fontSize: 14,
@@ -998,6 +1116,86 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#DC2626',
         fontWeight: '600',
+    },
+    // ✅ NOUVEAU: Styles pour champs route compacts
+    routeContainer: {
+        marginBottom: 16,
+    },
+    routeRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        gap: 8,
+    },
+    routeInputContainer: {
+        flex: 1,
+    },
+    routeLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    swapButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: modernColors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    gpsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+    gpsButtonCompact: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        padding: 10,
+    },
+    gpsButtonTextCompact: {
+        fontSize: 11,
+        color: '#6B7280',
+    },
+    // ✅ NOUVEAU: Styles pour prix avec devise
+    priceInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        overflow: 'hidden',
+    },
+    priceInput: {
+        flex: 1,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        fontSize: 14,
+        minWidth: 0, // ✅ Permet de réduire la taille
+    },
+    currencyBadge: {
+        backgroundColor: '#F3F4F6',
+        paddingHorizontal: 10,
+        paddingVertical: 12,
+        borderLeftWidth: 1,
+        borderLeftColor: '#E5E7EB',
+        minWidth: 50, // ✅ Taille minimale pour la devise
+    },
+    currencyText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#6B7280',
     },
 });
 

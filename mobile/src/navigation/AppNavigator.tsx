@@ -98,6 +98,7 @@ import ReservationScreen from '../screens/specialized/ReservationScreen';
 import ServiceDetailScreen from '../screens/specialized/ServiceDetailScreen';
 import TaxiAvailabilityScreen from '../screens/specialized/TaxiAvailabilityScreen';
 import TaxiBookingScreen from '../screens/specialized/TaxiBookingScreen';
+import TaxiTrackingScreen from '../screens/specialized/TaxiTrackingScreen';
 import TaxiDetailsScreen from '../screens/specialized/TaxiDetailsScreen';
 import TaxiFormScreen from '../screens/specialized/TaxiFormScreen';
 import { TaxiIntelligentSearchScreen } from '../screens/specialized/TaxiIntelligentSearchScreen';
@@ -244,6 +245,7 @@ const TaxiIntelligentSearchScreenWithSafeArea = withNavigatorSafeArea(TaxiIntell
 const TaxiListScreenWithSafeArea = withNavigatorSafeArea(TaxiListScreen);
 const TaxiDetailsScreenWithSafeArea = withNavigatorSafeArea(TaxiDetailsScreen);
 const TaxiBookingScreenWithSafeArea = withNavigatorSafeArea(TaxiBookingScreen);
+const TaxiTrackingScreenWithSafeArea = withNavigatorSafeArea(TaxiTrackingScreen);
 const TaxiAvailabilityScreenWithSafeArea = withNavigatorSafeArea(TaxiAvailabilityScreen);
 const MesTaxisScreenWithSafeArea = withNavigatorSafeArea(MesTaxisScreen);
 const MyTripsScreenWithSafeArea = withNavigatorSafeArea(MyTripsScreen);
@@ -929,6 +931,7 @@ const SecondaryStack = () => {
         <Stack.Screen name="TaxiList" component={TaxiListScreenWithSafeArea} />
         <Stack.Screen name="TaxiDetails" component={TaxiDetailsScreenWithSafeArea} />
         <Stack.Screen name="TaxiBooking" component={TaxiBookingScreenWithSafeArea} />
+        <Stack.Screen name="TaxiTracking" component={TaxiTrackingScreenWithSafeArea} />
         <Stack.Screen name="TaxiAvailability" component={TaxiAvailabilityScreenWithSafeArea} />
         <Stack.Screen name="MesTaxis" component={MesTaxisScreenWithSafeArea} />
         {/* ✅ Phase 3: Hôpitaux */}

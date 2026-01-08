@@ -137,7 +137,7 @@
 - ✅ Configuration outils
 
 **Livrables Mars**
-- ✅ Équipe opérationnelle : 25-30 personnes recrutées
+- ✅ Équipe opérationnelle minimale : 5 personnes maximum recrutées (priorité agents commerciaux)
 - ✅ Direction complète : CEO, CTO, CFO, CMO
 - ✅ Équipe technique : 8-10 développeurs
 - ✅ Équipe opérations : 20-25 personnes

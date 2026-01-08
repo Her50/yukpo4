@@ -8,7 +8,7 @@
 
 ## 🎯 VUE D'ENSEMBLE
 
-Ce package de documents professionnels a été créé pour la levée de fonds **Série A ($3.5M-$5M)** de Yukpomnang, plateforme intelligente de services multi-secteurs en Afrique.
+Ce package de documents professionnels a été créé pour la levée de fonds **Série A (2,1-3 milliards FCFA)** de Yukpomnang, plateforme intelligente de services multi-secteurs en Afrique.
 
 ### Objectif
 Présenter de manière convaincante et professionnelle l'opportunité d'investissement dans Yukpomnang, avec des projections réalistes et une stratégie claire de croissance panafricaine.
@@ -244,32 +244,32 @@ Présenter de manière convaincante et professionnelle l'opportunité d'investis
 ## 📊 CHIFFRES CLÉS À RETENIR
 
 ### Marché
-- **TAM** : $150+ milliards
-- **SAM** : $45 milliards
-- **SOM (5 ans)** : $2.5 milliards
+- **TAM** : 90+ billions FCFA
+- **SAM** : 27 billions FCFA
+- **SOM (5 ans)** : 1,5 billion FCFA
 - **Croissance** : 15-20% CAGR
 
 ### Financement Série A
-- **Montant** : $3.5M-$5M
+- **Montant** : 2,1-3 milliards FCFA
 - **Utilisation** : 40% produit, 30% marketing, 15% équipe, 10% infra, 5% réserve
 - **Runway** : 12-18 mois
-- **Milestone** : $2.5M revenus, 500K utilisateurs
+- **Milestone** : 1,5 milliard FCFA revenus, 500K utilisateurs
 
 ### Projections Revenus
-- **2026** : $2.5M (Cameroun)
-- **2027** : $12M (3 pays)
-- **2028** : $35M (10+ pays)
-- **2029** : $85M (20+ pays)
-- **2030** : $180M+ (Leader)
+- **2026** : 1,5 milliard FCFA (Cameroun)
+- **2027** : 7,2 milliards FCFA (3 pays)
+- **2028** : 21 milliards FCFA (10+ pays)
+- **2029** : 51 milliards FCFA (20+ pays)
+- **2030** : 108+ milliards FCFA (Leader)
 
 ### ROI Investisseurs
 - **Conservateur** : 10-15x sur 5 ans
 - **Optimiste** : 20-30x sur 5 ans
-- **Valorisation 2030** : $500M-$1B
+- **Valorisation 2030** : 300-600 milliards FCFA
 
 ### Métriques Clés
-- **CAC** : <$8 (2026) → <$5 (2029)
-- **LTV** : $80-$120
+- **CAC** : <4,800 FCFA (2026) → <3,000 FCFA (2029)
+- **LTV** : 48,000-72,000 FCFA
 - **LTV/CAC** : >10x
 - **Take Rate** : 11-13%
 - **Rétention** : 60% (30j), 40% (90j)
