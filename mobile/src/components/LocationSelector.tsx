@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { apiGet } from '../services/api';
 import { PlaceScope, placesService, PlaceResult } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
@@ -492,7 +492,6 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     // ✅ NOUVEAU 2026-01-04: Utiliser useLocation pour obtenir la localisation de l'utilisateur
     const { location: userLocation } = useLocation();
 
-    const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [enriching, setEnriching] = useState(false);
@@ -586,6 +585,63 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         return () => { cancelled = true; };
     }, [debouncedQuery, finalScope, cityContext, userLocation]);
 
+    const [isFocused, setIsFocused] = useState(false);
+    const inputRef = React.useRef<TextInput>(null);
+
+    // ✅ Synchroniser query avec displayValue quand on commence à taper
+    useEffect(() => {
+        if (isFocused && !query && displayValue) {
+            setQuery(displayValue);
+        }
+    }, [isFocused]);
+
+    const handleSelectOption = async (opt: string, index: number) => {
+        // ✅ Parser composants du lieu
+        const locationObj = parseLocationString(opt);
+        const enrichedResult = optionsEnriched[index];
+
+        // ✅ Enrichir avec backend si demandé
+        if (enrichWithBackend) {
+            setEnriching(true);
+            try {
+                const enriched = await enrichLocation(locationObj);
+                const display = formatLocationDisplay(enriched);
+                // ✅ NOUVEAU: Inclure les types Google Places dans LocationObject
+                onSelect({
+                    ...enriched,
+                    raw: display,
+                    google_types: enrichedResult?.types,
+                    place_id: enrichedResult?.place_id,
+                });
+            } catch (error) {
+                console.error('[LocationSelector] Erreur enrichissement:', error);
+                // Fallback : retourner sans enrichissement
+                const display = formatLocationDisplay(locationObj);
+                onSelect({
+                    ...locationObj,
+                    raw: display,
+                    google_types: enrichedResult?.types,
+                    place_id: enrichedResult?.place_id,
+                });
+            } finally {
+                setEnriching(false);
+            }
+        } else {
+            const display = formatLocationDisplay(locationObj);
+            onSelect({
+                ...locationObj,
+                raw: display,
+                google_types: enrichedResult?.types,
+                place_id: enrichedResult?.place_id,
+            });
+        }
+        
+        // ✅ Fermer les suggestions après sélection
+        setQuery('');
+        setIsFocused(false);
+        inputRef.current?.blur();
+    };
+
     return (
         <View style={styles.container}>
             {label && (
@@ -593,22 +649,49 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     {label} {required && <Text style={styles.required}>*</Text>}
                 </Text>
             )}
-            <TouchableOpacity
-                style={[styles.selector, !displayValue && styles.selectorPlaceholder]}
-                onPress={() => setOpen(true)}
-            >
-                <View style={{ flex: 1 }}>
-                    <Text style={[styles.selectorText, !displayValue && styles.placeholderText]}>
-                        {displayValue || defaultPlaceholder}
-                    </Text>
-                    {enriching && (
-                        <Text style={styles.enrichingText}>🌍 Enrichissement en cours...</Text>
-                    )}
-                </View>
+            
+            {/* ✅ NOUVEAU: Champ de saisie directe au lieu de TouchableOpacity */}
+            <View style={[styles.selector, !displayValue && !isFocused && styles.selectorPlaceholder]}>
                 <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
-            </TouchableOpacity>
+                <TextInput
+                    ref={inputRef}
+                    placeholder={defaultPlaceholder}
+                    value={isFocused ? query : displayValue}
+                    onChangeText={(text) => {
+                        setQuery(text);
+                        setIsFocused(true);
+                    }}
+                    onFocus={() => {
+                        setIsFocused(true);
+                        if (displayValue) {
+                            setQuery(displayValue);
+                        }
+                    }}
+                    onBlur={() => {
+                        // ✅ Délai pour permettre le clic sur une option
+                        setTimeout(() => {
+                            setIsFocused(false);
+                            setQuery('');
+                        }, 200);
+                    }}
+                    style={styles.input}
+                    placeholderTextColor={modernColors.textSecondary}
+                />
+                {isFocused && query.length > 0 && (
+                    <TouchableOpacity onPress={() => {
+                        setQuery('');
+                        inputRef.current?.focus();
+                    }}>
+                        <SafeIcon name="x-circle" size={18} color={modernColors.textSecondary} />
+                    </TouchableOpacity>
+                )}
+            </View>
 
-            {!!displayValue && (
+            {enriching && (
+                <Text style={styles.enrichingText}>🌍 Enrichissement en cours...</Text>
+            )}
+
+            {!!displayValue && !isFocused && (
                 <TouchableOpacity
                     style={styles.clearButton}
                     onPress={() => onSelect({ raw: '', place_name: '' })}
@@ -618,123 +701,54 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 </TouchableOpacity>
             )}
 
-            <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>
-                                Rechercher {
-                                    finalScope === 'city' ? 'une ville' :
-                                        finalScope === 'neighborhood' ? 'un quartier' :
-                                            finalScope === 'point' ? 'un lieu' :
-                                                'ville, quartier, lieu, site...'
-                                }
-                            </Text>
-                            <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeButton}>
-                                <SafeIcon name="x" size={22} color={modernColors.text} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.searchContainer}>
-                            <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
-                            <TextInput
-                                placeholder={defaultPlaceholder}
-                                value={query}
-                                onChangeText={setQuery}
-                                style={styles.searchInput}
-                                placeholderTextColor={modernColors.textSecondary}
-                                autoFocus
-                            />
-                            {query.length > 0 && (
-                                <TouchableOpacity onPress={() => setQuery('')}>
-                                    <SafeIcon name="x-circle" size={18} color={modernColors.textSecondary} />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-
-                        <ScrollView style={styles.optionsList}>
-                            {loading ? (
-                                <Text style={styles.loadingText}>Chargement...</Text>
-                            ) : options.length === 0 ? (
-                                <Text style={styles.emptyText}>Aucun résultat</Text>
-                            ) : (
-                                options.map((opt, index) => {
-                                    // ✅ AMÉLIORÉ: Utiliser les types Google Places au lieu du hardcodage
-                                    const enrichedResult = optionsEnriched[index];
-                                    const placeType = enrichedResult?.types 
-                                        ? mapGoogleTypesToLocalType(enrichedResult.types)
-                                        : detectPlaceTypeFromText(opt); // Fallback si types non disponibles
-                                    const placeIcon = getPlaceIcon(placeType, opt, enrichedResult?.types);
-                                    
-                                    return (
-                                        <TouchableOpacity
-                                            key={opt}
-                                            style={styles.optionItem}
-                                            onPress={async () => {
-                                                setOpen(false);
-
-                                                // ✅ Parser composants du lieu
-                                                const locationObj = parseLocationString(opt);
-
-                                                // ✅ Enrichir avec backend si demandé
-                                                if (enrichWithBackend) {
-                                                    setEnriching(true);
-                                                    try {
-                                                const enriched = await enrichLocation(locationObj);
-                                                    const display = formatLocationDisplay(enriched);
-                                                    // ✅ NOUVEAU: Inclure les types Google Places dans LocationObject
-                                                    onSelect({
-                                                        ...enriched,
-                                                        raw: display,
-                                                        google_types: enrichedResult?.types, // ✅ Utiliser types Google
-                                                        place_id: enrichedResult?.place_id,
-                                                    });
-                                                    } catch (error) {
-                                                        console.error('[LocationSelector] Erreur enrichissement:', error);
-                                                        // Fallback : retourner sans enrichissement
-                                                        const display = formatLocationDisplay(locationObj);
-                                                        onSelect({
-                                                            ...locationObj,
-                                                            raw: display,
-                                                            google_types: enrichedResult?.types, // ✅ Utiliser types Google même en fallback
-                                                            place_id: enrichedResult?.place_id,
-                                                        });
-                                                    } finally {
-                                                        setEnriching(false);
-                                                    }
-                                                } else {
-                                                    const display = formatLocationDisplay(locationObj);
-                                                    onSelect({
-                                                        ...locationObj,
-                                                        raw: display,
-                                                        google_types: enrichedResult?.types, // ✅ Utiliser types Google
-                                                        place_id: enrichedResult?.place_id,
-                                                    });
-                                                }
-                                            }}
-                                        >
-                                            <View style={styles.optionContent}>
-                                                <SafeIcon 
-                                                    name={placeIcon} 
-                                                    size={18} 
-                                                    color={placeType === 'establishment' ? modernColors.primary : modernColors.textSecondary} 
-                                                />
-                                                <Text style={styles.optionText}>{opt}</Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                    );
-                                })
-                            )}
-                        </ScrollView>
-                    </View>
+            {/* ✅ NOUVEAU: Suggestions affichées directement sous le champ (pas dans un modal) */}
+            {isFocused && (query.length >= 2 || options.length > 0) && (
+                <View style={styles.suggestionsContainer}>
+                    <ScrollView 
+                        style={styles.suggestionsList}
+                        keyboardShouldPersistTaps="handled"
+                        nestedScrollEnabled={true}
+                    >
+                        {loading ? (
+                            <Text style={styles.loadingText}>Chargement...</Text>
+                        ) : options.length === 0 && query.length >= 2 ? (
+                            <Text style={styles.emptyText}>Aucun résultat</Text>
+                        ) : (
+                            options.map((opt, index) => {
+                                // ✅ AMÉLIORÉ: Utiliser les types Google Places au lieu du hardcodage
+                                const enrichedResult = optionsEnriched[index];
+                                const placeType = enrichedResult?.types 
+                                    ? mapGoogleTypesToLocalType(enrichedResult.types)
+                                    : detectPlaceTypeFromText(opt);
+                                const placeIcon = getPlaceIcon(placeType, opt, enrichedResult?.types);
+                                
+                                return (
+                                    <TouchableOpacity
+                                        key={`${opt}-${index}`}
+                                        style={styles.optionItem}
+                                        onPress={() => handleSelectOption(opt, index)}
+                                    >
+                                        <View style={styles.optionContent}>
+                                            <SafeIcon 
+                                                name={placeIcon} 
+                                                size={18} 
+                                                color={placeType === 'establishment' ? modernColors.primary : modernColors.textSecondary} 
+                                            />
+                                            <Text style={styles.optionText}>{opt}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })
+                        )}
+                    </ScrollView>
                 </View>
-            </Modal>
+            )}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { marginBottom: 12 },
+    container: { marginBottom: 12, zIndex: 1 },
     label: { fontSize: 13, fontWeight: '600', color: modernColors.text, marginBottom: 6 },
     required: { color: modernColors.error },
     selector: {
@@ -745,26 +759,49 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 12,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        gap: 8,
     },
     selectorPlaceholder: { borderColor: modernColors.border },
-    selectorText: { fontSize: 14, color: modernColors.text },
-    placeholderText: { color: modernColors.textSecondary },
+    input: { 
+        flex: 1, 
+        fontSize: 14, 
+        color: modernColors.text,
+        padding: 0, // ✅ Important pour éviter le padding supplémentaire
+    },
     enrichingText: { fontSize: 11, color: modernColors.primary, marginTop: 2 },
     clearButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
     clearText: { fontSize: 12, color: modernColors.error, fontWeight: '600' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'flex-end' },
-    modalContainer: { backgroundColor: modernColors.surface, borderTopLeftRadius: 12, borderTopRightRadius: 12, maxHeight: '75%' },
-    modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-    modalTitle: { fontSize: 16, fontWeight: '700', color: modernColors.text },
-    closeButton: { padding: 6 },
-    searchContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 12 },
-    searchInput: { flex: 1, borderWidth: 1, borderColor: modernColors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, color: modernColors.text },
-    optionsList: { paddingHorizontal: 6 },
-    loadingText: { padding: 16, color: modernColors.textSecondary },
-    emptyText: { padding: 16, color: modernColors.textSecondary },
-    optionItem: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: modernColors.border },
+    // ✅ NOUVEAU: Styles pour les suggestions affichées directement
+    suggestionsContainer: {
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        right: 0,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        marginTop: 4,
+        maxHeight: 200,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 5,
+        zIndex: 1000,
+    },
+    suggestionsList: {
+        maxHeight: 200,
+    },
+    loadingText: { padding: 16, color: modernColors.textSecondary, textAlign: 'center' },
+    emptyText: { padding: 16, color: modernColors.textSecondary, textAlign: 'center' },
+    optionItem: { 
+        paddingHorizontal: 16, 
+        paddingVertical: 14, 
+        borderBottomWidth: 1, 
+        borderBottomColor: modernColors.border,
+    },
     optionContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     optionText: { fontSize: 14, color: modernColors.text, flex: 1 },
 });

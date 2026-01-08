@@ -38,11 +38,57 @@ const CovoiturageHomeScreen: React.FC = () => {
     const { location } = useLocation();
     
     // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
-    // Le statut chauffeur peut être dans user.role, user.is_driver, ou user.driver_status
-    const isDriverValidated = user?.role === 'driver' || 
-                              (user as any)?.is_driver === true || 
-                              (user as any)?.driver_status === 'validated' ||
-                              (user as any)?.driver_status === 'approved';
+    const [isDriverValidated, setIsDriverValidated] = useState(false);
+    const [checkingDriverStatus, setCheckingDriverStatus] = useState(true);
+
+    // ✅ NOUVEAU: Vérifier le statut chauffeur depuis l'API
+    useEffect(() => {
+        const checkDriverStatus = async () => {
+            if (!user?.id) {
+                setIsDriverValidated(false);
+                setCheckingDriverStatus(false);
+                return;
+            }
+
+            try {
+                // Vérifier depuis les données utilisateur locales d'abord
+                const localCheck = user?.role === 'driver' || 
+                                  (user as any)?.is_driver === true || 
+                                  (user as any)?.driver_status === 'validated' ||
+                                  (user as any)?.driver_status === 'approved';
+                
+                if (localCheck) {
+                    setIsDriverValidated(true);
+                    setCheckingDriverStatus(false);
+                    return;
+                }
+
+                // Si pas trouvé localement, vérifier via API
+                const { apiGet } = await import('../../services/api');
+                const response = await apiGet(`/api/users/${user.id}/driver-status`);
+                
+                if (response.success && response.data) {
+                    const driverStatus = response.data.driver_status || response.data.is_driver;
+                    setIsDriverValidated(driverStatus === 'validated' || driverStatus === 'approved' || driverStatus === true);
+                } else {
+                    setIsDriverValidated(false);
+                }
+            } catch (error) {
+                console.warn('[CovoiturageHomeScreen] Erreur vérification statut chauffeur:', error);
+                // En cas d'erreur, utiliser la vérification locale
+                setIsDriverValidated(
+                    user?.role === 'driver' || 
+                    (user as any)?.is_driver === true || 
+                    (user as any)?.driver_status === 'validated' ||
+                    (user as any)?.driver_status === 'approved'
+                );
+            } finally {
+                setCheckingDriverStatus(false);
+            }
+        };
+
+        checkDriverStatus();
+    }, [user]);
 
     // Mode d'affichage : recherche ou création
     const [viewMode, setViewMode] = useState<ViewMode>('search');
@@ -57,6 +103,7 @@ const CovoiturageHomeScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [totalResults, setTotalResults] = useState(0);
+    const [hasSearched, setHasSearched] = useState(false); // ✅ NOUVEAU: Indique si une recherche a été effectuée
 
     // États pour création de trajet
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -81,12 +128,8 @@ const CovoiturageHomeScreen: React.FC = () => {
         climatisation: true,
     });
 
-    // Charger les trajets à l'ouverture (proximité)
-    useEffect(() => {
-        if (viewMode === 'search') {
-            loadNearbyTrips();
-        }
-    }, [viewMode]);
+    // ✅ MODIFIÉ: Ne plus charger automatiquement à l'ouverture - l'utilisateur doit choisir départ/destination d'abord
+    // useEffect supprimé - chargement uniquement via bouton de recherche
 
     const loadNearbyTrips = useCallback(async () => {
         try {
@@ -129,23 +172,43 @@ const CovoiturageHomeScreen: React.FC = () => {
         }
     }, [location, dateDepart]);
 
+    // ✅ NOUVEAU: Vérifier si le bouton de recherche doit être activé
+    const canSearch = () => {
+        const departStr = typeof depart === 'string' 
+            ? depart.trim()
+            : (depart as LocationObject)?.components?.ville || (depart as LocationObject)?.place_name || '';
+        
+        const destinationStr = typeof destination === 'string'
+            ? destination.trim()
+            : (destination as LocationObject)?.components?.ville || (destination as LocationObject)?.place_name || '';
+
+        return !!departStr && !!destinationStr;
+    };
+
     const handleSearch = async () => {
         hapticPress();
+        
+        // ✅ VALIDATION: Vérifier que départ et destination sont remplis
+        const departStr = typeof depart === 'string' 
+            ? depart.trim()
+            : (depart as LocationObject)?.components?.ville || (depart as LocationObject)?.place_name || '';
+        
+        const destinationStr = typeof destination === 'string'
+            ? destination.trim()
+            : (destination as LocationObject)?.components?.ville || (destination as LocationObject)?.place_name || '';
+
+        if (!departStr || !destinationStr) {
+            Alert.alert('Erreur', 'Veuillez sélectionner une ville de départ et une ville de destination');
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
         try {
-            const departStr = typeof depart === 'string' ? depart : (depart as LocationObject)?.place_name || '';
-            const destinationStr = typeof destination === 'string' ? destination : (destination as LocationObject)?.place_name || '';
-
-            if (!departStr.trim() || !destinationStr.trim()) {
-                Alert.alert('Erreur', 'Veuillez renseigner le départ et la destination');
-                return;
-            }
-
             const filters: SearchCovoituragesFilters = {
-                depart: departStr.trim(),
-                destination: destinationStr.trim(),
+                depart: departStr,
+                destination: destinationStr,
                 date_depart: dateDepart.toISOString().split('T')[0],
                 limit: 50,
                 page: 1,
@@ -162,14 +225,18 @@ const CovoiturageHomeScreen: React.FC = () => {
             if (response.success && response.data?.data) {
                 setCovoiturages(response.data.data);
                 setTotalResults(response.data.total || 0);
+                setHasSearched(true); // ✅ NOUVEAU: Marquer qu'une recherche a été effectuée
+                setError(null);
             } else {
-                setError('Aucun trajet trouvé');
+                setError('Aucun trajet trouvé pour ce trajet');
                 setCovoiturages([]);
+                setHasSearched(true);
             }
         } catch (err: any) {
             console.error('[CovoiturageHomeScreen] Erreur recherche:', err);
             setError(err.message || 'Erreur lors de la recherche');
             setCovoiturages([]);
+            setHasSearched(true);
         } finally {
             setLoading(false);
         }
@@ -346,49 +413,69 @@ const CovoiturageHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Barre de recherche (mode recherche) */}
+                    {/* ✅ REFONDU: Barre de recherche avec départ/destination améliorée (mode recherche) */}
                     {viewMode === 'search' && (
                         <View style={styles.searchContainer}>
-                            <View style={styles.locationInputs}>
-                                <View style={styles.locationInput}>
-                                    <View style={styles.locationIcon}>
-                                        <SafeIcon name="map-pin" size={16} color="#3B82F6" type="lucide" />
+                            {/* Champs départ et destination avec meilleur formatage */}
+                            <View style={styles.routeContainer}>
+                                <View style={styles.routeRow}>
+                                    {/* Départ */}
+                                    <View style={styles.routeInputContainer}>
+                                        <Text style={styles.routeLabel}>
+                                            <SafeIcon name="map-pin" size={12} color="#FFFFFF" type="lucide" /> Départ
+                                        </Text>
+                                        <LocationSelector
+                                            label=""
+                                            value={typeof depart === 'string' ? (depart ? { raw: depart, place_name: depart } : '') : depart}
+                                            onSelect={(location: LocationObject) => {
+                                                hapticPress();
+                                                setDepart(location);
+                                                // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
+                                            }}
+                                            placeholder="Ville de départ"
+                                            scope="city"
+                                            enrichWithBackend={true}
+                                        />
                                     </View>
-                                    <LocationSelector
-                                        label="Départ"
-                                        value={depart}
-                                        onSelect={(location) => setDepart(location)}
-                                        placeholder="Départ"
-                                        scope="all"
-                                    />
-                                </View>
-                                <View style={styles.swapButton}>
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            hapticPress();
-                                            const temp = depart;
-                                            setDepart(destination);
-                                            setDestination(temp);
-                                        }}
-                                        style={styles.swapButtonInner}
-                                    >
-                                        <SafeIcon name="arrow-up-down" size={18} color="#6B7280" type="lucide" />
-                                    </TouchableOpacity>
-                                </View>
-                                <View style={styles.locationInput}>
-                                    <View style={[styles.locationIcon, styles.locationIconDest]}>
-                                        <SafeIcon name="map-pin" size={16} color="#EF4444" type="lucide" />
+                                    
+                                    {/* Bouton d'échange */}
+                                    <View style={styles.swapButtonContainer}>
+                                        <TouchableOpacity
+                                            style={styles.swapButton}
+                                            onPress={() => {
+                                                hapticPress();
+                                                const temp = depart;
+                                                setDepart(destination);
+                                                setDestination(temp);
+                                                // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
+                                            }}
+                                        >
+                                            <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
+                                        </TouchableOpacity>
                                     </View>
-                                    <LocationSelector
-                                        label="Destination"
-                                        value={destination}
-                                        onSelect={(location) => setDestination(location)}
-                                        placeholder="Destination"
-                                        scope="all"
-                                    />
+                                    
+                                    {/* Destination */}
+                                    <View style={styles.routeInputContainer}>
+                                        <Text style={styles.routeLabel}>
+                                            <SafeIcon name="navigation" size={12} color="#FFFFFF" type="lucide" /> Destination
+                                        </Text>
+                                        <LocationSelector
+                                            label=""
+                                            value={typeof destination === 'string' ? (destination ? { raw: destination, place_name: destination } : '') : destination}
+                                            onSelect={(location: LocationObject) => {
+                                                hapticPress();
+                                                setDestination(location);
+                                                // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
+                                            }}
+                                            placeholder="Ville d'arrivée"
+                                            scope="city"
+                                            enrichWithBackend={true}
+                                        />
+                                    </View>
                                 </View>
                             </View>
 
+                            {/* Date de départ */}
                             <TouchableOpacity
                                 style={styles.dateButton}
                                 onPress={() => setShowDatePicker(true)}
@@ -399,11 +486,24 @@ const CovoiturageHomeScreen: React.FC = () => {
                                 </Text>
                             </TouchableOpacity>
 
+                            {/* ✅ NOUVEAU: Bouton de recherche visible uniquement quand départ et destination sont remplis */}
                             <TouchableOpacity
-                                style={styles.searchButton}
+                                style={[
+                                    styles.searchButton,
+                                    (!canSearch() || loading) && styles.searchButtonDisabled
+                                ]}
                                 onPress={handleSearch}
+                                disabled={!canSearch() || loading}
+                                activeOpacity={0.7}
                             >
-                                <Text style={styles.searchButtonText}>Rechercher</Text>
+                                {loading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <>
+                                        <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                                        <Text style={styles.searchButtonText}>Rechercher des trajets</Text>
+                                    </>
+                                )}
                             </TouchableOpacity>
                         </View>
                     )}
@@ -413,7 +513,15 @@ const CovoiturageHomeScreen: React.FC = () => {
             {/* Contenu selon le mode */}
             {viewMode === 'search' ? (
                 // Mode recherche : Liste des trajets
-                loading && covoiturages.length === 0 ? (
+                !hasSearched && !loading ? (
+                    <View style={styles.centerContainer}>
+                        <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
+                        <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
+                        <Text style={styles.emptySubtext}>
+                            Choisissez une ville de départ et une ville de destination, puis cliquez sur "Rechercher des trajets"
+                        </Text>
+                    </View>
+                ) : loading && covoiturages.length === 0 ? (
                     <View style={styles.centerContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
                         <Text style={styles.loadingText}>Recherche de trajets...</Text>
@@ -874,42 +982,35 @@ const styles = StyleSheet.create({
     searchContainer: {
         marginTop: 8,
     },
-    locationInputs: {
-        gap: 8,
+    // ✅ NOUVEAU: Styles pour champs route compacts (comme TicketVoyage)
+    routeContainer: {
         marginBottom: 12,
     },
-    locationInput: {
+    routeRow: {
         flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        gap: 12,
+        alignItems: 'flex-end',
+        gap: 8,
     },
-    locationIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#DBEAFE',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    locationIconDest: {
-        backgroundColor: '#FEE2E2',
-    },
-    locationSelector: {
+    routeInputContainer: {
         flex: 1,
     },
-    swapButton: {
+    routeLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: 'rgba(255, 255, 255, 0.9)',
+        marginBottom: 6,
+        flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: -4,
+        gap: 4,
     },
-    swapButtonInner: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#F3F4F6',
+    swapButtonContainer: {
+        paddingBottom: 4,
+    },
+    swapButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -930,11 +1031,25 @@ const styles = StyleSheet.create({
         color: '#111827',
     },
     searchButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
-        paddingVertical: 14,
-        paddingHorizontal: 20,
-        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        marginTop: 12,
+        shadowColor: '#3B82F6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    searchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        shadowOpacity: 0,
+        elevation: 0,
     },
     searchButtonText: {
         fontSize: 16,

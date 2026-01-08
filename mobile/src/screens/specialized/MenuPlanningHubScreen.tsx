@@ -190,19 +190,39 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             <Text style={styles.profileText}>
                                 👥 {profile.total_members} personne{profile.total_members > 1 ? 's' : ''}
                             </Text>
-                            {profile.allergies && profile.allergies.length > 0 && (
+                            {profile.allergies && Array.isArray(profile.allergies) && profile.allergies.length > 0 && (
                                 <Text style={styles.profileText}>
                                     ⚠️ Allergies : {profile.allergies.join(', ')}
                                 </Text>
                             )}
-                            {profile.budget_monthly && (
+                            {profile.budget_monthly && typeof profile.budget_monthly === 'number' && profile.budget_monthly > 0 && (
                                 <Text style={styles.profileText}>
                                     💰 Budget : {profile.budget_monthly.toLocaleString()} FCFA/mois
                                 </Text>
                             )}
-                            {profile.preferences && profile.preferences.length > 0 && (
+                            {profile.preferences && Array.isArray(profile.preferences) && profile.preferences.length > 0 && (
                                 <Text style={styles.profileText}>
                                     🍽️ Préférences : {profile.preferences.join(', ')}
+                                </Text>
+                            )}
+                            {profile.dietary_restrictions && Array.isArray(profile.dietary_restrictions) && profile.dietary_restrictions.length > 0 && (
+                                <Text style={styles.profileText}>
+                                    🥗 Restrictions : {profile.dietary_restrictions.join(', ')}
+                                </Text>
+                            )}
+                            {profile.cuisine_styles && Array.isArray(profile.cuisine_styles) && profile.cuisine_styles.length > 0 && (
+                                <Text style={styles.profileText}>
+                                    🍳 Styles de cuisine : {profile.cuisine_styles.join(', ')}
+                                </Text>
+                            )}
+                            {profile.cooking_level && typeof profile.cooking_level === 'string' && (
+                                <Text style={styles.profileText}>
+                                    👨‍🍳 Niveau : {profile.cooking_level}
+                                </Text>
+                            )}
+                            {profile.time_available_hours && typeof profile.time_available_hours === 'number' && profile.time_available_hours > 0 && (
+                                <Text style={styles.profileText}>
+                                    ⏰ Temps disponible : {profile.time_available_hours}h/jour
                                 </Text>
                             )}
                         </View>

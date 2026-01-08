@@ -52,16 +52,39 @@ export const hospitalService = {
 
     // ✅ Recherche IA de pathologie (pour hôpitaux)
     searchPathology: async (query: string, symptoms?: string[], location?: { lat: number; lng: number }) => {
-        const response = await apiPost<{ success: boolean; results: PathologySearchResult[] }>(
-            '/api/hopitaux/ai/search-pathology',
-            {
-                query,
-                symptoms,
-                lat: location?.lat,
-                lng: location?.lng,
+        try {
+            const response = await apiPost<{ success: boolean; results?: PathologySearchResult[]; data?: PathologySearchResult[] }>(
+                '/api/hopitaux/ai/search-pathology',
+                {
+                    query,
+                    symptoms,
+                    lat: location?.lat,
+                    lng: location?.lng,
+                }
+            );
+            
+            // Normaliser la réponse pour gérer différents formats
+            if (response.success) {
+                return {
+                    success: true,
+                    results: response.results || response.data || [],
+                    data: response.data || { results: response.results || [] }
+                };
+            } else {
+                return {
+                    success: false,
+                    results: [],
+                    message: response.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.'
+                };
             }
-        );
-        return response;
+        } catch (error: any) {
+            console.error('[hospitalService] Erreur recherche pathologie:', error);
+            return {
+                success: false,
+                results: [],
+                error: error.message || error.error || 'Erreur lors de la recherche. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.'
+            };
+        }
     },
 
     // ✅ Recherche de services médicaux disponibles (avec système de disponibilité)

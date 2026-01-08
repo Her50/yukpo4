@@ -39,6 +39,13 @@ const PartnerRegisterScreen: React.FC = () => {
     programmes_scolaires: [] as string[],
     concours_organises: [] as string[],
     anciennes_epreuves: [] as string[],
+    // ✅ NOUVEAU: Champs spécifiques pour chauffeur
+    driver_license_number: '' as string,
+    driver_license_expiry: '' as string, // Format: YYYY-MM-DD
+    driver_license_photo: null as string | null, // Photo du permis de conduire (base64)
+    driver_id_photo: null as string | null, // Photo de la carte d'identité (base64)
+    driver_vehicle_type: '' as string, // taxi, covoiturage, les_deux
+    driver_experience_years: '' as string,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +71,7 @@ const PartnerRegisterScreen: React.FC = () => {
     { value: 'assureur', label: 'Assureur' },
     { value: 'supermarche', label: 'Supermarché' },
     { value: 'telecom', label: 'Télécom' },
+    { value: 'chauffeur', label: 'Chauffeur (Taxi/Covoiturage)' }, // ✅ NOUVEAU: Type partenaire chauffeur
   ];
 
   // ✅ Validation du mot de passe avec feedback visuel en temps réel
@@ -171,6 +179,30 @@ const PartnerRegisterScreen: React.FC = () => {
       return;
     }
 
+    // ✅ NOUVEAU: Validation spécifique pour chauffeur
+    if (form.partner_type === 'chauffeur') {
+      if (!form.driver_license_number?.trim()) {
+        setError('Veuillez renseigner le numéro de permis de conduire');
+        return;
+      }
+      if (!form.driver_license_expiry?.trim()) {
+        setError('Veuillez renseigner la date d\'expiration du permis');
+        return;
+      }
+      if (!form.driver_license_photo) {
+        setError('Veuillez télécharger la photo du permis de conduire');
+        return;
+      }
+      if (!form.driver_id_photo) {
+        setError('Veuillez télécharger la photo de la carte d\'identité');
+        return;
+      }
+      if (!form.driver_vehicle_type) {
+        setError('Veuillez sélectionner le type de service (Taxi/Covoiturage)');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const registerData: any = {
@@ -203,6 +235,16 @@ const PartnerRegisterScreen: React.FC = () => {
         registerData.filieres = form.filieres;
         registerData.programmes_scolaires = form.programmes_scolaires;
         registerData.concours_organises = form.concours_organises;
+      }
+
+      // ✅ NOUVEAU: Ajouter les champs spécifiques pour chauffeur
+      if (form.partner_type === 'chauffeur') {
+        registerData.driver_license_number = form.driver_license_number;
+        registerData.driver_license_expiry = form.driver_license_expiry;
+        registerData.driver_license_photo = form.driver_license_photo;
+        registerData.driver_id_photo = form.driver_id_photo;
+        registerData.driver_vehicle_type = form.driver_vehicle_type;
+        registerData.driver_experience_years = form.driver_experience_years;
       }
 
       const response = await authApi.register(registerData);
@@ -495,6 +537,160 @@ const PartnerRegisterScreen: React.FC = () => {
                   numberOfLines={2}
                   disabled={loading}
                   style={[styles.input, styles.textArea]}
+                />
+              </>
+            )}
+
+            {/* ✅ NOUVEAU: Champs conditionnels pour chauffeur - Informations personnelles */}
+            {form.partner_type === 'chauffeur' && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.sectionHeader}>
+                  <Building size={20} color={theme.colors.primary} />
+                  <Title style={styles.sectionTitle}>Informations personnelles</Title>
+                </View>
+                <Paragraph style={styles.sectionSubtitle}>
+                  Ces informations sont nécessaires pour la validation de votre compte par les administrateurs
+                </Paragraph>
+
+                <TextInput
+                  label="Numéro de permis de conduire *"
+                  value={form.driver_license_number}
+                  onChangeText={(text) => setForm({ ...form, driver_license_number: text })}
+                  placeholder="Ex: AB123456789"
+                  disabled={loading}
+                  style={styles.input}
+                />
+
+                <TextInput
+                  label="Date d'expiration du permis (YYYY-MM-DD) *"
+                  value={form.driver_license_expiry}
+                  onChangeText={(text) => setForm({ ...form, driver_license_expiry: text })}
+                  placeholder="Ex: 2025-12-31"
+                  disabled={loading}
+                  style={styles.input}
+                />
+
+                <Text style={styles.label}>Photo du permis de conduire *</Text>
+                <TouchableOpacity
+                  onPress={async () => {
+                    try {
+                      setUploadingLogo(true);
+                      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                      if (!permissionResult.granted) {
+                        Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la galerie');
+                        return;
+                      }
+                      const result = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: 'images' as any,
+                        allowsEditing: true,
+                        aspect: [3, 2],
+                        quality: 0.8,
+                        base64: true,
+                      });
+                      if (!result.canceled && result.assets && result.assets.length > 0 && result.assets[0].base64) {
+                        setForm({ ...form, driver_license_photo: `data:image/jpeg;base64,${result.assets[0].base64}` });
+                      }
+                    } catch (error: any) {
+                      Alert.alert('Erreur', 'Impossible de sélectionner la photo');
+                    } finally {
+                      setUploadingLogo(false);
+                    }
+                  }}
+                  disabled={loading || uploadingLogo}
+                  style={[styles.logoUploadButton, uploadingLogo && styles.logoUploadButtonDisabled]}
+                >
+                  {form.driver_license_photo ? (
+                    <View style={styles.logoPreview}>
+                      <Image source={{ uri: form.driver_license_photo }} style={styles.logoImage} />
+                      <TouchableOpacity
+                        onPress={() => setForm({ ...form, driver_license_photo: null })}
+                        style={styles.removeLogoButton}
+                      >
+                        <Text style={styles.removeLogoText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.logoPlaceholder}>
+                      <ImageIcon size={40} color={theme.colors.textSecondary} />
+                      <Text style={styles.logoPlaceholderText}>
+                        {uploadingLogo ? 'Chargement...' : 'Télécharger photo du permis'}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                <Text style={styles.label}>Photo de la carte d'identité *</Text>
+                <TouchableOpacity
+                  onPress={async () => {
+                    try {
+                      setUploadingLogo(true);
+                      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                      if (!permissionResult.granted) {
+                        Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la galerie');
+                        return;
+                      }
+                      const result = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: 'images' as any,
+                        allowsEditing: true,
+                        aspect: [3, 2],
+                        quality: 0.8,
+                        base64: true,
+                      });
+                      if (!result.canceled && result.assets && result.assets.length > 0 && result.assets[0].base64) {
+                        setForm({ ...form, driver_id_photo: `data:image/jpeg;base64,${result.assets[0].base64}` });
+                      }
+                    } catch (error: any) {
+                      Alert.alert('Erreur', 'Impossible de sélectionner la photo');
+                    } finally {
+                      setUploadingLogo(false);
+                    }
+                  }}
+                  disabled={loading || uploadingLogo}
+                  style={[styles.logoUploadButton, uploadingLogo && styles.logoUploadButtonDisabled]}
+                >
+                  {form.driver_id_photo ? (
+                    <View style={styles.logoPreview}>
+                      <Image source={{ uri: form.driver_id_photo }} style={styles.logoImage} />
+                      <TouchableOpacity
+                        onPress={() => setForm({ ...form, driver_id_photo: null })}
+                        style={styles.removeLogoButton}
+                      >
+                        <Text style={styles.removeLogoText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.logoPlaceholder}>
+                      <ImageIcon size={40} color={theme.colors.textSecondary} />
+                      <Text style={styles.logoPlaceholderText}>
+                        {uploadingLogo ? 'Chargement...' : 'Télécharger photo de la carte d\'identité'}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                <Text style={styles.label}>Type de service *</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={form.driver_vehicle_type}
+                    onValueChange={(value) => setForm({ ...form, driver_vehicle_type: value })}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Sélectionnez..." value="" />
+                    <Picker.Item label="Taxi uniquement" value="taxi" />
+                    <Picker.Item label="Covoiturage uniquement" value="covoiturage" />
+                    <Picker.Item label="Taxi et Covoiturage" value="les_deux" />
+                  </Picker>
+                </View>
+
+                <TextInput
+                  label="Années d'expérience"
+                  value={form.driver_experience_years}
+                  onChangeText={(text) => setForm({ ...form, driver_experience_years: text })}
+                  placeholder="Ex: 5"
+                  keyboardType="numeric"
+                  disabled={loading}
+                  style={styles.input}
                 />
               </>
             )}

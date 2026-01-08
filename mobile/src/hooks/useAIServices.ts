@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../services/api';
+import { apiGet, apiPost } from '../services/api';
 
 interface AIResponse {
     message: string;
@@ -19,15 +19,21 @@ export const useAIServices = () => {
             setError(null);
 
             // API IA réelle - OpenAI ou équivalent
-            const response = await api.post('/ai/chat', {
+            const response = await apiPost<{
+                message?: string;
+                text?: string;
+                response?: string;
+                suggestions?: string[];
+                confidence?: number;
+            }>('/api/ai/chat', {
                 message: question,
                 context: context,
                 type: 'question'
             });
 
-            if (response.data) {
+            if (response.success && response.data) {
                 const aiResponse: AIResponse = {
-                    message: response.data.message || 'Réponse non disponible',
+                    message: response.data.message || response.data.text || response.data.response || 'Réponse non disponible',
                     suggestions: response.data.suggestions || [],
                     confidence: response.data.confidence || 0.8,
                     timestamp: new Date(),
@@ -61,12 +67,14 @@ export const useAIServices = () => {
             setError(null);
 
             // API IA pour les recommandations
-            const response = await api.post('/ai/recommendations', {
+            const response = await apiPost<{
+                recommendations?: string[];
+            }>('/api/ai/recommendations', {
                 preferences: userPreferences,
                 type: 'recommendation'
             });
 
-            if (response.data && response.data.recommendations) {
+            if (response.success && response.data && response.data.recommendations) {
                 return response.data.recommendations;
             }
 
@@ -91,12 +99,15 @@ export const useAIServices = () => {
             setError(null);
 
             // API IA pour l'analyse de texte
-            const response = await api.post('/ai/analyze', {
+            const response = await apiPost<{
+                sentiment?: string;
+                keywords?: string[];
+            }>('/api/ai/analyze', {
                 text: text,
                 type: 'analysis'
             });
 
-            if (response.data) {
+            if (response.success && response.data) {
                 return {
                     sentiment: response.data.sentiment || 'neutre',
                     keywords: response.data.keywords || []

@@ -107,13 +107,37 @@ export const pharmacyService = {
         age?: number,
         medicalConditions?: string[]
     ) => {
-        const response = await apiPost<{ success: boolean; interaction: MedicationInteraction }>(
-            '/api/pharmacies/ai/interactions',
-            {
-                medications,
+        try {
+            const response = await apiPost<{ success: boolean; interaction?: MedicationInteraction; data?: { interaction?: MedicationInteraction } }>(
+                '/api/pharmacies/ai/interactions',
+                {
+                    medications,
+                    age,
+                    medical_conditions: medicalConditions,
+                }
+            );
+            
+            // Normaliser la réponse
+            if (response.success) {
+                return {
+                    success: true,
+                    data: {
+                        interaction: response.interaction || response.data?.interaction || response.data as any
+                    }
+                };
+            } else {
+                return {
+                    success: false,
+                    error: response.message || response.error || 'L\'IA de vérification d\'interactions n\'est pas encore opérationnelle.'
+                };
             }
-        );
-        return response;
+        } catch (error: any) {
+            console.error('[pharmacyService] Erreur vérification interactions:', error);
+            return {
+                success: false,
+                error: error.message || error.error || 'Erreur lors de la vérification. L\'IA de vérification d\'interactions n\'est peut-être pas encore opérationnelle.'
+            };
+        }
     },
 
     // ✅ Suggérer posologie (IA)
@@ -123,16 +147,38 @@ export const pharmacyService = {
         weight?: number,
         medicalCondition?: string
     ) => {
-        const response = await apiPost<{ success: boolean; dosage: DosageRecommendation }>(
-            '/api/pharmacies/ai/dosage',
-            {
-                medication_name: medicationName,
-                patient_age: age,
-                patient_weight: weight,
-                condition: medicalCondition,
+        try {
+            const response = await apiPost<{ success: boolean; dosage?: DosageRecommendation; data?: { dosage?: DosageRecommendation } }>(
+                '/api/pharmacies/ai/dosage',
+                {
+                    medication_name: medicationName,
+                    patient_age: age,
+                    patient_weight: weight,
+                    condition: medicalCondition,
+                }
+            );
+            
+            // Normaliser la réponse
+            if (response.success) {
+                return {
+                    success: true,
+                    data: {
+                        dosage: response.dosage || response.data?.dosage || response.data as any
+                    }
+                };
+            } else {
+                return {
+                    success: false,
+                    error: response.message || response.error || 'L\'IA de posologie n\'est pas encore opérationnelle.'
+                };
             }
-        );
-        return response;
+        } catch (error: any) {
+            console.error('[pharmacyService] Erreur posologie:', error);
+            return {
+                success: false,
+                error: error.message || error.error || 'Erreur lors de la récupération de la posologie. L\'IA de posologie n\'est peut-être pas encore opérationnelle.'
+            };
+        }
     },
 
     // ✅ Mes commandes (client)

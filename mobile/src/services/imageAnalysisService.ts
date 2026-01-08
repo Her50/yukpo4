@@ -28,17 +28,30 @@ export const imageAnalysisService = {
                 '/api/laboratoires/examinations/analyze-image',
                 {
                     image_uri: imageBase64,
+                    image_base64: imageBase64, // Support des deux formats
                     examination_type: examinationType,
                     patient_age: patientAge,
                     patient_sex: patientSex,
                 }
             );
-            return response;
+            
+            // Normaliser la réponse
+            if (response.success) {
+                return {
+                    success: true,
+                    data: response.data || response as any,
+                };
+            } else {
+                return {
+                    success: false,
+                    error: response.message || response.error || 'L\'IA d\'analyse d\'images n\'est pas encore opérationnelle.'
+                };
+            }
         } catch (error: any) {
             console.error('[imageAnalysisService] Erreur analyse hôpital:', error);
             return {
                 success: false,
-                error: error.message || 'Erreur lors de l\'analyse de l\'image'
+                error: error.message || error.error || 'Erreur lors de l\'analyse de l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.'
             };
         }
     },
@@ -53,16 +66,29 @@ export const imageAnalysisService = {
                 '/api/search/by-image',
                 {
                     image_base64: imageBase64,
+                    image_uri: imageBase64, // Support des deux formats
                     category: 'pharmacie',
                     context: 'medication_analysis'
                 }
             );
-            return response;
+            
+            // Normaliser la réponse
+            if (response.success) {
+                return {
+                    success: true,
+                    data: response.data || response as any,
+                };
+            } else {
+                return {
+                    success: false,
+                    error: response.message || response.error || 'L\'IA d\'analyse d\'images n\'est pas encore opérationnelle.'
+                };
+            }
         } catch (error: any) {
             console.error('[imageAnalysisService] Erreur analyse pharmacie:', error);
             return {
                 success: false,
-                error: error.message || 'Erreur lors de l\'analyse de l\'image'
+                error: error.message || error.error || 'Erreur lors de l\'analyse de l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.'
             };
         }
     },

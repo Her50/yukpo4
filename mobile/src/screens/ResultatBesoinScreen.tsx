@@ -6,6 +6,7 @@ import {
     Alert,
     Linking,
     RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,

@@ -33,18 +33,17 @@ const TicketVoyageHomeScreen: React.FC = () => {
     const detectedCurrency = useCurrencyDetection();
 
     // États de recherche
-    const [searchQuery, setSearchQuery] = useState('');
     const [tickets, setTickets] = useState<BusTicketSearchResult[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false); // ✅ MODIFIÉ: Ne pas charger automatiquement au démarrage
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [totalResults, setTotalResults] = useState(0);
+    const [hasSearched, setHasSearched] = useState(false); // ✅ NOUVEAU: Indique si une recherche a été effectuée
 
     // États UI
     const [sortBy, setSortBy] = useState<SortOption>('relevance');
     const [showFilters, setShowFilters] = useState(false);
     const [showSortModal, setShowSortModal] = useState(false);
-    const [searchFocused, setSearchFocused] = useState(false);
 
     // États de filtres
     const [filters, setFilters] = useState<BusTicketSearchFilters>({
@@ -99,10 +98,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
         }
     }, [location]);
 
-    // Charger les voyages disponibles à l'ouverture (sans filtres stricts)
-    useEffect(() => {
-        loadTickets(true);
-    }, []);
+    // ✅ SUPPRIMÉ: Ne plus charger automatiquement à l'ouverture - l'utilisateur doit choisir départ/arrivée d'abord
 
     // Compter les filtres actifs
     useEffect(() => {
@@ -123,22 +119,31 @@ const TicketVoyageHomeScreen: React.FC = () => {
                 setError(null);
             }
 
+            // ✅ VALIDATION: Vérifier que départ et arrivée sont remplis
+            const departureCityName = typeof departureCity === 'string' 
+                ? departureCity.trim()
+                : (departureCity as LocationObject)?.components?.ville || (departureCity as LocationObject)?.place_name || '';
+            
+            const arrivalCityName = typeof arrivalCity === 'string'
+                ? arrivalCity.trim()
+                : (arrivalCity as LocationObject)?.components?.ville || (arrivalCity as LocationObject)?.place_name || '';
+
+            if (!departureCityName || !arrivalCityName) {
+                if (!initialLoad) {
+                    setError('Veuillez sélectionner une ville de départ et une ville d\'arrivée');
+                }
+                setLoading(false);
+                setRefreshing(false);
+                return;
+            }
+
             const searchFilters: BusTicketSearchFilters = {
                 ...filters,
-                departure_city: typeof departureCity === 'string' 
-                    ? departureCity 
-                    : (departureCity as LocationObject)?.components?.ville || (departureCity as LocationObject)?.place_name || undefined,
-                arrival_city: typeof arrivalCity === 'string'
-                    ? arrivalCity
-                    : (arrivalCity as LocationObject)?.components?.ville || (arrivalCity as LocationObject)?.place_name || undefined,
+                departure_city: departureCityName,
+                arrival_city: arrivalCityName,
                 departure_date: departureDate || undefined,
                 agency_name: agencyName || undefined,
             };
-
-            // Si recherche textuelle, utiliser comme ville de départ par défaut
-            if (searchQuery.trim() && !searchFilters.departure_city && !searchFilters.arrival_city) {
-                searchFilters.departure_city = searchQuery.trim();
-            }
 
             const response = await busTicketService.searchBusTickets(searchFilters);
             
@@ -182,19 +187,23 @@ const TicketVoyageHomeScreen: React.FC = () => {
                 
                 setTickets(results);
                 setTotalResults(results.length);
+                setHasSearched(true); // ✅ NOUVEAU: Marquer qu'une recherche a été effectuée
+                setError(null);
             } else {
-                setError('Aucun ticket trouvé');
+                setError('Aucun ticket trouvé pour ce trajet');
                 setTickets([]);
+                setHasSearched(true);
             }
         } catch (err: any) {
             console.error('[TicketVoyageHomeScreen] Erreur chargement:', err);
             setError(err.message || 'Erreur lors du chargement');
             setTickets([]);
+            setHasSearched(true);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [filters, departureCity, arrivalCity, departureDate, agencyName, searchQuery, sortBy]);
+    }, [filters, departureCity, arrivalCity, departureDate, agencyName, sortBy]);
 
     const handleRefresh = () => {
         setRefreshing(true);
@@ -237,13 +246,42 @@ const TicketVoyageHomeScreen: React.FC = () => {
         setDepartureDate('');
         setDepartureTime('');
         setAgencyName('');
-        setSearchQuery('');
-        loadTickets(false);
+        setHasSearched(false);
+        setTickets([]);
+        setError(null);
+        setTotalResults(0);
     };
 
     const handleSearch = () => {
         hapticPress();
+        // ✅ VALIDATION: Vérifier que départ et arrivée sont remplis avant de lancer la recherche
+        const departureCityName = typeof departureCity === 'string' 
+            ? departureCity.trim()
+            : (departureCity as LocationObject)?.components?.ville || (departureCity as LocationObject)?.place_name || '';
+        
+        const arrivalCityName = typeof arrivalCity === 'string'
+            ? arrivalCity.trim()
+            : (arrivalCity as LocationObject)?.components?.ville || (arrivalCity as LocationObject)?.place_name || '';
+
+        if (!departureCityName || !arrivalCityName) {
+            setError('Veuillez sélectionner une ville de départ et une ville d\'arrivée');
+            return;
+        }
+
         loadTickets(false);
+    };
+
+    // ✅ NOUVEAU: Vérifier si le bouton de recherche doit être activé
+    const canSearch = () => {
+        const departureCityName = typeof departureCity === 'string' 
+            ? departureCity.trim()
+            : (departureCity as LocationObject)?.components?.ville || (departureCity as LocationObject)?.place_name || '';
+        
+        const arrivalCityName = typeof arrivalCity === 'string'
+            ? arrivalCity.trim()
+            : (arrivalCity as LocationObject)?.components?.ville || (arrivalCity as LocationObject)?.place_name || '';
+
+        return !!departureCityName && !!arrivalCityName;
     };
 
     const formatPrice = (price?: number, currency?: string) => {
@@ -321,7 +359,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                     onSelect={(location: LocationObject) => {
                                         hapticPress();
                                         setDepartureCity(location);
-                                        handleSearch();
+                                        // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
                                     }}
                                     placeholder="Ville de départ"
                                     scope="city"
@@ -336,7 +374,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                         const temp = departureCity;
                                         setDepartureCity(arrivalCity);
                                         setArrivalCity(temp);
-                                        handleSearch();
+                                        // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche après swap
                                     }}
                                 >
                                     <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
@@ -352,7 +390,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                     onSelect={(location: LocationObject) => {
                                         hapticPress();
                                         setArrivalCity(location);
-                                        handleSearch();
+                                        // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
                                     }}
                                     placeholder="Ville d'arrivée"
                                     scope="city"
@@ -360,32 +398,25 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                 />
                             </View>
                         </View>
-                        {/* Barre de recherche textuelle (optionnelle) */}
-                        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused, { marginTop: 12 }]}>
-                            <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder="Rechercher une agence, numéro de bus..."
-                                placeholderTextColor="#9CA3AF"
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                onSubmitEditing={handleSearch}
-                                onFocus={() => setSearchFocused(true)}
-                                onBlur={() => setSearchFocused(false)}
-                                returnKeyType="search"
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        setSearchQuery('');
-                                        handleSearch();
-                                    }}
-                                    style={styles.clearButton}
-                                >
-                                    <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
-                                </TouchableOpacity>
+                        {/* ✅ NOUVEAU: Bouton de recherche visible uniquement quand départ et arrivée sont remplis */}
+                        <TouchableOpacity
+                            style={[
+                                styles.searchButton,
+                                !canSearch() && styles.searchButtonDisabled
+                            ]}
+                            onPress={handleSearch}
+                            disabled={!canSearch() || loading}
+                            activeOpacity={0.7}
+                        >
+                            {loading ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <>
+                                    <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
+                                    <Text style={styles.searchButtonText}>Rechercher des voyages</Text>
+                                </>
                             )}
-                        </View>
+                        </TouchableOpacity>
                     </View>
                 </LinearGradient>
 
@@ -427,7 +458,15 @@ const TicketVoyageHomeScreen: React.FC = () => {
             </View>
 
             {/* Liste des tickets */}
-            {loading && tickets.length === 0 ? (
+            {!hasSearched && !loading ? (
+                <View style={styles.centerContainer}>
+                    <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
+                    <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
+                    <Text style={styles.emptySubtext}>
+                        Choisissez une ville de départ et une ville d'arrivée, puis cliquez sur "Rechercher des voyages"
+                    </Text>
+                </View>
+            ) : loading && tickets.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
                     <Text style={styles.loadingText}>Recherche de voyages...</Text>
@@ -985,27 +1024,32 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    searchBar: {
+    // ✅ NOUVEAU: Styles pour le bouton de recherche
+    searchButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        backgroundColor: '#8B5CF6',
         borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        gap: 12,
-        borderWidth: 2,
-        borderColor: 'transparent',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        marginTop: 12,
+        gap: 8,
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
-    searchBarFocused: {
-        borderColor: '#8B5CF6',
+    searchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        shadowOpacity: 0,
+        elevation: 0,
     },
-    searchInput: {
-        flex: 1,
+    searchButtonText: {
         fontSize: 16,
-        color: '#111827',
-    },
-    clearButton: {
-        padding: 4,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     quickFiltersScroll: {
         maxHeight: 60,

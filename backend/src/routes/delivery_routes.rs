@@ -549,17 +549,45 @@ async fn save_product_delivery_config(
     }
 
     // ✅ CORRIGÉ 2026-01-04: Utiliser service_products au lieu de JSONB pour vérifier l'existence du produit
-    // Vérifier que le produit existe dans service_products
-    let product_exists = state.products_service
-        .get_products_by_service(payload.service_id)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur récupération produits: {}", e)))?
-        .into_iter()
-        .any(|p| p.product_index == payload.product_index as i32);
+    // ✅ AMÉLIORÉ 2026-01-08: Retry logic pour gérer le cas où le produit n'est pas encore synchronisé
+    let mut product_exists = false;
+    let mut retry_count = 0;
+    const MAX_RETRIES: u32 = 3;
+    const RETRY_DELAYS_MS: [u64; 3] = [500, 1000, 2000]; // 500ms, 1s, 2s
+    
+    while retry_count <= MAX_RETRIES && !product_exists {
+        product_exists = state.products_service
+            .get_products_by_service(payload.service_id)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur récupération produits: {}", e)))?
+            .into_iter()
+            .any(|p| p.product_index == payload.product_index as i32);
+        
+        if !product_exists && retry_count < MAX_RETRIES {
+            let delay_ms = RETRY_DELAYS_MS.get(retry_count as usize).copied().unwrap_or(2000);
+            log::debug!(
+                "[save_product_delivery_config] Produit {} non trouvé pour service {}, retry {}/{} dans {}ms...",
+                payload.product_index,
+                payload.service_id,
+                retry_count + 1,
+                MAX_RETRIES,
+                delay_ms
+            );
+            tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+            retry_count += 1;
+        } else {
+            break;
+        }
+    }
     
     if !product_exists {
         return Err(AppError::BadRequest(
-            format!("Produit {} non trouvé pour le service {}", payload.product_index, payload.service_id)
+            format!(
+                "Produit {} non trouvé pour le service {} après {} tentatives. Le produit peut ne pas être encore synchronisé. Veuillez réessayer dans quelques instants.",
+                payload.product_index,
+                payload.service_id,
+                retry_count + 1
+            )
         ));
     }
 

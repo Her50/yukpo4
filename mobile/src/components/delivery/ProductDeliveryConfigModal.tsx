@@ -126,10 +126,18 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     useEffect(() => {
         const loadProduct = async () => {
             if (visible && !isTransversalMode && serviceId && productIndex >= 0) {
-                try {
-                    const product = await productsService.getProduct(serviceId, productIndex);
-                    setProductData(product);
-                    console.log('[ProductDeliveryConfigModal] ✅ Produit chargé depuis API:', product.product_name);
+                // ✅ NOUVEAU: Retry logic pour gérer le cas où le produit n'est pas encore synchronisé
+                let retryCount = 0;
+                const maxRetries = 3;
+                const retryDelays = [500, 1000, 1500]; // Délais en ms
+                let productLoaded = false;
+                
+                while (retryCount <= maxRetries && !productLoaded) {
+                    try {
+                        const product = await productsService.getProduct(serviceId, productIndex);
+                        setProductData(product);
+                        console.log('[ProductDeliveryConfigModal] ✅ Produit chargé depuis API:', product.product_name);
+                        productLoaded = true;
                     
                     // ✅ NOUVEAU: Charger lieu_produit depuis product_data si disponible
                     const lieuProduit = product.product_data?.lieu_produit || product.product_data?.lieu_commercial || product.product_data?.lieu_commercialisation;
@@ -204,9 +212,29 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             });
                         }
                     }
-                } catch (error) {
-                    console.warn('[ProductDeliveryConfigModal] Erreur chargement produit depuis API, utilisation productName prop:', error);
-                    // Fallback : utiliser productName fourni en prop
+                        
+                        // Si on arrive ici, le produit a été chargé avec succès
+                        break;
+                    } catch (error: any) {
+                        const errorMsg = error?.message || error?.error || String(error);
+                        const isNotFoundError = errorMsg.includes('non trouvé') || 
+                                               errorMsg.includes('not found') || 
+                                               errorMsg.includes('404') ||
+                                               errorMsg.includes('Produit');
+                        
+                        if (isNotFoundError && retryCount < maxRetries) {
+                            // Produit non trouvé, retry avec délai
+                            const delay = retryDelays[retryCount] || 1500;
+                            console.log(`[ProductDeliveryConfigModal] Produit non trouvé, retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            retryCount++;
+                        } else {
+                            // Autre erreur ou max retries atteint
+                            console.warn('[ProductDeliveryConfigModal] Erreur chargement produit depuis API après retries, utilisation productName prop:', error);
+                            // Fallback : utiliser productName fourni en prop
+                            break;
+                        }
+                    }
                 }
             }
         };
@@ -576,14 +604,59 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     Alert.alert('Partiellement réussi', `${successCount} produit(s) configuré(s), ${errorCount} erreur(s)`);
                 }
             } else {
-                const response = await apiPost('/api/delivery/product-config', payload);
-                if (response.success) {
-                    Alert.alert('Succès', 'Configuration de livraison sauvegardée avec succès');
-                    onSuccess?.();
-                    onClose();
-                } else {
-                    Alert.alert('Erreur', response.message || 'Erreur lors de la sauvegarde');
+                // ✅ NOUVEAU: Retry logic avec délai progressif pour gérer le cas où le produit n'est pas encore synchronisé
+                let retryCount = 0;
+                const maxRetries = 3;
+                const retryDelays = [500, 1000, 2000]; // Délais en ms: 500ms, 1s, 2s
+                let lastError: any = null;
+                
+                while (retryCount <= maxRetries) {
+                    try {
+                        const response = await apiPost('/api/delivery/product-config', payload);
+                        if (response.success) {
+                            Alert.alert('Succès', 'Configuration de livraison sauvegardée avec succès');
+                            onSuccess?.();
+                            onClose();
+                            return; // Sortir de la fonction si succès
+                        } else {
+                            // Si l'erreur indique que le produit n'existe pas, retry
+                            const errorMsg = response.message || '';
+                            if (errorMsg.includes('non trouvé') || errorMsg.includes('not found') || errorMsg.includes('Produit')) {
+                                if (retryCount < maxRetries) {
+                                    const delay = retryDelays[retryCount] || 2000;
+                                    console.log(`[ProductDeliveryConfigModal] Produit non trouvé, retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
+                                    await new Promise(resolve => setTimeout(resolve, delay));
+                                    retryCount++;
+                                    continue;
+                                }
+                            }
+                            // Autre erreur, afficher directement
+                            Alert.alert('Erreur', errorMsg || 'Erreur lors de la sauvegarde');
+                            return;
+                        }
+                    } catch (error: any) {
+                        lastError = error;
+                        const errorMsg = error?.message || error?.error || error?.response?.data?.message || '';
+                        
+                        // Si l'erreur indique que le produit n'existe pas, retry
+                        if (errorMsg.includes('non trouvé') || errorMsg.includes('not found') || errorMsg.includes('Produit')) {
+                            if (retryCount < maxRetries) {
+                                const delay = retryDelays[retryCount] || 2000;
+                                console.log(`[ProductDeliveryConfigModal] Produit non trouvé (exception), retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
+                                await new Promise(resolve => setTimeout(resolve, delay));
+                                retryCount++;
+                                continue;
+                            }
+                        }
+                        // Autre erreur ou max retries atteint, sortir de la boucle
+                        break;
+                    }
                 }
+                
+                // Si on arrive ici, toutes les tentatives ont échoué
+                console.error('Erreur sauvegarde après retries:', lastError);
+                const errorMessage = lastError?.message || lastError?.error || lastError?.response?.data?.message || 'Erreur lors de la sauvegarde de la configuration. Le produit peut ne pas être encore synchronisé. Veuillez réessayer dans quelques instants.';
+                Alert.alert('Erreur', errorMessage);
             }
         } catch (error: any) {
             console.error('Erreur sauvegarde:', error);

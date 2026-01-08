@@ -161,15 +161,28 @@ const LaboratoireHomeScreen: React.FC = () => {
 
         try {
             const response = await laboratoryService.searchPathology(pathologyQuery.trim());
-            if (response.success && response.data?.results) {
-                setPathologyResults(response.data.results);
-                setShowAIModal(true);
+            
+            // Gérer différents formats de réponse
+            if (response.success) {
+                const results = response.data?.results || response.results || response.data || [];
+                if (Array.isArray(results) && results.length > 0) {
+                    setPathologyResults(results);
+                    setShowAIModal(true);
+                } else {
+                    Alert.alert(
+                        'Aucun résultat',
+                        'Aucune pathologie trouvée pour votre recherche. Essayez avec d\'autres symptômes.',
+                        [{ text: 'OK' }]
+                    );
+                }
             } else {
-                Alert.alert('Erreur', 'Impossible de rechercher la pathologie');
+                const errorMsg = response.message || response.error || 'Impossible de rechercher la pathologie. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
+                Alert.alert('Erreur', errorMsg, [{ text: 'OK' }]);
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur recherche pathologie:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la recherche');
+            const errorMsg = err.message || err.error || 'Erreur lors de la recherche. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
+            Alert.alert('Erreur', errorMsg, [{ text: 'OK' }]);
         } finally {
             setLoadingAI(false);
         }
@@ -245,6 +258,7 @@ const LaboratoireHomeScreen: React.FC = () => {
     const analyzeImage = async (imageBase64: string) => {
         setLoadingAI(true);
         setAiMode('image');
+        setShowAIModal(true);
 
         try {
             const response = await laboratoryService.analyzeExaminationImage(
@@ -253,15 +267,27 @@ const LaboratoireHomeScreen: React.FC = () => {
                 undefined,
                 undefined
             );
-            if (response.success && response.data?.analysis) {
-                setImageAnalysis(response.data.analysis);
-                setShowAIModal(true);
+            
+            // Gérer différents formats de réponse
+            if (response.success) {
+                const analysis = response.data?.analysis || response.analysis || response.data;
+                if (analysis) {
+                    setImageAnalysis(analysis);
+                } else {
+                    Alert.alert(
+                        'Erreur',
+                        'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.',
+                        [{ text: 'OK', onPress: () => setShowAIModal(false) }]
+                    );
+                }
             } else {
-                Alert.alert('Erreur', 'Impossible d\'analyser l\'image');
+                const errorMsg = response.message || response.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+                Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowAIModal(false) }]);
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur analyse image:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de l\'analyse');
+            const errorMsg = err.message || err.error || 'Erreur lors de l\'analyse. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+            Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowAIModal(false) }]);
         } finally {
             setLoadingAI(false);
         }
@@ -671,8 +697,28 @@ const AIModal: React.FC<AIModalProps> = ({
                                             </View>
                                         )}
                                     </View>
+                                ) : selectedImage ? (
+                                    <View style={styles.loadingContainer}>
+                                        <ActivityIndicator size="large" color="#2563EB" />
+                                        <Text style={styles.loadingText}>Analyse en cours...</Text>
+                                    </View>
                                 ) : (
-                                    <Text style={styles.placeholderText}>Aucune analyse disponible</Text>
+                                    <View style={styles.emptyAnalysisContainer}>
+                                        <SafeIcon name="image" size={48} color="#9CA3AF" type="lucide" />
+                                        <Text style={styles.placeholderText}>
+                                            Sélectionnez une image pour l'analyser avec l'IA
+                                        </Text>
+                                        <Text style={styles.placeholderSubtext}>
+                                            Prenez une photo ou choisissez depuis votre galerie
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={styles.searchButton}
+                                            onPress={showImageSourcePicker}
+                                        >
+                                            <SafeIcon name="camera" size={18} color="#FFFFFF" type="lucide" />
+                                            <Text style={styles.searchButtonText}>Sélectionner une image</Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 )}
                             </>
                         )}
@@ -1032,6 +1078,17 @@ const styles = StyleSheet.create({
     anomalyDescription: {
         fontSize: 14,
         color: '#92400E',
+    },
+    emptyAnalysisContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 32,
+    },
+    placeholderSubtext: {
+        fontSize: 14,
+        color: '#9CA3AF',
+        textAlign: 'center',
+        marginTop: 8,
     },
     // Styles pour tri
     actionsBar: {

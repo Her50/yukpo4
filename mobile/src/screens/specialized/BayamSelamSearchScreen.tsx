@@ -1,137 +1,126 @@
-// ✅ Écran de recherche BayamSelam - Comparateur de prix (Mobile) - VERSION REFONDUE
+// ✅ Écran BayamSelam - Sélection de supermarché pour achats en ligne (REFONDU)
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
+    FlatList,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
-import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
+import { supermarketService, Supermarket } from '../../services/supermarketService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
-
-interface SearchFilters {
-    produit?: string;
-    categorie?: string;
-    ville?: string;
-    quartier?: string;
-    marche?: string;
-    gps_lat?: number;
-    gps_lon?: number;
-    rayon_km?: number;
-    prix_min?: number;
-    prix_max?: number;
-}
+import { NativeButton } from '../../components/SafeNativeDesign';
 
 const BayamSelamSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
 
-    const [produit, setProduit] = useState('');
-    const [categorie, setCategorie] = useState('');
-    const [ville, setVille] = useState<LocationObject | string>('');
-    const [quartier, setQuartier] = useState<LocationObject | string>('');
-    const [marche, setMarche] = useState('');
-    const [gpsString, setGpsString] = useState('');
-    const [gpsData, setGpsData] = useState<{ lat: number; lng: number } | null>(null);
-    const [showGPSModal, setShowGPSModal] = useState(false);
-    const [rayonKm, setRayonKm] = useState(10);
-    const [prixMin, setPrixMin] = useState('');
-    const [prixMax, setPrixMax] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState<'distance' | 'name'>('distance');
+    const [radiusKm, setRadiusKm] = useState(20);
 
-    React.useEffect(() => {
-        if (location?.coords) {
-            const lat = location.coords.latitude;
-            const lng = location.coords.longitude;
-            setGpsString(`${lat},${lng}`);
-            setGpsData({ lat, lng });
-        }
-    }, [location]);
+    useEffect(() => {
+        loadSupermarkets();
+    }, [location, radiusKm]);
 
-    const handleGPSSelect = (coordinates: string) => {
-        setGpsString(coordinates);
-        const [lat, lng] = coordinates.split(',').map(parseFloat);
-        if (!isNaN(lat) && !isNaN(lng)) {
-            setGpsData({ lat, lng });
-        }
-        setShowGPSModal(false);
-    };
-
-    const handleSearch = () => {
-        if (!produit.trim() && !categorie.trim()) {
-            Alert.alert('Erreur', 'Veuillez renseigner au moins un produit ou une catégorie');
+    const loadSupermarkets = useCallback(async () => {
+        if (!location?.coords) {
+            Alert.alert(
+                'Localisation requise',
+                'Veuillez activer la localisation pour voir les supermarchés à proximité.',
+                [
+                    { text: 'OK' },
+                ]
+            );
+            setLoading(false);
             return;
         }
 
-        const filters: SearchFilters = {};
-        if (produit.trim()) filters.produit = produit.trim();
-        if (categorie.trim()) filters.categorie = categorie.trim();
-        const villeStr = typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || '';
-        const quartierStr = typeof quartier === 'string' ? quartier : (quartier as LocationObject)?.components?.quartier || (quartier as LocationObject)?.place_name || '';
-        if (villeStr.trim()) filters.ville = villeStr.trim();
-        if (quartierStr.trim()) filters.quartier = quartierStr.trim();
-        if (marche.trim()) filters.marche = marche.trim();
-        if (gpsData) {
-            filters.gps_lat = gpsData.lat;
-            filters.gps_lon = gpsData.lng;
-            filters.rayon_km = rayonKm;
-        }
-        if (prixMin.trim()) filters.prix_min = parseFloat(prixMin);
-        if (prixMax.trim()) filters.prix_max = parseFloat(prixMax);
+        try {
+            setLoading(true);
+            const response = await supermarketService.listSupermarkets(
+                location.coords.latitude,
+                location.coords.longitude,
+                radiusKm
+            );
 
-        navigation.navigate('BayamSelamResults' as never, { filters } as never);
+            if (response.supermarkets) {
+                // Trier par distance ou nom
+                const sorted = [...response.supermarkets].sort((a, b) => {
+                    if (sortBy === 'distance') {
+                        const distA = a.distance_km || 999;
+                        const distB = b.distance_km || 999;
+                        return distA - distB;
+                    } else {
+                        return a.name.localeCompare(b.name);
+                    }
+                });
+                setSupermarkets(sorted);
+            } else {
+                setSupermarkets([]);
+            }
+        } catch (err: any) {
+            console.error('[BayamSelamSearch] Erreur chargement supermarchés:', err);
+            Alert.alert('Erreur', 'Impossible de charger les supermarchés. Veuillez réessayer.');
+            setSupermarkets([]);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, [location, radiusKm, sortBy]);
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        loadSupermarkets();
     };
 
-    const categories = ['Fruits & Légumes', 'Viande & Poisson', 'Céréales', 'Épicerie', 'Boissons', 'Produits laitiers'];
-    const marches = ['Marché Central', 'Marché Mokolo', 'Marché Mfoundi', 'Marché Etoa-Meki', 'Marché Makepe'];
+    const handleSelectSupermarket = (supermarket: Supermarket) => {
+        hapticPress();
+        // ✅ Naviguer vers le flux d'achat en ligne avec le supermarché sélectionné
+        (navigation as any).navigate('DeliveryShoppingFlowNew', {
+            selectedSupermarket: {
+                id: supermarket.id,
+                name: supermarket.name,
+                address: supermarket.address,
+                latitude: supermarket.latitude,
+                longitude: supermarket.longitude,
+            },
+            fromBayamSelam: true,
+        });
+    };
 
-    // Recherches rapides spécifiques BayamSelam
-    const quickSearches = [
-        {
-            id: 'fruits',
-            title: 'Fruits & Légumes',
-            icon: 'apple',
-            description: 'Prix du marché',
-            action: () => {
-                hapticPress();
-                setCategorie('Fruits & Légumes');
-            }
-        },
-        {
-            id: 'viande',
-            title: 'Viande & Poisson',
-            icon: 'fish',
-            description: 'Comparer les prix',
-            action: () => {
-                hapticPress();
-                setCategorie('Viande & Poisson');
-            }
-        },
-        {
-            id: 'proche',
-            title: 'Près de moi',
-            icon: 'map-pin',
-            description: 'Marchés à proximité',
-            action: () => {
-                hapticPress();
-                setRayonKm(5);
-            }
-        },
-    ];
+    const filteredSupermarkets = supermarkets.filter(supermarket => {
+        if (!searchQuery.trim()) return true;
+        const query = searchQuery.toLowerCase();
+        return (
+            supermarket.name.toLowerCase().includes(query) ||
+            supermarket.address.toLowerCase().includes(query)
+        );
+    });
+
+    const formatDistance = (distance?: number) => {
+        if (!distance) return 'Distance inconnue';
+        if (distance < 1) return `${Math.round(distance * 1000)}m`;
+        return `${distance.toFixed(1)} km`;
+    };
 
     return (
         <SafeNativeView style={styles.container}>
-            {/* Header avec gradient orange (marché) */}
+            {/* Header avec gradient orange */}
             <LinearGradient
                 colors={['#F97316', '#FB923C']}
                 style={styles.headerGradient}
@@ -152,256 +141,216 @@ const BayamSelamSearchScreen: React.FC = () => {
                         </View>
                         <Text style={styles.headerTitle}>BayamSelam</Text>
                         <Text style={styles.headerSubtitle}>
-                            Comparez les prix des produits sur les marchés
+                            Choisissez un supermarché pour faire vos achats en ligne
                         </Text>
                     </View>
                 </View>
             </LinearGradient>
 
-            <ScrollView
-                style={styles.content}
-                contentContainerStyle={styles.contentContainer}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Recherches rapides */}
-                <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
-                    <View style={styles.quickSearchesGrid}>
-                        {quickSearches.map((search) => (
+            {/* Barre de recherche et filtres */}
+            <View style={styles.searchSection}>
+                <View style={styles.searchBar}>
+                    <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Rechercher un supermarché..."
+                        placeholderTextColor="#9CA3AF"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity
+                            onPress={() => {
+                                hapticPress();
+                                setSearchQuery('');
+                            }}
+                            style={styles.clearButton}
+                        >
+                            <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {/* Filtres de tri */}
+                <View style={styles.filtersRow}>
+                    <Text style={styles.filtersLabel}>Trier par:</Text>
+                    <View style={styles.sortButtons}>
+                        <TouchableOpacity
+                            style={[styles.sortButton, sortBy === 'distance' && styles.sortButtonActive]}
+                            onPress={() => {
+                                hapticPress();
+                                setSortBy('distance');
+                            }}
+                        >
+                            <SafeIcon
+                                name="map-pin"
+                                size={16}
+                                color={sortBy === 'distance' ? '#FFFFFF' : '#6B7280'}
+                                type="lucide"
+                            />
+                            <Text style={[styles.sortButtonText, sortBy === 'distance' && styles.sortButtonTextActive]}>
+                                Distance
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.sortButton, sortBy === 'name' && styles.sortButtonActive]}
+                            onPress={() => {
+                                hapticPress();
+                                setSortBy('name');
+                            }}
+                        >
+                            <SafeIcon
+                                name="sort-asc"
+                                size={16}
+                                color={sortBy === 'name' ? '#FFFFFF' : '#6B7280'}
+                                type="lucide"
+                            />
+                            <Text style={[styles.sortButtonText, sortBy === 'name' && styles.sortButtonTextActive]}>
+                                Nom
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Rayon de recherche */}
+                <View style={styles.radiusSection}>
+                    <Text style={styles.radiusLabel}>Rayon de recherche: {radiusKm} km</Text>
+                    <View style={styles.radiusButtons}>
+                        {[5, 10, 20, 50].map((km) => (
                             <TouchableOpacity
-                                key={search.id}
-                                style={styles.quickSearchCard}
-                                onPress={search.action}
-                                activeOpacity={0.7}
+                                key={km}
+                                style={[styles.radiusButton, radiusKm === km && styles.radiusButtonActive]}
+                                onPress={() => {
+                                    hapticPress();
+                                    setRadiusKm(km);
+                                }}
                             >
-                                <View style={styles.quickSearchIconContainer}>
-                                    <SafeIcon
-                                        name={search.icon}
-                                        size={24}
-                                        color="#F97316"
-                                        type="lucide"
-                                    />
-                                </View>
-                                <Text style={styles.quickSearchTitle}>{search.title}</Text>
-                                <Text style={styles.quickSearchDescription}>{search.description}</Text>
+                                <Text style={[styles.radiusButtonText, radiusKm === km && styles.radiusButtonTextActive]}>
+                                    {km} km
+                                </Text>
                             </TouchableOpacity>
                         ))}
                     </View>
                 </View>
+            </View>
 
-                {/* Formulaire de recherche */}
-                <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>🛒 Produit recherché</Text>
-                    
-                    {/* Produit */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="package" size={14} color={modernColors.primary} type="lucide" /> Produit *
-                        </Text>
-                        <NativeInput
-                            value={produit}
-                            onChangeText={setProduit}
-                            placeholder="Ex: Tomates, Riz, Poulet"
-                        />
-                    </View>
-
-                    {/* Catégorie */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="grid" size={14} color={modernColors.primary} type="lucide" /> Catégorie
-                        </Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
-                            {categories.map((cat) => (
-                                <TouchableOpacity
-                                    key={cat}
-                                    style={[styles.chip, categorie === cat && styles.chipActive]}
-                                    onPress={() => {
-                                        hapticPress();
-                                        setCategorie(categorie === cat ? '' : cat);
-                                    }}
-                                >
-                                    <Text style={[styles.chipText, categorie === cat && styles.chipTextActive]}>
-                                        {cat}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
-
-                    {/* Localisation */}
-                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
-                    
-                    {/* Ville */}
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Ville"
-                            value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
-                            onSelect={(location: LocationObject) => {
-                                setVille(location);
-                            }}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            enrichWithBackend={true}
-                        />
-                    </View>
-
-                    {/* Quartier */}
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Quartier (optionnel)"
-                            value={typeof quartier === 'string' ? (quartier ? { raw: quartier, place_name: quartier } : '') : quartier}
-                            onSelect={(location: LocationObject) => {
-                                setQuartier(location);
-                            }}
-                            placeholder="Rechercher un quartier..."
-                            scope="neighborhood"
-                            cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
-                            enrichWithBackend={true}
-                        />
-                    </View>
-
-                    {/* Marché */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="store" size={14} color={modernColors.primary} type="lucide" /> Marché spécifique
-                        </Text>
-                        <NativeInput
-                            value={marche}
-                            onChangeText={setMarche}
-                            placeholder="Ex: Marché Central"
-                        />
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
-                            {marches.map((m) => (
-                                <TouchableOpacity
-                                    key={m}
-                                    style={[styles.chip, marche === m && styles.chipActive]}
-                                    onPress={() => {
-                                        hapticPress();
-                                        setMarche(marche === m ? '' : m);
-                                    }}
-                                >
-                                    <Text style={[styles.chipText, marche === m && styles.chipTextActive]}>
-                                        {m}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
-
-                    {/* GPS */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" /> Position GPS
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.gpsButton}
-                            onPress={() => {
-                                hapticPress();
-                                setShowGPSModal(true);
-                            }}
-                        >
-                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} type="lucide" />
-                            <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                {gpsString || 'Utiliser ma position GPS'}
-                            </Text>
-                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Rayon de recherche */}
-                    {gpsData && (
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>
-                                <SafeIcon name="maximize-2" size={14} color={modernColors.primary} type="lucide" /> Rayon de recherche
-                            </Text>
-                            <View style={styles.distanceCard}>
-                                <TouchableOpacity
-                                    style={styles.distanceButton}
-                                    onPress={() => {
-                                        hapticPress();
-                                        setRayonKm(Math.max(1, rayonKm - 1));
-                                    }}
-                                >
-                                    <SafeIcon name="minus" size={18} color="#FFFFFF" type="lucide" />
-                                </TouchableOpacity>
-                                <View style={styles.distanceValueContainer}>
-                                    <Text style={styles.distanceValue}>{rayonKm}</Text>
-                                    <Text style={styles.distanceUnit}>km</Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={styles.distanceButton}
-                                    onPress={() => {
-                                        hapticPress();
-                                        setRayonKm(Math.min(50, rayonKm + 1));
-                                    }}
-                                >
-                                    <SafeIcon name="plus" size={18} color="#FFFFFF" type="lucide" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    )}
-
-                    {/* Prix */}
-                    <Text style={styles.sectionTitle}>💰 Fourchette de prix</Text>
-                    
-                    <View style={styles.priceRow}>
-                        <View style={styles.priceInputContainer}>
-                            <Text style={styles.label}>Prix minimum (FCFA)</Text>
-                            <NativeInput
-                                value={prixMin}
-                                onChangeText={setPrixMin}
-                                placeholder="Min"
-                                keyboardType="numeric"
-                            />
-                        </View>
-                        <View style={styles.priceInputContainer}>
-                            <Text style={styles.label}>Prix maximum (FCFA)</Text>
-                            <NativeInput
-                                value={prixMax}
-                                onChangeText={setPrixMax}
-                                placeholder="Max"
-                                keyboardType="numeric"
-                            />
-                        </View>
-                    </View>
-
-                    {/* Bouton recherche */}
-                    <NativeButton
-                        onPress={handleSearch}
-                        disabled={loading}
-                        style={styles.searchButton}
-                    >
-                        <View style={styles.searchButtonContent}>
-                            <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.searchButtonText}>
-                                {loading ? 'Recherche en cours...' : 'Comparer les prix'}
-                            </Text>
-                        </View>
-                    </NativeButton>
+            {/* Liste des supermarchés */}
+            {loading && supermarkets.length === 0 ? (
+                <View style={styles.centerContainer}>
+                    <ActivityIndicator size="large" color="#F97316" />
+                    <Text style={styles.loadingText}>Recherche de supermarchés...</Text>
                 </View>
-
-                {/* Info section */}
-                <View style={styles.infoCard}>
-                    <View style={styles.infoHeader}>
-                        <SafeIcon name="info" size={20} color="#F97316" type="lucide" />
-                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
-                    </View>
-                    <Text style={styles.infoText}>
-                        • Comparez les prix du même produit sur plusieurs marchés{'\n'}
-                        • Les prix peuvent varier selon la saison et la disponibilité{'\n'}
-                        • Utilisez la recherche GPS pour trouver les marchés les plus proches{'\n'}
-                        • Les prix sont mis à jour régulièrement par les vendeurs
+            ) : filteredSupermarkets.length === 0 ? (
+                <View style={styles.centerContainer}>
+                    <SafeIcon name="store" size={64} color="#9CA3AF" type="lucide" />
+                    <Text style={styles.emptyText}>
+                        {searchQuery ? 'Aucun supermarché trouvé' : 'Aucun supermarché à proximité'}
                     </Text>
+                    <Text style={styles.emptySubtext}>
+                        {searchQuery
+                            ? 'Essayez de modifier votre recherche'
+                            : 'Élargissez le rayon de recherche ou activez votre localisation'}
+                    </Text>
+                    {!searchQuery && (
+                        <NativeButton
+                            title="Réessayer"
+                            onPress={handleRefresh}
+                            variant="outline"
+                            style={styles.retryButton}
+                        />
+                    )}
                 </View>
-            </ScrollView>
-
-            <ModernGPSModal
-                visible={showGPSModal}
-                onClose={() => setShowGPSModal(false)}
-                onSelect={handleGPSSelect}
-                currentLocation={gpsString}
-            />
+            ) : (
+                <FlatList
+                    data={filteredSupermarkets}
+                    keyExtractor={(item) => String(item.id)}
+                    renderItem={({ item }) => (
+                        <SupermarketCard
+                            supermarket={item}
+                            onSelect={() => handleSelectSupermarket(item)}
+                            formatDistance={formatDistance}
+                        />
+                    )}
+                    contentContainerStyle={styles.listContent}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            colors={['#F97316']}
+                        />
+                    }
+                    ListHeaderComponent={
+                        <View style={styles.listHeader}>
+                            <Text style={styles.listHeaderText}>
+                                {filteredSupermarkets.length} supermarché{filteredSupermarkets.length > 1 ? 's' : ''} trouvé{filteredSupermarkets.length > 1 ? 's' : ''}
+                            </Text>
+                        </View>
+                    }
+                />
+            )}
         </SafeNativeView>
+    );
+};
+
+// Composant Card Supermarché
+interface SupermarketCardProps {
+    supermarket: Supermarket;
+    onSelect: () => void;
+    formatDistance: (distance?: number) => string;
+}
+
+const SupermarketCard: React.FC<SupermarketCardProps> = ({ supermarket, onSelect, formatDistance }) => {
+    return (
+        <TouchableOpacity
+            style={styles.supermarketCard}
+            onPress={onSelect}
+            activeOpacity={0.7}
+        >
+            <View style={styles.supermarketCardContent}>
+                {/* Logo/Icon */}
+                <View style={styles.supermarketIconContainer}>
+                    <SafeIcon name="store" size={32} color="#F97316" type="lucide" />
+                </View>
+
+                {/* Info */}
+                <View style={styles.supermarketInfo}>
+                    <Text style={styles.supermarketName} numberOfLines={1}>
+                        {supermarket.name}
+                    </Text>
+                    <View style={styles.supermarketAddressRow}>
+                        <SafeIcon name="map-pin" size={14} color="#6B7280" type="lucide" />
+                        <Text style={styles.supermarketAddress} numberOfLines={2}>
+                            {supermarket.address}
+                        </Text>
+                    </View>
+                    <View style={styles.supermarketMeta}>
+                        {supermarket.distance_km !== undefined && (
+                            <View style={styles.metaItem}>
+                                <SafeIcon name="navigation" size={14} color="#F97316" type="lucide" />
+                                <Text style={styles.metaText}>{formatDistance(supermarket.distance_km)}</Text>
+                            </View>
+                        )}
+                        {supermarket.phone && (
+                            <View style={styles.metaItem}>
+                                <SafeIcon name="phone" size={14} color="#6B7280" type="lucide" />
+                                <Text style={styles.metaText}>{supermarket.phone}</Text>
+                            </View>
+                        )}
+                    </View>
+                </View>
+
+                {/* Bouton action */}
+                <View style={styles.supermarketAction}>
+                    <SafeIcon name="chevron-right" size={24} color="#F97316" type="lucide" />
+                </View>
+            </View>
+
+            {/* Badge "Achats en ligne" */}
+            <View style={styles.onlineBadge}>
+                <SafeIcon name="shopping-cart" size={12} color="#FFFFFF" type="lucide" />
+                <Text style={styles.onlineBadgeText}>Achats en ligne</Text>
+            </View>
+        </TouchableOpacity>
     );
 };
 
@@ -450,208 +399,218 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         lineHeight: 20,
     },
-    content: {
+    searchSection: {
+        backgroundColor: '#FFFFFF',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginBottom: 12,
+        gap: 12,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#111827',
+    },
+    clearButton: {
+        padding: 4,
+    },
+    filtersRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    filtersLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    sortButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    sortButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+        gap: 6,
+    },
+    sortButtonActive: {
+        backgroundColor: '#F97316',
+    },
+    sortButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    sortButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    radiusSection: {
+        marginTop: 8,
+    },
+    radiusLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 8,
+    },
+    radiusButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    radiusButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    radiusButtonActive: {
+        backgroundColor: '#F97316',
+        borderColor: '#F97316',
+    },
+    radiusButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    radiusButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    centerContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 32,
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#6B7280',
+    },
+    emptyText: {
+        marginTop: 16,
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    emptySubtext: {
+        marginTop: 8,
+        fontSize: 14,
+        color: '#9CA3AF',
+        textAlign: 'center',
+        paddingHorizontal: 32,
+    },
+    retryButton: {
+        marginTop: 20,
+    },
+    listContent: {
+        padding: 16,
+    },
+    listHeader: {
+        marginBottom: 12,
+    },
+    listHeaderText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    supermarketCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    supermarketCardContent: {
+        flexDirection: 'row',
+        padding: 16,
+        alignItems: 'center',
+    },
+    supermarketIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 12,
+        backgroundColor: '#FED7AA',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    supermarketInfo: {
         flex: 1,
     },
-    contentContainer: {
-        padding: 16,
-        paddingBottom: 32,
-    },
-    quickSearchesSection: {
-        marginBottom: 24,
-    },
-    sectionTitle: {
+    supermarketName: {
         fontSize: 18,
         fontWeight: '700',
         color: '#111827',
-        marginBottom: 12,
-        marginTop: 8,
+        marginBottom: 6,
     },
-    quickSearchesGrid: {
+    supermarketAddressRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 8,
+        gap: 6,
+    },
+    supermarketAddress: {
+        flex: 1,
+        fontSize: 14,
+        color: '#6B7280',
+        lineHeight: 20,
+    },
+    supermarketMeta: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 12,
     },
-    quickSearchCard: {
-        flex: 1,
-        minWidth: '30%',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 16,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    quickSearchIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#FED7AA',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    quickSearchTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 4,
-        textAlign: 'center',
-    },
-    quickSearchDescription: {
-        fontSize: 11,
-        color: '#6B7280',
-        textAlign: 'center',
-    },
-    searchFormCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    inputGroup: {
-        marginBottom: 20,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
+    metaItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 4,
     },
-    chipsContainer: {
-        flexDirection: 'row',
-        marginTop: 8,
-        gap: 8,
-    },
-    chip: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6',
-        borderWidth: 1.5,
-        borderColor: '#D1D5DB',
-    },
-    chipActive: {
-        backgroundColor: '#F97316',
-        borderColor: '#F97316',
-    },
-    chipText: {
-        fontSize: 14,
-        color: '#374151',
-        fontWeight: '600',
-    },
-    chipTextActive: {
-        color: '#FFFFFF',
-    },
-    gpsButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        gap: 12,
-    },
-    gpsButtonText: {
-        flex: 1,
-        fontSize: 14,
-        color: '#374151',
-        fontWeight: '500',
-    },
-    distanceCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        padding: 8,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    distanceButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        backgroundColor: '#F97316',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    distanceValueContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    distanceValue: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    distanceUnit: {
+    metaText: {
         fontSize: 12,
         color: '#6B7280',
-        marginTop: 2,
     },
-    priceRow: {
-        flexDirection: 'row',
-        gap: 12,
+    supermarketAction: {
+        marginLeft: 8,
     },
-    priceInputContainer: {
-        flex: 1,
-    },
-    searchButton: {
-        marginTop: 16,
-        borderRadius: 12,
-        overflow: 'hidden',
-    },
-    searchButtonContent: {
+    onlineBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
+        backgroundColor: '#10B981',
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        gap: 4,
     },
-    searchButtonText: {
+    onlineBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
         color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    infoCard: {
-        backgroundColor: '#FFF7ED',
-        borderRadius: 12,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: '#FED7AA',
-    },
-    infoHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-        gap: 8,
-    },
-    infoTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#9A3412',
-    },
-    infoText: {
-        fontSize: 13,
-        color: '#9A3412',
-        lineHeight: 20,
     },
 });
 
 export default BayamSelamSearchScreen;
-

@@ -6,6 +6,7 @@ import {
     Alert,
     Linking,
     Modal,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -24,6 +25,7 @@ interface DeliveryShoppingFlowProps {
     visible: boolean;
     onClose: () => void;
     onSuccess?: (deliveryId: string) => void;
+    initialSupermarket?: Supermarket | null; // ✅ Supermarché pré-sélectionné depuis BayamSelam
 }
 
 interface LocationData {
@@ -55,6 +57,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
     visible,
     onClose,
     onSuccess,
+    initialSupermarket,
 }) => {
     const { location: userLocation } = useLocation();
     const [loading, setLoading] = useState(false);
@@ -91,7 +94,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
     }, [pickupLocation, dropoffLocation]);
 
     // État supermarché
-    const [selectedSupermarket, setSelectedSupermarket] = useState<Supermarket | null>(null);
+    const [selectedSupermarket, setSelectedSupermarket] = useState<Supermarket | null>(initialSupermarket || null);
     const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
     const [loadingSupermarkets, setLoadingSupermarkets] = useState(false);
     const [showSupermarketList, setShowSupermarketList] = useState(false);
@@ -120,7 +123,12 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
     // Charger GPS utilisateur et supermarchés au montage
     useEffect(() => {
         if (visible) {
-            loadSupermarkets();
+            // ✅ Si un supermarché initial est fourni, l'utiliser directement
+            if (initialSupermarket) {
+                setSelectedSupermarket(initialSupermarket);
+            } else {
+                loadSupermarkets();
+            }
             if (userLocation) {
                 const coords: LocationData = {
                     latitude: userLocation.coords.latitude,
@@ -130,7 +138,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                 setDropoffLocation(coords);
             }
         }
-    }, [visible, userLocation]);
+    }, [visible, userLocation, initialSupermarket]);
 
     // Réinitialiser le formulaire à la fermeture
     useEffect(() => {

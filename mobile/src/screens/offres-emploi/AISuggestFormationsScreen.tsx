@@ -1,138 +1,255 @@
 // ✅ Écran Suggestions Formations IA pour Offres d'Emploi (Mobile)
 
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     ScrollView,
     StyleSheet,
     Text,
-    View
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { NativeBadge, NativeButton, NativeCard } from '../../components/SafeNativeDesign';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiPost } from '../../services/api';
+import { apiGet } from '../../services/api';
+import { offreEmploiService, FormationSuggestion } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
 const AISuggestFormationsScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
-    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [loadingProfile, setLoadingProfile] = useState(true);
+    const [suggestions, setSuggestions] = useState<FormationSuggestion[]>([]);
+    const [competencesManquantes, setCompetencesManquantes] = useState<string[]>([]);
+    const [objectifCarriere, setObjectifCarriere] = useState('');
+    const [hasProfile, setHasProfile] = useState(false);
 
-    const handleGetSuggestions = async () => {
-        if (!user) {
-            Alert.alert('Erreur', 'Vous devez être connecté');
+    // ✅ NOUVEAU: Charger le profil pour récupérer les compétences manquantes
+    useEffect(() => {
+        loadProfile();
+    }, []);
+
+    const loadProfile = async () => {
+        try {
+            setLoadingProfile(true);
+            const response = await apiGet('/api/offres-emploi/profil');
+            
+            if (response.success && response.data) {
+                const profil = response.data;
+                setHasProfile(true);
+                // Si le profil a des compétences manquantes identifiées, les utiliser
+                if (profil.competences_manquantes && Array.isArray(profil.competences_manquantes)) {
+                    setCompetencesManquantes(profil.competences_manquantes);
+                }
+                if (profil.objectif_carriere) {
+                    setObjectifCarriere(profil.objectif_carriere);
+                }
+            } else {
+                setHasProfile(false);
+            }
+        } catch (error: any) {
+            console.error('[AISuggestFormationsScreen] Erreur chargement profil:', error);
+            setHasProfile(false);
+        } finally {
+            setLoadingProfile(false);
+        }
+    };
+
+    const handleSuggest = async () => {
+        if (competencesManquantes.length === 0 && !objectifCarriere.trim()) {
+            Alert.alert(
+                'Information requise',
+                'Veuillez renseigner au moins des compétences manquantes ou un objectif de carrière.'
+            );
             return;
         }
 
         try {
             setLoading(true);
-            const response = await apiPost('/api/offres-emploi/ai/suggest-formations', {
-                candidat_id: user.id,
-            });
-
-            if (response.success) {
-                setSuggestions(response.suggestions || response.data?.suggestions || []);
+            const response = await offreEmploiService.suggestFormations(
+                competencesManquantes,
+                objectifCarriere.trim() || undefined
+            );
+            
+            if (response.success && response.suggestions) {
+                setSuggestions(response.suggestions);
+            } else if (response.success && response.data?.suggestions) {
+                setSuggestions(response.data.suggestions);
             } else {
-                Alert.alert('Erreur', response.message || 'Impossible d\'obtenir les suggestions');
+                Alert.alert(
+                    'Erreur',
+                    response.message || 'Impossible de générer des suggestions. L\'IA n\'est peut-être pas encore opérationnelle.'
+                );
             }
         } catch (error: any) {
-            console.error('[AISuggestFormations] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir les suggestions. Veuillez réessayer.');
+            console.error('[AISuggestFormationsScreen] Erreur suggestions:', error);
+            Alert.alert(
+                'Erreur',
+                'Impossible de générer des suggestions. L\'IA de suggestions de formation n\'est peut-être pas encore opérationnelle. Veuillez réessayer plus tard.'
+            );
         } finally {
             setLoading(false);
         }
     };
 
+    const addCompetenceManquante = () => {
+        // Permettre à l'utilisateur d'ajouter manuellement des compétences manquantes
+        Alert.prompt(
+            'Compétence manquante',
+            'Entrez une compétence que vous souhaitez acquérir:',
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Ajouter',
+                    onPress: (text) => {
+                        if (text && text.trim() && !competencesManquantes.includes(text.trim())) {
+                            setCompetencesManquantes([...competencesManquantes, text.trim()]);
+                        }
+                    },
+                },
+            ],
+            'plain-text'
+        );
+    };
+
+    const removeCompetenceManquante = (comp: string) => {
+        setCompetencesManquantes(competencesManquantes.filter(c => c !== comp));
+    };
+
+    if (loadingProfile) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.centerContainer}>
+                    <ActivityIndicator size="large" color={modernColors.primary} />
+                    <Text style={styles.loadingText}>Chargement du profil...</Text>
+                </View>
+            </View>
+        );
+    }
+
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
             <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
+                </TouchableOpacity>
                 <Text style={styles.title}>Suggestions Formations IA</Text>
-                <Text style={styles.subtitle}>
-                    Développez vos compétences avec des formations ciblées
-                </Text>
             </View>
 
             {suggestions.length === 0 ? (
                 <NativeCard style={styles.card}>
-                    <SafeIcon name="award" size={48} color={modernColors.accent} type="lucide" />
-                    <Text style={styles.cardTitle}>Obtenir des suggestions</Text>
-                    <Text style={styles.cardDescription}>
-                        L'IA analysera votre profil et vous proposera des formations adaptées
-                    </Text>
+                    <Text style={styles.sectionTitle}>Paramètres de recherche</Text>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Compétences manquantes</Text>
+                        <View style={styles.tagsContainer}>
+                            {competencesManquantes.map((comp, i) => (
+                                <View key={i} style={styles.tag}>
+                                    <Text style={styles.tagText}>{comp}</Text>
+                                    <TouchableOpacity onPress={() => removeCompetenceManquante(comp)}>
+                                        <SafeIcon name="x" size={14} color={modernColors.textSecondary} type="lucide" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </View>
+                        <TouchableOpacity
+                            style={styles.addButton}
+                            onPress={addCompetenceManquante}
+                        >
+                            <SafeIcon name="plus" size={16} color={modernColors.primary} type="lucide" />
+                            <Text style={styles.addButtonText}>Ajouter une compétence</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Objectif de carrière (optionnel)</Text>
+                        <TextInput
+                            style={styles.textArea}
+                            placeholder="Ex: Devenir développeur Full Stack senior"
+                            value={objectifCarriere}
+                            onChangeText={setObjectifCarriere}
+                            multiline
+                            numberOfLines={3}
+                            placeholderTextColor={modernColors.textSecondary}
+                        />
+                    </View>
+
+                    {!hasProfile && (
+                        <View style={styles.warningContainer}>
+                            <SafeIcon name="info" size={20} color={modernColors.warning} type="lucide" />
+                            <Text style={styles.warningText}>
+                                Créez votre profil candidat pour recevoir des suggestions personnalisées basées sur votre CV.
+                            </Text>
+                        </View>
+                    )}
+
                     <NativeButton
-                        title={loading ? 'Génération en cours...' : 'Générer les suggestions'}
-                        onPress={handleGetSuggestions}
+                        title={loading ? 'Génération en cours...' : 'Générer des suggestions'}
+                        onPress={handleSuggest}
                         variant="primary"
-                        disabled={loading}
+                        disabled={loading || (competencesManquantes.length === 0 && !objectifCarriere.trim())}
                         style={styles.button}
                     />
                 </NativeCard>
             ) : (
                 <View>
-                    <Text style={styles.resultsTitle}>
-                        {suggestions.length} formation{suggestions.length > 1 ? 's' : ''} suggérée{suggestions.length > 1 ? 's' : ''}
-                    </Text>
-                    {suggestions.map((suggestion, index) => (
-                        <NativeCard key={index} style={styles.suggestionCard}>
-                            <View style={styles.suggestionHeader}>
-                                <View style={styles.priorityBadge}>
-                                    <Text style={styles.priorityText}>
-                                        {suggestion.priority || 'Moyenne'}
-                                    </Text>
-                                </View>
-                                <View style={styles.suggestionInfo}>
-                                    <Text style={styles.formationName}>
-                                        {suggestion.formation_nom || 'Formation'}
-                                    </Text>
-                                    {suggestion.organisme && (
-                                        <Text style={styles.organisme}>
-                                            {suggestion.organisme}
-                                        </Text>
+                    <NativeCard style={styles.card}>
+                        <Text style={styles.sectionTitle}>
+                            {suggestions.length} suggestion{suggestions.length > 1 ? 's' : ''} de formation
+                        </Text>
+                    </NativeCard>
+
+                    {suggestions.map((formation, i) => (
+                        <NativeCard key={i} style={styles.formationCard}>
+                            <View style={styles.formationHeader}>
+                                <SafeIcon
+                                    name="graduation-cap"
+                                    size={24}
+                                    color={modernColors.primary}
+                                    type="lucide"
+                                />
+                                <View style={styles.formationHeaderText}>
+                                    <Text style={styles.formationName}>{formation.formation}</Text>
+                                    {formation.urgence && (
+                                        <View style={[
+                                            styles.urgenceBadge,
+                                            formation.urgence === 'high' && styles.urgenceHigh,
+                                            formation.urgence === 'medium' && styles.urgenceMedium,
+                                            formation.urgence === 'low' && styles.urgenceLow,
+                                        ]}>
+                                            <Text style={styles.urgenceText}>
+                                                {formation.urgence === 'high' ? 'Urgent' : 
+                                                 formation.urgence === 'medium' ? 'Moyen' : 'Faible'}
+                                            </Text>
+                                        </View>
                                     )}
                                 </View>
                             </View>
-                            {suggestion.description && (
-                                <Text style={styles.description}>{suggestion.description}</Text>
-                            )}
-                            {suggestion.competences_ciblees && suggestion.competences_ciblees.length > 0 && (
-                                <View style={styles.badgesContainer}>
-                                    {suggestion.competences_ciblees.map((comp: string, idx: number) => (
-                                        <NativeBadge
-                                            key={idx}
-                                            text={comp}
-                                            variant="info"
-                                            size="small"
-                                        />
-                                    ))}
-                                </View>
-                            )}
-                            {suggestion.duree && (
-                                <View style={styles.metaRow}>
-                                    <SafeIcon name="clock" size={16} color={modernColors.textSecondary} />
-                                    <Text style={styles.metaText}>{suggestion.duree}</Text>
-                                </View>
-                            )}
-                            {suggestion.cout && (
-                                <View style={styles.metaRow}>
-                                    <SafeIcon name="dollar-sign" size={16} color={modernColors.textSecondary} />
-                                    <Text style={styles.metaText}>{suggestion.cout}</Text>
-                                </View>
+                            <Text style={styles.formationReason}>{formation.raison}</Text>
+                            {formation.duree_estimee && (
+                                <Text style={styles.formationDuree}>
+                                    Durée estimée: {formation.duree_estimee}
+                                </Text>
                             )}
                         </NativeCard>
                     ))}
-                    <NativeButton
-                        title="Nouvelles suggestions"
-                        onPress={() => {
-                            setSuggestions([]);
-                            handleGetSuggestions();
-                        }}
-                        variant="outline"
-                        style={styles.button}
-                    />
+
+                    <View style={styles.actions}>
+                        <NativeButton
+                            title="Nouvelles suggestions"
+                            onPress={() => {
+                                setSuggestions([]);
+                                loadProfile();
+                            }}
+                            variant="outline"
+                            style={styles.button}
+                        />
+                    </View>
                 </View>
             )}
 
@@ -155,100 +272,165 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     header: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginBottom: 24,
+    },
+    backButton: {
+        marginRight: 12,
     },
     title: {
         fontSize: 28,
         fontWeight: 'bold',
         color: modernColors.text,
-        marginBottom: 8,
-    },
-    subtitle: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
     },
     card: {
         marginBottom: 16,
         padding: 20,
+    },
+    centerContainer: {
+        flex: 1,
+        justifyContent: 'center',
         alignItems: 'center',
+        padding: 32,
     },
-    cardTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: modernColors.text,
+    loadingText: {
         marginTop: 16,
-        marginBottom: 8,
-    },
-    cardDescription: {
-        fontSize: 14,
+        fontSize: 16,
         color: modernColors.textSecondary,
-        textAlign: 'center',
-        marginBottom: 24,
     },
-    button: {
-        marginTop: 8,
-    },
-    resultsTitle: {
+    sectionTitle: {
         fontSize: 18,
         fontWeight: '600',
         color: modernColors.text,
         marginBottom: 16,
     },
-    suggestionCard: {
-        marginBottom: 16,
-        padding: 16,
+    inputGroup: {
+        marginBottom: 20,
     },
-    suggestionHeader: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 12,
-        gap: 12,
-    },
-    priorityBadge: {
-        backgroundColor: modernColors.accent,
-        borderRadius: 20,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-    },
-    priorityText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    suggestionInfo: {
-        flex: 1,
-    },
-    formationName: {
-        fontSize: 16,
+    label: {
+        fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
-        marginBottom: 4,
+        marginBottom: 8,
     },
-    organisme: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-    },
-    description: {
-        fontSize: 14,
-        color: modernColors.text,
-        lineHeight: 20,
-        marginBottom: 12,
-    },
-    badgesContainer: {
+    tagsContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 8,
         marginBottom: 12,
     },
-    metaRow: {
+    tag: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginBottom: 8,
+        backgroundColor: modernColors.error + '20',
+        borderRadius: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        gap: 6,
     },
-    metaText: {
+    tagText: {
+        fontSize: 12,
+        color: modernColors.error,
+        fontWeight: '600',
+    },
+    addButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+        borderStyle: 'dashed',
+        borderRadius: 8,
+        padding: 12,
+        gap: 8,
+    },
+    addButtonText: {
+        fontSize: 14,
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    textArea: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 14,
+        color: modernColors.text,
+        backgroundColor: modernColors.surface,
+        minHeight: 80,
+        textAlignVertical: 'top',
+    },
+    warningContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: modernColors.warning + '20',
+        borderRadius: 8,
+        padding: 12,
+        gap: 8,
+        marginBottom: 16,
+    },
+    warningText: {
+        flex: 1,
+        fontSize: 12,
+        color: modernColors.warning,
+        lineHeight: 18,
+    },
+    button: {
+        marginTop: 8,
+    },
+    formationCard: {
+        marginBottom: 16,
+        padding: 20,
+    },
+    formationHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+        gap: 12,
+    },
+    formationHeaderText: {
+        flex: 1,
+    },
+    formationName: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    urgenceBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    urgenceHigh: {
+        backgroundColor: modernColors.error + '20',
+    },
+    urgenceMedium: {
+        backgroundColor: modernColors.warning + '20',
+    },
+    urgenceLow: {
+        backgroundColor: modernColors.success + '20',
+    },
+    urgenceText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    formationReason: {
         fontSize: 14,
         color: modernColors.textSecondary,
+        lineHeight: 20,
+        marginBottom: 8,
+    },
+    formationDuree: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+    },
+    actions: {
+        marginTop: 24,
     },
     loadingOverlay: {
         position: 'absolute',
@@ -260,12 +442,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    loadingText: {
-        marginTop: 12,
-        color: '#fff',
-        fontSize: 16,
-    },
 });
 
 export default AISuggestFormationsScreen;
-

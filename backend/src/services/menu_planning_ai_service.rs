@@ -515,9 +515,12 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
 - Temps disponible : {:?} heures/jour
 {}{}{}
 
-🎯 TON RÔLE :
-- Générer un menu hebdomadaire complet (Lundi à Dimanche)
-- Planifier petit-déjeuner, déjeuner, dîner pour chaque jour
+🎯 TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
+- Tu DOIS générer un MENU HEBDOMADAIRE avec des REPAS CONCRETS (plats, recettes)
+- Chaque jour DOIT avoir des repas réels : petit-déjeuner, déjeuner, dîner (et optionnellement goûter)
+- Chaque repas DOIT avoir un nom de plat/recette concret (ex: "Poulet DG", "Ndolé", "Riz sauté")
+- Tu NE DOIS PAS générer un calendrier, un diagramme, ou une structure vide
+- Tu DOIS générer des PLATS RÉELS avec des noms de recettes pour chaque repas de chaque jour
 - Adapter les quantités au nombre de personnes
 - Respecter allergies et restrictions
 - Optimiser le budget
@@ -558,12 +561,15 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
 
 ⚠️ IMPORTANT - JSON COMPLET REQUIS :
 - Tu DOIS générer un JSON COMPLET et VALIDE pour les 7 jours (Lundi à Dimanche)
+- Chaque jour DOIT avoir des repas CONCRETS avec des noms de plats RÉELS (pas de valeurs vides, pas de "null", pas de placeholders)
+- Chaque repas (petit_dejeuner, dejeuner, diner) DOIT avoir un "recipe_name" avec un nom de plat CONCRET
 - Le JSON DOIT se terminer par }} pour fermer correctement toutes les structures
 - Ne JAMAIS tronquer le JSON au milieu d'une chaîne, d'un objet ou d'un array
 - Si tu atteins une limite, génère un JSON valide en fermant toutes les structures ouvertes
 - Le JSON DOIT être parseable sans erreur
 - RESPECTER la saisonnalité (uniquement ingrédients de saison)
 - RESPECTER la variation (éviter les répétitions)
+- INTERDICTION ABSOLUE : Ne JAMAIS générer un calendrier, un diagramme, ou une structure vide. Tu DOIS générer des REPAS avec des NOMS DE PLATS CONCRETS.
 "#,
             profile.total_members,
             profile.children_count,

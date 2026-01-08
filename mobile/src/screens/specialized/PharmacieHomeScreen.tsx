@@ -254,12 +254,16 @@ const PharmacieHomeScreen: React.FC = () => {
             
             const response = await askAI(aiQuestion, context);
             if (response) {
-                setAiResponse(response.message);
+                const message = response.message || response.text || response.response || 'Réponse non disponible';
+                setAiResponse(message);
                 setAiSuggestions(response.suggestions || []);
+            } else {
+                setAiResponse('Désolé, l\'assistant IA n\'est pas encore opérationnel. Veuillez réessayer plus tard ou consultez votre pharmacien.');
             }
         } catch (err: any) {
             console.error('[PharmacieHomeScreen] Erreur IA:', err);
-            setAiResponse('Désolé, je n\'ai pas pu traiter votre question. Veuillez réessayer.');
+            const errorMsg = err.message || err.error || 'L\'assistant IA n\'est pas encore opérationnel. Veuillez réessayer plus tard.';
+            setAiResponse(`Désolé, je n'ai pas pu traiter votre question. ${errorMsg}`);
         }
     };
 
@@ -333,18 +337,26 @@ const PharmacieHomeScreen: React.FC = () => {
                 const analysisResponse = await imageAnalysisService.analyzePharmacyImage(base64Image);
 
                 if (analysisResponse.success && analysisResponse.data) {
-                    setImageAnalysisResult(analysisResponse.data.analysis);
+                    // Gérer différents formats de réponse
+                    const analysis = analysisResponse.data.analysis || analysisResponse.data;
+                    setImageAnalysisResult(analysis);
+                    
                     // Afficher le résultat dans le chat IA
+                    const description = analysis.description || analysis.interpretation || 'Analyse complétée';
+                    const recommendations = analysis.recommendations ? 
+                        (Array.isArray(analysis.recommendations) ? analysis.recommendations.join('\n') : analysis.recommendations) : '';
+                    
                     setAiResponse(
-                        `Analyse du médicament:\n\n${analysisResponse.data.analysis.description || analysisResponse.data.analysis.interpretation || 'Analyse complétée'}\n\n` +
-                        (analysisResponse.data.analysis.recommendations ? 
-                            `Recommandations:\n${analysisResponse.data.analysis.recommendations.join('\n')}` : '')
+                        `Analyse du médicament:\n\n${description}\n\n` +
+                        (recommendations ? `Recommandations:\n${recommendations}` : '')
                     );
                     setShowAIChat(true);
                 } else {
+                    const errorMsg = analysisResponse.error || analysisResponse.data?.error || 'Impossible d\'analyser l\'image du médicament. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
                     Alert.alert(
                         'Erreur',
-                        analysisResponse.error || 'Impossible d\'analyser l\'image du médicament'
+                        errorMsg,
+                        [{ text: 'OK' }]
                     );
                 }
             }
@@ -386,23 +398,33 @@ const PharmacieHomeScreen: React.FC = () => {
         
         try {
             const response = await pharmacyService.suggestDosage(medication.nom_produit);
-            if (response.success && response.data?.dosage) {
-                setDosageData(response.data.dosage);
-            } else {
-                // Fallback si le backend retourne un format différent
-                const dosage = response.data as any;
-                if (dosage?.dosage || dosage?.frequency) {
+            
+            // Gérer différents formats de réponse
+            if (response.success) {
+                const dosage = response.data?.dosage || response.dosage || response.data;
+                if (dosage && (dosage.dosage || dosage.frequency)) {
                     setDosageData({
                         dosage: dosage.dosage || 'Consultez votre médecin',
                         frequency: dosage.frequency || 'Selon prescription',
                         duration: dosage.duration || 'Selon prescription',
-                        precautions: [],
-                        warnings: [],
+                        precautions: Array.isArray(dosage.precautions) ? dosage.precautions : [],
+                        warnings: Array.isArray(dosage.warnings) ? dosage.warnings : [],
                     });
+                } else {
+                    Alert.alert(
+                        'Information non disponible',
+                        'La posologie IA n\'est pas encore disponible pour ce médicament. Consultez votre médecin ou pharmacien.',
+                        [{ text: 'OK', onPress: () => setShowDosageModal(false) }]
+                    );
                 }
+            } else {
+                const errorMsg = response.message || response.error || 'Impossible d\'obtenir la posologie. L\'IA de posologie n\'est peut-être pas encore opérationnelle.';
+                Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowDosageModal(false) }]);
             }
         } catch (err: any) {
             console.error('[PharmacieHomeScreen] Erreur posologie:', err);
+            const errorMsg = err.message || err.error || 'Erreur lors de la récupération de la posologie. L\'IA de posologie n\'est peut-être pas encore opérationnelle.';
+            Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowDosageModal(false) }]);
         } finally {
             setLoadingAI(false);
         }
@@ -416,22 +438,33 @@ const PharmacieHomeScreen: React.FC = () => {
         
         try {
             const response = await pharmacyService.checkInteractions([medication.nom_produit]);
-            if (response.success && response.data?.interaction) {
-                setInteractionsData(response.data.interaction);
-            } else {
-                // Fallback si le backend retourne un format différent
-                const interaction = response.data as any;
-                if (interaction?.severity || interaction?.description) {
+            
+            // Gérer différents formats de réponse
+            if (response.success) {
+                const interaction = response.data?.interaction || response.interaction || response.data;
+                if (interaction && (interaction.severity || interaction.description)) {
                     setInteractionsData({
                         severity: interaction.severity || 'none',
                         description: interaction.description || 'Aucune interaction connue',
                         recommendation: interaction.recommendation || 'Consultez votre pharmacien',
-                        alternative_suggestions: interaction.alternative_suggestions || [],
+                        alternative_suggestions: Array.isArray(interaction.alternative_suggestions) ? 
+                            interaction.alternative_suggestions : [],
                     });
+                } else {
+                    Alert.alert(
+                        'Information non disponible',
+                        'Les interactions médicamenteuses ne sont pas encore disponibles pour ce médicament. Consultez votre pharmacien.',
+                        [{ text: 'OK', onPress: () => setShowInteractionsModal(false) }]
+                    );
                 }
+            } else {
+                const errorMsg = response.message || response.error || 'Impossible de vérifier les interactions. L\'IA de vérification d\'interactions n\'est peut-être pas encore opérationnelle.';
+                Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowInteractionsModal(false) }]);
             }
         } catch (err: any) {
             console.error('[PharmacieHomeScreen] Erreur interactions:', err);
+            const errorMsg = err.message || err.error || 'Erreur lors de la vérification des interactions. L\'IA de vérification d\'interactions n\'est peut-être pas encore opérationnelle.';
+            Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowInteractionsModal(false) }]);
         } finally {
             setLoadingAI(false);
         }

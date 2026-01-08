@@ -37,10 +37,57 @@ const TaxiHomeScreen: React.FC = () => {
     const { location } = useLocation();
     
     // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
-    const isDriverValidated = user?.role === 'driver' || 
-                              (user as any)?.is_driver === true || 
-                              (user as any)?.driver_status === 'validated' ||
-                              (user as any)?.driver_status === 'approved';
+    const [isDriverValidated, setIsDriverValidated] = useState(false);
+    const [checkingDriverStatus, setCheckingDriverStatus] = useState(true);
+
+    // ✅ NOUVEAU: Vérifier le statut chauffeur depuis l'API
+    useEffect(() => {
+        const checkDriverStatus = async () => {
+            if (!user?.id) {
+                setIsDriverValidated(false);
+                setCheckingDriverStatus(false);
+                return;
+            }
+
+            try {
+                // Vérifier depuis les données utilisateur locales d'abord
+                const localCheck = user?.role === 'driver' || 
+                                  (user as any)?.is_driver === true || 
+                                  (user as any)?.driver_status === 'validated' ||
+                                  (user as any)?.driver_status === 'approved';
+                
+                if (localCheck) {
+                    setIsDriverValidated(true);
+                    setCheckingDriverStatus(false);
+                    return;
+                }
+
+                // Si pas trouvé localement, vérifier via API
+                const { apiGet } = await import('../../services/api');
+                const response = await apiGet(`/api/users/${user.id}/driver-status`);
+                
+                if (response.success && response.data) {
+                    const driverStatus = response.data.driver_status || response.data.is_driver;
+                    setIsDriverValidated(driverStatus === 'validated' || driverStatus === 'approved' || driverStatus === true);
+                } else {
+                    setIsDriverValidated(false);
+                }
+            } catch (error) {
+                console.warn('[TaxiHomeScreen] Erreur vérification statut chauffeur:', error);
+                // En cas d'erreur, utiliser la vérification locale
+                setIsDriverValidated(
+                    user?.role === 'driver' || 
+                    (user as any)?.is_driver === true || 
+                    (user as any)?.driver_status === 'validated' ||
+                    (user as any)?.driver_status === 'approved'
+                );
+            } finally {
+                setCheckingDriverStatus(false);
+            }
+        };
+
+        checkDriverStatus();
+    }, [user]);
 
     // Mode d'affichage : recherche ou création
     const [viewMode, setViewMode] = useState<ViewMode>('search');
@@ -54,6 +101,7 @@ const TaxiHomeScreen: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [totalResults, setTotalResults] = useState(0);
     const [availableOnly, setAvailableOnly] = useState(true);
+    const [hasSearched, setHasSearched] = useState(false); // ✅ NOUVEAU: Indique si une recherche a été effectuée
 
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
     const detectedCurrency = useCurrencyDetection(
@@ -74,12 +122,8 @@ const TaxiHomeScreen: React.FC = () => {
         wifi: false,
     });
 
-    // Charger les taxis à l'ouverture (proximité)
-    useEffect(() => {
-        if (viewMode === 'search') {
-            loadNearbyTaxis();
-        }
-    }, [viewMode, availableOnly]);
+    // ✅ MODIFIÉ: Ne plus charger automatiquement à l'ouverture - l'utilisateur doit choisir départ/destination d'abord
+    // useEffect supprimé - chargement uniquement via bouton de recherche
 
     const loadNearbyTaxis = useCallback(async () => {
         try {
@@ -124,8 +168,36 @@ const TaxiHomeScreen: React.FC = () => {
         }
     }, [location, availableOnly]);
 
+    // ✅ NOUVEAU: Vérifier si le bouton de recherche doit être activé
+    const canSearch = () => {
+        const departStr = typeof depart === 'string' 
+            ? depart.trim()
+            : (depart as LocationObject)?.components?.ville || (depart as LocationObject)?.place_name || '';
+        
+        const destinationStr = typeof destination === 'string'
+            ? destination.trim()
+            : (destination as LocationObject)?.components?.ville || (destination as LocationObject)?.place_name || '';
+
+        return !!departStr && !!destinationStr;
+    };
+
     const handleSearch = async () => {
         hapticPress();
+        
+        // ✅ VALIDATION: Vérifier que départ et destination sont remplis
+        const departStr = typeof depart === 'string' 
+            ? depart.trim()
+            : (depart as LocationObject)?.components?.ville || (depart as LocationObject)?.place_name || '';
+        
+        const destinationStr = typeof destination === 'string'
+            ? destination.trim()
+            : (destination as LocationObject)?.components?.ville || (destination as LocationObject)?.place_name || '';
+
+        if (!departStr || !destinationStr) {
+            Alert.alert('Erreur', 'Veuillez sélectionner une ville de départ et une ville de destination');
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -136,17 +208,14 @@ const TaxiHomeScreen: React.FC = () => {
             };
 
             // ✅ AMÉLIORÉ: Utiliser départ et destination séparément
-            const departStr = typeof depart === 'string' ? depart : (depart as LocationObject)?.place_name || '';
-            const destinationStr = typeof destination === 'string' ? destination : (destination as LocationObject)?.place_name || '';
-            
-            if (departStr.trim()) {
-                const parts = departStr.trim().split(',').map(s => s.trim());
-                if (parts.length > 0) filters.ville = parts[0];
-                if (parts.length > 1) filters.quartier = parts[1];
-            } else if (typeof depart === 'object') {
+            if (typeof depart === 'object') {
                 const location = depart as LocationObject;
                 if (location.components?.ville) filters.ville = location.components.ville;
                 if (location.components?.quartier) filters.quartier = location.components.quartier;
+            } else if (departStr) {
+                const parts = departStr.split(',').map(s => s.trim());
+                if (parts.length > 0) filters.ville = parts[0];
+                if (parts.length > 1) filters.quartier = parts[1];
             }
 
             if (location?.coords) {
@@ -164,9 +233,12 @@ const TaxiHomeScreen: React.FC = () => {
                 }
                 setTaxis(filteredTaxis);
                 setTotalResults(filteredTaxis.length);
+                setHasSearched(true); // ✅ NOUVEAU: Marquer qu'une recherche a été effectuée
+                setError(null);
             } else {
-                setError('Aucun taxi trouvé');
+                setError('Aucun taxi trouvé pour ce trajet');
                 setTaxis([]);
+                setHasSearched(true);
             }
         } catch (err: any) {
             console.error('[TaxiHomeScreen] Erreur recherche:', err);
@@ -346,10 +418,10 @@ const TaxiHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* ✅ AMÉLIORÉ: Barre de recherche avec départ/destination (mode recherche) */}
+                    {/* ✅ REFONDU: Barre de recherche avec départ/destination améliorée (mode recherche) */}
                     {viewMode === 'search' && (
                         <View style={styles.searchContainer}>
-                            {/* Champs départ et destination compacts */}
+                            {/* Champs départ et destination avec meilleur formatage */}
                             <View style={styles.routeContainer}>
                                 <View style={styles.routeRow}>
                                     {/* Départ */}
@@ -357,53 +429,58 @@ const TaxiHomeScreen: React.FC = () => {
                                         <Text style={styles.routeLabel}>
                                             <SafeIcon name="map-pin" size={12} color="#FFFFFF" type="lucide" /> Départ
                                         </Text>
-                                        <View style={styles.locationInputCompact}>
-                                            <SafeIcon name="map-pin" size={16} color="#06B6D4" type="lucide" />
-                                            <LocationSelector
-                                                label=""
-                                                value={depart}
-                                                onSelect={(location) => setDepart(location)}
-                                                placeholder="Votre position"
-                                                scope="all"
-                                                style={styles.locationSelectorCompact}
-                                            />
-                                        </View>
+                                        <LocationSelector
+                                            label=""
+                                            value={typeof depart === 'string' ? (depart ? { raw: depart, place_name: depart } : '') : depart}
+                                            onSelect={(location: LocationObject) => {
+                                                hapticPress();
+                                                setDepart(location);
+                                                // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
+                                            }}
+                                            placeholder="Ville de départ"
+                                            scope="city"
+                                            enrichWithBackend={true}
+                                        />
                                     </View>
                                     
                                     {/* Bouton d'échange */}
-                                    <TouchableOpacity
-                                        style={styles.swapButton}
-                                        onPress={() => {
-                                            hapticPress();
-                                            const temp = depart;
-                                            setDepart(destination);
-                                            setDestination(temp);
-                                        }}
-                                    >
-                                        <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
-                                    </TouchableOpacity>
+                                    <View style={styles.swapButtonContainer}>
+                                        <TouchableOpacity
+                                            style={styles.swapButton}
+                                            onPress={() => {
+                                                hapticPress();
+                                                const temp = depart;
+                                                setDepart(destination);
+                                                setDestination(temp);
+                                                // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
+                                            }}
+                                        >
+                                            <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
+                                        </TouchableOpacity>
+                                    </View>
                                     
                                     {/* Destination */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
                                             <SafeIcon name="navigation" size={12} color="#FFFFFF" type="lucide" /> Destination
                                         </Text>
-                                        <View style={[styles.locationInputCompact, styles.locationInputDest]}>
-                                            <SafeIcon name="navigation" size={16} color="#EF4444" type="lucide" />
-                                            <LocationSelector
-                                                label=""
-                                                value={destination}
-                                                onSelect={(location) => setDestination(location)}
-                                                placeholder="Où allez-vous ?"
-                                                scope="all"
-                                                style={styles.locationSelectorCompact}
-                                            />
-                                        </View>
+                                        <LocationSelector
+                                            label=""
+                                            value={typeof destination === 'string' ? (destination ? { raw: destination, place_name: destination } : '') : destination}
+                                            onSelect={(location: LocationObject) => {
+                                                hapticPress();
+                                                setDestination(location);
+                                                // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
+                                            }}
+                                            placeholder="Ville d'arrivée"
+                                            scope="city"
+                                            enrichWithBackend={true}
+                                        />
                                     </View>
                                 </View>
                             </View>
 
-                            {/* Filtres et bouton recherche */}
+                            {/* Filtres */}
                             <View style={styles.filtersRow}>
                                 <TouchableOpacity
                                     style={[styles.filterChip, availableOnly && styles.filterChipActive]}
@@ -424,12 +501,24 @@ const TaxiHomeScreen: React.FC = () => {
                                 </TouchableOpacity>
                             </View>
 
+                            {/* ✅ NOUVEAU: Bouton de recherche visible uniquement quand départ et destination sont remplis */}
                             <TouchableOpacity
-                                style={styles.searchButton}
+                                style={[
+                                    styles.searchButton,
+                                    (!canSearch() || loading) && styles.searchButtonDisabled
+                                ]}
                                 onPress={handleSearch}
+                                disabled={!canSearch() || loading}
+                                activeOpacity={0.7}
                             >
-                                <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
-                                <Text style={styles.searchButtonText}>Rechercher</Text>
+                                {loading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <>
+                                        <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                                        <Text style={styles.searchButtonText}>Rechercher des taxis</Text>
+                                    </>
+                                )}
                             </TouchableOpacity>
                         </View>
                     )}
@@ -439,7 +528,15 @@ const TaxiHomeScreen: React.FC = () => {
             {/* Contenu selon le mode */}
             {viewMode === 'search' ? (
                 // Mode recherche : Liste des taxis
-                loading && taxis.length === 0 ? (
+                !hasSearched && !loading ? (
+                    <View style={styles.centerContainer}>
+                        <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
+                        <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
+                        <Text style={styles.emptySubtext}>
+                            Choisissez une ville de départ et une ville de destination, puis cliquez sur "Rechercher des taxis"
+                        </Text>
+                    </View>
+                ) : loading && taxis.length === 0 ? (
                     <View style={styles.centerContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
                         <Text style={styles.loadingText}>Recherche de taxis...</Text>
@@ -908,20 +1005,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 4,
     },
-    locationInputCompact: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        gap: 8,
-    },
-    locationInputDest: {
-        backgroundColor: '#FEF2F2',
-    },
-    locationSelectorCompact: {
-        flex: 1,
+    // ✅ Styles supprimés pour locationInputCompact - LocationSelector gère maintenant son propre style
+    swapButtonContainer: {
+        paddingBottom: 4,
     },
     swapButton: {
         width: 36,
@@ -930,7 +1016,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.25)',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 4,
     },
     searchBar: {
         flexDirection: 'row',
@@ -988,8 +1073,19 @@ const styles = StyleSheet.create({
         gap: 8,
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
-        paddingVertical: 14,
-        paddingHorizontal: 20,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        marginTop: 12,
+        shadowColor: '#06B6D4',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    searchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        shadowOpacity: 0,
+        elevation: 0,
     },
     searchButtonText: {
         fontSize: 16,

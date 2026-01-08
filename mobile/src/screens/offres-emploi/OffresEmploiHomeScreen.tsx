@@ -98,30 +98,11 @@ const OffresEmploiHomeScreen: React.FC = () => {
         loadOffres(false);
     };
 
-    // Fonctions IA améliorées
+    // ✅ CORRIGÉ: Fonction IA améliorée - Naviguer directement vers l'écran d'analyse CV
     const handleAnalyzeCV = async () => {
         hapticPress();
-        setAiMode('cv');
-        setLoadingAI(true);
-        setShowAIModal(true);
-
-        try {
-            // Naviguer vers l'écran d'analyse CV IA
-            (navigation as any).navigate('AICVAnalysis');
-            setShowAIModal(false);
-        } catch (err: any) {
-            console.error('[OffresEmploiHomeScreen] Erreur navigation analyse CV:', err);
-            Alert.alert(
-                'Analyse CV',
-                'Veuillez d\'abord uploader votre CV dans votre profil',
-                [
-                    { text: 'Annuler', onPress: () => setShowAIModal(false) },
-                    { text: 'Aller au profil', onPress: () => navigation.navigate('ProfilCandidat' as never) },
-                ]
-            );
-        } finally {
-            setLoadingAI(false);
-        }
+        // Naviguer directement vers l'écran d'analyse CV qui gère la récupération du CV
+        (navigation as any).navigate('AICVAnalysis');
     };
 
     const handlePredictSalary = async () => {

@@ -27,6 +27,7 @@ import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
 import ServiceGalleryModal from './ServiceGalleryModal';
 import OrderDeliveryModal from './delivery/OrderDeliveryModal';
+import { productDeliveryService } from '../services/productDeliveryService';
 
 const { width } = Dimensions.get('window');
 
@@ -177,6 +178,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const [loadingReactions, setLoadingReactions] = useState(false);
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [hasDeliveryConfig, setHasDeliveryConfig] = useState<boolean | null>(null); // null = en cours de vérification
 
   // ✅ PHASE 4: Gérer les produits depuis l'API (type Product) ou JSONB (fallback)
   // Si le produit vient de l'API, utiliser product.product_data pour les données
@@ -338,17 +340,32 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     (productData.prix !== undefined || productData.price !== undefined) // A un prix
   );
 
+  // ✅ NOUVEAU: Vérifier si le produit a une configuration de livraison automatique
+  useEffect(() => {
+    const checkDeliveryConfig = async () => {
+      if (!isProduct || !serviceId || productIndex < 0) {
+        setHasDeliveryConfig(false);
+        return;
+      }
+
+      try {
+        const config = await productDeliveryService.getDeliveryConfig(serviceId, productIndex);
+        setHasDeliveryConfig(config?.is_configured === true);
+      } catch (error) {
+        console.error('[ProductCard] Erreur vérification config livraison:', error);
+        setHasDeliveryConfig(false);
+      }
+    };
+
+    checkDeliveryConfig();
+  }, [isProduct, serviceId, productIndex]);
+
   // ✅ CORRIGÉ 2026-01-07: Conditions strictes pour l'affichage du bouton "Me livrer"
   // Le bouton s'affiche UNIQUEMENT pour les produits (jamais pour les prestations)
-  // ET uniquement si la livraison est explicitement activée
+  // ET uniquement si le produit a une configuration de livraison automatique (is_configured = true)
   const deliveryEnabled = isProduct && // ✅ CRITIQUE: Uniquement pour les produits
     serviceId && // ✅ S'assurer qu'il y a un serviceId
-    productData.delivery_enabled !== false &&
-    productData.livraison !== false &&
-    productData.delivery_enabled !== 'false' &&
-    productData.livraison !== 'false' &&
-    (service?.data?.livraison?.valeur !== false && service?.data?.livraison?.valeur !== 'false') &&
-    (service?.data?.delivery_enabled !== false && service?.data?.delivery_enabled !== 'false');
+    hasDeliveryConfig === true; // ✅ NOUVEAU: Vérifier que la configuration de livraison existe et est configurée
 
   const displayPrice = hasVariant && variants.length > 0
     ? Math.min(...variants.map((v: any) => v.prix || 0))

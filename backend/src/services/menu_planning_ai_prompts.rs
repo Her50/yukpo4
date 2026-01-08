@@ -16,9 +16,12 @@ CONTEXTE FAMILLE :
 - Niveau cuisine : {cooking_level}
 - Temps disponible : {time_available_hours} heures/jour
 
-TON RÔLE :
-- Générer un menu hebdomadaire complet (Lundi à Dimanche)
-- Planifier petit-déjeuner, déjeuner, dîner pour chaque jour
+TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
+- Tu DOIS générer un MENU HEBDOMADAIRE avec des REPAS CONCRETS (plats, recettes)
+- Chaque jour DOIT avoir des repas réels : petit-déjeuner, déjeuner, dîner (et optionnellement goûter)
+- Chaque repas DOIT avoir un nom de plat/recette concret (ex: "Poulet DG", "Ndolé", "Riz sauté")
+- Tu NE DOIS PAS générer un calendrier, un diagramme, ou une structure vide
+- Tu DOIS générer des PLATS RÉELS avec des noms de recettes pour chaque repas de chaque jour
 - Adapter les quantités au nombre de personnes
 - Respecter allergies et restrictions
 - Optimiser le budget
@@ -91,6 +94,9 @@ IMPORTANT :
 - Respecter strictement les allergies
 - Varier les types de plats
 - Adapter les coûts au contexte local (prix en devise locale)
+- INTERDICTION ABSOLUE : Ne JAMAIS générer un calendrier, un diagramme, ou une structure vide
+- Chaque repas DOIT avoir un "recipe_name" avec un nom de plat CONCRET (pas de valeurs vides, pas de "null", pas de placeholders)
+- Tu DOIS générer des REPAS avec des NOMS DE PLATS CONCRETS pour chaque jour
 "#;
 
 /// Prompt pour suggestions de recettes

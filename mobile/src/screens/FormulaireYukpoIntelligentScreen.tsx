@@ -42,6 +42,7 @@ import { modernColors } from '../theme/modernTheme';
 import { DynamicField, processIASuggestion } from '../utils/formDispatcher';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
+import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoConfigPromptModal';
 
 const { width } = Dimensions.get('window');
 
@@ -156,6 +157,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     productIndex: number;
     productName: string;
   } | null>(null);
+  // ✅ NOUVEAU: État pour le modal de confirmation de livraison automatique
+  const [showDeliveryAutoPrompt, setShowDeliveryAutoPrompt] = useState(false);
   // ✅ SUPPRIMÉ: Duplication produits - Les produits sont maintenant gérés via les champs dynamiques
   const normalizeMediaList = (value: any): any[] => {
     if (!value) {
@@ -4594,27 +4597,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <NativeButton
               title="Ok"
               variant="primary"
-              onPress={() => {
+              onPress={async () => {
                 setShowSuccessModal(false);
                 
-                // Si c'est un produit (pas une prestation), ouvrir le modal de configuration de livraison
+                // ✅ NOUVEAU: Si c'est un produit (pas une prestation), afficher d'abord le modal de confirmation
                 if (successModalData && !successModalData.isPrestation && successModalData.productIndex >= 0) {
-                  setProductDeliveryConfigData({
-                    serviceId: successModalData.serviceId,
-                    productIndex: successModalData.productIndex,
-                    productName: successModalData.productName,
-                  });
-                  setShowProductDeliveryConfig(true);
+                  // Afficher le modal de confirmation de livraison automatique
+                  setShowDeliveryAutoPrompt(true);
                 } else {
-                  // Rediriger vers Home ou MesServices
+                  // Pour les prestations, rediriger directement
                   if (fromMesServices) {
                     (navigation as any).navigate('MesServices');
                   } else {
                     (navigation as any).navigate('Home');
                   }
+                  setSuccessModalData(null);
                 }
-                
-                setSuccessModalData(null);
               }}
               style={styles.successModalButton}
             />
@@ -4733,6 +4731,37 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           : "Sélection de localisation GPS"}
         allowZoneSelection={gpsModalForField !== 'lieu_produit' && gpsModalForField !== 'lieu_commercial' && gpsModalForField !== 'lieu_commercialisation'}
       />
+
+      {/* ✅ NOUVEAU: Modal de confirmation de livraison automatique */}
+      {successModalData && !successModalData.isPrestation && successModalData.productIndex >= 0 && (
+        <DeliveryAutoConfigPromptModal
+          visible={showDeliveryAutoPrompt}
+          productName={successModalData.productName}
+          onYes={async () => {
+            setShowDeliveryAutoPrompt(false);
+            // ✅ Attendre un délai pour permettre la synchronisation du produit
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            setProductDeliveryConfigData({
+              serviceId: successModalData.serviceId,
+              productIndex: successModalData.productIndex,
+              productName: successModalData.productName,
+            });
+            setShowProductDeliveryConfig(true);
+            setSuccessModalData(null);
+          }}
+          onNo={() => {
+            setShowDeliveryAutoPrompt(false);
+            setSuccessModalData(null);
+            // Rediriger vers Home ou MesServices
+            if (fromMesServices) {
+              (navigation as any).navigate('MesServices');
+            } else {
+              (navigation as any).navigate('Home');
+            }
+          }}
+        />
+      )}
 
       {/* ✅ NOUVEAU: Modal de configuration de livraison pour les produits */}
       {productDeliveryConfigData && (

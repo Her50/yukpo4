@@ -12,6 +12,7 @@ import {
     Animated,
     FlatList,
     Modal,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,

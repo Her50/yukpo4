@@ -166,15 +166,28 @@ const HopitalHomeScreen: React.FC = () => {
                 undefined,
                 location?.coords ? { lat: location.coords.latitude, lng: location.coords.longitude } : undefined
             );
-            if (response.success && response.results) {
-                setPathologyResults(response.results);
-                setShowAIModal(true);
+            
+            // Gérer différents formats de réponse
+            if (response.success) {
+                const results = response.results || response.data?.results || response.data || [];
+                if (Array.isArray(results) && results.length > 0) {
+                    setPathologyResults(results);
+                    setShowAIModal(true);
+                } else {
+                    Alert.alert(
+                        'Aucun résultat',
+                        'Aucune pathologie trouvée pour votre recherche. Essayez avec d\'autres symptômes.',
+                        [{ text: 'OK' }]
+                    );
+                }
             } else {
-                Alert.alert('Erreur', 'Impossible de rechercher la pathologie');
+                const errorMsg = response.message || response.error || 'Impossible de rechercher la pathologie. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
+                Alert.alert('Erreur', errorMsg, [{ text: 'OK' }]);
             }
         } catch (err: any) {
             console.error('[HopitalHomeScreen] Erreur recherche pathologie:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la recherche');
+            const errorMsg = err.message || err.error || 'Erreur lors de la recherche. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
+            Alert.alert('Erreur', errorMsg, [{ text: 'OK' }]);
         } finally {
             setLoadingAI(false);
         }
@@ -232,11 +245,17 @@ const HopitalHomeScreen: React.FC = () => {
                 );
 
                 if (analysisResponse.success && analysisResponse.data) {
-                    setImageAnalysis(analysisResponse.data.analysis);
+                    // Gérer différents formats de réponse
+                    const analysis = analysisResponse.data.analysis || analysisResponse.data;
+                    setImageAnalysis(analysis);
                 } else {
+                    const errorMsg = analysisResponse.error || analysisResponse.data?.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
                     Alert.alert(
                         'Erreur',
-                        analysisResponse.error || 'Impossible d\'analyser l\'image'
+                        errorMsg,
+                        [
+                            { text: 'OK', onPress: () => setShowAIModal(false) }
+                        ]
                     );
                 }
             }
@@ -757,6 +776,13 @@ const AIModal: React.FC<AIModalProps> = ({
                                             </View>
                                         )}
                                     </View>
+                                ) : selectedImage ? (
+                                    <View style={styles.emptyAnalysisContainer}>
+                                        <ActivityIndicator size="large" color="#DC2626" />
+                                        <Text style={styles.placeholderText}>
+                                            Analyse en cours...
+                                        </Text>
+                                    </View>
                                 ) : (
                                     <View style={styles.emptyAnalysisContainer}>
                                         <SafeIcon name="image" size={48} color="#9CA3AF" type="lucide" />
@@ -766,6 +792,13 @@ const AIModal: React.FC<AIModalProps> = ({
                                         <Text style={styles.placeholderSubtext}>
                                             Prenez une photo ou choisissez depuis votre galerie
                                         </Text>
+                                        <TouchableOpacity
+                                            style={styles.searchButton}
+                                            onPress={showImageSourcePicker}
+                                        >
+                                            <SafeIcon name="camera" size={18} color="#FFFFFF" type="lucide" />
+                                            <Text style={styles.searchButtonText}>Sélectionner une image</Text>
+                                        </TouchableOpacity>
                                     </View>
                                 )}
                             </>

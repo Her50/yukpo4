@@ -101,29 +101,75 @@ export const laboratoryService = {
         patientAge?: number,
         patientSex?: string
     ) => {
-        // Note: L'upload d'image sera géré séparément, ici on envoie l'URL ou base64
-        const response = await apiPost<{ success: boolean; analysis: LabAnalysisResult }>(
-            '/api/laboratoires/examinations/analyze-image',
-            {
-                image_uri: imageUri,
-                examination_type: examinationType,
-                patient_age: patientAge,
-                patient_sex: patientSex,
+        try {
+            // Note: L'upload d'image sera géré séparément, ici on envoie l'URL ou base64
+            const response = await apiPost<{ success: boolean; analysis?: LabAnalysisResult; data?: { analysis?: LabAnalysisResult } }>(
+                '/api/laboratoires/examinations/analyze-image',
+                {
+                    image_uri: imageUri,
+                    image_base64: imageUri, // Support des deux formats
+                    examination_type: examinationType,
+                    patient_age: patientAge,
+                    patient_sex: patientSex,
+                }
+            );
+            
+            // Normaliser la réponse
+            if (response.success) {
+                return {
+                    success: true,
+                    data: {
+                        analysis: response.analysis || response.data?.analysis || response.data as any
+                    }
+                };
+            } else {
+                return {
+                    success: false,
+                    error: response.message || response.error || 'L\'IA d\'analyse d\'images n\'est pas encore opérationnelle.'
+                };
             }
-        );
-        return response;
+        } catch (error: any) {
+            console.error('[laboratoryService] Erreur analyse image:', error);
+            return {
+                success: false,
+                error: error.message || error.error || 'Erreur lors de l\'analyse. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.'
+            };
+        }
     },
 
     // ✅ Recherche IA de pathologie
     searchPathology: async (query: string, symptoms?: string[]) => {
-        const response = await apiPost<{ success: boolean; results: PathologySearchResult[] }>(
-            '/api/laboratoires/ai/search-pathology',
-            {
-                query,
-                symptoms,
+        try {
+            const response = await apiPost<{ success: boolean; results?: PathologySearchResult[]; data?: PathologySearchResult[] }>(
+                '/api/laboratoires/ai/search-pathology',
+                {
+                    query,
+                    symptoms,
+                }
+            );
+            
+            // Normaliser la réponse pour gérer différents formats
+            if (response.success) {
+                return {
+                    success: true,
+                    results: response.results || response.data || [],
+                    data: response.data || { results: response.results || [] }
+                };
+            } else {
+                return {
+                    success: false,
+                    results: [],
+                    message: response.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.'
+                };
             }
-        );
-        return response;
+        } catch (error: any) {
+            console.error('[laboratoryService] Erreur recherche pathologie:', error);
+            return {
+                success: false,
+                results: [],
+                error: error.message || error.error || 'Erreur lors de la recherche. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.'
+            };
+        }
     },
 
     // ✅ Obtenir mes examens
