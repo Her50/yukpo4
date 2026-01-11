@@ -26,12 +26,14 @@ import { hospitalService, MedicalService, PathologySearchResult, MedicalServiceA
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import { imageAnalysisService, ImageAnalysisResult } from '../../services/imageAnalysisService';
+import { useToaster } from '../../components/ToasterProvider';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
 
 const HopitalHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const toaster = useToaster();
 
     // États de recherche
     const [searchQuery, setSearchQuery] = useState('');
@@ -103,6 +105,29 @@ const HopitalHomeScreen: React.FC = () => {
         }
     };
 
+    // ✅ NOUVEAU: Fonction de recherche principale
+    const handleSearch = () => {
+        hapticPress();
+        if (!searchQuery.trim() && !autocompleteQuery.trim()) {
+            // Si pas de recherche, charger tous les services disponibles
+            loadAvailableServices();
+            return;
+        }
+        
+        const query = searchQuery.trim() || autocompleteQuery.trim();
+        setShowAutocomplete(false);
+        
+        // Rechercher les services disponibles avec système de disponibilité
+        if (useAvailability && location?.coords) {
+            loadAvailableServices(query);
+        } else {
+            // Navigation vers recherche d'hôpitaux avec ce service
+            navigation.navigate('HopitalList' as never, { 
+                serviceType: query 
+            } as never);
+        }
+    };
+
     const handleServiceSelect = (service: MedicalService) => {
         hapticPress();
         setSelectedService(service);
@@ -150,15 +175,18 @@ const HopitalHomeScreen: React.FC = () => {
         }
     };
 
+    // ✅ CORRIGÉ: Fonction de recherche de pathologie avec toast et modal fonctionnel
     const handleSearchPathology = async () => {
         if (!pathologyQuery.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer une recherche');
+            toaster.warning('Veuillez entrer une recherche de pathologie');
             return;
         }
 
         hapticPress();
         setLoadingAI(true);
         setAiMode('pathology');
+        setShowAIModal(true); // ✅ Ouvrir le modal avant la recherche
+        setPathologyResults([]); // Réinitialiser les résultats
 
         try {
             const response = await hospitalService.searchPathology(
@@ -172,22 +200,21 @@ const HopitalHomeScreen: React.FC = () => {
                 const results = response.results || response.data?.results || response.data || [];
                 if (Array.isArray(results) && results.length > 0) {
                     setPathologyResults(results);
-                    setShowAIModal(true);
+                    toaster.success(`${results.length} pathologie(s) trouvée(s)`);
                 } else {
-                    Alert.alert(
-                        'Aucun résultat',
-                        'Aucune pathologie trouvée pour votre recherche. Essayez avec d\'autres symptômes.',
-                        [{ text: 'OK' }]
-                    );
+                    toaster.warning('Aucune pathologie trouvée. Essayez avec d\'autres symptômes.');
+                    setPathologyResults([]);
                 }
             } else {
-                const errorMsg = response.message || response.error || 'Impossible de rechercher la pathologie. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
-                Alert.alert('Erreur', errorMsg, [{ text: 'OK' }]);
+                const errorMsg = response.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.';
+                toaster.error(errorMsg);
+                setPathologyResults([]);
             }
         } catch (err: any) {
             console.error('[HopitalHomeScreen] Erreur recherche pathologie:', err);
             const errorMsg = err.message || err.error || 'Erreur lors de la recherche. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
-            Alert.alert('Erreur', errorMsg, [{ text: 'OK' }]);
+            toaster.error(errorMsg);
+            setPathologyResults([]);
         } finally {
             setLoadingAI(false);
         }
@@ -229,12 +256,12 @@ const HopitalHomeScreen: React.FC = () => {
                 });
             }
 
-            if (!result.canceled && result.assets[0]) {
+                if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
                 const base64Image = `data:image/jpeg;base64,${asset.base64}`;
                 setSelectedImage(asset.uri);
                 setAiMode('image');
-                setShowAIModal(true);
+                setShowAIModal(true); // ✅ Ouvrir le modal immédiatement
                 setLoadingAI(true);
                 setImageAnalysis(null);
 
@@ -248,20 +275,18 @@ const HopitalHomeScreen: React.FC = () => {
                     // Gérer différents formats de réponse
                     const analysis = analysisResponse.data.analysis || analysisResponse.data;
                     setImageAnalysis(analysis);
+                    toaster.success('Analyse d\'image terminée');
                 } else {
                     const errorMsg = analysisResponse.error || analysisResponse.data?.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
-                    Alert.alert(
-                        'Erreur',
-                        errorMsg,
-                        [
-                            { text: 'OK', onPress: () => setShowAIModal(false) }
-                        ]
-                    );
+                    toaster.error(errorMsg);
+                    setImageAnalysis(null);
                 }
             }
         } catch (err: any) {
             console.error('[HopitalHomeScreen] Erreur sélection image:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la sélection de l\'image');
+            toaster.error(err.message || 'Erreur lors de la sélection de l\'image');
+            setLoadingAI(false);
+            setImageAnalysis(null);
         } finally {
             setLoadingAI(false);
         }
@@ -335,6 +360,7 @@ const HopitalHomeScreen: React.FC = () => {
                                     setAutocompleteQuery(text);
                                     setSearchQuery(text);
                                 }}
+                                onSubmitEditing={handleSearch}
                                 onFocus={() => {
                                     if (autocompleteQuery.length >= 2) {
                                         setShowAutocomplete(true);
@@ -354,6 +380,15 @@ const HopitalHomeScreen: React.FC = () => {
                                     <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
                                 </TouchableOpacity>
                             )}
+                            {/* ✅ NOUVEAU: Bouton de recherche */}
+                            <TouchableOpacity
+                                style={[styles.searchButton, (!searchQuery.trim() && !autocompleteQuery.trim()) && styles.searchButtonDisabled]}
+                                onPress={handleSearch}
+                                disabled={!searchQuery.trim() && !autocompleteQuery.trim()}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                            </TouchableOpacity>
                         </View>
 
                         {/* Autocomplete dropdown */}
@@ -879,6 +914,19 @@ const styles = StyleSheet.create({
     },
     clearButton: {
         padding: 4,
+    },
+    searchButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#059669',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 8,
+    },
+    searchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        opacity: 0.5,
     },
     autocompleteContainer: {
         position: 'absolute',

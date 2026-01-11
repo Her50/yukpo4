@@ -28,13 +28,15 @@ import { hapticPress } from '../../utils/hapticFeedback';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { useToaster } from '../../components/ToasterProvider';
 
 type ViewMode = 'search' | 'create';
 
 const TaxiHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
-    const { location } = useLocation();
+    const { location, getLocationAddress } = useLocation();
+    const toaster = useToaster();
     
     // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
     const [isDriverValidated, setIsDriverValidated] = useState(false);
@@ -102,6 +104,7 @@ const TaxiHomeScreen: React.FC = () => {
     const [totalResults, setTotalResults] = useState(0);
     const [availableOnly, setAvailableOnly] = useState(true);
     const [hasSearched, setHasSearched] = useState(false); // ✅ NOUVEAU: Indique si une recherche a été effectuée
+    const [initializingDepart, setInitializingDepart] = useState(true); // ✅ NOUVEAU: Indique si on initialise le départ avec GPS
 
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
     const detectedCurrency = useCurrencyDetection(
@@ -122,8 +125,56 @@ const TaxiHomeScreen: React.FC = () => {
         wifi: false,
     });
 
-    // ✅ MODIFIÉ: Ne plus charger automatiquement à l'ouverture - l'utilisateur doit choisir départ/destination d'abord
-    // useEffect supprimé - chargement uniquement via bouton de recherche
+    // ✅ NOUVEAU: Initialiser le départ avec la position GPS actuelle
+    useEffect(() => {
+        const initializeDepartFromGPS = async () => {
+            if (location?.coords && !depart && initializingDepart) {
+                try {
+                    setInitializingDepart(true);
+                    // Obtenir l'adresse depuis les coordonnées GPS
+                    const address = await getLocationAddress(location);
+                    
+                    if (address) {
+                        // Créer un LocationObject à partir de l'adresse et des coordonnées
+                        const locationObject: LocationObject = {
+                            raw: address,
+                            place_name: address,
+                            components: {
+                                ville: address.split(',')[0] || address,
+                            },
+                            geometry: {
+                                coordinates: [location.coords.longitude, location.coords.latitude],
+                                type: 'Point',
+                            },
+                        };
+                        setDepart(locationObject);
+                    } else {
+                        // Si pas d'adresse, créer un objet avec juste les coordonnées
+                        const locationObject: LocationObject = {
+                            raw: `Position actuelle (${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)})`,
+                            place_name: 'Ma position actuelle',
+                            components: {},
+                            geometry: {
+                                coordinates: [location.coords.longitude, location.coords.latitude],
+                                type: 'Point',
+                            },
+                        };
+                        setDepart(locationObject);
+                    }
+                } catch (err) {
+                    console.warn('[TaxiHomeScreen] Erreur initialisation départ GPS:', err);
+                    // En cas d'erreur, laisser le champ vide pour que l'utilisateur puisse le remplir
+                } finally {
+                    setInitializingDepart(false);
+                }
+            } else if (!location?.coords && initializingDepart) {
+                // Pas de GPS disponible, laisser vide
+                setInitializingDepart(false);
+            }
+        };
+
+        initializeDepartFromGPS();
+    }, [location, depart, initializingDepart, getLocationAddress]);
 
     const loadNearbyTaxis = useCallback(async () => {
         try {
@@ -168,33 +219,39 @@ const TaxiHomeScreen: React.FC = () => {
         }
     }, [location, availableOnly]);
 
-    // ✅ NOUVEAU: Vérifier si le bouton de recherche doit être activé
+    // ✅ MODIFIÉ: Vérifier si le bouton de recherche doit être activé (départ peut être GPS, destination obligatoire)
     const canSearch = () => {
-        const departStr = typeof depart === 'string' 
-            ? depart.trim()
-            : (depart as LocationObject)?.components?.ville || (depart as LocationObject)?.place_name || '';
+        // Le départ est valide s'il existe (peut être GPS ou lieu sélectionné)
+        const departValid = depart && (
+            typeof depart === 'string' ? depart.trim() !== '' :
+            (depart as LocationObject)?.place_name || 
+            (depart as LocationObject)?.geometry?.coordinates?.length === 2
+        );
         
+        // La destination est obligatoire et doit être un lieu précis
         const destinationStr = typeof destination === 'string'
             ? destination.trim()
-            : (destination as LocationObject)?.components?.ville || (destination as LocationObject)?.place_name || '';
+            : (destination as LocationObject)?.place_name || '';
 
-        return !!departStr && !!destinationStr;
+        return !!departValid && !!destinationStr;
     };
 
     const handleSearch = async () => {
         hapticPress();
         
-        // ✅ VALIDATION: Vérifier que départ et destination sont remplis
+        // ✅ VALIDATION: Vérifier que départ (GPS ou lieu) et destination (lieu précis) sont remplis
+        const departLocation = typeof depart === 'object' ? depart as LocationObject : null;
         const departStr = typeof depart === 'string' 
             ? depart.trim()
-            : (depart as LocationObject)?.components?.ville || (depart as LocationObject)?.place_name || '';
+            : departLocation?.place_name || '';
         
+        const destinationLocation = typeof destination === 'object' ? destination as LocationObject : null;
         const destinationStr = typeof destination === 'string'
             ? destination.trim()
-            : (destination as LocationObject)?.components?.ville || (destination as LocationObject)?.place_name || '';
+            : destinationLocation?.place_name || '';
 
         if (!departStr || !destinationStr) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une ville de départ et une ville de destination');
+            Alert.alert('Erreur', 'Veuillez sélectionner un point de départ et une destination précise');
             return;
         }
 
@@ -207,8 +264,13 @@ const TaxiHomeScreen: React.FC = () => {
                 page: 1,
             };
 
-            // ✅ AMÉLIORÉ: Utiliser départ et destination séparément
-            if (typeof depart === 'object') {
+            // ✅ AMÉLIORÉ: Utiliser les coordonnées GPS du départ si disponibles, sinon utiliser le texte
+            if (departLocation?.geometry?.coordinates) {
+                // Utiliser les coordonnées GPS du départ
+                filters.lat = departLocation.geometry.coordinates[1]; // latitude
+                filters.lng = departLocation.geometry.coordinates[0]; // longitude
+                filters.radius_km = 20;
+            } else if (typeof depart === 'object') {
                 const location = depart as LocationObject;
                 if (location.components?.ville) filters.ville = location.components.ville;
                 if (location.components?.quartier) filters.quartier = location.components.quartier;
@@ -218,7 +280,8 @@ const TaxiHomeScreen: React.FC = () => {
                 if (parts.length > 1) filters.quartier = parts[1];
             }
 
-            if (location?.coords) {
+            // Fallback: utiliser la position GPS actuelle si pas de coordonnées dans le départ
+            if (!filters.lat && !filters.lng && location?.coords) {
                 filters.lat = location.coords.latitude;
                 filters.lng = location.coords.longitude;
                 filters.radius_km = 20;
@@ -347,6 +410,53 @@ const TaxiHomeScreen: React.FC = () => {
                     colors={viewMode === 'search' ? ['#06B6D4', '#22D3EE'] : ['#10B981', '#34D399']}
                     style={styles.headerGradient}
                 >
+                    {/* ✅ MODIFIÉ: Barre d'actions en haut avec boutons isolés gauche/droite */}
+                    <View style={styles.headerActionsBar}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                hapticPress();
+                                (navigation as any).navigate('PartnerRegister', {
+                                    partner_type: 'chauffeur',
+                                });
+                            }}
+                            style={styles.registerDriverButtonLeft}
+                        >
+                            <SafeIcon name="user-plus" size={18} color="#FFFFFF" type="lucide" />
+                                        <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
+                                            Devenir chauffeur
+                                        </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => {
+                                hapticPress();
+                                if (!isDriverValidated) {
+                                    toaster.warning('Vous devez d\'abord vous enregistrer comme chauffeur avant de pouvoir publier un service taxi.');
+                                    return;
+                                }
+                                (navigation as any).navigate('TaxiForm', {
+                                    mode: 'create',
+                                });
+                            }}
+                            style={[
+                                styles.publishServiceButtonRight,
+                                !isDriverValidated && styles.publishServiceButtonRightDisabled
+                            ]}
+                            disabled={checkingDriverStatus}
+                        >
+                            <SafeIcon 
+                                name="plus" 
+                                size={18} 
+                                color={isDriverValidated ? "#FFFFFF" : "#9CA3AF"} 
+                                type="lucide" 
+                            />
+                            <Text style={[
+                                styles.publishServiceTextRight,
+                                !isDriverValidated && styles.publishServiceTextRightDisabled
+                            ]} numberOfLines={1} adjustsFontSizeToFit>
+                                Publier un service
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                     <View style={styles.headerTop}>
                         <TouchableOpacity
                             onPress={() => {
@@ -367,64 +477,15 @@ const TaxiHomeScreen: React.FC = () => {
                                 </Text>
                             )}
                         </View>
-                        {/* ✅ AMÉLIORÉ: Bouton conditionnel selon statut chauffeur */}
-                        {viewMode === 'search' && (
-                            <>
-                                {!isDriverValidated ? (
-                                    // Bouton d'enregistrement chauffeur si non validé
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            hapticPress();
-                                            (navigation as any).navigate('PartnerRegister', {
-                                                partner_type: 'chauffeur',
-                                            });
-                                        }}
-                                        style={styles.registerDriverButton}
-                                    >
-                                        <SafeIcon name="user-plus" size={18} color="#FFFFFF" type="lucide" />
-                                        <Text style={styles.registerDriverText} numberOfLines={1}>
-                                            Devenir chauffeur
-                                        </Text>
-                                    </TouchableOpacity>
-                                ) : (
-                                    // Bouton + pour publier un service si chauffeur validé
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            hapticPress();
-                                            (navigation as any).navigate('TaxiForm', {
-                                                mode: 'create',
-                                            });
-                                        }}
-                                        style={styles.createButton}
-                                    >
-                                        <SafeIcon name="plus" size={22} color="#FFFFFF" type="lucide" />
-                                    </TouchableOpacity>
-                                )}
-                            </>
-                        )}
-                        <TouchableOpacity
-                            onPress={() => {
-                                hapticPress();
-                                setViewMode(viewMode === 'search' ? 'create' : 'search');
-                            }}
-                            style={styles.modeToggle}
-                        >
-                            <SafeIcon 
-                                name={viewMode === 'search' ? 'search' : 'search'} 
-                                size={22} 
-                                color="#FFFFFF" 
-                                type="lucide" 
-                            />
-                        </TouchableOpacity>
                     </View>
 
-                    {/* ✅ REFONDU: Barre de recherche avec départ/destination améliorée (mode recherche) */}
+                    {/* ✅ MODIFIÉ: Barre de recherche avec départ/destination empilés verticalement pour plus d'espace */}
                     {viewMode === 'search' && (
                         <View style={styles.searchContainer}>
-                            {/* Champs départ et destination avec meilleur formatage */}
+                            {/* Champs départ et destination empilés verticalement */}
                             <View style={styles.routeContainer}>
-                                <View style={styles.routeRow}>
-                                    {/* Départ */}
+                                <View style={styles.routeColumn}>
+                                    {/* Départ - Initialisé avec position GPS, modifiable */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
                                             <SafeIcon name="map-pin" size={12} color="#FFFFFF" type="lucide" /> Départ
@@ -435,34 +496,63 @@ const TaxiHomeScreen: React.FC = () => {
                                             onSelect={(location: LocationObject) => {
                                                 hapticPress();
                                                 setDepart(location);
+                                                setInitializingDepart(false); // ✅ Marquer qu'on a modifié manuellement
                                                 // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
                                             }}
-                                            placeholder="Ville de départ"
-                                            scope="city"
+                                            placeholder={initializingDepart ? "Chargement position..." : "Modifier le départ"}
+                                            scope="all"
                                             enrichWithBackend={true}
                                         />
+                                        {depart && !initializingDepart && (
+                                            <TouchableOpacity
+                                                style={styles.useCurrentLocationButton}
+                                                onPress={async () => {
+                                                    hapticPress();
+                                                    if (location?.coords) {
+                                                        try {
+                                                            const address = await getLocationAddress(location);
+                                                            
+                                                            if (address) {
+                                                                const locationObject: LocationObject = {
+                                                                    raw: address,
+                                                                    place_name: address,
+                                                                    components: {
+                                                                        ville: address.split(',')[0] || address,
+                                                                    },
+                                                                    geometry: {
+                                                                        coordinates: [location.coords.longitude, location.coords.latitude],
+                                                                        type: 'Point',
+                                                                    },
+                                                                };
+                                                                setDepart(locationObject);
+                                                            } else {
+                                                                const locationObject: LocationObject = {
+                                                                    raw: `Position actuelle (${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)})`,
+                                                                    place_name: 'Ma position actuelle',
+                                                                    components: {},
+                                                                    geometry: {
+                                                                        coordinates: [location.coords.longitude, location.coords.latitude],
+                                                                        type: 'Point',
+                                                                    },
+                                                                };
+                                                                setDepart(locationObject);
+                                                            }
+                                                        } catch (err) {
+                                                            console.warn('[TaxiHomeScreen] Erreur récupération position:', err);
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                <SafeIcon name="crosshair" size={14} color="#06B6D4" type="lucide" />
+                                                <Text style={styles.useCurrentLocationText}>Utiliser ma position</Text>
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
                                     
-                                    {/* Bouton d'échange */}
-                                    <View style={styles.swapButtonContainer}>
-                                        <TouchableOpacity
-                                            style={styles.swapButton}
-                                            onPress={() => {
-                                                hapticPress();
-                                                const temp = depart;
-                                                setDepart(destination);
-                                                setDestination(temp);
-                                                // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
-                                            }}
-                                        >
-                                            <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
-                                        </TouchableOpacity>
-                                    </View>
-                                    
-                                    {/* Destination */}
+                                    {/* Destination - Obligatoire, lieu précis via autocomplete Google */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
-                                            <SafeIcon name="navigation" size={12} color="#FFFFFF" type="lucide" /> Destination
+                                            <SafeIcon name="navigation" size={12} color="#FFFFFF" type="lucide" /> Destination *
                                         </Text>
                                         <LocationSelector
                                             label=""
@@ -472,8 +562,8 @@ const TaxiHomeScreen: React.FC = () => {
                                                 setDestination(location);
                                                 // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
                                             }}
-                                            placeholder="Ville d'arrivée"
-                                            scope="city"
+                                            placeholder="Choisir une destination précise"
+                                            scope="all"
                                             enrichWithBackend={true}
                                         />
                                     </View>
@@ -501,7 +591,7 @@ const TaxiHomeScreen: React.FC = () => {
                                 </TouchableOpacity>
                             </View>
 
-                            {/* ✅ NOUVEAU: Bouton de recherche visible uniquement quand départ et destination sont remplis */}
+                            {/* ✅ MODIFIÉ: Bouton de recherche toujours visible et activé uniquement quand départ et destination sont remplis */}
                             <TouchableOpacity
                                 style={[
                                     styles.searchButton,
@@ -515,8 +605,13 @@ const TaxiHomeScreen: React.FC = () => {
                                     <ActivityIndicator size="small" color="#FFFFFF" />
                                 ) : (
                                     <>
-                                        <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
-                                        <Text style={styles.searchButtonText}>Rechercher des taxis</Text>
+                                        <SafeIcon name="search" size={18} color={canSearch() ? "#FFFFFF" : "#9CA3AF"} type="lucide" />
+                                        <Text 
+                                            style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
+                                            numberOfLines={1}
+                                        >
+                                            Rechercher
+                                        </Text>
                                     </>
                                 )}
                             </TouchableOpacity>
@@ -532,8 +627,8 @@ const TaxiHomeScreen: React.FC = () => {
                     <View style={styles.centerContainer}>
                         <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
                         <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
-                        <Text style={styles.emptySubtext}>
-                            Choisissez une ville de départ et une ville de destination, puis cliquez sur "Rechercher des taxis"
+                        <Text style={styles.emptySubtext} numberOfLines={3}>
+                            Choisissez un point de départ et une destination précise, puis cliquez sur "Rechercher"
                         </Text>
                     </View>
                 ) : loading && taxis.length === 0 ? (
@@ -604,7 +699,7 @@ const TaxiHomeScreen: React.FC = () => {
                             <View style={styles.emptyContainer}>
                                 <SafeIcon name="taxi" size={64} color="#9CA3AF" />
                                 <Text style={styles.emptyText}>Aucun taxi trouvé</Text>
-                                <Text style={styles.emptySubtext}>
+                                <Text style={styles.emptySubtext} numberOfLines={2}>
                                     Essayez de modifier vos critères de recherche
                                 </Text>
                             </View>
@@ -926,6 +1021,13 @@ const styles = StyleSheet.create({
         paddingBottom: 16,
         paddingHorizontal: 16,
     },
+    headerActionsBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 12,
+    },
     headerTop: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -937,31 +1039,45 @@ const styles = StyleSheet.create({
     headerTitleContainer: {
         flex: 1,
     },
-    createButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
-    },
-    registerDriverButton: {
+    registerDriverButtonLeft: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        borderRadius: 20,
+        borderRadius: 12,
         backgroundColor: 'rgba(255, 255, 255, 0.25)',
-        marginRight: 8,
-        maxWidth: 140,
     },
-    registerDriverText: {
-        fontSize: 12,
+    registerDriverTextLeft: {
+        fontSize: 13,
         fontWeight: '600',
         color: '#FFFFFF',
+        flexShrink: 1,
+    },
+    publishServiceButtonRight: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    publishServiceButtonRightDisabled: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    publishServiceTextRight: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        flexShrink: 1,
+    },
+    publishServiceTextRightDisabled: {
+        color: '#9CA3AF',
     },
     headerTitle: {
         fontSize: 24,
@@ -973,28 +1089,20 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.9)',
         marginTop: 2,
     },
-    modeToggle: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     searchContainer: {
         marginTop: 8,
     },
-    // ✅ NOUVEAU: Styles pour champs route compacts
+    // ✅ MODIFIÉ: Styles pour champs route empilés verticalement
     routeContainer: {
         marginBottom: 12,
     },
-    routeRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        gap: 8,
+    routeColumn: {
+        flexDirection: 'column',
+        gap: 12,
     },
     routeInputContainer: {
         flex: 1,
+        width: '100%',
     },
     routeLabel: {
         fontSize: 11,
@@ -1005,17 +1113,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 4,
     },
-    // ✅ Styles supprimés pour locationInputCompact - LocationSelector gère maintenant son propre style
-    swapButtonContainer: {
-        paddingBottom: 4,
-    },
-    swapButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
-        justifyContent: 'center',
+    useCurrentLocationButton: {
+        flexDirection: 'row',
         alignItems: 'center',
+        gap: 6,
+        marginTop: 8,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+    },
+    useCurrentLocationText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#06B6D4',
+        flexShrink: 1,
     },
     searchBar: {
         flexDirection: 'row',
@@ -1091,6 +1204,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: '#06B6D4',
+        flexShrink: 1,
+    },
+    searchButtonTextDisabled: {
+        color: '#9CA3AF',
     },
     centerContainer: {
         flex: 1,
@@ -1143,6 +1260,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#9CA3AF',
         textAlign: 'center',
+        paddingHorizontal: 16,
     },
     // Taxi Card styles
     taxiCard: {

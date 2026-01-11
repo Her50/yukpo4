@@ -17,6 +17,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { FamilyProfile, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLocationContext } from '../../contexts/LocationContext';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ type MenuPeriod = '1_week' | '2_weeks' | '1_month';
 
 const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const navigation = useNavigation();
+    const { location, getCurrentLocation } = useLocationContext();
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [profile, setProfile] = useState<FamilyProfile | null>(null);
@@ -86,12 +88,26 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
         try {
             setLoading(true);
             
+            // ✅ NOUVEAU: Récupérer la localisation actuelle dynamiquement
+            let currentGps: string | undefined;
+            try {
+                const currentLocation = location || await getCurrentLocation();
+                if (currentLocation?.coords) {
+                    // Format: "lat,lng" pour le backend
+                    currentGps = `${currentLocation.coords.latitude},${currentLocation.coords.longitude}`;
+                    console.log('[MenuPlanningHub] Localisation actuelle envoyée:', currentGps);
+                }
+            } catch (error) {
+                console.warn('[MenuPlanningHub] Impossible de récupérer la localisation actuelle, utilisation du GPS stocké:', error);
+                // Continue sans GPS actuel, le backend utilisera le GPS stocké
+            }
+            
             // Calculer la date de début selon la période choisie
             const today = new Date();
             const weekStart = new Date(today);
             weekStart.setDate(today.getDate() - today.getDay() + 1); // Lundi de cette semaine
             
-            // Générer le menu avec le profil utilisateur réel
+            // Générer le menu avec le profil utilisateur réel et la localisation actuelle
             const response = await menuPlanningService.generateWeeklyMenu(
                 weekStart.toISOString().split('T')[0],
                 {
@@ -102,7 +118,8 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     preferences: profile.preferences || [],
                     budget_monthly: profile.budget_monthly,
                     dietary_restrictions: profile.dietary_restrictions || [],
-                }
+                },
+                currentGps // ✅ Envoi de la localisation actuelle pour contextualisation dynamique
             );
 
             if (response.success && response.data) {
@@ -188,11 +205,21 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     {hasProfile && profile ? (
                         <View style={styles.profileInfo}>
                             <Text style={styles.profileText}>
-                                👥 {profile.total_members} personne{profile.total_members > 1 ? 's' : ''}
+                                👥 {profile.total_members || 1} personne{(profile.total_members || 1) > 1 ? 's' : ''}
                             </Text>
+                            {profile.children_count !== undefined && profile.children_count > 0 && (
+                                <Text style={styles.profileText}>
+                                    👶 {profile.children_count} enfant{profile.children_count > 1 ? 's' : ''}
+                                </Text>
+                            )}
+                            {profile.adults_count !== undefined && profile.adults_count > 0 && (
+                                <Text style={styles.profileText}>
+                                    👤 {profile.adults_count} adulte{profile.adults_count > 1 ? 's' : ''}
+                                </Text>
+                            )}
                             {profile.allergies && Array.isArray(profile.allergies) && profile.allergies.length > 0 && (
                                 <Text style={styles.profileText}>
-                                    ⚠️ Allergies : {profile.allergies.join(', ')}
+                                    ⚠️ Allergies : {profile.allergies.filter(a => a && a !== 'false' && a !== false).join(', ')}
                                 </Text>
                             )}
                             {profile.budget_monthly && typeof profile.budget_monthly === 'number' && profile.budget_monthly > 0 && (
@@ -202,20 +229,20 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             )}
                             {profile.preferences && Array.isArray(profile.preferences) && profile.preferences.length > 0 && (
                                 <Text style={styles.profileText}>
-                                    🍽️ Préférences : {profile.preferences.join(', ')}
+                                    🍽️ Préférences : {profile.preferences.filter(p => p && p !== 'false' && p !== false).join(', ')}
                                 </Text>
                             )}
                             {profile.dietary_restrictions && Array.isArray(profile.dietary_restrictions) && profile.dietary_restrictions.length > 0 && (
                                 <Text style={styles.profileText}>
-                                    🥗 Restrictions : {profile.dietary_restrictions.join(', ')}
+                                    🥗 Restrictions : {profile.dietary_restrictions.filter(r => r && r !== 'false' && r !== false).join(', ')}
                                 </Text>
                             )}
                             {profile.cuisine_styles && Array.isArray(profile.cuisine_styles) && profile.cuisine_styles.length > 0 && (
                                 <Text style={styles.profileText}>
-                                    🍳 Styles de cuisine : {profile.cuisine_styles.join(', ')}
+                                    🍳 Styles de cuisine : {profile.cuisine_styles.filter(c => c && c !== 'false' && c !== false).join(', ')}
                                 </Text>
                             )}
-                            {profile.cooking_level && typeof profile.cooking_level === 'string' && (
+                            {profile.cooking_level && typeof profile.cooking_level === 'string' && profile.cooking_level !== 'false' && (
                                 <Text style={styles.profileText}>
                                     👨‍🍳 Niveau : {profile.cooking_level}
                                 </Text>

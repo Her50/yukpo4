@@ -1,4 +1,4 @@
-// ✅ Écran Calendrier Semaine - Planification Menus
+// ✅ Écran Calendrier Semaine - Planification Menus (VERSION TABLEAU)
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
@@ -18,6 +18,7 @@ import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNati
 import SafeIcon from '../../components/SafeIcon';
 import { DailyMeal, GeneratedRecipe, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
+import { useShoppingContext } from '../../contexts/ShoppingContext';
 
 const { width } = Dimensions.get('window');
 
@@ -30,13 +31,16 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const menu: WeeklyMenu | undefined = route.params?.menu;
+    const { currency } = useShoppingContext();
 
-    const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay() === 0 ? 7 : new Date().getDay());
+    const [selectedDay, setSelectedDay] = useState<number | null>(null);
+    const [selectedMealType, setSelectedMealType] = useState<string | null>(null);
     const [showRecipeModal, setShowRecipeModal] = useState(false);
     const [recipeRequest, setRecipeRequest] = useState('');
     const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
     const [loadingRecipe, setLoadingRecipe] = useState(false);
     const [showRecipeDetails, setShowRecipeDetails] = useState(false);
+    const [viewMode, setViewMode] = useState<'table' | 'list'>('table'); // ✅ NOUVEAU: Mode d'affichage
 
     if (!menu) {
         return (
@@ -49,6 +53,70 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
     const getDayMeal = (day: number): DailyMeal | undefined => {
         return menu.meals.find((m) => m.day === day);
+    };
+
+    // ✅ NOUVEAU: Formater le prix selon la devise
+    const formatPrice = (price?: number): string => {
+        if (!price) return 'N/A';
+        const currencySymbol = currency === 'XAF' || currency === 'FCFA' ? 'FCFA' : currency;
+        return `${price.toLocaleString('fr-FR')} ${currencySymbol}`;
+    };
+
+    // ✅ NOUVEAU: Calculer le coût total du menu
+    const calculateTotalCost = (): number => {
+        if (!menu.meals) return 0;
+        return menu.meals.reduce((total, meal) => {
+            let dayTotal = 0;
+            if (meal.petit_dejeuner?.estimated_cost) dayTotal += meal.petit_dejeuner.estimated_cost;
+            if (meal.dejeuner?.estimated_cost) dayTotal += meal.dejeuner.estimated_cost;
+            if (meal.diner?.estimated_cost) dayTotal += meal.diner.estimated_cost;
+            if (meal.gouter?.estimated_cost) dayTotal += meal.gouter.estimated_cost;
+            return total + dayTotal;
+        }, 0);
+    };
+
+    // ✅ NOUVEAU: Rendre une cellule de repas dans le tableau
+    const renderMealCell = (meal: any, mealType: string, day: number) => {
+        if (!meal) {
+            return (
+                <View style={styles.tableCell}>
+                    <Text style={styles.tableCellEmpty}>-</Text>
+                </View>
+            );
+        }
+
+        return (
+            <TouchableOpacity
+                style={styles.tableCell}
+                onPress={() => {
+                    setSelectedDay(day);
+                    setSelectedMealType(mealType);
+                    handleRequestRecipeFromMenu(meal.recipe_name);
+                }}
+                activeOpacity={0.7}
+            >
+                <Text style={styles.tableCellMealName} numberOfLines={2}>
+                    {meal.recipe_name}
+                </Text>
+                {meal.estimated_cost && (
+                    <Text style={styles.tableCellPrice}>
+                        {formatPrice(meal.estimated_cost)}
+                    </Text>
+                )}
+                {meal.servings && (
+                    <Text style={styles.tableCellServings}>
+                        👥 {meal.servings} portion{meal.servings > 1 ? 's' : ''}
+                    </Text>
+                )}
+                <TouchableOpacity
+                    style={styles.tableCellRecipeButton}
+                    onPress={() => handleRequestRecipeFromMenu(meal.recipe_name)}
+                >
+                    <SafeIcon name="ChefHat" size={12} color={modernColors.primary} type="lucide" />
+                    <Text style={styles.tableCellRecipeText}>Recette</Text>
+                </TouchableOpacity>
+            </TouchableOpacity>
+        );
     };
 
     // ✅ NOUVEAU: Générer une recette via IA
@@ -84,6 +152,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         setShowRecipeModal(true);
     };
 
+    // ✅ ANCIEN CODE: Conservé pour compatibilité mais non utilisé dans le nouveau design
     const renderMealItem = (meal: any, mealType: string, icon: string) => {
         if (!meal) return null;
 
@@ -92,7 +161,6 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 key={mealType}
                 style={styles.mealCard}
                 onPress={() => {
-                    // ✅ NOUVEAU: Demander la recette via IA
                     handleRequestRecipeFromMenu(meal.recipe_name);
                 }}
             >
@@ -110,7 +178,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                         <Text style={styles.mealInfoText}>⏱ {meal.prep_time_minutes} min</Text>
                     )}
                     {meal.estimated_cost && (
-                        <Text style={styles.mealInfoText}>💰 {meal.estimated_cost.toLocaleString()} FCFA</Text>
+                        <Text style={styles.mealInfoText}>💰 {formatPrice(meal.estimated_cost)}</Text>
                     )}
                     <Text style={styles.mealInfoText}>👥 {meal.servings} portions</Text>
                 </View>
@@ -126,8 +194,6 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             </TouchableOpacity>
         );
     };
-
-    const selectedMeal = getDayMeal(selectedDay);
 
     return (
         <View style={styles.container}>
@@ -158,97 +224,212 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 </View>
             </LinearGradient>
 
-            {/* Sélecteur de jours */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.daysSelector}
-                contentContainerStyle={styles.daysSelectorContent}
-            >
-                {DAYS.map((day, index) => {
-                    const dayNumber = index + 1;
-                    const isSelected = selectedDay === dayNumber;
-                    const hasMeal = getDayMeal(dayNumber);
+            {/* ✅ NOUVEAU: En-tête avec coût total et sélecteur de vue */}
+            <View style={styles.headerActions}>
+                <View style={styles.totalCostContainer}>
+                    <Text style={styles.totalCostLabel}>Coût total estimé :</Text>
+                    <Text style={styles.totalCostValue}>
+                        {formatPrice(calculateTotalCost())}
+                    </Text>
+                </View>
+                <View style={styles.viewModeSelector}>
+                    <TouchableOpacity
+                        style={[styles.viewModeButton, viewMode === 'table' && styles.viewModeButtonActive]}
+                        onPress={() => setViewMode('table')}
+                    >
+                        <SafeIcon name="Table" size={18} color={viewMode === 'table' ? '#fff' : '#6B7280'} type="lucide" />
+                        <Text style={[styles.viewModeText, viewMode === 'table' && styles.viewModeTextActive]}>
+                            Tableau
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
+                        onPress={() => setViewMode('list')}
+                    >
+                        <SafeIcon name="List" size={18} color={viewMode === 'list' ? '#fff' : '#6B7280'} type="lucide" />
+                        <Text style={[styles.viewModeText, viewMode === 'list' && styles.viewModeTextActive]}>
+                            Liste
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
 
-                    return (
-                        <TouchableOpacity
-                            key={dayNumber}
-                            style={[
-                                styles.dayButton,
-                                isSelected && styles.dayButtonSelected,
-                            ]}
-                            onPress={() => setSelectedDay(dayNumber)}
-                        >
-                            <Text
-                                style={[
-                                    styles.dayButtonText,
-                                    isSelected && styles.dayButtonTextSelected,
-                                ]}
-                            >
-                                {DAYS_SHORT[index]}
-                            </Text>
-                            {hasMeal && (
-                                <View style={styles.dayIndicator} />
-                            )}
-                        </TouchableOpacity>
-                    );
-                })}
-            </ScrollView>
+            {/* ✅ NOUVEAU: Affichage en tableau */}
+            {viewMode === 'table' ? (
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={true}
+                    style={styles.tableContainer}
+                    contentContainerStyle={styles.tableContent}
+                >
+                    <View style={styles.table}>
+                        {/* En-tête du tableau */}
+                        <View style={styles.tableHeader}>
+                            <View style={[styles.tableHeaderCell, styles.tableHeaderCellDay]}>
+                                <Text style={styles.tableHeaderText}>Jour</Text>
+                            </View>
+                            <View style={styles.tableHeaderCell}>
+                                <SafeIcon name="Sunrise" size={16} color="#F59E0B" type="lucide" />
+                                <Text style={styles.tableHeaderText}>Petit-déj</Text>
+                            </View>
+                            <View style={styles.tableHeaderCell}>
+                                <SafeIcon name="Sun" size={16} color="#F59E0B" type="lucide" />
+                                <Text style={styles.tableHeaderText}>Déjeuner</Text>
+                            </View>
+                            <View style={styles.tableHeaderCell}>
+                                <SafeIcon name="Moon" size={16} color="#3B82F6" type="lucide" />
+                                <Text style={styles.tableHeaderText}>Dîner</Text>
+                            </View>
+                        </View>
 
-            {/* Repas du jour sélectionné */}
-            <ScrollView
-                style={styles.content}
-                contentContainerStyle={styles.contentContainer}
-                showsVerticalScrollIndicator={false}
-            >
-                {selectedMeal ? (
-                    <View style={styles.mealsContainer}>
-                        <Text style={styles.dayTitle}>{selectedMeal.day_name}</Text>
-
-                        {renderMealItem(selectedMeal.petit_dejeuner, 'petit_dejeuner', 'Sunrise')}
-                        {renderMealItem(selectedMeal.dejeuner, 'dejeuner', 'Sun')}
-                        {renderMealItem(selectedMeal.diner, 'diner', 'Moon')}
-                        {renderMealItem(selectedMeal.gouter, 'gouter', 'Coffee')}
-
-                        {/* Statistiques du jour */}
-                        <NativeCard style={styles.statsCard}>
-                            <Text style={styles.statsTitle}>Statistiques du jour</Text>
-                            <View style={styles.statsRow}>
-                                {selectedMeal.petit_dejeuner?.calories && (
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statLabel}>Calories</Text>
-                                        <Text style={styles.statValue}>
-                                            {selectedMeal.petit_dejeuner.calories}
-                                        </Text>
+                        {/* Lignes du tableau */}
+                        {DAYS.map((dayName, index) => {
+                            const dayNumber = index + 1;
+                            const dayMeal = getDayMeal(dayNumber);
+                            
+                            return (
+                                <View key={dayNumber} style={styles.tableRow}>
+                                    <View style={[styles.tableCell, styles.tableCellDay]}>
+                                        <Text style={styles.tableCellDayName}>{dayName}</Text>
+                                    </View>
+                                    {renderMealCell(dayMeal?.petit_dejeuner, 'petit_dejeuner', dayNumber)}
+                                    {renderMealCell(dayMeal?.dejeuner, 'dejeuner', dayNumber)}
+                                    {renderMealCell(dayMeal?.diner, 'diner', dayNumber)}
+                                </View>
+                            );
+                        })}
+                    </View>
+                </ScrollView>
+            ) : (
+                /* ✅ NOUVEAU: Affichage en liste */
+                <ScrollView
+                    style={styles.content}
+                    contentContainerStyle={styles.contentContainer}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {menu.meals.map((dayMeal) => (
+                        <NativeCard key={dayMeal.day} style={styles.listDayCard}>
+                            <View style={styles.listDayHeader}>
+                                <Text style={styles.listDayTitle}>{dayMeal.day_name}</Text>
+                                <Text style={styles.listDayCost}>
+                                    {formatPrice(
+                                        (dayMeal.petit_dejeuner?.estimated_cost || 0) +
+                                        (dayMeal.dejeuner?.estimated_cost || 0) +
+                                        (dayMeal.diner?.estimated_cost || 0)
+                                    )}
+                                </Text>
+                            </View>
+                            
+                            <View style={styles.listMealsContainer}>
+                                {dayMeal.petit_dejeuner && (
+                                    <View style={styles.listMealItem}>
+                                        <View style={styles.listMealLeft}>
+                                            <SafeIcon name="Sunrise" size={16} color="#F59E0B" type="lucide" />
+                                            <Text style={styles.listMealType}>Petit-déjeuner</Text>
+                                        </View>
+                                        <View style={styles.listMealRight}>
+                                            <Text style={styles.listMealName}>{dayMeal.petit_dejeuner.recipe_name}</Text>
+                                            <Text style={styles.listMealInfo}>
+                                                {formatPrice(dayMeal.petit_dejeuner.estimated_cost)} • 
+                                                👥 {dayMeal.petit_dejeuner.servings} portion{dayMeal.petit_dejeuner.servings > 1 ? 's' : ''}
+                                            </Text>
+                                            <TouchableOpacity
+                                                style={styles.listRecipeButton}
+                                                onPress={() => handleRequestRecipeFromMenu(dayMeal.petit_dejeuner!.recipe_name)}
+                                            >
+                                                <SafeIcon name="ChefHat" size={14} color={modernColors.primary} type="lucide" />
+                                                <Text style={styles.listRecipeButtonText}>Voir recette</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
+                                
+                                {dayMeal.dejeuner && (
+                                    <View style={styles.listMealItem}>
+                                        <View style={styles.listMealLeft}>
+                                            <SafeIcon name="Sun" size={16} color="#F59E0B" type="lucide" />
+                                            <Text style={styles.listMealType}>Déjeuner</Text>
+                                        </View>
+                                        <View style={styles.listMealRight}>
+                                            <Text style={styles.listMealName}>{dayMeal.dejeuner.recipe_name}</Text>
+                                            <Text style={styles.listMealInfo}>
+                                                {formatPrice(dayMeal.dejeuner.estimated_cost)} • 
+                                                👥 {dayMeal.dejeuner.servings} portion{dayMeal.dejeuner.servings > 1 ? 's' : ''}
+                                            </Text>
+                                            <TouchableOpacity
+                                                style={styles.listRecipeButton}
+                                                onPress={() => handleRequestRecipeFromMenu(dayMeal.dejeuner!.recipe_name)}
+                                            >
+                                                <SafeIcon name="ChefHat" size={14} color={modernColors.primary} type="lucide" />
+                                                <Text style={styles.listRecipeButtonText}>Voir recette</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
+                                
+                                {dayMeal.diner && (
+                                    <View style={styles.listMealItem}>
+                                        <View style={styles.listMealLeft}>
+                                            <SafeIcon name="Moon" size={16} color="#3B82F6" type="lucide" />
+                                            <Text style={styles.listMealType}>Dîner</Text>
+                                        </View>
+                                        <View style={styles.listMealRight}>
+                                            <Text style={styles.listMealName}>{dayMeal.diner.recipe_name}</Text>
+                                            <Text style={styles.listMealInfo}>
+                                                {formatPrice(dayMeal.diner.estimated_cost)} • 
+                                                👥 {dayMeal.diner.servings} portion{dayMeal.diner.servings > 1 ? 's' : ''}
+                                            </Text>
+                                            <TouchableOpacity
+                                                style={styles.listRecipeButton}
+                                                onPress={() => handleRequestRecipeFromMenu(dayMeal.diner!.recipe_name)}
+                                            >
+                                                <SafeIcon name="ChefHat" size={14} color={modernColors.primary} type="lucide" />
+                                                <Text style={styles.listRecipeButtonText}>Voir recette</Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 )}
                             </View>
                         </NativeCard>
-                    </View>
-                ) : (
-                    <View style={styles.emptyContainer}>
-                        <SafeIcon name="Calendar" size={48} color={modernColors.textSecondary} type="lucide" />
-                        <Text style={styles.emptyText}>
-                            Aucun repas planifié pour ce jour
-                        </Text>
-                    </View>
-                )}
+                    ))}
 
-                {/* Actions */}
-                <View style={styles.actionsContainer}>
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => {
-                            navigation.navigate('ShoppingList' as never, {
-                                weekStart: menu.week_start,
-                            } as never);
-                        }}
-                    >
-                        <SafeIcon name="ShoppingCart" size={20} color="#fff" type="lucide" />
-                        <Text style={styles.actionButtonText}>Liste de courses</Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
+                    {/* ✅ NOUVEAU: Résumé global */}
+                    <NativeCard style={styles.summaryCard}>
+                        <Text style={styles.summaryTitle}>Résumé du menu</Text>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Coût total estimé :</Text>
+                            <Text style={styles.summaryValue}>{formatPrice(calculateTotalCost())}</Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Période :</Text>
+                            <Text style={styles.summaryValue}>
+                                {new Date(menu.week_start).toLocaleDateString('fr-FR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                })} - {new Date(new Date(menu.week_start).getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                })}
+                            </Text>
+                        </View>
+                    </NativeCard>
+
+                    {/* Actions */}
+                    <View style={styles.actionsContainer}>
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => {
+                                navigation.navigate('ShoppingList' as never, {
+                                    weekStart: menu.week_start,
+                                } as never);
+                            }}
+                        >
+                            <SafeIcon name="ShoppingCart" size={20} color="#fff" type="lucide" />
+                            <Text style={styles.actionButtonText}>Liste de courses</Text>
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+            )}
 
             {/* ✅ NOUVEAU: Modal pour demander une recette */}
             <Modal
@@ -892,6 +1073,259 @@ const styles = StyleSheet.create({
     },
     costText: {
         fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    // ✅ NOUVEAU: Styles pour tableau
+    headerActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    totalCostContainer: {
+        flex: 1,
+    },
+    totalCostLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    totalCostValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    viewModeSelector: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    viewModeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    viewModeButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    viewModeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    viewModeTextActive: {
+        color: '#fff',
+    },
+    tableContainer: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    tableContent: {
+        padding: 16,
+    },
+    table: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        overflow: 'hidden',
+        backgroundColor: '#fff',
+    },
+    tableHeader: {
+        flexDirection: 'row',
+        backgroundColor: '#F9FAFB',
+        borderBottomWidth: 2,
+        borderBottomColor: '#E5E7EB',
+    },
+    tableHeaderCell: {
+        flex: 1,
+        minWidth: 140,
+        padding: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        borderRightWidth: 1,
+        borderRightColor: '#E5E7EB',
+    },
+    tableHeaderCellDay: {
+        minWidth: 100,
+        backgroundColor: '#F3F4F6',
+    },
+    tableHeaderText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#111827',
+        textTransform: 'uppercase',
+    },
+    tableRow: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    tableCell: {
+        flex: 1,
+        minWidth: 140,
+        padding: 12,
+        borderRightWidth: 1,
+        borderRightColor: '#E5E7EB',
+        backgroundColor: '#fff',
+    },
+    tableCellDay: {
+        minWidth: 100,
+        backgroundColor: '#F9FAFB',
+        justifyContent: 'center',
+    },
+    tableCellDayName: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    tableCellEmpty: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        textAlign: 'center',
+        fontStyle: 'italic',
+    },
+    tableCellMealName: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 6,
+    },
+    tableCellPrice: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: modernColors.primary,
+        marginBottom: 4,
+    },
+    tableCellServings: {
+        fontSize: 11,
+        color: '#6B7280',
+        marginBottom: 6,
+    },
+    tableCellRecipeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 6,
+        paddingHorizontal: 8,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 6,
+        alignSelf: 'flex-start',
+    },
+    tableCellRecipeText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    // ✅ NOUVEAU: Styles pour liste
+    listDayCard: {
+        padding: 16,
+        marginBottom: 16,
+    },
+    listDayHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    listDayTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    listDayCost: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    listMealsContainer: {
+        gap: 12,
+    },
+    listMealItem: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    listMealLeft: {
+        width: 100,
+        alignItems: 'flex-start',
+    },
+    listMealType: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+        marginTop: 4,
+    },
+    listMealRight: {
+        flex: 1,
+    },
+    listMealName: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    listMealInfo: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 8,
+    },
+    listRecipeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 6,
+        alignSelf: 'flex-start',
+    },
+    listRecipeButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    summaryCard: {
+        padding: 16,
+        marginTop: 8,
+        marginBottom: 16,
+        backgroundColor: '#F0FDF4',
+        borderWidth: 1,
+        borderColor: '#86EFAC',
+    },
+    summaryTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 12,
+    },
+    summaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    summaryLabel: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    summaryValue: {
+        fontSize: 16,
         fontWeight: '700',
         color: modernColors.primary,
     },

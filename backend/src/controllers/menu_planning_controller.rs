@@ -29,6 +29,9 @@ use std::sync::Arc;
 pub struct GenerateMenuRequest {
     pub week_start: Option<String>, // Date format YYYY-MM-DD
     pub profile_override: Option<FamilyProfile>,
+    /// ✅ NOUVEAU: GPS actuel de l'utilisateur (format: "lat,lng" ou "lng,lat")
+    /// Si fourni, sera utilisé à la place du GPS stocké en base
+    pub current_gps: Option<String>,
 }
 
 /// Réponse génération menu
@@ -71,7 +74,19 @@ pub async fn generate_weekly_menu(
     };
 
     // ✅ NOUVEAU: Récupérer contexte localité utilisateur (pays, ville)
-    let (user_country, user_city) = get_user_location_context(&state, user_id).await?;
+    // Priorité: GPS fourni dans la requête > GPS stocké en base
+    let (user_country, user_city) = if let Some(current_gps) = &req.current_gps {
+        // Utiliser le GPS fourni dynamiquement par l'application mobile
+        get_location_context_from_gps(&state, current_gps).await.unwrap_or((None, None))
+    } else {
+        // Utiliser le GPS stocké en base (fallback)
+        get_user_location_context(&state, user_id).await.unwrap_or((None, None))
+    };
+    
+    info!(
+        "[generate_weekly_menu] Contexte géographique: pays={:?}, ville={:?}",
+        user_country, user_city
+    );
 
     // ✅ NOUVEAU: Récupérer menus précédents pour variation
     let previous_menus = get_previous_menus(&state, user_id, 3).await?;
@@ -362,7 +377,7 @@ pub async fn update_family_profile(
     ))
 }
 
-/// ✅ NOUVEAU: Récupère le contexte de localité de l'utilisateur (pays, ville)
+/// ✅ NOUVEAU: Récupère le contexte de localité de l'utilisateur (pays, ville) depuis la base
 async fn get_user_location_context(
     state: &AppState,
     user_id: i32,
@@ -380,18 +395,47 @@ async fn get_user_location_context(
     })?;
 
     if let Some(gps_str) = user_gps {
-        // Parser coordonnées GPS (format: "lat,lng")
-        if let Some((lat_str, lng_str)) = gps_str.split_once(',') {
-            if let (Ok(lat), Ok(lng)) = (lat_str.trim().parse::<f64>(), lng_str.trim().parse::<f64>()) {
-                // Utiliser le service de géocodage inverse
-                let geocoding_service = GeocodingService::new();
-                match geocoding_service.reverse_geocode(lat, lng).await {
-                    Ok(result) => {
-                        return Ok((result.country, result.city));
-                    }
-                    Err(e) => {
-                        warn!("[get_user_location_context] Erreur géocodage inverse: {}", e);
-                    }
+        return get_location_context_from_gps(state, &gps_str).await;
+    }
+
+    Ok((None, None))
+}
+
+/// ✅ NOUVEAU: Récupère le contexte de localité (pays, ville) depuis une chaîne GPS
+/// Fonction utilitaire réutilisable pour parser GPS et faire géocodage inverse
+async fn get_location_context_from_gps(
+    state: &AppState,
+    gps_str: &str,
+) -> AppResult<(Option<String>, Option<String>)> {
+    // Parser coordonnées GPS (format: "lat,lng" ou "lng,lat")
+    // Le format stocké en base est généralement "lng,lat" (longitude, latitude)
+    if let Some((coord1_str, coord2_str)) = gps_str.split_once(',') {
+        if let (Ok(coord1), Ok(coord2)) = (coord1_str.trim().parse::<f64>(), coord2_str.trim().parse::<f64>()) {
+            // Déterminer si c'est "lat,lng" ou "lng,lat" selon les valeurs
+            // Longitude: -180 à 180, Latitude: -90 à 90
+            let (lat, lng) = if coord1.abs() <= 90.0 && coord2.abs() <= 180.0 {
+                // Format "lat,lng"
+                (coord1, coord2)
+            } else if coord1.abs() <= 180.0 && coord2.abs() <= 90.0 {
+                // Format "lng,lat" (format stocké en base)
+                (coord2, coord1)
+            } else {
+                // Format ambigu, essayer "lng,lat" par défaut (format backend)
+                (coord2, coord1)
+            };
+
+            // Utiliser le service de géocodage inverse
+            let geocoding_service = GeocodingService::new();
+            match geocoding_service.reverse_geocode(lat, lng).await {
+                Ok(result) => {
+                    info!(
+                        "[get_location_context_from_gps] Géocodage réussi: pays={:?}, ville={:?}",
+                        result.country, result.city
+                    );
+                    return Ok((result.country, result.city));
+                }
+                Err(e) => {
+                    warn!("[get_location_context_from_gps] Erreur géocodage inverse: {}", e);
                 }
             }
         }

@@ -25,12 +25,14 @@ import { useLocation } from '../../contexts/LocationContext';
 import { laboratoryService, ExaminationType, LabAnalysisResult, PathologySearchResult, LaboratoryAvailability } from '../../services/laboratoryService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useToaster } from '../../components/ToasterProvider';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
 
 const LaboratoireHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const toaster = useToaster();
 
     // États de recherche
     const [searchQuery, setSearchQuery] = useState('');
@@ -102,6 +104,29 @@ const LaboratoireHomeScreen: React.FC = () => {
         }
     };
 
+    // ✅ NOUVEAU: Fonction de recherche principale
+    const handleSearch = () => {
+        hapticPress();
+        if (!searchQuery.trim() && !autocompleteQuery.trim()) {
+            // Si pas de recherche, charger tous les laboratoires disponibles
+            loadAvailableLaboratories();
+            return;
+        }
+        
+        const query = searchQuery.trim() || autocompleteQuery.trim();
+        setShowAutocomplete(false);
+        
+        // Rechercher les laboratoires disponibles avec système de disponibilité
+        if (useAvailability && location?.coords) {
+            loadAvailableLaboratories(query);
+        } else {
+            // Navigation vers recherche de laboratoires avec ce type d'examen
+            navigation.navigate('LaboratoireList' as never, { 
+                examinationType: query 
+            } as never);
+        }
+    };
+
     const handleExaminationSelect = (examination: ExaminationType) => {
         hapticPress();
         setSelectedExamination(examination);
@@ -149,15 +174,18 @@ const LaboratoireHomeScreen: React.FC = () => {
         }
     };
 
+    // ✅ CORRIGÉ: Fonction de recherche de pathologie avec toast et modal fonctionnel
     const handleSearchPathology = async () => {
         if (!pathologyQuery.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer une recherche');
+            toaster.warning('Veuillez entrer une recherche de pathologie');
             return;
         }
 
         hapticPress();
         setLoadingAI(true);
         setAiMode('pathology');
+        setShowAIModal(true); // ✅ Ouvrir le modal avant la recherche
+        setPathologyResults([]); // Réinitialiser les résultats
 
         try {
             const response = await laboratoryService.searchPathology(pathologyQuery.trim());
@@ -167,22 +195,21 @@ const LaboratoireHomeScreen: React.FC = () => {
                 const results = response.data?.results || response.results || response.data || [];
                 if (Array.isArray(results) && results.length > 0) {
                     setPathologyResults(results);
-                    setShowAIModal(true);
+                    toaster.success(`${results.length} pathologie(s) trouvée(s)`);
                 } else {
-                    Alert.alert(
-                        'Aucun résultat',
-                        'Aucune pathologie trouvée pour votre recherche. Essayez avec d\'autres symptômes.',
-                        [{ text: 'OK' }]
-                    );
+                    toaster.warning('Aucune pathologie trouvée. Essayez avec d\'autres symptômes.');
+                    setPathologyResults([]);
                 }
             } else {
-                const errorMsg = response.message || response.error || 'Impossible de rechercher la pathologie. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
-                Alert.alert('Erreur', errorMsg, [{ text: 'OK' }]);
+                const errorMsg = response.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.';
+                toaster.error(errorMsg);
+                setPathologyResults([]);
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur recherche pathologie:', err);
             const errorMsg = err.message || err.error || 'Erreur lors de la recherche. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
-            Alert.alert('Erreur', errorMsg, [{ text: 'OK' }]);
+            toaster.error(errorMsg);
+            setPathologyResults([]);
         } finally {
             setLoadingAI(false);
         }
@@ -230,7 +257,9 @@ const LaboratoireHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur sélection image:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la sélection de l\'image');
+            toaster.error(err.message || 'Erreur lors de la sélection de l\'image');
+            setLoadingAI(false);
+            setImageAnalysis(null);
         }
     };
 
@@ -273,21 +302,22 @@ const LaboratoireHomeScreen: React.FC = () => {
                 const analysis = response.data?.analysis || response.analysis || response.data;
                 if (analysis) {
                     setImageAnalysis(analysis);
+                    toaster.success('Analyse d\'image terminée');
                 } else {
-                    Alert.alert(
-                        'Erreur',
-                        'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.',
-                        [{ text: 'OK', onPress: () => setShowAIModal(false) }]
-                    );
+                    const errorMsg = 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+                    toaster.error(errorMsg);
+                    setImageAnalysis(null);
                 }
             } else {
                 const errorMsg = response.message || response.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
-                Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowAIModal(false) }]);
+                toaster.error(errorMsg);
+                setImageAnalysis(null);
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur analyse image:', err);
             const errorMsg = err.message || err.error || 'Erreur lors de l\'analyse. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
-            Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowAIModal(false) }]);
+            toaster.error(errorMsg);
+            setImageAnalysis(null);
         } finally {
             setLoadingAI(false);
         }
@@ -340,6 +370,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                                     setAutocompleteQuery(text);
                                     setSearchQuery(text);
                                 }}
+                                onSubmitEditing={handleSearch}
                                 onFocus={() => {
                                     if (autocompleteQuery.length >= 2) {
                                         setShowAutocomplete(true);
@@ -359,6 +390,15 @@ const LaboratoireHomeScreen: React.FC = () => {
                                     <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
                                 </TouchableOpacity>
                             )}
+                            {/* ✅ NOUVEAU: Bouton de recherche */}
+                            <TouchableOpacity
+                                style={[styles.searchButton, (!searchQuery.trim() && !autocompleteQuery.trim()) && styles.searchButtonDisabled]}
+                                onPress={handleSearch}
+                                disabled={!searchQuery.trim() && !autocompleteQuery.trim()}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                            </TouchableOpacity>
                         </View>
 
                         {/* Autocomplete dropdown */}
@@ -798,6 +838,19 @@ const styles = StyleSheet.create({
     },
     clearButton: {
         padding: 4,
+    },
+    searchButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#059669',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 8,
+    },
+    searchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        opacity: 0.5,
     },
     autocompleteContainer: {
         position: 'absolute',

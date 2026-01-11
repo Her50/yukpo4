@@ -398,55 +398,83 @@ impl MenuPlanningAIService {
             .map(|b| format!("{:.2} FCFA", b))
             .unwrap_or_else(|| "Non spécifié".to_string());
 
-        // ✅ CONTEXTE 2: Localité géographique (détection dynamique)
+        // ✅ CONTEXTE 2: Localité géographique (détection dynamique) - AMÉLIORÉ pour contextualisation linguistique
         let location_context = if let (Some(country), Some(city)) = (user_country, user_city) {
             if !cuisine_str.is_empty() {
                 // Si l'utilisateur a spécifié des préférences culinaires, les utiliser
                 format!(
-                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n\
+                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE ET LINGUISTIQUE (CRITIQUE - LIRE ATTENTIVEMENT) :\n\
                     - Pays de résidence : {}\n\
                     - Ville : {}\n\
                     - CUISINE PRÉFÉRÉE : {}\n\
-                    - PRIORITÉ : Plats traditionnels locaux adaptés à {}, ingrédients disponibles localement, recettes authentiques\n\
-                    - ADAPTATION : Utilise les noms de plats locaux, les ingrédients typiques de la région de {}\n\
-                    - CONTEXTE : Adapte les plats de la cuisine {} aux ingrédients et traditions de {}",
-                    country, city, cuisine_str, city, city, cuisine_str, country
+                    - PRIORITÉ ABSOLUE : Plats traditionnels locaux adaptés à {}, ingrédients disponibles localement, recettes authentiques\n\
+                    - LANGAGE CULINAIRE (CRITIQUE) : Tu DOIS utiliser EXACTEMENT le langage culinaire de {} ({})\n\
+                      * Utilise les noms de plats dans la langue locale (ex: au Cameroun: \"Ndolé\", \"Poulet DG\", \"Riz sauté\", \"Koki\", \"Eru\")\n\
+                      * Utilise les noms d'ingrédients dans la langue locale (ex: \"Tomate\", \"Oignon\", \"Ail\", \"Gombo\", \"Feuilles de manioc\")\n\
+                      * Respecte les appellations culinaires authentiques de la région de {}\n\
+                      * N'utilise JAMAIS de noms de plats étrangers inadaptés (ex: ne pas dire \"Pasta\" ou \"Sushi\" pour un résident de {})\n\
+                    - INGRÉDIENTS LOCAUX : Utilise uniquement les ingrédients typiques et disponibles localement à {}\n\
+                      * Privilégie les ingrédients du marché local de {}\n\
+                      * Évite les ingrédients importés ou difficiles à trouver à {}\n\
+                    - TRADITIONS CULINAIRES : Respecte les traditions culinaires et les habitudes alimentaires de {}\n\
+                      * Respecte les heures de repas typiques de {}\n\
+                      * Respecte les combinaisons de plats traditionnelles de {}\n\
+                    - ADAPTATION : Adapte les plats de la cuisine {} aux ingrédients et traditions de {}",
+                    country, city, cuisine_str, city, country, city, city, country, city, city, city, city, city, city, cuisine_str, country
                 )
             } else {
                 // Sinon, laisser l'IA déterminer intelligemment la cuisine appropriée
                 format!(
-                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n\
+                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE ET LINGUISTIQUE (CRITIQUE - LIRE ATTENTIVEMENT) :\n\
                     - Pays de résidence : {}\n\
                     - Ville : {}\n\
                     - DÉTECTION AUTOMATIQUE : Tu DOIS déterminer intelligemment la cuisine traditionnelle de {} ({})\n\
                     - PRIORITÉ ABSOLUE : Proposer UNIQUEMENT des plats de la cuisine locale traditionnelle de {}\n\
                     - INTERDICTION STRICTE : Ne JAMAIS proposer de plats de cuisines étrangères inadaptées \
-                    (ex: ne pas proposer de menu chinois, japonais, italien à un résident de {})\n\
+                    (ex: ne pas proposer de menu chinois, japonais, italien, mexicain à un résident de {})\n\
+                    - LANGAGE CULINAIRE (CRITIQUE) : Tu DOIS utiliser EXACTEMENT le langage culinaire de {} ({})\n\
+                      * Utilise les noms de plats dans la langue locale de {} (ex: au Cameroun: \"Ndolé\", \"Poulet DG\", \"Riz sauté\", \"Koki\", \"Eru\", \"Achu\")\n\
+                      * Utilise les noms d'ingrédients dans la langue locale de {} (ex: \"Tomate\", \"Oignon\", \"Ail\", \"Gombo\", \"Feuilles de manioc\", \"Plantain\")\n\
+                      * Respecte les appellations culinaires authentiques de la région de {}\n\
+                      * N'utilise JAMAIS de noms de plats étrangers inadaptés (ex: ne pas dire \"Pasta\", \"Sushi\", \"Tacos\" pour un résident de {})\n\
+                      * Si tu ne connais pas les noms locaux exacts, utilise des descriptions adaptées au contexte de {}\n\
                     - INGRÉDIENTS LOCAUX : Utilise uniquement les ingrédients typiques et disponibles localement à {}\n\
-                    - NOMS LOCAUX : Utilise les noms de plats authentiques de {}\n\
-                    - TRADITIONS : Respecte les traditions culinaires et les habitudes alimentaires de {}",
-                    country, city, country, city, country, country, city, country, country
+                      * Privilégie les ingrédients du marché local de {}\n\
+                      * Évite les ingrédients importés ou difficiles à trouver à {}\n\
+                      * Consulte tes connaissances sur les ingrédients disponibles dans les marchés de {}\n\
+                    - TRADITIONS CULINAIRES : Respecte les traditions culinaires et les habitudes alimentaires de {}\n\
+                      * Respecte les heures de repas typiques de {}\n\
+                      * Respecte les combinaisons de plats traditionnelles de {}\n\
+                      * Respecte les méthodes de cuisson traditionnelles de {}\n\
+                    - CONTEXTE MARCHÉ : Adapte les prix estimés selon la réalité du marché local de {}",
+                    country, city, country, city, country, country, country, city, country, city, country, country, country, country, city, city, city, city, city, city, city, city, city
                 )
             }
         } else if let Some(country) = user_country {
             if !cuisine_str.is_empty() {
                 format!(
-                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n\
+                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE ET LINGUISTIQUE (CRITIQUE) :\n\
                     - Pays de résidence : {}\n\
                     - CUISINE PRÉFÉRÉE : {}\n\
-                    - PRIORITÉ : Plats traditionnels locaux adaptés, ingrédients disponibles localement",
-                    country, cuisine_str
+                    - PRIORITÉ : Plats traditionnels locaux adaptés, ingrédients disponibles localement\n\
+                    - LANGAGE CULINAIRE : Utilise les noms de plats dans la langue locale de {}\n\
+                    - INGRÉDIENTS LOCAUX : Utilise uniquement les ingrédients typiques et disponibles localement dans {}\n\
+                    - TRADITIONS : Respecte les traditions culinaires de {}",
+                    country, cuisine_str, country, country, country
                 )
             } else {
                 format!(
-                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n\
+                    "\n\n🌍 CONTEXTE GÉOGRAPHIQUE ET LINGUISTIQUE (CRITIQUE) :\n\
                     - Pays de résidence : {}\n\
                     - DÉTECTION AUTOMATIQUE : Tu DOIS déterminer intelligemment la cuisine traditionnelle de {}\n\
                     - PRIORITÉ ABSOLUE : Proposer UNIQUEMENT des plats de la cuisine locale traditionnelle de {}\n\
                     - INTERDICTION STRICTE : Ne JAMAIS proposer de plats de cuisines étrangères inadaptées\n\
-                    - INGRÉDIENTS LOCAUX : Utilise uniquement les ingrédients typiques et disponibles localement\n\
+                    - LANGAGE CULINAIRE (CRITIQUE) : Utilise les noms de plats dans la langue locale de {}\n\
+                      * Utilise les appellations culinaires authentiques de {}\n\
+                      * N'utilise JAMAIS de noms de plats étrangers inadaptés\n\
+                    - INGRÉDIENTS LOCAUX : Utilise uniquement les ingrédients typiques et disponibles localement dans {}\n\
                     - TRADITIONS : Respecte les traditions culinaires de {}",
-                    country, country, country, country
+                    country, country, country, country, country, country, country
                 )
             }
         } else {
@@ -552,12 +580,21 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
     "recommendations": ["Recommandation 1", "Recommandation 2"]
 }}
 
-✅ RÈGLES CRITIQUES :
-- Utiliser des noms de plats réalistes et adaptés au contexte local
+✅ RÈGLES CRITIQUES (LIRE ATTENTIVEMENT) :
+- LANGAGE CULINAIRE LOCAL (PRIORITÉ ABSOLUE) :
+  * Utilise EXACTEMENT les noms de plats dans la langue locale de la région de l'utilisateur
+  * Utilise les appellations culinaires authentiques (ex: au Cameroun: "Ndolé", "Poulet DG", "Koki", "Eru", "Achu", "Okok")
+  * N'utilise JAMAIS de noms de plats étrangers inadaptés (ex: ne pas dire "Pasta", "Sushi", "Tacos" pour un résident d'Afrique centrale)
+  * Si tu ne connais pas les noms locaux exacts, utilise des descriptions adaptées au contexte géographique
+- INGRÉDIENTS LOCAUX :
+  * Utilise uniquement les ingrédients typiques et disponibles localement dans les marchés de la région
+  * Privilégie les ingrédients du marché local (ex: plantain, manioc, igname, feuilles locales)
+  * Évite les ingrédients importés ou difficiles à trouver localement
 - Les quantités doivent être adaptées au nombre de personnes
 - Respecter strictement les allergies
 - Varier les types de plats
 - RESPECTER la localité culinaire (pas de cuisines inadaptées)
+- PRIX ESTIMÉS : Adapte les prix selon la réalité du marché local (utilise tes connaissances sur les prix moyens dans la région)
 
 ⚠️ IMPORTANT - JSON COMPLET REQUIS :
 - Tu DOIS générer un JSON COMPLET et VALIDE pour les 7 jours (Lundi à Dimanche)

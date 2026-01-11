@@ -24,6 +24,7 @@ import { apiGet, apiPost, apiPut } from '../../services/api';
 import { livreScolaireService, BookImageAnalysis } from '../../services/livreScolaireService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useToaster } from '../../components/ToasterProvider';
 
 const niveaux = ['Primaire', 'Collège', 'Lycée'];
 const etats = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
@@ -33,6 +34,7 @@ const LivreScolaireFormScreen: React.FC = () => {
     const route = useRoute();
     const { user } = useAuth();
     const { location } = useLocation();
+    const toaster = useToaster();
     const params = route.params as any;
     const mode = params?.mode || 'create';
     const livreId = params?.livreId as number | undefined;
@@ -61,6 +63,8 @@ const LivreScolaireFormScreen: React.FC = () => {
     const [imageBase64List, setImageBase64List] = useState<string[]>([]);
     const [analyzingImage, setAnalyzingImage] = useState(false);
     const [showImagePickerModal, setShowImagePickerModal] = useState(false);
+    const [showIAAnalysisModal, setShowIAAnalysisModal] = useState(false);
+    const [iaAnalysisResult, setIAAnalysisResult] = useState<BookImageAnalysis | null>(null);
 
     useEffect(() => {
         if (mode === 'edit' && livreId) {
@@ -205,7 +209,7 @@ const LivreScolaireFormScreen: React.FC = () => {
         }
     };
 
-    // ✅ NOUVEAU: Analyser l'image avec l'IA pour extraire les infos du livre
+    // ✅ MODIFIÉ: Analyser l'image avec l'IA pour extraire les infos du livre
     const analyzeImage = async (imageBase64: string) => {
         setAnalyzingImage(true);
         
@@ -218,6 +222,9 @@ const LivreScolaireFormScreen: React.FC = () => {
 
             if (response.success && response.data?.book_info) {
                 const bookInfo: BookImageAnalysis = response.data.book_info;
+                
+                // Stocker le résultat de l'analyse IA
+                setIAAnalysisResult(bookInfo);
                 
                 // Pré-remplir le formulaire avec les données extraites par l'IA
                 setFormData({
@@ -234,19 +241,48 @@ const LivreScolaireFormScreen: React.FC = () => {
                     description_etat: bookInfo.description_etat || formData.description_etat,
                 });
 
-                Alert.alert(
-                    'Analyse terminée',
-                    `L'IA a extrait les informations du livre avec ${(bookInfo.confidence * 100).toFixed(0)}% de confiance. Vérifiez et complétez les champs si nécessaire.`,
-                    [{ text: 'OK' }]
+                // ✅ MODIFIÉ: Afficher un toast de succès en haut de l'écran
+                toaster.success(
+                    `Analyse terminée ! ${(bookInfo.confidence * 100).toFixed(0)}% de confiance. Vérifiez les informations extraites.`
                 );
+                
+                // ✅ NOUVEAU: Afficher le modal avec les informations extraites
+                setShowIAAnalysisModal(true);
             } else {
-                Alert.alert('Erreur', 'Impossible d\'analyser l\'image. Veuillez remplir le formulaire manuellement.');
+                toaster.error('Impossible d\'analyser l\'image. Veuillez remplir le formulaire manuellement.');
             }
         } catch (error: any) {
             console.error('[LivreScolaireFormScreen] Erreur analyse:', error);
-            Alert.alert('Erreur', error.message || 'Erreur lors de l\'analyse de l\'image');
+            const errorMessage = error.message || 'Erreur lors de l\'analyse de l\'image';
+            toaster.error(errorMessage);
+            
+            // Vérifier si c'est une erreur de connexion IA
+            if (errorMessage.includes('IA') || errorMessage.includes('connexion') || errorMessage.includes('timeout')) {
+                toaster.warning('L\'analyse IA n\'a pas pu être effectuée. Vérifiez votre connexion et réessayez.');
+            }
         } finally {
             setAnalyzingImage(false);
+        }
+    };
+    
+    // ✅ NOUVEAU: Appliquer les données de l'IA au formulaire
+    const applyIAAnalysis = () => {
+        if (iaAnalysisResult) {
+            setFormData({
+                ...formData,
+                titre: iaAnalysisResult.titre || formData.titre,
+                auteur: iaAnalysisResult.auteur || formData.auteur,
+                editeur: iaAnalysisResult.editeur || formData.editeur,
+                isbn: iaAnalysisResult.isbn || formData.isbn,
+                classe_actuelle: iaAnalysisResult.classe_actuelle || formData.classe_actuelle,
+                classe_souhaitee: iaAnalysisResult.classe_souhaitee || formData.classe_souhaitee,
+                matiere: iaAnalysisResult.matiere || formData.matiere,
+                niveau: iaAnalysisResult.niveau || formData.niveau,
+                etat_livre: iaAnalysisResult.etat_livre || formData.etat_livre,
+                description_etat: iaAnalysisResult.description_etat || formData.description_etat,
+            });
+            setShowIAAnalysisModal(false);
+            toaster.success('Informations appliquées au formulaire');
         }
     };
 
@@ -573,9 +609,8 @@ const LivreScolaireFormScreen: React.FC = () => {
                                 setFormData({ 
                                     ...formData, 
                                     quartier: quartierValue,
-                                    // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
+                                    // ✅ NOUVEAU: Extraire automatiquement ville si disponible
                                     ville: location.components?.ville || formData.ville,
-                                    pays: location.components?.pays || formData.pays,
                                 });
                             }}
                             placeholder="Rechercher un quartier..."
@@ -643,7 +678,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                         variant="primary"
                         onPress={handleSubmit}
                         style={styles.submitButton}
-                        disabled={loading}
+                        disabled={loading || analyzingImage}
                     />
                 </View>
             </KeyboardAwareScreen>
@@ -654,6 +689,138 @@ const LivreScolaireFormScreen: React.FC = () => {
                 onSelect={handleGPSSelect}
                 currentLocation={selectedGPS}
             />
+
+            {/* ✅ NOUVEAU: Modal d'affichage des résultats de l'analyse IA */}
+            <Modal
+                visible={showIAAnalysisModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowIAAnalysisModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <View style={styles.modalHeaderLeft}>
+                                <SafeIcon name="sparkles" size={24} color={modernColors.primary} type="lucide" />
+                                <Text style={styles.modalTitle}>Analyse IA terminée</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setShowIAAnalysisModal(false)}
+                                style={styles.modalCloseButton}
+                            >
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {iaAnalysisResult && (
+                            <View style={styles.modalBody}>
+                                <View style={styles.confidenceBadge}>
+                                    <SafeIcon name="check-circle" size={20} color="#10B981" type="lucide" />
+                                    <Text style={styles.confidenceText}>
+                                        Confiance: {(iaAnalysisResult.confidence * 100).toFixed(0)}%
+                                    </Text>
+                                </View>
+
+                                <View style={styles.analysisResults}>
+                                    <Text style={styles.analysisSectionTitle}>Informations extraites :</Text>
+                                    
+                                    {iaAnalysisResult.titre && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>Titre :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.titre}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {iaAnalysisResult.auteur && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>Auteur :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.auteur}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {iaAnalysisResult.editeur && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>Éditeur :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.editeur}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {iaAnalysisResult.isbn && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>ISBN :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.isbn}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {iaAnalysisResult.matiere && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>Matière :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.matiere}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {iaAnalysisResult.niveau && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>Niveau :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.niveau}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {iaAnalysisResult.classe_actuelle && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>Classe actuelle :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.classe_actuelle}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {iaAnalysisResult.classe_souhaitee && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>Classe souhaitée :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.classe_souhaitee}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {iaAnalysisResult.etat_livre && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>État :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.etat_livre}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {iaAnalysisResult.description_etat && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>Description :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.description_etat}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {iaAnalysisResult.notes && (
+                                        <View style={styles.analysisItem}>
+                                            <Text style={styles.analysisLabel}>Notes :</Text>
+                                            <Text style={styles.analysisValue}>{iaAnalysisResult.notes}</Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                <View style={styles.modalActions}>
+                                    <TouchableOpacity
+                                        style={styles.modalButtonSecondary}
+                                        onPress={() => setShowIAAnalysisModal(false)}
+                                    >
+                                        <Text style={styles.modalButtonTextSecondary}>Fermer</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.modalButtonPrimary}
+                                        onPress={applyIAAnalysis}
+                                    >
+                                        <Text style={styles.modalButtonTextPrimary}>Appliquer au formulaire</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            </Modal>
         </>
     );
 };
@@ -882,6 +1049,112 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    // ✅ NOUVEAU: Styles pour modal d'analyse IA
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '90%',
+        paddingBottom: 32,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    modalHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    modalCloseButton: {
+        padding: 4,
+    },
+    modalBody: {
+        padding: 20,
+    },
+    confidenceBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 12,
+        backgroundColor: '#D1FAE5',
+        borderRadius: 12,
+        marginBottom: 20,
+    },
+    confidenceText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#065F46',
+    },
+    analysisResults: {
+        marginBottom: 24,
+    },
+    analysisSectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 16,
+    },
+    analysisItem: {
+        marginBottom: 12,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    analysisLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    analysisValue: {
+        fontSize: 14,
+        color: '#111827',
+        fontWeight: '500',
+    },
+    modalActions: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 8,
+    },
+    modalButtonSecondary: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+    },
+    modalButtonTextSecondary: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    modalButtonPrimary: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary,
+        alignItems: 'center',
+    },
+    modalButtonTextPrimary: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
 });
 

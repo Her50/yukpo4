@@ -346,9 +346,9 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* ✅ NOUVEAU: Champs ville de départ et ville d'arrivée directement dans le header */}
+                    {/* ✅ MODIFIÉ: Champs ville de départ et ville d'arrivée empilés verticalement pour plus d'espace */}
                     <View style={styles.searchContainer}>
-                        <View style={styles.citiesRow}>
+                        <View style={styles.citiesColumn}>
                             <View style={styles.cityInputContainer}>
                                 <Text style={styles.cityLabel}>
                                     <SafeIcon name="map-pin" size={12} color="#FFFFFF" type="lucide" /> Départ
@@ -365,20 +365,6 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                     scope="city"
                                     enrichWithBackend={true}
                                 />
-                            </View>
-                            <View style={styles.swapButtonContainer}>
-                                <TouchableOpacity
-                                    style={styles.swapButton}
-                                    onPress={() => {
-                                        hapticPress();
-                                        const temp = departureCity;
-                                        setDepartureCity(arrivalCity);
-                                        setArrivalCity(temp);
-                                        // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche après swap
-                                    }}
-                                >
-                                    <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
-                                </TouchableOpacity>
                             </View>
                             <View style={styles.cityInputContainer}>
                                 <Text style={styles.cityLabel}>
@@ -398,11 +384,11 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                 />
                             </View>
                         </View>
-                        {/* ✅ NOUVEAU: Bouton de recherche visible uniquement quand départ et arrivée sont remplis */}
+                        {/* ✅ MODIFIÉ: Bouton de recherche toujours visible et activé uniquement quand départ et arrivée sont remplis */}
                         <TouchableOpacity
                             style={[
                                 styles.searchButton,
-                                !canSearch() && styles.searchButtonDisabled
+                                (!canSearch() || loading) && styles.searchButtonDisabled
                             ]}
                             onPress={handleSearch}
                             disabled={!canSearch() || loading}
@@ -412,8 +398,13 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                 <ActivityIndicator size="small" color="#FFFFFF" />
                             ) : (
                                 <>
-                                    <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
-                                    <Text style={styles.searchButtonText}>Rechercher des voyages</Text>
+                                    <SafeIcon name="search" size={20} color={canSearch() ? "#FFFFFF" : "#9CA3AF"} type="lucide" />
+                                    <Text 
+                                        style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
+                                        numberOfLines={1}
+                                    >
+                                        Rechercher
+                                    </Text>
                                 </>
                             )}
                         </TouchableOpacity>
@@ -462,8 +453,8 @@ const TicketVoyageHomeScreen: React.FC = () => {
                 <View style={styles.centerContainer}>
                     <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
                     <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
-                    <Text style={styles.emptySubtext}>
-                        Choisissez une ville de départ et une ville d'arrivée, puis cliquez sur "Rechercher des voyages"
+                    <Text style={styles.emptySubtext} numberOfLines={3}>
+                        Choisissez une ville de départ et une ville d'arrivée, puis cliquez sur "Rechercher"
                     </Text>
                 </View>
             ) : loading && tickets.length === 0 ? (
@@ -511,7 +502,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="ticket" size={64} color="#9CA3AF" />
                             <Text style={styles.emptyText}>Aucun ticket trouvé</Text>
-                            <Text style={styles.emptySubtext}>
+                            <Text style={styles.emptySubtext} numberOfLines={2}>
                                 Essayez de modifier vos critères de recherche
                             </Text>
                             {activeFiltersCount > 0 && (
@@ -996,13 +987,13 @@ const styles = StyleSheet.create({
     searchContainer: {
         marginTop: 8,
     },
-    citiesRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        gap: 8,
+    citiesColumn: {
+        flexDirection: 'column',
+        gap: 12,
     },
     cityInputContainer: {
         flex: 1,
+        width: '100%',
     },
     cityLabel: {
         fontSize: 11,
@@ -1012,17 +1003,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-    },
-    swapButtonContainer: {
-        paddingBottom: 4,
-    },
-    swapButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     // ✅ NOUVEAU: Styles pour le bouton de recherche
     searchButton: {
@@ -1050,6 +1030,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: '#FFFFFF',
+        flexShrink: 1,
+    },
+    searchButtonTextDisabled: {
+        color: '#9CA3AF',
     },
     quickFiltersScroll: {
         maxHeight: 60,
@@ -1151,6 +1135,7 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
         textAlign: 'center',
         marginBottom: 24,
+        paddingHorizontal: 16,
     },
     // Ticket Card styles
     ticketCard: {

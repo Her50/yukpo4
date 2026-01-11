@@ -21,6 +21,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { useLocation } from '../../contexts/LocationContext';
 import { pharmacyProductService, PharmacyProduct, ProductSearchFilters } from '../../services/pharmacyProductService';
 import { pharmacyService, DosageRecommendation, MedicationInteraction } from '../../services/pharmacyService';
@@ -28,12 +29,14 @@ import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import { useAIServices } from '../../hooks/useAIServices';
 import { imageAnalysisService } from '../../services/imageAnalysisService';
+import { useToaster } from '../../components/ToasterProvider';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
 
 const PharmacieHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const toaster = useToaster();
 
     // États de recherche
     const [searchQuery, setSearchQuery] = useState('');
@@ -234,9 +237,12 @@ const PharmacieHomeScreen: React.FC = () => {
         loadMedications(false);
     };
 
-    // Fonction pour poser une question à l'IA
+    // ✅ MODIFIÉ: Fonction pour poser une question à l'IA - maintenant opérationnelle
     const handleAskAI = async () => {
-        if (!aiQuestion.trim()) return;
+        if (!aiQuestion.trim()) {
+            toaster.warning('Veuillez saisir une question');
+            return;
+        }
         
         hapticPress();
         setAiResponse(null);
@@ -253,17 +259,26 @@ const PharmacieHomeScreen: React.FC = () => {
             };
             
             const response = await askAI(aiQuestion, context);
-            if (response) {
+            if (response && response.message) {
                 const message = response.message || response.text || response.response || 'Réponse non disponible';
                 setAiResponse(message);
-                setAiSuggestions(response.suggestions || []);
+                
+                // ✅ Mettre à jour les suggestions si fournies
+                if (response.suggestions && response.suggestions.length > 0) {
+                    setAiSuggestions(response.suggestions);
+                }
+                
+                toaster.success('Réponse IA générée');
             } else {
-                setAiResponse('Désolé, l\'assistant IA n\'est pas encore opérationnel. Veuillez réessayer plus tard ou consultez votre pharmacien.');
+                const errorMsg = 'Désolé, l\'assistant IA n\'a pas pu traiter votre question. Veuillez réessayer ou consultez votre pharmacien.';
+                setAiResponse(errorMsg);
+                toaster.error('Impossible d\'obtenir une réponse IA');
             }
         } catch (err: any) {
             console.error('[PharmacieHomeScreen] Erreur IA:', err);
             const errorMsg = err.message || err.error || 'L\'assistant IA n\'est pas encore opérationnel. Veuillez réessayer plus tard.';
             setAiResponse(`Désolé, je n'ai pas pu traiter votre question. ${errorMsg}`);
+            toaster.error('Erreur lors de la requête IA');
         }
     };
 
@@ -549,6 +564,15 @@ const PharmacieHomeScreen: React.FC = () => {
                                     <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
                                 </TouchableOpacity>
                             )}
+                            {/* ✅ NOUVEAU: Bouton de recherche */}
+                            <TouchableOpacity
+                                style={[styles.searchButton, !searchQuery.trim() && styles.searchButtonDisabled]}
+                                onPress={handleSearch}
+                                disabled={!searchQuery.trim()}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </LinearGradient>
@@ -625,112 +649,137 @@ const PharmacieHomeScreen: React.FC = () => {
                     </TouchableOpacity>
 
                     {showAIChat && (
-                        <View style={styles.aiChatContainer}>
-                            {/* Bouton analyse d'image */}
-                            <TouchableOpacity
-                                style={styles.aiImageButton}
-                                onPress={showImageSourcePicker}
-                                activeOpacity={0.7}
+                        <KeyboardAwareScreen 
+                            style={styles.aiChatWrapper}
+                            contentContainerStyle={styles.aiChatContainer}
+                            extraScrollHeight={100}
+                        >
+                            <ScrollView 
+                                style={styles.aiChatScrollView}
+                                contentContainerStyle={styles.aiChatScrollContent}
+                                keyboardShouldPersistTaps="handled"
+                                showsVerticalScrollIndicator={true}
                             >
-                                <SafeIcon name="camera" size={20} color="#059669" type="lucide" />
-                                <Text style={styles.aiImageButtonText}>
-                                    {analyzingImage ? 'Analyse en cours...' : 'Analyser un médicament (photo)'}
-                                </Text>
-                                {analyzingImage && (
-                                    <ActivityIndicator size="small" color="#059669" style={{ marginLeft: 8 }} />
-                                )}
-                            </TouchableOpacity>
-
-                            {/* Aperçu image sélectionnée */}
-                            {selectedMedicationImage && (
-                                <View style={styles.imagePreviewContainer}>
-                                    <Image 
-                                        source={{ uri: selectedMedicationImage }} 
-                                        style={styles.imagePreview}
-                                    />
-                                    <TouchableOpacity
-                                        style={styles.removeImageButton}
-                                        onPress={() => {
-                                            setSelectedMedicationImage(null);
-                                            setImageAnalysisResult(null);
-                                        }}
-                                    >
-                                        <SafeIcon name="x" size={16} color="#FFFFFF" type="lucide" />
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-
-                            {/* Suggestions rapides */}
-                            {aiSuggestions.length > 0 && (
-                                <View style={styles.aiSuggestionsContainer}>
-                                    <Text style={styles.aiSuggestionsTitle}>Suggestions :</Text>
-                                    <ScrollView 
-                                        horizontal 
-                                        showsHorizontalScrollIndicator={false}
-                                        contentContainerStyle={styles.aiSuggestionsScroll}
-                                    >
-                                        {aiSuggestions.map((suggestion, index) => (
-                                            <TouchableOpacity
-                                                key={index}
-                                                style={styles.aiSuggestionChip}
-                                                onPress={() => {
-                                                    setAiQuestion(suggestion);
-                                                    handleAskAI();
-                                                }}
-                                                activeOpacity={0.7}
-                                            >
-                                                <Text style={styles.aiSuggestionText}>{suggestion}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </ScrollView>
-                                </View>
-                            )}
-
-                            {/* Champ de question IA */}
-                            <View style={styles.aiInputContainer}>
-                                <TextInput
-                                    style={styles.aiInput}
-                                    placeholder="Ex: Quels sont les effets secondaires de ce médicament?"
-                                    placeholderTextColor="#9CA3AF"
-                                    value={aiQuestion}
-                                    onChangeText={setAiQuestion}
-                                    multiline
-                                    maxLength={500}
-                                />
+                                {/* Bouton analyse d'image */}
                                 <TouchableOpacity
-                                    style={[styles.aiSendButton, (!aiQuestion.trim() || aiLoading) && styles.aiSendButtonDisabled]}
-                                    onPress={handleAskAI}
-                                    disabled={!aiQuestion.trim() || aiLoading}
+                                    style={styles.aiImageButton}
+                                    onPress={showImageSourcePicker}
                                     activeOpacity={0.7}
+                                    disabled={analyzingImage}
                                 >
-                                    {aiLoading ? (
-                                        <ActivityIndicator size="small" color="#FFFFFF" />
-                                    ) : (
-                                        <SafeIcon name="send" size={18} color="#FFFFFF" type="lucide" />
+                                    <SafeIcon name="camera" size={20} color="#059669" type="lucide" />
+                                    <Text style={styles.aiImageButtonText}>
+                                        {analyzingImage ? 'Analyse en cours...' : 'Analyser un médicament (photo)'}
+                                    </Text>
+                                    {analyzingImage && (
+                                        <ActivityIndicator size="small" color="#059669" style={{ marginLeft: 8 }} />
                                     )}
                                 </TouchableOpacity>
-                            </View>
 
-                            {/* Réponse IA */}
-                            {aiResponse && (
-                                <View style={styles.aiResponseContainer}>
-                                    <View style={styles.aiResponseHeader}>
-                                        <SafeIcon name="brain" size={16} color="#059669" type="lucide" />
-                                        <Text style={styles.aiResponseTitle}>Réponse IA</Text>
+                                {/* Aperçu image sélectionnée */}
+                                {selectedMedicationImage && (
+                                    <View style={styles.imagePreviewContainer}>
+                                        <Image 
+                                            source={{ uri: selectedMedicationImage }} 
+                                            style={styles.imagePreview}
+                                            resizeMode="contain"
+                                        />
+                                        <TouchableOpacity
+                                            style={styles.removeImageButton}
+                                            onPress={() => {
+                                                setSelectedMedicationImage(null);
+                                                setImageAnalysisResult(null);
+                                            }}
+                                        >
+                                            <SafeIcon name="x" size={16} color="#FFFFFF" type="lucide" />
+                                        </TouchableOpacity>
                                     </View>
-                                    <Text style={styles.aiResponseText}>{aiResponse}</Text>
+                                )}
+
+                                {/* Suggestions rapides - Scroll horizontal fonctionnel */}
+                                {aiSuggestions.length > 0 && (
+                                    <View style={styles.aiSuggestionsContainer}>
+                                        <Text style={styles.aiSuggestionsTitle}>Suggestions :</Text>
+                                        <ScrollView 
+                                            horizontal 
+                                            showsHorizontalScrollIndicator={true}
+                                            contentContainerStyle={styles.aiSuggestionsScroll}
+                                            nestedScrollEnabled={true}
+                                            style={styles.aiSuggestionsScrollView}
+                                        >
+                                            {aiSuggestions.map((suggestion, index) => (
+                                                <TouchableOpacity
+                                                    key={index}
+                                                    style={styles.aiSuggestionChip}
+                                                    onPress={() => {
+                                                        hapticPress();
+                                                        setAiQuestion(suggestion);
+                                                        handleAskAI();
+                                                    }}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text style={styles.aiSuggestionText} numberOfLines={2}>
+                                                        {suggestion}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+                                )}
+
+                                {/* Champ de question IA */}
+                                <View style={styles.aiInputContainer}>
+                                    <TextInput
+                                        style={styles.aiInput}
+                                        placeholder="Ex: Quels sont les effets secondaires de ce médicament?"
+                                        placeholderTextColor="#9CA3AF"
+                                        value={aiQuestion}
+                                        onChangeText={setAiQuestion}
+                                        multiline
+                                        maxLength={500}
+                                        textAlignVertical="top"
+                                    />
                                     <TouchableOpacity
-                                        style={styles.aiClearButton}
-                                        onPress={() => {
-                                            setAiResponse(null);
-                                            setAiQuestion('');
-                                        }}
+                                        style={[styles.aiSendButton, (!aiQuestion.trim() || aiLoading) && styles.aiSendButtonDisabled]}
+                                        onPress={handleAskAI}
+                                        disabled={!aiQuestion.trim() || aiLoading}
+                                        activeOpacity={0.7}
                                     >
-                                        <Text style={styles.aiClearButtonText}>Nouvelle question</Text>
+                                        {aiLoading ? (
+                                            <ActivityIndicator size="small" color="#FFFFFF" />
+                                        ) : (
+                                            <SafeIcon name="send" size={18} color="#FFFFFF" type="lucide" />
+                                        )}
                                     </TouchableOpacity>
                                 </View>
-                            )}
-                        </View>
+
+                                {/* Réponse IA */}
+                                {aiResponse && (
+                                    <View style={styles.aiResponseContainer}>
+                                        <View style={styles.aiResponseHeader}>
+                                            <SafeIcon name="brain" size={16} color="#059669" type="lucide" />
+                                            <Text style={styles.aiResponseTitle}>Réponse IA</Text>
+                                        </View>
+                                        <ScrollView 
+                                            style={styles.aiResponseTextScroll}
+                                            nestedScrollEnabled={true}
+                                        >
+                                            <Text style={styles.aiResponseText}>{aiResponse}</Text>
+                                        </ScrollView>
+                                        <TouchableOpacity
+                                            style={styles.aiClearButton}
+                                            onPress={() => {
+                                                hapticPress();
+                                                setAiResponse(null);
+                                                setAiQuestion('');
+                                            }}
+                                        >
+                                            <Text style={styles.aiClearButtonText}>Nouvelle question</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </ScrollView>
+                        </KeyboardAwareScreen>
                     )}
                 </View>
             </View>
@@ -1621,6 +1670,19 @@ const styles = StyleSheet.create({
     clearButton: {
         padding: 4,
     },
+    searchButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#059669',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 8,
+    },
+    searchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        opacity: 0.5,
+    },
     quickFiltersScroll: {
         maxHeight: 60,
     },
@@ -2289,11 +2351,22 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#6B7280',
     },
-    aiChatContainer: {
-        padding: 16,
+    aiChatWrapper: {
+        maxHeight: 500,
         backgroundColor: '#F9FAFB',
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
+    },
+    aiChatContainer: {
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+    },
+    aiChatScrollView: {
+        flex: 1,
+    },
+    aiChatScrollContent: {
+        paddingBottom: 20,
+        gap: 12,
     },
     aiSuggestionsContainer: {
         marginBottom: 12,
@@ -2305,28 +2378,36 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         textTransform: 'uppercase',
     },
+    aiSuggestionsScrollView: {
+        marginVertical: 8,
+    },
     aiSuggestionsScroll: {
+        paddingRight: 16,
         gap: 8,
     },
     aiSuggestionChip: {
         backgroundColor: '#ECFDF5',
         borderRadius: 16,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
         marginRight: 8,
         borderWidth: 1,
         borderColor: '#D1FAE5',
+        minWidth: 120,
+        maxWidth: 280,
     },
     aiSuggestionText: {
-        fontSize: 12,
+        fontSize: 13,
         color: '#059669',
         fontWeight: '500',
+        textAlign: 'center',
     },
     aiInputContainer: {
         flexDirection: 'row',
         alignItems: 'flex-end',
         gap: 8,
         marginBottom: 12,
+        marginTop: 8,
     },
     aiInput: {
         flex: 1,
@@ -2339,7 +2420,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E5E7EB',
         minHeight: 44,
-        maxHeight: 100,
+        maxHeight: 120,
     },
     aiSendButton: {
         width: 44,
@@ -2359,6 +2440,11 @@ const styles = StyleSheet.create({
         padding: 16,
         borderWidth: 1,
         borderColor: '#E5E7EB',
+        marginTop: 8,
+        maxHeight: 300,
+    },
+    aiResponseTextScroll: {
+        maxHeight: 200,
     },
     aiResponseHeader: {
         flexDirection: 'row',
@@ -2414,6 +2500,7 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 200,
         borderRadius: 12,
+        backgroundColor: '#F3F4F6',
     },
     removeImageButton: {
         position: 'absolute',

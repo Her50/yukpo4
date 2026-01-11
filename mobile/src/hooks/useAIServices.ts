@@ -18,7 +18,8 @@ export const useAIServices = () => {
             setLoading(true);
             setError(null);
 
-            // API IA réelle - OpenAI ou équivalent
+            // ✅ API IA réelle - OpenAI ou équivalent
+            // L'endpoint est /api/ai/chat (le router ajoute /api)
             const response = await apiPost<{
                 message?: string;
                 text?: string;

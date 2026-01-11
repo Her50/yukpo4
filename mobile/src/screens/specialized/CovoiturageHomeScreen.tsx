@@ -29,6 +29,7 @@ import { hapticPress } from '../../utils/hapticFeedback';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { useToaster } from '../../components/ToasterProvider';
 
 type ViewMode = 'search' | 'create';
 
@@ -36,6 +37,7 @@ const CovoiturageHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
     const { location } = useLocation();
+    const toaster = useToaster();
     
     // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
     const [isDriverValidated, setIsDriverValidated] = useState(false);
@@ -342,6 +344,53 @@ const CovoiturageHomeScreen: React.FC = () => {
                     colors={viewMode === 'search' ? ['#3B82F6', '#60A5FA'] : ['#10B981', '#34D399']}
                     style={styles.headerGradient}
                 >
+                    {/* ✅ MODIFIÉ: Barre d'actions en haut avec boutons isolés gauche/droite */}
+                    <View style={styles.headerActionsBar}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                hapticPress();
+                                (navigation as any).navigate('PartnerRegister', {
+                                    partner_type: 'chauffeur',
+                                });
+                            }}
+                            style={styles.registerDriverButtonLeft}
+                        >
+                            <SafeIcon name="user-plus" size={18} color="#FFFFFF" type="lucide" />
+                                        <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
+                                            Devenir chauffeur
+                                        </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => {
+                                hapticPress();
+                                if (!isDriverValidated) {
+                                    toaster.warning('Vous devez d\'abord vous enregistrer comme chauffeur avant de pouvoir publier un trajet.');
+                                    return;
+                                }
+                                (navigation as any).navigate('CovoiturageForm', {
+                                    mode: 'create',
+                                });
+                            }}
+                            style={[
+                                styles.publishTrajetButtonRight,
+                                !isDriverValidated && styles.publishTrajetButtonRightDisabled
+                            ]}
+                            disabled={checkingDriverStatus}
+                        >
+                            <SafeIcon 
+                                name="plus" 
+                                size={18} 
+                                color={isDriverValidated ? "#FFFFFF" : "#9CA3AF"} 
+                                type="lucide" 
+                            />
+                            <Text style={[
+                                styles.publishTrajetTextRight,
+                                !isDriverValidated && styles.publishTrajetTextRightDisabled
+                            ]} numberOfLines={1} adjustsFontSizeToFit>
+                                Publier un trajet
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                     <View style={styles.headerTop}>
                         <TouchableOpacity
                             onPress={() => {
@@ -362,63 +411,14 @@ const CovoiturageHomeScreen: React.FC = () => {
                                 </Text>
                             )}
                         </View>
-                        {/* ✅ AMÉLIORÉ: Bouton conditionnel selon statut chauffeur */}
-                        {viewMode === 'search' && (
-                            <>
-                                {!isDriverValidated ? (
-                                    // Bouton d'enregistrement chauffeur si non validé
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            hapticPress();
-                                            (navigation as any).navigate('PartnerRegister', {
-                                                partner_type: 'chauffeur',
-                                            });
-                                        }}
-                                        style={styles.registerDriverButton}
-                                    >
-                                        <SafeIcon name="user-plus" size={18} color="#FFFFFF" type="lucide" />
-                                        <Text style={styles.registerDriverText} numberOfLines={1}>
-                                            Devenir chauffeur
-                                        </Text>
-                                    </TouchableOpacity>
-                                ) : (
-                                    // Bouton + pour publier un trajet si chauffeur validé
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            hapticPress();
-                                            (navigation as any).navigate('CovoiturageForm', {
-                                                mode: 'create',
-                                            });
-                                        }}
-                                        style={styles.createButton}
-                                    >
-                                        <SafeIcon name="plus" size={22} color="#FFFFFF" type="lucide" />
-                                    </TouchableOpacity>
-                                )}
-                            </>
-                        )}
-                        <TouchableOpacity
-                            onPress={() => {
-                                hapticPress();
-                                setViewMode(viewMode === 'search' ? 'create' : 'search');
-                            }}
-                            style={styles.modeToggle}
-                        >
-                            <SafeIcon 
-                                name={viewMode === 'search' ? 'search' : 'search'} 
-                                size={22} 
-                                color="#FFFFFF" 
-                                type="lucide" 
-                            />
-                        </TouchableOpacity>
                     </View>
 
-                    {/* ✅ REFONDU: Barre de recherche avec départ/destination améliorée (mode recherche) */}
+                    {/* ✅ MODIFIÉ: Barre de recherche avec départ/destination empilés verticalement pour plus d'espace */}
                     {viewMode === 'search' && (
                         <View style={styles.searchContainer}>
-                            {/* Champs départ et destination avec meilleur formatage */}
+                            {/* Champs départ et destination empilés verticalement */}
                             <View style={styles.routeContainer}>
-                                <View style={styles.routeRow}>
+                                <View style={styles.routeColumn}>
                                     {/* Départ */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
@@ -436,22 +436,6 @@ const CovoiturageHomeScreen: React.FC = () => {
                                             scope="city"
                                             enrichWithBackend={true}
                                         />
-                                    </View>
-                                    
-                                    {/* Bouton d'échange */}
-                                    <View style={styles.swapButtonContainer}>
-                                        <TouchableOpacity
-                                            style={styles.swapButton}
-                                            onPress={() => {
-                                                hapticPress();
-                                                const temp = depart;
-                                                setDepart(destination);
-                                                setDestination(temp);
-                                                // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
-                                            }}
-                                        >
-                                            <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
-                                        </TouchableOpacity>
                                     </View>
                                     
                                     {/* Destination */}
@@ -486,7 +470,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                 </Text>
                             </TouchableOpacity>
 
-                            {/* ✅ NOUVEAU: Bouton de recherche visible uniquement quand départ et destination sont remplis */}
+                            {/* ✅ MODIFIÉ: Bouton de recherche toujours visible et activé uniquement quand départ et destination sont remplis */}
                             <TouchableOpacity
                                 style={[
                                     styles.searchButton,
@@ -500,8 +484,13 @@ const CovoiturageHomeScreen: React.FC = () => {
                                     <ActivityIndicator size="small" color="#FFFFFF" />
                                 ) : (
                                     <>
-                                        <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
-                                        <Text style={styles.searchButtonText}>Rechercher des trajets</Text>
+                                        <SafeIcon name="search" size={18} color={canSearch() ? "#FFFFFF" : "#9CA3AF"} type="lucide" />
+                                        <Text 
+                                            style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
+                                            numberOfLines={1}
+                                        >
+                                            Rechercher
+                                        </Text>
                                     </>
                                 )}
                             </TouchableOpacity>
@@ -517,8 +506,8 @@ const CovoiturageHomeScreen: React.FC = () => {
                     <View style={styles.centerContainer}>
                         <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
                         <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
-                        <Text style={styles.emptySubtext}>
-                            Choisissez une ville de départ et une ville de destination, puis cliquez sur "Rechercher des trajets"
+                        <Text style={styles.emptySubtext} numberOfLines={3}>
+                            Choisissez une ville de départ et une ville de destination, puis cliquez sur "Rechercher"
                         </Text>
                     </View>
                 ) : loading && covoiturages.length === 0 ? (
@@ -568,7 +557,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             <View style={styles.emptyContainer}>
                                 <SafeIcon name="car" size={64} color="#9CA3AF" />
                                 <Text style={styles.emptyText}>Aucun trajet trouvé</Text>
-                                <Text style={styles.emptySubtext}>
+                                <Text style={styles.emptySubtext} numberOfLines={2}>
                                     Essayez de modifier vos critères de recherche
                                 </Text>
                             </View>
@@ -924,6 +913,13 @@ const styles = StyleSheet.create({
         paddingBottom: 16,
         paddingHorizontal: 16,
     },
+    headerActionsBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 12,
+    },
     headerTop: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -945,54 +941,60 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.9)',
         marginTop: 2,
     },
-    createButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
-    },
-    registerDriverButton: {
+    registerDriverButtonLeft: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        borderRadius: 20,
+        borderRadius: 12,
         backgroundColor: 'rgba(255, 255, 255, 0.25)',
-        marginRight: 8,
-        maxWidth: 140,
     },
-    registerDriverText: {
-        fontSize: 12,
+    registerDriverTextLeft: {
+        fontSize: 13,
         fontWeight: '600',
         color: '#FFFFFF',
+        flexShrink: 1,
     },
-    modeToggle: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        justifyContent: 'center',
+    publishTrajetButtonRight: {
+        flex: 1,
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    publishTrajetButtonRightDisabled: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    publishTrajetTextRight: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        flexShrink: 1,
+    },
+    publishTrajetTextRightDisabled: {
+        color: '#9CA3AF',
     },
     searchContainer: {
         marginTop: 8,
     },
-    // ✅ NOUVEAU: Styles pour champs route compacts (comme TicketVoyage)
+    // ✅ MODIFIÉ: Styles pour champs route empilés verticalement
     routeContainer: {
         marginBottom: 12,
     },
-    routeRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        gap: 8,
+    routeColumn: {
+        flexDirection: 'column',
+        gap: 12,
     },
     routeInputContainer: {
         flex: 1,
+        width: '100%',
     },
     routeLabel: {
         fontSize: 11,
@@ -1002,17 +1004,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-    },
-    swapButtonContainer: {
-        paddingBottom: 4,
-    },
-    swapButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     dateButton: {
         flexDirection: 'row',
@@ -1055,6 +1046,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: '#3B82F6',
+        flexShrink: 1,
+    },
+    searchButtonTextDisabled: {
+        color: '#9CA3AF',
     },
     centerContainer: {
         flex: 1,
@@ -1107,6 +1102,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#9CA3AF',
         textAlign: 'center',
+        paddingHorizontal: 16,
     },
     // Trajet Card styles
     trajetCard: {

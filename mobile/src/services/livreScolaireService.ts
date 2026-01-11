@@ -96,7 +96,12 @@ export const livreScolaireService = {
     },
 
     // ✅ Analyser une image de livre avec IA
-    analyzeBookImage: async (imageUri: string, userLat?: number, userLng?: number) => {
+    analyzeBookImage: async (imageBase64: string, userLat?: number, userLng?: number) => {
+        // ✅ S'assurer que l'image est au format data URI
+        const imageUri = imageBase64.startsWith('data:') 
+            ? imageBase64 
+            : `data:image/jpeg;base64,${imageBase64}`;
+            
         const response = await apiPost<{ success: boolean; book_info: BookImageAnalysis; image_uri: string }>(
             '/api/bourse-livre/ai/analyze-image',
             {

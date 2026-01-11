@@ -119,7 +119,12 @@ export interface GeneratedRecipe {
 
 export const menuPlanningService = {
     // ✅ Générer menu hebdomadaire avec IA
-    generateWeeklyMenu: async (weekStart?: string, profileOverride?: Partial<FamilyProfile>) => {
+    // ✅ NOUVEAU: currentGps optionnel pour envoyer la localisation actuelle dynamiquement
+    generateWeeklyMenu: async (
+        weekStart?: string, 
+        profileOverride?: Partial<FamilyProfile>,
+        currentGps?: string // Format: "lat,lng" ou "lng,lat"
+    ) => {
         const response = await apiPost<{
             success: boolean;
             menu: WeeklyMenu;
@@ -129,6 +134,7 @@ export const menuPlanningService = {
         }>('/api/menus/ai/generate-week', {
             week_start: weekStart,
             profile_override: profileOverride,
+            current_gps: currentGps, // ✅ Envoi dynamique de la localisation actuelle
         });
         return response;
     },
