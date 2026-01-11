@@ -1,0 +1,69 @@
+Objet : 📱 Application Mobile Yukpo - Démonstration | Yango Ventures
+
+Bonjour [Nom],
+
+Suite à notre échange sur Yukpo, je vous partage l'application mobile pour démonstration.
+
+📱 APPLICATION YUKPO (ANDROID)
+Lien de téléchargement : [LIEN SÉCURISÉ]
+Version : Yukpo-Demo-v1.0-Android-Yango-2026-01-10
+
+Cette version reflète **95% de l'application finale** qui sera disponible sur Google Play et Apple App Store après financement Seed. L'application est fonctionnelle et permet de tester toutes les fonctionnalités clés.
+
+🔒 CONFIDENTIALITÉ
+Cette application est partagée sous confidentialité dans le cadre de notre discussion d'investissement. Si un NDA n'a pas encore été signé, je vous invite à le faire avant installation.
+
+✅ FONCTIONNALITÉS À TESTER
+- Création digitale commerçants (5 min, gratuite)
+- Recherche intelligente texte/audio/photo + géolocalisation
+- Multi-secteurs : e-commerce + services (santé, éducation, transport, immobilier)
+- Interface utilisateur complète
+- Optimisation livraison par IA
+
+📋 INSTALLATION ANDROID
+1. Activer "Sources inconnues" dans Paramètres > Sécurité
+2. Télécharger l'APK via le lien ci-dessus
+3. Installer l'application
+4. La première ouverture peut prendre quelques secondes (téléchargement des ressources)
+
+⚠️ NOTE IMPORTANTE
+- Version de démonstration (données de test incluses)
+- Application fonctionnelle et opérationnelle
+- Code React Native/Expo optimisé
+- Backend connecté (API production)
+
+📄 DOCUMENTS COMPLÉMENTAIRES
+Si vous souhaitez approfondir, je peux vous fournir :
+- Architecture technique détaillée
+- Code source review (avec NDA)
+- Démo en direct (vidéoconférence)
+- Accès à l'interface web (si besoin)
+
+Disponible pour toute question technique ou démonstration en direct.
+
+Cordialement,
+Hernandez LELE
+Fondateur & CEO - Yukpo
+📧 lelehernandez2007@yahoo.fr | 📱 +237 674 546895
+
+---
+
+**Alternative courte (si NDA déjà signé) :**
+
+Objet : 📱 APK Yukpo - Démonstration
+
+Bonjour,
+
+Voici l'application mobile Yukpo pour démonstration :
+
+📱 Lien : [LIEN SÉCURISÉ]
+- Version : Demo v1.0 (reflète 95% de la version finale)
+- Installation : Activer "Sources inconnues" puis installer
+
+Cette version reflète l'application qui sera disponible sur Google Play / Apple App Store après financement.
+
+Disponible pour toute question.
+
+Cordialement,
+Hernandez LELE
+

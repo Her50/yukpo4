@@ -164,7 +164,6 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   } : null);
   
   const [imageError, setImageError] = useState(false);
-  const [showChatModal, setShowChatModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
   const [chatContext, setChatContext] = useState<{
@@ -492,12 +491,16 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     { key: 'favorites', icon: 'heart', value: favoritesCount, tint: '#ef4444' },
   ];
 
+  // ✅ CORRIGÉ 2026-01-XX: Toujours utiliser onChatPress (méthode du parent, comme pour les services)
+  // Cette méthode est plus complète car elle gère les notifications et le contexte au niveau parent
   const handleChatPress = () => {
     if (onChatPress) {
       onChatPress();
       return;
     }
 
+    // Fallback: Si onChatPress n'est pas fourni, utiliser la méthode interne (compatibilité arrière)
+    // Mais dans la plupart des cas, onChatPress devrait être fourni par le parent
     setChatContext({
       type: 'service',
       targetUserId: prestataire.user_id ? Number(prestataire.user_id) : undefined,
@@ -505,7 +508,6 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       targetAvatar: prestataire.avatar_url || null,
     });
     setPrivateConversationId(null);
-    setShowChatModal(true);
   };
 
   const handleShare = async () => {
@@ -639,8 +641,9 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     }
   };
 
+  // ✅ CORRIGÉ 2026-01-XX: handleCloseChatModal n'est plus nécessaire car le chat modal est géré par le parent
+  // Cette fonction est conservée pour compatibilité avec handleContactUser (chat privé depuis les commentaires)
   const handleCloseChatModal = () => {
-    setShowChatModal(false);
     if (chatContext?.type === 'private') {
       setChatContext(null);
       setPrivateConversationId(null);

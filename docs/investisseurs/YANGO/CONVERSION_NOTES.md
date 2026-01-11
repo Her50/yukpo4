@@ -1,0 +1,30 @@
+# Notes de Conversion USD
+## Taux de change utilisé : 1 USD = 600 FCFA
+
+### Conversions principales :
+- 100K FCFA = 167 USD
+- 1M FCFA = 1,667 USD
+- 15K FCFA = 25 USD
+- 25K FCFA = 42 USD
+- 500 FCFA = 0,83 USD
+- 1K FCFA = 1,67 USD
+- 2K FCFA = 3,33 USD
+- 48K FCFA = 80 USD
+- 13M FCFA = 21,7K USD
+- 80M FCFA = 133K USD
+- 139M FCFA = 232K USD
+- 183M FCFA = 305K USD
+- 220M FCFA = 367K USD
+- 500M FCFA = 833K USD
+- 537M FCFA = 895K USD
+- 640M FCFA = 1,067M USD
+- 720M FCFA = 1,2M USD
+- 897M FCFA = 1,495M USD
+- 1,920M FCFA = 3,2M USD
+- 2,200M FCFA = 3,67M USD
+- 6,800M FCFA = 11,3M USD
+- 14,600M FCFA = 24,3M USD
+- 1,8 billions FCFA = 3 milliards USD
+- 2,7 billions FCFA = 4,5 milliards USD
+- 183 billions FCFA = 305 milliards USD
+

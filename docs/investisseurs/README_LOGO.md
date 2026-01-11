@@ -26,3 +26,5 @@ Le nom complet "Yukpomnang" est mentionné entre parenthèses pour clarifier, ma
 - `DEMANDE_FINANCEMENT_BANQUE.html` : Document principal avec branding appliqué
 - `logo_yukpo.png` : Logo à placer dans ce dossier (optionnel)
 
+
+

@@ -71,3 +71,5 @@ Les charges doivent être ajustées en fonction des nouveaux revenus réalistes.
 
 **Option 3** : Ouvrir le HTML dans Word, corriger manuellement les tableaux avec les valeurs ci-dessus, puis sauvegarder
 
+
+

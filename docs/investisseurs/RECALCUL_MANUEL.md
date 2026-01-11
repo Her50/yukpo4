@@ -61,3 +61,5 @@ table.MsoNormalTable tbody {
 2. Appliquer les modifications ci-dessus manuellement
 3. Vérifier que tous les calculs sont cohérents avec la logique 1 commerçant = 1 produit
 
+
+

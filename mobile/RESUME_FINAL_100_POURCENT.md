@@ -118,3 +118,5 @@ android:windowSoftInputMode="adjustResize"
 
 Le clavier ne masquera plus les champs de saisie sur tous les écrans principaux de l'application.
 
+
+

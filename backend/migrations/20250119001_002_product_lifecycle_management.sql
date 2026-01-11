@@ -86,29 +86,54 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 4. Fonction pour désactiver automatiquement les produits expirés
+-- ✅ CORRIGÉ 2026-01-XX: Utiliser service_products.is_active comme source de vérité
+-- Synchroniser products_lifecycle pour les métadonnées de cycle de vie
 CREATE OR REPLACE FUNCTION deactivate_expired_products()
 RETURNS TABLE(
     service_id INTEGER,
     product_index INTEGER,
     product_nom TEXT,
-    user_id INTEGER
+    user_id INTEGER,
+    deactivation_reason TEXT
 ) AS $$
 BEGIN
     RETURN QUERY
+    UPDATE service_products sp
+    SET 
+        is_active = FALSE,
+        updated_at = NOW(),
+        product_data = jsonb_set(
+            COALESCE(sp.product_data, '{}'::jsonb),
+            '{deactivated_at}',
+            to_jsonb(NOW()::text),
+            true
+        ) || jsonb_build_object(
+            'deactivation_type', 'auto',
+            'deactivation_reason', 'expired_time'
+        )
+    FROM services s
+    LEFT JOIN products_lifecycle pl ON pl.service_id = sp.service_id AND pl.product_index = sp.product_index
+    WHERE sp.service_id = s.id
+        AND sp.is_active = TRUE
+        AND COALESCE(sp.auto_deactivate_at, pl.auto_deactivate_at) <= NOW()
+    RETURNING 
+        sp.service_id,
+        sp.product_index,
+        COALESCE(sp.product_name, pl.product_nom, 'Produit'),
+        s.user_id,
+        'expired_time'::TEXT;
+    
+    -- Synchroniser products_lifecycle (métadonnées de cycle de vie)
     UPDATE products_lifecycle pl
     SET 
         is_active = FALSE,
         updated_at = NOW(),
         deactivation_count = deactivation_count + 1
-    FROM services s
-    WHERE pl.service_id = s.id
-        AND pl.is_active = TRUE
-        AND pl.auto_deactivate_at <= NOW()
-    RETURNING 
-        pl.service_id,
-        pl.product_index,
-        pl.product_nom,
-        s.user_id;
+    FROM service_products sp
+    WHERE pl.service_id = sp.service_id
+        AND pl.product_index = sp.product_index
+        AND sp.is_active = FALSE
+        AND pl.is_active = TRUE;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -123,12 +148,12 @@ DECLARE
     v_user_balance BIGINT;
     v_product RECORD;
 BEGIN
-    -- Vérifier que le produit existe et appartient au prestataire
-    SELECT pl.* INTO v_product
-    FROM products_lifecycle pl
-    JOIN services s ON s.id = pl.service_id
-    WHERE pl.service_id = p_service_id
-        AND pl.product_index = p_product_index
+    -- ✅ CORRIGÉ 2026-01-XX: Vérifier dans service_products (source de vérité)
+    SELECT sp.*, s.user_id INTO v_product
+    FROM service_products sp
+    JOIN services s ON s.id = sp.service_id
+    WHERE sp.service_id = p_service_id
+        AND sp.product_index = p_product_index
         AND s.user_id = p_user_id;
     
     IF NOT FOUND THEN
@@ -165,7 +190,22 @@ BEGIN
     SET tokens_balance = tokens_balance - v_reactivation_cost
     WHERE id = p_user_id;
     
-    -- Réactiver le produit
+    -- ✅ CORRIGÉ 2026-01-XX: Réactiver le produit dans service_products (source de vérité)
+    UPDATE service_products
+    SET 
+        is_active = TRUE,
+        updated_at = NOW(),
+        auto_deactivate_at = NOW() + INTERVAL '30 days',
+        product_data = jsonb_set(
+            COALESCE(product_data, '{}'::jsonb),
+            '{reactivated_at}',
+            to_jsonb(NOW()::text),
+            true
+        ) || jsonb_build_object('reactivation_type', 'paid', 'reactivation_cost', v_reactivation_cost)
+    WHERE service_id = p_service_id
+        AND product_index = p_product_index;
+    
+    -- Synchroniser products_lifecycle (métadonnées de cycle de vie)
     UPDATE products_lifecycle
     SET 
         is_active = TRUE,
@@ -182,7 +222,7 @@ BEGIN
         p_service_id,
         p_user_id,
         'product_reactivation',
-        format('Produit "%s" réactivé pour %s FCFA', v_product.product_nom, v_reactivation_cost)
+        format('Produit "%s" réactivé pour %s FCFA', COALESCE(v_product.product_name, 'Produit'), v_reactivation_cost)
     );
     
     RETURN jsonb_build_object(
@@ -232,9 +272,29 @@ BEGIN
     SET tokens_balance = tokens_balance - v_total_cost
     WHERE id = p_user_id;
     
-    -- Réactiver tous les produits
+    -- ✅ CORRIGÉ 2026-01-XX: Réactiver tous les produits dans service_products (source de vérité)
     FOREACH v_product_idx IN ARRAY p_product_indices
     LOOP
+        UPDATE service_products
+        SET 
+            is_active = TRUE,
+            updated_at = NOW(),
+            auto_deactivate_at = NOW() + INTERVAL '30 days',
+            product_data = jsonb_set(
+                COALESCE(product_data, '{}'::jsonb),
+                '{reactivated_at}',
+                to_jsonb(NOW()::text),
+                true
+            ) || jsonb_build_object('reactivation_type', 'paid', 'reactivation_cost', v_reactivation_cost_per_product)
+        WHERE service_id = p_service_id
+            AND product_index = v_product_idx
+            AND is_active = FALSE;
+        
+        IF FOUND THEN
+            v_reactivated_count := v_reactivated_count + 1;
+        END IF;
+        
+        -- Synchroniser products_lifecycle (métadonnées de cycle de vie)
         UPDATE products_lifecycle
         SET 
             is_active = TRUE,
@@ -243,12 +303,7 @@ BEGIN
             auto_deactivate_at = NOW() + INTERVAL '30 days',
             total_reactivation_paid = total_reactivation_paid + v_reactivation_cost_per_product
         WHERE service_id = p_service_id
-            AND product_index = v_product_idx
-            AND is_active = FALSE;
-        
-        IF FOUND THEN
-            v_reactivated_count := v_reactivated_count + 1;
-        END IF;
+            AND product_index = v_product_idx;
     END LOOP;
     
     -- Logger l'action

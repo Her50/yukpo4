@@ -274,8 +274,17 @@ const AjouterProduitSimple: React.FC = () => {
         service_id: serviceId || null,
       };
 
-      // Appel API pour créer le produit
-      const response = await apiPost('/api/products/create', productData);
+      // ✅ CORRIGÉ 2026-01-XX: Utiliser /api/services/{serviceId}/products comme le mobile
+      if (!serviceId) {
+        toast.error('ID de service manquant. Impossible de créer le produit.');
+        setSaving(false);
+        return;
+      }
+      
+      const response = await apiPost(`/api/services/${serviceId}/products`, {
+        user_id: user?.id || 0,
+        product_data: productData
+      });
 
       if (response.success) {
         // ✅ NOUVEAU: Afficher un toast de succès

@@ -210,3 +210,5 @@
 4. **Identifier 5 investisseurs prioritaires** et les contacter
 5. **Préparer un executive summary** d'1 page
 
+
+

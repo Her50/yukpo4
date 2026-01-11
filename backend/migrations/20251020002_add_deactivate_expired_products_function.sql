@@ -27,29 +27,54 @@ CREATE INDEX IF NOT EXISTS idx_products_lifecycle_auto_deactivate ON products_li
 WHERE is_active = TRUE;
 
 -- 3. Fonction pour désactiver automatiquement les produits expirés
+-- ✅ CORRIGÉ 2026-01-XX: Utiliser service_products.is_active comme source de vérité
+-- Synchroniser products_lifecycle pour les métadonnées de cycle de vie
 CREATE OR REPLACE FUNCTION deactivate_expired_products()
 RETURNS TABLE(
     service_id INTEGER,
     product_index INTEGER,
     product_nom TEXT,
-    user_id INTEGER
+    user_id INTEGER,
+    deactivation_reason TEXT
 ) AS $$
 BEGIN
     RETURN QUERY
+    UPDATE service_products sp
+    SET 
+        is_active = FALSE,
+        updated_at = NOW(),
+        product_data = jsonb_set(
+            COALESCE(sp.product_data, '{}'::jsonb),
+            '{deactivated_at}',
+            to_jsonb(NOW()::text),
+            true
+        ) || jsonb_build_object(
+            'deactivation_type', 'auto',
+            'deactivation_reason', 'expired_time'
+        )
+    FROM services s
+    LEFT JOIN products_lifecycle pl ON pl.service_id = sp.service_id AND pl.product_index = sp.product_index
+    WHERE sp.service_id = s.id
+        AND sp.is_active = TRUE
+        AND COALESCE(sp.auto_deactivate_at, pl.auto_deactivate_at) <= NOW()
+    RETURNING 
+        sp.service_id,
+        sp.product_index,
+        COALESCE(sp.product_name, pl.product_nom, 'Produit'),
+        s.user_id,
+        'expired_time'::TEXT;
+    
+    -- Synchroniser products_lifecycle (métadonnées de cycle de vie)
     UPDATE products_lifecycle pl
     SET 
         is_active = FALSE,
         updated_at = NOW(),
         deactivation_count = deactivation_count + 1
-    FROM services s
-    WHERE pl.service_id = s.id
-        AND pl.is_active = TRUE
-        AND pl.auto_deactivate_at <= NOW()
-    RETURNING 
-        pl.service_id,
-        pl.product_index,
-        pl.product_nom,
-        s.user_id;
+    FROM service_products sp
+    WHERE pl.service_id = sp.service_id
+        AND pl.product_index = sp.product_index
+        AND sp.is_active = FALSE
+        AND pl.is_active = TRUE;
 END;
 $$ LANGUAGE plpgsql;
 

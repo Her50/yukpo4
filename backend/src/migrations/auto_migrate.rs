@@ -1368,38 +1368,38 @@ pub async fn ensure_deactivate_expired_products_function(pool: &PgPool) -> Resul
             deactivation_reason TEXT
         ) AS $$
         BEGIN
+            -- ✅ CORRIGÉ 2026-01-XX: Mettre à jour service_products.is_active au lieu de products_lifecycle.is_active
             RETURN QUERY
-            UPDATE products_lifecycle pl
+            UPDATE service_products p
             SET 
                 is_active = FALSE,
-                updated_at = NOW(),
-                deactivation_count = deactivation_count + 1
+                updated_at = NOW()
             FROM services s
-            WHERE pl.service_id = s.id
-                AND pl.is_active = TRUE
+            WHERE p.service_id = s.id
+                AND p.is_active = TRUE
                 AND (
-                    -- Critère 1: Délai expiré (existant)
-                    pl.auto_deactivate_at <= NOW()
+                    -- Critère 1: Délai expiré (auto_deactivate_at depuis service_products)
+                    (p.auto_deactivate_at IS NOT NULL AND p.auto_deactivate_at <= NOW())
                     OR
-            -- ✅ NOUVEAU Critère 2: Stock = 0 (uniquement pour les produits)
-            (
-                s.is_tarissable = TRUE  -- Uniquement pour les produits
-                AND EXISTS (
-                    SELECT 1 
-                    FROM autocomplete_combinations ac
-                    WHERE ac.service_id = s.id
-                        AND ac.stock IS NOT NULL
-                        AND ac.stock <= 0
-                )
-            )
+                    -- ✅ NOUVEAU Critère 2: Stock = 0 (uniquement pour les produits)
+                    (
+                        s.is_tarissable = TRUE  -- Uniquement pour les produits
+                        AND EXISTS (
+                            SELECT 1 
+                            FROM autocomplete_combinations ac
+                            WHERE ac.service_id = s.id
+                                AND ac.stock IS NOT NULL
+                                AND ac.stock <= 0
+                        )
+                    )
                 )
             RETURNING 
-                pl.service_id,
-                pl.product_index,
-                pl.product_nom,
+                p.service_id,
+                p.product_index,
+                p.product_name,
                 s.user_id,
                 CASE 
-                    WHEN pl.auto_deactivate_at <= NOW() THEN 'expired_time'
+                    WHEN p.auto_deactivate_at IS NOT NULL AND p.auto_deactivate_at <= NOW() THEN 'expired_time'
                     ELSE 'stock_zero'
                 END::TEXT;
         END;
@@ -10960,10 +10960,10 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
                     lat := split_part(gps_parts[1], ',', 1)::double precision;
                     lng := split_part(gps_parts[1], ',', 2)::double precision;
                     
-                    -- Recherche avec filtrage GPS et produits actifs
+                    -- ✅ CORRIGÉ 2026-01-XX: Recherche UNIQUEMENT dans service_products, PAS dans services.data->'produits'
                     RETURN QUERY
                     WITH services_with_active_products AS (
-                        SELECT 
+                        SELECT DISTINCT
                             s.id,
                             s.data,
                             s.category,
@@ -10973,11 +10973,11 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
                                 get_best_gps_for_service(s.data),
                                 s.gps,
                                 '0,0'
-                            ) as best_gps,
-                            get_active_products(s.data, s.id) as active_products
+                            ) as best_gps
                         FROM services s
+                        INNER JOIN service_products p ON p.service_id = s.id
                         WHERE s.is_active = TRUE
-                            AND jsonb_array_length(get_active_products(s.data, s.id)) > 0
+                            AND p.is_active = TRUE
                     ),
                     scored_products AS (
                         SELECT 
@@ -10999,22 +10999,25 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
                                     calculate_distance_km(user_gps_zone, s.best_gps)
                                 ELSE 999999.0
                             END as distance_km,
-                            -- Score basé principalement sur les PRODUITS
+                            -- Score basé UNIQUEMENT sur service_products (PAS sur services.data->'produits')
                             (
                                 (
                                     SELECT COALESCE(SUM(
                                         CASE 
-                                            WHEN product->>'nom' ILIKE '%' || search_query || '%' THEN 20.0
-                                            WHEN product->>'name' ILIKE '%' || search_query || '%' THEN 20.0
-                                            WHEN product->>'titre' ILIKE '%' || search_query || '%' THEN 18.0
-                                            WHEN product->>'categorie' ILIKE '%' || search_query || '%' THEN 15.0
-                                            WHEN product->>'description' ILIKE '%' || search_query || '%' THEN 12.0
-                                            WHEN product->>'type' ILIKE '%' || search_query || '%' THEN 10.0
-                                            WHEN product->>'marque' ILIKE '%' || search_query || '%' THEN 10.0
+                                            WHEN p.product_name ILIKE '%' || search_query || '%' THEN 20.0
+                                            WHEN p.product_data->>'nom' ILIKE '%' || search_query || '%' THEN 20.0
+                                            WHEN p.product_data->>'name' ILIKE '%' || search_query || '%' THEN 20.0
+                                            WHEN p.product_data->>'titre' ILIKE '%' || search_query || '%' THEN 18.0
+                                            WHEN p.product_data->>'categorie' ILIKE '%' || search_query || '%' THEN 15.0
+                                            WHEN COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') ILIKE '%' || search_query || '%' THEN 12.0
+                                            WHEN p.product_data->>'type' ILIKE '%' || search_query || '%' THEN 10.0
+                                            WHEN p.product_data->>'marque' ILIKE '%' || search_query || '%' THEN 10.0
                                             ELSE 0.0
                                         END
                                     ), 0.0)
-                                    FROM jsonb_array_elements(s.active_products) AS product
+                                    FROM service_products p
+                                    WHERE p.service_id = s.id
+                                        AND p.is_active = TRUE
                                 ) +
                                 CASE 
                                     WHEN s.data->>'titre_service' ILIKE '%' || search_query || '%' THEN 5.0
@@ -11037,15 +11040,22 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
                                 OR search_query = ''
                                 OR EXISTS (
                                     SELECT 1
-                                    FROM jsonb_array_elements(s.active_products) AS product
-                                    WHERE 
-                                        product->>'nom' ILIKE '%' || search_query || '%'
-                                        OR product->>'name' ILIKE '%' || search_query || '%'
-                                        OR product->>'titre' ILIKE '%' || search_query || '%'
-                                        OR product->>'categorie' ILIKE '%' || search_query || '%'
-                                        OR product->>'description' ILIKE '%' || search_query || '%'
+                                    FROM service_products p
+                                    WHERE p.service_id = s.id
+                                        AND p.is_active = TRUE
+                                        AND (
+                                            p.product_name ILIKE '%' || search_query || '%'
+                                            OR p.product_data->>'nom' ILIKE '%' || search_query || '%'
+                                            OR p.product_data->>'name' ILIKE '%' || search_query || '%'
+                                            OR p.product_data->>'titre' ILIKE '%' || search_query || '%'
+                                            OR p.product_data->>'categorie' ILIKE '%' || search_query || '%'
+                                            OR COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') ILIKE '%' || search_query || '%'
+                                        )
                                 )
-                                OR s.data::TEXT ILIKE '%' || search_query || '%'
+                                OR s.data->>'titre_service' ILIKE '%' || search_query || '%'
+                                OR s.data->'titre_service'->>'valeur' ILIKE '%' || search_query || '%'
+                                OR s.data->>'description' ILIKE '%' || search_query || '%'
+                                OR s.data->'description'->>'valeur' ILIKE '%' || search_query || '%'
                             )
                     )
                     SELECT 
@@ -11067,18 +11077,18 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
                 END IF;
             END IF;
             
-            -- Si pas de GPS, faire une recherche textuelle sur produits actifs uniquement
+            -- ✅ CORRIGÉ 2026-01-XX: Si pas de GPS, recherche textuelle UNIQUEMENT dans service_products
             RETURN QUERY
             WITH services_with_active_products AS (
-                SELECT 
+                SELECT DISTINCT
                     s.id,
                     s.data,
                     s.category,
-                    s.gps,
-                    get_active_products(s.data, s.id) as active_products
+                    s.gps
                 FROM services s
+                INNER JOIN service_products p ON p.service_id = s.id
                 WHERE s.is_active = TRUE
-                    AND jsonb_array_length(get_active_products(s.data, s.id)) > 0
+                    AND p.is_active = TRUE
             )
             SELECT 
                 s.id as service_id,
@@ -11103,17 +11113,20 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
                     (
                         SELECT COALESCE(SUM(
                             CASE 
-                                WHEN product->>'nom' ILIKE '%' || search_query || '%' THEN 20.0
-                                WHEN product->>'name' ILIKE '%' || search_query || '%' THEN 20.0
-                                WHEN product->>'titre' ILIKE '%' || search_query || '%' THEN 18.0
-                                WHEN product->>'categorie' ILIKE '%' || search_query || '%' THEN 15.0
-                                WHEN product->>'description' ILIKE '%' || search_query || '%' THEN 12.0
-                                WHEN product->>'type' ILIKE '%' || search_query || '%' THEN 10.0
-                                WHEN product->>'marque' ILIKE '%' || search_query || '%' THEN 10.0
+                                WHEN p.product_name ILIKE '%' || search_query || '%' THEN 20.0
+                                WHEN p.product_data->>'nom' ILIKE '%' || search_query || '%' THEN 20.0
+                                WHEN p.product_data->>'name' ILIKE '%' || search_query || '%' THEN 20.0
+                                WHEN p.product_data->>'titre' ILIKE '%' || search_query || '%' THEN 18.0
+                                WHEN p.product_data->>'categorie' ILIKE '%' || search_query || '%' THEN 15.0
+                                WHEN COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') ILIKE '%' || search_query || '%' THEN 12.0
+                                WHEN p.product_data->>'type' ILIKE '%' || search_query || '%' THEN 10.0
+                                WHEN p.product_data->>'marque' ILIKE '%' || search_query || '%' THEN 10.0
                                 ELSE 0.0
                             END
                         ), 0.0)
-                        FROM jsonb_array_elements(s.active_products) AS product
+                        FROM service_products p
+                        WHERE p.service_id = s.id
+                            AND p.is_active = TRUE
                     ) +
                     CASE 
                         WHEN s.data->>'titre_service' ILIKE '%' || search_query || '%' THEN 5.0
@@ -11127,15 +11140,22 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
                 OR search_query = ''
                 OR EXISTS (
                     SELECT 1
-                    FROM jsonb_array_elements(s.active_products) AS product
-                    WHERE 
-                        product->>'nom' ILIKE '%' || search_query || '%'
-                        OR product->>'name' ILIKE '%' || search_query || '%'
-                        OR product->>'titre' ILIKE '%' || search_query || '%'
-                        OR product->>'categorie' ILIKE '%' || search_query || '%'
-                        OR product->>'description' ILIKE '%' || search_query || '%'
+                    FROM service_products p
+                    WHERE p.service_id = s.id
+                        AND p.is_active = TRUE
+                        AND (
+                            p.product_name ILIKE '%' || search_query || '%'
+                            OR p.product_data->>'nom' ILIKE '%' || search_query || '%'
+                            OR p.product_data->>'name' ILIKE '%' || search_query || '%'
+                            OR p.product_data->>'titre' ILIKE '%' || search_query || '%'
+                            OR p.product_data->>'categorie' ILIKE '%' || search_query || '%'
+                            OR COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') ILIKE '%' || search_query || '%'
+                        )
                 )
-                OR s.data::TEXT ILIKE '%' || search_query || '%'
+                OR s.data->>'titre_service' ILIKE '%' || search_query || '%'
+                OR s.data->'titre_service'->>'valeur' ILIKE '%' || search_query || '%'
+                OR s.data->>'description' ILIKE '%' || search_query || '%'
+                OR s.data->'description'->>'valeur' ILIKE '%' || search_query || '%'
             ORDER BY relevance_score DESC
             LIMIT max_results;
         END;
@@ -11156,7 +11176,7 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
 
     sqlx::query(
         r#"
-        COMMENT ON FUNCTION search_services_gps_final IS 'Recherche dans les PRODUITS actifs (via products_lifecycle), pas dans les services. Retourne uniquement les services qui ont au moins un produit actif correspondant à la recherche.';
+        COMMENT ON FUNCTION search_services_gps_final IS 'Recherche UNIQUEMENT dans service_products (PAS dans services.data->produits). Retourne uniquement les services qui ont au moins un produit actif dans service_products correspondant à la recherche.';
         "#
     )
     .execute(pool)

@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yukpo - Demande de Financement</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #1F2937;
+            background: #FFFFFF;
+            padding: 0;
+            text-align: justify;
+        }
+
+        .container {
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+            background: white;
+        }
+
+        h1 {
+            font-size: 28pt;
+            color: #1E40AF;
+            margin-bottom: 10pt;
+            border-bottom: 3pt solid #6366F1;
+            padding-bottom: 8pt;
+        }
+
+        h1 .brand-yuk {
+            color: #F59E0B;
+            font-weight: bold;
+        }
+
+        h1 .brand-po {
+            color: #DC2626;
+            font-weight: bold;
+        }
+
+        h2 {
+            font-size: 18pt;
+            color: #1E3A8A;
+            margin-top: 20pt;
+            margin-bottom: 12pt;
+            font-weight: bold;
+        }
+
+        h3 {
+            font-size: 14pt;
+            color: #1E40AF;
+            margin-top: 16pt;
+            margin-bottom: 8pt;
+            font-weight: bold;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%);
+            border: 1pt solid rgba(99, 102, 241, 0.2);
+            padding: 14pt 16pt;
+            margin: 14pt 0;
+            border-radius: 6pt;
+            box-shadow: 0 3pt 8pt rgba(99, 102, 241, 0.15);
+        }
+
+        .intro-box {
+            background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%);
+            border: 1pt solid rgba(99, 102, 241, 0.2);
+            padding: 20pt 24pt;
+            margin: 20pt 0;
+            font-style: italic;
+            color: #1F2937;
+            border-radius: 8pt;
+            box-shadow: 0 4pt 12pt rgba(99, 102, 241, 0.15);
+            font-size: 13pt;
+            line-height: 1.8;
+            text-align: justify;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 14pt 0;
+            font-size: 10pt;
+            box-shadow: 0 2pt 6pt rgba(0, 0, 0, 0.08);
+            page-break-inside: avoid;
+            break-inside: avoid;
+            border: 1pt solid #E5E7EB;
+            border-radius: 6pt;
+            overflow: visible;
+        }
+
+        table thead {
+            background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
+            color: #FFFFFF !important;
+        }
+
+        table th {
+            padding: 8pt 6pt;
+            text-align: center;
+            font-weight: bold;
+            font-size: 10pt;
+            vertical-align: middle;
+            border: none;
+            color: #FFFFFF !important;
+            background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
+        }
+
+        table td {
+            padding: 8pt 6pt;
+            border-bottom: 1pt solid #E5E7EB;
+            vertical-align: middle;
+            text-align: left;
+            font-size: 10pt;
+        }
+
+        table tbody tr:nth-child(even) {
+            background: #F9FAFB;
+        }
+
+        table tbody tr:hover {
+            background: #F3F4F6;
+        }
+
+        .number {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        table td:first-child {
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .total-row {
+            background: #EEF2FF !important;
+            font-weight: bold;
+        }
+
+        .positive {
+            color: #059669;
+        }
+
+        .negative {
+            color: #DC2626;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .section-divider {
+            border-top: 2pt solid #E5E7EB;
+            margin: 20pt 0;
+        }
+
+        .footer {
+            margin-top: 30pt;
+            padding-top: 15pt;
+            border-top: 2pt solid #E5E7EB;
+            text-align: center;
+            font-size: 11pt;
+            color: #6B7280;
+        }
+
+        .annexe {
+            page-break-before: always;
+            margin-top: 30pt;
+        }
+
+        strong {
+            color: #1F2937;
+            font-weight: 600;
+        }
+
+        ul, ol {
+            margin-left: 20pt;
+            margin-top: 8pt;
+            margin-bottom: 8pt;
+        }
+
+        li {
+            margin-bottom: 4pt;
+        }
+
+        p {
+            text-align: justify;
+            margin-bottom: 10pt;
+        }
+
+        @media print {
+            .container {
+                padding: 15mm;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+            table {
+                page-break-inside: avoid !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- PAGE 1 -->
+        <h1><span class="brand-yuk">Yuk</span><span class="brand-po">po</span></h1>
+        <h2>Plateforme Intelligente de Services Multi-Secteurs en Afrique</h2>
+
+        <div class="highlight-box">
+            <strong>OPPORTUNITÉ D'INVESTISSEMENT EXCEPTIONNELLE</strong><br>
+            <span style="color: #6366F1; font-size: 11pt;">Application développée et opérationnelle | Financement
+                ciblé sur croissance | ROI projeté 10 – 15x sur 5 ans</span><br>
+            <strong>Montant demandé : 600M à 750M FCFA</strong>
+        </div>
+
+        <div class="intro-box">
+            <p style="margin: 0; font-size: 13pt; line-height: 1.8; text-align: center; font-style: italic;">
+                Imaginez une plateforme qui transforme l'économie africaine en rendant visible 85% des commerces locaux
+                actuellement invisibles numériquement, tout en permettant à 60% de la population d'accéder à tous les
+                services essentiels via une seule application intelligente. Cette solution existe déjà. Elle s'appelle
+                <span class="brand-yuk">Yuk</span><span class="brand-po">po</span>.
+            </p>
+        </div>
+
+        <h2>UNE RÉPONSE SOCIÉTALE À LA FRACTURE DIGITALE</h2>
+
+        <p>En Afrique, <strong>des millions de commerçants locaux</strong> et <strong>des dizaines de millions de
+                familles</strong> sont exclus de l'économie digitale par des barrières technologiques et financières
+            insurmontables. Un commerçant doit investir <strong>100K-1 million FCFA</strong> pour créer un site web et
+            des vidéos publicitaires, tandis qu'une famille doit utiliser <strong>2-5 applications différentes</strong>
+            pour accéder à ses services essentiels, perdant du temps et de l'argent dans des recherches complexes et
+            fragmentées. Cette exclusion digitale perpétue la pauvreté et limite l'accès aux services essentiels (santé,
+            éducation, alimentation, logement).</p>
+
+        <div class="highlight-box">
+            <span class="brand-yuk">Yuk</span><span class="brand-po">po</span> <strong>apporte une réponse sociétale
+                concrète</strong> : grâce à la <strong>création automatique de présence digitale par IA</strong>
+            (gratuite en 5 minutes), chaque commerçant devient visible sans investissement initial. La
+            <strong>génération vidéo automatisée</strong> réduit les coûts marketing de 90%, rendant la publicité
+            accessible à tous. La <strong>recherche intelligente en langage naturel, audio et image</strong> avec
+            géolocalisation permet à chaque famille d'<strong>accéder rapidement et aisément</strong> à tous ses
+            services essentiels en un seul endroit, via simple commande vocale ou photo, sans barrière linguistique ou
+            technologique. L'<strong>optimisation de livraison par IA</strong> réduit les coûts de 40-60%, rendant les
+            services accessibles même dans les zones reculées. Enfin, l'<strong>écosystème intégré
+                multi-secteurs</strong> (santé, éducation, transport, immobilier, e-commerce) transforme un simple outil
+            en véritable infrastructure sociale digitale, incluant ceux qui étaient exclus.
+        </div>
+
+        <h2>LA FRACTURE ÉCONOMIQUE DIGITALE : UNE OPPORTUNITÉ DE 1,5-2 BILLIONS FCFA</h2>
+
+        <h3>Données Statistiques Officielles du Secteur Informel</h3>
+
+        <div class="highlight-box"
+            style="background: linear-gradient(135deg, #FEE2E2 0%, #FEF2F2 100%); border: 1pt solid rgba(220, 38, 38, 0.2);">
+            <p style="margin: 0;">En Afrique francophone, le secteur informel représente une part majeure de l'économie.
+                Selon la <strong>Banque Mondiale dans son rapport "The Long Shadow of Informality: Challenges and
+                    Policies" (2021)</strong>, le secteur informel représente en moyenne plus de 70% de l'emploi total
+                et contribue à environ un tiers du PIB dans les économies émergentes et en développement. En Afrique
+                subsaharienne, cette contribution atteint 36% du PIB. Cette réalité est confirmée par les données
+                officielles des trois principaux pays francophones : le secteur informel représente <strong>38% du PIB
+                    au Cameroun</strong> (Institut National de la Statistique du Cameroun - INS, 2023), <strong>45,8% de
+                    la valeur ajoutée au Sénégal</strong> (Agence Nationale de la Statistique et de la Démographie du
+                Sénégal - ANSD, 2019), et <strong>46,2% du PIB en Côte d'Ivoire</strong> (Institut National de la
+                Statistique de Côte d'Ivoire - ANSTAT, 2022). La majorité des commerces du secteur informel génèrent des revenus significatifs mais n'ont pas de présence digitale, ce qui limite leur visibilité et leur accès aux marchés. Ces commerces représentent une part significative de l'économie informelle mais n'ont généralement pas accès aux outils marketing digitaux. Selon les tarifs pratiqués par les agences digitales locales en Afrique francophone, la création d'un site web professionnel peut coûter entre 100,000 et 1,000,000 FCFA, tandis qu'une vidéo promotionnelle peut coûter entre 15,000 et 300,000 FCFA selon la complexité. Ces coûts représentent un investissement important et souvent prohibitif pour des commerces de petite taille du secteur informel.</p>
+        </div>
+
+        <h3>Pénétration Digitale en Afrique</h3>
+
+        <div class="highlight-box"
+            style="background: linear-gradient(135deg, #FEF3C7 0%, #FEF9E7 100%); border: 1pt solid rgba(245, 158, 11, 0.2);">
+            <p style="margin: 0;">La pénétration Internet en Afrique a atteint 40% en 2024 (contre 3,2% en 2005), avec
+                plus de 600 millions d'utilisateurs d'internet mobile haut débit selon le <strong>GSMA Mobile Economy
+                    Sub-Saharan Africa 2024</strong>. L'économie digitale africaine devrait se multiplier par six d'ici
+                2050, atteignant 712 milliards de dollars selon la <strong>Banque Mondiale - Rapport "Digital Africa"
+                    (2023)</strong>. Parallèlement, 60% de la population (soit ~150 millions de personnes) a des
+                difficultés à trouver un service, et utilisant parfois 2-5 applications différentes pour répondre à leurs
+                besoins quotidiens. Cette fragmentation coûteuse exclut des millions de personnes de l'accès aux services
+                essentiels.</p>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin: 0;"><strong>Marché adressable réaliste (secteur informel uniquement, transport
+                    exclu)</strong> : Sur un PIB combiné de ~183 billions FCFA pour les principaux pays francophones, le
+                secteur informel représente 20-65% du PIB (soit ~37-119 billions FCFA). Selon les études de la
+                <strong>Banque Mondiale sur la digitalisation des économies émergentes (2023)</strong> et les rapports
+                sectoriels tech 2023-2024, le marché digitalisable du secteur informel (e-commerce, services digitaux,
+                marketing digital) représente 1-1,5% du PIB total, soit 0,4-2 billions FCFA de marché adressable
+                réaliste (SAM).</p>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin: 0;"><strong>Méthodologie d'estimation (TAM/SAM)</strong> : Le calcul s'appuie sur les
+                données officielles du secteur informel pour le Cameroun, le Sénégal et la Côte d'Ivoire.</p>
+            <p style="margin: 8pt 0 0 0;"><strong>Données par pays</strong> : Selon l'Institut National de la Statistique
+                du Cameroun (INS, 2023), le secteur informel représente 38% du PIB, soit 12 153 milliards FCFA. Selon
+                l'Agence Nationale de la Statistique et de la Démographie du Sénégal (ANSD, 2019), le secteur informel
+                représente 45,8% de la valeur ajoutée, soit 5 585 milliards FCFA. Selon l'Institut National de la
+                Statistique de Côte d'Ivoire (ANSTAT, 2022), le secteur informel représente 46,2% du PIB, soit 20 441
+                milliards FCFA.</p>
+            <p style="margin: 8pt 0 0 0;"><strong>Estimation du marché digitalisable</strong> : Le secteur informel
+                combiné de ces trois pays représente 38 206 milliards FCFA (soit 43,2% du PIB total estimé de 88 420
+                milliards FCFA). Selon la <strong>Banque Mondiale</strong> (communiqué de presse du 11 mai 2021), les
+                entreprises informelles représentent 72% des prestataires de services dans les économies émergentes. Selon
+                les études de la <strong>Banque Mondiale sur la digitalisation des économies émergentes (2023)</strong> et
+                les rapports sectoriels tech 2023-2024, le marché digitalisable du secteur informel (e-commerce, services
+                digitaux, marketing digital) représente <strong>1-1,5% du PIB total</strong>, ce qui équivaut à
+                <strong>2,31% à 3,47% du secteur informel</strong> (le secteur informel représentant 43,2% du PIB). En
+                appliquant ce taux au secteur informel combiné, le marché adressable théorique (TAM) serait de 884 à 1 326
+                milliards FCFA. Cependant, pour une estimation réaliste à court terme (3-5 premières années), en tenant compte
+                de la pénétration Internet d'environ 40% en Afrique (<strong>GSMA Mobile Economy Sub-Saharan Africa
+                    2024</strong>), des barrières d'adoption initiales, et de la nécessité d'une adoption progressive de la
+                digitalisation, nous appliquons un taux plus conservateur de <strong>0,78% à 1,18% du secteur informel
+                    combiné</strong>, soit un marché adressable réaliste (SAM) pour ces trois pays estimé entre 300 et 450
+                milliards FCFA (38 206 × 0,78% = 300 milliards FCFA ; 38 206 × 1,18% = 450 milliards FCFA). Ce taux
+                conservateur reflète une adoption progressive sur les premières années, avant d'atteindre le potentiel complet
+                de 2,31% à 3,47% du secteur informel.</p>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- PAGE 2 -->
+        <h2>PROJECTIONS FINANCIÈRES RÉALISTES</h2>
+
+        <div class="highlight-box">
+            <p style="margin: 0;"><strong>Modèle économique</strong> : En 2026, les revenus proviennent principalement
+                du <strong>placement de produits/services</strong> (2,000 FCFA/mois par produit actif). Les autres canaux
+                (livraisons, publicité) génèrent des revenus symboliques pendant la phase de croissance.</p>
+        </div>
+
+        <div class="highlight-box"
+            style="background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%); border: 1pt solid rgba(5, 150, 105, 0.2);">
+            <p style="margin: 0 0 10pt 0;"><strong>Méthodologie de calcul des projections (hypothèses réalistes avec
+                    sources fiables)</strong> :</p>
+            <p style="margin: 5pt 0;"><strong>1. Base de données démographiques</strong> : Les projections sont basées
+                sur des données officielles des instituts nationaux de statistique : 3,7 millions d'acteurs informels au
+                Cameroun (<strong>MINPMEESA - Ministère des Petites et Moyennes Entreprises, de l'Économie Sociale et de
+                    l'Artisanat, Rapport annuaire statistique 2024</strong>), 1,69 million au Sénégal (<strong>ANSD -
+                    Agence Nationale de la Statistique et de la Démographie, Enquête Régionale Intégrée sur l'Emploi et
+                    le Secteur Informel ERI-ESI 2017</strong>), et 1,08 million en Côte d'Ivoire (<strong>ANSTAT -
+                    Institut National de la Statistique de Côte d'Ivoire, Recensement Général des Entreprises et
+                    Établissements RGEE-CI 2025</strong>).</p>
+            <p style="margin: 5pt 0;"><strong>2. Taux d'adoption de la plateforme - Méthodologie de calcul</strong> : Les
+                taux d'adoption sont calculés selon une méthodologie progressive basée sur des facteurs de croissance
+                justifiés par des données officielles et des études sectorielles.</p>
+            <p style="margin: 5pt 0;"><strong>2.1. Taux de base (2026)</strong> : Basé sur les données de la
+                <strong>Banque Mondiale (2022)</strong> indiquant que 27,65% des entreprises en Afrique subsaharienne
+                ont adopté des solutions numériques, et que 42% des microentreprises utilisent le mobile pour
+                communiquer avec clients/fournisseurs (<strong>Banque Mondiale, étude sur 3 325 microentreprises dans 7
+                    pays d'Afrique subsaharienne</strong>). Cependant, le secteur informel présente un taux d'adoption
+                numérique plus faible que les entreprises formelles. Compte tenu que Yukpo offre une solution gratuite
+                (création digitale par IA en 5 minutes) et un produit d'entrée concret (livraison intelligente), le taux
+                d'adoption initial est fixé à <strong>0,35% en 2026</strong> (Cameroun uniquement, 6 mois, soit 12 950
+                actifs en fin de période), reflétant une adoption conservatrice mais réaliste pour le secteur informel.
+            </p>
+            <p style="margin: 5pt 0;"><strong>2.2. Facteurs de croissance annuels</strong> : La progression des taux
+                d'adoption est calculée en appliquant des facteurs de croissance justifiés par :</p>
+            <ul style="margin-left: 20pt; margin-top: 5pt;">
+                <li><strong>2026→2027 (facteur 1,80x)</strong> : Expansion géographique (Cameroun → 3 pays : Cameroun,
+                    Sénégal, Côte d'Ivoire) combinée à l'effet réseau initial et au marketing intensif. Le taux passe
+                    de <strong>0,35% à 0,63%</strong> (40 761 actifs fin 2027).</li>
+                <li><strong>2027→2028 (facteur 3,0x)</strong> : Effet réseau exponentiel et croissance virale (selon
+                    la <strong>loi de Metcalfe</strong>, la valeur d'un réseau croît avec le carré du nombre
+                    d'utilisateurs), expansion géographique complète (3 pays opérationnels), pénétration Internet
+                    croissante (40% → 50% selon <strong>GSMA Mobile Economy Sub-Saharan Africa 2024</strong>), adoption
+                    accélérée des plateformes digitales (+20% annuel selon les études de marché locales), et marketing
+                    intensif avec partenariats stratégiques. Le taux passe de <strong>0,63% à 1,89%</strong> (122 283
+                    actifs fin 2028), permettant d'atteindre la rentabilité opérationnelle.</li>
+                <li><strong>2028→2029 (facteur 2,50x)</strong> : Maturation du marché, effet réseau consolidé,
+                    adoption mainstream des plateformes digitales. Le taux passe de <strong>1,76% à 4,41%</strong>
+                    (285 327 actifs fin 2029).</li>
+                <li><strong>2029→2030 (facteur 2,00x)</strong> : Saturation progressive du marché, adoption par les
+                    commerçants les plus réticents. Le taux passe de <strong>4,41% à 8,82%</strong> (570 654 actifs fin
+                    2030), aligné avec les projections <strong>GSMA Mobile Economy Sub-Saharan Africa 2024</strong>
+                    prévoyant 87% d'adoption smartphone en 2030.</li>
+            </ul>
+            <p style="margin: 5pt 0;"><strong>2.3. Calcul des actifs</strong> : Les actifs totaux sont calculés en
+                appliquant le taux d'adoption au marché total d'acteurs informels (3,7M au Cameroun en 2026, puis 6,47M
+                pour les trois pays combinés à partir de 2027). Cette méthodologie garantit une progression réaliste et
+                justifiée, reflétant à la fois les contraintes du secteur informel et les opportunités de croissance
+                offertes par la digitalisation croissante.</p>
+            <p style="margin: 5pt 0;"><strong>2.1. Calcul des revenus avec moyenne mensuelle</strong> : Les revenus de
+                placement sont calculés en tenant compte de la croissance progressive durant l'année. Pour chaque
+                année, nous utilisons la <strong>moyenne mensuelle des actifs</strong> (moyenne entre le nombre d'actifs
+                en début d'année et en fin d'année, en supposant une croissance linéaire), multipliée par 2 000 FCFA/mois
+                et par le nombre de mois. Par exemple, pour 2027 : début d'année = 13 000 actifs (fin 2026), fin
+                d'année = 40 000 actifs, moyenne = (13 000 + 40 000) / 2 = 26 500 actifs, revenus = 26 500 × 2 000 ×
+                12 = 636M FCFA. Cette méthode reflète plus fidèlement la réalité d'une croissance progressive plutôt
+                qu'une adoption instantanée en début d'année.
+            </p>
+            <p style="margin: 5pt 0;"><strong>3. Répartition produits/services</strong> : Les produits représentent
+                70% des actifs totaux et les services 30%, reflétant la structure du secteur informel où selon la
+                <strong>Banque Mondiale (communiqué de presse du 11 mai 2021)</strong>, 72% des entreprises informelles
+                sont des prestataires de services, mais les commerçants de produits représentent la majorité des actifs
+                sur les plateformes e-commerce.</p>
+            <p style="margin: 5pt 0;"><strong>4. Revenus de placement</strong> : 1 commerçant = 1 produit actif à 2 000
+                FCFA/mois. 1 prestataire = 1 service actif à 2 000 FCFA/mois.</p>
+            <p style="margin: 5pt 0;"><strong>5. Revenus autres</strong> : Incluent livraisons (optimisées par IA),
+                publicité ciblée, et commissions sur ventes (2-3% du volume de transactions sur la plateforme).</p>
+            <p style="margin: 5pt 0;"><strong>6. Charges opérationnelles (ratios basés sur les standards de l'industrie
+                    tech/SaaS)</strong> : Les charges sont calculées selon des ratios réalistes observés dans les
+                entreprises numériques en croissance : <strong>Personnel : 30-40% du CA</strong> (selon les standards de
+                l'industrie tech, incluant développement, support, commercial, direction), <strong>Infrastructure :
+                    5-10% du CA</strong> (cloud, serveurs, monitoring selon les besoins de scalabilité),
+                <strong>Opérationnelles : 10-15% du CA</strong> (location bureaux, assurance, logistique,
+                administration). Ces ratios sont basés sur les benchmarks de l'industrie des plateformes e-commerce et
+                SaaS en croissance (<strong>rapports sectoriels tech 2023-2024</strong>).
+            </p>
+        </div>
+
+        <h3>Synthèse des Projections 5 Ans</h3>
+
+        <table>
+            <caption style="font-weight: bold; font-size: 12pt; color: #1E3A8A; text-align: left; margin: 0 0 12pt 0; padding: 12pt 14pt; border: 1pt solid #6366F1; border-bottom: 2pt solid #6366F1; background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%); border-radius: 6pt 6pt 0 0;">Tableau 1 : Projections Financières sur 5 Ans (2026-2030)</caption>
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Année</th>
+                    <th>Actifs Totaux<br /><span style="font-size: 7.5pt; font-weight: normal;">(nombre)</span></th>
+                    <th>Revenus Placement<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                    <th>Revenus Autres<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                    <th>Total Revenus<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                    <th>Charges<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                    <th>Résultat Net<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>2026 (6m)</strong></td>
+                    <td class="number">12,950</td>
+                    <td class="number">104M</td>
+                    <td class="number">35M</td>
+                    <td class="number"><strong>139M</strong></td>
+                    <td class="number">496M</td>
+                    <td class="number negative"><strong>-357M</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>2027</strong></td>
+                    <td class="number">40,761</td>
+                    <td class="number">756M</td>
+                    <td class="number">142M</td>
+                    <td class="number"><strong>897M</strong></td>
+                    <td class="number">1,180M</td>
+                    <td class="number negative"><strong>-283M</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>2028</strong></td>
+                    <td class="number">122,283</td>
+                    <td class="number">2,283M</td>
+                    <td class="number">380M</td>
+                    <td class="number"><strong>2,663M</strong></td>
+                    <td class="number">2,650M</td>
+                    <td class="number positive"><strong>13M</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>2029</strong></td>
+                    <td class="number">305,707</td>
+                    <td class="number">5,870M</td>
+                    <td class="number">1,035M</td>
+                    <td class="number"><strong>6,904M</strong></td>
+                    <td class="number">5,200M</td>
+                    <td class="number positive"><strong>1,704M</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>2030</strong></td>
+                    <td class="number">611,415</td>
+                    <td class="number">12,228M</td>
+                    <td class="number">2,352M</td>
+                    <td class="number"><strong>14,580M</strong></td>
+                    <td class="number">9,500M</td>
+                    <td class="number positive"><strong>5,080M</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="font-size: 11pt; color: #6B7280; margin-top: 8pt;"><em><strong>Hypothèse de calcul</strong> : 1
+                commerçant = 1 produit actif à 2,000 FCFA/mois. Les prestations de services représentent 30% des actifs
+                totaux. Les revenus de placement sont calculés en utilisant la <strong>moyenne mensuelle des actifs</strong>
+                (moyenne entre le nombre d'actifs en début d'année et en fin d'année, en supposant une croissance
+                linéaire), multipliée par 2,000 FCFA/mois et par le nombre de mois. Par exemple, pour 2027 : début
+                d'année = 13,000 actifs (fin 2026), fin d'année = 40,000 actifs, moyenne = (13,000 + 40,000) / 2 = 26,500
+                actifs, revenus = 26,500 × 2,000 × 12 = 636M FCFA. Cette méthode reflète fidèlement la réalité d'une
+                croissance progressive. Les revenus autres incluent livraisons (optimisées par IA), publicité ciblée, et
+                commissions sur ventes, et sont ajustés proportionnellement à la moyenne mensuelle des actifs.</em></p>
+
+        <h3>Évolution des Charges (en millions FCFA)</h3>
+
+        <table>
+            <caption style="font-weight: bold; font-size: 12pt; color: #1E3A8A; text-align: left; margin: 0 0 12pt 0; padding: 12pt 14pt; border: 1pt solid #6366F1; border-bottom: 2pt solid #6366F1; background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%); border-radius: 6pt 6pt 0 0;">Tableau 2 : Évolution des Charges Opérationnelles (2026-2030)</caption>
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Année</th>
+                    <th>Personnel<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                    <th>Marketing<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                    <th>Infrastructure<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                    <th>Opérationnelles<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                    <th>Total Charges<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>2026 (10m)</strong></td>
+                    <td class="number">123M</td>
+                    <td class="number">220M</td>
+                    <td class="number">50M</td>
+                    <td class="number">103M</td>
+                    <td class="number"><strong>496M</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>2027</strong></td>
+                    <td class="number">360M</td>
+                    <td class="number">240M</td>
+                    <td class="number">150M</td>
+                    <td class="number">430M</td>
+                    <td class="number"><strong>1,180M</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>2028</strong></td>
+                    <td class="number">840M</td>
+                    <td class="number">300M</td>
+                    <td class="number">420M</td>
+                    <td class="number">1,090M</td>
+                    <td class="number"><strong>2,650M</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>2029</strong></td>
+                    <td class="number">1,800M</td>
+                    <td class="number">480M</td>
+                    <td class="number">900M</td>
+                    <td class="number">2,020M</td>
+                    <td class="number"><strong>5,200M</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>2030</strong></td>
+                    <td class="number">3,200M</td>
+                    <td class="number">720M</td>
+                    <td class="number">1,800M</td>
+                    <td class="number">3,780M</td>
+                    <td class="number"><strong>9,500M</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="highlight-box"
+            style="background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%); border: 1pt solid rgba(5, 150, 105, 0.2);">
+            <p style="margin: 0;"><strong>Rentabilité atteinte en 2028</strong> : Avec 105,000 produits/services actifs
+                (80,000 commerçants + 25,000 prestataires) générant 2,940M FCFA de revenus pour 2,650M FCFA de charges,
+                le résultat net positif de 290M FCFA confirme la viabilité du modèle économique. <strong>Hypothèse</strong>
+                : 1 commerçant = 1 produit actif à 2,000 FCFA/mois. Les prestations de services représentent 30% des
+                actifs totaux.</p>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- PAGE 3 -->
+        <h2>OBJECTIFS D'ACQUISITION RÉALISTES ET JUSTIFIÉS</h2>
+
+        <h3>Justification des Objectifs par Budget Marketing et Potentiel Marché</h3>
+
+        <p><strong>Budget marketing annuel</strong> : 264M FCFA (22M/mois) - Campagnes digitales : 12M/mois (144M/an) -
+            55% | Influenceurs : 6M/mois (72M/an) - 27% | Événements & Offline : 2M/mois (24M/an) - 9% | Médias
+            traditionnels : 1M/mois (12M/an) - 5% | Supports communication : 1M/mois (12M/an) - 4%</p>
+
+        <div class="highlight-box"
+            style="background: linear-gradient(135deg, #E0E7FF 0%, #EEF2FF 100%); border: 1pt solid rgba(99, 102, 241, 0.2);">
+            <p style="margin: 0;"><strong>Potentiel marché</strong> : 35-50M commerçants informels en Afrique
+                francophone selon la <strong>Banque Mondiale - Rapport "The Long Shadow of Informality" (2022)</strong>.
+                <strong>CAC cible</strong> : Commerçants : 15,000-25,000 FCFA/commerçant | Utilisateurs : 500-1,000
+                FCFA/utilisateur. <strong>Taux de pénétration digitale</strong> : 40% en 2024 selon le <strong>GSMA Mobile
+                    Economy Sub-Saharan Africa 2024</strong>, avec une croissance annuelle de 8-12% attendue.
+            </p>
+        </div>
+
+        <h3>Projections de Croissance</h3>
+
+        <table>
+            <caption style="font-weight: bold; font-size: 12pt; color: #1E3A8A; text-align: left; margin: 0 0 12pt 0; padding: 12pt 14pt; border: 1pt solid #6366F1; border-bottom: 2pt solid #6366F1; background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%); border-radius: 6pt 6pt 0 0;">Tableau 3 : Projections de Croissance - Commerçants et Utilisateurs (2026-2030)</caption>
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Année</th>
+                    <th>Commerçants<br /><span style="font-size: 7.5pt; font-weight: normal;">(nombre)</span></th>
+                    <th>Prestataires<br /><span style="font-size: 7.5pt; font-weight: normal;">Services</span></th>
+                    <th>Produits<br /><span style="font-size: 7.5pt; font-weight: normal;">Actifs</span></th>
+                    <th>Services<br /><span style="font-size: 7.5pt; font-weight: normal;">Actifs</span></th>
+                    <th>Utilisateurs<br /><span style="font-size: 7.5pt; font-weight: normal;">(nombre)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>2026 (6m)</strong></td>
+                    <td class="number">10,000</td>
+                    <td class="number">2,950</td>
+                    <td class="number">10,000</td>
+                    <td class="number">2,950</td>
+                    <td class="number">500K</td>
+                </tr>
+                <tr>
+                    <td><strong>2027</strong></td>
+                    <td class="number">28,532</td>
+                    <td class="number">12,228</td>
+                    <td class="number">28,532</td>
+                    <td class="number">12,228</td>
+                    <td class="number">1,5M</td>
+                </tr>
+                <tr>
+                    <td><strong>2028</strong></td>
+                    <td class="number">85,598</td>
+                    <td class="number">36,684</td>
+                    <td class="number">85,598</td>
+                    <td class="number">36,684</td>
+                    <td class="number">4M</td>
+                </tr>
+                <tr>
+                    <td><strong>2029</strong></td>
+                    <td class="number">213,994</td>
+                    <td class="number">91,712</td>
+                    <td class="number">213,994</td>
+                    <td class="number">91,712</td>
+                    <td class="number">12M</td>
+                </tr>
+                <tr>
+                    <td><strong>2030</strong></td>
+                    <td class="number">427,990</td>
+                    <td class="number">183,424</td>
+                    <td class="number">427,990</td>
+                    <td class="number">183,424</td>
+                    <td class="number">25M</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="highlight-box"
+            style="background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%); border: 1pt solid rgba(5, 150, 105, 0.2);">
+            <p style="margin: 0;"><strong>Justification des produits actifs espérés</strong> : Basé sur un marché de
+                35-50M commerçants informels en Afrique francophone selon la <strong>Banque Mondiale - Rapport "The Long
+                    Shadow of Informality" (2022)</strong>, et sur les données démographiques officielles des trois pays
+                cibles (3,7M au Cameroun, 1,69M au Sénégal, 1,08M en Côte d'Ivoire), nos objectifs représentent 0,35%
+                du marché camerounais en 2026 (12 950 actifs sur 6 mois), avec une croissance progressive à 0,63% en
+                2027 (40 761 actifs), 1,89% en 2028 (122 283 actifs), 4,73% en 2029 (305 707 actifs), et 9,45% en
+                2030 (611 415 actifs). Ces taux d'adoption sont calculés selon une méthodologie progressive basée sur
+                des facteurs de croissance justifiés (expansion géographique, effet réseau exponentiel, pénétration
+                Internet croissante, adoption accélérée des plateformes digitales). Selon le <strong>GSMA Mobile
+                    Economy Sub-Saharan Africa 2024</strong>, la pénétration Internet mobile est passée de 3,2% en 2005
+                à 40% en 2024, avec une croissance annuelle de 8-12% attendue. Cette progression du numérique,
+                combinée à l'augmentation de l'adoption des plateformes digitales par les commerçants informels
+                (estimée à 15-20% de croissance annuelle selon les études de marché locales), justifie nos projections.
+                <strong>Hypothèse clé</strong> : 1 commerçant = 1 produit actif à 2,000 FCFA/mois. Les prestataires de
+                services représentent 30% des actifs totaux à partir de 2027 (répartition 70% produits / 30% services).
+            </p>
+        </div>
+
+        <h2>BESOINS DE FINANCEMENT (Simulation Réaliste 10 Mois - Mars à Décembre 2026)</h2>
+
+        <p><strong>L'application est déjà développée et opérationnelle. Le financement est ciblé sur l'acquisition
+                utilisateurs et l'expansion commerciale, pas sur le développement technique.</strong></p>
+
+        <h3>Montant demandé : 600M à 750M FCFA</h3>
+
+        <p><em><strong>Note</strong> : Les charges sont calculées sur <strong>10 mois</strong> (Mars-Décembre) car
+                démarrage effectif au 01 avril, tandis que la production génère des revenus sur <strong>6 mois</strong>
+                (Juillet-Décembre).</em></p>
+
+        <h3>Répartition du Financement (10 mois - Mars à Décembre 2026)</h3>
+
+        <table>
+            <caption style="font-weight: bold; font-size: 12pt; color: #1E3A8A; text-align: left; margin: 0 0 12pt 0; padding: 12pt 14pt; border: 1pt solid #6366F1; border-bottom: 2pt solid #6366F1; background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%); border-radius: 6pt 6pt 0 0;">Tableau 4 : Répartition du Besoin de Financement (10 mois - Mars à Décembre 2026)</caption>
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Poste de Dépense</th>
+                    <th>Montant<br /><span style="font-size: 7.5pt; font-weight: normal;">(10 mois, M FCFA)</span></th>
+                    <th>Pourcentage<br /><span style="font-size: 7.5pt; font-weight: normal;">(%)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Marketing & Acquisition</strong></td>
+                    <td class="number">220M</td>
+                    <td class="number">35%</td>
+                </tr>
+                <tr>
+                    <td><strong>Équipe Commerciale</strong></td>
+                    <td class="number">24M</td>
+                    <td class="number">4%</td>
+                </tr>
+                <tr>
+                    <td><strong>Personnel (Direction, Tech, Support)</strong></td>
+                    <td class="number">99M</td>
+                    <td class="number">16%</td>
+                </tr>
+                <tr>
+                    <td><strong>Infrastructure Cloud</strong></td>
+                    <td class="number">50M</td>
+                    <td class="number">8%</td>
+                </tr>
+                <tr>
+                    <td><strong>Charges Opérationnelles</strong></td>
+                    <td class="number">73M</td>
+                    <td class="number">12%</td>
+                </tr>
+                <tr>
+                    <td><strong>Charges Sociales (30%)</strong></td>
+                    <td class="number">41M</td>
+                    <td class="number">7%</td>
+                </tr>
+                <tr>
+                    <td><strong>Administration & Légal</strong></td>
+                    <td class="number">5M</td>
+                    <td class="number">1%</td>
+                </tr>
+                <tr>
+                    <td><strong>Réserve Opérationnelle</strong></td>
+                    <td class="number">25M</td>
+                    <td class="number">4%</td>
+                </tr>
+                <tr class="total-row">
+                    <td><strong>TOTAL</strong></td>
+                    <td class="number"><strong>537M</strong></td>
+                    <td class="number"><strong>87%</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="section-divider"></div>
+
+        <!-- PAGE 4 -->
+        <h2>INNOVATION TECHNOLOGIQUE YUKPO</h2>
+
+        <div class="highlight-box">
+            <span class="brand-yuk">Yuk</span><span class="brand-po">po</span> repose sur une architecture technologique
+            de pointe qui garantit performance, scalabilité et fiabilité :
+        </div>
+
+        <p><strong>Backend haute performance</strong> : Développé en Rust avec Axum, offrant des performances 10x
+            supérieures aux solutions Node.js traditionnelles. Architecture asynchrone optimisée pour gérer des millions
+            de requêtes simultanées. <strong>IA multi-modèles avancée</strong> : Orchestration intelligente de plusieurs
+            modèles IA (OpenAI GPT-4, Mistral, Claude, Cohere) avec fallback automatique et optimisation dynamique des
+            prompts. Cache sémantique pour réduire les coûts de 60%. <strong>Base de données vectorielle</strong> :
+            PostgreSQL avec extension pgvector pour recherche sémantique avancée. Support de 25+ catégories et 111+
+            filtres intelligents avec scoring multi-critères.</p>
+
+        <p><strong>Génération vidéo automatisée</strong> : Pipeline Remotion (Docker GPU) pour création de vidéos
+            TikTok/Reels-like en 2 minutes avec synchronisation audio, transitions et effets avancés.
+            <strong>Géolocalisation intelligente</strong> : Algorithmes d'optimisation de routes par IA, groupage
+            multi-livraisons, calcul de trajets optimaux avec estimation précise des délais.
+            <strong>Multi-plateformes</strong> : Application web (React/TypeScript), mobile iOS/Android (React
+            Native/Expo), architecture cloud-native scalable sur AWS/Render.
+        </p>
+
+        <h2>FONDATEUR</h2>
+
+        <p><strong>Hernandez LELE - Fondateur & CEO</strong></p>
+
+        <p>Data analyst et statisticien de formation avec plus de 13 ans d'expérience, LELE SIAKA Hernandez a développé
+            une expertise approfondie en analyse de données, modélisation statistique et aide à la décision,
+            visualisation avancée (R, Python, Power BI, SPSS, STATA), conception de systèmes complexes de collecte et
+            d'analyse à grande échelle, et suivi-évaluation de projets de santé publique à fort impact. Son parcours lui
+            a permis d'acquérir une compréhension fine des réalités africaines. C'est à l'intersection des données
+            probantes, de l'intelligence artificielle et des défis concrets du terrain qu'est née <span
+                class="brand-yuk">Yuk</span><span class="brand-po">po</span> : une plateforme conçue pour transformer
+            des besoins quotidiens en solutions intelligentes, scalables et à fort impact économique et social.</p>
+
+        <p><strong>Collaborations internationales</strong> : Partenaire technique dans des projets de développement en
+            santé publique avec la <strong>BAD (Banque Africaine de Développement)</strong> et
+            <strong>l'UNICEF</strong>, démontrant une capacité à livrer des solutions à fort impact social dans des
+            contextes complexes. <strong>Vision</strong> : Transformer l'accès aux services essentiels en Afrique grâce
+            à la technologie, en rendant l'économie digitale accessible à tous les commerces locaux et à toute la
+            population.
+        </p>
+
+        <h2>POURQUOI INVESTIR MAINTENANT ?</h2>
+
+        <ul>
+            <li><strong>Application déjà développée</strong> : Réduction drastique des risques techniques. Financement
+                directement vers acquisition utilisateurs et génération de revenus.</li>
+            <li><strong>Marché en explosion</strong> : 1,4 milliard d'habitants → 2,5 milliards en 2050 | Croissance
+                e-commerce 20-25%/an | Pénétration mobile 80%+</li>
+            <li><strong>Première mover avantage</strong> : Aucune plateforme n'offre cette intégration complète
+                multi-secteurs avec IA en Afrique. Fenêtre d'opportunité 2026-2027.</li>
+            <li><strong>Impact social transformateur</strong> : Inclusion de 85% des commerces locaux dans l'économie
+                digitale | Économie de 50K-90K FCFA/mois par ménage</li>
+            <li><strong>ROI Projeté : 10-15x sur 5 ans</strong> | Marché Adressable : 1,5-2 billions FCFA</li>
+        </ul>
+
+        <div class="footer">
+            <p><strong>Contact</strong> : Hernandez LELE | lelehernandez2007@yahoo.fr | +237 674 546895</p>
+            <p><em>Document confidentiel - Propriété de <span class="brand-yuk">Yuk</span><span
+                        class="brand-po">po</span> - Janvier 2026</em></p>
+        </div>
+
+        <!-- ANNEXE -->
+        <div class="annexe">
+            <h2>ANNEXE - TABLEAUX DÉTAILLÉS</h2>
+
+            <h3>Tableau 1 : Projections Mensuelles 2026 (Juillet-Décembre)</h3>
+
+            <table>
+                <caption style="font-weight: bold; font-size: 12pt; color: #1E3A8A; text-align: left; margin: 0 0 12pt 0; padding: 12pt 14pt; border: 1pt solid #6366F1; border-bottom: 2pt solid #6366F1; background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%); border-radius: 6pt 6pt 0 0;">Tableau A1 : Détail Mensuel des Revenus - Juillet à Décembre 2026</caption>
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Mois</th>
+                        <th>Produits<br /><span style="font-size: 7.5pt; font-weight: normal;">Actifs (moy.)</span></th>
+                        <th>Placement<br /><span style="font-size: 7.5pt; font-weight: normal;">(2K/prod, M FCFA)</span></th>
+                        <th>Livraisons<br /><span style="font-size: 7.5pt; font-weight: normal;">(M FCFA)</span></th>
+                        <th>Publicité<br /><span style="font-size: 7.5pt; font-weight: normal;">(M FCFA)</span></th>
+                        <th>Commissions<br /><span style="font-size: 7.5pt; font-weight: normal;">(M FCFA)</span></th>
+                        <th>Total Revenus<br /><span style="font-size: 7.5pt; font-weight: normal;">(M FCFA)</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Juillet</td>
+                        <td class="number">11,000</td>
+                        <td class="number">22M</td>
+                        <td class="number">2M</td>
+                        <td class="number">1,5M</td>
+                        <td class="number">0,5M</td>
+                        <td class="number"><strong>26M</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Août</td>
+                        <td class="number">12,000</td>
+                        <td class="number">24M</td>
+                        <td class="number">2,5M</td>
+                        <td class="number">2M</td>
+                        <td class="number">1M</td>
+                        <td class="number"><strong>29,5M</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Septembre</td>
+                        <td class="number">12,500</td>
+                        <td class="number">25M</td>
+                        <td class="number">3M</td>
+                        <td class="number">2,5M</td>
+                        <td class="number">1,5M</td>
+                        <td class="number"><strong>32M</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Octobre</td>
+                        <td class="number">13,000</td>
+                        <td class="number">26M</td>
+                        <td class="number">3,5M</td>
+                        <td class="number">3M</td>
+                        <td class="number">2M</td>
+                        <td class="number"><strong>34,5M</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Novembre</td>
+                        <td class="number">14,000</td>
+                        <td class="number">28M</td>
+                        <td class="number">4M</td>
+                        <td class="number">3,5M</td>
+                        <td class="number">2,5M</td>
+                        <td class="number"><strong>38M</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Décembre</td>
+                        <td class="number">15,500</td>
+                        <td class="number">31M</td>
+                        <td class="number">4,5M</td>
+                        <td class="number">4M</td>
+                        <td class="number">3M</td>
+                        <td class="number"><strong>42,5M</strong></td>
+                    </tr>
+                    <tr class="total-row">
+                        <td><strong>TOTAL</strong></td>
+                        <td class="number"><strong>78,000</strong></td>
+                        <td class="number"><strong>156M</strong></td>
+                        <td class="number"><strong>19,5M</strong></td>
+                        <td class="number"><strong>16,5M</strong></td>
+                        <td class="number"><strong>10,5M</strong></td>
+                        <td class="number"><strong>202,5M</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p style="font-size: 11pt; color: #6B7280; margin-top: 8pt;"><em><strong>Hypothèse de simulation</strong> : 1
+                    commerçant = 1 produit actif à 2,000 FCFA/mois. 1 prestataire = 1 service actif à 2,000 FCFA/mois.
+                    Progression mensuelle des actifs totaux (produits + services) de 11,000 en juillet à 15,500 en
+                    décembre. Total actifs-mois sur 6 mois : 78,000. Revenus placement : 78,000 × 2,000 = 156M FCFA.
+                    Total actifs en décembre : 13,000 (10,000 commerçants + 3,000 prestataires services).</em></p>
+
+            <h3>Tableau 2 : Détail Charges Mensuelles 2026</h3>
+
+            <table>
+                <caption style="font-weight: bold; font-size: 12pt; color: #1E3A8A; text-align: left; margin: 0 0 12pt 0; padding: 12pt 14pt; border: 1pt solid #6366F1; border-bottom: 2pt solid #6366F1; background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%); border-radius: 6pt 6pt 0 0;">Tableau A2 : Détail Complet des Charges Mensuelles - Mars à Décembre 2026</caption>
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Catégorie</th>
+                        <th style="text-align: left;">Poste de Dépense</th>
+                        <th>Coût Mensuel<br /><span style="font-size: 7.5pt; font-weight: normal;">(millions FCFA)</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td rowspan="7"><strong>Personnel</strong></td>
+                        <td>8 Agents commerciaux (300K/mois)</td>
+                        <td class="number">2,4M</td>
+                    </tr>
+                    <tr>
+                        <td>3 Support client (200K/mois)</td>
+                        <td class="number">600K</td>
+                    </tr>
+                    <tr>
+                        <td>CEO/CTO (1,5M/mois)</td>
+                        <td class="number">1,5M</td>
+                    </tr>
+                    <tr>
+                        <td>3 Développeurs (1,2M/mois chacun)</td>
+                        <td class="number">3,6M</td>
+                    </tr>
+                    <tr>
+                        <td>Responsable RH (400K/mois)</td>
+                        <td class="number">400K</td>
+                    </tr>
+                    <tr>
+                        <td>Responsable Financier (400K/mois)</td>
+                        <td class="number">400K</td>
+                    </tr>
+                    <tr>
+                        <td>Responsable Marketing (600K/mois)</td>
+                        <td class="number">600K</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td><strong>Sous-total Personnel</strong></td>
+                        <td class="number"><strong>9,5M</strong></td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>Charges sociales (30%)</td>
+                        <td class="number">2,85M</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td><strong>TOTAL Personnel</strong></td>
+                        <td class="number"><strong>12,35M</strong></td>
+                    </tr>
+                    <tr>
+                        <td rowspan="5"><strong>Marketing</strong></td>
+                        <td>Campagnes digitales (Facebook/Google/TikTok)</td>
+                        <td class="number">12M</td>
+                    </tr>
+                    <tr>
+                        <td>Influenceurs</td>
+                        <td class="number">6M</td>
+                    </tr>
+                    <tr>
+                        <td>Événements & Offline</td>
+                        <td class="number">2M</td>
+                    </tr>
+                    <tr>
+                        <td>Médias traditionnels</td>
+                        <td class="number">1M</td>
+                    </tr>
+                    <tr>
+                        <td>Supports communication (flyers, vidéos)</td>
+                        <td class="number">1M</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td><strong>TOTAL Marketing</strong></td>
+                        <td class="number"><strong>22M</strong></td>
+                    </tr>
+                    <tr>
+                        <td rowspan="2"><strong>Infrastructure</strong></td>
+                        <td>Cloud (AWS/Render)</td>
+                        <td class="number">4M</td>
+                    </tr>
+                    <tr>
+                        <td>Monitoring & Analytics</td>
+                        <td class="number">1M</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td><strong>TOTAL Infrastructure</strong></td>
+                        <td class="number"><strong>5M</strong></td>
+                    </tr>
+                    <tr>
+                        <td rowspan="3"><strong>Opérationnelles</strong></td>
+                        <td>Location bureaux</td>
+                        <td class="number">500K</td>
+                    </tr>
+                    <tr>
+                        <td>Assurance</td>
+                        <td class="number">200K</td>
+                    </tr>
+                    <tr>
+                        <td>Logistique</td>
+                        <td class="number">6,6M</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td><strong>TOTAL Opérationnelles</strong></td>
+                        <td class="number"><strong>7,3M</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Autres</strong></td>
+                        <td>Administration, légal, réserve</td>
+                        <td class="number">3M</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td></td>
+                        <td><strong>TOTAL MENSUEL</strong></td>
+                        <td class="number"><strong>~50M FCFA</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Tableau 3 : Projections 5 Ans Détaillées</h3>
+
+            <table>
+                <caption style="font-weight: bold; font-size: 12pt; color: #1E3A8A; text-align: left; margin: 0 0 12pt 0; padding: 12pt 14pt; border: 1pt solid #6366F1; border-bottom: 2pt solid #6366F1; background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%); border-radius: 6pt 6pt 0 0;">Tableau A3 : Projections Détaillées de Croissance - Commerçants, Prestataires et Utilisateurs (2026-2030)</caption>
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Année</th>
+                        <th>Commerçants<br /><span style="font-size: 7.5pt; font-weight: normal;">(nombre)</span></th>
+                        <th>Prestataires<br /><span style="font-size: 7.5pt; font-weight: normal;">(nombre)</span></th>
+                        <th>TOTAL<br /><span style="font-size: 7.5pt; font-weight: normal;">Commerçants</span></th>
+                        <th>Produits<br /><span style="font-size: 7.5pt; font-weight: normal;">Actifs</span></th>
+                        <th>Services<br /><span style="font-size: 7.5pt; font-weight: normal;">Actifs</span></th>
+                        <th>TOTAL<br /><span style="font-size: 7.5pt; font-weight: normal;">Actifs</span></th>
+                        <th>Utilisateurs<br /><span style="font-size: 7.5pt; font-weight: normal;">(nombre)</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>2026 (6m)</strong></td>
+                        <td class="number">10,000</td>
+                        <td class="number">2,950</td>
+                        <td class="number">12,950</td>
+                        <td class="number">10,000</td>
+                        <td class="number">2,950</td>
+                        <td class="number"><strong>12,950</strong></td>
+                        <td class="number">500K</td>
+                    </tr>
+                    <tr>
+                        <td><strong>2027</strong></td>
+                        <td class="number">28,532</td>
+                        <td class="number">12,228</td>
+                        <td class="number">40,761</td>
+                        <td class="number">28,532</td>
+                        <td class="number">12,228</td>
+                        <td class="number"><strong>40,761</strong></td>
+                        <td class="number">1,5M</td>
+                    </tr>
+                    <tr>
+                        <td><strong>2028</strong></td>
+                        <td class="number">85,598</td>
+                        <td class="number">36,684</td>
+                        <td class="number">122,283</td>
+                        <td class="number">85,598</td>
+                        <td class="number">36,684</td>
+                        <td class="number"><strong>122,283</strong></td>
+                        <td class="number">4M</td>
+                    </tr>
+                    <tr>
+                        <td><strong>2029</strong></td>
+                        <td class="number">213,994</td>
+                        <td class="number">91,712</td>
+                        <td class="number">305,707</td>
+                        <td class="number">213,994</td>
+                        <td class="number">91,712</td>
+                        <td class="number"><strong>305,707</strong></td>
+                        <td class="number">12M</td>
+                    </tr>
+                    <tr>
+                        <td><strong>2030</strong></td>
+                        <td class="number">427,990</td>
+                        <td class="number">183,424</td>
+                        <td class="number">611,415</td>
+                        <td class="number">427,990</td>
+                        <td class="number">183,424</td>
+                        <td class="number"><strong>611,415</strong></td>
+                        <td class="number">25M</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Tableau 4 : Revenus Détaillés par Source (en millions FCFA)</h3>
+
+            <table>
+                <caption style="font-weight: bold; font-size: 12pt; color: #1E3A8A; text-align: left; margin: 0 0 12pt 0; padding: 12pt 14pt; border: 1pt solid #6366F1; border-bottom: 2pt solid #6366F1; background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%); border-radius: 6pt 6pt 0 0;">Tableau A4 : Détail des Revenus par Source - Placement, Livraisons, Publicité, Commissions (2026-2030)</caption>
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Année</th>
+                        <th>Placement<br /><span style="font-size: 7.5pt; font-weight: normal;">Produits (M FCFA)</span></th>
+                        <th>Placement<br /><span style="font-size: 7.5pt; font-weight: normal;">Services (M FCFA)</span></th>
+                        <th>Livraisons<br /><span style="font-size: 7.5pt; font-weight: normal;">(M FCFA)</span></th>
+                        <th>Publicité<br /><span style="font-size: 7.5pt; font-weight: normal;">(M FCFA)</span></th>
+                        <th>Commissions<br /><span style="font-size: 7.5pt; font-weight: normal;">(M FCFA)</span></th>
+                        <th>Total<br /><span style="font-size: 7.5pt; font-weight: normal;">Revenus (M FCFA)</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>2026 (6m)</strong></td>
+                        <td class="number">120M</td>
+                        <td class="number">35M</td>
+                        <td class="number">19,5M</td>
+                        <td class="number">16,5M</td>
+                        <td class="number">10,5M</td>
+                        <td class="number"><strong>201,5M</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>2027</strong></td>
+                        <td class="number">685M</td>
+                        <td class="number">293M</td>
+                        <td class="number">95M</td>
+                        <td class="number">71M</td>
+                        <td class="number">48M</td>
+                        <td class="number"><strong>1,192M</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>2028</strong></td>
+                        <td class="number">2,054M</td>
+                        <td class="number">880M</td>
+                        <td class="number">262M</td>
+                        <td class="number">197M</td>
+                        <td class="number">92M</td>
+                        <td class="number"><strong>3,485M</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>2029</strong></td>
+                        <td class="number">5,136M</td>
+                        <td class="number">2,201M</td>
+                        <td class="number">670M</td>
+                        <td class="number">536M</td>
+                        <td class="number">268M</td>
+                        <td class="number"><strong>8,811M</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>2030</strong></td>
+                        <td class="number">10,272M</td>
+                        <td class="number">4,402M</td>
+                        <td class="number">1,306M</td>
+                        <td class="number">1,045M</td>
+                        <td class="number">784M</td>
+                        <td class="number"><strong>17,809M</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p style="font-size: 11pt; color: #6B7280; margin-top: 8pt;"><em><strong>Hypothèse de calcul</strong> : 1
+                    commerçant = 1 produit actif à 2,000 FCFA/mois. 1 prestataire = 1 service actif à 2,000 FCFA/mois.
+                    Revenus placement produits : nombre commerçants × 2,000 × nombre de mois. Revenus placement
+                    services : nombre prestataires × 2,000 × nombre de mois. Les commissions représentent 2-3% du volume
+                    de transactions sur la plateforme.</em></p>
+
+            <h3>Tableau 5 : Analyse de Rentabilité Détaillée</h3>
+
+            <table>
+                <caption style="font-weight: bold; font-size: 12pt; color: #1E3A8A; text-align: left; margin: 0 0 12pt 0; padding: 12pt 14pt; border: 1pt solid #6366F1; border-bottom: 2pt solid #6366F1; background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%); border-radius: 6pt 6pt 0 0;">Tableau A5 : Analyse Complète de Rentabilité - Revenus, Charges, Résultats et Marges (2026-2030)</caption>
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Année</th>
+                        <th>Revenus<br /><span style="font-size: 7.5pt; font-weight: normal;">(M FCFA)</span></th>
+                        <th>Charges<br /><span style="font-size: 7.5pt; font-weight: normal;">(M FCFA)</span></th>
+                        <th>Résultat<br /><span style="font-size: 7.5pt; font-weight: normal;">Net (M FCFA)</span></th>
+                        <th>Marge<br /><span style="font-size: 7.5pt; font-weight: normal;">(%)</span></th>
+                        <th>Cumul<br /><span style="font-size: 7.5pt; font-weight: normal;">Résultat (M FCFA)</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>2026 (6m)</strong></td>
+                        <td class="number">139M</td>
+                        <td class="number">496M</td>
+                        <td class="number negative"><strong>-357M</strong></td>
+                        <td class="number negative">-256,8%</td>
+                        <td class="number negative"><strong>-357M</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>2027</strong></td>
+                        <td class="number">897M</td>
+                        <td class="number">1,180M</td>
+                        <td class="number negative"><strong>-283M</strong></td>
+                        <td class="number negative">-31,5%</td>
+                        <td class="number negative"><strong>-640M</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>2028</strong></td>
+                        <td class="number">2,663M</td>
+                        <td class="number">2,650M</td>
+                        <td class="number positive"><strong>13M</strong></td>
+                        <td class="number positive">0,5%</td>
+                        <td class="number negative"><strong>-627M</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>2029</strong></td>
+                        <td class="number">6,904M</td>
+                        <td class="number">5,200M</td>
+                        <td class="number positive"><strong>1,704M</strong></td>
+                        <td class="number positive">24,7%</td>
+                        <td class="number positive"><strong>1,077M</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>2030</strong></td>
+                        <td class="number">14,580M</td>
+                        <td class="number">9,500M</td>
+                        <td class="number positive"><strong>5,080M</strong></td>
+                        <td class="number positive">34,8%</td>
+                        <td class="number positive"><strong>6,157M</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="highlight-box"
+                style="background: #FEF2F2; border: 1pt solid rgba(220, 38, 38, 0.2); margin-top: 16pt;">
+                <strong>Note sur les projections</strong> : Les tableaux ci-dessus présentent nos hypothèses de simulation
+                basées sur le modèle économique suivant : 1 commerçant = 1 produit actif générant 2,000 FCFA/mois de
+                revenus de placement, avec une croissance progressive de la pénétration digitale de 40% à 60% sur la période
+                2026-2030. Les prestataires de services représentent 30% des actifs totaux.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

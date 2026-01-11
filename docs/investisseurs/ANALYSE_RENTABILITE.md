@@ -125,3 +125,5 @@ Si chaque produit génère 50,000 FCFA/an de ventes :
 
 **Avec ces ajustements, la rentabilité pourrait être atteinte en 2028-2029.**
 
+
+

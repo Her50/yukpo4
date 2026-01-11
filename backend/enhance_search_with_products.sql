@@ -83,20 +83,19 @@ BEGIN
                         THEN 6.0
                         ELSE 0.0
                     END +
-                    -- NOUVEAU: Score pour les noms de produits
+                    -- ✅ CORRIGÉ 2026-01-XX: Score pour les noms de produits UNIQUEMENT depuis service_products (PAS depuis services.data->produits)
                     CASE 
                         WHEN EXISTS (
                             SELECT 1 
-                            FROM jsonb_array_elements(
-                                CASE 
-                                    WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                                    THEN s.data->'produits'
-                                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                                    THEN s.data->'produits'->'valeur'
-                                    ELSE '[]'::jsonb
-                                END
-                            ) AS product
-                            WHERE product->>'name' ILIKE '%' || search_query || '%'
+                            FROM service_products p
+                            WHERE p.service_id = s.id
+                                AND p.is_active = TRUE
+                                AND (
+                                    p.product_name ILIKE '%' || search_query || '%'
+                                    OR p.product_data->>'nom' ILIKE '%' || search_query || '%'
+                                    OR p.product_data->>'name' ILIKE '%' || search_query || '%'
+                                    OR COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') ILIKE '%' || search_query || '%'
+                                )
                         ) THEN 12.0  -- Score élevé pour les produits
                         ELSE 0.0
                     END +
@@ -124,19 +123,18 @@ BEGIN
                 OR s.category ILIKE '%' || search_query || '%'
                 OR s.data->>'category' ILIKE '%' || search_query || '%'
                 OR s.data->'category'->>'valeur' ILIKE '%' || search_query || '%'
-                -- NOUVEAU: Recherche dans les noms de produits
+                -- ✅ CORRIGÉ 2026-01-XX: Recherche UNIQUEMENT dans service_products (PAS dans services.data->produits)
                 OR EXISTS (
                     SELECT 1 
-                    FROM jsonb_array_elements(
-                        CASE 
-                            WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                            THEN s.data->'produits'
-                            WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                            THEN s.data->'produits'->'valeur'
-                            ELSE '[]'::jsonb
-                        END
-                    ) AS product
-                    WHERE product->>'name' ILIKE '%' || search_query || '%'
+                    FROM service_products p
+                    WHERE p.service_id = s.id
+                        AND p.is_active = TRUE
+                        AND (
+                            p.product_name ILIKE '%' || search_query || '%'
+                            OR p.product_data->>'nom' ILIKE '%' || search_query || '%'
+                            OR p.product_data->>'name' ILIKE '%' || search_query || '%'
+                            OR COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') ILIKE '%' || search_query || '%'
+                        )
                 )
             )
             -- Filtrage GPS si spécifié

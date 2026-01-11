@@ -63,3 +63,5 @@ Le clavier ne masquera plus les champs de saisie, tout en conservant toutes les 
    - Navigation par blocs dans FormulaireYukpoIntelligentScreen
    - Scroll horizontal des images dans AjouterProduitSimpleScreen
 
+
+

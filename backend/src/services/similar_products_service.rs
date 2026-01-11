@@ -96,19 +96,21 @@ impl SimilarProductsService {
             _pickup_address: Option<String>,
         }
 
+        // ✅ CORRIGÉ 2026-01-XX: Récupérer depuis service_products au lieu de services.data->'produits'
         let original_characteristics: Option<OriginalCharacteristicsRow> = sqlx::query_as(
             r#"
             SELECT 
                 ac.characteristic_vector,
                 ac.full_vector,
                 ac.product_labels,
-                s.data->'produits'->$2->>'nom' as product_name,
-                s.data->'produits'->$2->>'description' as product_description,
-                s.data->'produits'->$2->>'categorie_produit' as category,
-                s.data->'produits'->$2->>'prix' as price,
+                p.product_name,
+                COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') as product_description,
+                COALESCE(p.product_data->>'categorie_produit', p.product_data->'categorie'->>'valeur', '') as category,
+                COALESCE(p.product_data->>'prix', p.product_data->'prix'->>'montant', '') as price,
                 pdc.pickup_address
             FROM autocomplete_characteristics ac
             INNER JOIN services s ON s.id = ac.service_id
+            INNER JOIN service_products p ON p.service_id = s.id AND p.product_index = $2 AND p.is_active = TRUE
             LEFT JOIN product_delivery_config pdc ON s.id = pdc.service_id AND pdc.product_index = $2
             WHERE 
                 ac.service_id = $1
@@ -182,6 +184,7 @@ impl SimilarProductsService {
                 similarity_score: Option<f64>,
             }
 
+            // ✅ CORRIGÉ 2026-01-XX: Utiliser service_products au lieu de services.data->'produits'
             let rows: Vec<SimilarProductRowWithDistance> = sqlx::query_as(
                 r#"
                 WITH product_data AS (
@@ -190,32 +193,19 @@ impl SimilarProductsService {
                         s.gps,
                         s.data->>'gps_fixe' as gps_fixe,
                         ac.product_id,
-                        SPLIT_PART(ac.product_id, '_', 2)::integer as product_index,
-                        jsonb_array_elements(
-                            CASE 
-                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                                THEN s.data->'produits'
-                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                                THEN s.data->'produits'->'valeur'
-                                ELSE '[]'::jsonb
-                            END
-                        ) AS product_json,
-                        (jsonb_array_elements(
-                            CASE 
-                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                                THEN s.data->'produits'
-                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                                THEN s.data->'produits'->'valeur'
-                                ELSE '[]'::jsonb
-                            END
-                        )->>'index')::integer AS product_json_index
+                        p.product_index,
+                        p.product_name,
+                        p.product_data,
+                        p.product_type
                     FROM autocomplete_characteristics ac
                     INNER JOIN services s ON s.id = ac.service_id
+                    INNER JOIN service_products p ON p.service_id = s.id AND p.is_active = TRUE
                     WHERE 
                         ac.service_id != $4
                         AND ac.is_real_product = TRUE
                         AND ac.identifiant_base LIKE 'produit%'
                         AND s.is_active = TRUE
+                        AND p.product_index::TEXT = SPLIT_PART(ac.product_id, '_', 2)
                         AND (
                             EXISTS (
                                 SELECT 1 FROM unnest($1::TEXT[]) AS orig_val
@@ -237,10 +227,10 @@ impl SimilarProductsService {
                     pd.service_id,
                     pd.product_id,
                     pd.product_index,
-                    pd.product_json->>'nom' as product_name,
-                    pd.product_json->>'description' as product_description,
-                    pd.product_json->>'categorie_produit' as category,
-                    (pd.product_json->>'prix')::text as price,
+                    pd.product_name,
+                    COALESCE(pd.product_data->>'description_produit', pd.product_data->>'description', pd.product_data->'description'->>'valeur', '') as product_description,
+                    COALESCE(pd.product_data->>'categorie_produit', pd.product_data->'categorie'->>'valeur', '') as category,
+                    COALESCE(pd.product_data->>'prix', pd.product_data->'prix'->>'montant', '')::text as price,
                     pdc.pickup_address,
                     pdc.is_immediately_available,
                     pdc.preparation_time_minutes,
@@ -293,11 +283,11 @@ impl SimilarProductsService {
                         -- Bonus si description similaire
                         CASE 
                             WHEN $3 IS NOT NULL 
-                                 AND pd.product_json->>'description' IS NOT NULL
+                                 AND COALESCE(pd.product_data->>'description_produit', pd.product_data->>'description', pd.product_data->'description'->>'valeur', '') != ''
                             THEN 
                                 similarity(
                                     LOWER(COALESCE($3, '')),
-                                    LOWER(COALESCE(pd.product_json->>'description', ''))
+                                    LOWER(COALESCE(pd.product_data->>'description_produit', pd.product_data->>'description', pd.product_data->'description'->>'valeur', ''))
                                 ) * 20.0
                             ELSE 0.0
                         END +
@@ -351,8 +341,7 @@ impl SimilarProductsService {
                     AND pdc.product_index = pd.product_index
                 INNER JOIN services s ON s.id = pd.service_id
                 WHERE 
-                    pd.product_json_index = pd.product_index
-                    AND (
+                    (
                         pdc.availability_days IS NULL 
                         OR $5 = ANY(pdc.availability_days)
                     )
@@ -477,38 +466,26 @@ impl SimilarProductsService {
                 similarity_score: Option<f64>,
             }
 
+            // ✅ CORRIGÉ 2026-01-XX: Utiliser service_products au lieu de services.data->'produits'
             let rows: Vec<SimilarProductRowNoDistance> = sqlx::query_as(
                 r#"
                 WITH product_data AS (
                     SELECT 
                         s.id as service_id,
                         ac.product_id,
-                        SPLIT_PART(ac.product_id, '_', 2)::integer as product_index,
-                        jsonb_array_elements(
-                            CASE 
-                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                                THEN s.data->'produits'
-                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                                THEN s.data->'produits'->'valeur'
-                                ELSE '[]'::jsonb
-                            END
-                        ) AS product_json,
-                        (jsonb_array_elements(
-                            CASE 
-                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                                THEN s.data->'produits'
-                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                                THEN s.data->'produits'->'valeur'
-                                ELSE '[]'::jsonb
-                            END
-                        )->>'index')::integer AS product_json_index
+                        p.product_index,
+                        p.product_name,
+                        p.product_data,
+                        p.product_type
                     FROM autocomplete_characteristics ac
                     INNER JOIN services s ON s.id = ac.service_id
+                    INNER JOIN service_products p ON p.service_id = s.id AND p.is_active = TRUE
                     WHERE 
                         ac.service_id != $4
                         AND ac.is_real_product = TRUE
                         AND ac.identifiant_base LIKE 'produit%'
                         AND s.is_active = TRUE
+                        AND p.product_index::TEXT = SPLIT_PART(ac.product_id, '_', 2)
                         AND (
                             EXISTS (
                                 SELECT 1 FROM unnest($1::TEXT[]) AS orig_val
@@ -530,10 +507,10 @@ impl SimilarProductsService {
                     pd.service_id,
                     pd.product_id,
                     pd.product_index,
-                    pd.product_json->>'nom' as product_name,
-                    pd.product_json->>'description' as product_description,
-                    pd.product_json->>'categorie_produit' as category,
-                    (pd.product_json->>'prix')::text as price,
+                    pd.product_name,
+                    COALESCE(pd.product_data->>'description_produit', pd.product_data->>'description', pd.product_data->'description'->>'valeur', '') as product_description,
+                    COALESCE(pd.product_data->>'categorie_produit', pd.product_data->'categorie'->>'valeur', '') as category,
+                    COALESCE(pd.product_data->>'prix', pd.product_data->'prix'->>'montant', '')::text as price,
                     pdc.pickup_address,
                     pdc.is_immediately_available,
                     pdc.preparation_time_minutes,
@@ -571,11 +548,11 @@ impl SimilarProductsService {
                         -- Bonus si description similaire (si disponible)
                         CASE 
                             WHEN $3 IS NOT NULL 
-                                 AND pd.product_json->>'description' IS NOT NULL
+                                 AND COALESCE(pd.product_data->>'description_produit', pd.product_data->>'description', pd.product_data->'description'->>'valeur', '') != ''
                             THEN 
                                 similarity(
                                     LOWER(COALESCE($3, '')),
-                                    LOWER(COALESCE(pd.product_json->>'description', ''))
+                                    LOWER(COALESCE(pd.product_data->>'description_produit', pd.product_data->>'description', pd.product_data->'description'->>'valeur', ''))
                                 ) * 20.0
                             ELSE 0.0
                         END +
@@ -590,8 +567,7 @@ impl SimilarProductsService {
                     ON pdc.service_id = pd.service_id 
                     AND pdc.product_index = pd.product_index
                 WHERE 
-                    pd.product_json_index = pd.product_index
-                    AND (
+                    (
                         pdc.availability_days IS NULL 
                         OR $5 = ANY(pdc.availability_days)
                     )
@@ -797,18 +773,20 @@ impl SimilarProductsService {
             category: Option<String>,
         }
 
+        // ✅ CORRIGÉ 2026-01-XX: Récupérer depuis service_products au lieu de services.data->'produits'
         let original_product: Option<OriginalProductRow> = sqlx::query_as(
             r#"
             SELECT 
-                s.data->'produits'->$2->>'nom' as product_name,
-                s.data->'produits'->$2->>'description' as product_description,
-                s.data->'produits'->$2->>'categorie_produit' as category
+                p.product_name,
+                COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') as product_description,
+                COALESCE(p.product_data->>'categorie_produit', p.product_data->'categorie'->>'valeur', '') as category
             FROM services s
+            INNER JOIN service_products p ON p.service_id = s.id AND p.product_index = $2 AND p.is_active = TRUE
             WHERE s.id = $1
             "#,
         )
         .bind(service_id)
-        .bind(product_index_str)
+        .bind(product_index)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -846,91 +824,67 @@ impl SimilarProductsService {
             similarity_score: Option<f64>,
         }
 
-        // ✅ OPTIMISÉ: Utiliser une sous-requête avec LIMIT précoce pour éviter de déplier tous les produits
-        // Cela réduit le temps d'exécution de ~1.5s à <200ms
+        // ✅ CORRIGÉ 2026-01-XX: Utiliser service_products au lieu de services.data->'produits'
+        // ✅ OPTIMISÉ: Utiliser une sous-requête avec LIMIT précoce pour éviter de traiter tous les produits
         let rows: Vec<SimilarProductRowFallback> = sqlx::query_as(
             r#"
             WITH filtered_services AS (
                 -- Étape 1: Filtrer les services actifs qui ont des produits correspondants (LIMIT précoce)
-                SELECT s.id, s.data
+                SELECT DISTINCT s.id
                 FROM services s
+                INNER JOIN service_products p ON p.service_id = s.id AND p.is_active = TRUE
                 WHERE s.id != $1
                   AND s.is_active = TRUE
                   AND (
-                      -- Utiliser l'index GIN sur produits pour recherche rapide
-                      s.data->'produits' @> ANY(ARRAY[
-                          jsonb_build_object('nom', $3),
-                          jsonb_build_object('description', $3),
-                          jsonb_build_object('categorie_produit', $4)
-                      ])
-                      -- OU recherche avec similarity() sur les index trigram
-                      OR EXISTS (
-                          SELECT 1 
-                          FROM jsonb_array_elements(
-                              CASE 
-                                  WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                                  THEN s.data->'produits'
-                                  WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                                  THEN s.data->'produits'->'valeur'
-                                  ELSE '[]'::jsonb
-                              END
-                          ) AS p
-                          WHERE (
-                              similarity(LOWER(COALESCE(p->>'nom', '')), LOWER($3)) > 0.3
-                              OR similarity(LOWER(COALESCE(p->>'description', '')), LOWER($3)) > 0.3
-                              OR p->>'categorie_produit' = $4
-                          )
-                      )
+                      -- Recherche dans product_name (index GIN)
+                      p.product_name ILIKE '%' || $3 || '%'
+                      OR COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') ILIKE '%' || $3 || '%'
+                      OR COALESCE(p.product_data->>'categorie_produit', p.product_data->'categorie'->>'valeur', '') = $4
+                      -- OU recherche avec similarity() sur product_name
+                      OR similarity(LOWER(p.product_name), LOWER($3)) > 0.3
+                      OR similarity(LOWER(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')), LOWER($3)) > 0.3
                   )
                 LIMIT 100  -- ✅ LIMIT précoce: ne traiter que les 100 premiers services
             )
             SELECT DISTINCT
                 s.id as service_id,
-                (product_elem->>'index')::integer as product_index,
-                product_elem->>'nom' as product_name,
-                product_elem->>'description' as product_description,
-                product_elem->>'categorie_produit' as category,
-                product_elem->>'prix' as price,
+                p.product_index,
+                p.product_name,
+                COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') as product_description,
+                COALESCE(p.product_data->>'categorie_produit', p.product_data->'categorie'->>'valeur', '') as category,
+                COALESCE(p.product_data->>'prix', p.product_data->'prix'->>'montant', '') as price,
                 pdc.pickup_address,
                 pdc.is_immediately_available,
                 pdc.preparation_time_minutes,
                 pdc.availability_days,
                 (
                     CASE 
-                        WHEN product_elem->>'nom' ILIKE '%' || $3 || '%' THEN 0.8
-                        WHEN product_elem->>'description' ILIKE '%' || $3 || '%' THEN 0.6
-                        WHEN product_elem->>'categorie_produit' = $4 THEN 0.5
+                        WHEN p.product_name ILIKE '%' || $3 || '%' THEN 0.8
+                        WHEN COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') ILIKE '%' || $3 || '%' THEN 0.6
+                        WHEN COALESCE(p.product_data->>'categorie_produit', p.product_data->'categorie'->>'valeur', '') = $4 THEN 0.5
                         ELSE 0.3
                     END +
                     CASE 
                         WHEN $5 IS NOT NULL 
-                             AND product_elem->>'description' IS NOT NULL
+                             AND COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') != ''
                         THEN similarity(
                             LOWER(COALESCE($5, '')),
-                            LOWER(COALESCE(product_elem->>'description', ''))
+                            LOWER(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', ''))
                         ) * 0.4
                         ELSE 0.0
                     END
                 ) as similarity_score
             FROM filtered_services fs
             INNER JOIN services s ON s.id = fs.id
-            CROSS JOIN LATERAL jsonb_array_elements(
-                CASE 
-                    WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                    THEN s.data->'produits'
-                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                    THEN s.data->'produits'->'valeur'
-                    ELSE '[]'::jsonb
-                END
-            ) AS product_elem
+            INNER JOIN service_products p ON p.service_id = s.id AND p.is_active = TRUE
             LEFT JOIN product_delivery_config pdc 
                 ON s.id = pdc.service_id 
-                AND (product_elem->>'index')::integer = pdc.product_index
+                AND p.product_index = pdc.product_index
             WHERE 
                 (
-                    product_elem->>'nom' ILIKE '%' || $3 || '%'
-                    OR product_elem->>'description' ILIKE '%' || $3 || '%'
-                    OR product_elem->>'categorie_produit' = $4
+                    p.product_name ILIKE '%' || $3 || '%'
+                    OR COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '') ILIKE '%' || $3 || '%'
+                    OR COALESCE(p.product_data->>'categorie_produit', p.product_data->'categorie'->>'valeur', '') = $4
                 )
                 AND (
                     pdc.availability_days IS NULL 

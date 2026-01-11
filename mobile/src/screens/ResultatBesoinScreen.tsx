@@ -482,7 +482,8 @@ const ResultatBesoinScreen: React.FC = () => {
                                     const [productLat, productLon] = bestGPS.split(',').map(Number);
                                     
                                     if (!isNaN(userLat) && !isNaN(userLon) && !isNaN(productLat) && !isNaN(productLon)) {
-                                        distance = calculateDistanceFromCoords(userLat, userLon, productLat, productLon);
+                                        // ✅ CORRIGÉ 2026-01-XX: Utiliser calculateDistance au lieu de calculateDistanceFromCoords
+                                        distance = calculateDistance(userLat, userLon, productLat, productLon);
                                         console.log(`✅ [ResultatBesoinScreen] Distance produit calculée: ${distance.toFixed(2)} km (${product.nom || 'produit'})`);
                                     }
                                 } catch (error) {
@@ -1287,6 +1288,57 @@ const ResultatBesoinScreen: React.FC = () => {
         );
     }, [userLocationMemo]); // ✅ Utiliser userLocationMemo au lieu de location directement
 
+    // ✅ NOUVEAU 2026-01-XX: Fonction pour rendre ProductCard pour les services (utiliser le même visuel que les produits)
+    const renderServiceAsProductCard = useCallback((service: Service) => {
+        const prestataire = getPrestataire(service.user_id);
+        
+        // Convertir le service en format compatible avec ProductCard
+        // ProductCard attend un objet "product" mais peut aussi afficher un service (isPrestation = true)
+        const serviceAsProduct = {
+            // Données du service formatées comme un produit
+            nom: service.data?.titre_service?.valeur || service.titre || service.title || 'Service',
+            name: service.data?.titre_service?.valeur || service.titre || service.title || 'Service',
+            description: service.data?.description?.valeur || service.description || '',
+            prix: service.data?.prix?.valeur || service.prix || 0,
+            price: service.data?.prix?.valeur || service.prix || 0,
+            devise: service.data?.devise?.valeur || service.devise || 'XAF',
+            currency: service.data?.devise?.valeur || service.devise || 'XAF',
+            // Service ID pour la navigation
+            service_id: parseInt(service.id),
+            _serviceId: parseInt(service.id),
+            // Service complet pour ProductCard
+            _service: service,
+            _prestataire: prestataire,
+            // GPS et distance
+            _gps: service.gps || service.data?.gps_fixe?.valeur || service.data?.gps?.valeur,
+            distance: service.distance,
+            distance_km: service.distance,
+            // Images et vidéos
+            images: service.images || service.data?.images?.valeur || service.data?.images || [],
+            videos: service.videos || service.data?.videos?.valeur || service.data?.videos || [],
+        };
+
+        return (
+            <ProductCard
+                key={`service-${service.id}`}
+                product={serviceAsProduct}
+                service={service}
+                prestataire={prestataire}
+                userLocation={userLocationMemo}
+                onPress={() => {
+                    setSelectedService(service);
+                    setSelectedPrestataire(prestataire);
+                    handleServiceClick(service.id);
+                }}
+                onChatPress={() => {
+                    setSelectedService(service);
+                    setSelectedPrestataire(prestataire);
+                    setShowChatModal(true);
+                }}
+            />
+        );
+    }, [userLocationMemo, getPrestataire, handleServiceClick]); // ✅ Utiliser handleServiceClick au lieu de handleServicePress
+
     // ✅ CORRECTION 2025-01-02: Composant mémorisé pour éviter les re-renders inutiles
     const ServiceCardComponent = React.memo(({ service }: { service: Service }) => {
         // ✅ Utiliser ref pour éviter les re-renders lors des changements de prestataires
@@ -1624,30 +1676,9 @@ const ResultatBesoinScreen: React.FC = () => {
                         {allResults.length > 0 ? (
                             allResults.map((item) => {
                                 if (item.type === 'service') {
-                                    // Afficher le service complet
+                                    // ✅ CORRIGÉ 2026-01-XX: Utiliser ProductCard pour les services (même visuel que les produits)
                                     const service = item.data as Service;
-                                    // ✅ Utiliser fonction optimisée pour éviter les re-renders
-                                    const prestataire = getPrestataire(service.user_id);
-                                    const serviceId = parseInt(service.id);
-                                    const serviceBatchData = !isNaN(serviceId) ? batchData[serviceId] : null;
-                                    
-                                    return (
-                                        <UltraModernServiceCard
-                                            key={item.key}
-                                            service={service}
-                                            prestataireInfo={prestataire}
-                                            user={user}
-                                            reviews={serviceBatchData?.reviews.reviews || []}
-                                            reviewsStats={serviceBatchData?.reviews.stats || null}
-                                            serviceStats={serviceBatchData?.stats.stats || null}
-                                            onPress={handleServicePress}
-                                            onContact={handleContact}
-                                            onShare={handleShare}
-                                            onFavorite={handleFavorite}
-                                            onGallery={handleGallery}
-                                            onReview={handleReview}
-                                        />
-                                    );
+                                    return renderServiceAsProductCard(service);
                                 } else {
                                     // ✅ CORRIGÉ: Afficher le produit individuel avec clé stable
                                     const product = item.data;
