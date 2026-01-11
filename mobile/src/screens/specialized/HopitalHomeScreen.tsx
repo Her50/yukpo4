@@ -17,6 +17,8 @@ import {
     View,
     Image,
     Alert,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import SafeIcon from '../../components/SafeIcon';
@@ -367,6 +369,9 @@ const HopitalHomeScreen: React.FC = () => {
                                     }
                                 }}
                                 returnKeyType="search"
+                                multiline={true}
+                                numberOfLines={2}
+                                textAlignVertical="top"
                             />
                             {autocompleteQuery.length > 0 && (
                                 <TouchableOpacity
@@ -603,7 +608,11 @@ const AIModal: React.FC<AIModalProps> = ({
             animationType="slide"
             onRequestClose={onClose}
         >
-            <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView
+                style={styles.modalOverlay}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>
@@ -614,7 +623,11 @@ const AIModal: React.FC<AIModalProps> = ({
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+                    <ScrollView 
+                        style={styles.modalScroll} 
+                        contentContainerStyle={styles.modalScrollContent}
+                        keyboardShouldPersistTaps="handled"
+                    >
                         {mode === 'pathology' ? (
                             <>
                                 <View style={styles.pathologySearchContainer}>
@@ -840,7 +853,7 @@ const AIModal: React.FC<AIModalProps> = ({
                         )}
                     </ScrollView>
                 </View>
-            </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };
@@ -911,6 +924,9 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         color: '#111827',
+        maxHeight: 80, // ✅ Limite la hauteur pour les retours à la ligne
+        minHeight: 44, // ✅ Hauteur minimum pour un seul ligne
+        paddingVertical: 8, // ✅ Espacement vertical pour multiline
     },
     clearButton: {
         padding: 4,
@@ -1061,10 +1077,11 @@ const styles = StyleSheet.create({
     pathologyInput: {
         backgroundColor: '#F9FAFB',
         borderRadius: 12,
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 12, // ✅ Padding vertical explicite pour meilleure saisie
         fontSize: 16,
         color: '#111827',
-        minHeight: 120,
+        minHeight: 100, // ✅ Hauteur minimale pour permettre une bonne saisie
         maxHeight: 200,
         borderWidth: 1,
         borderColor: '#E5E7EB',

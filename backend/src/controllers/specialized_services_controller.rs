@@ -4092,19 +4092,21 @@ pub async fn autocomplete_examination_types(
     let limit = params.limit.unwrap_or(20).min(50);
     let search_pattern = format!("%{}%", params.query);
 
-    // Rechercher dans les types d'examens créés par les laboratoires
-    // On suppose qu'il y a une table ou un champ dans les services pour stocker les examens
+    // ✅ CORRIGÉ: Rechercher dans les types d'examens créés par les laboratoires
+    // La colonne analyses_disponibles est dans laboratoires_imagerie, pas dans services
     let examinations: Vec<serde_json::Value> = sqlx::query(
         r#"
         SELECT DISTINCT
-            unnest(prestations_medicales) as name,
+            unnest(li.analyses_disponibles) as name,
             'examen' as category
-        FROM services
-        WHERE specialized_type = 'laboratoire'
-        AND prestations_medicales IS NOT NULL
+        FROM laboratoires_imagerie li
+        INNER JOIN services s ON s.id = li.service_id
+        WHERE s.specialized_type = 'laboratoire_imagerie'
+        AND li.is_active = TRUE
+        AND li.analyses_disponibles IS NOT NULL
         AND EXISTS (
-            SELECT 1 FROM unnest(prestations_medicales) AS prestation
-            WHERE prestation ILIKE $1
+            SELECT 1 FROM unnest(li.analyses_disponibles) AS examen
+            WHERE examen ILIKE $1
         )
         LIMIT $2
         "#
@@ -4153,16 +4155,19 @@ pub async fn autocomplete_medical_services(
     let search_pattern = format!("%{}%", params.query);
 
     // Rechercher dans les prestations créées par les hôpitaux
+    // ✅ CORRIGÉ: La colonne prestations_medicales est dans hopitaux_cliniques, pas dans services
     let services: Vec<serde_json::Value> = sqlx::query(
         r#"
         SELECT DISTINCT
-            unnest(prestations_medicales) as name,
+            unnest(hc.prestations_medicales) as name,
             'prestation' as category
-        FROM services
-        WHERE specialized_type = 'hopital'
-        AND prestations_medicales IS NOT NULL
+        FROM hopitaux_cliniques hc
+        INNER JOIN services s ON s.id = hc.service_id
+        WHERE s.specialized_type = 'hopital_clinique'
+        AND hc.is_active = TRUE
+        AND hc.prestations_medicales IS NOT NULL
         AND EXISTS (
-            SELECT 1 FROM unnest(prestations_medicales) AS prestation
+            SELECT 1 FROM unnest(hc.prestations_medicales) AS prestation
             WHERE prestation ILIKE $1
         )
         LIMIT $2
@@ -4198,7 +4203,10 @@ pub async fn autocomplete_medical_services(
 /// Analyser une image de résultat d'examen avec IA
 #[derive(Debug, Deserialize)]
 pub struct AnalyzeExaminationImageRequest {
-    pub image_uri: String, // URL ou base64 de l'image
+    #[serde(default)]
+    pub image_uri: String, // URL ou base64 de l'image (déprécié, utiliser image_base64)
+    #[serde(default)]
+    pub image_base64: String, // Base64 de l'image (format préféré)
     pub examination_type: String,
     pub patient_age: Option<i32>,
     pub patient_sex: Option<String>,
@@ -4214,23 +4222,34 @@ pub async fn analyze_examination_image(
         user_id, request.examination_type
     );
 
-    // Utiliser le service IA pour analyser l'image
+    // ✅ CORRIGÉ: Utiliser le service IA pour analyser directement l'image avec vision IA
     use crate::services::lab_ai_service::LabAIService;
     
     let lab_ai_service = LabAIService::new(state.ia.clone());
     
-    // Pour l'analyse d'image, on convertit l'image en JSON de résultats simulés
-    // Dans une vraie implémentation, on utiliserait un service de vision IA
-    let results_json = json!({
-        "image_uri": request.image_uri,
-        "examination_type": request.examination_type,
-        "note": "Analyse d'image en cours"
-    });
+    // Extraire le base64 de l'image (support des deux formats: image_uri ou image_base64)
+    let image_base64 = if !request.image_base64.is_empty() {
+        request.image_base64.clone()
+    } else {
+        // Si image_uri commence par "data:", c'est déjà du base64
+        if request.image_uri.starts_with("data:") {
+            request.image_uri.clone()
+        } else {
+            // Sinon, extraire le base64 après "base64,"
+            request
+                .image_uri
+                .split("base64,")
+                .nth(1)
+                .unwrap_or(&request.image_uri)
+                .to_string()
+        }
+    };
 
+    // Analyser l'image directement avec vision IA
     let analysis = lab_ai_service
-        .analyze_examination_results(
+        .analyze_examination_image(
             &request.examination_type,
-            results_json,
+            &image_base64,
             request.patient_age,
             request.patient_sex.as_deref(),
         )

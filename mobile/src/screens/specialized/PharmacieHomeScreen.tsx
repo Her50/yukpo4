@@ -552,6 +552,9 @@ const PharmacieHomeScreen: React.FC = () => {
                                 onFocus={() => setSearchFocused(true)}
                                 onBlur={() => setSearchFocused(false)}
                                 returnKeyType="search"
+                                multiline={true}
+                                numberOfLines={2}
+                                textAlignVertical="top"
                             />
                             {searchQuery.length > 0 && (
                                 <TouchableOpacity
@@ -649,14 +652,11 @@ const PharmacieHomeScreen: React.FC = () => {
                     </TouchableOpacity>
 
                     {showAIChat && (
-                        <KeyboardAwareScreen 
-                            style={styles.aiChatWrapper}
-                            contentContainerStyle={styles.aiChatContainer}
-                            extraScrollHeight={100}
-                        >
-                            <ScrollView 
+                        <View style={styles.aiChatWrapper}>
+                            <KeyboardAwareScreen 
                                 style={styles.aiChatScrollView}
                                 contentContainerStyle={styles.aiChatScrollContent}
+                                extraScrollHeight={100}
                                 keyboardShouldPersistTaps="handled"
                                 showsVerticalScrollIndicator={true}
                             >
@@ -778,8 +778,8 @@ const PharmacieHomeScreen: React.FC = () => {
                                         </TouchableOpacity>
                                     </View>
                                 )}
-                            </ScrollView>
-                        </KeyboardAwareScreen>
+                            </KeyboardAwareScreen>
+                        </View>
                     )}
                 </View>
             </View>
@@ -1666,6 +1666,9 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         color: '#111827',
+        maxHeight: 80, // ✅ Limite la hauteur pour les retours à la ligne
+        minHeight: 44, // ✅ Hauteur minimum pour un seul ligne
+        paddingVertical: 8, // ✅ Espacement vertical pour multiline
     },
     clearButton: {
         padding: 4,
@@ -2357,14 +2360,12 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
     },
-    aiChatContainer: {
-        padding: 16,
-        backgroundColor: '#F9FAFB',
-    },
     aiChatScrollView: {
         flex: 1,
+        backgroundColor: '#F9FAFB',
     },
     aiChatScrollContent: {
+        padding: 16,
         paddingBottom: 20,
         gap: 12,
     },

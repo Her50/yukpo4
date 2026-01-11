@@ -1,7 +1,6 @@
 // ✅ Écran Taxi MODERNE - Refonte complète avec UX digne d'une app de taxi
 // Structure claire : Recherche de taxis vs Création de service taxi
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -405,11 +404,9 @@ const TaxiHomeScreen: React.FC = () => {
     return (
         <SafeNativeView style={styles.container}>
             {/* Header sticky avec mode toggle */}
+            {/* ✅ REFONDU: Header avec fond blanc pour meilleur contraste */}
             <View style={styles.headerContainer}>
-                <LinearGradient
-                    colors={viewMode === 'search' ? ['#06B6D4', '#22D3EE'] : ['#10B981', '#34D399']}
-                    style={styles.headerGradient}
-                >
+                <View style={styles.headerGradient}>
                     {/* ✅ MODIFIÉ: Barre d'actions en haut avec boutons isolés gauche/droite */}
                     <View style={styles.headerActionsBar}>
                         <TouchableOpacity
@@ -421,7 +418,7 @@ const TaxiHomeScreen: React.FC = () => {
                             }}
                             style={styles.registerDriverButtonLeft}
                         >
-                            <SafeIcon name="user-plus" size={18} color="#FFFFFF" type="lucide" />
+                            <SafeIcon name="user" size={18} color="#06B6D4" type="lucide" />
                                         <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
                                             Devenir chauffeur
                                         </Text>
@@ -446,7 +443,7 @@ const TaxiHomeScreen: React.FC = () => {
                             <SafeIcon 
                                 name="plus" 
                                 size={18} 
-                                color={isDriverValidated ? "#FFFFFF" : "#9CA3AF"} 
+                                color={isDriverValidated ? "#FFFFFF" : "#FFFFFF"} 
                                 type="lucide" 
                             />
                             <Text style={[
@@ -465,7 +462,7 @@ const TaxiHomeScreen: React.FC = () => {
                             }}
                             style={styles.backButton}
                         >
-                            <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
+                            <SafeIcon name="arrow-left" size={24} color="#111827" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>
@@ -488,7 +485,7 @@ const TaxiHomeScreen: React.FC = () => {
                                     {/* Départ - Initialisé avec position GPS, modifiable */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
-                                            <SafeIcon name="map-pin" size={12} color="#FFFFFF" type="lucide" /> Départ
+                                            <SafeIcon name="map-pin" size={12} color="#6B7280" type="lucide" /> Départ
                                         </Text>
                                         <LocationSelector
                                             label=""
@@ -552,7 +549,7 @@ const TaxiHomeScreen: React.FC = () => {
                                     {/* Destination - Obligatoire, lieu précis via autocomplete Google */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
-                                            <SafeIcon name="navigation" size={12} color="#FFFFFF" type="lucide" /> Destination *
+                                            <SafeIcon name="navigation" size={12} color="#6B7280" type="lucide" /> Destination *
                                         </Text>
                                         <LocationSelector
                                             label=""
@@ -617,7 +614,7 @@ const TaxiHomeScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
                     )}
-                </LinearGradient>
+                </View>
             </View>
 
             {/* Contenu selon le mode */}
@@ -1020,6 +1017,7 @@ const styles = StyleSheet.create({
         paddingTop: 20,
         paddingBottom: 16,
         paddingHorizontal: 16,
+        backgroundColor: '#FFFFFF',
     },
     headerActionsBar: {
         flexDirection: 'row',
@@ -1048,12 +1046,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderRadius: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
     registerDriverTextLeft: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: '#06B6D4',
         flexShrink: 1,
     },
     publishServiceButtonRight: {
@@ -1065,10 +1065,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderRadius: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        backgroundColor: '#06B6D4',
     },
     publishServiceButtonRightDisabled: {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: '#D1D5DB',
     },
     publishServiceTextRight: {
         fontSize: 13,
@@ -1082,11 +1082,11 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: '#111827',
     },
     headerSubtitle: {
         fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: '#6B7280',
         marginTop: 2,
     },
     searchContainer: {
@@ -1107,7 +1107,7 @@ const styles = StyleSheet.create({
     routeLabel: {
         fontSize: 11,
         fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: '#6B7280',
         marginBottom: 6,
         flexDirection: 'row',
         alignItems: 'center',

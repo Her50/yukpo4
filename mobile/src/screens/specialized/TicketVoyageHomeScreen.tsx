@@ -1,5 +1,4 @@
 // ✅ Écran Tickets de Voyage MODERNE - Refonte complète avec UX de niveau mondial
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -301,12 +300,9 @@ const TicketVoyageHomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            {/* Header sticky avec recherche */}
+            {/* ✅ REFONDU: Header avec fond blanc pour meilleur contraste */}
             <View style={styles.headerContainer}>
-                <LinearGradient
-                    colors={['#8B5CF6', '#A78BFA']}
-                    style={styles.headerGradient}
-                >
+                <View style={styles.headerGradient}>
                     <View style={styles.headerTop}>
                         <TouchableOpacity
                             onPress={() => {
@@ -315,7 +311,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             }}
                             style={styles.backButton}
                         >
-                            <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
+                            <SafeIcon name="arrow-left" size={24} color="#111827" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>Tickets de Voyage</Text>
@@ -335,7 +331,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             <SafeIcon 
                                 name="sliders-h" 
                                 size={22} 
-                                color="#FFFFFF" 
+                                color="#6B7280" 
                                 type="lucide" 
                             />
                             {activeFiltersCount > 0 && (
@@ -351,7 +347,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         <View style={styles.citiesColumn}>
                             <View style={styles.cityInputContainer}>
                                 <Text style={styles.cityLabel}>
-                                    <SafeIcon name="map-pin" size={12} color="#FFFFFF" type="lucide" /> Départ
+                                    <SafeIcon name="map-pin" size={12} color="#6B7280" type="lucide" /> Départ
                                 </Text>
                                 <LocationSelector
                                     label=""
@@ -368,7 +364,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             </View>
                             <View style={styles.cityInputContainer}>
                                 <Text style={styles.cityLabel}>
-                                    <SafeIcon name="navigation" size={12} color="#FFFFFF" type="lucide" /> Arrivée
+                                    <SafeIcon name="navigation" size={12} color="#6B7280" type="lucide" /> Arrivée
                                 </Text>
                                 <LocationSelector
                                     label=""
@@ -409,7 +405,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             )}
                         </TouchableOpacity>
                     </View>
-                </LinearGradient>
+                </View>
 
                 {/* Quick filters */}
                 <ScrollView
@@ -933,6 +929,7 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     headerGradient: {
+        backgroundColor: '#FFFFFF', // ✅ REFONDU: Fond blanc au lieu de gradient violet
         paddingTop: 20,
         paddingBottom: 16,
         paddingHorizontal: 16,
@@ -951,18 +948,18 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: '#111827', // ✅ REFONDU: Texte noir sur fond blanc
     },
     headerSubtitle: {
         fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: '#6B7280', // ✅ REFONDU: Texte gris sur fond blanc
         marginTop: 2,
     },
     filterButton: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: '#F3F4F6', // ✅ REFONDU: Fond gris clair sur fond blanc
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
@@ -998,7 +995,7 @@ const styles = StyleSheet.create({
     cityLabel: {
         fontSize: 11,
         fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: '#6B7280', // ✅ REFONDU: Texte gris sur fond blanc
         marginBottom: 6,
         flexDirection: 'row',
         alignItems: 'center',

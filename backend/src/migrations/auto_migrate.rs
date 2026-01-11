@@ -7753,6 +7753,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto optimize_slow_queries_critical: {}", e),
     }
 
+    // ✅ 2026-01-11 : Optimisation additionnelle des requêtes deliveries (get_delivery_summary, find_nearby_couriers, UPDATE matching_queue)
+    match ensure_optimize_delivery_queries_additional(pool).await {
+        Ok(_) => info!("✅ Migration auto: optimize_delivery_queries_additional OK"),
+        Err(e) => error!("❌ Erreur migration auto optimize_delivery_queries_additional: {}", e),
+    }
+
     // ✅ 2025-11-25 : Fonctions de recherche avec planification (pharmacie/hôpital)
     match ensure_scheduling_search_functions(pool).await {
         Ok(_) => info!("✅ Migration auto: scheduling search functions OK"),
@@ -11335,6 +11341,17 @@ pub async fn ensure_optimize_slow_queries_critical(pool: &PgPool) -> Result<(), 
     let migration_sql = include_str!("../../migrations/20251224_optimize_slow_queries_critical.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration optimize_slow_queries_critical appliquée");
+    Ok(())
+}
+
+/// ✅ 2026-01-11 : Optimisation additionnelle des requêtes deliveries identifiées dans les warnings
+/// Migration: 20260111_optimize_delivery_queries_additional.sql
+/// Problèmes corrigés: get_delivery_summary (1.1-1.5s), find_nearby_couriers (1.14s), UPDATE delivery_matching_queue (1.09s)
+pub async fn ensure_optimize_delivery_queries_additional(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration optimize_delivery_queries_additional...");
+    let migration_sql = include_str!("../../migrations/20260111_optimize_delivery_queries_additional.sql");
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    info!("✅ Migration optimize_delivery_queries_additional appliquée");
     Ok(())
 }
 

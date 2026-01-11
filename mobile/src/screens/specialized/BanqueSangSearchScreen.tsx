@@ -263,7 +263,8 @@ const BanqueSangSearchScreen: React.FC = () => {
         try {
             const response = await apiGet('/api/blood-donation/donor/blood-groups');
             if (response?.success && response?.data && response.data.length > 0) {
-                const firstGroup = response.data[0].blood_group;
+                // ✅ CORRIGÉ: Le backend renvoie "groupe_sanguin", pas "blood_group"
+                const firstGroup = response.data[0].groupe_sanguin;
                 setUserBloodGroup(firstGroup);
                 loadCompatibility(firstGroup);
             }
@@ -290,8 +291,9 @@ const BanqueSangSearchScreen: React.FC = () => {
         }
         try {
             setLoading(true);
+            // ✅ CORRIGÉ: Le backend attend "groupe_sanguin", pas "blood_group"
             const response = await apiPost('/api/blood-donation/donor/blood-group', {
-                blood_group: group,
+                groupe_sanguin: group,
             });
             if (response?.success) {
                 setUserBloodGroup(group);

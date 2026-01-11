@@ -3,6 +3,8 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
     Alert,
+    Modal,
+    ScrollView,
     StyleSheet,
     Switch,
     Text,
@@ -779,8 +781,6 @@ const AIModal: React.FC<AIModalProps> = ({
     onFill,
     loading,
 }) => {
-    const { Modal } = require('react-native');
-
     return (
         <Modal
             visible={visible}

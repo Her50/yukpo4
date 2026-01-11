@@ -9,6 +9,7 @@ import {
   Dimensions,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,

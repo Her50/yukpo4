@@ -681,7 +681,7 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#E2E8F0', // ✅ AMÉLIORÉ: Fond gris moyen harmonisé plus foncé (#E2E8F0 - slate-200)
+        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc pour le corps de l'application
     },
     scrollView: {
         flex: 1,
@@ -776,9 +776,9 @@ const styles = StyleSheet.create({
     modeSelector: {
         flexDirection: 'row',
         marginHorizontal: 16,
-        marginTop: 12,
-        marginBottom: 8, // ✅ AMÉLIORÉ: Réduit l'écart entre modeSelector et ChatInputMobile
-        backgroundColor: '#F1F5F9', // ✅ AMÉLIORÉ: Fond gris clair harmonisé (#F1F5F9 - slate-100)
+        marginTop: 16, // ✅ CORRIGÉ: Augmenté pour espace blanc
+        marginBottom: 16, // ✅ CORRIGÉ: Augmenté pour espace blanc
+        backgroundColor: '#F1F5F9', // ✅ CONSERVÉ: Fond gris clair pour les boutons (garder leur couleur)
         borderRadius: 12,
         padding: 4,
     },
@@ -802,13 +802,12 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     darkBackgroundContainer: {
-        backgroundColor: '#F1F5F9', // ✅ AMÉLIORÉ: Fond gris clair harmonisé (#F1F5F9 - slate-100) pour contraste subtil
+        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc pour le corps de l'application
         marginHorizontal: 16,
         borderRadius: 16,
         padding: 16,
-        marginTop: 4, // ✅ AMÉLIORÉ: Réduit l'écart entre modeSelector et ChatInputMobile
-        marginBottom: 12,
-        // ✅ SUPPRIMÉ: Bordure pour un look plus propre
+        marginTop: 0, // ✅ CORRIGÉ: Pas de marge en haut (gérée par modeSelector)
+        marginBottom: 16, // ✅ CORRIGÉ: Augmenté pour espace blanc
     },
     inputContainer: {
         marginBottom: 8,
@@ -827,8 +826,9 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     promotionsContainer: {
-        marginTop: 8,
-        marginHorizontal: 0, // Pas de marge horizontale car déjà dans le conteneur foncé
+        marginTop: 16, // ✅ CORRIGÉ: Augmenté pour espace blanc autour des boutons
+        marginHorizontal: 0, // Pas de marge horizontale car déjà dans le conteneur
+        marginBottom: 16, // ✅ CORRIGÉ: Ajouté pour espace blanc en bas
     },
     promotionsMainButton: {
         backgroundColor: '#E2E8F0', // ✅ AMÉLIORÉ: Fond gris moyen harmonisé plus foncé (#E2E8F0 - slate-200)
@@ -909,8 +909,8 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     specializedServicesContainer: {
-        marginTop: 20, // ✅ AMÉLIORÉ: Écart augmenté entre Promotions et Services spécialisés
-        marginBottom: 0, // Réduit car déjà dans le conteneur foncé
+        marginTop: 24, // ✅ CORRIGÉ: Augmenté pour espace blanc autour des boutons
+        marginBottom: 16, // ✅ CORRIGÉ: Ajouté pour espace blanc en bas
     },
     specializedServicesTitle: {
         fontSize: 17, // ✅ AUGMENTÉ: De 15 à 17 pour meilleure visibilité

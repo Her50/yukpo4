@@ -5400,3 +5400,74 @@ COMMENT ON FUNCTION get_cache IS 'Récupère une valeur du cache si elle n''est 
 COMMENT ON FUNCTION set_cache IS 'Met une valeur en cache avec un TTL en secondes.';
 COMMENT ON FUNCTION delete_cache IS 'Supprime une clé du cache.';
 COMMENT ON FUNCTION delete_cache_pattern IS 'Supprime les clés du cache correspondant à un pattern.';
+
+-- =====================================================
+-- ✅ OPTIMISATION ADDITIONNELLE 2026-01-11: Correction des requêtes lentes identifiées dans les warnings
+-- =====================================================
+
+-- 1. Optimisation requête get_delivery_summary
+-- Index GIST pour return_pickup_location (manquant)
+CREATE INDEX IF NOT EXISTS idx_deliveries_return_pickup_location_gist
+ON deliveries USING GIST(return_pickup_location)
+WHERE return_pickup_location IS NOT NULL;
+
+-- Index GIST pour return_dropoff_location (manquant)
+CREATE INDEX IF NOT EXISTS idx_deliveries_return_dropoff_location_gist
+ON deliveries USING GIST(return_dropoff_location)
+WHERE return_dropoff_location IS NOT NULL;
+
+-- Index composite pour is_round_trip (utilisé dans la requête)
+CREATE INDEX IF NOT EXISTS idx_deliveries_round_trip
+ON deliveries(id, is_round_trip)
+WHERE is_round_trip = true;
+
+-- 2. Optimisation find_nearby_couriers (amélioration)
+-- Index pour captured_at récent (utilisé dans find_nearby_couriers)
+CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_recent
+ON courier_availability_snapshots(captured_at DESC, is_online, load_factor)
+WHERE is_online = true AND load_factor < 1.0;
+
+-- Index composite pour user_id et courier_id (utilisé dans jointure)
+CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_user_courier
+ON courier_availability_snapshots(user_id, courier_id)
+WHERE is_online = true;
+
+-- 3. Optimisation UPDATE delivery_matching_queue
+-- Index pour WHERE delivery_id = $1 dans UPDATE (amélioration)
+CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_delivery_id_status
+ON delivery_matching_queue(delivery_id, status);
+
+-- Index pour next_attempt_at (utilisé dans WHERE clauses)
+CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_next_attempt
+ON delivery_matching_queue(next_attempt_at)
+WHERE next_attempt_at IS NOT NULL;
+
+-- 4. Optimisation requêtes fréquentes sur deliveries
+-- Index pour creator_id (utilisé dans plusieurs requêtes)
+CREATE INDEX IF NOT EXISTS idx_deliveries_creator_id
+ON deliveries(creator_id, status, requested_at DESC);
+
+-- Index pour courier_id (utilisé dans plusieurs requêtes)
+CREATE INDEX IF NOT EXISTS idx_deliveries_courier_id
+ON deliveries(courier_id, status, requested_at DESC);
+
+-- Index pour recipient_user_id (utilisé dans requêtes récipient)
+CREATE INDEX IF NOT EXISTS idx_deliveries_recipient_user_id
+ON deliveries(recipient_user_id, status)
+WHERE recipient_user_id IS NOT NULL;
+
+-- Index pour tracking_token (utilisé dans requêtes de suivi)
+CREATE INDEX IF NOT EXISTS idx_deliveries_tracking_token
+ON deliveries(tracking_token)
+WHERE tracking_token IS NOT NULL;
+
+-- Index pour recipient_tracking_token
+CREATE INDEX IF NOT EXISTS idx_deliveries_recipient_tracking_token
+ON deliveries(recipient_tracking_token)
+WHERE recipient_tracking_token IS NOT NULL;
+
+-- 5. ANALYZE pour mettre à jour les statistiques
+ANALYZE deliveries;
+ANALYZE delivery_matching_queue;
+ANALYZE courier_availability_snapshots;
+ANALYZE courier_assets;

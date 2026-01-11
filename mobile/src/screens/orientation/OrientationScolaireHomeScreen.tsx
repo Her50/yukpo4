@@ -369,10 +369,27 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                                     <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
                                 </TouchableOpacity>
                             )}
+                            {/* ✅ CORRIGÉ: Bouton de recherche à droite */}
+                            <TouchableOpacity
+                                style={styles.searchButton}
+                                onPress={handleSearch}
+                                disabled={loading}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon 
+                                    name="search" 
+                                    size={18} 
+                                    color={loading ? "#9CA3AF" : "#8B5CF6"} 
+                                    type="lucide" 
+                                />
+                            </TouchableOpacity>
                         </View>
                         {/* ✅ NOUVEAU: Bouton recherche académique IA */}
                         <TouchableOpacity
-                            style={styles.aiSearchButton}
+                            style={[
+                                styles.aiSearchButton,
+                                loading && styles.aiSearchButtonDisabled
+                            ]}
                             onPress={() => {
                                 hapticPress();
                                 setShowAIModal(true);
@@ -380,10 +397,21 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                                 setAcademicQuery('');
                                 setAcademicResponse(null);
                             }}
+                            disabled={loading}
                             activeOpacity={0.7}
                         >
-                            <SafeIcon name="brain" size={18} color="#8B5CF6" type="lucide" />
-                            <Text style={styles.aiSearchButtonText}>Recherche académique IA</Text>
+                            <SafeIcon 
+                                name="brain" 
+                                size={18} 
+                                color={loading ? "#9CA3AF" : "#8B5CF6"} 
+                                type="lucide" 
+                            />
+                            <Text style={[
+                                styles.aiSearchButtonText,
+                                loading && styles.aiSearchButtonTextDisabled
+                            ]}>
+                                Recherche académique IA
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
@@ -1066,6 +1094,19 @@ const styles = StyleSheet.create({
     },
     clearButton: {
         padding: 4,
+    },
+    searchButton: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: '#EEF2FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    aiSearchButtonDisabled: {
+        opacity: 0.5,
+    },
+    aiSearchButtonTextDisabled: {
+        color: '#9CA3AF',
     },
     quickFilters: {
         flexDirection: 'row',

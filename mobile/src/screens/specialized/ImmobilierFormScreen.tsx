@@ -20,7 +20,7 @@ import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
-import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { useCurrencyDetection, getCurrencyFromGPS } from '../../hooks/useCurrencyDetection';
 import MediaUploader, { MediaItem } from '../../components/specialized/MediaUploader';
 
 const ImmobilierFormScreen: React.FC = () => {
@@ -104,8 +104,11 @@ const ImmobilierFormScreen: React.FC = () => {
                 setDevise(currency);
             }
         } else if (location?.coords) {
-            // Si pas de ville/quartier mais GPS disponible, utiliser la devise détectée depuis GPS
-            const gpsCurrency = useCurrencyDetection();
+            // ✅ CORRIGÉ: Utiliser getCurrencyFromGPS au lieu de useCurrencyDetection dans useEffect
+            const gpsCurrency = getCurrencyFromGPS({
+                lat: location.coords.latitude,
+                lng: location.coords.longitude,
+            });
             setDevise(gpsCurrency);
         }
     }, [formData.ville, formData.quartier, location]);

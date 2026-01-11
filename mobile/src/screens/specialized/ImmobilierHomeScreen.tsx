@@ -347,6 +347,20 @@ const ImmobilierHomeScreen: React.FC = () => {
                                     <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
                                 </TouchableOpacity>
                             )}
+                            {/* ✅ CORRIGÉ: Bouton de recherche à droite */}
+                            <TouchableOpacity
+                                style={styles.searchButton}
+                                onPress={handleSearch}
+                                disabled={loading}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon 
+                                    name="search" 
+                                    size={18} 
+                                    color={loading ? "#9CA3AF" : "#1E40AF"} 
+                                    type="lucide" 
+                                />
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </LinearGradient>
@@ -965,6 +979,13 @@ const styles = StyleSheet.create({
     },
     clearButton: {
         padding: 4,
+    },
+    searchButton: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: '#EFF6FF',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     quickFiltersScroll: {
         maxHeight: 60,

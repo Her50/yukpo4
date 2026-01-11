@@ -64,7 +64,13 @@ pub struct BloodBank {
 #[derive(Debug, Deserialize)]
 pub struct SearchBloodBanksQuery {
     pub query: Option<String>,
+    #[serde(default)]
     pub gps_zone: Option<String>,
+    #[serde(default)]
+    pub lat: Option<f64>, // ✅ NOUVEAU: Support lat/lng séparés
+    #[serde(default)]
+    pub lng: Option<f64>, // ✅ NOUVEAU: Support lat/lng séparés
+    #[serde(rename = "max_distance_km")]
     pub radius_km: Option<i32>,
     pub groupe_sanguin: Option<String>, // "O+", "AB-", etc.
     pub urgence: Option<bool>,
@@ -317,7 +323,16 @@ pub async fn search_blood_banks(
     Query(params): Query<SearchBloodBanksQuery>,
 ) -> AppResult<impl IntoResponse> {
     let query = params.query.as_deref().unwrap_or("");
-    let user_gps = params.gps_zone;
+    
+    // ✅ CORRIGÉ: Convertir lat/lng en gps_zone si nécessaire
+    let user_gps = if params.gps_zone.is_some() {
+        params.gps_zone
+    } else if params.lat.is_some() && params.lng.is_some() {
+        Some(format!("{},{}", params.lat.unwrap(), params.lng.unwrap()))
+    } else {
+        None
+    };
+    
     let radius = params.radius_km.unwrap_or(50);
     let groupe_sanguin = params.groupe_sanguin;
     let urgence = params.urgence.unwrap_or(false);

@@ -17,7 +17,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { FamilyProfile, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
-import { useLocationContext } from '../../contexts/LocationContext';
+import { useLocationSafe } from '../../contexts/LocationContext';
 
 const { width } = Dimensions.get('window');
 
@@ -27,7 +27,7 @@ type MenuPeriod = '1_week' | '2_weeks' | '1_month';
 
 const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const navigation = useNavigation();
-    const { location, getCurrentLocation } = useLocationContext();
+    const { location, getCurrentLocation } = useLocationSafe();
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [profile, setProfile] = useState<FamilyProfile | null>(null);
@@ -91,11 +91,18 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
             // ✅ NOUVEAU: Récupérer la localisation actuelle dynamiquement
             let currentGps: string | undefined;
             try {
-                const currentLocation = location || await getCurrentLocation();
-                if (currentLocation?.coords) {
-                    // Format: "lat,lng" pour le backend
-                    currentGps = `${currentLocation.coords.latitude},${currentLocation.coords.longitude}`;
-                    console.log('[MenuPlanningHub] Localisation actuelle envoyée:', currentGps);
+                // Vérifier que getCurrentLocation est disponible
+                if (getCurrentLocation && typeof getCurrentLocation === 'function') {
+                    const currentLocation = location || await getCurrentLocation();
+                    if (currentLocation?.coords) {
+                        // Format: "lat,lng" pour le backend
+                        currentGps = `${currentLocation.coords.latitude},${currentLocation.coords.longitude}`;
+                        console.log('[MenuPlanningHub] Localisation actuelle envoyée:', currentGps);
+                    }
+                } else if (location?.coords) {
+                    // Utiliser la location déjà disponible
+                    currentGps = `${location.coords.latitude},${location.coords.longitude}`;
+                    console.log('[MenuPlanningHub] Localisation disponible utilisée:', currentGps);
                 }
             } catch (error) {
                 console.warn('[MenuPlanningHub] Impossible de récupérer la localisation actuelle, utilisation du GPS stocké:', error);

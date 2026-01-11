@@ -260,6 +260,119 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         Ok(exams)
     }
+
+    /// Analyse une image de résultat d'examen avec vision IA
+    pub async fn analyze_examination_image(
+        &self,
+        examination_type: &str,
+        image_base64: &str,
+        patient_age: Option<i32>,
+        patient_sex: Option<&str>,
+    ) -> AppResult<LabAnalysisResult> {
+        let age_str = patient_age
+            .map(|a| a.to_string())
+            .unwrap_or_else(|| "Non spécifié".to_string());
+        let sex_str = patient_sex.unwrap_or("Non spécifié");
+
+        // Construire le prompt pour l'analyse d'image médicale
+        let prompt = format!(
+            r#"
+Tu es un expert en interprétation d'images médicales et de résultats de laboratoire pour Yukpomnang.
+
+CONTEXTE :
+- Type d'examen : {}
+- Âge du patient : {} ans
+- Sexe : {}
+
+TON RÔLE :
+- Analyser l'image de résultat d'examen de manière professionnelle
+- Identifier les valeurs, paramètres ou observations visibles dans l'image
+- Détecter les anomalies par rapport aux valeurs normales
+- Identifier les valeurs critiques nécessitant attention immédiate
+- Suggérer des examens complémentaires si nécessaire
+
+IMPORTANT :
+- Ne JAMAIS poser de diagnostic médical définitif
+- Toujours recommander de consulter un médecin pour interprétation finale
+- Si l'image ne contient pas de résultats lisibles, le signaler clairement
+- Identifier clairement les valeurs normales vs anormales
+- Classifier la sévérité des anomalies (critical, high, moderate, low)
+
+RÉPONSE ATTENDUE (JSON strict UNIQUEMENT, sans texte avant ou après) :
+{{
+    "interpretation": "Interprétation générale de l'image et des résultats observés",
+    "anomalies_detected": [
+        {{
+            "parameter": "Paramètre observé",
+            "value": "Valeur observée",
+            "normal_range": "Plage normale",
+            "severity": "moderate",
+            "description": "Description de l'anomalie"
+        }}
+    ],
+    "is_normal": false,
+    "confidence": 0.85,
+    "recommendations": ["Consultez votre médecin", "Répéter l'examen si nécessaire"],
+    "follow_up_exams": ["Examens complémentaires suggérés"]
+}}
+
+Réponds UNIQUEMENT le JSON, sans markdown, sans code blocks, sans texte avant ou après.
+"#,
+            examination_type, age_str, sex_str
+        );
+
+        // Préparer l'image base64
+        let image_base64_clean = if image_base64.starts_with("data:") {
+            image_base64.to_string()
+        } else {
+            format!("data:image/jpeg;base64,{}", image_base64)
+        };
+
+        // Utiliser predict_multimodal pour l'analyse d'image
+        let (model_name, response, tokens) = self
+            .app_ia
+            .predict_multimodal(&prompt, Some(vec![image_base64_clean]))
+            .await?;
+
+        log::info!(
+            "[LabAIService] Analyse d'image effectuée avec {} (tokens: {})",
+            model_name,
+            tokens
+        );
+
+        // Extraire le JSON de la réponse (l'IA peut ajouter du texte avant/après)
+        let json_str = if let Some(start) = response.find('{') {
+            if let Some(end) = response.rfind('}') {
+                &response[start..=end]
+            } else {
+                &response[start..]
+            }
+        } else {
+            &response
+        };
+
+        // Parser la réponse JSON
+        let analysis: LabAnalysisResult = match serde_json::from_str(json_str) {
+            Ok(a) => a,
+            Err(e) => {
+                log::warn!("[LabAIService] Erreur parsing JSON: {}", e);
+                log::warn!("[LabAIService] Réponse reçue: {}", response);
+                // Fallback: retourner l'interprétation brute
+                LabAnalysisResult {
+                    interpretation: response.clone(),
+                    anomalies_detected: vec![],
+                    is_normal: true,
+                    confidence: 0.5,
+                    recommendations: vec![
+                        "Consultez votre médecin pour interprétation complète.".to_string()
+                    ],
+                    follow_up_exams: vec![],
+                }
+            }
+        };
+
+        Ok(analysis)
+    }
 }
 
 /// Fonctions helper pour intégration facile dans les contrôleurs

@@ -1,7 +1,6 @@
 // ✅ Écran Covoiturage MODERNE - Refonte complète avec UX digne d'une app de covoiturage
 // Structure claire : Recherche de trajets vs Création de trajet
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -338,12 +337,9 @@ const CovoiturageHomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            {/* Header sticky avec mode toggle */}
+            {/* ✅ REFONDU: Header avec fond blanc pour meilleur contraste */}
             <View style={styles.headerContainer}>
-                <LinearGradient
-                    colors={viewMode === 'search' ? ['#3B82F6', '#60A5FA'] : ['#10B981', '#34D399']}
-                    style={styles.headerGradient}
-                >
+                <View style={styles.headerGradient}>
                     {/* ✅ MODIFIÉ: Barre d'actions en haut avec boutons isolés gauche/droite */}
                     <View style={styles.headerActionsBar}>
                         <TouchableOpacity
@@ -355,7 +351,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             }}
                             style={styles.registerDriverButtonLeft}
                         >
-                            <SafeIcon name="user-plus" size={18} color="#FFFFFF" type="lucide" />
+                            <SafeIcon name="user" size={18} color="#3B82F6" type="lucide" />
                                         <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
                                             Devenir chauffeur
                                         </Text>
@@ -380,7 +376,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             <SafeIcon 
                                 name="plus" 
                                 size={18} 
-                                color={isDriverValidated ? "#FFFFFF" : "#9CA3AF"} 
+                                color={isDriverValidated ? "#FFFFFF" : "#FFFFFF"} 
                                 type="lucide" 
                             />
                             <Text style={[
@@ -399,7 +395,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             }}
                             style={styles.backButton}
                         >
-                            <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
+                            <SafeIcon name="arrow-left" size={24} color="#111827" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>
@@ -422,7 +418,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                     {/* Départ */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
-                                            <SafeIcon name="map-pin" size={12} color="#FFFFFF" type="lucide" /> Départ
+                                            <SafeIcon name="map-pin" size={12} color="#6B7280" type="lucide" /> Départ
                                         </Text>
                                         <LocationSelector
                                             label=""
@@ -441,7 +437,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                     {/* Destination */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
-                                            <SafeIcon name="navigation" size={12} color="#FFFFFF" type="lucide" /> Destination
+                                            <SafeIcon name="navigation" size={12} color="#6B7280" type="lucide" /> Destination
                                         </Text>
                                         <LocationSelector
                                             label=""
@@ -496,7 +492,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
                     )}
-                </LinearGradient>
+                </View>
             </View>
 
             {/* Contenu selon le mode */}
@@ -912,6 +908,7 @@ const styles = StyleSheet.create({
         paddingTop: 20,
         paddingBottom: 16,
         paddingHorizontal: 16,
+        backgroundColor: '#FFFFFF',
     },
     headerActionsBar: {
         flexDirection: 'row',
@@ -934,11 +931,11 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: '#111827',
     },
     headerSubtitle: {
         fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: '#6B7280',
         marginTop: 2,
     },
     registerDriverButtonLeft: {
@@ -950,12 +947,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderRadius: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
     registerDriverTextLeft: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: '#3B82F6',
         flexShrink: 1,
     },
     publishTrajetButtonRight: {
@@ -967,10 +966,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderRadius: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        backgroundColor: '#3B82F6',
     },
     publishTrajetButtonRightDisabled: {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: '#D1D5DB',
     },
     publishTrajetTextRight: {
         fontSize: 13,
@@ -999,7 +998,7 @@ const styles = StyleSheet.create({
     routeLabel: {
         fontSize: 11,
         fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: '#6B7280',
         marginBottom: 6,
         flexDirection: 'row',
         alignItems: 'center',
