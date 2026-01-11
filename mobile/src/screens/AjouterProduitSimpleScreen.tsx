@@ -502,19 +502,38 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             console.log('[AjouterProduitSimple] ✅ Valeur initiale construite depuis product_vector (combinaison préférée IA):', combinationString);
         }
         // 2. Sinon, construire depuis sous_caracteristiques en prenant la PREMIÈRE valeur de chaque dimension
+        // ✅ CORRECTION CRITIQUE: Utiliser productLabels pour garantir l'ordre correct
         else if (initialProduitsValues.length === 0) {
             const finalSousCaracs = sous_caracteristiques || prefill.sous_caracteristiques || {};
             if (finalSousCaracs && typeof finalSousCaracs === 'object' && Object.keys(finalSousCaracs).length > 0) {
                 const firstValues: string[] = [];
-                Object.entries(finalSousCaracs).forEach(([label, values]) => {
+                
+                // ✅ CRITIQUE: Utiliser productLabels pour garantir l'ordre correct (au lieu de Object.entries qui ne garantit pas l'ordre)
+                const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
+                    ? productLabels.filter(label => label && typeof label === 'string' && finalSousCaracs[label])
+                    : Object.keys(finalSousCaracs);
+                
+                console.log('[AjouterProduitSimple] 🔍 Construction valeur depuis sous_caracteristiques:', {
+                    orderedLabels,
+                    sousCaracsKeys: Object.keys(finalSousCaracs),
+                    productLabels: productLabels || 'non disponible'
+                });
+                
+                // Parcourir les labels dans l'ordre garanti
+                orderedLabels.forEach((label) => {
+                    const values = finalSousCaracs[label];
                     if (Array.isArray(values) && values.length > 0 && typeof values[0] === 'string') {
                         // ✅ CRITIQUE: Prendre la PREMIÈRE valeur (valeur préférée par l'IA)
                         firstValues.push(values[0]);
+                        console.log(`[AjouterProduitSimple] ✅ Ajout valeur pour "${label}": "${values[0]}"`);
+                    } else {
+                        console.warn(`[AjouterProduitSimple] ⚠️ Label "${label}" - Valeurs invalides ou vides:`, values);
                     }
                 });
+                
                 if (firstValues.length > 0) {
                     initialProduitsValues = [firstValues.join(safeSeparateur)];
-                    console.log('[AjouterProduitSimple] ✅ Valeur initiale construite depuis sous_caracteristiques (premières valeurs = préférées IA):', initialProduitsValues[0]);
+                    console.log('[AjouterProduitSimple] ✅ Valeur initiale construite depuis sous_caracteristiques (ordre garanti par productLabels):', initialProduitsValues[0]);
                 }
             }
         }

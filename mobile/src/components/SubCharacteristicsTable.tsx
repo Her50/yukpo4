@@ -81,27 +81,55 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 console.log('[SubCharacteristicsTable] 🔍 Valeurs parsées:', parsedValues);
                 
                 // Déterminer l'ordre des labels
-                // Priorité 1: productLabels (ordre garanti depuis l'IA)
+                // Priorité 1: productLabels (ordre garanti depuis l'IA) - CRITIQUE pour l'alignement
                 // Priorité 2: Ordre des clés dans sousCaracteristiques
+                // ✅ CORRECTION CRITIQUE: Ne PAS filtrer productLabels - utiliser TOUS les labels dans l'ordre
+                // même s'ils n'existent pas encore dans sousCaracteristiques (pour gérer les labels manquants)
                 const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-                    ? productLabels.filter(label => label && typeof label === 'string' && sousCaracteristiques[label])
+                    ? productLabels.filter(label => label && typeof label === 'string')
                     : Object.keys(sousCaracteristiques);
                 
-                console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés:', orderedLabels);
+                console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés (TOUS, pas seulement ceux dans sousCaracteristiques):', orderedLabels);
+                console.log('[SubCharacteristicsTable] 🔍 Nombre de valeurs parsées:', parsedValues.length);
+                console.log('[SubCharacteristicsTable] 🔍 Nombre de labels ordonnés:', orderedLabels.length);
+                console.log('[SubCharacteristicsTable] 🔍 Clés dans sousCaracteristiques:', Object.keys(sousCaracteristiques));
+                
+                // ✅ CORRECTION CRITIQUE: S'assurer que le nombre de labels correspond au nombre de valeurs
+                // Si on a plus de valeurs que de labels, créer des labels temporaires pour les valeurs supplémentaires
+                // Si on a plus de labels que de valeurs, utiliser seulement les labels correspondants
+                const maxLength = Math.max(parsedValues.length, orderedLabels.length);
                 
                 // Mapper chaque valeur parsée à son label correspondant
                 parsedValues.forEach((parsedValue, index) => {
+                    let label: string;
+                    
                     if (index < orderedLabels.length) {
-                        const label = orderedLabels[index];
-                        const row = {
-                            label: label.trim(),
-                            value: parsedValue.trim(),
-                        };
-                        console.log(`[SubCharacteristicsTable] ✅ Ligne créée depuis valeur parsée: ${row.label} = ${row.value}`);
-                        initialRowsFromIA.push(row);
+                        // Utiliser le label correspondant si disponible
+                        label = orderedLabels[index];
                     } else {
-                        console.warn(`[SubCharacteristicsTable] ⚠️ Index ${index} hors limites pour valeur "${parsedValue}"`);
+                        // ✅ Si on a plus de valeurs que de labels, essayer de trouver un label correspondant dans sousCaracteristiques
+                        // en cherchant quelle clé contient cette valeur
+                        const matchingLabel = Object.keys(sousCaracteristiques).find(key => {
+                            const values = sousCaracteristiques[key];
+                            return Array.isArray(values) && values.includes(parsedValue);
+                        });
+                        
+                        if (matchingLabel) {
+                            label = matchingLabel;
+                            console.log(`[SubCharacteristicsTable] 🔍 Valeur "${parsedValue}" correspond au label "${matchingLabel}"`);
+                        } else {
+                            // Dernier recours: utiliser un label générique mais descriptif
+                            label = `caractéristique_${index + 1}`;
+                            console.warn(`[SubCharacteristicsTable] ⚠️ Aucun label trouvé pour valeur "${parsedValue}", utilisation label générique: "${label}"`);
+                        }
                     }
+                    
+                    const row = {
+                        label: label.trim(),
+                        value: parsedValue.trim(),
+                    };
+                    console.log(`[SubCharacteristicsTable] ✅ Ligne créée depuis valeur parsée: ${row.label} = ${row.value}`);
+                    initialRowsFromIA.push(row);
                 });
                 
                 // Ajouter les labels manquants (qui n'ont pas de valeur dans la chaîne parsée)
@@ -125,9 +153,13 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             } else {
                 // ✅ FALLBACK: Si pas de valeur parsée, utiliser l'ancienne méthode (première valeur de chaque tableau)
                 // Mais utiliser productLabels pour l'ordre si disponible
+                // ✅ CORRECTION CRITIQUE: Ne PAS filtrer productLabels - utiliser TOUS les labels dans l'ordre
+                // même s'ils n'existent pas encore dans sousCaracteristiques (pour gérer les labels manquants)
                 const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-                    ? productLabels.filter(label => label && typeof label === 'string' && sousCaracteristiques[label])
+                    ? productLabels.filter(label => label && typeof label === 'string')
                     : Object.keys(sousCaracteristiques);
+                
+                console.log('[SubCharacteristicsTable] 🔍 FALLBACK - Labels ordonnés (TOUS):', orderedLabels);
                 
                 orderedLabels.forEach((label) => {
                     const values = sousCaracteristiques[label];
@@ -146,7 +178,13 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                             console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" - Première valeur invalide:`, preferredValue);
                         }
                     } else {
-                        console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" - Valeurs non valides ou vides:`, values);
+                        // ✅ NOUVEAU: Si le label n'existe pas dans sousCaracteristiques, créer une ligne vide pour permettre l'édition
+                        console.log(`[SubCharacteristicsTable] 🔍 Label "${label}" - Non trouvé dans sousCaracteristiques, création ligne vide`);
+                        const row = {
+                            label: label.trim(),
+                            value: '', // Ligne vide pour permettre l'édition
+                        };
+                        initialRowsFromIA.push(row);
                     }
                 });
             }

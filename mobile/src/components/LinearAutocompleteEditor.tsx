@@ -207,15 +207,52 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     }, [searchQuery, identifiantBase, sousCaracteristiques, separateur]);
 
     // Décomposer une modalité en chips
+    // ✅ CORRECTION CRITIQUE: Utiliser productLabels pour garantir l'ordre correct des labels
     const decomposeModality = (modality: string): ModalityChip[] => {
         const parts = modality.split(separateur).map(p => p.trim());
-        const subCharKeys = Object.keys(sousCaracteristiques);
-
-        return parts.map((value, index) => ({
-            key: subCharKeys[index] || `item_${index}`,
-            value: value,
-            index: index,
-        }));
+        
+        // ✅ PRIORITÉ 1: Utiliser productLabels si disponible (ordre garanti depuis l'IA)
+        // ✅ PRIORITÉ 2: Utiliser l'ordre des clés dans sousCaracteristiques
+        const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
+            ? productLabels.filter(label => label && typeof label === 'string' && sousCaracteristiques[label])
+            : Object.keys(sousCaracteristiques);
+        
+        // ✅ CORRECTION: S'assurer que le nombre de labels correspond au nombre de valeurs
+        // Si on a plus de valeurs que de labels, créer des labels temporaires pour les valeurs supplémentaires
+        // Si on a plus de labels que de valeurs, utiliser les labels disponibles
+        const maxLength = Math.max(parts.length, orderedLabels.length);
+        
+        return parts.map((value, index) => {
+            // Utiliser le label correspondant si disponible
+            let label = orderedLabels[index];
+            
+            // ✅ Si pas de label disponible, essayer de trouver un label dans sousCaracteristiques
+            if (!label && index < orderedLabels.length) {
+                label = orderedLabels[index];
+            }
+            
+            // ✅ Si toujours pas de label, utiliser un label générique mais informatif
+            if (!label) {
+                // Essayer de trouver un label dans sousCaracteristiques qui correspond à cette valeur
+                const matchingLabel = Object.keys(sousCaracteristiques).find(key => {
+                    const values = sousCaracteristiques[key];
+                    return Array.isArray(values) && values.includes(value);
+                });
+                
+                if (matchingLabel) {
+                    label = matchingLabel;
+                } else {
+                    // Dernier recours: utiliser un label générique mais descriptif
+                    label = `caractéristique_${index + 1}`;
+                }
+            }
+            
+            return {
+                key: label,
+                value: value,
+                index: index,
+            };
+        });
     };
 
     // Ajouter une modalité

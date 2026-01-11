@@ -1085,7 +1085,7 @@ const MesServicesScreen: React.FC = () => {
           style={dynamicStyles.header}
         >
           <View style={dynamicStyles.headerContent}>
-            <View style={dynamicStyles.headerTop}>
+            <View style={dynamicStyles.headerTitleRow}>
               <View style={dynamicStyles.logoContainer}>
                 <SafeIcon name="briefcase" size={18} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
@@ -1135,15 +1135,17 @@ const MesServicesScreen: React.FC = () => {
           style={dynamicStyles.header}
         >
           <View style={dynamicStyles.headerContent}>
-            <View style={dynamicStyles.headerTop}>
+            {/* ✅ CORRECTION: Titre "Mes Produits" sur sa propre ligne, plus haut */}
+            <View style={dynamicStyles.headerTitleRow}>
               <View style={dynamicStyles.logoContainer}>
                 <SafeIcon name="briefcase" size={22} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
                   <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Mes Produits</Text>
                 </View>
               </View>
-              {/* ✅ AMÉLIORÉ: Bouton Sidebar + Bulk Mode + Création Vidéo + Configuration Livraison + Flash Promo */}
-              <View style={dynamicStyles.headerActions}>
+            </View>
+            {/* ✅ AMÉLIORÉ: Boutons d'action sur une ligne séparée, en dessous du titre */}
+            <View style={dynamicStyles.headerActions}>
                 {/* ✅ NOUVEAU: Bouton création vidéo */}
                 <TouchableOpacity
                   style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
@@ -2119,10 +2121,16 @@ const createStyles = (colors: any) => StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 50,
-    paddingBottom: 16,
+    paddingBottom: 12,
   },
   headerContent: {
     flex: 1,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   headerTop: {
     flexDirection: 'row',
@@ -2159,8 +2167,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     flexShrink: 0,
+    flexWrap: 'wrap',
   },
   headerButton: {
     flexDirection: 'row',

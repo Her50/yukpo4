@@ -27,6 +27,7 @@ impl ImageSearchService {
     }
 
     /// Rechercher des images similaires par signature vectorielle
+    /// ✅ Utilise uniquement la table service_products (plus la table services via jsonb)
     pub async fn search_by_image_signature(
         &self,
         image_signature: &[f32],
@@ -44,18 +45,22 @@ impl ImageSearchService {
         let signature_json = serde_json::to_value(image_signature)
             .map_err(|e| AppError::Internal(format!("Erreur conversion signature: {}", e)))?;
 
+        // ✅ Recherche uniquement dans service_products (plus services via jsonb)
         let sql = r#"
             SELECT 
                 m.id as media_id,
-                m.service_id,
+                sp.service_id,
                 m.path as media_path,
                 calculate_image_similarity($1::jsonb, m.image_signature) as similarity_score,
-                s.data as service_data,
+                sp.product_data as service_data,
                 m.image_metadata
             FROM media m
-            INNER JOIN services s ON s.id = m.service_id
+            INNER JOIN service_products sp ON sp.id::TEXT = m.product_id
+            INNER JOIN services s ON s.id = sp.service_id
             WHERE m.type = 'image'
             AND m.image_signature IS NOT NULL
+            AND m.product_id IS NOT NULL
+            AND sp.is_active = true
             AND s.is_active = true
             AND calculate_image_similarity($1::jsonb, m.image_signature) >= $2
             ORDER BY similarity_score DESC
@@ -101,21 +106,26 @@ impl ImageSearchService {
     }
 
     /// Rechercher par hash d'image (détection de doublons exacts)
+    /// ✅ Utilise uniquement la table service_products (plus la table services via jsonb)
     pub async fn search_by_image_hash(&self, image_hash: &str) -> AppResult<Vec<ImageSearchResult>> {
         log_info(&format!("[ImageSearch] Recherche par hash: {}", image_hash));
 
+        // ✅ Recherche uniquement dans service_products (plus services via jsonb)
         let sql = r#"
             SELECT 
                 m.id as media_id,
-                m.service_id,
+                sp.service_id,
                 m.path as media_path,
                 1.0 as similarity_score,
-                s.data as service_data,
+                sp.product_data as service_data,
                 m.image_metadata
             FROM media m
-            INNER JOIN services s ON s.id = m.service_id
+            INNER JOIN service_products sp ON sp.id::TEXT = m.product_id
+            INNER JOIN services s ON s.id = sp.service_id
             WHERE m.type = 'image'
             AND m.image_hash = $1
+            AND m.product_id IS NOT NULL
+            AND sp.is_active = true
             AND s.is_active = true
             ORDER BY s.created_at DESC
         "#;
@@ -168,30 +178,23 @@ impl ImageSearchService {
         let signature_json = serde_json::to_value(image_signature)
             .map_err(|e| AppError::Internal(format!("Erreur conversion signature: {}", e)))?;
 
-        // ✅ PHASE 3: Rechercher dans les images des produits depuis table service_products
+        // ✅ Recherche uniquement dans service_products (plus services via jsonb)
         let sql = r#"
-            WITH product_images AS (
-                SELECT 
-                    p.service_id,
-                    s.data,
-                    p.product_name,
-                    jsonb_array_elements_text(COALESCE(p.product_data->'images', '[]'::jsonb)) as image_path
-                FROM service_products p
-                INNER JOIN services s ON s.id = p.service_id
-                WHERE p.is_active = true
-                AND s.is_active = true
-            )
             SELECT 
                 m.id as media_id,
-                pi.service_id,
+                sp.service_id,
                 m.path as media_path,
                 calculate_image_similarity($1::jsonb, m.image_signature) as similarity_score,
-                pi.data as service_data,
+                sp.product_data as service_data,
                 m.image_metadata
-            FROM product_images pi
-            INNER JOIN media m ON m.path = pi.image_path AND m.service_id = pi.service_id
+            FROM media m
+            INNER JOIN service_products sp ON sp.id::TEXT = m.product_id
+            INNER JOIN services s ON s.id = sp.service_id
             WHERE m.type = 'image'
             AND m.image_signature IS NOT NULL
+            AND m.product_id IS NOT NULL
+            AND sp.is_active = true
+            AND s.is_active = true
             AND calculate_image_similarity($1::jsonb, m.image_signature) >= $2
             ORDER BY similarity_score DESC
             LIMIT $3

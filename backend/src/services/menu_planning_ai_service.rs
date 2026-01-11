@@ -447,7 +447,7 @@ impl MenuPlanningAIService {
                       * Respecte les combinaisons de plats traditionnelles de {}\n\
                       * Respecte les méthodes de cuisson traditionnelles de {}\n\
                     - CONTEXTE MARCHÉ : Adapte les prix estimés selon la réalité du marché local de {}",
-                    country, city, country, city, country, country, country, city, country, city, country, country, country, country, city, city, city, city, city, city, city, city, city
+                    country, city, country, city, country, country, country, city, country, city, country, country, country, country, city, city, city, city, city, city, city, city
                 )
             }
         } else if let Some(country) = user_country {

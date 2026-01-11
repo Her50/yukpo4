@@ -404,7 +404,7 @@ async fn get_user_location_context(
 /// ✅ NOUVEAU: Récupère le contexte de localité (pays, ville) depuis une chaîne GPS
 /// Fonction utilitaire réutilisable pour parser GPS et faire géocodage inverse
 async fn get_location_context_from_gps(
-    state: &AppState,
+    _state: &AppState,
     gps_str: &str,
 ) -> AppResult<(Option<String>, Option<String>)> {
     // Parser coordonnées GPS (format: "lat,lng" ou "lng,lat")

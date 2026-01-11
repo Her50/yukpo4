@@ -79,15 +79,26 @@ pub async fn search_by_autocomplete_vector(
                 ac.usage_count,
                 u.id as user_id,
                 u.email as user_email,
-                -- ✅ Extractions produit (compatibilité client_service)
+                -- ✅ Extractions produit depuis service_products (plus services.data->produits)
                 CASE
-                    WHEN (s.data->'produits'->>'prix') ~ '^[0-9]+(\.[0-9]+)?$'
-                    THEN (s.data->'produits'->>'prix')::FLOAT
+                    WHEN sp.product_data->'prix'->'valeur'->>'montant' IS NOT NULL
+                    THEN (sp.product_data->'prix'->'valeur'->>'montant')::FLOAT
+                    WHEN sp.product_data->'prix'->>'montant' IS NOT NULL
+                    THEN (sp.product_data->'prix'->>'montant')::FLOAT
+                    WHEN sp.product_price IS NOT NULL
+                    THEN sp.product_price::FLOAT
                     ELSE NULL
                 END as prix,
-                s.data->'produits'->>'devise' as devise,
-                COALESCE((s.data->'produits'->>'has_variant')::BOOLEAN, FALSE) as has_variant,
-                s.data->'produits'->>'variant_dimension' as variant_dimension,
+                COALESCE(
+                    sp.product_data->'prix'->'valeur'->>'devise',
+                    sp.product_data->'prix'->>'devise',
+                    sp.product_data->>'devise'
+                ) as devise,
+                COALESCE(
+                    (sp.product_data->>'has_variant')::BOOLEAN,
+                    FALSE
+                ) as has_variant,
+                sp.product_data->>'variant_dimension' as variant_dimension,
                 -- Calcul distance GPS
                 (
                     CASE 
@@ -120,12 +131,14 @@ pub async fn search_by_autocomplete_vector(
                 ) as relevance_score
             FROM autocomplete_characteristics ac
             INNER JOIN services s ON s.id = ac.service_id
+            INNER JOIN service_products sp ON sp.id::TEXT = ac.product_id AND sp.service_id = ac.service_id
             INNER JOIN users u ON u.id = s.user_id
             WHERE 
                 -- ✅ OPTIMISÉ: Utiliser index composite pour filtres fréquents
                 ac.is_real_product = TRUE
                 AND ac.identifiant_base = 'produits'
                 AND s.is_active = TRUE
+                AND sp.is_active = TRUE
                 -- ✅ OPTIMISÉ 2025-12-21: Utiliser tsvector @@ tsquery avec index GIN (ultra-rapide)
                 -- Au lieu de LIKE '%...%' avec sous-requêtes corrélées (très lent)
                 -- Note: Les index GIN sur to_tsvector('french', array_to_string(...)) sont créés dans la migration 20251221
@@ -173,15 +186,26 @@ pub async fn search_by_autocomplete_vector(
                 ac.usage_count,
                 u.id as user_id,
                 u.email as user_email,
-                -- ✅ Extractions produit (compatibilité client_service)
+                -- ✅ Extractions produit depuis service_products (plus services.data->produits)
                 CASE
-                    WHEN (s.data->'produits'->>'prix') ~ '^[0-9]+(\.[0-9]+)?$'
-                    THEN (s.data->'produits'->>'prix')::FLOAT
+                    WHEN sp.product_data->'prix'->'valeur'->>'montant' IS NOT NULL
+                    THEN (sp.product_data->'prix'->'valeur'->>'montant')::FLOAT
+                    WHEN sp.product_data->'prix'->>'montant' IS NOT NULL
+                    THEN (sp.product_data->'prix'->>'montant')::FLOAT
+                    WHEN sp.product_price IS NOT NULL
+                    THEN sp.product_price::FLOAT
                     ELSE NULL
                 END as prix,
-                s.data->'produits'->>'devise' as devise,
-                COALESCE((s.data->'produits'->>'has_variant')::BOOLEAN, FALSE) as has_variant,
-                s.data->'produits'->>'variant_dimension' as variant_dimension,
+                COALESCE(
+                    sp.product_data->'prix'->'valeur'->>'devise',
+                    sp.product_data->'prix'->>'devise',
+                    sp.product_data->>'devise'
+                ) as devise,
+                COALESCE(
+                    (sp.product_data->>'has_variant')::BOOLEAN,
+                    FALSE
+                ) as has_variant,
+                sp.product_data->>'variant_dimension' as variant_dimension,
                 NULL::DOUBLE PRECISION as distance_km,
                 -- ✅ OPTIMISÉ: Score basé sur ts_rank (utilise l'index GIN) + usage_count
                 (
