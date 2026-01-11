@@ -1223,7 +1223,6 @@ const MesServicesScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
 
           {/* ✅ Menu global déroulant */}
           {showGlobalMenu && (
