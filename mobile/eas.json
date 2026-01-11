@@ -47,8 +47,8 @@
                 "EXPO_PUBLIC_WS_URL": "wss://yukpomnang.onrender.com",
                 "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
                 "EXPO_PUBLIC_ENVIRONMENT": "demo",
-                "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "",
-                "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": ""
+                "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
+                "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
             },
             "ios": {
                 "resourceClass": "m-medium",

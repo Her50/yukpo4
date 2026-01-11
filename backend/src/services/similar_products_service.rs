@@ -765,7 +765,6 @@ impl SimilarProductsService {
         );
 
         // Récupérer le produit original depuis services
-        let product_index_str = product_index.to_string();
         #[derive(sqlx::FromRow)]
         struct OriginalProductRow {
             product_name: Option<String>,
