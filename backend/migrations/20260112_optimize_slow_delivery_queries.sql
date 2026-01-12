@@ -178,4 +178,3 @@ COMMENT ON INDEX IF EXISTS idx_courier_availability_snapshots_online_recent IS
 
 COMMENT ON INDEX IF EXISTS idx_courier_zone_assignments_lateral_join IS 
 'Index optimisé pour JOIN LATERAL sur courier_zone_assignments (courier_id, is_active, is_primary DESC, updated_at DESC)';
-
