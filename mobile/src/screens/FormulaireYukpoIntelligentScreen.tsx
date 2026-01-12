@@ -1186,111 +1186,320 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Fonctions de navigation entre blocs
   const goToNextBlock = () => {
-    // Valider le bloc actuel avant de passer au suivant
-    const validation = validateCurrentBlock();
+    // ✅ LOGS DÉTAILLÉS: Capturer l'état initial pour diagnostic crash
+    const currentBlockData = blocks[currentBlock];
+    const currentBlockId = currentBlockData?.id || 'unknown';
+    const currentBlockTitle = currentBlockData?.title || 'unknown';
+    
+    console.log('[NAVIGATION_BLOC] 🚀 === DÉBUT goToNextBlock ===');
+    console.log('[NAVIGATION_BLOC] 📍 État initial:', {
+      currentBlock,
+      currentBlockId,
+      currentBlockTitle,
+      blocksLength: blocks?.length || 0,
+      displayedBlocksLength: displayedBlocks?.length || 0,
+      displayedBlocksIsArray: Array.isArray(displayedBlocks),
+      blocksIsArray: Array.isArray(blocks),
+    });
+    console.log('[NAVIGATION_BLOC] 📋 displayedBlocks:', JSON.stringify(displayedBlocks?.map((db: any) => ({
+      index: db?.index,
+      blockId: db?.block?.id,
+      blockTitle: db?.block?.title,
+    })) || []));
+    console.log('[NAVIGATION_BLOC] 📋 blocks:', JSON.stringify(blocks?.map((b: any, idx: number) => ({
+      index: idx,
+      id: b?.id,
+      title: b?.title,
+      fieldsCount: b?.fields?.length || 0,
+    })) || []));
+    
+    try {
+      // ✅ CORRECTION CRITIQUE: Vérifier que displayedBlocks existe et n'est pas vide
+      if (!displayedBlocks || !Array.isArray(displayedBlocks) || displayedBlocks.length === 0) {
+        console.error('[NAVIGATION_BLOC] ❌ displayedBlocks invalide dans goToNextBlock');
+        console.error('[NAVIGATION_BLOC] ❌ displayedBlocks:', displayedBlocks);
+        console.error('[NAVIGATION_BLOC] ❌ typeof displayedBlocks:', typeof displayedBlocks);
+        Alert.alert('Erreur', 'Impossible de naviguer. Veuillez réessayer.');
+        return;
+      }
 
-    if (!validation.isValid) {
-      // Afficher les erreurs dans les champs
-      setFieldErrors(validation.fieldErrors);
+      console.log('[NAVIGATION_BLOC] ✅ displayedBlocks valide, longueur:', displayedBlocks.length);
 
+      // Valider le bloc actuel avant de passer au suivant
+      console.log('[NAVIGATION_BLOC] 🔍 Début validation du bloc actuel...');
+      const validation = validateCurrentBlock();
+      console.log('[NAVIGATION_BLOC] ✅ Validation terminée:', {
+        isValid: validation.isValid,
+        errorsCount: validation.errors?.length || 0,
+        fieldErrorsCount: Object.keys(validation.fieldErrors || {}).length,
+      });
+
+      if (!validation.isValid) {
+        console.warn('[NAVIGATION_BLOC] ⚠️ Validation échouée, arrêt navigation');
+        console.warn('[NAVIGATION_BLOC] ⚠️ Erreurs:', validation.errors);
+        console.warn('[NAVIGATION_BLOC] ⚠️ FieldErrors:', validation.fieldErrors);
+        
+        // Afficher les erreurs dans les champs
+        setFieldErrors(validation.fieldErrors);
+
+        // ✅ CORRECTION: S'assurer que toutes les erreurs sont des strings
+        const errorMessages = validation.errors
+          .filter(err => err != null)
+          .map(err => String(err))
+          .filter(err => err.trim().length > 0);
+
+        if (errorMessages.length > 0) {
+          Alert.alert(
+            'Champs invalides',
+            errorMessages.join('\n\n'),
+            [{ text: 'OK' }]
+          );
+        }
+        return;
+      }
+
+      // Effacer les erreurs si la validation réussit
+      setFieldErrors({});
+      console.log('[NAVIGATION_BLOC] ✅ Validation réussie, recherche du bloc suivant...');
+
+      // ✅ CORRECTION CRITIQUE: Vérifier que displayedBlocks est toujours valide avant findIndex
+      const currentVisibleIndex = displayedBlocks.findIndex(item => item && item.index === currentBlock);
+      console.log('[NAVIGATION_BLOC] 🔍 Recherche bloc actuel dans displayedBlocks:', {
+        currentBlock,
+        currentVisibleIndex,
+        displayedBlocksLength: displayedBlocks.length,
+      });
+      
+      if (currentVisibleIndex === -1) {
+        console.warn('[NAVIGATION_BLOC] ⚠️ Bloc actuel non trouvé dans displayedBlocks:', currentBlock);
+        console.warn('[NAVIGATION_BLOC] ⚠️ displayedBlocks disponibles:', displayedBlocks.map((db: any) => db?.index));
+        // Essayer de trouver le premier bloc disponible
+        if (displayedBlocks.length > 0 && displayedBlocks[0]) {
+          console.log('[NAVIGATION_BLOC] 🔄 Fallback: navigation vers premier bloc disponible');
+          setCurrentBlock(displayedBlocks[0].index);
+        }
+        return;
+      }
+
+      const nextVisible = currentVisibleIndex !== -1 && currentVisibleIndex < displayedBlocks.length - 1
+        ? displayedBlocks[currentVisibleIndex + 1]
+        : null;
+
+      console.log('[NAVIGATION_BLOC] 🔍 Bloc suivant trouvé:', {
+        currentVisibleIndex,
+        nextVisibleExists: !!nextVisible,
+        nextBlockIndex: nextVisible?.index,
+        nextBlockId: nextVisible?.block?.id,
+        nextBlockTitle: nextVisible?.block?.title,
+        isInfoToContact: currentBlockId === 'general' && nextVisible?.block?.id === 'contact',
+      });
+
+      // ✅ LOGS SPÉCIFIQUES: Passage du bloc info général au bloc contact
+      if (currentBlockId === 'general' && nextVisible?.block?.id === 'contact') {
+        console.log('[NAVIGATION_BLOC] 🎯 === PASSAGE INFO → CONTACT ===');
+        console.log('[NAVIGATION_BLOC] 📊 État complet avant transition:', {
+          currentBlock: {
+            index: currentBlock,
+            id: currentBlockId,
+            title: currentBlockTitle,
+            fieldsCount: currentBlockData?.fields?.length || 0,
+          },
+          nextBlock: {
+            index: nextVisible.index,
+            id: nextVisible.block.id,
+            title: nextVisible.block.title,
+            fieldsCount: nextVisible.block.fields?.length || 0,
+          },
+          valeursFormulaireKeys: Object.keys(valeursFormulaire || {}),
+          valeursFormulaireSize: JSON.stringify(valeursFormulaire || {}).length,
+          mainScrollViewRefExists: !!mainScrollViewRef.current,
+          blockRefsCount: Object.keys(blockRefs.current || {}).length,
+        });
+        console.log('[NAVIGATION_BLOC] 📝 Valeurs formulaire (extrait):', JSON.stringify({
+          whatsapp: valeursFormulaire?.whatsapp,
+          telephone: valeursFormulaire?.telephone,
+          email: valeursFormulaire?.email,
+          website: valeursFormulaire?.website,
+        }));
+      }
+
+      if (nextVisible && nextVisible.index !== undefined) {
+        console.log('[NAVIGATION_BLOC] ✅ Navigation vers bloc suivant:', {
+          from: { index: currentBlock, id: currentBlockId },
+          to: { index: nextVisible.index, id: nextVisible.block?.id },
+        });
+        
+        setCurrentBlock(nextVisible.index);
+        console.log('[NAVIGATION_BLOC] ✅ setCurrentBlock appelé avec:', nextVisible.index);
+        
+        // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
+        // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
+        console.log('[NAVIGATION_BLOC] 🎬 Début requestAnimationFrame pour scroll...');
+        requestAnimationFrame(() => {
+          console.log('[NAVIGATION_BLOC] 🎬 requestAnimationFrame 1 exécuté');
+          requestAnimationFrame(() => {
+            console.log('[NAVIGATION_BLOC] 🎬 requestAnimationFrame 2 exécuté, tentative scroll...');
+            // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
+            try {
+              if (mainScrollViewRef.current) {
+                console.log('[NAVIGATION_BLOC] ✅ mainScrollViewRef.current existe, scrollTo appelé');
+                // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
+                mainScrollViewRef.current.scrollTo({
+                  x: 0,
+                  y: 0, // Début du ScrollView = début du nouveau bloc
+                  animated: true
+                });
+                console.log('[NAVIGATION_BLOC] ✅ scrollTo terminé avec succès');
+              } else {
+                console.warn('[NAVIGATION_BLOC] ⚠️ mainScrollViewRef.current est null');
+              }
+            } catch (scrollError) {
+              console.error('[NAVIGATION_BLOC] ❌ Erreur lors du scroll:', scrollError);
+              console.error('[NAVIGATION_BLOC] ❌ Stack trace:', (scrollError as Error)?.stack);
+              // Ne pas bloquer la navigation en cas d'erreur de scroll
+            }
+          });
+        });
+        console.log('[NAVIGATION_BLOC] ✅ === FIN goToNextBlock (succès) ===');
+      } else {
+        console.log('[NAVIGATION_BLOC] ℹ️ Dernier bloc atteint, pas de bloc suivant');
+        console.log('[NAVIGATION_BLOC] ✅ === FIN goToNextBlock (dernier bloc) ===');
+      }
+    } catch (error) {
+      console.error('[NAVIGATION_BLOC] ❌ === ERREUR CRITIQUE dans goToNextBlock ===');
+      console.error('[NAVIGATION_BLOC] ❌ Erreur:', error);
+      console.error('[NAVIGATION_BLOC] ❌ Message:', (error as Error)?.message);
+      console.error('[NAVIGATION_BLOC] ❌ Stack:', (error as Error)?.stack);
+      console.error('[NAVIGATION_BLOC] ❌ État au moment de l\'erreur:', {
+        currentBlock,
+        currentBlockId,
+        blocksLength: blocks?.length,
+        displayedBlocksLength: displayedBlocks?.length,
+        mainScrollViewRefExists: !!mainScrollViewRef.current,
+      });
       Alert.alert(
-        'Champs invalides',
-        validation.errors.join('\n\n'),
+        'Erreur',
+        'Une erreur est survenue lors de la navigation. Veuillez réessayer.',
         [{ text: 'OK' }]
       );
-      return;
-    }
-
-    // Effacer les erreurs si la validation réussit
-    setFieldErrors({});
-
-    const currentVisibleIndex = displayedBlocks.findIndex(item => item.index === currentBlock);
-    const nextVisible = currentVisibleIndex !== -1 ? displayedBlocks[currentVisibleIndex + 1] : null;
-
-    if (nextVisible) {
-      setCurrentBlock(nextVisible.index);
-      
-      // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
-      // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
-          if (mainScrollViewRef.current) {
-            // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
-            mainScrollViewRef.current.scrollTo({
-              x: 0,
-              y: 0, // Début du ScrollView = début du nouveau bloc
-              animated: true
-            });
-          }
-        });
-      });
     }
   };
 
   const goToPreviousBlock = () => {
-    const currentVisibleIndex = displayedBlocks.findIndex(item => item.index === currentBlock);
-    const previousVisible = currentVisibleIndex > 0 ? displayedBlocks[currentVisibleIndex - 1] : null;
+    try {
+      // ✅ CORRECTION CRITIQUE: Vérifier que displayedBlocks existe et n'est pas vide
+      if (!displayedBlocks || !Array.isArray(displayedBlocks) || displayedBlocks.length === 0) {
+        console.error('[FormulaireYukpoIntelligentScreen] ⚠️ displayedBlocks invalide dans goToPreviousBlock');
+        Alert.alert('Erreur', 'Impossible de naviguer. Veuillez réessayer.');
+        return;
+      }
 
-    if (previousVisible) {
-      setCurrentBlock(previousVisible.index);
+      const currentVisibleIndex = displayedBlocks.findIndex(item => item && item.index === currentBlock);
+      
+      if (currentVisibleIndex === -1) {
+        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Bloc actuel non trouvé dans displayedBlocks:', currentBlock);
+        return;
+      }
+
+      const previousVisible = currentVisibleIndex > 0 && displayedBlocks[currentVisibleIndex - 1]
+        ? displayedBlocks[currentVisibleIndex - 1]
+        : null;
+
+      if (previousVisible && previousVisible.index !== undefined) {
+        setCurrentBlock(previousVisible.index);
+        
+        // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
+        // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
+            try {
+              if (mainScrollViewRef.current) {
+                // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
+                mainScrollViewRef.current.scrollTo({
+                  x: 0,
+                  y: 0, // Début du ScrollView = début du nouveau bloc
+                  animated: true
+                });
+              }
+            } catch (scrollError) {
+              console.error('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur lors du scroll:', scrollError);
+              // Ne pas bloquer la navigation en cas d'erreur de scroll
+            }
+          });
+        });
+      } else {
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Premier bloc atteint');
+      }
+    } catch (error) {
+      console.error('[FormulaireYukpoIntelligentScreen] ❌ ERREUR CRITIQUE dans goToPreviousBlock:', error);
+      Alert.alert(
+        'Erreur',
+        'Une erreur est survenue lors de la navigation. Veuillez réessayer.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const goToBlock = (blockIndex: number) => {
+    try {
+      // ✅ CORRECTION CRITIQUE: Vérifier que blocks existe et que blockIndex est valide
+      if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
+        console.error('[FormulaireYukpoIntelligentScreen] ⚠️ blocks invalide dans goToBlock');
+        return;
+      }
+
+      if (blockIndex < 0 || blockIndex >= blocks.length || !blocks[blockIndex]) {
+        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Index de bloc invalide:', blockIndex);
+        return;
+      }
+
+      const productsBlockIndex = blocks.findIndex(b => b && b.id === 'products');
+
+      // ✅ CORRECTION: Empêcher de passer à un bloc après le bloc produits si le bloc produits n'a pas de produits
+      // ✅ NOUVEAU 2025-11-06: Lever contrainte si mode edit_service_info
+      if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex > productsBlockIndex && !isEditingServiceInfo) {
+        if (!hasAtLeastOneProduct()) {
+          Alert.alert(
+            'Bloc Produits obligatoire',
+            'Vous devez ajouter au moins un produit ou une prestation avant de continuer.',
+            [{ text: 'OK' }]
+          );
+          setFieldErrors({ produits: 'Au moins un produit est requis' });
+          return;
+        }
+      }
+
+      setCurrentBlock(blockIndex);
       
       // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
       // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
-          if (mainScrollViewRef.current) {
-            // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
-            mainScrollViewRef.current.scrollTo({
-              x: 0,
-              y: 0, // Début du ScrollView = début du nouveau bloc
-              animated: true
-            });
+          try {
+            if (mainScrollViewRef.current) {
+              // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
+              mainScrollViewRef.current.scrollTo({
+                x: 0,
+                y: 0, // Début du ScrollView = début du nouveau bloc
+                animated: true
+              });
+            }
+          } catch (scrollError) {
+            console.error('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur lors du scroll:', scrollError);
+            // Ne pas bloquer la navigation en cas d'erreur de scroll
           }
         });
       });
+    } catch (error) {
+      console.error('[FormulaireYukpoIntelligentScreen] ❌ ERREUR CRITIQUE dans goToBlock:', error);
+      Alert.alert(
+        'Erreur',
+        'Une erreur est survenue lors de la navigation. Veuillez réessayer.',
+        [{ text: 'OK' }]
+      );
     }
-  };
-
-  const goToBlock = (blockIndex: number) => {
-    if (blockIndex < 0 || !blocks[blockIndex]) {
-      return;
-    }
-
-    const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
-
-    // ✅ CORRECTION: Empêcher de passer à un bloc après le bloc produits si le bloc produits n'a pas de produits
-    // ✅ NOUVEAU 2025-11-06: Lever contrainte si mode edit_service_info
-    if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex > productsBlockIndex && !isEditingServiceInfo) {
-      if (!hasAtLeastOneProduct()) {
-        Alert.alert(
-          'Bloc Produits obligatoire',
-          'Vous devez ajouter au moins un produit ou une prestation avant de continuer.',
-          [{ text: 'OK' }]
-        );
-        setFieldErrors({ produits: 'Au moins un produit est requis' });
-        return;
-      }
-    }
-
-    setCurrentBlock(blockIndex);
-    
-    // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
-    // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
-        if (mainScrollViewRef.current) {
-          // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
-          mainScrollViewRef.current.scrollTo({
-            x: 0,
-            y: 0, // Début du ScrollView = début du nouveau bloc
-            animated: true
-          });
-        }
-      });
-    });
   };
 
   // ✅ NOUVEAU: Charger les données du service en mode édition

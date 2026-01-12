@@ -71,20 +71,31 @@ const PartnerRegisterScreen: React.FC = () => {
   }, [initialPartnerType]);
 
   // ✅ TOUS les types partenaires valides selon le backend
+  // ✅ TRIÉ PAR ORDRE ALPHABÉTIQUE pour faciliter la recherche
   const partnerTypes = [
-    { value: 'pharmacie', label: 'Pharmacie' },
+    { value: 'agence de voyage', label: 'Agence de Voyage' },
+    { value: 'assureur', label: 'Assureur' },
+    { value: 'banquesang', label: 'Banque de Sang' },
+    { value: 'chauffeur', label: 'Chauffeur (Taxi/Covoiturage)' }, // ✅ NOUVEAU: Type partenaire chauffeur
+    { value: 'demenagement', label: 'Déménagement' },
+    { value: 'etablissementscolaire', label: 'Établissement Scolaire' }, // ✅ NOUVEAU: Type partenaire établissement scolaire
     { value: 'hopital', label: 'Hôpital/Clinique' },
     { value: 'laboratoire', label: 'Laboratoire' },
-    { value: 'banquesang', label: 'Banque de Sang' },
-    { value: 'etablissementscolaire', label: 'Établissement Scolaire' }, // ✅ NOUVEAU: Type partenaire établissement scolaire
-    { value: 'agence de voyage', label: 'Agence de Voyage' },
-    { value: 'demenagement', label: 'Déménagement' },
-    { value: 'transport', label: 'Transport' },
-    { value: 'assureur', label: 'Assureur' },
+    { value: 'livraison', label: 'Livraison' }, // ✅ NOUVEAU: Type partenaire livraison générale
+    { value: 'livraison_courses_marche', label: 'Livraison - Courses au marché' }, // ✅ NOUVEAU: Type partenaire pour courses au marché (coursier spécialisé)
+    { value: 'pharmacie', label: 'Pharmacie' },
     { value: 'supermarche', label: 'Supermarché' },
     { value: 'telecom', label: 'Télécom' },
-    { value: 'chauffeur', label: 'Chauffeur (Taxi/Covoiturage)' }, // ✅ NOUVEAU: Type partenaire chauffeur
-  ];
+    { value: 'transport', label: 'Transport' },
+  ].sort((a, b) => {
+    // ✅ TRI ALPHABÉTIQUE: Comparer les labels en ignorant la casse et les accents
+    const normalize = (str: string) => str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Supprimer les accents
+    
+    return normalize(a.label).localeCompare(normalize(b.label));
+  });
 
   // ✅ Validation du mot de passe avec feedback visuel en temps réel
   const validatePassword = (password: string) => {

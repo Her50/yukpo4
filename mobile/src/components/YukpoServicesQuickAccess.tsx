@@ -22,6 +22,30 @@ import SafeIcon from './SafeIcon';
 import { hapticPress } from '../utils/hapticFeedback';
 import { modernColors } from '../theme/modernTheme';
 
+// ✅ NOUVEAU: Fonction pour assombrir une couleur hexadécimale
+const darkenColor = (hex: string, percent: number = 30): string => {
+    // Retirer le # si présent
+    hex = hex.replace('#', '');
+    
+    // Convertir en RGB
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
+    // Assombrir en réduisant chaque composante
+    const darkenedR = Math.max(0, Math.floor(r * (1 - percent / 100)));
+    const darkenedG = Math.max(0, Math.floor(g * (1 - percent / 100)));
+    const darkenedB = Math.max(0, Math.floor(b * (1 - percent / 100)));
+    
+    // Convertir en hex
+    const toHex = (n: number) => {
+        const hex = n.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    };
+    
+    return `#${toHex(darkenedR)}${toHex(darkenedG)}${toHex(darkenedB)}`;
+};
+
 // Types
 interface Service {
     id: string;
@@ -178,7 +202,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                 disabled={service.comingSoon}
                             >
                                 <View style={[styles.serviceMiniIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
-                                    <SafeIcon name={service.icon} size={14} color={service.gradient[0]} />
+                                    <SafeIcon name={service.icon} size={18} color={darkenColor(service.gradient[0], 25)} />
                                     {service.comingSoon && (
                                         <View style={styles.badgeMini}>
                                             <Text style={styles.badgeMiniText}>Bientôt</Text>
@@ -210,7 +234,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                             >
                                 <View style={styles.categoryContent}>
                                     <View style={[styles.categoryIconContainer, { backgroundColor: `${category.gradient[0]}15` }]}>
-                                        <SafeIcon name={category.icon} size={14} color={category.gradient[0]} />
+                                        <SafeIcon name={category.icon} size={22} color={darkenColor(category.gradient[0], 25)} />
                                     </View>
                                     <Text style={styles.categoryTitle} numberOfLines={2}>
                                         {category.title}
@@ -347,9 +371,9 @@ const styles = StyleSheet.create({
         borderRadius: 10,
     },
     categoryIconContainer: {
-        width: 28, // ✅ AMÉLIORÉ: Augmenté pour mieux voir les couleurs
-        height: 28, // ✅ AMÉLIORÉ: Augmenté pour mieux voir les couleurs
-        borderRadius: 14, // ✅ AMÉLIORÉ: Augmenté pour correspondre à la taille
+        width: 36, // ✅ AUGMENTÉ: De 28 à 36 pour plus de visibilité
+        height: 36, // ✅ AUGMENTÉ: De 28 à 36 pour plus de visibilité
+        borderRadius: 18, // ✅ AUGMENTÉ: De 14 à 18 pour correspondre à la taille
         backgroundColor: '#FFFFFF', // ✅ Fond blanc par défaut, sera surchargé avec la couleur de la catégorie
         justifyContent: 'center',
         alignItems: 'center',
@@ -557,9 +581,9 @@ const styles = StyleSheet.create({
         marginRight: 6, // ✅ RÉDUIT: De 8 à 6 pour moins d'espace entre les cartes
     },
     serviceMiniIconContainer: {
-        width: 32, // ✅ RÉDUIT: De 40 à 32 pour miniaturiser
-        height: 32, // ✅ RÉDUIT: De 40 à 32
-        borderRadius: 16, // ✅ RÉDUIT: De 20 à 16
+        width: 40, // ✅ AUGMENTÉ: De 32 à 40 pour mieux voir les icônes
+        height: 40, // ✅ AUGMENTÉ: De 32 à 40 pour mieux voir les icônes
+        borderRadius: 20, // ✅ AUGMENTÉ: De 16 à 20 pour correspondre à la taille
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 4, // ✅ RÉDUIT: De 6 à 4
