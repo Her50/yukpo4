@@ -5,6 +5,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Modal,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -87,6 +89,7 @@ const CourierRegistrationScreen: React.FC = () => {
     
     // ✅ NOUVEAU: Type de coursier (obligatoire, en haut du formulaire)
     const [courierType, setCourierType] = useState<string>(''); // 'classic' | 'market_shopping' | 'taxi' | 'carpooling' | 'moving'
+    const [courierTypeModalVisible, setCourierTypeModalVisible] = useState(false);
 
     // Comptes de paiement
     const [paymentMethod, setPaymentMethod] = useState<any>(null);
@@ -720,127 +723,112 @@ const CourierRegistrationScreen: React.FC = () => {
                     </Text>
                 </View>
 
-                {/* ✅ NOUVEAU: Type de coursier (obligatoire) - En haut du formulaire */}
+                {/* ✅ NOUVEAU: Type de coursier (obligatoire) - En haut du formulaire - Liste déroulante */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Type de coursier *</Text>
                     <Text style={styles.helperText}>
                         Sélectionnez le type de service que vous souhaitez offrir.
                     </Text>
-                    <View style={styles.courierTypeButtonsContainer}>
-                        <TouchableOpacity
-                            style={[
-                                styles.courierTypeButton,
-                                courierType === 'classic' && styles.courierTypeButtonSelected,
-                            ]}
-                            onPress={() => setCourierType('classic')}
-                            activeOpacity={0.7}
-                        >
-                            <SafeIcon
-                                name={courierType === 'classic' ? 'check-circle' : 'circle'}
-                                size={20}
-                                color={courierType === 'classic' ? modernColors.primary : '#9CA3AF'}
-                                type="lucide"
-                            />
-                            <Text style={[
-                                styles.courierTypeButtonText,
-                                courierType === 'classic' && styles.courierTypeButtonTextSelected,
-                            ]}>
-                                📦 Coursier Classique
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[
-                                styles.courierTypeButton,
-                                courierType === 'market_shopping' && styles.courierTypeButtonSelected,
-                            ]}
-                            onPress={() => setCourierType('market_shopping')}
-                            activeOpacity={0.7}
-                        >
-                            <SafeIcon
-                                name={courierType === 'market_shopping' ? 'check-circle' : 'circle'}
-                                size={20}
-                                color={courierType === 'market_shopping' ? modernColors.primary : '#9CA3AF'}
-                                type="lucide"
-                            />
-                            <Text style={[
-                                styles.courierTypeButtonText,
-                                courierType === 'market_shopping' && styles.courierTypeButtonTextSelected,
-                            ]}>
-                                🛒 Coursier pour les courses au marché
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[
-                                styles.courierTypeButton,
-                                courierType === 'taxi' && styles.courierTypeButtonSelected,
-                            ]}
-                            onPress={() => setCourierType('taxi')}
-                            activeOpacity={0.7}
-                        >
-                            <SafeIcon
-                                name={courierType === 'taxi' ? 'check-circle' : 'circle'}
-                                size={20}
-                                color={courierType === 'taxi' ? modernColors.primary : '#9CA3AF'}
-                                type="lucide"
-                            />
-                            <Text style={[
-                                styles.courierTypeButtonText,
-                                courierType === 'taxi' && styles.courierTypeButtonTextSelected,
-                            ]}>
-                                🚕 Chauffeur Taxi
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[
-                                styles.courierTypeButton,
-                                courierType === 'carpooling' && styles.courierTypeButtonSelected,
-                            ]}
-                            onPress={() => setCourierType('carpooling')}
-                            activeOpacity={0.7}
-                        >
-                            <SafeIcon
-                                name={courierType === 'carpooling' ? 'check-circle' : 'circle'}
-                                size={20}
-                                color={courierType === 'carpooling' ? modernColors.primary : '#9CA3AF'}
-                                type="lucide"
-                            />
-                            <Text style={[
-                                styles.courierTypeButtonText,
-                                courierType === 'carpooling' && styles.courierTypeButtonTextSelected,
-                            ]}>
-                                🚗 Chauffeur Covoiturage
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[
-                                styles.courierTypeButton,
-                                courierType === 'moving' && styles.courierTypeButtonSelected,
-                            ]}
-                            onPress={() => setCourierType('moving')}
-                            activeOpacity={0.7}
-                        >
-                            <SafeIcon
-                                name={courierType === 'moving' ? 'check-circle' : 'circle'}
-                                size={20}
-                                color={courierType === 'moving' ? modernColors.primary : '#9CA3AF'}
-                                type="lucide"
-                            />
-                            <Text style={[
-                                styles.courierTypeButtonText,
-                                courierType === 'moving' && styles.courierTypeButtonTextSelected,
-                            ]}>
-                                🚚 Déménagement
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity
+                        style={[
+                            styles.courierTypeSelector,
+                            !courierType && styles.courierTypeSelectorEmpty,
+                        ]}
+                        onPress={() => setCourierTypeModalVisible(true)}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={[
+                            styles.courierTypeSelectorText,
+                            !courierType && styles.courierTypeSelectorPlaceholder,
+                        ]}>
+                            {courierType 
+                                ? (() => {
+                                    const types: Record<string, string> = {
+                                        'classic': '📦 Coursier Classique',
+                                        'market_shopping': '🛒 Coursier pour les courses au marché',
+                                        'taxi': '🚕 Chauffeur Taxi',
+                                        'carpooling': '🚗 Chauffeur Covoiturage',
+                                        'moving': '🚚 Déménagement',
+                                    };
+                                    return types[courierType] || 'Sélectionner un type';
+                                })()
+                                : 'Sélectionner un type de coursier'
+                            }
+                        </Text>
+                        <SafeIcon
+                            name="chevron-down"
+                            size={20}
+                            color={modernColors.textSecondary}
+                            type="lucide"
+                        />
+                    </TouchableOpacity>
                     {!courierType && (
                         <Text style={styles.errorText}>Ce champ est obligatoire</Text>
                     )}
                 </NativeCard>
+
+                {/* Modal pour la sélection du type de coursier */}
+                <Modal
+                    visible={courierTypeModalVisible}
+                    animationType="slide"
+                    transparent={true}
+                    onRequestClose={() => setCourierTypeModalVisible(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>Type de coursier</Text>
+                                <TouchableOpacity
+                                    onPress={() => setCourierTypeModalVisible(false)}
+                                    style={styles.modalCloseButton}
+                                >
+                                    <SafeIcon name="x" size={24} color={modernColors.textSecondary} type="lucide" />
+                                </TouchableOpacity>
+                            </View>
+                            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+                                {[
+                                    { value: 'classic', label: '📦 Coursier Classique', icon: '📦' },
+                                    { value: 'market_shopping', label: '🛒 Coursier pour les courses au marché', icon: '🛒' },
+                                    { value: 'taxi', label: '🚕 Chauffeur Taxi', icon: '🚕' },
+                                    { value: 'carpooling', label: '🚗 Chauffeur Covoiturage', icon: '🚗' },
+                                    { value: 'moving', label: '🚚 Déménagement', icon: '🚚' },
+                                ].map((type) => {
+                                    const isSelected = courierType === type.value;
+                                    return (
+                                        <TouchableOpacity
+                                            key={type.value}
+                                            style={[
+                                                styles.modalOption,
+                                                isSelected && styles.modalOptionSelected,
+                                            ]}
+                                            onPress={() => {
+                                                setCourierType(type.value);
+                                                setCourierTypeModalVisible(false);
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={styles.modalOptionIcon}>{type.icon}</Text>
+                                            <Text style={[
+                                                styles.modalOptionText,
+                                                isSelected && styles.modalOptionTextSelected,
+                                            ]}>
+                                                {type.label}
+                                            </Text>
+                                            {isSelected && (
+                                                <SafeIcon
+                                                    name="check-circle"
+                                                    size={20}
+                                                    color={modernColors.primary}
+                                                    type="lucide"
+                                                />
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+                        </View>
+                    </View>
+                </Modal>
 
                 {/* Informations personnelles */}
                 <NativeCard style={styles.card}>
@@ -1560,32 +1548,84 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
     },
-    // ✅ NOUVEAU: Styles pour le champ "Type de coursier"
-    courierTypeButtonsContainer: {
-        gap: 12,
-        marginTop: 8,
-    },
-    courierTypeButton: {
+    // ✅ NOUVEAU: Styles pour le champ "Type de coursier" - Liste déroulante
+    courierTypeSelector: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        padding: 16,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: '#E5E7EB',
-        backgroundColor: '#F9FAFB',
+        justifyContent: 'space-between',
+        padding: 14,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+        marginTop: 8,
     },
-    courierTypeButtonSelected: {
-        borderColor: modernColors.primary,
-        backgroundColor: '#EEF2FF',
+    courierTypeSelectorEmpty: {
+        borderColor: modernColors.error || '#EF4444',
     },
-    courierTypeButtonText: {
+    courierTypeSelectorText: {
         fontSize: 15,
         fontWeight: '500',
-        color: '#374151',
+        color: modernColors.text,
         flex: 1,
     },
-    courierTypeButtonTextSelected: {
+    courierTypeSelectorPlaceholder: {
+        color: modernColors.textSecondary,
+        fontWeight: '400',
+    },
+    // Styles pour le modal de sélection
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: modernColors.surface,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '70%',
+        paddingBottom: 32,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    modalCloseButton: {
+        padding: 4,
+    },
+    modalList: {
+        flex: 1,
+    },
+    modalOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+        gap: 12,
+    },
+    modalOptionSelected: {
+        backgroundColor: '#EEF2FF',
+    },
+    modalOptionIcon: {
+        fontSize: 24,
+    },
+    modalOptionText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: modernColors.text,
+        flex: 1,
+    },
+    modalOptionTextSelected: {
         color: modernColors.primary,
         fontWeight: '600',
     },

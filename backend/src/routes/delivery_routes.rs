@@ -640,7 +640,8 @@ async fn save_product_delivery_config(
         };
 
     // ✅ 5. Créer ou mettre à jour la configuration
-    let config_row = sqlx::query(
+    // ✅ CORRIGÉ 2026-01-12: Gestion d'erreur robuste pour éviter erreur 500
+    let config_row = match sqlx::query(
         r#"
         INSERT INTO product_delivery_config (
             service_id, product_index,
@@ -696,7 +697,33 @@ async fn save_product_delivery_config(
     .bind(is_complete)
     .bind(user.id)
     .fetch_one(&state.pg)
-    .await?;
+    .await
+    {
+        Ok(row) => row,
+        Err(e) => {
+            log::error!(
+                "[save_product_delivery_config] ❌ Erreur SQL lors de la sauvegarde: {} | service_id: {} | product_index: {}",
+                e, payload.service_id, payload.product_index
+            );
+            // ✅ CORRIGÉ: Retourner une erreur BadRequest au lieu de 500 pour les erreurs de validation
+            if let sqlx::Error::Database(db_err) = &e {
+                if let Some(code) = db_err.code() {
+                    let code_str = code.to_string();
+                    // Erreur de contrainte FK ou NOT NULL
+                    if code_str == "23503" || code_str == "23502" {
+                        return Err(AppError::BadRequest(format!(
+                            "Erreur de validation: {}",
+                            db_err.message()
+                        )));
+                    }
+                }
+            }
+            return Err(AppError::Internal(format!(
+                "Erreur lors de la sauvegarde de la configuration: {}",
+                e
+            )));
+        }
+    };
 
     let config_id = config_row.get::<i32, _>("id");
     let config_is_configured = config_row.get::<bool, _>("is_configured");

@@ -311,12 +311,37 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       return;
     }
 
+    // ✅ CORRIGÉ 2026-01-12: Vérifier que currentBlock correspond à un bloc visible
     const isCurrentVisible = displayedBlocks.some((item) => item.index === currentBlock);
 
     if (!isCurrentVisible) {
+      console.log('[NAVIGATION_SYNC] ⚠️ currentBlock non visible, correction vers premier bloc visible:', {
+        currentBlock,
+        displayedBlocksIndices: displayedBlocks.map(db => db.index),
+        firstVisibleIndex: displayedBlocks[0]?.index,
+      });
       setCurrentBlock(displayedBlocks[0].index);
+    } else {
+      // ✅ NOUVEAU: Vérifier que le bloc affiché correspond bien à currentBlock
+      const displayedBlock = displayedBlocks.find(db => db.index === currentBlock);
+      const calculatedDisplayIndex = displayedBlocks.findIndex(db => db.index === currentBlock);
+      
+      if (displayedBlock) {
+        console.log('[NAVIGATION_SYNC] ✅ Synchronisation OK:', {
+          currentBlock,
+          calculatedDisplayIndex,
+          currentDisplayIndex,
+          blockId: displayedBlock.block.id,
+          blockTitle: displayedBlock.block.title,
+        });
+        
+        // ✅ CORRIGÉ: Vérifier que currentDisplayIndex correspond bien
+        if (calculatedDisplayIndex !== currentDisplayIndex && calculatedDisplayIndex !== -1) {
+          console.warn('[NAVIGATION_SYNC] ⚠️ Désynchronisation détectée, recalcul nécessaire');
+        }
+      }
     }
-  }, [displayedBlocks, currentBlock]);
+  }, [displayedBlocks, currentBlock, currentDisplayIndex]);
 
   useEffect(() => {
     const parseMediaValue = (value: any): any[] => {
@@ -1342,14 +1367,52 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
             try {
               if (mainScrollViewRef.current) {
-                console.log('[NAVIGATION_BLOC] ✅ mainScrollViewRef.current existe, scrollTo appelé');
-                // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
-                mainScrollViewRef.current.scrollTo({
-                  x: 0,
-                  y: 0, // Début du ScrollView = début du nouveau bloc
-                  animated: true
-                });
-                console.log('[NAVIGATION_BLOC] ✅ scrollTo terminé avec succès');
+                console.log('[NAVIGATION_BLOC] ✅ mainScrollViewRef.current existe, tentative scroll...');
+                const scrollView = mainScrollViewRef.current;
+                
+                // ✅ CORRIGÉ 2026-01-12: Vérifier et utiliser la méthode appropriée pour KeyboardAwareScrollView
+                // KeyboardAwareScrollView peut avoir scrollTo, scrollToPosition, ou getScrollResponder
+                let scrollSuccess = false;
+                
+                // Méthode 1: scrollTo (méthode standard de ScrollView)
+                if (typeof scrollView.scrollTo === 'function') {
+                  try {
+                    scrollView.scrollTo({ x: 0, y: 0, animated: true });
+                    scrollSuccess = true;
+                    console.log('[NAVIGATION_BLOC] ✅ scrollTo réussi');
+                  } catch (e) {
+                    console.warn('[NAVIGATION_BLOC] ⚠️ scrollTo a échoué:', e);
+                  }
+                }
+                
+                // Méthode 2: scrollToPosition (si disponible)
+                if (!scrollSuccess && typeof scrollView.scrollToPosition === 'function') {
+                  try {
+                    scrollView.scrollToPosition(0, 0, true);
+                    scrollSuccess = true;
+                    console.log('[NAVIGATION_BLOC] ✅ scrollToPosition réussi');
+                  } catch (e) {
+                    console.warn('[NAVIGATION_BLOC] ⚠️ scrollToPosition a échoué:', e);
+                  }
+                }
+                
+                // Méthode 3: getScrollResponder (fallback)
+                if (!scrollSuccess && typeof scrollView.getScrollResponder === 'function') {
+                  try {
+                    const scrollResponder = scrollView.getScrollResponder();
+                    if (scrollResponder && typeof scrollResponder.scrollTo === 'function') {
+                      scrollResponder.scrollTo({ x: 0, y: 0, animated: true });
+                      scrollSuccess = true;
+                      console.log('[NAVIGATION_BLOC] ✅ scrollTo via getScrollResponder réussi');
+                    }
+                  } catch (e) {
+                    console.warn('[NAVIGATION_BLOC] ⚠️ getScrollResponder a échoué:', e);
+                  }
+                }
+                
+                if (!scrollSuccess) {
+                  console.warn('[NAVIGATION_BLOC] ⚠️ Aucune méthode de scroll disponible, navigation continue sans scroll');
+                }
               } else {
                 console.warn('[NAVIGATION_BLOC] ⚠️ mainScrollViewRef.current est null');
               }
@@ -1415,12 +1478,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
             try {
               if (mainScrollViewRef.current) {
-                // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
-                mainScrollViewRef.current.scrollTo({
-                  x: 0,
-                  y: 0, // Début du ScrollView = début du nouveau bloc
-                  animated: true
-                });
+                // ✅ CORRIGÉ 2026-01-12: KeyboardAwareScrollView utilise scrollToPosition
+                if (typeof mainScrollViewRef.current.scrollToPosition === 'function') {
+                  mainScrollViewRef.current.scrollToPosition(0, 0, true);
+                } else if (typeof mainScrollViewRef.current.getScrollResponder === 'function') {
+                  const scrollResponder = mainScrollViewRef.current.getScrollResponder();
+                  if (scrollResponder && typeof scrollResponder.scrollTo === 'function') {
+                    scrollResponder.scrollTo({ x: 0, y: 0, animated: true });
+                  }
+                }
               }
             } catch (scrollError) {
               console.error('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur lors du scroll:', scrollError);
@@ -2553,11 +2619,38 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           ? (currentValue.place_name || currentValue.raw || '')
           : (typeof currentValue === 'string' ? currentValue : '');
         
+        const isEmpty = !displayText || displayText.trim() === '';
+        const isRequired = field.required === true;
+        
         return (
-          <View key={field.name} style={styles.fieldContainer}>
-            <Text style={styles.label}>{field.label} {field.required && <Text style={styles.required}>*</Text>}</Text>
+          <View key={field.name} style={[
+            styles.fieldContainer,
+            isEmpty && isRequired && styles.fieldContainerRequired // ✅ AMÉLIORÉ: Style spécial si requis et vide
+          ]}>
+            {/* ✅ AMÉLIORÉ 2026-01-12: Label plus visible avec icône et badge requis */}
+            <View style={styles.locationLabelContainer}>
+              <SafeIcon name="map-pin" size={18} color={isRequired && isEmpty ? modernColors.error : modernColors.primary} />
+              <Text style={[
+                styles.label,
+                isRequired && isEmpty && styles.labelRequired // ✅ Style spécial si requis et vide
+              ]}>
+                {field.label}
+                {isRequired && <Text style={styles.required}> *</Text>}
+              </Text>
+              {isRequired && isEmpty && (
+                <View style={styles.requiredBadge}>
+                  <Text style={styles.requiredBadgeText}>OBLIGATOIRE</Text>
+                </View>
+              )}
+            </View>
+            
+            {/* ✅ AMÉLIORÉ: Bouton plus visible avec bordure et fond si vide */}
             <TouchableOpacity
-              style={[styles.select, !displayText && styles.selectPlaceholder]}
+              style={[
+                styles.select,
+                isEmpty && styles.selectEmpty, // ✅ Style spécial si vide
+                isEmpty && isRequired && styles.selectRequiredEmpty // ✅ Style encore plus visible si requis et vide
+              ]}
               onPress={() => {
                 // Récupérer la localisation actuelle si disponible
                 const currentValue = valeursFormulaire[field.name]?.valeur || valeursFormulaire[field.name];
@@ -2569,17 +2662,40 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 setGpsModalForField(field.name);
                 setShowGPSModal(true);
               }}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.selectText, !displayText && styles.selectPlaceholderText]}>
-                {displayText || field.placeholder || 'Sélectionner un lieu...'}
-              </Text>
-              <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+              <View style={styles.selectContent}>
+                <SafeIcon 
+                  name="map-pin" 
+                  size={22} 
+                  color={isEmpty && isRequired ? modernColors.error : modernColors.primary} 
+                />
+                <Text style={[
+                  styles.selectText, 
+                  isEmpty && styles.selectPlaceholderText,
+                  isEmpty && isRequired && styles.selectRequiredText // ✅ Texte plus visible si requis et vide
+                ]}>
+                  {displayText || field.placeholder || '📍 Cliquez pour sélectionner un lieu...'}
+                </Text>
+              </View>
+              <SafeIcon name="chevron-right" size={20} color={isEmpty && isRequired ? modernColors.error : modernColors.textSecondary} />
             </TouchableOpacity>
-            <View style={styles.hintBox}>
-              <Text style={styles.hintText}>
-                💡 <Text style={styles.hintBold}>Sélection GPS :</Text> Cliquez pour ouvrir la carte et sélectionner ou créer un lieu précis. Le nom complet du lieu sera affiché.
-              </Text>
-            </View>
+            
+            {/* ✅ AMÉLIORÉ: Message d'aide plus visible si le champ est vide et requis */}
+            {isEmpty && isRequired ? (
+              <View style={styles.alertBox}>
+                <SafeIcon name="alert-circle" size={16} color={modernColors.error} />
+                <Text style={styles.alertText}>
+                  <Text style={styles.alertBold}>Champ obligatoire :</Text> Veuillez sélectionner le lieu de commercialisation de votre produit pour permettre aux clients de vous localiser.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.hintBox}>
+                <Text style={styles.hintText}>
+                  💡 <Text style={styles.hintBold}>Sélection GPS :</Text> Cliquez pour ouvrir la carte et sélectionner ou créer un lieu précis. Le nom complet du lieu sera affiché.
+                </Text>
+              </View>
+            )}
             {fieldErrors[field.name] && (
               <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
             )}
@@ -4775,20 +4891,47 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   </View>
 
                   {/* Navigation entre blocs (tabs simples sans scroll horizontal) */}
-                  <View style={styles.blockNavigation}>
-                    {displayedBlocks.map(({ block, index: originalIndex }) => {
-                      // ✅ CORRECTION CRITIQUE: Comparer currentBlock (index dans blocks) avec originalIndex (index dans blocks)
-                      // currentBlock est l'index du bloc actif dans le tableau blocks
-                      // originalIndex est aussi un index dans le tableau blocks
-                      const isActive = currentBlock === originalIndex;
+                  {/* ✅ CORRIGÉ 2026-01-12: Utiliser currentDisplayIndex pour synchroniser avec le bloc affiché */}
+                  <View key={`navigation-${currentBlock}-${currentDisplayIndex}`} style={styles.blockNavigation}>
+                    {displayedBlocks.map(({ block, index: originalIndex }, displayIndex) => {
+                      // ✅ CORRIGÉ 2026-01-12: Utiliser currentDisplayIndex pour déterminer l'onglet actif
+                      // currentDisplayIndex est l'index dans displayedBlocks, displayIndex aussi
+                      // Cela garantit que l'onglet actif correspond toujours au bloc affiché
+                      const isActive = currentDisplayIndex === displayIndex;
+                      
+                      // ✅ Vérification de cohérence: currentBlock doit correspondre à originalIndex si actif
+                      if (isActive && currentBlock !== originalIndex) {
+                        console.warn('[NAVIGATION_TABS] ⚠️ Incohérence détectée:', {
+                          currentDisplayIndex,
+                          displayIndex,
+                          currentBlock,
+                          originalIndex,
+                          blockId: block.id,
+                        });
+                        // Corriger automatiquement
+                        if (currentBlock !== originalIndex) {
+                          setTimeout(() => setCurrentBlock(originalIndex), 0);
+                        }
+                      }
+                      
                       return (
                         <TouchableOpacity
-                          key={block.id}
+                          key={`tab-${block.id}-${originalIndex}-${displayIndex}`} // ✅ Key unique avec displayIndex
                           style={[
                             styles.blockTab,
                             isActive && styles.blockTabActive
                           ]}
-                          onPress={() => goToBlock(originalIndex)}
+                          onPress={() => {
+                            console.log('[NAVIGATION_TABS] Clic sur onglet:', {
+                              blockId: block.id,
+                              originalIndex,
+                              displayIndex,
+                              currentBlockAvant: currentBlock,
+                              currentDisplayIndexAvant: currentDisplayIndex,
+                            });
+                            goToBlock(originalIndex);
+                          }}
+                          activeOpacity={0.7}
                         >
                           <Text style={styles.blockTabIcon}>{block.icon}</Text>
                           <Text style={[
@@ -4986,35 +5129,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             if (!isNaN(lat) && !isNaN(lng)) {
               setSelectedLocation({ lat, lng });
 
-              // ✅ NOUVEAU: Si c'est pour lieu_produit, faire le géocodage inverse pour obtenir le nom du lieu
+              // ✅ CORRIGÉ 2026-01-12: Si c'est pour lieu_produit, utiliser reverseGeocodeWithRetry avec retry
               if (gpsModalForField === 'lieu_produit' || gpsModalForField === 'lieu_commercial' || gpsModalForField === 'lieu_commercialisation') {
                 try {
-                  const { reverseGeocodeAsync } = await import('expo-location');
-                  const reverseGeocode = await reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                  const { reverseGeocodeWithRetry } = await import('../utils/reverseGeocoding');
+                  const geocodeResult = await reverseGeocodeWithRetry(lat, lng, {
+                    fallbackAddress: `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+                  });
                   
-                  if (reverseGeocode && reverseGeocode.length > 0) {
-                    const addr = reverseGeocode[0];
-                    // Construire le nom complet du lieu
-                    const addressParts = [];
-                    if (addr.name) addressParts.push(addr.name);
-                    if (addr.street) addressParts.push(addr.street);
-                    if (addr.district) addressParts.push(addr.district);
-                    if (addr.city) addressParts.push(addr.city);
-                    if (addr.region) addressParts.push(addr.region);
-                    if (addr.country) addressParts.push(addr.country);
-                    
-                    const placeName = addr.name || addr.street || addr.district || addr.city || 'Lieu sélectionné';
-                    const fullAddress = addressParts.filter(Boolean).join(', ') || placeName;
+                  if (geocodeResult) {
+                    const fullAddress = geocodeResult.address;
+                    const placeName = geocodeResult.name || geocodeResult.street || geocodeResult.district || geocodeResult.city || 'Lieu sélectionné';
                     
                     // Construire un LocationObject avec le nom complet
                     const locationObject: LocationObject = {
                       raw: fullAddress,
                       place_name: placeName, // Nom principal du lieu (établissement, rue, quartier)
                       components: {
-                        quartier: addr.district || undefined,
-                        ville: addr.city || undefined,
-                        region: addr.region || undefined,
-                        pays: addr.country || undefined,
+                        quartier: geocodeResult.district || undefined,
+                        ville: geocodeResult.city || undefined,
+                        region: geocodeResult.region || undefined,
+                        pays: geocodeResult.country || undefined,
                       },
                       coordinates: { lat, lng },
                     };
@@ -5662,6 +5797,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   // Styles pour le select moderne
+  select: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: modernColors.surface,
+    borderWidth: 1,
+    borderColor: modernColors.border,
+    borderRadius: 12,
+    minHeight: 48,
+  },
   modernSelect: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -5674,6 +5821,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minHeight: 48,
   },
+  selectContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 10,
+  },
   selectText: {
     fontSize: 16,
     color: modernColors.text,
@@ -5681,6 +5834,83 @@ const styles = StyleSheet.create({
   },
   selectPlaceholder: {
     color: modernColors.textSecondary,
+  },
+  selectPlaceholderText: {
+    color: modernColors.textSecondary,
+    fontStyle: 'italic',
+  },
+  // ✅ AMÉLIORÉ 2026-01-12: Styles pour rendre le champ lieu plus visible
+  selectEmpty: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: modernColors.border,
+    backgroundColor: '#FAFAFA',
+  },
+  selectRequiredEmpty: {
+    borderWidth: 2,
+    borderColor: modernColors.error,
+    backgroundColor: '#FEF2F2',
+    borderStyle: 'solid',
+  },
+  selectRequiredText: {
+    color: modernColors.error,
+    fontWeight: '600',
+  },
+  fieldContainerRequired: {
+    backgroundColor: '#FEF2F2',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  locationLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: modernColors.text,
+    marginBottom: 8,
+  },
+  labelRequired: {
+    color: modernColors.error,
+    fontWeight: '700',
+  },
+  requiredBadge: {
+    backgroundColor: modernColors.error,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 'auto',
+  },
+  requiredBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  alertBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 12,
+    gap: 10,
+  },
+  alertText: {
+    flex: 1,
+    fontSize: 13,
+    color: modernColors.error,
+    lineHeight: 18,
+  },
+  alertBold: {
+    fontWeight: '700',
   },
   pickerButtons: {
     flexDirection: 'row',

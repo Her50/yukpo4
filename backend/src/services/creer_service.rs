@@ -2247,7 +2247,7 @@ pub async fn creer_service(
             r#"
             INSERT INTO services (user_id, data, is_tarissable, gps, auto_deactivate_at)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING id AS service_id
+            RETURNING id
             "#,
         )
         .bind(user_id)
@@ -2298,7 +2298,92 @@ pub async fn creer_service(
             }
         };
 
-        let service_id: i32 = row.get::<i32, _>("service_id");
+        // ✅ CRITIQUE 2026-01-12: Récupérer l'ID directement depuis la colonne "id" (plus sûr que l'alias)
+        let service_id: i32 = row.get::<i32, _>("id");
+        
+        log::info!(
+            "[creer_service] 🔍 Service_id récupéré directement depuis colonne 'id': {}",
+            service_id
+        );
+
+        // ✅ CRITIQUE 2026-01-12: Vérifier que le service_id récupéré correspond bien au service créé
+        // en vérifiant qu'il existe dans la transaction et en récupérant ses détails
+        let service_details = sqlx::query(
+            "SELECT id, user_id, created_at FROM services WHERE id = $1"
+        )
+        .bind(service_id)
+        .fetch_optional(&mut *tx)
+        .await;
+
+        match service_details {
+            Ok(Some(service_row)) => {
+                let actual_id: i32 = service_row.get::<i32, _>("id");
+                let service_user_id: i32 = service_row.get::<i32, _>("user_id");
+                let service_created_at = service_row.try_get::<chrono::NaiveDateTime, _>("created_at").ok();
+                
+                // ✅ Vérifier que l'ID correspond
+                if actual_id != service_id {
+                    log::error!(
+                        "[creer_service] ❌ INCOHÉRENCE: service_id utilisé ({}) != id trouvé dans DB ({})",
+                        service_id,
+                        actual_id
+                    );
+                    let _ = tx.rollback().await;
+                    return Err(AppError::Internal(format!(
+                        "Incohérence service_id: utilisé={}, DB={}",
+                        service_id,
+                        actual_id
+                    )));
+                }
+                
+                // ✅ Vérifier que le service appartient au bon utilisateur
+                if service_user_id != user_id {
+                    log::error!(
+                        "[creer_service] ❌ ERREUR: Service {} appartient à user {} mais on attend user {}",
+                        service_id,
+                        service_user_id,
+                        user_id
+                    );
+                    let _ = tx.rollback().await;
+                    return Err(AppError::Internal(format!(
+                        "Service {} appartient à user {} mais on attend user {}",
+                        service_id,
+                        service_user_id,
+                        user_id
+                    )));
+                }
+                
+                log::info!(
+                    "[creer_service] ✅ Service créé et vérifié dans transaction - service_id: {}, user_id: {}, created_at: {:?}",
+                    service_id,
+                    service_user_id,
+                    service_created_at
+                );
+            },
+            Ok(None) => {
+                log::error!(
+                    "[creer_service] ❌ CRITIQUE: Service {} n'existe PAS dans la transaction après création!",
+                    service_id
+                );
+                let _ = tx.rollback().await;
+                return Err(AppError::Internal(format!(
+                    "Service {} créé mais non visible dans la transaction",
+                    service_id
+                )));
+            },
+            Err(e) => {
+                log::error!(
+                    "[creer_service] ❌ Erreur vérification service {} dans transaction: {}",
+                    service_id,
+                    e
+                );
+                let _ = tx.rollback().await;
+                return Err(AppError::Internal(format!(
+                    "Erreur vérification service après création: {}",
+                    e
+                )));
+            }
+        }
 
         Ok((tx, verified_balance, new_balance, service_id))
     }
@@ -2307,6 +2392,9 @@ pub async fn creer_service(
     let max_retries = 5;
     let mut last_error = None;
     let (mut tx, _verified_balance, _new_balance, service_id) = 'retry_loop: loop {
+        log::info!(
+            "[creer_service] 🔄 Tentative création service (retry loop)..."
+        );
         for attempt in 1..=max_retries {
             match execute_critical_transaction(
                 pool,
@@ -2319,7 +2407,16 @@ pub async fn creer_service(
             )
             .await
             {
-                Ok(result) => break 'retry_loop result,
+                Ok(result) => {
+                    let (tx, verified_balance, new_balance, service_id) = result;
+                    log::info!(
+                        "[creer_service] ✅ Service créé avec succès - service_id: {}, balance: {} -> {}",
+                        service_id,
+                        verified_balance,
+                        new_balance
+                    );
+                    break 'retry_loop result;
+                },
                 Err(e) => {
                     let error_str = e.to_string();
                     let is_retryable = error_str.contains("peer closed connection")
@@ -2817,6 +2914,46 @@ pub async fn creer_service(
         produits_array_opt.is_some(),
         service_id
     );
+    
+    // ✅ CRITIQUE 2026-01-12: Vérifier que le service existe toujours dans la transaction
+    // avant de créer les produits (pour éviter l'erreur FK)
+    let service_check = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM services WHERE id = $1)"
+    )
+    .bind(service_id)
+    .fetch_one(&mut *tx)
+    .await;
+    
+    match service_check {
+        Ok(true) => {
+            log::info!(
+                "[creer_service] ✅ Service {} confirmé dans transaction avant création produits",
+                service_id
+            );
+        },
+        Ok(false) => {
+            log::error!(
+                "[creer_service] ❌ CRITIQUE: Service {} n'existe PAS dans la transaction avant création produits!",
+                service_id
+            );
+            // Rollback et retourner une erreur
+            let _ = tx.rollback().await;
+            return Err(crate::core::types::AppError::Internal(
+                format!("Service {} n'existe pas dans la transaction", service_id)
+            ));
+        },
+        Err(e) => {
+            log::error!(
+                "[creer_service] ❌ Erreur vérification service {} dans transaction: {}",
+                service_id,
+                e
+            );
+            let _ = tx.rollback().await;
+            return Err(crate::core::types::AppError::Internal(
+                format!("Erreur vérification service: {}", e)
+            ));
+        }
+    }
     if let Some(produits_array) = produits_array_opt {
         log::info!(
             "[creer_service] 📦 Sauvegarde médias pour {} produits",
@@ -2830,9 +2967,9 @@ pub async fn creer_service(
         let mut saved_image_paths_by_product: Vec<Vec<String>> =
             Vec::with_capacity(produits_array.len());
 
-        // ✅ NOUVEAU 2026-01-04: Créer ProductsService AVANT la boucle pour créer les produits
-        use crate::services::products_service::ProductsService;
-        let products_service = ProductsService::new(std::sync::Arc::new(pool.clone()));
+        // ✅ CORRIGÉ 2026-01-12: Créer les produits directement dans la transaction tx
+        // au lieu d'utiliser ProductsService qui utilise une connexion séparée
+        // Cela évite l'erreur FK car le service n'est pas encore commité
 
         for (product_index, produit_value) in produits_array.iter_mut().enumerate() {
             let produit_obj = match produit_value.as_object_mut() {
@@ -2877,14 +3014,101 @@ pub async fn creer_service(
                     .unwrap_or("Sans nom")
             );
 
-            // Créer le produit dans service_products AVANT de créer les médias
-            let product_record = match products_service
-                .create_product(
+            // ✅ CRITIQUE 2026-01-12: Vérifier que le service existe dans la transaction AVANT de créer le produit
+            // Cela évite l'erreur FK en s'assurant que le service est bien visible dans la transaction
+            // ✅ DOUBLE VÉRIFICATION: Récupérer aussi l'ID réel du service depuis la transaction
+            let service_check = sqlx::query(
+                "SELECT id, user_id FROM services WHERE id = $1"
+            )
+            .bind(service_id)
+            .fetch_optional(&mut *tx)
+            .await;
+
+            match service_check {
+                Ok(Some(service_row)) => {
+                    let actual_service_id: i32 = service_row.get::<i32, _>("id");
+                    let service_user_id: i32 = service_row.get::<i32, _>("user_id");
+                    
+                    // ✅ Vérifier que le service_id utilisé correspond bien au service trouvé
+                    if actual_service_id != service_id {
+                        log::error!(
+                            "[creer_service] ❌ INCOHÉRENCE: service_id utilisé ({}) != service_id trouvé ({})",
+                            service_id,
+                            actual_service_id
+                        );
+                        saved_image_paths_by_product.push(Vec::new());
+                        continue;
+                    }
+                    
+                    // ✅ Vérifier que le service appartient bien au bon utilisateur
+                    if service_user_id != user_id {
+                        log::error!(
+                            "[creer_service] ❌ ERREUR: Service {} appartient à user {} mais on attend user {}",
+                            service_id,
+                            service_user_id,
+                            user_id
+                        );
+                        saved_image_paths_by_product.push(Vec::new());
+                        continue;
+                    }
+                    
+                    log::info!(
+                        "[creer_service] ✅ Service {} vérifié dans transaction (user_id: {}, service_id: {}), création produit {}...",
+                        service_id,
+                        service_user_id,
+                        actual_service_id,
+                        product_index
+                    );
+                },
+                Ok(None) => {
+                    log::error!(
+                        "[creer_service] ❌ Service {} n'existe PAS dans la transaction avant création produit {}",
+                        service_id,
+                        product_index
+                    );
+                    saved_image_paths_by_product.push(Vec::new());
+                    continue;
+                },
+                Err(e) => {
+                    log::error!(
+                        "[creer_service] ❌ Erreur vérification existence service {} dans transaction: {}",
+                        service_id,
+                        e
+                    );
+                    saved_image_paths_by_product.push(Vec::new());
+                    continue;
+                }
+            }
+
+            // ✅ CORRIGÉ 2026-01-12: Créer le produit directement dans la transaction tx
+            // pour éviter l'erreur FK (service_id non visible dans connexion séparée)
+            let product_record = match sqlx::query_as::<_, crate::services::products_service::Product>(
+                r#"
+                INSERT INTO service_products (service_id, product_index, product_data)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (service_id, product_index) 
+                DO UPDATE SET 
+                    product_data = EXCLUDED.product_data,
+                    updated_at = NOW()
+                RETURNING 
+                    id,
                     service_id,
-                    product_index as i32,
-                    &produit_cleaned_for_creation,
-                )
-                .await
+                    product_index,
+                    product_data,
+                    product_name,
+                    product_type,
+                    product_price,
+                    is_active,
+                    created_at,
+                    updated_at,
+                    auto_deactivate_at
+                "#
+            )
+            .bind(service_id)
+            .bind(product_index as i32)
+            .bind(&produit_cleaned_for_creation)
+            .fetch_one(&mut *tx)
+            .await
             {
                 Ok(product) => {
                     log::info!(

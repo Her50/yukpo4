@@ -46,14 +46,11 @@ export const useGeocoding = () => {
             setLoading(true);
             setError(null);
 
-            const result = await Location.reverseGeocodeAsync({ latitude, longitude });
-
-            if (result.length > 0) {
-                const addr = result[0];
-                return `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.city || ''}, ${addr.region || ''}, ${addr.country || ''}`.trim();
-            }
-
-            return null;
+            // ✅ CORRIGÉ 2026-01-12: Utiliser reverseGeocodeWithRetry avec retry et fallback
+            const { reverseGeocodeAddress } = await import('../utils/reverseGeocoding');
+            const address = await reverseGeocodeAddress(latitude, longitude);
+            
+            return address;
         } catch (err) {
             setError('Erreur lors du géocodage inverse');
             console.error('Reverse geocoding error:', err);

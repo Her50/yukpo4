@@ -57,7 +57,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         id: string;
         day: string;
         dayNumber: number;
-        mealType: 'petit_dejeuner' | 'dejeuner' | 'diner';
+        mealType: 'petit_dejeuner' | 'repas_du_jour';
         mealTypeLabel: string;
         recipeName: string;
         servings: number;
@@ -80,7 +80,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const [showAddMealModal, setShowAddMealModal] = useState(false);
     const [newMealDay, setNewMealDay] = useState<string>('Lundi');
     const [newMealDayNumber, setNewMealDayNumber] = useState<number>(1);
-    const [newMealType, setNewMealType] = useState<'petit_dejeuner' | 'dejeuner' | 'diner'>('dejeuner');
+    const [newMealType, setNewMealType] = useState<'petit_dejeuner' | 'repas_du_jour'>('repas_du_jour');
     const [newMealName, setNewMealName] = useState('');
     const [newMealServings, setNewMealServings] = useState<string>('4');
     const [newMealCost, setNewMealCost] = useState<string>('');
@@ -111,8 +111,8 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         return menu.meals.reduce((total, meal) => {
             let dayTotal = 0;
             if (meal.petit_dejeuner?.estimated_cost) dayTotal += meal.petit_dejeuner.estimated_cost;
-            if (meal.dejeuner?.estimated_cost) dayTotal += meal.dejeuner.estimated_cost;
-            if (meal.diner?.estimated_cost) dayTotal += meal.diner.estimated_cost;
+            // ✅ CORRIGÉ: Utiliser repas_du_jour au lieu de dejeuner et diner
+            if (meal.repas_du_jour?.estimated_cost) dayTotal += meal.repas_du_jour.estimated_cost;
             if (meal.gouter?.estimated_cost) dayTotal += meal.gouter.estimated_cost;
             return total + dayTotal;
         }, 0);
@@ -126,7 +126,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             id: string;
             day: string;
             dayNumber: number;
-            mealType: 'petit_dejeuner' | 'dejeuner' | 'diner';
+            mealType: 'petit_dejeuner' | 'repas_du_jour';
             mealTypeLabel: string;
             recipeName: string;
             servings: number;
@@ -148,29 +148,17 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     times: 1, // Par défaut 1 fois
                 });
             }
-            if (meal.dejeuner) {
+            // ✅ CORRIGÉ: Utiliser repas_du_jour au lieu de dejeuner et diner
+            if (meal.repas_du_jour) {
                 items.push({
-                    id: `${meal.day}-dejeuner`,
+                    id: `${meal.day}-repas_du_jour`,
                     day: meal.day_name,
                     dayNumber: meal.day,
-                    mealType: 'dejeuner',
-                    mealTypeLabel: 'Déjeuner',
-                    recipeName: meal.dejeuner.recipe_name,
-                    servings: meal.dejeuner.servings,
-                    estimatedCost: meal.dejeuner.estimated_cost || 0,
-                    times: 1,
-                });
-            }
-            if (meal.diner) {
-                items.push({
-                    id: `${meal.day}-diner`,
-                    day: meal.day_name,
-                    dayNumber: meal.day,
-                    mealType: 'diner',
-                    mealTypeLabel: 'Dîner',
-                    recipeName: meal.diner.recipe_name,
-                    servings: meal.diner.servings,
-                    estimatedCost: meal.diner.estimated_cost || 0,
+                    mealType: 'repas_du_jour',
+                    mealTypeLabel: 'Repas du jour',
+                    recipeName: meal.repas_du_jour.recipe_name,
+                    servings: meal.repas_du_jour.servings,
+                    estimatedCost: meal.repas_du_jour.estimated_cost || 0,
                     times: 1,
                 });
             }
@@ -343,13 +331,12 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 dropoffLat = userLocation.coords.latitude;
                 dropoffLng = userLocation.coords.longitude;
                 try {
-                    const reverseGeocode = await Location.reverseGeocodeAsync({
-                        latitude: dropoffLat,
-                        longitude: dropoffLng,
-                    });
-                    if (reverseGeocode && reverseGeocode.length > 0) {
-                        const addr = reverseGeocode[0];
-                        dropoffAddress = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.city || ''}, ${addr.region || ''}`.trim();
+                    // ✅ CORRIGÉ 2026-01-12: Utiliser reverseGeocodeWithRetry avec retry et fallback
+                    const { reverseGeocodeWithRetry } = await import('../../utils/reverseGeocoding');
+                    const geocodeResult = await reverseGeocodeWithRetry(dropoffLat, dropoffLng);
+                    if (geocodeResult) {
+                        // ✅ CORRIGÉ: Utiliser l'adresse complète depuis geocodeResult
+                        dropoffAddress = geocodeResult.address;
                     }
                 } catch (error) {
                     console.warn('Géocodage inverse échoué:', error);
@@ -446,7 +433,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const handleAddMeal = () => {
         setNewMealDay('Lundi');
         setNewMealDayNumber(1);
-        setNewMealType('dejeuner');
+        setNewMealType('repas_du_jour');
         setNewMealName('');
         setNewMealServings('4');
         setNewMealCost('');
@@ -468,8 +455,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             day: newMealDay,
             dayNumber: newMealDayNumber,
             mealType: newMealType,
-            mealTypeLabel: newMealType === 'petit_dejeuner' ? 'Petit-déjeuner' : 
-                          newMealType === 'dejeuner' ? 'Déjeuner' : 'Dîner',
+            mealTypeLabel: newMealType === 'petit_dejeuner' ? 'Petit-déjeuner' : 'Repas du jour',
             recipeName: newMealName.trim(),
             servings,
             estimatedCost: cost,
@@ -482,7 +468,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         // Réinitialiser les champs
         setNewMealDay('Lundi');
         setNewMealDayNumber(1);
-        setNewMealType('dejeuner');
+        setNewMealType('repas_du_jour');
         setNewMealName('');
         setNewMealServings('4');
         setNewMealCost('');
@@ -668,8 +654,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     <SafeIcon name={icon} size={20} color={modernColors.primary} type="lucide" />
                     <Text style={styles.mealTypeText}>
                         {mealType === 'petit_dejeuner' ? 'Petit-déj' :
-                            mealType === 'dejeuner' ? 'Déjeuner' :
-                                mealType === 'diner' ? 'Dîner' : 'Goûter'}
+                            mealType === 'repas_du_jour' ? 'Repas du jour' : 'Goûter'}
                     </Text>
                 </View>
                 <Text style={styles.mealName}>{meal.recipe_name}</Text>
@@ -799,12 +784,8 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <Text style={styles.tableHeaderText}>Petit-déj</Text>
                                     </View>
                                     <View style={styles.tableHeaderCell}>
-                                        <SafeIcon name="Sun" size={14} color="#F59E0B" type="lucide" />
-                                        <Text style={styles.tableHeaderText}>Déjeuner</Text>
-                                    </View>
-                                    <View style={styles.tableHeaderCell}>
-                                        <SafeIcon name="Moon" size={14} color="#3B82F6" type="lucide" />
-                                        <Text style={styles.tableHeaderText}>Dîner</Text>
+                                        <SafeIcon name="UtensilsCrossed" size={14} color="#10B981" type="lucide" />
+                                        <Text style={styles.tableHeaderText}>Repas du jour</Text>
                                     </View>
                                 </View>
 
@@ -812,9 +793,9 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 {DAYS.map((dayName, index) => {
                                     const dayNumber = index + 1;
                                     const dayMeal = getDayMeal(dayNumber);
+                                    // ✅ CORRIGÉ: Utiliser repas_du_jour au lieu de dejeuner et diner
                                     const dayTotal = (dayMeal?.petit_dejeuner?.estimated_cost || 0) +
-                                                   (dayMeal?.dejeuner?.estimated_cost || 0) +
-                                                   (dayMeal?.diner?.estimated_cost || 0);
+                                                   (dayMeal?.repas_du_jour?.estimated_cost || 0);
                                     
                                     return (
                                         <View key={dayNumber} style={styles.tableRow}>
@@ -825,8 +806,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 </Text>
                                             </View>
                                             {renderMealCell(dayMeal?.petit_dejeuner, 'petit_dejeuner', dayNumber)}
-                                            {renderMealCell(dayMeal?.dejeuner, 'dejeuner', dayNumber)}
-                                            {renderMealCell(dayMeal?.diner, 'diner', dayNumber)}
+                                            {renderMealCell(dayMeal?.repas_du_jour, 'repas_du_jour', dayNumber)}
                                         </View>
                                     );
                                 })}
@@ -839,9 +819,9 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                     {DAYS.map((_, index) => {
                                         const dayNumber = index + 1;
                                         const dayMeal = getDayMeal(dayNumber);
+                                        // ✅ CORRIGÉ: Utiliser repas_du_jour au lieu de dejeuner et diner
                                         const dayTotal = (dayMeal?.petit_dejeuner?.estimated_cost || 0) +
-                                                       (dayMeal?.dejeuner?.estimated_cost || 0) +
-                                                       (dayMeal?.diner?.estimated_cost || 0);
+                                                       (dayMeal?.repas_du_jour?.estimated_cost || 0);
                                         return (
                                             <View key={`total-${dayNumber}`} style={[styles.tableCell, styles.tableCellTotal]}>
                                                 <Text style={styles.tableCellTotalValue}>
@@ -892,8 +872,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 <Text style={styles.listDayCost}>
                                     {formatPrice(
                                         (dayMeal.petit_dejeuner?.estimated_cost || 0) +
-                                        (dayMeal.dejeuner?.estimated_cost || 0) +
-                                        (dayMeal.diner?.estimated_cost || 0)
+                                        (dayMeal.repas_du_jour?.estimated_cost || 0)
                                     )}
                                 </Text>
                             </View>
@@ -922,44 +901,22 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                     </View>
                                 )}
                                 
-                                {dayMeal.dejeuner && (
+                                {/* ✅ CORRIGÉ: Utiliser repas_du_jour au lieu de dejeuner et diner */}
+                                {dayMeal.repas_du_jour && (
                                     <View style={styles.listMealItem}>
                                         <View style={styles.listMealLeft}>
-                                            <SafeIcon name="Sun" size={16} color="#F59E0B" type="lucide" />
-                                            <Text style={styles.listMealType}>Déjeuner</Text>
+                                            <SafeIcon name="UtensilsCrossed" size={16} color="#10B981" type="lucide" />
+                                            <Text style={styles.listMealType}>Repas du jour</Text>
                                         </View>
                                         <View style={styles.listMealRight}>
-                                            <Text style={styles.listMealName}>{dayMeal.dejeuner.recipe_name}</Text>
+                                            <Text style={styles.listMealName}>{dayMeal.repas_du_jour.recipe_name}</Text>
                                             <Text style={styles.listMealInfo}>
-                                                {formatPrice(dayMeal.dejeuner.estimated_cost)} • 
-                                                👥 {dayMeal.dejeuner.servings} portion{dayMeal.dejeuner.servings > 1 ? 's' : ''}
+                                                {formatPrice(dayMeal.repas_du_jour.estimated_cost)} • 
+                                                👥 {dayMeal.repas_du_jour.servings} portion{dayMeal.repas_du_jour.servings > 1 ? 's' : ''}
                                             </Text>
                                             <TouchableOpacity
                                                 style={styles.listRecipeButton}
-                                                onPress={() => handleRequestRecipeFromMenu(dayMeal.dejeuner!.recipe_name)}
-                                            >
-                                                <SafeIcon name="ChefHat" size={14} color={modernColors.primary} type="lucide" />
-                                                <Text style={styles.listRecipeButtonText}>Voir recette</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                )}
-                                
-                                {dayMeal.diner && (
-                                    <View style={styles.listMealItem}>
-                                        <View style={styles.listMealLeft}>
-                                            <SafeIcon name="Moon" size={16} color="#3B82F6" type="lucide" />
-                                            <Text style={styles.listMealType}>Dîner</Text>
-                                        </View>
-                                        <View style={styles.listMealRight}>
-                                            <Text style={styles.listMealName}>{dayMeal.diner.recipe_name}</Text>
-                                            <Text style={styles.listMealInfo}>
-                                                {formatPrice(dayMeal.diner.estimated_cost)} • 
-                                                👥 {dayMeal.diner.servings} portion{dayMeal.diner.servings > 1 ? 's' : ''}
-                                            </Text>
-                                            <TouchableOpacity
-                                                style={styles.listRecipeButton}
-                                                onPress={() => handleRequestRecipeFromMenu(dayMeal.diner!.recipe_name)}
+                                                onPress={() => handleRequestRecipeFromMenu(dayMeal.repas_du_jour!.recipe_name)}
                                             >
                                                 <SafeIcon name="ChefHat" size={14} color={modernColors.primary} type="lucide" />
                                                 <Text style={styles.listRecipeButtonText}>Voir recette</Text>
@@ -1708,34 +1665,20 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                             Petit-déjeuner
                                         </Text>
                                     </TouchableOpacity>
+                                    {/* ✅ CORRIGÉ: Remplacer Déjeuner et Dîner par Repas du jour */}
                                     <TouchableOpacity
                                         style={[
                                             styles.mealTypeButton,
-                                            newMealType === 'dejeuner' && styles.mealTypeButtonActive
+                                            newMealType === 'repas_du_jour' && styles.mealTypeButtonActive
                                         ]}
-                                        onPress={() => setNewMealType('dejeuner')}
+                                        onPress={() => setNewMealType('repas_du_jour')}
                                     >
-                                        <SafeIcon name="Sun" size={16} color={newMealType === 'dejeuner' ? '#fff' : '#6B7280'} type="lucide" />
+                                        <SafeIcon name="UtensilsCrossed" size={16} color={newMealType === 'repas_du_jour' ? '#fff' : '#6B7280'} type="lucide" />
                                         <Text style={[
                                             styles.mealTypeButtonText,
-                                            newMealType === 'dejeuner' && styles.mealTypeButtonTextActive
+                                            newMealType === 'repas_du_jour' && styles.mealTypeButtonTextActive
                                         ]}>
-                                            Déjeuner
-                                        </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.mealTypeButton,
-                                            newMealType === 'diner' && styles.mealTypeButtonActive
-                                        ]}
-                                        onPress={() => setNewMealType('diner')}
-                                    >
-                                        <SafeIcon name="Moon" size={16} color={newMealType === 'diner' ? '#fff' : '#6B7280'} type="lucide" />
-                                        <Text style={[
-                                            styles.mealTypeButtonText,
-                                            newMealType === 'diner' && styles.mealTypeButtonTextActive
-                                        ]}>
-                                            Dîner
+                                            Repas du jour
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
@@ -2541,8 +2484,8 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         overflow: 'hidden',
         backgroundColor: '#fff',
-        // Largeur fixe: 100 (jour) + 3 * 140 (repas) = 520px
-        width: 520,
+        // ✅ CORRIGÉ: Largeur fixe: 100 (jour) + 2 * 140 (petit-déj + repas du jour) = 380px
+        width: 380,
     },
     tableHeader: {
         flexDirection: 'row',

@@ -410,26 +410,29 @@ const CovoiturageHomeScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* ✅ MODIFIÉ: Barre de recherche avec départ/destination empilés verticalement pour plus d'espace */}
+                    {/* ✅ AMÉLIORÉ: Barre de recherche avec labels clairs et bouton recherche visible */}
                     {viewMode === 'search' && (
                         <View style={styles.searchContainer}>
+                            <Text style={styles.searchSectionTitle}>Rechercher un covoiturage</Text>
                             {/* Champs départ et destination empilés verticalement */}
                             <View style={styles.routeContainer}>
                                 <View style={styles.routeColumn}>
                                     {/* Départ */}
                                     <View style={styles.routeInputContainer}>
-                                        <Text style={styles.routeLabel}>
-                                            <SafeIcon name="map-pin" size={12} color="#6B7280" type="lucide" /> Départ
-                                        </Text>
+                                        <View style={styles.labelContainer}>
+                                            <SafeIcon name="map-pin" size={16} color="#3B82F6" type="lucide" />
+                                            <Text style={styles.routeLabel}>
+                                                Ville de départ *
+                                            </Text>
+                                        </View>
                                         <LocationSelector
                                             label=""
                                             value={typeof depart === 'string' ? (depart ? { raw: depart, place_name: depart } : '') : depart}
                                             onSelect={(location: LocationObject) => {
                                                 hapticPress();
                                                 setDepart(location);
-                                                // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
                                             }}
-                                            placeholder="Ville de départ"
+                                            placeholder="Ex: Douala, Yaoundé, Bafoussam..."
                                             scope="city"
                                             enrichWithBackend={true}
                                         />
@@ -437,18 +440,20 @@ const CovoiturageHomeScreen: React.FC = () => {
                                     
                                     {/* Destination */}
                                     <View style={styles.routeInputContainer}>
-                                        <Text style={styles.routeLabel}>
-                                            <SafeIcon name="navigation" size={12} color="#6B7280" type="lucide" /> Destination
-                                        </Text>
+                                        <View style={styles.labelContainer}>
+                                            <SafeIcon name="navigation" size={16} color="#3B82F6" type="lucide" />
+                                            <Text style={styles.routeLabel}>
+                                                Ville de destination *
+                                            </Text>
+                                        </View>
                                         <LocationSelector
                                             label=""
                                             value={typeof destination === 'string' ? (destination ? { raw: destination, place_name: destination } : '') : destination}
                                             onSelect={(location: LocationObject) => {
                                                 hapticPress();
                                                 setDestination(location);
-                                                // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
                                             }}
-                                            placeholder="Ville d'arrivée"
+                                            placeholder="Ex: Douala, Yaoundé, Bafoussam..."
                                             scope="city"
                                             enrichWithBackend={true}
                                         />
@@ -461,13 +466,13 @@ const CovoiturageHomeScreen: React.FC = () => {
                                 style={styles.dateButton}
                                 onPress={() => setShowDatePicker(true)}
                             >
-                                <SafeIcon name="calendar" size={18} color="#3B82F6" type="lucide" />
+                                <SafeIcon name="calendar" size={20} color="#3B82F6" type="lucide" />
                                 <Text style={styles.dateButtonText}>
                                     {formatDate(dateDepart)}
                                 </Text>
                             </TouchableOpacity>
 
-                            {/* ✅ MODIFIÉ: Bouton de recherche toujours visible et activé uniquement quand départ et destination sont remplis */}
+                            {/* ✅ AMÉLIORÉ: Bouton de recherche plus visible avec meilleur contraste */}
                             <TouchableOpacity
                                 style={[
                                     styles.searchButton,
@@ -475,22 +480,30 @@ const CovoiturageHomeScreen: React.FC = () => {
                                 ]}
                                 onPress={handleSearch}
                                 disabled={!canSearch() || loading}
-                                activeOpacity={0.7}
+                                activeOpacity={0.8}
                             >
                                 {loading ? (
-                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                    <>
+                                        <ActivityIndicator size="small" color="#FFFFFF" />
+                                        <Text style={styles.searchButtonText}>Recherche en cours...</Text>
+                                    </>
                                 ) : (
                                     <>
-                                        <SafeIcon name="search" size={18} color={canSearch() ? "#FFFFFF" : "#9CA3AF"} type="lucide" />
+                                        <SafeIcon name="search" size={22} color="#FFFFFF" type="lucide" />
                                         <Text 
                                             style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
                                             numberOfLines={1}
                                         >
-                                            Rechercher
+                                            {canSearch() ? "Rechercher des trajets" : "Remplissez les champs ci-dessus"}
                                         </Text>
                                     </>
                                 )}
                             </TouchableOpacity>
+                            {!canSearch() && !loading && (
+                                <Text style={styles.helpText}>
+                                    💡 Sélectionnez une ville de départ et une ville de destination pour commencer votre recherche
+                                </Text>
+                            )}
                         </View>
                     )}
                 </View>
@@ -1000,17 +1013,31 @@ const styles = StyleSheet.create({
     routeInputContainer: {
         flex: 1,
         width: '100%',
-        minHeight: 70, // ✅ NOUVEAU: Hauteur minimale pour garantir la visibilité
-        marginBottom: 4, // ✅ NOUVEAU: Espacement entre les champs
+        minHeight: 80,
+        marginBottom: 16,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
-    routeLabel: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#6B7280',
-        marginBottom: 6,
+    searchSectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 16,
+        marginTop: 4,
+    },
+    labelContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 8,
+        marginBottom: 8,
+    },
+    routeLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
     },
     dateButton: {
         flexDirection: 'row',
@@ -1018,9 +1045,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 14,
         gap: 12,
-        marginBottom: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
     dateButtonText: {
         flex: 1,
@@ -1032,31 +1061,42 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
-        backgroundColor: '#3B82F6', // ✅ CORRIGÉ: Fond bleu au lieu de blanc
-        borderRadius: 12,
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        marginTop: 12,
+        gap: 10,
+        backgroundColor: '#3B82F6',
+        borderRadius: 14,
+        paddingVertical: 18,
+        paddingHorizontal: 28,
+        marginTop: 20,
+        marginBottom: 8,
         shadowColor: '#3B82F6',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        elevation: 6,
+        minHeight: 56,
     },
     searchButtonDisabled: {
-        backgroundColor: '#D1D5DB',
-        shadowOpacity: 0,
-        elevation: 0,
+        backgroundColor: '#E5E7EB',
+        shadowOpacity: 0.1,
+        elevation: 2,
     },
     searchButtonText: {
-        fontSize: 16,
+        fontSize: 17,
         fontWeight: '700',
-        color: '#FFFFFF', // ✅ CORRIGÉ: Texte blanc sur fond bleu
+        color: '#FFFFFF',
         flexShrink: 1,
+        letterSpacing: 0.3,
     },
     searchButtonTextDisabled: {
-        color: '#9CA3AF',
+        color: '#6B7280',
+    },
+    helpText: {
+        fontSize: 13,
+        color: '#6B7280',
+        textAlign: 'center',
+        marginTop: 8,
+        paddingHorizontal: 16,
+        lineHeight: 18,
     },
     centerContainer: {
         flex: 1,

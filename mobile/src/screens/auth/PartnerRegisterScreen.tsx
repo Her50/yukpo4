@@ -760,12 +760,12 @@ const PartnerRegisterScreen: React.FC = () => {
                 // Stocker les coordonnées GPS
                 setForm({ ...form, partner_gps: { lat, lng } });
                 
-                // Faire un géocodage inverse pour obtenir l'adresse
+                // ✅ CORRIGÉ 2026-01-12: Utiliser reverseGeocodeWithRetry avec retry et fallback
                 try {
-                  const geocodeResult = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-                  if (geocodeResult.length > 0) {
-                    const address = geocodeResult[0];
-                    const formattedAddress = `${address.street || ''} ${address.streetNumber || ''}, ${address.city || ''}, ${address.region || ''}, ${address.country || ''}`.trim();
+                  const { reverseGeocodeWithRetry } = await import('../../utils/reverseGeocoding');
+                  const geocodeResult = await reverseGeocodeWithRetry(lat, lng);
+                  if (geocodeResult) {
+                    const formattedAddress = geocodeResult.address;
                     setForm({ ...form, partner_address: formattedAddress, partner_gps: { lat, lng } });
                     if (address.country) {
                       setForm(prev => ({ ...prev, partner_country: address.country || '' }));

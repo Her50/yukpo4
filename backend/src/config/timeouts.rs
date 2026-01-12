@@ -22,18 +22,18 @@ pub struct TimeoutConfig {
 impl Default for TimeoutConfig {
     fn default() -> Self {
         Self {
-            // Timeout de requête HTTP réduit de 180s à 30s
-            request_timeout: Duration::from_secs(30),
-            // Timeout de base de données optimisé
-            database_timeout: Duration::from_secs(10),
-            // Timeout IA raisonnable
-            ai_timeout: Duration::from_secs(60),
-            // Timeout d'embedding optimisé
-            embedding_timeout: Duration::from_secs(30),
-            // Timeout WebSocket
-            websocket_timeout: Duration::from_secs(15),
-            // Timeout géocodage
-            geocoding_timeout: Duration::from_secs(20),
+            // ✅ CORRIGÉ 2026-01-12: Timeout HTTP augmenté pour gérer les requêtes longues (produits, services)
+            request_timeout: Duration::from_secs(60),
+            // ✅ CORRIGÉ: Timeout DB augmenté pour requêtes complexes
+            database_timeout: Duration::from_secs(30),
+            // ✅ CORRIGÉ: Timeout IA augmenté pour requêtes complexes
+            ai_timeout: Duration::from_secs(120),
+            // ✅ CORRIGÉ: Timeout embedding augmenté
+            embedding_timeout: Duration::from_secs(60),
+            // ✅ CORRIGÉ: Timeout WebSocket augmenté
+            websocket_timeout: Duration::from_secs(30),
+            // ✅ CORRIGÉ: Timeout géocodage augmenté
+            geocoding_timeout: Duration::from_secs(30),
         }
     }
 }
@@ -49,46 +49,48 @@ impl TimeoutConfig {
         geocoding_timeout: Option<u64>,
     ) -> Self {
         Self {
-            request_timeout: Duration::from_secs(request_timeout.unwrap_or(30)),
-            database_timeout: Duration::from_secs(database_timeout.unwrap_or(10)),
-            ai_timeout: Duration::from_secs(ai_timeout.unwrap_or(60)),
-            embedding_timeout: Duration::from_secs(embedding_timeout.unwrap_or(30)),
-            websocket_timeout: Duration::from_secs(websocket_timeout.unwrap_or(15)),
-            geocoding_timeout: Duration::from_secs(geocoding_timeout.unwrap_or(20)),
+            // ✅ CORRIGÉ 2026-01-12: Utiliser les nouvelles valeurs par défaut augmentées
+            request_timeout: Duration::from_secs(request_timeout.unwrap_or(60)),
+            database_timeout: Duration::from_secs(database_timeout.unwrap_or(30)),
+            ai_timeout: Duration::from_secs(ai_timeout.unwrap_or(120)),
+            embedding_timeout: Duration::from_secs(embedding_timeout.unwrap_or(60)),
+            websocket_timeout: Duration::from_secs(websocket_timeout.unwrap_or(30)),
+            geocoding_timeout: Duration::from_secs(geocoding_timeout.unwrap_or(30)),
         }
     }
 
     /// Charge la configuration depuis les variables d'environnement
     pub fn from_env() -> Self {
+        // ✅ CORRIGÉ 2026-01-12: Valeurs par défaut augmentées pour gérer les requêtes longues
         let request_timeout = std::env::var("REQUEST_TIMEOUT")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(30);
-
-        let database_timeout = std::env::var("DATABASE_TIMEOUT")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(10);
-
-        let ai_timeout = std::env::var("AI_TIMEOUT")
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(60);
 
-        let embedding_timeout = std::env::var("EMBEDDING_TIMEOUT_SECONDS")
+        let database_timeout = std::env::var("DATABASE_TIMEOUT")
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(30);
 
+        let ai_timeout = std::env::var("AI_TIMEOUT")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(120);
+
+        let embedding_timeout = std::env::var("EMBEDDING_TIMEOUT_SECONDS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(60);
+
         let websocket_timeout = std::env::var("WEBSOCKET_TIMEOUT")
             .ok()
             .and_then(|v| v.parse().ok())
-            .unwrap_or(15);
+            .unwrap_or(30);
 
         let geocoding_timeout = std::env::var("GEOCODING_TIMEOUT")
             .ok()
             .and_then(|v| v.parse().ok())
-            .unwrap_or(20);
+            .unwrap_or(30);
 
         Self::new(
             Some(request_timeout),

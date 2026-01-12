@@ -2307,24 +2307,15 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         if (!isNaN(lat) && !isNaN(lng)) {
                             setSelectedLocation({ lat, lng });
 
-                            // ✅ NOUVEAU: Faire le géocodage inverse pour obtenir le nom complet du lieu
+                            // ✅ CORRIGÉ 2026-01-12: Utiliser reverseGeocodeWithRetry avec retry et fallback
                             try {
-                                const { reverseGeocodeAsync } = await import('expo-location');
-                                const reverseGeocode = await reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                                const { reverseGeocodeWithRetry } = await import('../utils/reverseGeocoding');
+                                const geocodeResult = await reverseGeocodeWithRetry(lat, lng, {
+                                    fallbackAddress: coordinatesString
+                                });
                                 
-                                if (reverseGeocode && reverseGeocode.length > 0) {
-                                    const addr = reverseGeocode[0];
-                                    // Construire le nom complet du lieu
-                                    const addressParts = [];
-                                    if (addr.name) addressParts.push(addr.name);
-                                    if (addr.street) addressParts.push(addr.street);
-                                    if (addr.district) addressParts.push(addr.district);
-                                    if (addr.city) addressParts.push(addr.city);
-                                    if (addr.region) addressParts.push(addr.region);
-                                    if (addr.country) addressParts.push(addr.country);
-                                    
-                                    const placeName = addr.name || addr.street || addr.district || addr.city || 'Lieu sélectionné';
-                                    const fullAddress = addressParts.filter(Boolean).join(', ') || placeName;
+                                if (geocodeResult) {
+                                    const fullAddress = geocodeResult.address;
                                     
                                     // Construire un LocationObject avec le nom complet
                                     const locationObject: LocationObject = {

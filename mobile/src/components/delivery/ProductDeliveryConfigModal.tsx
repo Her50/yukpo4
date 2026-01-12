@@ -1118,34 +1118,26 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         if (!isNaN(lat) && !isNaN(lng)) {
                             const index = gpsModalForIndex ?? 0;
                             
-                            // ✅ NOUVEAU: Faire le géocodage inverse pour obtenir le nom complet du lieu
+                            // ✅ CORRIGÉ 2026-01-12: Utiliser reverseGeocodeWithRetry avec retry et fallback
                             try {
-                                const { reverseGeocodeAsync } = await import('expo-location');
-                                const reverseGeocode = await reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                                const { reverseGeocodeWithRetry } = await import('../../utils/reverseGeocoding');
+                                const geocodeResult = await reverseGeocodeWithRetry(lat, lng, {
+                                    fallbackAddress: coordinatesString
+                                });
                                 
-                                if (reverseGeocode && reverseGeocode.length > 0) {
-                                    const addr = reverseGeocode[0];
-                                    // Construire le nom complet du lieu
-                                    const addressParts = [];
-                                    if (addr.name) addressParts.push(addr.name);
-                                    if (addr.street) addressParts.push(addr.street);
-                                    if (addr.district) addressParts.push(addr.district);
-                                    if (addr.city) addressParts.push(addr.city);
-                                    if (addr.region) addressParts.push(addr.region);
-                                    if (addr.country) addressParts.push(addr.country);
-                                    
-                                    const placeName = addr.name || addr.street || addr.district || addr.city || 'Lieu sélectionné';
-                                    const fullAddress = addressParts.filter(Boolean).join(', ') || placeName;
+                                if (geocodeResult) {
+                                    const fullAddress = geocodeResult.address;
+                                    const placeName = geocodeResult.name || geocodeResult.street || geocodeResult.district || geocodeResult.city || 'Lieu sélectionné';
                                     
                                     // Construire un LocationObject avec le nom complet
                                     const locationObj: LocationObject = {
                                         raw: fullAddress,
                                         place_name: placeName, // Nom principal du lieu (établissement, rue, quartier)
                                         components: {
-                                            quartier: addr.district || undefined,
-                                            ville: addr.city || undefined,
-                                            region: addr.region || undefined,
-                                            pays: addr.country || undefined,
+                                            quartier: geocodeResult.district || undefined,
+                                            ville: geocodeResult.city || undefined,
+                                            region: geocodeResult.region || undefined,
+                                            pays: geocodeResult.country || undefined,
                                         },
                                         coordinates: { lat, lng },
                                     };

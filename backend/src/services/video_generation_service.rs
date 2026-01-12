@@ -1330,6 +1330,8 @@ pub async fn generate_product_video(
             args.push("1".to_string());
         }
 
+        // ✅ CORRIGÉ 2026-01-12: Le filtre est maintenant toujours une seule chaîne avec virgules
+        // donc on peut toujours utiliser -vf (plus simple et plus performant que -filter_complex)
         args.extend(vec![
             "-i".to_string(),
             media.path.to_string_lossy().to_string(),
@@ -3347,38 +3349,12 @@ fn build_ffmpeg_filter(
         }
     }
 
-    // ✅ CORRECTION RACINE: Séparer les filtres drawtext avec des points-virgules
-    // FFmpeg ne peut pas avoir plusieurs filtres drawtext séparés par des virgules dans le même filtre complexe
-    // Il faut utiliser des points-virgules pour séparer les filtres complexes
-    // Note: format=yuv420p n'est pas nécessaire ici car -pix_fmt yuv420p est déjà spécifié
-    // dans les arguments FFmpeg. L'ajouter ici cause une erreur de parsing FFmpeg.
-    
-    // Séparer les filtres non-drawtext (avec virgules) et les filtres drawtext (avec points-virgules)
-    let mut result_parts: Vec<String> = Vec::new();
-    let mut current_chain: Vec<String> = Vec::new();
-    
-    for part in filter_parts {
-        if part.starts_with("drawtext=") {
-            // Si on a des filtres non-drawtext en attente, les joindre avec des virgules
-            if !current_chain.is_empty() {
-                result_parts.push(current_chain.join(","));
-                current_chain.clear();
-            }
-            // Ajouter le drawtext directement (sera joint avec des points-virgules)
-            result_parts.push(part);
-        } else {
-            // Accumuler les filtres non-drawtext
-            current_chain.push(part);
-        }
-    }
-    
-    // Ajouter les filtres non-drawtext restants
-    if !current_chain.is_empty() {
-        result_parts.push(current_chain.join(","));
-    }
-    
-    // Joindre tous les filtres avec des points-virgules
-    result_parts.join(";")
+    // ✅ CORRIGÉ 2026-01-12: Utiliser uniquement des virgules pour séparer tous les filtres
+    // Le problème était que les points-virgules (;) créent plusieurs chaînes de filtres distinctes
+    // dans FFmpeg, ce qui cause l'erreur "expected to have exactly 1 input and 1 output"
+    // Solution: Tous les filtres (scale, pad, drawtext) peuvent être chaînés avec des virgules
+    // dans une seule chaîne de filtres pour -vf
+    filter_parts.join(",")
 }
 
 async fn append_video_to_service_data(
@@ -3581,15 +3557,19 @@ async fn run_ffmpeg(working_dir: &Path, args: Vec<String>) -> AppResult<()> {
             error!("[VideoGeneration] STDOUT: {}", stdout);
         }
 
-        // Extraire les erreurs pertinentes de stderr
-        let error_summary = if stderr.contains("No such file") {
+        // ✅ CORRIGÉ 2026-01-12: Amélioration de la détection d'erreurs FFmpeg
+        let error_summary = if stderr.contains("No such file") || stderr.contains("No such file or directory") {
             "Fichier source introuvable"
-        } else if stderr.contains("Invalid") {
-            "Paramètres FFmpeg invalides"
+        } else if stderr.contains("Invalid") || stderr.contains("Invalid argument") || stderr.contains("was expected to have exactly") {
+            "Paramètres FFmpeg invalides (syntaxe de filtre incorrecte)"
         } else if stderr.contains("Permission denied") {
             "Permission refusée pour accéder au fichier"
-        } else if stderr.contains("codec") {
+        } else if stderr.contains("codec") || stderr.contains("Codec") {
             "Codec non supporté"
+        } else if stderr.contains("filter") || stderr.contains("filtergraph") {
+            "Erreur de filtre vidéo (syntaxe incorrecte)"
+        } else if stderr.contains("timeout") || stderr.contains("Timeout") {
+            "Timeout lors de la génération"
         } else {
             "Erreur inconnue FFmpeg"
         };

@@ -1060,20 +1060,10 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         </NativeCard>
       </LinearGradient>
 
-      {showChatModal && !onChatPress && activeChatPeer?.user_id && (
-        <ChatModalMobile
-          visible={showChatModal}
-          onClose={handleCloseChatModal}
-          service={service || {
-            id: product.service_id,
-            data: { titre_service: { valeur: productData.nom } }
-          }}
-          prestataireInfo={activeChatPeer}
-          user={null}
-          conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
-          isPrivateConversation={isPrivateChat}
-        />
-      )}
+      {/* ✅ CORRIGÉ 2026-01-12: Supprimé logique obsolète showChatModal
+          Le chat est maintenant géré par le parent via onChatPress
+          Cette logique causait l'erreur "Property 'showChatModal' doesn't exist"
+      */}
 
       {showOrderModal && serviceId && (
         <OrderDeliveryModal
