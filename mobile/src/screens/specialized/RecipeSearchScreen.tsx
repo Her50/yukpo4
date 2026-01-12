@@ -14,9 +14,10 @@ import {
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { GeneratedRecipe, menuPlanningService } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
+import { generateAndDownloadRecipePDF, shareRecipePDF } from '../../utils/recipePdfGenerator';
 
 const RecipeSearchScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -24,6 +25,7 @@ const RecipeSearchScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
     const [showRecipeDetails, setShowRecipeDetails] = useState(false);
+    const [exportingRecipePDF, setExportingRecipePDF] = useState(false);
 
     const handleSearch = async () => {
         if (!searchQuery.trim()) {
@@ -77,24 +79,6 @@ const RecipeSearchScreen: React.FC = () => {
         }
     };
 
-    const handleQuickSearch = (recipeName: string) => {
-        setSearchQuery(recipeName);
-        // Déclencher la recherche automatiquement
-        setTimeout(() => {
-            handleSearch();
-        }, 100);
-    };
-
-    const quickRecipes = [
-        'Poulet DG',
-        'Ndolé',
-        'Sauce arachide',
-        'Riz sauté',
-        'Poulet braisé',
-        'Poisson braisé',
-        'Okok',
-        'Eru',
-    ];
 
     return (
         <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -109,13 +93,13 @@ const RecipeSearchScreen: React.FC = () => {
                 <NativeCard style={styles.searchCard}>
                     <Text style={styles.label}>🔍 Rechercher une recette</Text>
                     <View style={styles.searchContainer}>
-                        <TextInput
-                            style={styles.searchInput}
+                        <NativeInput
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                             placeholder="Ex: Poulet DG, Ndolé, Riz sauté..."
                             onSubmitEditing={handleSearch}
                             returnKeyType="search"
+                            style={styles.searchInput}
                         />
                         <NativeButton
                             title="Rechercher"
@@ -124,23 +108,8 @@ const RecipeSearchScreen: React.FC = () => {
                             variant="primary"
                             size="small"
                             style={styles.searchButton}
+                            disabled={!searchQuery.trim() || loading}
                         />
-                    </View>
-                </NativeCard>
-
-                <NativeCard style={styles.quickCard}>
-                    <Text style={styles.label}>⚡ Recettes populaires</Text>
-                    <View style={styles.quickRecipesContainer}>
-                        {quickRecipes.map((recipe) => (
-                            <TouchableOpacity
-                                key={recipe}
-                                style={styles.quickRecipeChip}
-                                onPress={() => handleQuickSearch(recipe)}
-                            >
-                                <SafeIcon name="ChefHat" size={16} color={modernColors.primary} type="lucide" />
-                                <Text style={styles.quickRecipeText}>{recipe}</Text>
-                            </TouchableOpacity>
-                        ))}
                     </View>
                 </NativeCard>
 
@@ -151,13 +120,6 @@ const RecipeSearchScreen: React.FC = () => {
                         <Text style={styles.loadingSubtext}>Cela peut prendre jusqu'à 90 secondes</Text>
                     </View>
                 )}
-
-                <NativeCard style={styles.infoCard}>
-                    <SafeIcon name="Info" size={24} color={modernColors.primary} type="lucide" />
-                    <Text style={styles.infoText}>
-                        Notre IA génère des recettes complètes et détaillées selon vos préférences et votre profil famille.
-                    </Text>
-                </NativeCard>
             </View>
 
             {/* ✅ NOUVEAU: Modal pour afficher la recette générée (comme dans MenuWeekCalendarScreen) */}
@@ -300,8 +262,34 @@ const RecipeSearchScreen: React.FC = () => {
                                     setShowRecipeDetails(false);
                                     setGeneratedRecipe(null);
                                 }}
+                                variant="secondary"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title={exportingRecipePDF ? 'Génération...' : 'Partager en PDF'}
+                                onPress={async () => {
+                                    if (!generatedRecipe) return;
+                                    
+                                    try {
+                                        setExportingRecipePDF(true);
+                                        const pdfUri = await generateAndDownloadRecipePDF({
+                                            recipe: generatedRecipe,
+                                            currency: 'FCFA',
+                                        });
+                                        
+                                        await shareRecipePDF(pdfUri, generatedRecipe.recipe_name);
+                                        Alert.alert('Succès', 'Recette partagée avec succès !');
+                                    } catch (error: any) {
+                                        console.error('[RecipeSearch] Erreur partage recette PDF:', error);
+                                        Alert.alert('Erreur', error.message || 'Impossible de partager la recette en PDF');
+                                    } finally {
+                                        setExportingRecipePDF(false);
+                                    }
+                                }}
                                 variant="primary"
                                 style={styles.modalButton}
+                                disabled={exportingRecipePDF}
+                                loading={exportingRecipePDF}
                             />
                         </View>
                     </View>
@@ -354,40 +342,9 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        padding: 12,
-        backgroundColor: '#F9FAFB',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 8,
-        fontSize: 16,
     },
     searchButton: {
         minWidth: 100,
-    },
-    quickCard: {
-        marginBottom: 16,
-        padding: 16,
-    },
-    quickRecipesContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    quickRecipeChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    quickRecipeText: {
-        fontSize: 14,
-        color: '#111827',
-        fontWeight: '500',
     },
     loadingContainer: {
         alignItems: 'center',
@@ -404,21 +361,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.textSecondary,
         fontStyle: 'italic',
-    },
-    infoCard: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-        padding: 16,
-        backgroundColor: '#EFF6FF',
-        borderWidth: 1,
-        borderColor: '#BFDBFE',
-    },
-    infoText: {
-        flex: 1,
-        fontSize: 14,
-        color: '#1E40AF',
-        lineHeight: 20,
     },
     // ✅ NOUVEAU: Styles pour le modal de recette
     modalOverlay: {
@@ -454,9 +396,11 @@ const styles = StyleSheet.create({
         padding: 20,
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
+        flexDirection: 'row',
+        gap: 12,
     },
     modalButton: {
-        width: '100%',
+        flex: 1,
     },
     recipeHeader: {
         marginBottom: 20,
