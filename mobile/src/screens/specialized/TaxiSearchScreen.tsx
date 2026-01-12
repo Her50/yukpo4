@@ -239,6 +239,21 @@ const TaxiSearchScreen: React.FC = () => {
                         <Text style={styles.hintText}>
                             Vous pouvez rechercher une ville, un quartier, un établissement ou un point GPS
                         </Text>
+                        {/* ✅ NOUVEAU: Bouton de recherche directement après le champ */}
+                        <TouchableOpacity
+                            onPress={handleSearch}
+                            disabled={loading || (!lieu && !zone && !gpsData)}
+                            style={[
+                                styles.quickSearchButton,
+                                (loading || (!lieu && !zone && !gpsData)) && styles.quickSearchButtonDisabled
+                            ]}
+                            activeOpacity={0.8}
+                        >
+                            <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.quickSearchButtonText}>
+                                {loading ? 'Recherche...' : 'Rechercher'}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* GPS */}
@@ -719,6 +734,32 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         marginTop: 6,
         fontStyle: 'italic',
+    },
+    quickSearchButton: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#06B6D4',
+        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        gap: 8,
+        shadowColor: '#06B6D4',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    quickSearchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        shadowOpacity: 0,
+        elevation: 0,
+    },
+    quickSearchButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
     },
     // ✅ NOUVEAU: Styles pour bannière fonctionnalités IA
     aiFeaturesBanner: {

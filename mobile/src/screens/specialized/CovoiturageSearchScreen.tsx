@@ -405,8 +405,8 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             onSelect={(location: LocationObject) => {
                                                 setVilleDepart(location);
                                             }}
-                                            placeholder="Ville de départ"
-                                            scope="city"
+                                            placeholder="Lieu de départ (ville, quartier, établissement...)"
+                                            scope="all"
                                             enrichWithBackend={true}
                                             required={true}
                                         />
@@ -439,8 +439,8 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             onSelect={(location: LocationObject) => {
                                                 setVilleDestination(location);
                                             }}
-                                            placeholder="Ville d'arrivée"
-                                            scope="city"
+                                            placeholder="Lieu d'arrivée (ville, quartier, établissement...)"
+                                            scope="all"
                                             enrichWithBackend={true}
                                             required={true}
                                         />
@@ -457,7 +457,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                                 setQuartierDepart(location);
                                             }}
                                             placeholder="Quartier départ (opt.)"
-                                            scope="neighborhood"
+                                            scope="all"
                                             cityContext={typeof villeDepart === 'string' ? villeDepart : (villeDepart as LocationObject)?.components?.ville || (villeDepart as LocationObject)?.place_name || ''}
                                             enrichWithBackend={true}
                                         />
@@ -470,12 +470,32 @@ const CovoiturageSearchScreen: React.FC = () => {
                                                 setQuartierDestination(location);
                                             }}
                                             placeholder="Quartier arrivée (opt.)"
-                                            scope="neighborhood"
+                                            scope="all"
                                             cityContext={typeof villeDestination === 'string' ? villeDestination : (villeDestination as LocationObject)?.components?.ville || (villeDestination as LocationObject)?.place_name || ''}
                                             enrichWithBackend={true}
                                         />
                                     </View>
                                 </View>
+                            </View>
+                        )}
+
+                        {/* ✅ NOUVEAU: Bouton de recherche directement après les champs départ/arrivée */}
+                        {!searchNearby && (
+                            <View style={styles.inputGroup}>
+                                <TouchableOpacity
+                                    onPress={handleSearch}
+                                    disabled={loading || (!villeDepart && !villeDestination)}
+                                    style={[
+                                        styles.quickSearchButton,
+                                        (loading || (!villeDepart && !villeDestination)) && styles.quickSearchButtonDisabled
+                                    ]}
+                                    activeOpacity={0.8}
+                                >
+                                    <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
+                                    <Text style={styles.quickSearchButtonText}>
+                                        {loading ? 'Recherche en cours...' : 'Rechercher'}
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
                         )}
 
@@ -1166,6 +1186,32 @@ const styles = StyleSheet.create({
     },
     chipTextActive: {
         color: '#FFFFFF',
+    },
+    quickSearchButton: {
+        marginTop: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#10B981',
+        borderRadius: 12,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        gap: 8,
+        shadowColor: '#10B981',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    quickSearchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        shadowOpacity: 0,
+        elevation: 0,
+    },
+    quickSearchButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
     },
 });
 

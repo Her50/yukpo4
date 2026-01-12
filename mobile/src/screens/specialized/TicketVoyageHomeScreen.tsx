@@ -357,8 +357,8 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                         setDepartureCity(location);
                                         // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
                                     }}
-                                    placeholder="Ville de départ"
-                                    scope="city"
+                                    placeholder="Lieu de départ (ville, quartier, établissement...)"
+                                    scope="all"
                                     enrichWithBackend={true}
                                 />
                             </View>
@@ -374,8 +374,8 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                         setArrivalCity(location);
                                         // ✅ MODIFIÉ: Ne plus lancer automatiquement la recherche
                                     }}
-                                    placeholder="Ville d'arrivée"
-                                    scope="city"
+                                    placeholder="Lieu d'arrivée (ville, quartier, établissement...)"
+                                    scope="all"
                                     enrichWithBackend={true}
                                 />
                             </View>
@@ -733,24 +733,24 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                         <View style={styles.filterSection}>
                             <Text style={styles.filterSectionTitle}>Ville de départ</Text>
                             <LocationSelector
-                                label="Ville de départ"
+                                label="Lieu de départ"
                                 value={typeof departureCity === 'string' ? (departureCity ? { raw: departureCity, place_name: departureCity } : '') : departureCity}
                                 onSelect={(location: LocationObject) => setDepartureCity(location)}
-                                placeholder="Rechercher une ville..."
-                                scope="city"
+                                placeholder="Rechercher un lieu (ville, quartier, établissement...)"
+                                scope="all"
                                 enrichWithBackend={true}
                             />
                         </View>
 
                         {/* Ville d'arrivée */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterSectionTitle}>Ville d'arrivée</Text>
+                            <Text style={styles.filterSectionTitle}>Lieu d'arrivée</Text>
                             <LocationSelector
-                                label="Ville d'arrivée"
+                                label="Lieu d'arrivée"
                                 value={typeof arrivalCity === 'string' ? (arrivalCity ? { raw: arrivalCity, place_name: arrivalCity } : '') : arrivalCity}
                                 onSelect={(location: LocationObject) => setArrivalCity(location)}
-                                placeholder="Rechercher une ville..."
-                                scope="city"
+                                placeholder="Rechercher un lieu (ville, quartier, établissement...)"
+                                scope="all"
                                 enrichWithBackend={true}
                             />
                         </View>
