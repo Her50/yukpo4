@@ -989,41 +989,70 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Fonction de validation des champs
   const validateField = (field: DynamicField, value: any): { isValid: boolean; error: string } => {
+    // ✅ CORRECTION CRITIQUE: Extraire la valeur string correctement pour éviter les crashes
+    const getStringValue = (val: any): string => {
+      if (!val) return '';
+      if (typeof val === 'string') return val;
+      if (typeof val === 'object' && val !== null) {
+        if ('valeur' in val && typeof val.valeur === 'string') return val.valeur;
+        if ('raw' in val && typeof val.raw === 'string') return val.raw;
+        // Dernier recours: convertir en string
+        try {
+          return String(val);
+        } catch {
+          return '';
+        }
+      }
+      try {
+        return String(val);
+      } catch {
+        return '';
+      }
+    };
+
+    const stringValue = getStringValue(value);
+    const trimmedValue = stringValue.trim();
+
     // Champ obligatoire vide
-    if (field.required && (!value || value.toString().trim() === '')) {
+    if (field.required && trimmedValue === '') {
       return { isValid: false, error: `${field.label} est obligatoire` };
     }
 
+    // Si le champ n'est pas requis et est vide, pas besoin de validation supplémentaire
+    if (trimmedValue === '') {
+      return { isValid: true, error: '' };
+    }
+
     // Validation spécifique pour WhatsApp
-    if (field.name === 'whatsapp' && value) {
+    if (field.name === 'whatsapp' && trimmedValue) {
       const whatsappRegex = /^(\+?237|00237)?[0-9]{9}$/;
-      const cleanValue = value.replace(/\s/g, '');
+      const cleanValue = trimmedValue.replace(/\s/g, '');
       if (!whatsappRegex.test(cleanValue)) {
         return { isValid: false, error: 'Numéro WhatsApp invalide (ex: +237 6XX XX XX XX)' };
       }
     }
 
     // Validation spécifique pour téléphone
-    if (field.name === 'telephone' && value) {
+    if (field.name === 'telephone' && trimmedValue) {
       const phoneRegex = /^(\+?237|00237)?[0-9]{9}$/;
-      const cleanValue = value.replace(/\s/g, '');
+      const cleanValue = trimmedValue.replace(/\s/g, '');
       if (!phoneRegex.test(cleanValue)) {
         return { isValid: false, error: 'Numéro de téléphone invalide' };
       }
     }
 
     // Validation spécifique pour email
-    if ((field.type === 'email' || field.name === 'email') && value) {
+    if ((field.type === 'email' || field.name === 'email') && trimmedValue) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(value)) {
+      if (!emailRegex.test(trimmedValue)) {
         return { isValid: false, error: 'Adresse email invalide' };
       }
     }
 
     // Validation spécifique pour URL
-    if ((field.type === 'url' || field.name === 'website') && value) {
+    if ((field.type === 'url' || field.name === 'website') && trimmedValue) {
       const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-      if (!urlRegex.test(value)) {
+      if (!urlRegex.test(trimmedValue)) {
         return { isValid: false, error: 'URL invalide (ex: https://exemple.com)' };
       }
     }
@@ -2513,6 +2542,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           return 'default';
         };
 
+        // ✅ CORRECTION CRITIQUE: Extraire la valeur correctement pour éviter les crashes
+        // Les valeurs peuvent être des objets complexes depuis l'IA ou des strings simples
+        const getFieldValue = (): string => {
+          const rawValue = valeursFormulaire[field.name];
+          if (!rawValue) return '';
+          if (typeof rawValue === 'string') return rawValue;
+          if (typeof rawValue === 'object' && rawValue !== null) {
+            // Si c'est un objet avec une propriété 'valeur', l'utiliser
+            if ('valeur' in rawValue && typeof rawValue.valeur === 'string') {
+              return rawValue.valeur;
+            }
+            // Sinon, essayer de convertir en string
+            if ('raw' in rawValue && typeof rawValue.raw === 'string') {
+              return rawValue.raw;
+            }
+            // Dernier recours: convertir en string
+            return String(rawValue);
+          }
+          return String(rawValue);
+        };
+
         return (
           <View key={field.name} style={isProductField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
@@ -2520,7 +2570,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             </Text>
             <NativeInput
               placeholder={field.placeholder}
-              value={valeursFormulaire[field.name] || ''}
+              value={getFieldValue()}
               onChangeText={(text) => {
                 handleFieldChange(field.name, text);
                 // Effacer l'erreur quand l'utilisateur tape
