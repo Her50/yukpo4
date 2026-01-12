@@ -1120,8 +1120,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Fonction de validation d'un bloc complet
   const validateCurrentBlock = (): { isValid: boolean; errors: string[]; fieldErrors: Record<string, string> } => {
+    // ✅ CORRECTION CRITIQUE: Vérifier que blocks existe et que currentBlock est valide
+    if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
+      console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun bloc disponible');
+      return { isValid: true, errors: [], fieldErrors: {} };
+    }
+
+    if (currentBlock < 0 || currentBlock >= blocks.length) {
+      console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Index de bloc invalide:', currentBlock, 'sur', blocks.length);
+      return { isValid: true, errors: [], fieldErrors: {} };
+    }
+
     const currentBlockData = blocks[currentBlock];
-    if (!currentBlockData) return { isValid: true, errors: [], fieldErrors: {} };
+    if (!currentBlockData) {
+      console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Bloc actuel non trouvé, index:', currentBlock);
+      return { isValid: true, errors: [], fieldErrors: {} };
+    }
 
     // ✅ CORRECTION CRITIQUE: Vérifier que fields existe et est un tableau
     if (!currentBlockData.fields || !Array.isArray(currentBlockData.fields)) {
@@ -1143,12 +1157,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     // Validation des champs individuels
     currentBlockData.fields.forEach(field => {
-      const value = valeursFormulaire[field.name];
-      const validation = validateField(field, value);
+      try {
+        // ✅ CORRECTION CRITIQUE: Extraire la valeur correctement pour éviter les crashes
+        let value = valeursFormulaire[field.name];
+        if (value && typeof value === 'object' && value !== null) {
+          // Si c'est un objet complexe, extraire la valeur string
+          if ('valeur' in value && typeof value.valeur === 'string') {
+            value = value.valeur;
+          } else if ('raw' in value && typeof value.raw === 'string') {
+            value = value.raw;
+          }
+          // Sinon, garder la valeur telle quelle pour les autres types (autocomplete, etc.)
+        }
 
-      if (!validation.isValid) {
-        errors.push(validation.error);
-        newFieldErrors[field.name] = validation.error;
+        const validation = validateField(field, value);
+        if (!validation.isValid) {
+          errors.push(validation.error);
+          newFieldErrors[field.name] = validation.error;
+        }
+      } catch (error) {
+        console.error(`[FormulaireYukpoIntelligentScreen] ⚠️ Erreur validation champ ${field.name}:`, error);
+        // Ne pas bloquer la validation en cas d'erreur inattendue
       }
     });
 
