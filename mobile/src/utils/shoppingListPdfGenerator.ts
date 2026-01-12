@@ -261,8 +261,12 @@ export async function generateShoppingListHTML(listData: ShoppingListPdfData): P
  */
 export async function generateAndDownloadShoppingListPDF(listData: ShoppingListPdfData): Promise<string> {
     try {
-        const printModule = await import('expo-print');
-        const { printToFileAsync } = printModule;
+        // Import statique de expo-print
+        const { printToFileAsync } = require('expo-print');
+
+        if (!printToFileAsync || typeof printToFileAsync !== 'function') {
+            throw new Error('expo-print.printToFileAsync n\'est pas disponible. Veuillez installer expo-print: npm install expo-print');
+        }
 
         const html = await generateShoppingListHTML(listData);
 
@@ -273,9 +277,12 @@ export async function generateAndDownloadShoppingListPDF(listData: ShoppingListP
 
         console.log('✅ Liste de courses PDF générée:', uri);
         return uri;
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ Erreur génération PDF:', error);
-        throw new Error('Impossible de générer la liste de courses PDF. Veuillez installer expo-print: npm install expo-print');
+        if (error.code === 'MODULE_NOT_FOUND' || error.message?.includes('Cannot find module')) {
+            throw new Error('Impossible de générer la liste de courses PDF. Veuillez installer expo-print: npm install expo-print');
+        }
+        throw error;
     }
 }
 
@@ -284,8 +291,8 @@ export async function generateAndDownloadShoppingListPDF(listData: ShoppingListP
  */
 export async function shareShoppingListPDF(pdfUri: string, listTitle: string) {
     try {
-        const Share = await import('react-native-share');
-        const { shareAsync } = await import('expo-sharing');
+        const Share = require('react-native-share');
+        const { shareAsync } = require('expo-sharing');
 
         // Essayer d'abord avec react-native-share pour cibler WhatsApp spécifiquement
         try {
@@ -306,7 +313,7 @@ export async function shareShoppingListPDF(pdfUri: string, listTitle: string) {
         }
 
         console.log('✅ Liste de courses partagée');
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ Erreur partage PDF:', error);
         throw new Error('Impossible de partager la liste de courses');
     }

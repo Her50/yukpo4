@@ -342,9 +342,12 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
  */
 export async function generateAndDownloadMenuPDF(menuData: MenuPdfData): Promise<string> {
     try {
-        // Dynamically import expo-print
-        const printModule = await import('expo-print');
-        const { printToFileAsync } = printModule;
+        // Import statique de expo-print
+        const { printToFileAsync } = require('expo-print');
+
+        if (!printToFileAsync || typeof printToFileAsync !== 'function') {
+            throw new Error('expo-print.printToFileAsync n\'est pas disponible. Veuillez installer expo-print: npm install expo-print');
+        }
 
         const html = await generateMenuHTML(menuData);
 
@@ -355,9 +358,12 @@ export async function generateAndDownloadMenuPDF(menuData: MenuPdfData): Promise
 
         console.log('✅ Menu PDF généré:', uri);
         return uri;
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ Erreur génération PDF:', error);
-        throw new Error('Impossible de générer le menu PDF. Veuillez installer expo-print: npm install expo-print');
+        if (error.code === 'MODULE_NOT_FOUND' || error.message?.includes('Cannot find module')) {
+            throw new Error('Impossible de générer le menu PDF. Veuillez installer expo-print: npm install expo-print');
+        }
+        throw error;
     }
 }
 
@@ -366,8 +372,8 @@ export async function generateAndDownloadMenuPDF(menuData: MenuPdfData): Promise
  */
 export async function shareMenuPDF(pdfUri: string, menuTitle: string) {
     try {
-        const { shareAsync } = await import('expo-sharing');
-        const Share = await import('react-native-share');
+        const { shareAsync } = require('expo-sharing');
+        const Share = require('react-native-share');
 
         // Essayer d'abord avec react-native-share pour cibler WhatsApp spécifiquement
         try {
@@ -388,7 +394,7 @@ export async function shareMenuPDF(pdfUri: string, menuTitle: string) {
         }
 
         console.log('✅ Menu partagé');
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ Erreur partage PDF:', error);
         throw new Error('Impossible de partager le menu');
     }
