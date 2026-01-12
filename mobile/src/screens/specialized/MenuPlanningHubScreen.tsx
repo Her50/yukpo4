@@ -35,10 +35,14 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const [hasProfile, setHasProfile] = useState(false);
     const [menuPeriod, setMenuPeriod] = useState<MenuPeriod>('1_week');
     const [showPeriodSelector, setShowPeriodSelector] = useState(false);
+    const [historyMenus, setHistoryMenus] = useState<any[]>([]);
+    const [historyShoppingLists, setHistoryShoppingLists] = useState<any[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
             loadData();
+            loadHistory();
         }, [])
     );
 
@@ -66,6 +70,21 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
         } finally {
             setLoading(false);
             setRefreshing(false);
+        }
+    };
+
+    const loadHistory = async () => {
+        try {
+            setLoadingHistory(true);
+            const response = await menuPlanningService.getHistory(10);
+            if (response.success && response.data) {
+                setHistoryMenus(response.data.menus || []);
+                setHistoryShoppingLists(response.data.shopping_lists || []);
+            }
+        } catch (error) {
+            console.error('[MenuPlanningHub] Erreur chargement historique:', error);
+        } finally {
+            setLoadingHistory(false);
         }
     };
 
@@ -169,12 +188,13 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
         <ScrollView
             style={styles.container}
             contentContainerStyle={styles.scrollContent}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={() => {
-                    setRefreshing(true);
-                    loadData();
-                }} />
-            }
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={() => {
+                        setRefreshing(true);
+                        loadData();
+                        loadHistory();
+                    }} />
+                }
             showsVerticalScrollIndicator={false}
         >
             {/* Header avec gradient */}
@@ -201,82 +221,8 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 </View>
             </LinearGradient>
 
-            {/* Section profil famille */}
-            <View style={styles.section}>
-                <NativeCard style={styles.profileCard}>
-                    <View style={styles.profileHeader}>
-                        <SafeIcon name="Users" size={24} color={modernColors.primary} type="lucide" />
-                        <Text style={styles.sectionTitle}>Profil Famille</Text>
-                    </View>
-
-                    {hasProfile && profile ? (
-                        <View style={styles.profileInfo}>
-                            <Text style={styles.profileText}>
-                                👥 {profile.total_members || 1} personne{(profile.total_members || 1) > 1 ? 's' : ''}
-                            </Text>
-                            {profile.children_count !== undefined && profile.children_count > 0 && (
-                                <Text style={styles.profileText}>
-                                    👶 {profile.children_count} enfant{profile.children_count > 1 ? 's' : ''}
-                                </Text>
-                            )}
-                            {profile.adults_count !== undefined && profile.adults_count > 0 && (
-                                <Text style={styles.profileText}>
-                                    👤 {profile.adults_count} adulte{profile.adults_count > 1 ? 's' : ''}
-                                </Text>
-                            )}
-                            {profile.allergies && Array.isArray(profile.allergies) && profile.allergies.length > 0 && (
-                                <Text style={styles.profileText}>
-                                    ⚠️ Allergies : {profile.allergies.filter(a => a && a !== 'false' && a !== false).join(', ')}
-                                </Text>
-                            )}
-                            {profile.budget_monthly && typeof profile.budget_monthly === 'number' && profile.budget_monthly > 0 && (
-                                <Text style={styles.profileText}>
-                                    💰 Budget : {profile.budget_monthly.toLocaleString()} FCFA/mois
-                                </Text>
-                            )}
-                            {profile.preferences && Array.isArray(profile.preferences) && profile.preferences.length > 0 && (
-                                <Text style={styles.profileText}>
-                                    🍽️ Préférences : {profile.preferences.filter(p => p && p !== 'false' && p !== false).join(', ')}
-                                </Text>
-                            )}
-                            {profile.dietary_restrictions && Array.isArray(profile.dietary_restrictions) && profile.dietary_restrictions.length > 0 && (
-                                <Text style={styles.profileText}>
-                                    🥗 Restrictions : {profile.dietary_restrictions.filter(r => r && r !== 'false' && r !== false).join(', ')}
-                                </Text>
-                            )}
-                            {profile.cuisine_styles && Array.isArray(profile.cuisine_styles) && profile.cuisine_styles.length > 0 && (
-                                <Text style={styles.profileText}>
-                                    🍳 Styles de cuisine : {profile.cuisine_styles.filter(c => c && c !== 'false' && c !== false).join(', ')}
-                                </Text>
-                            )}
-                            {profile.cooking_level && typeof profile.cooking_level === 'string' && profile.cooking_level !== 'false' && (
-                                <Text style={styles.profileText}>
-                                    👨‍🍳 Niveau : {profile.cooking_level}
-                                </Text>
-                            )}
-                            {profile.time_available_hours && typeof profile.time_available_hours === 'number' && profile.time_available_hours > 0 && (
-                                <Text style={styles.profileText}>
-                                    ⏰ Temps disponible : {profile.time_available_hours}h/jour
-                                </Text>
-                            )}
-                        </View>
-                    ) : (
-                        <Text style={styles.profileEmptyText}>
-                            Aucun profil configuré
-                        </Text>
-                    )}
-
-                    <NativeButton
-                        title={hasProfile ? "Modifier le profil" : "Créer un profil"}
-                        variant="outline"
-                        onPress={() => navigation.navigate('FamilyProfile' as never)}
-                        style={styles.profileButton}
-                    />
-                </NativeCard>
-            </View>
-
-            {/* Section génération menu */}
-            <View style={styles.section}>
+            {/* ✅ RÉORGANISÉ: Section génération menu EN HAUT (fonctionnalité principale) */}
+            <View style={[styles.section, styles.menuSection]}>
                 <Text style={styles.sectionTitle}>Menu de la Semaine</Text>
 
                 {currentMenu ? (
@@ -319,7 +265,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     </NativeCard>
                 ) : (
                     <NativeCard style={styles.generateCard}>
-                        <SafeIcon name="ChefHat" size={48} color={modernColors.primary} type="lucide" />
+                        <SafeIcon name="utensils-crossed" size={48} color={modernColors.primary} type="lucide" />
                         <Text style={styles.generateTitle}>
                             Générez votre menu personnalisé
                         </Text>
@@ -385,6 +331,224 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     </NativeCard>
                 )}
             </View>
+
+            {/* ✅ RÉORGANISÉ: Section profil famille EN BAS (moins prioritaire) */}
+            <View style={styles.section}>
+                <NativeCard style={styles.profileCard}>
+                    <View style={styles.profileHeader}>
+                        <SafeIcon name="Users" size={20} color={modernColors.primary} type="lucide" />
+                        <Text style={styles.profileSectionTitle}>Profil Famille</Text>
+                    </View>
+
+                    {hasProfile && profile ? (
+                        <View style={styles.profileInfoCompact}>
+                            {/* ✅ CORRIGÉ: Vérifier que total_members est un nombre valide, pas false */}
+                            {typeof profile.total_members === 'number' && profile.total_members > 0 && (
+                                <Text style={styles.profileTextCompact}>
+                                    👥 {profile.total_members} personne{profile.total_members > 1 ? 's' : ''}
+                                </Text>
+                            )}
+                            {/* ✅ CORRIGÉ: Vérifier que children_count est un nombre valide, pas false */}
+                            {typeof profile.children_count === 'number' && profile.children_count > 0 && (
+                                <Text style={styles.profileTextCompact}>
+                                    👶 {profile.children_count} enfant{profile.children_count > 1 ? 's' : ''}
+                                </Text>
+                            )}
+                            {/* ✅ CORRIGÉ: Vérifier que adults_count est un nombre valide, pas false */}
+                            {typeof profile.adults_count === 'number' && profile.adults_count > 0 && (
+                                <Text style={styles.profileTextCompact}>
+                                    👤 {profile.adults_count} adulte{profile.adults_count > 1 ? 's' : ''}
+                                </Text>
+                            )}
+                            {/* ✅ CORRIGÉ: Filtrer les valeurs false et les chaînes vides */}
+                            {Array.isArray(profile.allergies) && profile.allergies.length > 0 && (
+                                (() => {
+                                    const validAllergies = profile.allergies.filter(a => 
+                                        a !== null && 
+                                        a !== undefined && 
+                                        a !== false && 
+                                        a !== 'false' && 
+                                        a !== '' &&
+                                        typeof a === 'string'
+                                    );
+                                    return validAllergies.length > 0 ? (
+                                        <Text style={styles.profileTextCompact}>
+                                            ⚠️ Allergies : {validAllergies.join(', ')}
+                                        </Text>
+                                    ) : null;
+                                })()
+                            )}
+                            {/* ✅ CORRIGÉ: Vérifier que budget_monthly est un nombre valide */}
+                            {typeof profile.budget_monthly === 'number' && profile.budget_monthly > 0 && (
+                                <Text style={styles.profileTextCompact}>
+                                    💰 Budget : {profile.budget_monthly.toLocaleString()} FCFA/mois
+                                </Text>
+                            )}
+                            {/* ✅ CORRIGÉ: Filtrer les valeurs false et les chaînes vides */}
+                            {Array.isArray(profile.preferences) && profile.preferences.length > 0 && (
+                                (() => {
+                                    const validPreferences = profile.preferences.filter(p => 
+                                        p !== null && 
+                                        p !== undefined && 
+                                        p !== false && 
+                                        p !== 'false' && 
+                                        p !== '' &&
+                                        typeof p === 'string'
+                                    );
+                                    return validPreferences.length > 0 ? (
+                                        <Text style={styles.profileTextCompact}>
+                                            🍽️ Préférences : {validPreferences.join(', ')}
+                                        </Text>
+                                    ) : null;
+                                })()
+                            )}
+                            {/* ✅ CORRIGÉ: Filtrer les valeurs false et les chaînes vides */}
+                            {Array.isArray(profile.dietary_restrictions) && profile.dietary_restrictions.length > 0 && (
+                                (() => {
+                                    const validRestrictions = profile.dietary_restrictions.filter(r => 
+                                        r !== null && 
+                                        r !== undefined && 
+                                        r !== false && 
+                                        r !== 'false' && 
+                                        r !== '' &&
+                                        typeof r === 'string'
+                                    );
+                                    return validRestrictions.length > 0 ? (
+                                        <Text style={styles.profileTextCompact}>
+                                            🥗 Restrictions : {validRestrictions.join(', ')}
+                                        </Text>
+                                    ) : null;
+                                })()
+                            )}
+                            {/* ✅ CORRIGÉ: Filtrer les valeurs false et les chaînes vides */}
+                            {Array.isArray(profile.cuisine_styles) && profile.cuisine_styles.length > 0 && (
+                                (() => {
+                                    const validStyles = profile.cuisine_styles.filter(c => 
+                                        c !== null && 
+                                        c !== undefined && 
+                                        c !== false && 
+                                        c !== 'false' && 
+                                        c !== '' &&
+                                        typeof c === 'string'
+                                    );
+                                    return validStyles.length > 0 ? (
+                                        <Text style={styles.profileTextCompact}>
+                                            🍳 Styles de cuisine : {validStyles.join(', ')}
+                                        </Text>
+                                    ) : null;
+                                })()
+                            )}
+                            {/* ✅ CORRIGÉ: Vérifier que cooking_level est une chaîne valide */}
+                            {typeof profile.cooking_level === 'string' && 
+                             profile.cooking_level !== '' && 
+                             profile.cooking_level !== 'false' && 
+                             profile.cooking_level.toLowerCase() !== 'false' && (
+                                <Text style={styles.profileTextCompact}>
+                                    👨‍🍳 Niveau : {profile.cooking_level}
+                                </Text>
+                            )}
+                            {/* ✅ CORRIGÉ: Vérifier que time_available_hours est un nombre valide */}
+                            {typeof profile.time_available_hours === 'number' && profile.time_available_hours > 0 && (
+                                <Text style={styles.profileTextCompact}>
+                                    ⏰ Temps disponible : {profile.time_available_hours}h/jour
+                                </Text>
+                            )}
+                        </View>
+                    ) : (
+                        <Text style={styles.profileEmptyText}>
+                            Aucun profil configuré
+                        </Text>
+                    )}
+
+                    <NativeButton
+                        title={hasProfile ? "Modifier le profil" : "Créer un profil"}
+                        variant="outline"
+                        onPress={() => navigation.navigate('FamilyProfile' as never)}
+                        style={styles.profileButton}
+                    />
+                </NativeCard>
+            </View>
+
+            {/* ✅ NOUVEAU: Section historique des menus et listes d'achats */}
+            {(historyMenus.length > 0 || historyShoppingLists.length > 0) && (
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Historique</Text>
+
+                    {/* Historique des menus */}
+                    {historyMenus.length > 0 && (
+                        <View style={styles.historySubsection}>
+                            <View style={styles.historySubsectionHeader}>
+                                <SafeIcon name="Calendar" size={20} color={modernColors.primary} type="lucide" />
+                                <Text style={styles.historySubsectionTitle}>Menus générés</Text>
+                            </View>
+                            {historyMenus.slice(0, 5).map((menu) => (
+                                <TouchableOpacity
+                                    key={menu.id}
+                                    style={styles.historyItem}
+                                    onPress={() => {
+                                        // Naviguer vers le menu de cette semaine
+                                        const weekStart = new Date(menu.week_start);
+                                        navigation.navigate('MenuWeekCalendar' as never, {
+                                            weekStart: menu.week_start,
+                                        } as never);
+                                    }}
+                                >
+                                    <View style={styles.historyItemContent}>
+                                        <Text style={styles.historyItemTitle}>
+                                            Semaine du {new Date(menu.week_start).toLocaleDateString('fr-FR', {
+                                                day: 'numeric',
+                                                month: 'long',
+                                                year: 'numeric',
+                                            })}
+                                        </Text>
+                                        <Text style={styles.historyItemSubtitle}>
+                                            {menu.status === 'active' ? '✅ Actif' : '📋 Archivé'}
+                                            {menu.total_budget && ` • ${menu.total_budget.toLocaleString()} FCFA`}
+                                        </Text>
+                                    </View>
+                                    <SafeIcon name="chevron-right" size={20} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+
+                    {/* Historique des listes d'achats */}
+                    {historyShoppingLists.length > 0 && (
+                        <View style={styles.historySubsection}>
+                            <View style={styles.historySubsectionHeader}>
+                                <SafeIcon name="ShoppingCart" size={20} color={modernColors.success} type="lucide" />
+                                <Text style={styles.historySubsectionTitle}>Listes d'achats</Text>
+                            </View>
+                            {historyShoppingLists.slice(0, 5).map((list) => (
+                                <TouchableOpacity
+                                    key={list.id}
+                                    style={styles.historyItem}
+                                    onPress={() => {
+                                        navigation.navigate('ShoppingList' as never, {
+                                            weekStart: list.week_start,
+                                        } as never);
+                                    }}
+                                >
+                                    <View style={styles.historyItemContent}>
+                                        <Text style={styles.historyItemTitle}>
+                                            Liste du {new Date(list.week_start).toLocaleDateString('fr-FR', {
+                                                day: 'numeric',
+                                                month: 'long',
+                                                year: 'numeric',
+                                            })}
+                                        </Text>
+                                        <Text style={styles.historyItemSubtitle}>
+                                            {list.items_count} article{list.items_count > 1 ? 's' : ''}
+                                            {list.total_estimated_cost && ` • ${list.total_estimated_cost.toLocaleString()} FCFA`}
+                                        </Text>
+                                    </View>
+                                    <SafeIcon name="chevron-right" size={20} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            )}
 
             {/* Section actions rapides */}
             <View style={styles.section}>
@@ -476,6 +640,10 @@ const styles = StyleSheet.create({
         padding: 16,
         marginTop: 8,
     },
+    menuSection: {
+        marginTop: 0, // ✅ NOUVEAU: Pas de marge en haut pour être collé au header
+        paddingTop: 20, // ✅ NOUVEAU: Padding en haut pour espacement
+    },
     sectionTitle: {
         fontSize: 20,
         fontWeight: '700',
@@ -483,21 +651,34 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     profileCard: {
-        padding: 16,
+        padding: 12, // ✅ RÉDUIT: De 16 à 12 pour version compacte
     },
     profileHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        marginBottom: 12,
+        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8
+    },
+    profileSectionTitle: {
+        fontSize: 16, // ✅ RÉDUIT: De 20 à 16 pour version compacte
+        fontWeight: '700',
+        color: '#111827',
     },
     profileInfo: {
         marginBottom: 12,
+    },
+    profileInfoCompact: {
+        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8
     },
     profileText: {
         fontSize: 14,
         color: modernColors.textSecondary,
         marginBottom: 4,
+    },
+    profileTextCompact: {
+        fontSize: 12, // ✅ RÉDUIT: De 14 à 12 pour version compacte
+        color: modernColors.textSecondary,
+        marginBottom: 2, // ✅ RÉDUIT: De 4 à 2
     },
     profileEmptyText: {
         fontSize: 14,
@@ -609,6 +790,44 @@ const styles = StyleSheet.create({
     },
     periodButtonTextActive: {
         color: modernColors.primary,
+    },
+    historySubsection: {
+        marginBottom: 20,
+    },
+    historySubsectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    historySubsectionTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    historyItem: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    historyItemContent: {
+        flex: 1,
+    },
+    historyItemTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    historyItemSubtitle: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
     },
 });
 

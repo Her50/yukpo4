@@ -903,6 +903,14 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/menus/family-profile",
             put(menu_planning_controller::update_family_profile),
         )
+        .route(
+            "/api/menus/ai/generate-shopping-list",
+            post(menu_planning_controller::generate_intelligent_shopping_list),
+        )
+        .route(
+            "/api/menus/history",
+            get(menu_planning_controller::get_menu_history),
+        )
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state.clone());
 

@@ -215,5 +215,58 @@ export const menuPlanningService = {
         });
         return response;
     },
+
+    // ✅ NOUVEAU: Générer liste de courses intelligente via IA
+    generateIntelligentShoppingList: async (mealItems: Array<{
+        recipeName: string;
+        times: number;
+        servings: number;
+        day: string;
+        mealType: string;
+    }>, familyMembers: number) => {
+        const response = await apiPost<{
+            success: boolean;
+            shopping_list: {
+                items: Array<{
+                    ingredient_name: string;
+                    quantity: number;
+                    unit: string;
+                    estimated_price: number;
+                    associated_meals: string[];
+                }>;
+                total_estimated_cost: number;
+            };
+        }>('/api/menus/ai/generate-shopping-list', {
+            meal_items: mealItems,
+            family_members: familyMembers,
+        });
+        return response;
+    },
+
+    // ✅ NOUVEAU: Récupérer l'historique des menus et listes d'achats
+    getHistory: async (limit?: number) => {
+        const params = limit ? `?limit=${limit}` : '';
+        const response = await apiGet<{
+            success: boolean;
+            menus: Array<{
+                id: number;
+                week_start: string;
+                week_end: string;
+                status: string;
+                total_budget?: number;
+                actual_cost?: number;
+                created_at: string;
+            }>;
+            shopping_lists: Array<{
+                id: number;
+                week_start: string;
+                status: string;
+                total_estimated_cost?: number;
+                items_count: number;
+                created_at: string;
+            }>;
+        }>(`/api/menus/history${params}`);
+        return response;
+    },
 };
 

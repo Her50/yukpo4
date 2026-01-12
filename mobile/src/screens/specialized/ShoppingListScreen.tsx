@@ -295,21 +295,21 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                                             } as never);
                                         } else {
                                             Alert.alert(
-                                                'Aucun supermarché',
-                                                'Aucun supermarché trouvé à proximité. Vous pouvez créer une demande de livraison manuelle.',
+                                                'Aucun marché',
+                                                'Aucun marché trouvé à proximité. Vous pouvez créer une demande de livraison manuelle.',
                                                 [{ text: 'OK' }]
                                             );
                                         }
                                     } else {
                                         Alert.alert(
                                             'Localisation requise',
-                                            'Veuillez activer la localisation pour trouver les supermarchés à proximité.',
+                                            'Veuillez activer la localisation pour trouver les marchés à proximité.',
                                             [{ text: 'OK' }]
                                         );
                                     }
                                 } catch (error: any) {
-                                    console.error('[ShoppingList] Erreur supermarchés:', error);
-                                    Alert.alert('Erreur', 'Impossible de charger les supermarchés');
+                                    console.error('[ShoppingList] Erreur marchés:', error);
+                                    Alert.alert('Erreur', 'Impossible de charger les marchés');
                                 } finally {
                                     setLoadingSupermarkets(false);
                                 }
@@ -322,7 +322,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                                 <>
                                     <SafeIcon name="ShoppingBag" size={20} color="#fff" type="lucide" />
                                     <Text style={styles.actionButtonText}>
-                                        Commander via Yukpo
+                                        Passer une commande marché
                                     </Text>
                                 </>
                             )}

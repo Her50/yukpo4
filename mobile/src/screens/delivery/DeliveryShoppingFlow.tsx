@@ -509,7 +509,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="store" size={18} color={modernColors.success} />
-                                <Text style={styles.sectionTitle}>Sélectionner un supermarché *</Text>
+                                <Text style={styles.sectionTitle}>Sélectionner un marché *</Text>
                                 {supermarkets.length > 0 && (
                                     <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>
                                         {filteredAndSortedSupermarkets.length} résultat(s)
@@ -522,7 +522,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                 <View style={{ marginBottom: 12, gap: 8 }}>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="Rechercher un supermarché..."
+                                        placeholder="Rechercher un marché..."
                                         value={searchQuery}
                                         onChangeText={setSearchQuery}
                                         placeholderTextColor={modernColors.textSecondary}
@@ -581,7 +581,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                                         await Linking.openURL(url);
                                                         Alert.alert(
                                                             'Redirection',
-                                                            'Vous allez être redirigé vers la plateforme du supermarché. Une fois votre commande finalisée, revenez ici pour activer la livraison Yukpo.',
+                                                            'Vous allez être redirigé vers la plateforme du marché. Une fois votre commande finalisée, revenez ici pour activer la livraison Yukpo.',
                                                             [{ text: 'OK' }]
                                                         );
                                                     } else {
@@ -589,12 +589,12 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                                     }
                                                 } catch (error) {
                                                     console.error('Erreur ouverture URL:', error);
-                                                    Alert.alert('Erreur', 'Impossible d\'ouvrir le site web du supermarché');
+                                                    Alert.alert('Erreur', 'Impossible d\'ouvrir le site web du marché');
                                                 }
                                             }}
                                         >
                                             <SafeIcon name="external-link" size={16} color={modernColors.primary} />
-                                            <Text style={styles.websiteButtonText}>Acheter sur le site du supermarché</Text>
+                                            <Text style={styles.websiteButtonText}>Acheter sur le site du marché</Text>
                                         </TouchableOpacity>
                                     )}
                                     <View style={styles.supermarketActions}>
@@ -614,14 +614,14 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                 <View>
                                     {loadingSupermarkets ? (
                                         <View style={styles.loadingContainer}>
-                                            <Text style={styles.loadingText}>Chargement des supermarchés...</Text>
+                                            <Text style={styles.loadingText}>Chargement des marchés...</Text>
                                         </View>
                                     ) : (
                                         <View>
                                             {filteredAndSortedSupermarkets.length === 0 ? (
                                                 <View style={styles.emptyContainer}>
                                                     <Text style={styles.emptyText}>
-                                                        {searchQuery ? 'Aucun supermarché trouvé pour votre recherche' : 'Aucun supermarché disponible'}
+                                                        {searchQuery ? 'Aucun marché trouvé pour votre recherche' : 'Aucun marché disponible'}
                                                     </Text>
                                                 </View>
                                             ) : (
@@ -678,7 +678,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                 <View style={styles.infoBox}>
                                     <SafeIcon name="info" size={16} color={modernColors.accent} />
                                     <Text style={styles.infoText}>
-                                        Vous pouvez acheter directement sur le site du supermarché (bouton ci-dessus), puis revenir ici pour activer la livraison Yukpo. Vous pouvez aussi ajouter manuellement vos articles ci-dessous.
+                                        Vous pouvez acheter directement sur le site du marché (bouton ci-dessus), puis revenir ici pour activer la livraison Yukpo. Vous pouvez aussi ajouter manuellement vos articles ci-dessous.
                                     </Text>
                                 </View>
                             )}

@@ -8,7 +8,9 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::services::menu_planning_ai_service::{FamilyProfile, MenuPlanningAIService, WeeklyMenu};
+use crate::services::menu_planning_ai_service::{
+    FamilyProfile, IntelligentShoppingList, MealItemForShopping, MenuPlanningAIService, WeeklyMenu,
+};
 use crate::services::geocoding_service::GeocodingService;
 use crate::state::AppState;
 use axum::{
@@ -489,6 +491,45 @@ pub async fn generate_recipe(
     ))
 }
 
+/// ✅ NOUVEAU: Génère une liste de courses intelligente via IA
+#[derive(Debug, Deserialize)]
+pub struct GenerateShoppingListRequest {
+    pub meal_items: Vec<MealItemForShopping>,
+    pub family_members: i32,
+}
+
+/// Endpoint : Générer liste de courses intelligente avec IA
+pub async fn generate_intelligent_shopping_list(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(req): Json<GenerateShoppingListRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[generate_intelligent_shopping_list] Génération liste de courses pour user_id={}, {} repas",
+        user_id, req.meal_items.len()
+    );
+
+    if req.meal_items.is_empty() {
+        return Err(AppError::BadRequest(
+            "Aucun repas fourni pour générer la liste de courses".to_string(),
+        ));
+    }
+
+    // Générer liste de courses avec IA
+    let ai_service = MenuPlanningAIService::new(state.ia.clone());
+    let shopping_list = ai_service
+        .generate_intelligent_shopping_list(&req.meal_items, req.family_members)
+        .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "shopping_list": serde_json::to_value(&shopping_list).unwrap_or(json!({}))
+        })),
+    ))
+}
+
 /// ✅ NOUVEAU: Récupère les menus précédents pour éviter la répétition
 async fn get_previous_menus(
     state: &AppState,
@@ -540,4 +581,156 @@ async fn get_previous_menus(
         .collect();
 
     Ok(previous_menus)
+}
+
+/// ✅ NOUVEAU: Récupère l'historique des menus et listes d'achats générés
+#[derive(Debug, Deserialize)]
+pub struct GetHistoryQuery {
+    pub limit: Option<i32>,
+}
+
+/// Réponse historique
+#[derive(Debug, Serialize)]
+pub struct MenuHistoryItem {
+    pub id: i32,
+    pub week_start: String,
+    pub week_end: String,
+    pub status: String,
+    pub total_budget: Option<f64>,
+    pub actual_cost: Option<f64>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ShoppingListHistoryItem {
+    pub id: i32,
+    pub week_start: String,
+    pub status: String,
+    pub total_estimated_cost: Option<f64>,
+    pub items_count: i64,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct HistoryResponse {
+    pub success: bool,
+    pub menus: Vec<MenuHistoryItem>,
+    pub shopping_lists: Vec<ShoppingListHistoryItem>,
+}
+
+/// Endpoint : Récupérer l'historique des menus et listes d'achats
+pub async fn get_menu_history(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Query(query): Query<GetHistoryQuery>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[get_menu_history] Récupération historique pour user_id={}",
+        user_id
+    );
+
+    let limit = query.limit.unwrap_or(10);
+
+    // Récupérer les menus
+    let menu_rows = sqlx::query(
+        r#"
+        SELECT 
+            id,
+            week_start,
+            week_end,
+            status,
+            total_budget,
+            actual_cost,
+            created_at
+        FROM menu_plans
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        LIMIT $2
+        "#
+    )
+    .bind(user_id)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_menu_history] Erreur récupération menus: {}", e);
+        AppError::Internal(format!("Erreur récupération historique menus: {}", e))
+    })?;
+
+    let menus: Vec<MenuHistoryItem> = menu_rows
+        .into_iter()
+        .map(|row| {
+            MenuHistoryItem {
+                id: row.get("id"),
+                week_start: row.get::<chrono::NaiveDate, _>("week_start").format("%Y-%m-%d").to_string(),
+                week_end: row.get::<chrono::NaiveDate, _>("week_end").format("%Y-%m-%d").to_string(),
+                status: row.get("status"),
+                total_budget: row
+                    .try_get::<Option<rust_decimal::Decimal>, _>("total_budget")
+                    .ok()
+                    .flatten()
+                    .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+                actual_cost: row
+                    .try_get::<Option<rust_decimal::Decimal>, _>("actual_cost")
+                    .ok()
+                    .flatten()
+                    .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
+            }
+        })
+        .collect();
+
+    // Récupérer les listes d'achats
+    let shopping_list_rows = sqlx::query(
+        r#"
+        SELECT 
+            sl.id,
+            sl.week_start,
+            sl.status,
+            sl.total_estimated_cost,
+            sl.created_at,
+            COUNT(sli.id) as items_count
+        FROM shopping_lists sl
+        LEFT JOIN shopping_list_items sli ON sli.shopping_list_id = sl.id
+        WHERE sl.user_id = $1
+        GROUP BY sl.id, sl.week_start, sl.status, sl.total_estimated_cost, sl.created_at
+        ORDER BY sl.created_at DESC
+        LIMIT $2
+        "#
+    )
+    .bind(user_id)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_menu_history] Erreur récupération listes: {}", e);
+        AppError::Internal(format!("Erreur récupération historique listes: {}", e))
+    })?;
+
+    let shopping_lists: Vec<ShoppingListHistoryItem> = shopping_list_rows
+        .into_iter()
+        .map(|row| {
+            ShoppingListHistoryItem {
+                id: row.get("id"),
+                week_start: row.get::<chrono::NaiveDate, _>("week_start").format("%Y-%m-%d").to_string(),
+                status: row.get("status"),
+                total_estimated_cost: row
+                    .try_get::<Option<rust_decimal::Decimal>, _>("total_estimated_cost")
+                    .ok()
+                    .flatten()
+                    .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+                items_count: row.get("items_count"),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
+            }
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "menus": menus,
+            "shopping_lists": shopping_lists,
+        })),
+    ))
 }
