@@ -770,6 +770,9 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <View key={dayNumber} style={styles.tableRow}>
                                             <View style={[styles.tableCell, styles.tableCellDay]}>
                                                 <Text style={styles.tableCellDayName}>{dayName}</Text>
+                                                <Text style={styles.tableCellDayTotal}>
+                                                    {formatPrice(dayTotal)}
+                                                </Text>
                                             </View>
                                             {renderMealCell(dayMeal?.petit_dejeuner, 'petit_dejeuner', dayNumber)}
                                             {renderMealCell(dayMeal?.dejeuner, 'dejeuner', dayNumber)}
@@ -2295,12 +2298,21 @@ const styles = StyleSheet.create({
         width: 100, // Largeur fixe pour colonne jour
         backgroundColor: '#F9FAFB',
         justifyContent: 'center',
+        alignItems: 'center',
         flexShrink: 0,
+        paddingVertical: 8,
     },
     tableCellDayName: {
         fontSize: 14,
         fontWeight: '700',
         color: '#111827',
+        marginBottom: 4,
+    },
+    tableCellDayTotal: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.primary,
+        marginTop: 4,
     },
     tableCellEmpty: {
         fontSize: 12,
