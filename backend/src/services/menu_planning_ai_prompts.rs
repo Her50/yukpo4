@@ -238,3 +238,94 @@ IMPORTANT:
 - Les recommandations doivent être adaptées au contexte local/régional
 "#;
 
+/// ✅ NOUVEAU: Prompt pour génération liste de courses intelligente
+/// Regroupe les ingrédients communs et calcule les quantités totales
+pub fn generate_shopping_list_prompt(
+    meal_items: &[crate::services::menu_planning_ai_service::MealItemForShopping],
+    family_members: i32,
+) -> String {
+    let meals_summary: String = meal_items.iter()
+        .map(|item| {
+            format!(
+                "- {} ({} fois, {} portions, {} - {})",
+                item.recipe_name, item.times, item.servings, item.day, item.meal_type
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    format!(r#"
+Tu es l'assistant culinaire intelligent de Yukpomnang pour la génération de listes de courses.
+
+CONTEXTE UTILISATEUR :
+- Nombre de personnes dans la famille : {family_members}
+- Repas à préparer (avec nombre de fois et portions) :
+{meals_summary}
+
+TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
+- Tu DOIS générer une liste de courses INTELLIGENTE en regroupant les ingrédients communs
+- Si plusieurs repas utilisent le même ingrédient, tu DOIS regrouper en une seule ligne avec la quantité totale
+- CALCUL DES QUANTITÉS (CRITIQUE) :
+  * Prendre en compte le NOMBRE DE FOIS de consommation de chaque repas (colonne "fois" dans le tableau)
+  * Prendre en compte le NOMBRE DE PORTIONS par repas (colonne "portions")
+  * Prendre en compte le NOMBRE DE PERSONNES dans la famille ({family_members})
+  * Formule : quantité_base × nombre_fois × (portions × nombre_personnes / portions_base)
+  * Exemple : Si "Poulet DG" nécessite 1kg pour 4 personnes, et qu'il est consommé 2 fois pour 6 personnes :
+    quantité = 1kg × 2 × (6/4) = 3kg
+- ESTIMATION DES PRIX (CRITIQUE) :
+  * Estimer les prix selon le contexte local (marchés africains, prix en FCFA)
+  * Prendre en compte la quantité totale calculée (pas seulement la quantité unitaire)
+  * Adapter les prix selon la saisonnalité et la disponibilité locale
+  * Utiliser tes connaissances sur les prix moyens dans les marchés locaux
+- Associer chaque ingrédient aux repas qui l'utilisent (format: "Nom recette (Jour - Type)")
+
+FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
+{{
+    "items": [
+        {{
+            "ingredient_name": "Nom de l'ingrédient",
+            "quantity": 2.5,
+            "unit": "kg",
+            "estimated_price": 5000.0,
+            "associated_meals": ["Poulet DG (Lundi - Déjeuner)", "Poulet braisé (Mercredi - Dîner)"]
+        }},
+        {{
+            "ingredient_name": "Riz",
+            "quantity": 3.0,
+            "unit": "kg",
+            "estimated_price": 3000.0,
+            "associated_meals": ["Riz sauté (Lundi - Déjeuner)", "Riz au gras (Mardi - Déjeuner)"]
+        }}
+    ],
+    "total_estimated_cost": 50000.0
+}}
+
+CONTRAINTES:
+- items: tableau d'objets (un par ingrédient unique)
+- ingredient_name: string (nom de l'ingrédient, normalisé)
+- quantity: nombre décimal positif (quantité totale regroupée)
+- unit: string (unité de mesure: "kg", "g", "l", "ml", "pièce", "botte", etc.)
+- estimated_price: nombre décimal positif (prix estimé en FCFA)
+- associated_meals: tableau de strings (liste des repas qui utilisent cet ingrédient, format: "Nom recette (Jour - Type)")
+- total_estimated_cost: somme de tous les estimated_price
+
+RÈGLES DE REGROUPEMENT:
+- Si "Tomate" apparaît dans plusieurs repas, créer UNE seule ligne "Tomate" avec quantité totale
+- Si "Oignon" apparaît 3 fois dans différents repas, additionner les quantités
+- Normaliser les noms (ex: "Tomates" = "Tomate", "Oignons" = "Oignon")
+- Grouper les variantes (ex: "Huile de palme" et "Huile végétale" si c'est le même usage)
+
+IMPORTANT:
+- Retourne UNIQUEMENT du JSON valide
+- Pas de texte avant ou après le JSON
+- Pas de markdown (```json```)
+- Pas de commentaires dans le JSON
+- Tous les nombres doivent être des nombres (pas de strings)
+- Les prix doivent être réalistes selon le contexte local (marchés africains)
+- Les quantités doivent tenir compte du nombre de fois ET du nombre de personnes
+"#,
+        family_members = family_members,
+        meals_summary = meals_summary
+    )
+}
+

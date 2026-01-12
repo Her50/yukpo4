@@ -81,6 +81,9 @@ const CourierRegistrationScreen: React.FC = () => {
     // Autres
     const [bio, setBio] = useState('');
     const [experience, setExperience] = useState('');
+    
+    // ✅ NOUVEAU: Spécialisations
+    const [specializations, setSpecializations] = useState<string[]>([]);
 
     // Comptes de paiement
     const [paymentMethod, setPaymentMethod] = useState<any>(null);
@@ -408,6 +411,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 },
                 bio,
                 experience,
+                specializations, // ✅ NOUVEAU: Spécialisations du coursier
                 paymentMethod: paymentMethod ? {
                     type: paymentMethod.type,
                     phoneNumber: paymentMethod.phoneNumber,
@@ -919,6 +923,40 @@ const CourierRegistrationScreen: React.FC = () => {
                     </View>
                 </NativeCard>
 
+                {/* ✅ NOUVEAU: Spécialisations */}
+                <NativeCard style={styles.card}>
+                    <Text style={styles.sectionTitle}>Spécialisations (optionnel)</Text>
+                    <Text style={styles.helperText}>
+                        Sélectionnez vos spécialisations pour être prioritaire sur certains types de livraisons
+                    </Text>
+                    <TouchableOpacity
+                        style={[
+                            styles.specializationButton,
+                            specializations.includes('food_shopping') && styles.specializationButtonSelected,
+                        ]}
+                        onPress={() => {
+                            if (specializations.includes('food_shopping')) {
+                                setSpecializations(specializations.filter(s => s !== 'food_shopping'));
+                            } else {
+                                setSpecializations([...specializations, 'food_shopping']);
+                            }
+                        }}
+                    >
+                        <SafeIcon 
+                            name={specializations.includes('food_shopping') ? 'check-circle' : 'circle'} 
+                            size={20} 
+                            color={specializations.includes('food_shopping') ? modernColors.primary : '#9CA3AF'} 
+                            type="lucide" 
+                        />
+                        <Text style={[
+                            styles.specializationButtonText,
+                            specializations.includes('food_shopping') && styles.specializationButtonTextSelected,
+                        ]}>
+                            🛒 Achats alimentaires (courses de marché)
+                        </Text>
+                    </TouchableOpacity>
+                </NativeCard>
+
                 {/* Bio et expérience */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Informations complémentaires</Text>
@@ -1217,6 +1255,32 @@ const styles = StyleSheet.create({
     },
     partnerOptionTextSelected: {
         color: modernColors.surface,
+        fontWeight: '600',
+    },
+    // ✅ NOUVEAU: Styles pour spécialisations
+    specializationButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 16,
+        marginTop: 8,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#F9FAFB',
+    },
+    specializationButtonSelected: {
+        borderColor: modernColors.primary,
+        backgroundColor: '#EEF2FF',
+    },
+    specializationButtonText: {
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#374151',
+        flex: 1,
+    },
+    specializationButtonTextSelected: {
+        color: modernColors.primary,
         fontWeight: '600',
     },
     errorText: {

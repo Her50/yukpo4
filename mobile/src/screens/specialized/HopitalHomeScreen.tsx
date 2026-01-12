@@ -21,6 +21,7 @@ import {
     Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
@@ -240,7 +241,7 @@ const HopitalHomeScreen: React.FC = () => {
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: true,
                     quality: 0.8,
-                    base64: true,
+                    base64: false, // ✅ CORRIGÉ: Ne pas demander base64 directement, on va convertir
                 });
             } else {
                 // Demander permission galerie
@@ -254,14 +255,28 @@ const HopitalHomeScreen: React.FC = () => {
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: true,
                     quality: 0.8,
-                    base64: true,
+                    base64: false, // ✅ CORRIGÉ: Ne pas demander base64 directement, on va convertir
                 });
             }
 
-                if (!result.canceled && result.assets[0]) {
+            if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
-                const base64Image = `data:image/jpeg;base64,${asset.base64}`;
-                setSelectedImage(asset.uri);
+                
+                // ✅ CORRIGÉ: Convertir l'image en JPEG avec expo-image-manipulator
+                // Cela garantit que l'image est dans un format supporté par OpenAI (JPEG, PNG, GIF, WEBP)
+                const manipulatedImage = await ImageManipulator.manipulateAsync(
+                    asset.uri,
+                    [], // Pas de transformations (redimensionnement, rotation, etc.)
+                    {
+                        compress: 0.8, // Compression JPEG
+                        format: ImageManipulator.SaveFormat.JPEG, // ✅ FORCER le format JPEG
+                        base64: true, // Demander le base64 après conversion
+                    }
+                );
+
+                // ✅ Construire le data URI avec le bon type MIME (image/jpeg)
+                const base64Image = `data:image/jpeg;base64,${manipulatedImage.base64}`;
+                setSelectedImage(manipulatedImage.uri);
                 setAiMode('image');
                 setShowAIModal(true); // ✅ Ouvrir le modal immédiatement
                 setLoadingAI(true);
@@ -569,6 +584,7 @@ const HopitalHomeScreen: React.FC = () => {
                     imageAnalysis={imageAnalysis}
                     selectedImage={selectedImage}
                     loading={loadingAI}
+                    onPickImage={showImageSourcePicker}
                 />
             )}
         </SafeNativeView>
@@ -587,6 +603,7 @@ interface AIModalProps {
     imageAnalysis: any | null;
     selectedImage: string | null;
     loading: boolean;
+    onPickImage: () => void;
 }
 
 const AIModal: React.FC<AIModalProps> = ({
@@ -600,6 +617,7 @@ const AIModal: React.FC<AIModalProps> = ({
     imageAnalysis,
     selectedImage,
     loading,
+    onPickImage,
 }) => {
     return (
         <Modal
@@ -639,17 +657,36 @@ const AIModal: React.FC<AIModalProps> = ({
                                     </Text>
                                     
                                     <View style={styles.pathologyInputContainer}>
-                                        <TextInput
-                                            style={styles.pathologyInput}
-                                            placeholder="Ex: Maux de tête, fièvre, douleurs abdominales..."
-                                            placeholderTextColor="#9CA3AF"
-                                            value={pathologyQuery}
-                                            onChangeText={onPathologyQueryChange}
-                                            multiline
-                                            numberOfLines={4}
-                                            textAlignVertical="top"
-                                            editable={!loading}
-                                        />
+                                        <View style={styles.pathologySearchBar}>
+                                            <TextInput
+                                                style={styles.pathologyInput}
+                                                placeholder="Ex: Maux de tête, fièvre, douleurs abdominales..."
+                                                placeholderTextColor="#9CA3AF"
+                                                value={pathologyQuery}
+                                                onChangeText={onPathologyQueryChange}
+                                                multiline
+                                                numberOfLines={4}
+                                                textAlignVertical="top"
+                                                editable={!loading}
+                                                returnKeyType="search"
+                                                onSubmitEditing={onSearchPathology}
+                                            />
+                                            <TouchableOpacity
+                                                style={[
+                                                    styles.pathologySearchButton,
+                                                    (!pathologyQuery.trim() || loading) && styles.pathologySearchButtonDisabled
+                                                ]}
+                                                onPress={onSearchPathology}
+                                                disabled={!pathologyQuery.trim() || loading}
+                                                activeOpacity={0.7}
+                                            >
+                                                {loading ? (
+                                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                                ) : (
+                                                    <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                     
                                     <TouchableOpacity
@@ -692,54 +729,68 @@ const AIModal: React.FC<AIModalProps> = ({
                                         {pathologyResults.map((result, index) => (
                                             <View key={index} style={styles.pathologyCard}>
                                                 <View style={styles.pathologyHeader}>
-                                                    <Text style={styles.pathologyName}>{result.pathology_name}</Text>
-                                                    <View style={[styles.urgencyBadge, styles[`urgency${result.urgency_level.charAt(0).toUpperCase() + result.urgency_level.slice(1)}`]]}>
-                                                        <Text style={styles.urgencyText}>
-                                                            {result.urgency_level === 'critical' ? 'Critique' :
-                                                             result.urgency_level === 'high' ? 'Urgent' :
-                                                             result.urgency_level === 'moderate' ? 'Modéré' : 'Faible'}
-                                                        </Text>
-                                                    </View>
+                                                    <Text style={styles.pathologyName}>{String(result.pathology_name || '')}</Text>
+                                                    {result.urgency_level && (
+                                                        <View style={[styles.urgencyBadge, styles[`urgency${String(result.urgency_level).charAt(0).toUpperCase() + String(result.urgency_level).slice(1)}`]]}>
+                                                            <Text style={styles.urgencyText}>
+                                                                {result.urgency_level === 'critical' ? 'Critique' :
+                                                                 result.urgency_level === 'high' ? 'Urgent' :
+                                                                 result.urgency_level === 'moderate' ? 'Modéré' : 'Faible'}
+                                                            </Text>
+                                                        </View>
+                                                    )}
                                                 </View>
-                                                <Text style={styles.pathologyDescription}>{result.description}</Text>
+                                                {result.description && (
+                                                    <Text style={styles.pathologyDescription}>{String(result.description)}</Text>
+                                                )}
                                                 
-                                                {result.symptoms.length > 0 && (
+                                                {result.symptoms && Array.isArray(result.symptoms) && result.symptoms.length > 0 && (
                                                     <View style={styles.symptomsContainer}>
                                                         <Text style={styles.symptomsTitle}>Symptômes:</Text>
-                                                        {result.symptoms.map((symptom, i) => (
-                                                            <Text key={i} style={styles.symptomItem}>• {symptom}</Text>
-                                                        ))}
+                                                        {result.symptoms
+                                                            .filter(s => s != null)
+                                                            .map((symptom, i) => (
+                                                                <Text key={i} style={styles.symptomItem}>• {String(symptom)}</Text>
+                                                            ))}
                                                     </View>
                                                 )}
 
-                                                {result.recommended_services.length > 0 && (
+                                                {result.recommended_services && Array.isArray(result.recommended_services) && result.recommended_services.length > 0 && (
                                                     <View style={styles.servicesContainer}>
                                                         <Text style={styles.servicesTitle}>Services recommandés:</Text>
-                                                        {result.recommended_services.map((service, i) => (
-                                                            <Text key={i} style={styles.serviceItem}>• {service}</Text>
-                                                        ))}
+                                                        {result.recommended_services
+                                                            .filter(s => s != null)
+                                                            .map((service, i) => (
+                                                                <Text key={i} style={styles.serviceItem}>• {String(service)}</Text>
+                                                            ))}
                                                     </View>
                                                 )}
 
-                                                {result.recommended_examinations.length > 0 && (
+                                                {result.recommended_examinations && Array.isArray(result.recommended_examinations) && result.recommended_examinations.length > 0 && (
                                                     <View style={styles.examsContainer}>
                                                         <Text style={styles.examsTitle}>Examens recommandés:</Text>
-                                                        {result.recommended_examinations.map((exam, i) => (
-                                                            <Text key={i} style={styles.examItem}>• {exam}</Text>
-                                                        ))}
+                                                        {result.recommended_examinations
+                                                            .filter(e => e != null)
+                                                            .map((exam, i) => (
+                                                                <Text key={i} style={styles.examItem}>• {String(exam)}</Text>
+                                                            ))}
                                                     </View>
                                                 )}
 
-                                                {result.hospitals_suggested && result.hospitals_suggested.length > 0 && (
+                                                {result.hospitals_suggested && Array.isArray(result.hospitals_suggested) && result.hospitals_suggested.length > 0 && (
                                                     <View style={styles.hospitalsContainer}>
                                                         <Text style={styles.hospitalsTitle}>Hôpitaux suggérés:</Text>
                                                         {result.hospitals_suggested.map((hospital, i) => (
                                                             <View key={i} style={styles.hospitalItem}>
-                                                                <Text style={styles.hospitalName}>{hospital.hospital_name}</Text>
-                                                                <Text style={styles.hospitalSpeciality}>{hospital.speciality}</Text>
-                                                                {hospital.distance_km && (
+                                                                {hospital.hospital_name && (
+                                                                    <Text style={styles.hospitalName}>{String(hospital.hospital_name)}</Text>
+                                                                )}
+                                                                {hospital.speciality && (
+                                                                    <Text style={styles.hospitalSpeciality}>{String(hospital.speciality)}</Text>
+                                                                )}
+                                                                {hospital.distance_km != null && (
                                                                     <Text style={styles.hospitalDistance}>
-                                                                        À {hospital.distance_km.toFixed(1)} km
+                                                                        À {Number(hospital.distance_km).toFixed(1)} km
                                                                     </Text>
                                                                 )}
                                                             </View>
@@ -747,12 +798,14 @@ const AIModal: React.FC<AIModalProps> = ({
                                                     </View>
                                                 )}
 
-                                                {result.recommendations.length > 0 && (
+                                                {result.recommendations && Array.isArray(result.recommendations) && result.recommendations.length > 0 && (
                                                     <View style={styles.recommendationsContainer}>
                                                         <Text style={styles.recommendationsTitle}>Recommandations:</Text>
-                                                        {result.recommendations.map((rec, i) => (
-                                                            <Text key={i} style={styles.recommendationItem}>• {rec}</Text>
-                                                        ))}
+                                                        {result.recommendations
+                                                            .filter(r => r != null)
+                                                            .map((rec, i) => (
+                                                                <Text key={i} style={styles.recommendationItem}>• {String(rec)}</Text>
+                                                            ))}
                                                     </View>
                                                 )}
                                             </View>
@@ -780,46 +833,50 @@ const AIModal: React.FC<AIModalProps> = ({
                                         {imageAnalysis.description && (
                                             <View style={styles.analysisSection}>
                                                 <Text style={styles.analysisSectionTitle}>Description</Text>
-                                                <Text style={styles.analysisText}>{imageAnalysis.description}</Text>
+                                                <Text style={styles.analysisText}>{String(imageAnalysis.description)}</Text>
                                             </View>
                                         )}
                                         
                                         {imageAnalysis.interpretation && (
                                             <View style={styles.analysisSection}>
                                                 <Text style={styles.analysisSectionTitle}>Interprétation</Text>
-                                                <Text style={styles.analysisText}>{imageAnalysis.interpretation}</Text>
+                                                <Text style={styles.analysisText}>{String(imageAnalysis.interpretation)}</Text>
                                             </View>
                                         )}
                                         
-                                        {imageAnalysis.tags && imageAnalysis.tags.length > 0 && (
+                                        {imageAnalysis.tags && Array.isArray(imageAnalysis.tags) && imageAnalysis.tags.length > 0 && (
                                             <View style={styles.analysisSection}>
                                                 <Text style={styles.analysisSectionTitle}>Éléments détectés</Text>
                                                 <View style={styles.tagsContainer}>
-                                                    {imageAnalysis.tags.map((tag, index) => (
-                                                        <View key={index} style={styles.tag}>
-                                                            <Text style={styles.tagText}>{tag}</Text>
-                                                        </View>
-                                                    ))}
+                                                    {imageAnalysis.tags
+                                                        .filter(t => t != null)
+                                                        .map((tag, index) => (
+                                                            <View key={index} style={styles.tag}>
+                                                                <Text style={styles.tagText}>{String(tag)}</Text>
+                                                            </View>
+                                                        ))}
                                                 </View>
                                             </View>
                                         )}
                                         
-                                        {imageAnalysis.recommendations && imageAnalysis.recommendations.length > 0 && (
+                                        {imageAnalysis.recommendations && Array.isArray(imageAnalysis.recommendations) && imageAnalysis.recommendations.length > 0 && (
                                             <View style={styles.analysisSection}>
                                                 <Text style={styles.analysisSectionTitle}>Recommandations</Text>
-                                                {imageAnalysis.recommendations.map((rec, index) => (
-                                                    <View key={index} style={styles.recommendationItem}>
-                                                        <SafeIcon name="check" size={16} color="#DC2626" type="lucide" />
-                                                        <Text style={styles.recommendationText}>{rec}</Text>
-                                                    </View>
-                                                ))}
+                                                {imageAnalysis.recommendations
+                                                    .filter(r => r != null)
+                                                    .map((rec, index) => (
+                                                        <View key={index} style={styles.recommendationItem}>
+                                                            <SafeIcon name="check" size={16} color="#DC2626" type="lucide" />
+                                                            <Text style={styles.recommendationText}>{String(rec)}</Text>
+                                                        </View>
+                                                    ))}
                                             </View>
                                         )}
                                         
-                                        {imageAnalysis.confidence && (
+                                        {imageAnalysis.confidence != null && (
                                             <View style={styles.confidenceContainer}>
                                                 <Text style={styles.confidenceLabel}>
-                                                    Confiance: {Math.round(imageAnalysis.confidence * 100)}%
+                                                    Confiance: {Math.round(Number(imageAnalysis.confidence) * 100)}%
                                                 </Text>
                                             </View>
                                         )}
@@ -842,7 +899,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                         </Text>
                                         <TouchableOpacity
                                             style={styles.searchButton}
-                                            onPress={showImageSourcePicker}
+                                            onPress={onPickImage}
                                         >
                                             <SafeIcon name="camera" size={18} color="#FFFFFF" type="lucide" />
                                             <Text style={styles.searchButtonText}>Sélectionner une image</Text>
@@ -1074,18 +1131,38 @@ const styles = StyleSheet.create({
     pathologyInputContainer: {
         marginBottom: 16,
     },
-    pathologyInput: {
+    pathologySearchBar: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
         backgroundColor: '#F9FAFB',
         borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12, // ✅ Padding vertical explicite pour meilleure saisie
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        gap: 8,
+    },
+    pathologyInput: {
+        flex: 1,
         fontSize: 16,
         color: '#111827',
         minHeight: 100, // ✅ Hauteur minimale pour permettre une bonne saisie
         maxHeight: 200,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
+        paddingVertical: 8,
         textAlignVertical: 'top',
+    },
+    pathologySearchButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#DC2626',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 4, // Aligner avec le texte
+    },
+    pathologySearchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        opacity: 0.5,
     },
     pathologyHint: {
         fontSize: 12,

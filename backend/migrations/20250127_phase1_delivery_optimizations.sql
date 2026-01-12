@@ -111,7 +111,8 @@ BEGIN
         INNER JOIN couriers c ON c.id = cas.courier_id
         LEFT JOIN courier_assets ca ON ca.courier_id = cas.courier_id AND ca.is_primary = TRUE
         WHERE cas.is_online = TRUE
-          AND cas.load_factor < 1.0
+          -- ✅ MODIFIÉ: Permettre les coursiers avec load_factor >= 1.0 (ils peuvent accepter plusieurs courses compatibles)
+          -- La vérification de compatibilité se fera dans le code Rust
           AND cas.latitude IS NOT NULL
           AND cas.longitude IS NOT NULL
           AND (p_zone_id IS NULL OR cas.zone_id = p_zone_id)
@@ -149,7 +150,8 @@ BEGIN
             INNER JOIN couriers c ON c.id = cas.courier_id
             LEFT JOIN courier_assets ca ON ca.courier_id = cas.courier_id AND ca.is_primary = TRUE
             WHERE cas.is_online = TRUE
-              AND cas.load_factor < 1.0
+              -- ✅ MODIFIÉ: Permettre les coursiers avec load_factor >= 1.0 (ils peuvent accepter plusieurs courses compatibles)
+              -- La vérification de compatibilité se fera dans le code Rust
               AND cas.latitude IS NOT NULL
               AND cas.longitude IS NOT NULL
               AND (p_zone_id IS NULL OR cas.zone_id = p_zone_id)

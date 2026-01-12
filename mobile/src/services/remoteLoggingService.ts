@@ -232,17 +232,24 @@ class RemoteLoggingService {
         const errorMsg = error?.message || message || '';
         const errorName = error?.name || '';
         
-        // Filtrer les erreurs liées à /api/mobile-logs
+        // ✅ CORRIGÉ 2026-01-12: Filtrer aussi les erreurs AbortError pour /api/mobile-logs
+        const isAbortError = errorName === 'AbortError' || errorMsg.includes('Aborted') || errorMsg.includes('abort');
+        const isMobileLogsEndpoint = errorMsg.includes('/api/mobile-logs') || 
+                                     errorMsg.includes('mobile-logs') ||
+                                     (error?.stack && error.stack.includes('/api/mobile-logs'));
+        
+        // Filtrer les erreurs liées à /api/mobile-logs (y compris AbortError)
         return (
-            errorMsg.includes('/api/mobile-logs') ||
-            errorMsg.includes('mobile-logs') ||
+            isMobileLogsEndpoint ||
+            (isAbortError && (errorMsg.includes('mobile') || errorMsg.includes('log') || isMobileLogsEndpoint)) ||
             errorMsg.includes('Network request failed') && (errorMsg.includes('mobile') || errorMsg.includes('log')) ||
             errorName === 'TypeError' && errorMsg.includes('Network request failed') ||
             // Filtrer aussi les erreurs dans le stack trace
             (error?.stack && (
                 error.stack.includes('/api/mobile-logs') ||
                 error.stack.includes('remoteLoggingService') ||
-                error.stack.includes('flush')
+                error.stack.includes('flush') ||
+                (isAbortError && error.stack.includes('mobile-logs'))
             ))
         );
     }
@@ -536,15 +543,29 @@ class RemoteLoggingService {
                 }
             } catch (error: any) {
                 // ✅ AMÉLIORÉ: Gérer différemment selon le type d'erreur
+                const isAbortError = error?.name === 'AbortError' || 
+                                    error?.message?.includes('Aborted') ||
+                                    error?.code === 'TIMEOUT';
                 const isNetworkError = error?.code === 'NETWORK_ERROR' || 
                                       error?.code === 'TIMEOUT' ||
                                       error?.message?.includes('Network request failed') ||
                                       error?.message?.includes('Failed to fetch') ||
                                       error?.message?.includes('timeout');
                 
-                // Pour les erreurs réseau/timeout, on peut supposer que le serveur n'a pas reçu les logs
-                // Pour les autres erreurs (500, etc.), le serveur a peut-être reçu les logs mais a retourné une erreur
-                if (isNetworkError) {
+                // ✅ CORRIGÉ 2026-01-12: Pour AbortError, ne pas remettre en queue si c'est pour /api/mobile-logs
+                // (pour éviter de surcharger avec des logs qui timeout)
+                if (isAbortError) {
+                    // Pour AbortError, on peut supposer que le serveur n'a pas reçu les logs
+                    // Mais on limite le retry pour éviter de surcharger
+                    if (this.logQueue.length < 50) {
+                        // Remettre seulement si la queue n'est pas trop pleine
+                        this.logQueue.unshift(...chunk.slice(0, 10)); // Limiter à 10 logs max
+                    }
+                    
+                    if (__DEV__) {
+                        this.originalConsole?.warn(`[RemoteLogging] ⚠️ Timeout (AbortError), ${Math.min(chunk.length, 10)} logs remis en queue (limité pour éviter surcharge)`);
+                    }
+                } else if (isNetworkError) {
                     // Erreur réseau/timeout : remettre dans la queue pour retry
                     if (this.logQueue.length < 100) {
                         this.logQueue.unshift(...chunk);

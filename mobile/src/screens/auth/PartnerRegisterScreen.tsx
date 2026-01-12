@@ -1,9 +1,9 @@
 // @ts-nocheck
 // ✅ AMÉLIORATION UX: Écran de création partenaire modernisé avec design similaire à RegisterScreen
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { CheckCircle, XCircle, WarningCircle, Building, Envelope, Lock, LockKey, Phone, MapPin, Image as ImageIcon } from 'phosphor-react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Image,
@@ -22,12 +22,17 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 
 const PartnerRegisterScreen: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute();
+  // ✅ NOUVEAU: Lire le paramètre partner_type depuis la route
+  const routeParams = (route.params as any) || {};
+  const initialPartnerType = routeParams.partner_type || '';
+  
   const [form, setForm] = useState({
     partner_name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    partner_type: '' as string,
+    partner_type: initialPartnerType as string,
     partner_phone: '',
     partner_address: '',
     partner_gps: null as { lat: number; lng: number } | null,
@@ -57,6 +62,13 @@ const PartnerRegisterScreen: React.FC = () => {
   const [confirmPasswordMatch, setConfirmPasswordMatch] = useState<boolean | null>(null);
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  // ✅ NOUVEAU: Mettre à jour le partner_type si fourni via les paramètres de route
+  useEffect(() => {
+    if (initialPartnerType && initialPartnerType !== form.partner_type) {
+      setForm(prev => ({ ...prev, partner_type: initialPartnerType }));
+    }
+  }, [initialPartnerType]);
 
   // ✅ TOUS les types partenaires valides selon le backend
   const partnerTypes = [

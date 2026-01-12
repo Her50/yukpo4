@@ -1094,6 +1094,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const currentBlockData = blocks[currentBlock];
     if (!currentBlockData) return { isValid: true, errors: [], fieldErrors: {} };
 
+    // ✅ CORRECTION CRITIQUE: Vérifier que fields existe et est un tableau
+    if (!currentBlockData.fields || !Array.isArray(currentBlockData.fields)) {
+      console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Bloc sans champs valides:', currentBlockData.id);
+      return { isValid: true, errors: [], fieldErrors: {} };
+    }
+
     const errors: string[] = [];
     const newFieldErrors: Record<string, string> = {};
 
@@ -2495,6 +2501,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       case 'url':
         const hasError = fieldErrors[field.name];
         const isProductField = ['nom_produit', 'categorie_produit'].includes(field.name);
+        
+        // ✅ CORRECTION: Déterminer le keyboardType approprié pour les champs email et url
+        const getKeyboardType = () => {
+          if (field.type === 'email' || field.name === 'email') {
+            return 'email-address';
+          }
+          if (field.type === 'url' || field.name === 'website') {
+            return 'default'; // React Native ne supporte pas 'url', utiliser 'default'
+          }
+          return 'default';
+        };
 
         return (
           <View key={field.name} style={isProductField ? styles.productFieldContainer : styles.fieldContainer}>
@@ -2515,6 +2532,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   });
                 }
               }}
+              keyboardType={getKeyboardType()}
+              autoCapitalize={field.type === 'email' || field.type === 'url' ? 'none' : 'sentences'}
+              autoCorrect={field.type === 'email' || field.type === 'url' ? false : true}
               style={[
                 styles.fieldInput,
                 hasError && styles.fieldInputError,
@@ -4528,8 +4548,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         </LinearGradient>
 
                         <NativeCard style={styles.sectionContent}>
-                          {(block.fields || [])
-                            .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
+                          {(Array.isArray(block.fields) ? block.fields : [])
+                            .filter(field => field && field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
                             .map((field, index) => renderField(field))}
                         </NativeCard>
 

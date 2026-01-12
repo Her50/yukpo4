@@ -300,7 +300,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            {/* ✅ REFONDU: Header avec fond blanc pour meilleur contraste */}
+            {/* ✅ REFONDU: Header avec fond blanc pour meilleur contraste - TOUJOURS VISIBLE */}
             <View style={styles.headerContainer}>
                 <View style={styles.headerGradient}>
                     <View style={styles.headerTop}>
@@ -342,7 +342,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* ✅ MODIFIÉ: Champs ville de départ et ville d'arrivée empilés verticalement pour plus d'espace */}
+                    {/* ✅ CORRIGÉ: Champs ville de départ et ville d'arrivée - TOUJOURS VISIBLES */}
                     <View style={styles.searchContainer}>
                         <View style={styles.citiesColumn}>
                             <View style={styles.cityInputContainer}>
@@ -927,12 +927,14 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 4,
         zIndex: 10,
+        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     headerGradient: {
         backgroundColor: '#FFFFFF', // ✅ REFONDU: Fond blanc au lieu de gradient violet
         paddingTop: 20,
         paddingBottom: 16,
         paddingHorizontal: 16,
+        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     headerTop: {
         flexDirection: 'row',
@@ -983,14 +985,18 @@ const styles = StyleSheet.create({
     },
     searchContainer: {
         marginTop: 8,
+        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     citiesColumn: {
         flexDirection: 'column',
         gap: 12,
+        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     cityInputContainer: {
         flex: 1,
         width: '100%',
+        minHeight: 70, // ✅ NOUVEAU: Hauteur minimale pour garantir la visibilité
+        marginBottom: 4, // ✅ NOUVEAU: Espacement entre les champs
     },
     cityLabel: {
         fontSize: 11,

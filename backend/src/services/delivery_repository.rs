@@ -2997,7 +2997,9 @@ impl DeliveryRepository {
             ) cza ON TRUE
             WHERE cas.captured_at >= NOW() - INTERVAL '30 minutes'
               AND cas.is_online = TRUE
-              AND cas.active_deliveries < cas.max_capacity
+              -- ✅ MODIFIÉ: Ne plus filtrer par active_deliveries < max_capacity
+              -- Les coursiers peuvent accepter plusieurs courses compatibles même si max_capacity est atteint
+              -- La vérification de compatibilité se fera dans le code Rust
         ",
         );
 
@@ -3057,20 +3059,24 @@ impl DeliveryRepository {
             max_capacity: i16,
             engine_type: Option<DeliveryEngineType>,
             is_primary: Option<bool>,
+            specializations: Option<Value>, // ✅ NOUVEAU: Spécialisations
         }
 
+        // ✅ NOUVEAU: Requête modifiée pour inclure les spécialisations
         let rows: Vec<NearbyCourierRow> = sqlx::query_as(
             r#"
             SELECT 
-                courier_id,
-                user_id,
-                distance_meters,
-                load_factor,
-                active_deliveries,
-                max_capacity,
-                engine_type,
-                is_primary
-            FROM find_nearby_couriers($1, $2, $3, $4, $5)
+                fnc.courier_id,
+                fnc.user_id,
+                fnc.distance_meters,
+                fnc.load_factor,
+                fnc.active_deliveries,
+                fnc.max_capacity,
+                fnc.engine_type,
+                fnc.is_primary,
+                ca.specializations
+            FROM find_nearby_couriers($1, $2, $3, $4, $5) fnc
+            LEFT JOIN courier_assets ca ON ca.courier_id = fnc.courier_id AND ca.is_primary = TRUE
             "#,
         )
         .bind(pickup.latitude as f32)
@@ -3085,6 +3091,16 @@ impl DeliveryRepository {
         let candidates: Vec<CourierMatchingCandidate> = rows
             .into_iter()
             .map(|row| {
+                // ✅ NOUVEAU: Extraire les spécialisations
+                let specializations: Vec<String> = row.specializations
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                
                 // Récupérer les données depuis courier_availability_snapshots pour les champs manquants
                 CourierMatchingCandidate {
                     courier_id: row.courier_id,
@@ -3101,6 +3117,7 @@ impl DeliveryRepository {
                     metadata: serde_json::json!({
                         "engine_type": row.engine_type.map(|e| format!("{:?}", e)),
                         "user_id": row.user_id,
+                        "specializations": specializations, // ✅ NOUVEAU: Ajouter spécialisations
                     }),
                 }
             })
@@ -3992,5 +4009,48 @@ impl DeliveryRepository {
         .await?;
 
         Ok(address)
+    }
+
+    /// ✅ NOUVEAU: Récupère les courses actives d'un coursier (en cours, pas terminées)
+    pub async fn get_courier_active_deliveries(
+        &self,
+        courier_id: Uuid,
+    ) -> AppResult<Vec<DeliverySummary>> {
+        // Statuts considérés comme "actifs" (pas terminés)
+        use crate::models::delivery_model::DeliveryStatus;
+        
+        let active_statuses: Vec<DeliveryStatus> = vec![
+            DeliveryStatus::Accepted,
+            DeliveryStatus::EnRoutePickup,
+            DeliveryStatus::ArrivalPickup,
+            DeliveryStatus::PickedUp,
+            DeliveryStatus::ShoppingInProgress,
+            DeliveryStatus::ShoppingCompleted,
+            DeliveryStatus::EnRouteDelivery,
+            DeliveryStatus::ArrivalDestination,
+        ];
+
+        let delivery_ids: Vec<Uuid> = sqlx::query_scalar(
+            r#"
+            SELECT id
+            FROM deliveries
+            WHERE courier_id = $1
+              AND status = ANY($2::delivery_status[])
+            ORDER BY requested_at DESC
+            "#,
+        )
+        .bind(courier_id)
+        .bind(&active_statuses[..])
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut summaries = Vec::new();
+        for delivery_id in delivery_ids {
+            if let Some(summary) = self.get_delivery_summary(delivery_id).await? {
+                summaries.push(summary);
+            }
+        }
+
+        Ok(summaries)
     }
 }

@@ -506,26 +506,40 @@ impl MenuPlanningAIService {
             )
         };
 
-        // ✅ CONTEXTE 4: Variation temporelle
+        // ✅ CONTEXTE 4: Variation temporelle - AMÉLIORÉ pour éviter répétitions
         let variation_context = if !previous_recipes.is_empty() {
             let recipes_list = previous_recipes
                 .iter()
-                .take(20) // Limiter à 20 pour ne pas surcharger le prompt
+                .take(30) // Augmenté à 30 pour mieux éviter les répétitions
                 .map(|r| format!("- {}", r))
                 .collect::<Vec<_>>()
                 .join("\n");
             format!(
-                "\n\n🔄 VARIATION TEMPORELLE (CRITIQUE) :\n\
-                - Plats récents déjà proposés (à éviter) :\n{}\n\
-                - CONTRAINTE STRICTE : Éviter de répéter ces plats dans le nouveau menu\n\
-                - OBJECTIF : Proposer des plats DIFFÉRENTS pour varier l'alimentation\n\
-                - PRIORITÉ : Nouveaux plats, nouvelles recettes, nouvelles combinaisons\n\
-                - Si répétition nécessaire : Varier au moins les accompagnements ou la préparation",
+                "\n\n🔄 VARIATION TEMPORELLE (CRITIQUE - LIRE ATTENTIVEMENT) :\n\
+                - HISTORIQUE DES PLATS RÉCENTS (INTERDICTION DE RÉPÉTER) :\n{}\n\
+                - CONTRAINTE ABSOLUE : Tu DOIS générer un menu COMPLÈTEMENT DIFFÉRENT des menus précédents\n\
+                - INTERDICTION STRICTE : Ne JAMAIS proposer les mêmes plats que dans l'historique ci-dessus\n\
+                - OBJECTIF PRINCIPAL : VARIER au maximum l'alimentation avec de NOUVEAUX plats\n\
+                - PRIORITÉ ABSOLUE : Nouveaux plats, nouvelles recettes, nouvelles combinaisons, nouveaux accompagnements\n\
+                - Si un plat similaire est nécessaire : Varier au moins la préparation, les épices, ou les accompagnements\n\
+                - CRÉATIVITÉ : Sois créatif et propose des plats variés et différents à chaque génération\n\
+                - DIVERSITÉ : Assure-toi que chaque jour du menu propose des plats différents les uns des autres ET différents de l'historique",
                 recipes_list
             )
         } else {
-            "\n\n🔄 VARIATION TEMPORELLE :\n- Aucun menu précédent, liberté totale dans le choix des plats".to_string()
+            "\n\n🔄 VARIATION TEMPORELLE :\n- Aucun menu précédent, liberté totale dans le choix des plats\n- Sois créatif et varié dans tes propositions".to_string()
         };
+        
+        // ✅ NOUVEAU: Ajouter un timestamp pour forcer la variation même sans historique
+        let timestamp_variation = format!(
+            "\n\n⏰ CONTEXTE TEMPOREL :\n\
+            - Date de génération : {}\n\
+            - Semaine : {}\n\
+            - CONTRAINTE : Génère un menu UNIQUE et VARIÉ pour cette période spécifique\n\
+            - CRÉATIVITÉ : Utilise cette date comme source d'inspiration pour varier les plats",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+            week_start
+        );
 
         let prompt = format!(
             r#"
@@ -541,7 +555,7 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
 - Budget mensuel : {}
 - Niveau cuisine : {:?}
 - Temps disponible : {:?} heures/jour
-{}{}{}
+{}{}{}{}
 
 🎯 TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
 - Tu DOIS générer un MENU HEBDOMADAIRE avec des REPAS CONCRETS (plats, recettes)
@@ -605,7 +619,8 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
 - Si tu atteins une limite, génère un JSON valide en fermant toutes les structures ouvertes
 - Le JSON DOIT être parseable sans erreur
 - RESPECTER la saisonnalité (uniquement ingrédients de saison)
-- RESPECTER la variation (éviter les répétitions)
+- RESPECTER la variation (éviter les répétitions) - CRITIQUE : Menu doit être DIFFÉRENT à chaque génération
+- CALORIES : Chaque repas DOIT avoir un champ "calories" avec l'apport calorique estimé par portion
 - INTERDICTION ABSOLUE : Ne JAMAIS générer un calendrier, un diagramme, ou une structure vide. Tu DOIS générer des REPAS avec des NOMS DE PLATS CONCRETS.
 "#,
             profile.total_members,
@@ -621,6 +636,7 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
             location_context,
             seasonal_context,
             variation_context,
+            timestamp_variation
             week_start,
             profile.total_members
         );
@@ -1001,4 +1017,91 @@ IMPORTANT :
             recommendations: vec!["Menu en cours de génération. Veuillez réessayer.".to_string()],
         }
     }
+
+    /// ✅ NOUVEAU: Génère une liste de courses intelligente en regroupant les ingrédients
+    pub async fn generate_intelligent_shopping_list(
+        &self,
+        meal_items: &[MealItemForShopping],
+        family_members: i32,
+    ) -> AppResult<IntelligentShoppingList> {
+        use crate::services::menu_planning_ai_prompts::generate_shopping_list_prompt;
+        
+        // Construire le prompt pour l'IA
+        let prompt = generate_shopping_list_prompt(meal_items, family_members);
+        
+        // Appeler l'IA
+        let (_model_name, response, _tokens) = self.app_ia.predict(&prompt).await?;
+        
+        // Parser la réponse JSON
+        let cleaned_response = clean_json_response(&response);
+        let parsed: serde_json::Value = serde_json::from_str(&cleaned_response)
+            .map_err(|e| {
+                log::error!("[generate_intelligent_shopping_list] Erreur parsing JSON: {}", e);
+                log::error!("[generate_intelligent_shopping_list] Réponse IA: {}", cleaned_response);
+                AppError::Internal("Erreur parsing réponse IA".to_string())
+            })?;
+        
+        // Extraire les items de la liste
+        let items = parsed.get("items")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| AppError::Internal("Format réponse IA invalide: items manquant".to_string()))?;
+        
+        let shopping_items: Vec<ShoppingListItem> = items.iter()
+            .filter_map(|item| {
+                let ingredient_name = item.get("ingredient_name")?.as_str()?.to_string();
+                let quantity = item.get("quantity")?.as_f64()?;
+                let unit = item.get("unit")?.as_str()?.to_string();
+                let estimated_price = item.get("estimated_price")?.as_f64()?;
+                let associated_meals = item.get("associated_meals")?
+                    .as_array()?
+                    .iter()
+                    .filter_map(|m| m.as_str().map(|s| s.to_string()))
+                    .collect();
+                
+                Some(ShoppingListItem {
+                    ingredient_name,
+                    quantity,
+                    unit,
+                    estimated_price,
+                    associated_meals,
+                })
+            })
+            .collect();
+        
+        let total_estimated_cost = shopping_items.iter()
+            .map(|item| item.estimated_price)
+            .sum();
+        
+        Ok(IntelligentShoppingList {
+            items: shopping_items,
+            total_estimated_cost,
+        })
+    }
+}
+
+/// ✅ NOUVEAU: Item de repas pour génération liste de courses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MealItemForShopping {
+    pub recipe_name: String,
+    pub times: i32, // Nombre de fois de consommation
+    pub servings: i32,
+    pub day: String,
+    pub meal_type: String,
+}
+
+/// ✅ NOUVEAU: Item de liste de courses intelligente
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShoppingListItem {
+    pub ingredient_name: String,
+    pub quantity: f64,
+    pub unit: String,
+    pub estimated_price: f64,
+    pub associated_meals: Vec<String>,
+}
+
+/// ✅ NOUVEAU: Liste de courses intelligente générée
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntelligentShoppingList {
+    pub items: Vec<ShoppingListItem>,
+    pub total_estimated_cost: f64,
 }

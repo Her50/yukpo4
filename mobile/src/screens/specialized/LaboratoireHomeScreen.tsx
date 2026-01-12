@@ -21,6 +21,7 @@ import {
     Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
@@ -234,28 +235,42 @@ const LaboratoireHomeScreen: React.FC = () => {
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: true,
                     quality: 0.8,
-                    base64: true,
+                    base64: false, // ✅ CORRIGÉ: Ne pas demander base64 directement, on va convertir
                 });
             } else {
                 const { status: galleryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                 if (galleryStatus !== 'granted') {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
-            return;
-        }
+                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
+                    return;
+                }
 
                 result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 0.8,
-            base64: true,
-        });
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: false, // ✅ CORRIGÉ: Ne pas demander base64 directement, on va convertir
+                });
             }
 
-        if (!result.canceled && result.assets[0]) {
-            const asset = result.assets[0];
-            const base64Image = `data:image/jpeg;base64,${asset.base64}`;
-            setSelectedImage(asset.uri);
-            await analyzeImage(base64Image);
+            if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                
+                // ✅ CORRIGÉ: Convertir l'image en JPEG avec expo-image-manipulator
+                // Cela garantit que l'image est dans un format supporté par OpenAI (JPEG, PNG, GIF, WEBP)
+                const manipulatedImage = await ImageManipulator.manipulateAsync(
+                    asset.uri,
+                    [], // Pas de transformations (redimensionnement, rotation, etc.)
+                    {
+                        compress: 0.8, // Compression JPEG
+                        format: ImageManipulator.SaveFormat.JPEG, // ✅ FORCER le format JPEG
+                        base64: true, // Demander le base64 après conversion
+                    }
+                );
+
+                // ✅ Construire le data URI avec le bon type MIME (image/jpeg)
+                const base64Image = `data:image/jpeg;base64,${manipulatedImage.base64}`;
+                setSelectedImage(manipulatedImage.uri);
+                await analyzeImage(base64Image);
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur sélection image:', err);
@@ -586,6 +601,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                     imageAnalysis={imageAnalysis}
                     selectedImage={selectedImage}
                     loading={loadingAI}
+                    onPickImage={showImageSourcePicker}
                 />
             )}
         </SafeNativeView>
@@ -604,6 +620,7 @@ interface AIModalProps {
     imageAnalysis: LabAnalysisResult | null;
     selectedImage: string | null;
     loading: boolean;
+    onPickImage: () => void;
 }
 
 const AIModal: React.FC<AIModalProps> = ({
@@ -617,6 +634,7 @@ const AIModal: React.FC<AIModalProps> = ({
     imageAnalysis,
     selectedImage,
     loading,
+    onPickImage,
 }) => {
     return (
         <Modal
@@ -656,28 +674,47 @@ const AIModal: React.FC<AIModalProps> = ({
                                     </Text>
                                     
                                     <View style={styles.pathologyInputContainer}>
-                                <TextInput
-                                    style={styles.pathologyInput}
-                                            placeholder="Ex: Maux de tête, fièvre, douleurs abdominales..."
-                                            placeholderTextColor="#9CA3AF"
-                                    value={pathologyQuery}
-                                    onChangeText={onPathologyQueryChange}
-                                    multiline
-                                            numberOfLines={4}
-                                            textAlignVertical="top"
-                                            editable={!loading}
-                                />
+                                        <View style={styles.pathologySearchBar}>
+                                            <TextInput
+                                                style={styles.pathologyInput}
+                                                placeholder="Ex: Maux de tête, fièvre, douleurs abdominales..."
+                                                placeholderTextColor="#9CA3AF"
+                                                value={pathologyQuery}
+                                                onChangeText={onPathologyQueryChange}
+                                                multiline
+                                                numberOfLines={4}
+                                                textAlignVertical="top"
+                                                editable={!loading}
+                                                returnKeyType="search"
+                                                onSubmitEditing={onSearchPathology}
+                                            />
+                                            <TouchableOpacity
+                                                style={[
+                                                    styles.pathologySearchButton,
+                                                    (!pathologyQuery.trim() || loading) && styles.pathologySearchButtonDisabled
+                                                ]}
+                                                onPress={onSearchPathology}
+                                                disabled={!pathologyQuery.trim() || loading}
+                                                activeOpacity={0.7}
+                                            >
+                                                {loading ? (
+                                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                                ) : (
+                                                    <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                     
-                                <TouchableOpacity
+                                    <TouchableOpacity
                                         style={[
                                             styles.searchButton,
                                             (!pathologyQuery.trim() || loading) && styles.searchButtonDisabled
                                         ]}
-                                    onPress={onSearchPathology}
+                                        onPress={onSearchPathology}
                                         disabled={!pathologyQuery.trim() || loading}
                                         activeOpacity={0.7}
-                                >
+                                    >
                                     {loading ? (
                                             <>
                                                 <ActivityIndicator color="#FFFFFF" size="small" />
@@ -736,16 +773,32 @@ const AIModal: React.FC<AIModalProps> = ({
                                 ) : imageAnalysis ? (
                                     <View style={styles.analysisContainer}>
                                         <Text style={styles.analysisTitle}>Résultats de l'analyse</Text>
-                                        <Text style={styles.interpretation}>{imageAnalysis.interpretation}</Text>
-                                        {imageAnalysis.anomalies_detected.length > 0 && (
+                                        <Text style={styles.interpretation}>{String(imageAnalysis.interpretation || 'Aucune interprétation disponible')}</Text>
+                                        {Array.isArray(imageAnalysis.anomalies_detected) && imageAnalysis.anomalies_detected.length > 0 && (
                                             <View style={styles.anomaliesContainer}>
                                                 <Text style={styles.anomaliesTitle}>Anomalies détectées:</Text>
                                                 {imageAnalysis.anomalies_detected.map((anomaly, i) => (
                                                     <View key={i} style={styles.anomalyCard}>
-                                                        <Text style={styles.anomalyParameter}>{anomaly.parameter}</Text>
-                                                        <Text style={styles.anomalyValue}>{anomaly.value}</Text>
-                                                        <Text style={styles.anomalyDescription}>{anomaly.description}</Text>
+                                                        <Text style={styles.anomalyParameter}>{String(anomaly.parameter || 'Paramètre inconnu')}</Text>
+                                                        <Text style={styles.anomalyValue}>{String(anomaly.value || 'Valeur inconnue')}</Text>
+                                                        <Text style={styles.anomalyDescription}>{String(anomaly.description || 'Aucune description')}</Text>
                                                     </View>
+                                                ))}
+                                            </View>
+                                        )}
+                                        {Array.isArray(imageAnalysis.recommendations) && imageAnalysis.recommendations.length > 0 && (
+                                            <View style={styles.recommendationsContainer}>
+                                                <Text style={styles.recommendationsTitle}>Recommandations:</Text>
+                                                {imageAnalysis.recommendations.map((rec, i) => (
+                                                    <Text key={i} style={styles.recommendationItem}>• {String(rec)}</Text>
+                                                ))}
+                                            </View>
+                                        )}
+                                        {Array.isArray(imageAnalysis.follow_up_exams) && imageAnalysis.follow_up_exams.length > 0 && (
+                                            <View style={styles.followUpContainer}>
+                                                <Text style={styles.followUpTitle}>Examens complémentaires suggérés:</Text>
+                                                {imageAnalysis.follow_up_exams.map((exam, i) => (
+                                                    <Text key={i} style={styles.followUpItem}>• {String(exam)}</Text>
                                                 ))}
                                             </View>
                                         )}
@@ -766,7 +819,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                         </Text>
                                         <TouchableOpacity
                                             style={styles.searchButton}
-                                            onPress={showImageSourcePicker}
+                                            onPress={onPickImage}
                                         >
                                             <SafeIcon name="camera" size={18} color="#FFFFFF" type="lucide" />
                                             <Text style={styles.searchButtonText}>Sélectionner une image</Text>
@@ -992,18 +1045,38 @@ const styles = StyleSheet.create({
     pathologyInputContainer: {
         marginBottom: 16,
     },
-    pathologyInput: {
+    pathologySearchBar: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
         backgroundColor: '#F9FAFB',
         borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12, // ✅ Padding vertical explicite pour meilleure saisie
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        gap: 8,
+    },
+    pathologyInput: {
+        flex: 1,
         fontSize: 16,
         color: '#111827',
         minHeight: 100, // ✅ Hauteur minimale pour permettre une bonne saisie
         maxHeight: 200,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
+        paddingVertical: 8,
         textAlignVertical: 'top',
+    },
+    pathologySearchButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#2563EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 4, // Aligner avec le texte
+    },
+    pathologySearchButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+        opacity: 0.5,
     },
     pathologyHint: {
         fontSize: 12,
@@ -1148,6 +1221,42 @@ const styles = StyleSheet.create({
     anomalyDescription: {
         fontSize: 14,
         color: '#92400E',
+    },
+    recommendationsContainer: {
+        marginTop: 16,
+        padding: 12,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 8,
+    },
+    recommendationsTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    recommendationItem: {
+        fontSize: 14,
+        color: '#1E40AF',
+        lineHeight: 20,
+        marginBottom: 4,
+    },
+    followUpContainer: {
+        marginTop: 16,
+        padding: 12,
+        backgroundColor: '#F0FDF4',
+        borderRadius: 8,
+    },
+    followUpTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    followUpItem: {
+        fontSize: 14,
+        color: '#166534',
+        lineHeight: 20,
+        marginBottom: 4,
     },
     emptyAnalysisContainer: {
         alignItems: 'center',

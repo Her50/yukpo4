@@ -351,7 +351,7 @@ const apiCallInternal = async <T>(
                       : endpoint.includes('/search/direct')
                         ? 30000  // ✅ 30s pour recherche par image (analyse IA + recherche SQL peut prendre 20-25s)
                         : endpoint.includes('/mobile-logs')
-                          ? 30000  // ✅ 30s pour logs mobiles (traitement batch peut prendre du temps)
+                          ? 60000  // ✅ CORRIGÉ 2026-01-12: 60s pour logs mobiles (traitement batch peut prendre du temps, éviter AbortError)
                           : endpoint.includes('/services/') && (endpoint.includes('/reviews') || endpoint.includes('/stats'))
                             ? 30000  // ✅ 30s pour reviews et stats (peuvent être lents)
                             : endpoint.includes('/prestataire/services')

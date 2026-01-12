@@ -61,6 +61,85 @@ pub fn haversine_distance(pos1: (f64, f64), pos2: (f64, f64)) -> f64 {
     EARTH_RADIUS_KM * c * 1000.0 // Retourne en mètres
 }
 
+/// ✅ NOUVEAU: Vérifie si un point est proche d'un autre point (même point de pickup)
+/// Distance maximale pour considérer comme "même point" : 100 mètres
+pub fn is_same_pickup_point(pickup1: &GeoPoint, pickup2: &GeoPoint, max_distance_meters: f64) -> bool {
+    let distance = haversine_distance(
+        (pickup1.latitude, pickup1.longitude),
+        (pickup2.latitude, pickup2.longitude),
+    );
+    distance <= max_distance_meters
+}
+
+/// ✅ NOUVEAU: Vérifie si un nouveau pickup est sur la trajectoire d'une course existante
+/// Un pickup est considéré "sur la trajectoire" s'il est proche du pickup ou du dropoff d'une course existante
+/// Distance maximale : 500 mètres
+pub fn is_on_route(
+    new_pickup: &GeoPoint,
+    existing_pickup: &GeoPoint,
+    existing_dropoff: &GeoPoint,
+    max_distance_meters: f64,
+) -> bool {
+    // Vérifier si le nouveau pickup est proche du pickup existant
+    let distance_to_pickup = haversine_distance(
+        (new_pickup.latitude, new_pickup.longitude),
+        (existing_pickup.latitude, existing_pickup.longitude),
+    );
+    
+    // Vérifier si le nouveau pickup est proche du dropoff existant
+    let distance_to_dropoff = haversine_distance(
+        (new_pickup.latitude, new_pickup.longitude),
+        (existing_dropoff.latitude, existing_dropoff.longitude),
+    );
+    
+    // Vérifier si le nouveau pickup est sur le chemin entre pickup et dropoff
+    // (approximation : si la distance totale est proche de la somme des distances)
+    let route_distance = haversine_distance(
+        (existing_pickup.latitude, existing_pickup.longitude),
+        (existing_dropoff.latitude, existing_dropoff.longitude),
+    );
+    
+    // Si le nouveau pickup est proche du pickup ou du dropoff, ou sur le chemin
+    distance_to_pickup <= max_distance_meters
+        || distance_to_dropoff <= max_distance_meters
+        || (distance_to_pickup + distance_to_dropoff) <= (route_distance + max_distance_meters * 2.0)
+}
+
+/// ✅ NOUVEAU: Vérifie si une nouvelle course est compatible avec les courses existantes d'un coursier
+/// Compatible si :
+/// - Même point de pickup (distance < 100m)
+/// - Pickup sur la trajectoire d'une course existante (distance < 500m du pickup ou dropoff)
+pub fn is_delivery_compatible(
+    new_delivery: &DeliverySummary,
+    existing_deliveries: &[DeliverySummary],
+) -> bool {
+    const SAME_PICKUP_DISTANCE: f64 = 100.0; // 100 mètres pour même point
+    const ON_ROUTE_DISTANCE: f64 = 500.0; // 500 mètres pour être sur la route
+    
+    for existing in existing_deliveries {
+        // Vérifier si même point de pickup
+        if is_same_pickup_point(
+            &new_delivery.pickup,
+            &existing.pickup,
+            SAME_PICKUP_DISTANCE,
+        ) {
+            return true;
+        }
+        
+        // Vérifier si le nouveau pickup est sur la trajectoire
+        if is_on_route(
+            &new_delivery.pickup,
+            &existing.pickup,
+            &existing.dropoff,
+            ON_ROUTE_DISTANCE,
+        ) {
+            return true;
+        }
+    }
+    
+    false
+}
+
 /// Paramètres pour créer une demande de livraison
 #[derive(Debug, Clone)]
 pub struct CreateDeliveryParams {
@@ -4089,10 +4168,51 @@ impl DeliveryService {
                 .await?
         };
 
-        // ✅ Filtrer et prioriser les candidats par type de véhicule
-        let filtered_candidates = candidates;
-        // Note: On ne filtre pas strictement (pour ne pas perdre de candidats),
-        // mais on ajoutera un bonus de score pour les coursiers avec le bon type
+        // ✅ NOUVEAU: Filtrer les candidats en vérifiant la compatibilité avec leurs courses actives
+        // Un coursier peut accepter plusieurs courses si elles sont compatibles (même pickup ou sur trajectoire)
+        let mut filtered_candidates = Vec::new();
+        
+        for candidate in candidates {
+            // Si le coursier a déjà des courses actives, vérifier la compatibilité
+            if candidate.active_deliveries > 0 {
+                // Récupérer les courses actives du coursier
+                let active_deliveries = match self.repository.get_courier_active_deliveries(candidate.courier_id).await {
+                    Ok(deliveries) => deliveries,
+                    Err(_) => {
+                        // En cas d'erreur, on continue quand même (ne pas bloquer le matching)
+                        log::warn!(
+                            "[DeliveryMatching] Erreur récupération courses actives pour coursier {}",
+                            candidate.courier_id
+                        );
+                        vec![]
+                    }
+                };
+                
+                // Si le coursier a des courses actives, vérifier la compatibilité
+                if !active_deliveries.is_empty() {
+                    if is_delivery_compatible(&summary, &active_deliveries) {
+                        filtered_candidates.push(candidate);
+                        log::debug!(
+                            "[DeliveryMatching] ✅ Coursier {} compatible ({} course(s) active(s))",
+                            candidate.courier_id,
+                            active_deliveries.len()
+                        );
+                    } else {
+                        log::debug!(
+                            "[DeliveryMatching] ❌ Coursier {} non compatible ({} course(s) active(s))",
+                            candidate.courier_id,
+                            active_deliveries.len()
+                        );
+                    }
+                } else {
+                    // Pas de courses actives, le coursier peut accepter
+                    filtered_candidates.push(candidate);
+                }
+            } else {
+                // Pas de courses actives, le coursier peut accepter
+                filtered_candidates.push(candidate);
+            }
+        }
 
         if filtered_candidates.is_empty() {
             self.repository
@@ -4118,6 +4238,35 @@ impl DeliveryService {
             .map(|candidate| {
                 let mut score = Self::compute_candidate_score(&candidate, passenger_mode);
 
+                // ✅ NOUVEAU: Bonus de score pour spécialisation "achats alimentaires"
+                let is_menu_shopping = summary.metadata
+                    .get("order_type")
+                    .and_then(|v| v.as_str())
+                    .map(|t| t == "menu_shopping" || t == "food_shopping")
+                    .unwrap_or(false);
+                
+                if is_menu_shopping {
+                    // Récupérer les spécialisations du coursier depuis courier_assets
+                    let courier_specializations: Vec<String> = candidate.metadata
+                        .get("specializations")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    
+                    // Bonus significatif si le coursier a la spécialisation "food_shopping"
+                    if courier_specializations.contains(&"food_shopping".to_string()) {
+                        score += 0.5; // ✅ Bonus de 50% pour spécialisation correspondante
+                        log::debug!(
+                            "[DeliveryMatching] Bonus spécialisation food_shopping appliqué pour coursier {}",
+                            candidate.courier_id
+                        );
+                    }
+                }
+                
                 // ✅ Bonus de score si le type de véhicule correspond
                 if let Some(ref req_vehicle) = required_vehicle_type {
                     // Récupérer le type de véhicule du coursier depuis metadata

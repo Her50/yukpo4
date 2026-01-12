@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     FlatList,
     Modal,
     RefreshControl,
@@ -75,6 +76,7 @@ const PharmacieHomeScreen: React.FC = () => {
     const [aiResponse, setAiResponse] = useState<string | null>(null);
     const [showAIChat, setShowAIChat] = useState(false);
     const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+    const [aiChatHeight] = useState(new Animated.Value(0)); // ✅ NOUVEAU: Animation pour le déroulement
     
     // États pour analyse d'image
     const [selectedMedicationImage, setSelectedMedicationImage] = useState<string | null>(null);
@@ -628,7 +630,29 @@ const PharmacieHomeScreen: React.FC = () => {
                         style={styles.aiToggleButton}
                         onPress={() => {
                             hapticPress();
-                            setShowAIChat(!showAIChat);
+                            const newValue = !showAIChat;
+                            
+                            // ✅ CORRIGÉ: Mettre à jour l'état d'abord si on ouvre, puis animer
+                            if (newValue) {
+                                setShowAIChat(true);
+                                // Démarrer l'animation après un court délai pour que le composant soit monté
+                                requestAnimationFrame(() => {
+                                    Animated.timing(aiChatHeight, {
+                                        toValue: 1,
+                                        duration: 300,
+                                        useNativeDriver: false, // height n'est pas supporté par le driver natif
+                                    }).start();
+                                });
+                            } else {
+                                // Animer d'abord, puis masquer après l'animation
+                                Animated.timing(aiChatHeight, {
+                                    toValue: 0,
+                                    duration: 300,
+                                    useNativeDriver: false,
+                                }).start(() => {
+                                    setShowAIChat(false);
+                                });
+                            }
                         }}
                         activeOpacity={0.7}
                     >
@@ -652,7 +676,19 @@ const PharmacieHomeScreen: React.FC = () => {
                     </TouchableOpacity>
 
                     {showAIChat && (
-                        <View style={styles.aiChatWrapper}>
+                        <Animated.View 
+                            style={[
+                                styles.aiChatWrapper,
+                                {
+                                    height: aiChatHeight.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [0, 500], // ✅ Animation de 0 à 500px
+                                    }),
+                                    opacity: aiChatHeight, // ✅ Fade in/out
+                                    overflow: 'hidden', // ✅ Masquer le contenu pendant l'animation
+                                }
+                            ]}
+                        >
                             <KeyboardAwareScreen 
                                 style={styles.aiChatScrollView}
                                 contentContainerStyle={styles.aiChatScrollContent}
@@ -779,7 +815,7 @@ const PharmacieHomeScreen: React.FC = () => {
                                     </View>
                                 )}
                             </KeyboardAwareScreen>
-                        </View>
+                        </Animated.View>
                     )}
                 </View>
             </View>
@@ -2355,13 +2391,14 @@ const styles = StyleSheet.create({
         color: '#6B7280',
     },
     aiChatWrapper: {
-        maxHeight: 500,
+        maxHeight: 500, // ✅ Hauteur maximale pour limiter l'affichage
         backgroundColor: '#F9FAFB',
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
+        // ✅ Note: La hauteur réelle est gérée par l'animation Animated.View
     },
     aiChatScrollView: {
-        flex: 1,
+        height: '100%', // ✅ CORRIGÉ: Utiliser height: '100%' au lieu de flex: 1 pour garantir l'affichage
         backgroundColor: '#F9FAFB',
     },
     aiChatScrollContent: {

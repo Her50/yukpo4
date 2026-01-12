@@ -61,7 +61,7 @@ const SERVICES_DATA: Service[] = [
     // Emploi
     { id: 'offres_emploi', title: 'Offres d\'Emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', comingSoon: false },
     // Vie quotidienne
-    { id: 'menu_planning', title: 'Mon menu', icon: 'coffee', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', comingSoon: false },
+    { id: 'menu_planning', title: 'Mon menu', icon: 'utensils-crossed', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', comingSoon: false },
     { id: 'bayamselam', title: 'BayamSelam', icon: 'trending-down', gradient: ['#10B981', '#34D399'], description: 'Comparatif prix', comingSoon: false },
     // Immobilier
     { id: 'immo', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], description: 'Biens immobiliers', comingSoon: false },
@@ -343,8 +343,7 @@ const styles = StyleSheet.create({
         minHeight: 70,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#E2E8F0', // ✅ AMÉLIORÉ: Fond gris moyen harmonisé plus foncé (#E2E8F0 - slate-200)
-        // ✅ SUPPRIMÉ: Bordure noire foncée pour un look plus propre
+        backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que l'en-tête et le pied de page (#f8fafc)
         borderRadius: 10,
     },
     categoryIconContainer: {
@@ -372,7 +371,7 @@ const styles = StyleSheet.create({
     },
     expandedContainer: {
         marginTop: 8,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que l'en-tête et le pied de page (#f8fafc)
         borderRadius: 8,
         padding: 8,
         borderWidth: 1,
@@ -551,7 +550,7 @@ const styles = StyleSheet.create({
         maxWidth: 75, // ✅ RÉDUIT: De 90 à 75
         paddingVertical: 6, // ✅ RÉDUIT: De 8 à 6
         paddingHorizontal: 8, // ✅ RÉDUIT: De 10 à 8
-        backgroundColor: '#F9FAFB',
+        backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que l'en-tête et le pied de page (#f8fafc)
         borderRadius: 8, // ✅ RÉDUIT: De 10 à 8
         borderWidth: 1,
         borderColor: '#E5E7EB',

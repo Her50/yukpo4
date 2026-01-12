@@ -345,16 +345,26 @@ const CovoiturageHomeScreen: React.FC = () => {
                         <TouchableOpacity
                             onPress={() => {
                                 hapticPress();
-                                (navigation as any).navigate('PartnerRegister', {
-                                    partner_type: 'chauffeur',
-                                });
+                                // ✅ CORRIGÉ: Navigation vers l'écran de création de profil chauffeur
+                                // Essayer d'abord PartnerRegister, sinon CovoiturageForm en mode driver
+                                try {
+                                    (navigation as any).navigate('PartnerRegister', {
+                                        partner_type: 'chauffeur',
+                                    });
+                                } catch (err) {
+                                    // Fallback: naviguer vers CovoiturageForm en mode driver
+                                    console.log('[CovoiturageHomeScreen] PartnerRegister non disponible, redirection vers CovoiturageForm');
+                                    (navigation as any).navigate('CovoiturageForm', {
+                                        mode: 'driver_profile',
+                                    });
+                                }
                             }}
                             style={styles.registerDriverButtonLeft}
                         >
                             <SafeIcon name="user" size={18} color="#3B82F6" type="lucide" />
-                                        <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
-                                            Devenir chauffeur
-                                        </Text>
+                            <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
+                                Devenir chauffeur
+                            </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => {
@@ -903,12 +913,14 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 4,
         zIndex: 10,
+        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     headerGradient: {
         paddingTop: 20,
         paddingBottom: 16,
         paddingHorizontal: 16,
         backgroundColor: '#FFFFFF',
+        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     headerActionsBar: {
         flexDirection: 'row',
@@ -982,18 +994,23 @@ const styles = StyleSheet.create({
     },
     searchContainer: {
         marginTop: 8,
+        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     // ✅ MODIFIÉ: Styles pour champs route empilés verticalement
     routeContainer: {
         marginBottom: 12,
+        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     routeColumn: {
         flexDirection: 'column',
         gap: 12,
+        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     routeInputContainer: {
         flex: 1,
         width: '100%',
+        minHeight: 70, // ✅ NOUVEAU: Hauteur minimale pour garantir la visibilité
+        marginBottom: 4, // ✅ NOUVEAU: Espacement entre les champs
     },
     routeLabel: {
         fontSize: 11,
@@ -1025,7 +1042,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#3B82F6', // ✅ CORRIGÉ: Fond bleu au lieu de blanc
         borderRadius: 12,
         paddingVertical: 16,
         paddingHorizontal: 24,
@@ -1044,7 +1061,7 @@ const styles = StyleSheet.create({
     searchButtonText: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#3B82F6',
+        color: '#FFFFFF', // ✅ CORRIGÉ: Texte blanc sur fond bleu
         flexShrink: 1,
     },
     searchButtonTextDisabled: {

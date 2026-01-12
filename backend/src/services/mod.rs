@@ -115,6 +115,7 @@ pub mod massive_load_handler;
 pub mod matching_pipeline;
 pub mod media_storage_service;
 pub mod menu_planning_ai_service; // ✅ 2025-01-27: Service IA planification menus
+pub mod menu_planning_ai_prompts; // ✅ NOUVEAU: Prompts spécialisés pour IA planification menus
 pub mod mobile_money_service; // ✅ Phase 10 - Service Mobile Money (MTN/Orange Money)
 pub mod mongo_history_service;
 pub mod moving_ai_service; // ✅ Service IA déménagement (calcul volume, estimation coût, optimisation)

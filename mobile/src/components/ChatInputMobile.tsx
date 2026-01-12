@@ -1370,12 +1370,11 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
 // ✅ NOUVEAU: Fonction pour créer les styles avec support thème
 const createStyles = (colors: any) => StyleSheet.create({
     container: {
-        backgroundColor: '#E2E8F0', // ✅ AMÉLIORÉ: Fond gris moyen harmonisé plus foncé (#E2E8F0 - slate-200)
+        backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que l'en-tête et le pied de page (#f8fafc)
         borderRadius: 12,
         padding: 10,
         marginHorizontal: 0,
         marginBottom: 8,
-        // ✅ SUPPRIMÉ: Bordure foncée pour un look plus propre
         minHeight: 70,
     },
     inputContainer: {

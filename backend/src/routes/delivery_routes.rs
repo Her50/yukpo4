@@ -5749,6 +5749,32 @@ async fn accept_delivery(
         ));
     }
     
+    // ✅ NOUVEAU: Vérifier la compatibilité avec les courses actives du coursier
+    // Un coursier peut accepter plusieurs courses si elles sont compatibles (même pickup ou sur trajectoire)
+    let active_deliveries = service.repository().get_courier_active_deliveries(courier_id).await?;
+    
+    // Si le coursier a déjà des courses actives, vérifier la compatibilité
+    if !active_deliveries.is_empty() {
+        use crate::services::delivery_service::is_delivery_compatible;
+        
+        if !is_delivery_compatible(&summary, &active_deliveries) {
+            return Err(AppError::BadRequest(
+                format!(
+                    "Cette course n'est pas compatible avec vos {} course(s) active(s). \
+                    Vous ne pouvez accepter que des courses au même point de pickup ou sur votre trajectoire.",
+                    active_deliveries.len()
+                ).into(),
+            ));
+        }
+        
+        log::info!(
+            "[accept_delivery] ✅ Course {} compatible avec {} course(s) active(s) du coursier {}",
+            delivery_id,
+            active_deliveries.len(),
+            courier_id
+        );
+    }
+    
     // ✅ Arrêter toutes les notifications pour les autres coursiers
     if let Err(e) = service.stop_delivery_notifications(delivery_id).await {
         log::error!(

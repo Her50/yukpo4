@@ -1,7 +1,7 @@
 // ✅ Écran Calendrier Semaine - Planification Menus (VERSION TABLEAU)
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -16,9 +16,15 @@ import {
 } from 'react-native';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import { DailyMeal, GeneratedRecipe, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
+import { DailyMeal, FamilyProfile, GeneratedRecipe, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
 import { useShoppingContext } from '../../contexts/ShoppingContext';
+import { generateAndDownloadMenuPDF, shareMenuPDF } from '../../utils/menuPdfGenerator';
+import { generateAndDownloadShoppingListPDF, shareShoppingListPDF } from '../../utils/shoppingListPdfGenerator';
+import { useAuth } from '../../contexts/AuthContext';
+import { useLocation } from '../../contexts/LocationContext';
+import { deliveryApi, userApi } from '../../services/api';
+import * as Location from 'expo-location';
 
 const { width } = Dimensions.get('window');
 
@@ -41,6 +47,32 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const [loadingRecipe, setLoadingRecipe] = useState(false);
     const [showRecipeDetails, setShowRecipeDetails] = useState(false);
     const [viewMode, setViewMode] = useState<'table' | 'list'>('table'); // ✅ NOUVEAU: Mode d'affichage
+    const [exportingPDF, setExportingPDF] = useState(false);
+    const { user } = useAuth();
+    // ✅ NOUVEAU: États pour tableau intermédiaire achats externes
+    const [showShoppingModal, setShowShoppingModal] = useState(false);
+    const [mealItems, setMealItems] = useState<Array<{
+        id: string;
+        day: string;
+        dayNumber: number;
+        mealType: 'petit_dejeuner' | 'dejeuner' | 'diner';
+        mealTypeLabel: string;
+        recipeName: string;
+        servings: number;
+        estimatedCost: number;
+        times: number; // Nombre de fois de consommation
+    }>>([]);
+    const [familyProfile, setFamilyProfile] = useState<{ total_members: number } | null>(null);
+    
+    // ✅ NOUVEAU: États pour commande coursier
+    const [showOrderModal, setShowOrderModal] = useState(false);
+    const [selectedMarket, setSelectedMarket] = useState<any | null>(null);
+    const [markets, setMarkets] = useState<any[]>([]);
+    const [loadingMarkets, setLoadingMarkets] = useState(false);
+    const [userBalance, setUserBalance] = useState<number>(0);
+    const [loadingBalance, setLoadingBalance] = useState(false);
+    const [creatingOrder, setCreatingOrder] = useState(false);
+    const { location: userLocation } = useLocation();
 
     if (!menu) {
         return (
@@ -75,6 +107,419 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         }, 0);
     };
 
+    // ✅ NOUVEAU: Initialiser le tableau intermédiaire depuis le menu
+    const initializeMealItems = () => {
+        if (!menu) return;
+        
+        const items: Array<{
+            id: string;
+            day: string;
+            dayNumber: number;
+            mealType: 'petit_dejeuner' | 'dejeuner' | 'diner';
+            mealTypeLabel: string;
+            recipeName: string;
+            servings: number;
+            estimatedCost: number;
+            times: number;
+        }> = [];
+
+        menu.meals.forEach((meal) => {
+            if (meal.petit_dejeuner) {
+                items.push({
+                    id: `${meal.day}-petit_dejeuner`,
+                    day: meal.day_name,
+                    dayNumber: meal.day,
+                    mealType: 'petit_dejeuner',
+                    mealTypeLabel: 'Petit-déjeuner',
+                    recipeName: meal.petit_dejeuner.recipe_name,
+                    servings: meal.petit_dejeuner.servings,
+                    estimatedCost: meal.petit_dejeuner.estimated_cost || 0,
+                    times: 1, // Par défaut 1 fois
+                });
+            }
+            if (meal.dejeuner) {
+                items.push({
+                    id: `${meal.day}-dejeuner`,
+                    day: meal.day_name,
+                    dayNumber: meal.day,
+                    mealType: 'dejeuner',
+                    mealTypeLabel: 'Déjeuner',
+                    recipeName: meal.dejeuner.recipe_name,
+                    servings: meal.dejeuner.servings,
+                    estimatedCost: meal.dejeuner.estimated_cost || 0,
+                    times: 1,
+                });
+            }
+            if (meal.diner) {
+                items.push({
+                    id: `${meal.day}-diner`,
+                    day: meal.day_name,
+                    dayNumber: meal.day,
+                    mealType: 'diner',
+                    mealTypeLabel: 'Dîner',
+                    recipeName: meal.diner.recipe_name,
+                    servings: meal.diner.servings,
+                    estimatedCost: meal.diner.estimated_cost || 0,
+                    times: 1,
+                });
+            }
+        });
+
+        setMealItems(items);
+    };
+
+    // ✅ NOUVEAU: Charger le profil famille
+    useEffect(() => {
+        const loadFamilyProfile = async () => {
+            try {
+                const response = await menuPlanningService.getFamilyProfile();
+                if (response.success && response.data?.profile) {
+                    setFamilyProfile({
+                        total_members: response.data.profile.total_members || 1,
+                    });
+                }
+            } catch (error) {
+                console.error('[MenuWeekCalendar] Erreur chargement profil:', error);
+            }
+        };
+        loadFamilyProfile();
+        if (menu) {
+            initializeMealItems();
+        }
+    }, [menu]);
+
+    // ✅ NOUVEAU: Calculer le coût total selon nombre de fois et taille famille
+    const calculateItemCost = (item: typeof mealItems[0]): number => {
+        const baseCost = item.estimatedCost;
+        const familyMultiplier = familyProfile?.total_members || 1;
+        return baseCost * item.times * familyMultiplier;
+    };
+
+    // ✅ NOUVEAU: Charger les marchés disponibles
+    const loadMarkets = async () => {
+        if (!generatedShoppingList) return;
+        
+        setLoadingMarkets(true);
+        try {
+            let userLat = 4.0511; // Douala par défaut
+            let userLng = 9.7679;
+
+            if (userLocation) {
+                userLat = userLocation.coords.latitude;
+                userLng = userLocation.coords.longitude;
+            } else {
+                try {
+                    const location = await Location.getCurrentPositionAsync({
+                        accuracy: Location.Accuracy.Balanced,
+                    });
+                    userLat = location.coords.latitude;
+                    userLng = location.coords.longitude;
+                } catch (error) {
+                    console.warn('Géolocalisation non disponible');
+                }
+            }
+
+            const result = await deliveryApi.listSupermarkets(userLat, userLng, 10);
+            if (result.supermarkets && result.supermarkets.length > 0) {
+                setMarkets(result.supermarkets);
+            } else {
+                setMarkets([]);
+                Alert.alert('Aucun marché trouvé', 'Aucun marché n\'a été trouvé près de votre position.');
+            }
+        } catch (error) {
+            console.error('[MenuWeekCalendar] Erreur chargement marchés:', error);
+            Alert.alert('Erreur', 'Impossible de charger la liste des marchés.');
+            setMarkets([]);
+        } finally {
+            setLoadingMarkets(false);
+        }
+    };
+
+    // ✅ NOUVEAU: Vérifier le solde utilisateur
+    const checkUserBalance = async () => {
+        setLoadingBalance(true);
+        try {
+            const response = await userApi.getTokensBalance();
+            if (response.success && response.data) {
+                const balance = (response.data as any).tokens_balance || 0;
+                setUserBalance(balance);
+                return balance;
+            }
+            return 0;
+        } catch (error) {
+            console.error('[MenuWeekCalendar] Erreur vérification solde:', error);
+            return 0;
+        } finally {
+            setLoadingBalance(false);
+        }
+    };
+
+    // ✅ NOUVEAU: Calculer les frais totaux (budget + 15% plafonné à 2000 + frais livraison moto)
+    const calculateTotalFees = (): { shoppingCost: number; serviceFee: number; deliveryFee: number; total: number } => {
+        if (!generatedShoppingList) {
+            return { shoppingCost: 0, serviceFee: 0, deliveryFee: 0, total: 0 };
+        }
+
+        const shoppingCost = generatedShoppingList.total_estimated_cost;
+        
+        // Frais de service : 15% plafonné à 2000
+        const serviceFeePercent = 0.15;
+        const serviceFeeMax = 2000;
+        const serviceFee = Math.min(shoppingCost * serviceFeePercent, serviceFeeMax);
+        
+        // Frais de livraison moto (estimation basée sur distance)
+        // Pour l'instant, on utilise une estimation fixe de 500 FCFA pour les courses
+        // TODO: Calculer dynamiquement selon la distance marché -> domicile
+        const deliveryFee = 500;
+        
+        const total = shoppingCost + serviceFee + deliveryFee;
+        
+        return { shoppingCost, serviceFee, deliveryFee, total };
+    };
+
+    // ✅ NOUVEAU: Ouvrir le modal de commande
+    const handleOpenOrderModal = async () => {
+        if (!generatedShoppingList) {
+            Alert.alert('Erreur', 'Aucune liste de courses disponible');
+            return;
+        }
+
+        setShowOrderModal(true);
+        
+        // Charger les marchés et vérifier le solde en parallèle
+        await Promise.all([
+            loadMarkets(),
+            checkUserBalance(),
+        ]);
+    };
+
+    // ✅ NOUVEAU: Créer la commande de courses
+    const handleCreateOrder = async () => {
+        if (!generatedShoppingList || !selectedMarket) {
+            Alert.alert('Erreur', 'Veuillez sélectionner un marché');
+            return;
+        }
+
+        const fees = calculateTotalFees();
+        
+        // Vérifier le solde
+        if (userBalance < fees.total) {
+            Alert.alert(
+                'Solde insuffisant',
+                `Votre solde (${formatPrice(userBalance)}) est insuffisant pour cette commande (${formatPrice(fees.total)}). Veuillez recharger votre compte.`,
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    { 
+                        text: 'Recharger', 
+                        onPress: () => {
+                            // TODO: Naviguer vers l'écran de recharge
+                            navigation.navigate('RechargeTokens' as never);
+                        }
+                    }
+                ]
+            );
+            return;
+        }
+
+        setCreatingOrder(true);
+        try {
+            // Obtenir l'adresse de livraison (domicile utilisateur)
+            let dropoffLat = 4.0511;
+            let dropoffLng = 9.7679;
+            let dropoffAddress = 'Adresse non disponible';
+
+            if (userLocation) {
+                dropoffLat = userLocation.coords.latitude;
+                dropoffLng = userLocation.coords.longitude;
+                try {
+                    const reverseGeocode = await Location.reverseGeocodeAsync({
+                        latitude: dropoffLat,
+                        longitude: dropoffLng,
+                    });
+                    if (reverseGeocode && reverseGeocode.length > 0) {
+                        const addr = reverseGeocode[0];
+                        dropoffAddress = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.city || ''}, ${addr.region || ''}`.trim();
+                    }
+                } catch (error) {
+                    console.warn('Géocodage inverse échoué:', error);
+                }
+            }
+
+            // Créer la commande shopping
+            const shoppingItems = generatedShoppingList.items.map((item: any) => ({
+                label: item.ingredient_name,
+                quantity: item.quantity,
+                unit: item.unit,
+                estimatedPrice: item.estimated_price,
+                estimatedTotal: item.estimated_price,
+            }));
+
+            const orderPayload = {
+                pickup: {
+                    label: selectedMarket.name,
+                    latitude: selectedMarket.latitude,
+                    longitude: selectedMarket.longitude,
+                    address: selectedMarket.address,
+                },
+                dropoff: {
+                    label: 'Domicile',
+                    latitude: dropoffLat,
+                    longitude: dropoffLng,
+                    address: dropoffAddress,
+                },
+                items: shoppingItems,
+                budget: fees.total,
+                currency: currency || 'FCFA',
+                metadata: {
+                    order_type: 'menu_shopping',
+                    shopping_list_id: generatedShoppingList.items.map((i: any) => i.ingredient_name).join(', '),
+                    family_members: familyProfile?.total_members,
+                    estimated_subtotal: fees.shoppingCost,
+                    estimated_service_fee: fees.serviceFee,
+                    estimated_delivery_fee: fees.deliveryFee,
+                },
+            };
+
+            const response = await deliveryApi.createOrder(orderPayload);
+
+            if (response.success) {
+                Alert.alert(
+                    'Commande créée',
+                    'Votre commande de courses a été créée avec succès. Un coursier spécialisé sera assigné.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => {
+                                setShowOrderModal(false);
+                                setShowShoppingListModal(false);
+                                // TODO: Naviguer vers l'écran de suivi de commande
+                            }
+                        }
+                    ]
+                );
+            } else {
+                throw new Error(response.error || 'Erreur lors de la création de la commande');
+            }
+        } catch (error: any) {
+            console.error('[MenuWeekCalendar] Erreur création commande:', error);
+            Alert.alert('Erreur', error.message || 'Impossible de créer la commande. Veuillez réessayer.');
+        } finally {
+            setCreatingOrder(false);
+        }
+    };
+
+    // ✅ NOUVEAU: Calculer le coût total de tous les items
+    const calculateTotalShoppingCost = (): number => {
+        return mealItems.reduce((total, item) => total + calculateItemCost(item), 0);
+    };
+
+    // ✅ NOUVEAU: Appliquer le même nombre de fois sur tous les repas
+    const applyTimesToAll = (times: number) => {
+        setMealItems(items => items.map(item => ({ ...item, times })));
+    };
+
+    // ✅ NOUVEAU: Mettre à jour le nombre de fois pour un item
+    const updateItemTimes = (id: string, times: number) => {
+        if (times < 1) return;
+        setMealItems(items => items.map(item => 
+            item.id === id ? { ...item, times } : item
+        ));
+    };
+
+    // ✅ NOUVEAU: Supprimer un item
+    const removeItem = (id: string) => {
+        setMealItems(items => items.filter(item => item.id !== id));
+    };
+
+    // ✅ NOUVEAU: Ajouter un repas (ouvrir modal de recherche)
+    const handleAddMeal = () => {
+        // Pour l'instant, on peut ajouter depuis les repas du menu
+        // TODO: Implémenter recherche de recettes
+        Alert.alert('Info', 'Fonctionnalité d\'ajout de repas à venir');
+    };
+
+    // ✅ NOUVEAU: Générer liste de courses intelligente via IA
+    const [generatingShoppingList, setGeneratingShoppingList] = useState(false);
+    const [generatedShoppingList, setGeneratedShoppingList] = useState<any>(null);
+    const [showShoppingListModal, setShowShoppingListModal] = useState(false);
+
+    const handleGenerateShoppingList = async () => {
+        if (mealItems.length === 0) {
+            Alert.alert('Erreur', 'Veuillez sélectionner au moins un repas');
+            return;
+        }
+
+        try {
+            setGeneratingShoppingList(true);
+            
+            const mealItemsForAI = mealItems.map(item => ({
+                recipeName: item.recipeName,
+                times: item.times,
+                servings: item.servings,
+                day: item.day,
+                mealType: item.mealType,
+            }));
+
+            const response = await menuPlanningService.generateIntelligentShoppingList(
+                mealItemsForAI,
+                familyProfile?.total_members || 1
+            );
+
+            if (response.success && response.data?.shopping_list) {
+                setGeneratedShoppingList(response.data.shopping_list);
+                setShowShoppingModal(false);
+                setShowShoppingListModal(true);
+            } else {
+                Alert.alert('Erreur', response.error || 'Impossible de générer la liste de courses');
+            }
+        } catch (error: any) {
+            console.error('[MenuWeekCalendar] Erreur génération liste:', error);
+            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+        } finally {
+            setGeneratingShoppingList(false);
+        }
+    };
+
+    // ✅ NOUVEAU: Ouvrir le modal d'achat externe
+    const handleOpenShoppingModal = () => {
+        if (!menu) return;
+        initializeMealItems();
+        setShowShoppingModal(true);
+    };
+
+    // ✅ NOUVEAU: Exporter le menu en PDF
+    const handleExportPDF = async () => {
+        try {
+            setExportingPDF(true);
+            
+            // Calculer les dates de fin
+            const weekStartDate = new Date(menu.week_start);
+            const weekEndDate = new Date(weekStartDate);
+            weekEndDate.setDate(weekStartDate.getDate() + 6);
+
+            const pdfUri = await generateAndDownloadMenuPDF({
+                menu,
+                weekStart: menu.week_start,
+                weekEnd: weekEndDate.toISOString().split('T')[0],
+                totalCost: calculateTotalCost(),
+                currency: currency || 'FCFA',
+            });
+
+            // Partager vers WhatsApp
+            await shareMenuPDF(pdfUri, `Semaine du ${weekStartDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`);
+
+            Alert.alert('Succès', 'Menu exporté et partagé avec succès !');
+        } catch (error: any) {
+            console.error('[MenuWeekCalendar] Erreur export PDF:', error);
+            Alert.alert(
+                'Erreur',
+                error.message || 'Impossible d\'exporter le menu. Veuillez installer expo-print: npm install expo-print'
+            );
+        } finally {
+            setExportingPDF(false);
+        }
+    };
+
     // ✅ NOUVEAU: Rendre une cellule de repas dans le tableau
     const renderMealCell = (meal: any, mealType: string, day: number) => {
         if (!meal) {
@@ -101,6 +546,11 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 {meal.estimated_cost && (
                     <Text style={styles.tableCellPrice}>
                         {formatPrice(meal.estimated_cost)}
+                    </Text>
+                )}
+                {meal.calories && (
+                    <Text style={styles.tableCellCalories}>
+                        🔥 {Math.round(meal.calories)} cal
                     </Text>
                 )}
                 {meal.servings && (
@@ -224,7 +674,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 </View>
             </LinearGradient>
 
-            {/* ✅ NOUVEAU: En-tête avec coût total et sélecteur de vue */}
+            {/* ✅ NOUVEAU: En-tête avec coût total, sélecteur de vue et export PDF */}
             <View style={styles.headerActions}>
                 <View style={styles.totalCostContainer}>
                     <Text style={styles.totalCostLabel}>Coût total estimé :</Text>
@@ -232,25 +682,41 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                         {formatPrice(calculateTotalCost())}
                     </Text>
                 </View>
-                <View style={styles.viewModeSelector}>
+                <View style={styles.headerActionsRight}>
                     <TouchableOpacity
-                        style={[styles.viewModeButton, viewMode === 'table' && styles.viewModeButtonActive]}
-                        onPress={() => setViewMode('table')}
+                        style={styles.exportButton}
+                        onPress={handleExportPDF}
+                        disabled={exportingPDF}
                     >
-                        <SafeIcon name="Table" size={18} color={viewMode === 'table' ? '#fff' : '#6B7280'} type="lucide" />
-                        <Text style={[styles.viewModeText, viewMode === 'table' && styles.viewModeTextActive]}>
-                            Tableau
+                        {exportingPDF ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <SafeIcon name="Download" size={18} color="#fff" type="lucide" />
+                        )}
+                        <Text style={styles.exportButtonText}>
+                            {exportingPDF ? 'Export...' : 'PDF'}
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
-                        onPress={() => setViewMode('list')}
-                    >
-                        <SafeIcon name="List" size={18} color={viewMode === 'list' ? '#fff' : '#6B7280'} type="lucide" />
-                        <Text style={[styles.viewModeText, viewMode === 'list' && styles.viewModeTextActive]}>
-                            Liste
-                        </Text>
-                    </TouchableOpacity>
+                    <View style={styles.viewModeSelector}>
+                        <TouchableOpacity
+                            style={[styles.viewModeButton, viewMode === 'table' && styles.viewModeButtonActive]}
+                            onPress={() => setViewMode('table')}
+                        >
+                            <SafeIcon name="Table" size={18} color={viewMode === 'table' ? '#fff' : '#6B7280'} type="lucide" />
+                            <Text style={[styles.viewModeText, viewMode === 'table' && styles.viewModeTextActive]}>
+                                Tableau
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
+                            onPress={() => setViewMode('list')}
+                        >
+                            <SafeIcon name="List" size={18} color={viewMode === 'list' ? '#fff' : '#6B7280'} type="lucide" />
+                            <Text style={[styles.viewModeText, viewMode === 'list' && styles.viewModeTextActive]}>
+                                Liste
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
 
@@ -262,44 +728,96 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     style={styles.tableContainer}
                     contentContainerStyle={styles.tableContent}
                 >
-                    <View style={styles.table}>
-                        {/* En-tête du tableau */}
-                        <View style={styles.tableHeader}>
-                            <View style={[styles.tableHeaderCell, styles.tableHeaderCellDay]}>
-                                <Text style={styles.tableHeaderText}>Jour</Text>
+                    <ScrollView
+                        vertical
+                        showsVerticalScrollIndicator={true}
+                        nestedScrollEnabled={true}
+                    >
+                        <View style={styles.table}>
+                            {/* En-tête du tableau */}
+                            <View style={styles.tableHeader}>
+                                <View style={[styles.tableHeaderCell, styles.tableHeaderCellDay]}>
+                                    <Text style={styles.tableHeaderText}>Jour</Text>
+                                </View>
+                                <View style={styles.tableHeaderCell}>
+                                    <SafeIcon name="Sunrise" size={14} color="#F59E0B" type="lucide" />
+                                    <Text style={styles.tableHeaderText}>Petit-déj</Text>
+                                </View>
+                                <View style={styles.tableHeaderCell}>
+                                    <SafeIcon name="Sun" size={14} color="#F59E0B" type="lucide" />
+                                    <Text style={styles.tableHeaderText}>Déjeuner</Text>
+                                </View>
+                                <View style={styles.tableHeaderCell}>
+                                    <SafeIcon name="Moon" size={14} color="#3B82F6" type="lucide" />
+                                    <Text style={styles.tableHeaderText}>Dîner</Text>
+                                </View>
                             </View>
-                            <View style={styles.tableHeaderCell}>
-                                <SafeIcon name="Sunrise" size={16} color="#F59E0B" type="lucide" />
-                                <Text style={styles.tableHeaderText}>Petit-déj</Text>
-                            </View>
-                            <View style={styles.tableHeaderCell}>
-                                <SafeIcon name="Sun" size={16} color="#F59E0B" type="lucide" />
-                                <Text style={styles.tableHeaderText}>Déjeuner</Text>
-                            </View>
-                            <View style={styles.tableHeaderCell}>
-                                <SafeIcon name="Moon" size={16} color="#3B82F6" type="lucide" />
-                                <Text style={styles.tableHeaderText}>Dîner</Text>
+
+                            {/* Lignes du tableau */}
+                            {DAYS.map((dayName, index) => {
+                                const dayNumber = index + 1;
+                                const dayMeal = getDayMeal(dayNumber);
+                                const dayTotal = (dayMeal?.petit_dejeuner?.estimated_cost || 0) +
+                                               (dayMeal?.dejeuner?.estimated_cost || 0) +
+                                               (dayMeal?.diner?.estimated_cost || 0);
+                                
+                                return (
+                                    <View key={dayNumber} style={styles.tableRow}>
+                                        <View style={[styles.tableCell, styles.tableCellDay]}>
+                                            <Text style={styles.tableCellDayName}>{dayName}</Text>
+                                        </View>
+                                        {renderMealCell(dayMeal?.petit_dejeuner, 'petit_dejeuner', dayNumber)}
+                                        {renderMealCell(dayMeal?.dejeuner, 'dejeuner', dayNumber)}
+                                        {renderMealCell(dayMeal?.diner, 'diner', dayNumber)}
+                                    </View>
+                                );
+                            })}
+                            
+                            {/* ✅ NOUVEAU: Ligne de totaux par jour */}
+                            <View style={[styles.tableRow, styles.tableRowTotal]}>
+                                <View style={[styles.tableCell, styles.tableCellDay, styles.tableCellTotal]}>
+                                    <Text style={styles.tableCellTotalText}>Total</Text>
+                                </View>
+                                {DAYS.map((_, index) => {
+                                    const dayNumber = index + 1;
+                                    const dayMeal = getDayMeal(dayNumber);
+                                    const dayTotal = (dayMeal?.petit_dejeuner?.estimated_cost || 0) +
+                                                   (dayMeal?.dejeuner?.estimated_cost || 0) +
+                                                   (dayMeal?.diner?.estimated_cost || 0);
+                                    return (
+                                        <View key={`total-${dayNumber}`} style={[styles.tableCell, styles.tableCellTotal]}>
+                                            <Text style={styles.tableCellTotalValue}>
+                                                {formatPrice(dayTotal)}
+                                            </Text>
+                                        </View>
+                                    );
+                                })}
                             </View>
                         </View>
-
-                        {/* Lignes du tableau */}
-                        {DAYS.map((dayName, index) => {
-                            const dayNumber = index + 1;
-                            const dayMeal = getDayMeal(dayNumber);
-                            
-                            return (
-                                <View key={dayNumber} style={styles.tableRow}>
-                                    <View style={[styles.tableCell, styles.tableCellDay]}>
-                                        <Text style={styles.tableCellDayName}>{dayName}</Text>
-                                    </View>
-                                    {renderMealCell(dayMeal?.petit_dejeuner, 'petit_dejeuner', dayNumber)}
-                                    {renderMealCell(dayMeal?.dejeuner, 'dejeuner', dayNumber)}
-                                    {renderMealCell(dayMeal?.diner, 'diner', dayNumber)}
-                                </View>
-                            );
-                        })}
-                    </View>
+                    </ScrollView>
                 </ScrollView>
+                
+                {/* ✅ NOUVEAU: Actions pour vue tableau */}
+                <View style={styles.tableActionsContainer}>
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => {
+                            navigation.navigate('ShoppingList' as never, {
+                                weekStart: menu.week_start,
+                            } as never);
+                        }}
+                    >
+                        <SafeIcon name="ShoppingCart" size={20} color="#fff" type="lucide" />
+                        <Text style={styles.actionButtonText}>Liste de courses</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.courierButton]}
+                        onPress={handleOpenShoppingModal}
+                    >
+                        <SafeIcon name="Bike" size={20} color="#fff" type="lucide" />
+                        <Text style={styles.actionButtonText}>Achat externe via coursier</Text>
+                    </TouchableOpacity>
+                </View>
             ) : (
                 /* ✅ NOUVEAU: Affichage en liste */
                 <ScrollView
@@ -661,6 +1179,377 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     </View>
                 </View>
             </Modal>
+
+            {/* ✅ NOUVEAU: Modal tableau intermédiaire pour achat externe */}
+            <Modal
+                visible={showShoppingModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowShoppingModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.shoppingModalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Achat externe via coursier</Text>
+                            <TouchableOpacity onPress={() => setShowShoppingModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            {/* Option appliquer même nombre de fois */}
+                            <View style={styles.applyTimesContainer}>
+                                <Text style={styles.applyTimesLabel}>Appliquer à tous :</Text>
+                                <View style={styles.applyTimesInputContainer}>
+                                    <TextInput
+                                        style={styles.applyTimesInput}
+                                        keyboardType="numeric"
+                                        placeholder="Nombre de fois"
+                                        defaultValue="1"
+                                        onChangeText={(text) => {
+                                            const times = parseInt(text) || 1;
+                                            if (times > 0) {
+                                                applyTimesToAll(times);
+                                            }
+                                        }}
+                                    />
+                                    <TouchableOpacity
+                                        style={styles.applyButton}
+                                        onPress={() => {
+                                            const times = 1;
+                                            applyTimesToAll(times);
+                                        }}
+                                    >
+                                        <Text style={styles.applyButtonText}>Appliquer</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Tableau des repas */}
+                            <View style={styles.shoppingTable}>
+                                <View style={styles.shoppingTableHeader}>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 1.2 }]}>Jour</Text>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 1.5 }]}>Type</Text>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 2 }]}>Repas</Text>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 1 }]}>Fois</Text>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 1.5 }]}>Coût</Text>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 0.8 }]}>Action</Text>
+                                </View>
+                                
+                                {mealItems.map((item) => (
+                                    <View key={item.id} style={styles.shoppingTableRow}>
+                                        <Text style={[styles.shoppingTableCell, { flex: 1.2, fontWeight: '600' }]}>
+                                            {item.day}
+                                        </Text>
+                                        <Text style={[styles.shoppingTableCell, { flex: 1.5, fontSize: 11 }]}>
+                                            {item.mealTypeLabel}
+                                        </Text>
+                                        <Text style={[styles.shoppingTableCell, { flex: 2 }]} numberOfLines={2}>
+                                            {item.recipeName}
+                                        </Text>
+                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                                            <TouchableOpacity
+                                                onPress={() => updateItemTimes(item.id, Math.max(1, item.times - 1))}
+                                                style={styles.timesButton}
+                                            >
+                                                <Text style={styles.timesButtonText}>-</Text>
+                                            </TouchableOpacity>
+                                            <TextInput
+                                                style={styles.timesInput}
+                                                value={String(item.times)}
+                                                keyboardType="numeric"
+                                                onChangeText={(text) => {
+                                                    const times = parseInt(text) || 1;
+                                                    updateItemTimes(item.id, Math.max(1, times));
+                                                }}
+                                            />
+                                            <TouchableOpacity
+                                                onPress={() => updateItemTimes(item.id, item.times + 1)}
+                                                style={styles.timesButton}
+                                            >
+                                                <Text style={styles.timesButtonText}>+</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <Text style={[styles.shoppingTableCell, { flex: 1.5, color: modernColors.primary, fontWeight: '700' }]}>
+                                            {formatPrice(calculateItemCost(item))}
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => removeItem(item.id)}
+                                            style={[styles.shoppingTableCell, { flex: 0.8 }]}
+                                        >
+                                            <SafeIcon name="trash-2" size={16} color="#EF4444" type="lucide" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+
+                            {/* Total */}
+                            <View style={styles.shoppingTotalContainer}>
+                                <Text style={styles.shoppingTotalLabel}>Total estimé :</Text>
+                                <Text style={styles.shoppingTotalValue}>
+                                    {formatPrice(calculateTotalShoppingCost())}
+                                </Text>
+                            </View>
+
+                            {/* Bouton ajouter repas */}
+                            <TouchableOpacity
+                                style={styles.addMealButton}
+                                onPress={handleAddMeal}
+                            >
+                                <SafeIcon name="plus" size={18} color={modernColors.primary} type="lucide" />
+                                <Text style={styles.addMealButtonText}>Ajouter un repas</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Annuler"
+                                onPress={() => setShowShoppingModal(false)}
+                                variant="outline"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title={generatingShoppingList ? 'Génération...' : 'Générer liste de courses'}
+                                onPress={handleGenerateShoppingList}
+                                variant="primary"
+                                style={styles.modalButton}
+                                loading={generatingShoppingList}
+                                disabled={generatingShoppingList || mealItems.length === 0}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ✅ NOUVEAU: Modal tableau intermédiaire pour achat externe */}
+            <Modal
+                visible={showShoppingModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowShoppingModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.shoppingModalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Achat externe via coursier</Text>
+                            <TouchableOpacity onPress={() => setShowShoppingModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            {/* Option appliquer même nombre de fois */}
+                            <View style={styles.applyTimesContainer}>
+                                <Text style={styles.applyTimesLabel}>Appliquer à tous :</Text>
+                                <View style={styles.applyTimesInputContainer}>
+                                    <TextInput
+                                        style={styles.applyTimesInput}
+                                        keyboardType="numeric"
+                                        placeholder="Nombre de fois"
+                                        defaultValue="1"
+                                        onChangeText={(text) => {
+                                            const times = parseInt(text) || 1;
+                                            if (times > 0) {
+                                                applyTimesToAll(times);
+                                            }
+                                        }}
+                                    />
+                                    <TouchableOpacity
+                                        style={styles.applyButton}
+                                        onPress={() => {
+                                            const times = 1;
+                                            applyTimesToAll(times);
+                                        }}
+                                    >
+                                        <Text style={styles.applyButtonText}>Appliquer</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Tableau des repas */}
+                            <View style={styles.shoppingTable}>
+                                <View style={styles.shoppingTableHeader}>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 1.2 }]}>Jour</Text>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 1.5 }]}>Type</Text>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 2 }]}>Repas</Text>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 1 }]}>Fois</Text>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 1.5 }]}>Coût</Text>
+                                    <Text style={[styles.shoppingTableHeaderCell, { flex: 0.8 }]}>Action</Text>
+                                </View>
+                                
+                                {mealItems.map((item) => (
+                                    <View key={item.id} style={styles.shoppingTableRow}>
+                                        <Text style={[styles.shoppingTableCell, { flex: 1.2, fontWeight: '600' }]}>
+                                            {item.day}
+                                        </Text>
+                                        <Text style={[styles.shoppingTableCell, { flex: 1.5, fontSize: 11 }]}>
+                                            {item.mealTypeLabel}
+                                        </Text>
+                                        <Text style={[styles.shoppingTableCell, { flex: 2 }]} numberOfLines={2}>
+                                            {item.recipeName}
+                                        </Text>
+                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                                            <TouchableOpacity
+                                                onPress={() => updateItemTimes(item.id, Math.max(1, item.times - 1))}
+                                                style={styles.timesButton}
+                                            >
+                                                <Text style={styles.timesButtonText}>-</Text>
+                                            </TouchableOpacity>
+                                            <TextInput
+                                                style={styles.timesInput}
+                                                value={String(item.times)}
+                                                keyboardType="numeric"
+                                                onChangeText={(text) => {
+                                                    const times = parseInt(text) || 1;
+                                                    updateItemTimes(item.id, Math.max(1, times));
+                                                }}
+                                            />
+                                            <TouchableOpacity
+                                                onPress={() => updateItemTimes(item.id, item.times + 1)}
+                                                style={styles.timesButton}
+                                            >
+                                                <Text style={styles.timesButtonText}>+</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <Text style={[styles.shoppingTableCell, { flex: 1.5, color: modernColors.primary, fontWeight: '700' }]}>
+                                            {formatPrice(calculateItemCost(item))}
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => removeItem(item.id)}
+                                            style={[styles.shoppingTableCell, { flex: 0.8 }]}
+                                        >
+                                            <SafeIcon name="trash-2" size={16} color="#EF4444" type="lucide" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+
+                            {/* Total */}
+                            <View style={styles.shoppingTotalContainer}>
+                                <Text style={styles.shoppingTotalLabel}>Total estimé :</Text>
+                                <Text style={styles.shoppingTotalValue}>
+                                    {formatPrice(calculateTotalShoppingCost())}
+                                </Text>
+                            </View>
+
+                            {/* Bouton ajouter repas */}
+                            <TouchableOpacity
+                                style={styles.addMealButton}
+                                onPress={handleAddMeal}
+                            >
+                                <SafeIcon name="plus" size={18} color={modernColors.primary} type="lucide" />
+                                <Text style={styles.addMealButtonText}>Ajouter un repas</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Annuler"
+                                onPress={() => setShowShoppingModal(false)}
+                                variant="outline"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title={generatingShoppingList ? 'Génération...' : 'Générer liste de courses'}
+                                onPress={handleGenerateShoppingList}
+                                variant="primary"
+                                style={styles.modalButton}
+                                loading={generatingShoppingList}
+                                disabled={generatingShoppingList || mealItems.length === 0}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ✅ NOUVEAU: Modal liste de courses générée */}
+            <Modal
+                visible={showShoppingListModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowShoppingListModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.shoppingModalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Liste de courses générée</Text>
+                            <TouchableOpacity onPress={() => setShowShoppingListModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {generatedShoppingList && (
+                            <ScrollView style={styles.modalBody}>
+                                <View style={styles.shoppingListTable}>
+                                    <View style={styles.shoppingListTableHeader}>
+                                        <Text style={[styles.shoppingListTableHeaderCell, { flex: 2 }]}>Ingrédient</Text>
+                                        <Text style={[styles.shoppingListTableHeaderCell, { flex: 1.5 }]}>Quantité</Text>
+                                        <Text style={[styles.shoppingListTableHeaderCell, { flex: 1.5 }]}>Prix</Text>
+                                        <Text style={[styles.shoppingListTableHeaderCell, { flex: 2 }]}>Repas</Text>
+                                    </View>
+                                    
+                                    {generatedShoppingList.items.map((item: any, index: number) => (
+                                        <View key={index} style={styles.shoppingListTableRow}>
+                                            <Text style={[styles.shoppingListTableCell, { flex: 2, fontWeight: '600' }]}>
+                                                {item.ingredient_name}
+                                            </Text>
+                                            <Text style={[styles.shoppingListTableCell, { flex: 1.5 }]}>
+                                                {item.quantity} {item.unit}
+                                            </Text>
+                                            <Text style={[styles.shoppingListTableCell, { flex: 1.5, color: modernColors.primary, fontWeight: '700' }]}>
+                                                {formatPrice(item.estimated_price)}
+                                            </Text>
+                                            <Text style={[styles.shoppingListTableCell, { flex: 2, fontSize: 10 }]} numberOfLines={2}>
+                                                {item.associated_meals.join(', ')}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                </View>
+
+                                {/* Total */}
+                                <View style={styles.shoppingTotalContainer}>
+                                    <Text style={styles.shoppingTotalLabel}>Total estimé :</Text>
+                                    <Text style={styles.shoppingTotalValue}>
+                                        {formatPrice(generatedShoppingList.total_estimated_cost)}
+                                    </Text>
+                                </View>
+                            </ScrollView>
+                        )}
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Partager WhatsApp"
+                                onPress={async () => {
+                                    try {
+                                        if (!generatedShoppingList) return;
+                                        
+                                        const pdfUri = await generateAndDownloadShoppingListPDF({
+                                            items: generatedShoppingList.items,
+                                            total_estimated_cost: generatedShoppingList.total_estimated_cost,
+                                            currency: currency || 'FCFA',
+                                            family_members: familyProfile?.total_members,
+                                        });
+
+                                        await shareShoppingListPDF(pdfUri, 'Liste de courses');
+                                        Alert.alert('Succès', 'Liste de courses partagée avec succès !');
+                                    } catch (error: any) {
+                                        console.error('[MenuWeekCalendar] Erreur partage liste:', error);
+                                        Alert.alert('Erreur', error.message || 'Impossible de partager la liste de courses');
+                                    }
+                                }}
+                                variant="outline"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title="Commander via coursier"
+                                onPress={handleOpenOrderModal}
+                                variant="primary"
+                                style={styles.modalButton}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -852,6 +1741,185 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#fff',
+    },
+    courierButton: {
+        backgroundColor: '#10B981',
+        marginTop: 12,
+    },
+    // ✅ NOUVEAU: Styles pour modal achat externe
+    shoppingModalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '90%',
+        width: '100%',
+    },
+    applyTimesContainer: {
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        marginBottom: 16,
+    },
+    applyTimesLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    applyTimesInputContainer: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    applyTimesInput: {
+        flex: 1,
+        padding: 12,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        fontSize: 14,
+    },
+    applyButton: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        backgroundColor: modernColors.primary,
+        borderRadius: 8,
+        justifyContent: 'center',
+    },
+    applyButtonText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    shoppingTable: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginBottom: 16,
+    },
+    shoppingTableHeader: {
+        flexDirection: 'row',
+        backgroundColor: '#F3F4F6',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderBottomWidth: 2,
+        borderBottomColor: '#E5E7EB',
+    },
+    shoppingTableHeaderCell: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#111827',
+        textTransform: 'uppercase',
+        textAlign: 'center',
+    },
+    shoppingTableRow: {
+        flexDirection: 'row',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+        alignItems: 'center',
+    },
+    shoppingTableCell: {
+        fontSize: 12,
+        color: '#374151',
+        textAlign: 'center',
+    },
+    timesButton: {
+        width: 28,
+        height: 28,
+        borderRadius: 6,
+        backgroundColor: '#E5E7EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    timesButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    timesInput: {
+        width: 40,
+        height: 28,
+        textAlign: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 6,
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    shoppingTotalContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#F0FDF4',
+        borderRadius: 12,
+        marginBottom: 16,
+    },
+    shoppingTotalLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    shoppingTotalValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#10B981',
+    },
+    addMealButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 12,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        borderStyle: 'dashed',
+        borderRadius: 12,
+        marginBottom: 16,
+    },
+    addMealButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    // ✅ NOUVEAU: Styles pour liste de courses générée
+    shoppingListTable: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginBottom: 16,
+    },
+    shoppingListTableHeader: {
+        flexDirection: 'row',
+        backgroundColor: '#F3F4F6',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderBottomWidth: 2,
+        borderBottomColor: '#E5E7EB',
+    },
+    shoppingListTableHeaderCell: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#111827',
+        textTransform: 'uppercase',
+        textAlign: 'center',
+    },
+    shoppingListTableRow: {
+        flexDirection: 'row',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+        alignItems: 'center',
+    },
+    shoppingListTableCell: {
+        fontSize: 12,
+        color: '#374151',
+        textAlign: 'center',
     },
     recipeActionButton: {
         backgroundColor: '#8B5CF6',
@@ -1099,6 +2167,25 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: modernColors.primary,
     },
+    headerActionsRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    exportButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        backgroundColor: '#10B981',
+        borderRadius: 8,
+    },
+    exportButtonText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#fff',
+    },
     viewModeSelector: {
         flexDirection: 'row',
         gap: 8,
@@ -1148,16 +2235,17 @@ const styles = StyleSheet.create({
     },
     tableHeaderCell: {
         flex: 1,
-        minWidth: 140,
-        padding: 12,
+        minWidth: 120, // ✅ RÉDUIT: De 140 à 120 pour tableau plus compact
+        padding: 10, // ✅ RÉDUIT: De 12 à 10
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 4, // ✅ RÉDUIT: De 6 à 4
         borderRightWidth: 1,
         borderRightColor: '#E5E7EB',
     },
     tableHeaderCellDay: {
-        minWidth: 100,
+        minWidth: 80, // ✅ RÉDUIT: De 100 à 80 pour plus d'espace pour les autres colonnes
+        maxWidth: 80, // ✅ NOUVEAU: Largeur fixe pour colonne jour
         backgroundColor: '#F3F4F6',
     },
     tableHeaderText: {
@@ -1173,14 +2261,15 @@ const styles = StyleSheet.create({
     },
     tableCell: {
         flex: 1,
-        minWidth: 140,
-        padding: 12,
+        minWidth: 120, // ✅ RÉDUIT: De 140 à 120 pour tableau plus compact
+        padding: 10, // ✅ RÉDUIT: De 12 à 10
         borderRightWidth: 1,
         borderRightColor: '#E5E7EB',
         backgroundColor: '#fff',
     },
     tableCellDay: {
-        minWidth: 100,
+        minWidth: 80, // ✅ RÉDUIT: De 100 à 80
+        maxWidth: 80, // ✅ NOUVEAU: Largeur fixe pour colonne jour
         backgroundColor: '#F9FAFB',
         justifyContent: 'center',
     },
@@ -1207,6 +2296,12 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         marginBottom: 4,
     },
+    tableCellCalories: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#F59E0B',
+        marginBottom: 4,
+    },
     tableCellServings: {
         fontSize: 11,
         color: '#6B7280',
@@ -1226,6 +2321,32 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '600',
         color: modernColors.primary,
+    },
+    // ✅ NOUVEAU: Styles pour ligne de totaux
+    tableRowTotal: {
+        backgroundColor: '#F3F4F6',
+        borderTopWidth: 2,
+        borderTopColor: '#E5E7EB',
+    },
+    tableCellTotal: {
+        backgroundColor: '#F3F4F6',
+        paddingVertical: 12,
+    },
+    tableCellTotalText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#111827',
+        textTransform: 'uppercase',
+    },
+    tableCellTotalValue: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: modernColors.primary,
+        textAlign: 'center',
+    },
+    tableActionsContainer: {
+        padding: 16,
+        gap: 12,
     },
     // ✅ NOUVEAU: Styles pour liste
     listDayCard: {
@@ -1328,6 +2449,106 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: modernColors.primary,
+    },
+    // ✅ NOUVEAU: Styles pour modal commande
+    feesSummary: {
+        backgroundColor: '#F9FAFB',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 20,
+    },
+    feesTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 12,
+    },
+    feesRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    feesTotalRow: {
+        marginTop: 8,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    feesLabel: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    feesValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    feesTotalLabel: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    feesTotalValue: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: modernColors.primary,
+    },
+    insufficientBalanceText: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginTop: 8,
+        fontStyle: 'italic',
+    },
+    marketSelection: {
+        marginTop: 8,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 12,
+    },
+    marketItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        marginBottom: 12,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+    },
+    marketItemSelected: {
+        borderColor: modernColors.primary,
+        backgroundColor: '#EEF2FF',
+    },
+    marketItemContent: {
+        flex: 1,
+    },
+    marketItemName: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    marketItemAddress: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    marketItemDistance: {
+        fontSize: 12,
+        color: modernColors.primary,
+        fontWeight: '500',
+    },
+    emptyText: {
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+        padding: 20,
+        fontStyle: 'italic',
     },
 });
 
