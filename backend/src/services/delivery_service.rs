@@ -4190,18 +4190,20 @@ impl DeliveryService {
                 
                 // Si le coursier a des courses actives, vérifier la compatibilité
                 if !active_deliveries.is_empty() {
+                    let courier_id = candidate.courier_id;
+                    let active_count = active_deliveries.len();
                     if is_delivery_compatible(&summary, &active_deliveries) {
                         filtered_candidates.push(candidate);
                         log::debug!(
                             "[DeliveryMatching] ✅ Coursier {} compatible ({} course(s) active(s))",
-                            candidate.courier_id,
-                            active_deliveries.len()
+                            courier_id,
+                            active_count
                         );
                     } else {
                         log::debug!(
                             "[DeliveryMatching] ❌ Coursier {} non compatible ({} course(s) active(s))",
-                            candidate.courier_id,
-                            active_deliveries.len()
+                            courier_id,
+                            active_count
                         );
                     }
                 } else {

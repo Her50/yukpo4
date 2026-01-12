@@ -9,7 +9,7 @@
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::services::menu_planning_ai_service::{
-    FamilyProfile, IntelligentShoppingList, MealItemForShopping, MenuPlanningAIService, WeeklyMenu,
+    FamilyProfile, MealItemForShopping, MenuPlanningAIService, WeeklyMenu,
 };
 use crate::services::geocoding_service::GeocodingService;
 use crate::state::AppState;

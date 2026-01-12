@@ -722,102 +722,104 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
             {/* ✅ NOUVEAU: Affichage en tableau */}
             {viewMode === 'table' ? (
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={true}
-                    style={styles.tableContainer}
-                    contentContainerStyle={styles.tableContent}
-                >
+                <>
                     <ScrollView
-                        vertical
-                        showsVerticalScrollIndicator={true}
-                        nestedScrollEnabled={true}
+                        horizontal
+                        showsHorizontalScrollIndicator={true}
+                        style={styles.tableContainer}
+                        contentContainerStyle={styles.tableContent}
                     >
-                        <View style={styles.table}>
-                            {/* En-tête du tableau */}
-                            <View style={styles.tableHeader}>
-                                <View style={[styles.tableHeaderCell, styles.tableHeaderCellDay]}>
-                                    <Text style={styles.tableHeaderText}>Jour</Text>
-                                </View>
-                                <View style={styles.tableHeaderCell}>
-                                    <SafeIcon name="Sunrise" size={14} color="#F59E0B" type="lucide" />
-                                    <Text style={styles.tableHeaderText}>Petit-déj</Text>
-                                </View>
-                                <View style={styles.tableHeaderCell}>
-                                    <SafeIcon name="Sun" size={14} color="#F59E0B" type="lucide" />
-                                    <Text style={styles.tableHeaderText}>Déjeuner</Text>
-                                </View>
-                                <View style={styles.tableHeaderCell}>
-                                    <SafeIcon name="Moon" size={14} color="#3B82F6" type="lucide" />
-                                    <Text style={styles.tableHeaderText}>Dîner</Text>
-                                </View>
-                            </View>
-
-                            {/* Lignes du tableau */}
-                            {DAYS.map((dayName, index) => {
-                                const dayNumber = index + 1;
-                                const dayMeal = getDayMeal(dayNumber);
-                                const dayTotal = (dayMeal?.petit_dejeuner?.estimated_cost || 0) +
-                                               (dayMeal?.dejeuner?.estimated_cost || 0) +
-                                               (dayMeal?.diner?.estimated_cost || 0);
-                                
-                                return (
-                                    <View key={dayNumber} style={styles.tableRow}>
-                                        <View style={[styles.tableCell, styles.tableCellDay]}>
-                                            <Text style={styles.tableCellDayName}>{dayName}</Text>
-                                        </View>
-                                        {renderMealCell(dayMeal?.petit_dejeuner, 'petit_dejeuner', dayNumber)}
-                                        {renderMealCell(dayMeal?.dejeuner, 'dejeuner', dayNumber)}
-                                        {renderMealCell(dayMeal?.diner, 'diner', dayNumber)}
+                        <ScrollView
+                            vertical
+                            showsVerticalScrollIndicator={true}
+                            nestedScrollEnabled={true}
+                        >
+                            <View style={styles.table}>
+                                {/* En-tête du tableau */}
+                                <View style={styles.tableHeader}>
+                                    <View style={[styles.tableHeaderCell, styles.tableHeaderCellDay]}>
+                                        <Text style={styles.tableHeaderText}>Jour</Text>
                                     </View>
-                                );
-                            })}
-                            
-                            {/* ✅ NOUVEAU: Ligne de totaux par jour */}
-                            <View style={[styles.tableRow, styles.tableRowTotal]}>
-                                <View style={[styles.tableCell, styles.tableCellDay, styles.tableCellTotal]}>
-                                    <Text style={styles.tableCellTotalText}>Total</Text>
+                                    <View style={styles.tableHeaderCell}>
+                                        <SafeIcon name="Sunrise" size={14} color="#F59E0B" type="lucide" />
+                                        <Text style={styles.tableHeaderText}>Petit-déj</Text>
+                                    </View>
+                                    <View style={styles.tableHeaderCell}>
+                                        <SafeIcon name="Sun" size={14} color="#F59E0B" type="lucide" />
+                                        <Text style={styles.tableHeaderText}>Déjeuner</Text>
+                                    </View>
+                                    <View style={styles.tableHeaderCell}>
+                                        <SafeIcon name="Moon" size={14} color="#3B82F6" type="lucide" />
+                                        <Text style={styles.tableHeaderText}>Dîner</Text>
+                                    </View>
                                 </View>
-                                {DAYS.map((_, index) => {
+
+                                {/* Lignes du tableau */}
+                                {DAYS.map((dayName, index) => {
                                     const dayNumber = index + 1;
                                     const dayMeal = getDayMeal(dayNumber);
                                     const dayTotal = (dayMeal?.petit_dejeuner?.estimated_cost || 0) +
                                                    (dayMeal?.dejeuner?.estimated_cost || 0) +
                                                    (dayMeal?.diner?.estimated_cost || 0);
+                                    
                                     return (
-                                        <View key={`total-${dayNumber}`} style={[styles.tableCell, styles.tableCellTotal]}>
-                                            <Text style={styles.tableCellTotalValue}>
-                                                {formatPrice(dayTotal)}
-                                            </Text>
+                                        <View key={dayNumber} style={styles.tableRow}>
+                                            <View style={[styles.tableCell, styles.tableCellDay]}>
+                                                <Text style={styles.tableCellDayName}>{dayName}</Text>
+                                            </View>
+                                            {renderMealCell(dayMeal?.petit_dejeuner, 'petit_dejeuner', dayNumber)}
+                                            {renderMealCell(dayMeal?.dejeuner, 'dejeuner', dayNumber)}
+                                            {renderMealCell(dayMeal?.diner, 'diner', dayNumber)}
                                         </View>
                                     );
                                 })}
+                                
+                                {/* ✅ NOUVEAU: Ligne de totaux par jour */}
+                                <View style={[styles.tableRow, styles.tableRowTotal]}>
+                                    <View style={[styles.tableCell, styles.tableCellDay, styles.tableCellTotal]}>
+                                        <Text style={styles.tableCellTotalText}>Total</Text>
+                                    </View>
+                                    {DAYS.map((_, index) => {
+                                        const dayNumber = index + 1;
+                                        const dayMeal = getDayMeal(dayNumber);
+                                        const dayTotal = (dayMeal?.petit_dejeuner?.estimated_cost || 0) +
+                                                       (dayMeal?.dejeuner?.estimated_cost || 0) +
+                                                       (dayMeal?.diner?.estimated_cost || 0);
+                                        return (
+                                            <View key={`total-${dayNumber}`} style={[styles.tableCell, styles.tableCellTotal]}>
+                                                <Text style={styles.tableCellTotalValue}>
+                                                    {formatPrice(dayTotal)}
+                                                </Text>
+                                            </View>
+                                        );
+                                    })}
+                                </View>
                             </View>
-                        </View>
+                        </ScrollView>
                     </ScrollView>
-                </ScrollView>
-                
-                {/* ✅ NOUVEAU: Actions pour vue tableau */}
-                <View style={styles.tableActionsContainer}>
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => {
-                            navigation.navigate('ShoppingList' as never, {
-                                weekStart: menu.week_start,
-                            } as never);
-                        }}
-                    >
-                        <SafeIcon name="ShoppingCart" size={20} color="#fff" type="lucide" />
-                        <Text style={styles.actionButtonText}>Liste de courses</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.actionButton, styles.courierButton]}
-                        onPress={handleOpenShoppingModal}
-                    >
-                        <SafeIcon name="Bike" size={20} color="#fff" type="lucide" />
-                        <Text style={styles.actionButtonText}>Achat externe via coursier</Text>
-                    </TouchableOpacity>
-                </View>
+                    
+                    {/* ✅ NOUVEAU: Actions pour vue tableau */}
+                    <View style={styles.tableActionsContainer}>
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => {
+                                navigation.navigate('ShoppingList' as never, {
+                                    weekStart: menu.week_start,
+                                } as never);
+                            }}
+                        >
+                            <SafeIcon name="ShoppingCart" size={20} color="#fff" type="lucide" />
+                            <Text style={styles.actionButtonText}>Liste de courses</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.courierButton]}
+                            onPress={handleOpenShoppingModal}
+                        >
+                            <SafeIcon name="Bike" size={20} color="#fff" type="lucide" />
+                            <Text style={styles.actionButtonText}>Achat externe via coursier</Text>
+                        </TouchableOpacity>
+                    </View>
+                </>
             ) : (
                 /* ✅ NOUVEAU: Affichage en liste */
                 <ScrollView

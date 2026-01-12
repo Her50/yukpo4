@@ -3093,6 +3093,7 @@ impl DeliveryRepository {
             .map(|row| {
                 // ✅ NOUVEAU: Extraire les spécialisations
                 let specializations: Vec<String> = row.specializations
+                    .as_ref()
                     .and_then(|v| v.as_array())
                     .map(|arr| {
                         arr.iter()

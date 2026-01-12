@@ -7,7 +7,7 @@
 //! - Analyser la nutrition
 //! - Optimiser le budget
 
-use crate::core::types::AppResult;
+use crate::core::types::{AppError, AppResult};
 use crate::services::app_ia::AppIA;
 use chrono::Datelike;
 use serde::{Deserialize, Serialize};
@@ -636,7 +636,7 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
             location_context,
             seasonal_context,
             variation_context,
-            timestamp_variation
+            timestamp_variation,
             week_start,
             profile.total_members
         );
