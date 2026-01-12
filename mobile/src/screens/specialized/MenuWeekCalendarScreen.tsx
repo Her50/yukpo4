@@ -75,6 +75,15 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const [loadingBalance, setLoadingBalance] = useState(false);
     const [creatingOrder, setCreatingOrder] = useState(false);
     const { location: userLocation } = useLocation();
+    
+    // ✅ NOUVEAU: États pour modal ajouter repas
+    const [showAddMealModal, setShowAddMealModal] = useState(false);
+    const [newMealDay, setNewMealDay] = useState<string>('Lundi');
+    const [newMealDayNumber, setNewMealDayNumber] = useState<number>(1);
+    const [newMealType, setNewMealType] = useState<'petit_dejeuner' | 'dejeuner' | 'diner'>('dejeuner');
+    const [newMealName, setNewMealName] = useState('');
+    const [newMealServings, setNewMealServings] = useState<string>('4');
+    const [newMealCost, setNewMealCost] = useState<string>('');
 
     if (!menu) {
         return (
@@ -433,11 +442,50 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         setMealItems(items => items.filter(item => item.id !== id));
     };
 
-    // ✅ NOUVEAU: Ajouter un repas (ouvrir modal de recherche)
+    // ✅ NOUVEAU: Ajouter un repas (ouvrir modal)
     const handleAddMeal = () => {
-        // Pour l'instant, on peut ajouter depuis les repas du menu
-        // TODO: Implémenter recherche de recettes
-        Alert.alert('Info', 'Fonctionnalité d\'ajout de repas à venir');
+        setNewMealDay('Lundi');
+        setNewMealDayNumber(1);
+        setNewMealType('dejeuner');
+        setNewMealName('');
+        setNewMealServings('4');
+        setNewMealCost('');
+        setShowAddMealModal(true);
+    };
+
+    // ✅ NOUVEAU: Confirmer l'ajout d'un repas
+    const handleConfirmAddMeal = () => {
+        if (!newMealName.trim()) {
+            Alert.alert('Erreur', 'Veuillez entrer le nom du repas');
+            return;
+        }
+
+        const servings = parseInt(newMealServings) || 4;
+        const cost = parseFloat(newMealCost) || 0;
+
+        const newItem = {
+            id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            day: newMealDay,
+            dayNumber: newMealDayNumber,
+            mealType: newMealType,
+            mealTypeLabel: newMealType === 'petit_dejeuner' ? 'Petit-déjeuner' : 
+                          newMealType === 'dejeuner' ? 'Déjeuner' : 'Dîner',
+            recipeName: newMealName.trim(),
+            servings,
+            estimatedCost: cost,
+            times: 1,
+        };
+
+        setMealItems(items => [...items, newItem]);
+        setShowAddMealModal(false);
+        
+        // Réinitialiser les champs
+        setNewMealDay('Lundi');
+        setNewMealDayNumber(1);
+        setNewMealType('dejeuner');
+        setNewMealName('');
+        setNewMealServings('4');
+        setNewMealCost('');
     };
 
     // ✅ NOUVEAU: Générer liste de courses intelligente via IA
@@ -1591,6 +1639,152 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 onPress={handleOpenOrderModal}
                                 variant="primary"
                                 style={styles.modalButton}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ✅ NOUVEAU: Modal pour ajouter un repas */}
+            <Modal
+                visible={showAddMealModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowAddMealModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Ajouter un repas</Text>
+                            <TouchableOpacity onPress={() => setShowAddMealModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Jour *</Text>
+                                <View style={styles.pickerContainer}>
+                                    <View style={styles.pickerRow}>
+                                        {DAYS.map((day, index) => (
+                                            <TouchableOpacity
+                                                key={day}
+                                                style={[
+                                                    styles.dayPickerButton,
+                                                    newMealDay === day && styles.dayPickerButtonActive
+                                                ]}
+                                                onPress={() => {
+                                                    setNewMealDay(day);
+                                                    setNewMealDayNumber(index + 1);
+                                                }}
+                                            >
+                                                <Text style={[
+                                                    styles.dayPickerButtonText,
+                                                    newMealDay === day && styles.dayPickerButtonTextActive
+                                                ]}>
+                                                    {DAYS_SHORT[index]}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Type de repas *</Text>
+                                <View style={styles.pickerContainer}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.mealTypeButton,
+                                            newMealType === 'petit_dejeuner' && styles.mealTypeButtonActive
+                                        ]}
+                                        onPress={() => setNewMealType('petit_dejeuner')}
+                                    >
+                                        <SafeIcon name="Sunrise" size={16} color={newMealType === 'petit_dejeuner' ? '#fff' : '#6B7280'} type="lucide" />
+                                        <Text style={[
+                                            styles.mealTypeButtonText,
+                                            newMealType === 'petit_dejeuner' && styles.mealTypeButtonTextActive
+                                        ]}>
+                                            Petit-déjeuner
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.mealTypeButton,
+                                            newMealType === 'dejeuner' && styles.mealTypeButtonActive
+                                        ]}
+                                        onPress={() => setNewMealType('dejeuner')}
+                                    >
+                                        <SafeIcon name="Sun" size={16} color={newMealType === 'dejeuner' ? '#fff' : '#6B7280'} type="lucide" />
+                                        <Text style={[
+                                            styles.mealTypeButtonText,
+                                            newMealType === 'dejeuner' && styles.mealTypeButtonTextActive
+                                        ]}>
+                                            Déjeuner
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.mealTypeButton,
+                                            newMealType === 'diner' && styles.mealTypeButtonActive
+                                        ]}
+                                        onPress={() => setNewMealType('diner')}
+                                    >
+                                        <SafeIcon name="Moon" size={16} color={newMealType === 'diner' ? '#fff' : '#6B7280'} type="lucide" />
+                                        <Text style={[
+                                            styles.mealTypeButtonText,
+                                            newMealType === 'diner' && styles.mealTypeButtonTextActive
+                                        ]}>
+                                            Dîner
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Nom du repas *</Text>
+                                <NativeInput
+                                    value={newMealName}
+                                    onChangeText={setNewMealName}
+                                    placeholder="Ex: Ndolé, Poulet DG, Riz au gras..."
+                                    autoFocus
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Nombre de portions</Text>
+                                <NativeInput
+                                    value={newMealServings}
+                                    onChangeText={setNewMealServings}
+                                    placeholder="4"
+                                    keyboardType="numeric"
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Coût estimé ({currency === 'XAF' || currency === 'FCFA' ? 'FCFA' : currency})</Text>
+                                <NativeInput
+                                    value={newMealCost}
+                                    onChangeText={setNewMealCost}
+                                    placeholder="0"
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Annuler"
+                                onPress={() => setShowAddMealModal(false)}
+                                variant="secondary"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title="Ajouter"
+                                onPress={handleConfirmAddMeal}
+                                variant="primary"
+                                style={styles.modalButton}
+                                disabled={!newMealName.trim()}
                             />
                         </View>
                     </View>
