@@ -775,6 +775,8 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
             variation_context,
             timestamp_variation,
             week_start,
+            profile.total_members,
+            profile.total_members,
             profile.total_members
         );
         

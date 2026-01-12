@@ -2895,8 +2895,8 @@ pub async fn creer_service(
                     );
                     log::info!(
                         "[creer_service] ✅ Produit créé - product_name: {}, product_type: {}, product_price: {:?}",
-                        product.product_name.as_deref().unwrap_or("N/A"),
-                        product.product_type.as_deref().unwrap_or("N/A"),
+                        product.product_name,
+                        product.product_type,
                         product.product_price
                     );
                     product
@@ -4964,6 +4964,8 @@ pub async fn creer_service(
     // car les produits sont déjà créés avec leurs médias dans la boucle précédente
     
     // ✅ DIAGNOSTIC: Vérifier que tous les produits ont bien été créés
+    use crate::services::products_service::ProductsService;
+    let products_service = ProductsService::new(std::sync::Arc::new(pool.clone()));
     let products_count = products_service
         .get_products_by_service(service_id)
         .await
@@ -4981,7 +4983,7 @@ pub async fn creer_service(
                     product.id,
                     product.product_index,
                     product.is_active,
-                    product.product_name.as_deref().unwrap_or("N/A")
+                    product.product_name
                 );
             }
             count

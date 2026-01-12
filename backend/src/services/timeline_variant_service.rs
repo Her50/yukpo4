@@ -5,6 +5,7 @@ use crate::services::app_ia::{AppIA, TimelineRequest, VideoTimeline};
 use futures::future;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineVariantRequest {
@@ -179,7 +180,7 @@ pub async fn generate_timeline_variants(
 
                 // Ajuster la durée totale si nécessaire
                 variant_request.duration_seconds =
-                    (variant_request.duration_seconds as f64 * scene_duration_multiplier) as u32;
+                    variant_request.duration_seconds * scene_duration_multiplier;
 
                 // ✅ NOUVEAU: Timeout explicite pour chaque variante (max 10s par variante)
                 let timeout_duration = std::time::Duration::from_secs(10);
@@ -230,18 +231,11 @@ pub async fn generate_timeline_variants(
     
     for (index, result) in results.into_iter().enumerate() {
         match result {
-            Ok(Ok(variant)) => {
+            Ok(variant) => {
                 variants.push(variant);
             }
-            Ok(Err(err_msg)) => {
+            Err(err_msg) => {
                 errors.push(format!("Variante {}: {}", index, err_msg));
-            }
-            Err(e) => {
-                error!(
-                    "[TimelineVariant] ❌ Erreur future variante {}: {:?}",
-                    index, e
-                );
-                errors.push(format!("Variante {}: Erreur future", index));
             }
         }
     }
