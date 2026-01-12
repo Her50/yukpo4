@@ -21,6 +21,7 @@ import { modernColors } from '../../theme/modernTheme';
 import { useShoppingContext } from '../../contexts/ShoppingContext';
 import { generateAndDownloadMenuPDF, shareMenuPDF } from '../../utils/menuPdfGenerator';
 import { generateAndDownloadShoppingListPDF, shareShoppingListPDF } from '../../utils/shoppingListPdfGenerator';
+import { generateAndDownloadRecipePDF, shareRecipePDF } from '../../utils/recipePdfGenerator';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { deliveryApi, userApi } from '../../services/api';
