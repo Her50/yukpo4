@@ -1237,12 +1237,14 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                         <ScrollView style={styles.modalBody}>
                             {/* Option appliquer même nombre de fois */}
                             <View style={styles.applyTimesContainer}>
-                                <Text style={styles.applyTimesLabel}>Appliquer à tous :</Text>
+                                <Text style={styles.applyTimesLabel}>
+                                    Nombre de fois que chaque repas doit être consommé :
+                                </Text>
                                 <View style={styles.applyTimesInputContainer}>
                                     <TextInput
                                         style={styles.applyTimesInput}
                                         keyboardType="numeric"
-                                        placeholder="Nombre de fois"
+                                        placeholder="1"
                                         defaultValue="1"
                                         onChangeText={(text) => {
                                             const times = parseInt(text) || 1;
@@ -1285,7 +1287,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <Text style={[styles.shoppingTableCell, { flex: 2 }]} numberOfLines={2}>
                                             {item.recipeName}
                                         </Text>
-                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 4 }]}>
                                             <TouchableOpacity
                                                 onPress={() => updateItemTimes(item.id, Math.max(1, item.times - 1))}
                                                 style={styles.timesButton}
@@ -1308,9 +1310,11 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 <Text style={styles.timesButtonText}>+</Text>
                                             </TouchableOpacity>
                                         </View>
-                                        <Text style={[styles.shoppingTableCell, { flex: 1.5, color: modernColors.primary, fontWeight: '700' }]}>
-                                            {formatPrice(calculateItemCost(item))}
-                                        </Text>
+                                        <View style={[styles.shoppingTableCell, { flex: 1.5, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 }]}>
+                                            <Text style={[styles.costCellText, { color: modernColors.primary, fontWeight: '700' }]}>
+                                                {formatPrice(calculateItemCost(item))}
+                                            </Text>
+                                        </View>
                                         <TouchableOpacity
                                             onPress={() => removeItem(item.id)}
                                             style={[styles.shoppingTableCell, { flex: 0.8 }]}
@@ -1378,12 +1382,14 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                         <ScrollView style={styles.modalBody}>
                             {/* Option appliquer même nombre de fois */}
                             <View style={styles.applyTimesContainer}>
-                                <Text style={styles.applyTimesLabel}>Appliquer à tous :</Text>
+                                <Text style={styles.applyTimesLabel}>
+                                    Nombre de fois que chaque repas doit être consommé :
+                                </Text>
                                 <View style={styles.applyTimesInputContainer}>
                                     <TextInput
                                         style={styles.applyTimesInput}
                                         keyboardType="numeric"
-                                        placeholder="Nombre de fois"
+                                        placeholder="1"
                                         defaultValue="1"
                                         onChangeText={(text) => {
                                             const times = parseInt(text) || 1;
@@ -1426,7 +1432,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <Text style={[styles.shoppingTableCell, { flex: 2 }]} numberOfLines={2}>
                                             {item.recipeName}
                                         </Text>
-                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 4 }]}>
                                             <TouchableOpacity
                                                 onPress={() => updateItemTimes(item.id, Math.max(1, item.times - 1))}
                                                 style={styles.timesButton}
@@ -1449,9 +1455,11 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 <Text style={styles.timesButtonText}>+</Text>
                                             </TouchableOpacity>
                                         </View>
-                                        <Text style={[styles.shoppingTableCell, { flex: 1.5, color: modernColors.primary, fontWeight: '700' }]}>
-                                            {formatPrice(calculateItemCost(item))}
-                                        </Text>
+                                        <View style={[styles.shoppingTableCell, { flex: 1.5, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 }]}>
+                                            <Text style={[styles.costCellText, { color: modernColors.primary, fontWeight: '700' }]}>
+                                                {formatPrice(calculateItemCost(item))}
+                                            </Text>
+                                        </View>
                                         <TouchableOpacity
                                             onPress={() => removeItem(item.id)}
                                             style={[styles.shoppingTableCell, { flex: 0.8 }]}
@@ -1886,6 +1894,11 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         fontSize: 12,
         fontWeight: '600',
+        backgroundColor: '#fff',
+    },
+    costCellText: {
+        fontSize: 13,
+        textAlign: 'center',
     },
     shoppingTotalContainer: {
         flexDirection: 'row',
