@@ -49,6 +49,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const [showRecipeDetails, setShowRecipeDetails] = useState(false);
     const [viewMode, setViewMode] = useState<'table' | 'list'>('table'); // ✅ NOUVEAU: Mode d'affichage
     const [exportingPDF, setExportingPDF] = useState(false);
+    const [exportingRecipePDF, setExportingRecipePDF] = useState(false);
     const { user } = useAuth();
     // ✅ NOUVEAU: États pour tableau intermédiaire achats externes
     const [showShoppingModal, setShowShoppingModal] = useState(false);
@@ -1183,8 +1184,34 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                     setShowRecipeDetails(false);
                                     setGeneratedRecipe(null);
                                 }}
+                                variant="secondary"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title={exportingRecipePDF ? 'Génération...' : 'Partager en PDF'}
+                                onPress={async () => {
+                                    if (!generatedRecipe) return;
+                                    
+                                    try {
+                                        setExportingRecipePDF(true);
+                                        const pdfUri = await generateAndDownloadRecipePDF({
+                                            recipe: generatedRecipe,
+                                            currency: currency === 'XAF' || currency === 'FCFA' ? 'FCFA' : currency,
+                                        });
+                                        
+                                        await shareRecipePDF(pdfUri, generatedRecipe.recipe_name);
+                                        Alert.alert('Succès', 'Recette partagée avec succès !');
+                                    } catch (error: any) {
+                                        console.error('[MenuWeekCalendar] Erreur partage recette PDF:', error);
+                                        Alert.alert('Erreur', error.message || 'Impossible de partager la recette en PDF');
+                                    } finally {
+                                        setExportingRecipePDF(false);
+                                    }
+                                }}
                                 variant="primary"
                                 style={styles.modalButton}
+                                disabled={exportingRecipePDF}
+                                loading={exportingRecipePDF}
                             />
                         </View>
                     </View>
