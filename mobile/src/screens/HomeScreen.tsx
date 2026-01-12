@@ -831,11 +831,11 @@ const styles = StyleSheet.create({
         marginBottom: 16, // ✅ CORRIGÉ: Ajouté pour espace blanc en bas
     },
     promotionsMainButton: {
-        backgroundColor: '#E2E8F0', // ✅ AMÉLIORÉ: Fond gris moyen harmonisé plus foncé (#E2E8F0 - slate-200)
+        backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que les boutons des services spécialisés (#f8fafc)
         borderRadius: 10,
         padding: 10,
         borderWidth: 1,
-        borderColor: '#CBD5E1', // ✅ AMÉLIORÉ: Bordure plus foncée harmonisée (#CBD5E1 - slate-300)
+        borderColor: modernColors.border, // ✅ CORRIGÉ: Même bordure que les autres boutons (#e2e8f0)
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
