@@ -586,7 +586,7 @@ Les projections sont basées sur :
 
 ---
 
-*Document confidentiel - Propriété de Yukpomnang - Janvier 2026*
+*Document confidentiel - Propriété de Yukpo - Janvier 2026*
 
 *Note : Tous les montants sont exprimés en FCFA (Franc CFA). Taux de change approximatif : 1 FCFA = 600 FCFA.*
 

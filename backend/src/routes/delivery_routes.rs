@@ -5067,7 +5067,7 @@ async fn create_delivery_partner(
 
     // ✅ NOUVEAU 2026-01-04: Valider et convertir le type de partenaire
     let partner_type_str = payload.partner_type.as_deref().unwrap_or("livraison");
-    let valid_types = ["livraison", "pharmacie", "hopital", "laboratoire", "agence de voyage", "demenagement", "transport", "assureur", "supermarche", "telecom"];
+    let valid_types = ["livraison", "livraison_courses_marche", "pharmacie", "hopital", "laboratoire", "agence de voyage", "demenagement", "transport", "assureur", "supermarche", "telecom", "chauffeur"];
     if !valid_types.contains(&partner_type_str) {
         return Err(AppError::BadRequest(
             format!("Type de partenaire invalide. Types valides: {}", valid_types.join(", "))
@@ -5162,7 +5162,7 @@ async fn update_delivery_partner(
 
     // ✅ NOUVEAU 2026-01-04: Valider et convertir le type de partenaire
     let partner_type_str = payload.partner_type.as_deref().unwrap_or("livraison");
-    let valid_types = ["livraison", "pharmacie", "hopital", "laboratoire", "agence de voyage", "demenagement", "transport", "assureur", "supermarche", "telecom"];
+    let valid_types = ["livraison", "livraison_courses_marche", "pharmacie", "hopital", "laboratoire", "agence de voyage", "demenagement", "transport", "assureur", "supermarche", "telecom", "chauffeur"];
     if !valid_types.contains(&partner_type_str) {
         return Err(AppError::BadRequest(
             format!("Type de partenaire invalide. Types valides: {}", valid_types.join(", "))
@@ -5279,7 +5279,7 @@ async fn search_partners_autocomplete(
 
     // Valider le type de partenaire si fourni
     if let Some(ref pt) = partner_type {
-        let valid_types = ["livraison", "pharmacie", "hopital", "laboratoire", "agence de voyage", "demenagement", "transport", "assureur", "supermarche", "telecom"];
+        let valid_types = ["livraison", "livraison_courses_marche", "pharmacie", "hopital", "laboratoire", "agence de voyage", "demenagement", "transport", "assureur", "supermarche", "telecom", "chauffeur"];
         if !valid_types.contains(&pt.as_str()) {
             return Err(AppError::BadRequest(format!("Type de partenaire invalide. Types valides: {}", valid_types.join(", "))));
         }

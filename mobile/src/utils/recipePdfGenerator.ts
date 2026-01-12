@@ -24,7 +24,7 @@ export async function generateRecipeHTML(recipeData: RecipePdfData): Promise<str
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recette - ${recipe.recipe_name} - Yukpomnang</title>
+    <title>Recette - ${recipe.recipe_name} - Yukpo</title>
     <style>
         * {
             margin: 0;
@@ -385,7 +385,7 @@ export async function generateRecipeHTML(recipeData: RecipePdfData): Promise<str
         <div class="footer">
             <div style="margin-bottom: 10px;">✅ Recette générée le ${now}</div>
             <div class="yukpo-signature">
-                <div class="yukpo-logo">YUKPOMNANG</div>
+                <div class="yukpo-logo">YUKPO</div>
                 <div class="yukpo-tagline">Votre assistant intelligent pour une meilleure planification</div>
             </div>
         </div>
@@ -440,7 +440,7 @@ export async function shareRecipePDF(pdfUri: string, recipeName: string) {
                 url: `file://${pdfUri}`,
                 type: 'application/pdf',
                 title: `Recette - ${recipeName}`,
-                message: `🍽️ Voici la recette de "${recipeName}" générée par Yukpomnang !`,
+                message: `🍽️ Voici la recette de "${recipeName}" générée par Yukpo !`,
                 social: Share.Social.WHATSAPP,
             });
         } catch (shareError) {

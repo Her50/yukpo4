@@ -22,6 +22,7 @@ import { useDeepLinkRedirect } from '../hooks/useDeepLinkRedirect';
 // ✅ IMPORTS DIRECTS - Écrans d'authentification
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import PartnerRegisterScreen from '../screens/auth/PartnerRegisterScreen';
 
 // ✅ IMPORTS DIRECTS - Écrans principaux
 import HomeScreen from '../screens/HomeScreen';
@@ -210,6 +211,7 @@ markNavigatorSafeAreaHandled(ContactScreen as any);
 
 const LoginScreenWithSafeArea = withNavigatorSafeArea(LoginScreen);
 const RegisterScreenWithSafeArea = withNavigatorSafeArea(RegisterScreen);
+const PartnerRegisterScreenWithSafeArea = withNavigatorSafeArea(PartnerRegisterScreen);
 const HomeScreenWithSafeArea = withNavigatorSafeArea(HomeScreen);
 const MesInteractionsScreenWithSafeArea = withNavigatorSafeArea(MesInteractionsScreen);
 const MesServicesScreenWithSafeArea = withNavigatorSafeArea(MesServicesScreen);
@@ -471,8 +473,6 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
 // Stack d'authentification - Très léger
 const AuthStack = () => {
   console.log('[AppNavigator] 📱 Rendu AuthStack');
-  const PartnerRegisterScreen = require('../screens/auth/PartnerRegisterScreen').default;
-  const PartnerRegisterScreenWithSafeArea = withNavigatorSafeArea(PartnerRegisterScreen);
   
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>

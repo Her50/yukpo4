@@ -7,6 +7,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_partner_type') THEN
         CREATE TYPE delivery_partner_type AS ENUM (
             'livraison',
+            'livraison_courses_marche',
             'pharmacie',
             'hopital',
             'laboratoire',
@@ -15,7 +16,8 @@ BEGIN
             'transport',
             'assureur',
             'supermarche',
-            'telecom'
+            'telecom',
+            'chauffeur'
         );
     END IF;
 END
@@ -58,6 +60,22 @@ BEGIN
         WHERE enumlabel = 'telecom' AND enumtypid = 'delivery_partner_type'::regtype
     ) THEN
         ALTER TYPE delivery_partner_type ADD VALUE 'telecom';
+    END IF;
+    
+    -- ✅ NOUVEAU: Ajouter 'livraison_courses_marche' si n'existe pas (pour coursiers spécialisés en courses au marché)
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_enum 
+        WHERE enumlabel = 'livraison_courses_marche' AND enumtypid = 'delivery_partner_type'::regtype
+    ) THEN
+        ALTER TYPE delivery_partner_type ADD VALUE 'livraison_courses_marche';
+    END IF;
+    
+    -- ✅ NOUVEAU: Ajouter 'chauffeur' si n'existe pas (pour chauffeurs taxi/covoiturage)
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_enum 
+        WHERE enumlabel = 'chauffeur' AND enumtypid = 'delivery_partner_type'::regtype
+    ) THEN
+        ALTER TYPE delivery_partner_type ADD VALUE 'chauffeur';
     END IF;
 END
 $$;

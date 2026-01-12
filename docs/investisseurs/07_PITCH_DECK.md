@@ -439,7 +439,7 @@
 
 ---
 
-*Document confidentiel - Propriété de Yukpomnang - Janvier 2026*
+*Document confidentiel - Propriété de Yukpo - Janvier 2026*
 
 *Ce pitch deck est destiné à la présentation orale. Les slides peuvent être adaptés en format PowerPoint/Keynote pour présentation visuelle.*
 

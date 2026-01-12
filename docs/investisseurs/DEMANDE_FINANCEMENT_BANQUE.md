@@ -320,4 +320,4 @@ Son parcours lui a permis d'acquérir une compréhension fine des réalités afr
 
 **Contact** : Hernandez LELE | lelehernandez2007@yahoo.fr | +237 674 546895
 
-*Document confidentiel - Propriété de Yukpomnang - Janvier 2026*
+*Document confidentiel - Propriété de Yukpo - Janvier 2026*

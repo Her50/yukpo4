@@ -1023,6 +1023,7 @@ pub async fn handle_timeline_variants(
         variant_styles: payload.variant_styles,
     };
 
+    // ✅ CORRIGÉ: state.ia est déjà un Arc<AppIA>, on peut le passer directement
     match generate_timeline_variants(&state.ia, variant_request).await {
         Ok(response) => {
             info!(

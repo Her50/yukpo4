@@ -349,7 +349,7 @@
 
 ---
 
-*Document confidentiel - Propriété de Yukpomnang - Janvier 2026*
+*Document confidentiel - Propriété de Yukpo - Janvier 2026*
 
 *Timeline réaliste et atteignable basée sur objectifs conservateurs et marché local.*
 

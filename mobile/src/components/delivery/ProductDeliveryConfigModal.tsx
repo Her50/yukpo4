@@ -546,6 +546,31 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 return;
             }
 
+            // ✅ VALIDATION FINALE: Vérifier que tous les champs requis sont présents et valides
+            const vehicleTypeId = config && typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0;
+            if (vehicleTypeId <= 0) {
+                Alert.alert('Erreur', 'Le type de véhicule est obligatoire et doit être sélectionné');
+                setLoading(false);
+                return;
+            }
+
+            // ✅ VALIDATION: Vérifier que le schedule est un objet valide (pas une string)
+            let finalSchedule = schedule;
+            if (typeof schedule === 'string') {
+                try {
+                    finalSchedule = JSON.parse(schedule);
+                } catch (e) {
+                    Alert.alert('Erreur', 'Format JSON invalide pour les plages horaires');
+                    setLoading(false);
+                    return;
+                }
+            }
+            if (!finalSchedule || typeof finalSchedule !== 'object' || Array.isArray(finalSchedule) || Object.keys(finalSchedule).length === 0) {
+                Alert.alert('Erreur', 'Veuillez définir au moins une plage horaire de récupération valide');
+                setLoading(false);
+                return;
+            }
+
             // ✅ CORRIGÉ: Toujours envoyer preparation_time_minutes (même si 0, car backend le requiert pour is_complete)
             const payload = {
                 service_id: serviceId,
@@ -555,13 +580,13 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 pickup_latitude: primaryAddress.latitude,
                 pickup_longitude: primaryAddress.longitude,
                 // ✅ Nettoyage: Ne plus envoyer storage_location_ids et storage_location_quantities (supprimés)
-                required_vehicle_type_id: config && typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0,
+                required_vehicle_type_id: vehicleTypeId,
                 preparation_time_minutes: preparationTime, // ✅ CORRIGÉ: Toujours envoyer (même si 0)
                 weight_kg: (config && typeof config.weight_kg === 'string' && config.weight_kg.trim()) ? parseFloat(config.weight_kg) : undefined,
                 volume_cm3: (config && typeof config.volume_cm3 === 'string' && config.volume_cm3.trim()) ? parseFloat(config.volume_cm3) : undefined,
                 requires_isothermal: config && typeof config.requires_isothermal === 'boolean' ? config.requires_isothermal : false,
                 requires_fragile_handling: config && typeof config.requires_fragile_handling === 'boolean' ? config.requires_fragile_handling : false,
-                pickup_availability_schedule: schedule,
+                pickup_availability_schedule: finalSchedule, // ✅ CORRIGÉ: Utiliser l'objet validé
                 pickup_instructions: (config && typeof config.pickup_instructions === 'string' && config.pickup_instructions.trim()) ? config.pickup_instructions : undefined,
                 billing_mode: typeof config.billing_mode === 'string' ? config.billing_mode : 'standard',
                 billing_partner_label: (typeof config.billing_partner_label === 'string' && config.billing_partner_label.trim()) ? config.billing_partner_label : undefined
@@ -604,33 +629,76 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     Alert.alert('Partiellement réussi', `${successCount} produit(s) configuré(s), ${errorCount} erreur(s)`);
                 }
             } else {
+                // ✅ LOGS DÉTAILLÉS: Capturer toutes les informations pour diagnostic
+                console.log('[SAUVEGARDE_CONFIG_LIVRAISON] 🚀 === DÉBUT sauvegarde configuration ===');
+                console.log('[SAUVEGARDE_CONFIG_LIVRAISON] 📊 Payload complet:', JSON.stringify(payload, null, 2));
+                console.log('[SAUVEGARDE_CONFIG_LIVRAISON] 📋 Détails payload:', {
+                    service_id: payload.service_id,
+                    product_index: payload.product_index,
+                    pickup_address: payload.pickup_address?.substring(0, 50) + '...',
+                    pickup_latitude: payload.pickup_latitude,
+                    pickup_longitude: payload.pickup_longitude,
+                    required_vehicle_type_id: payload.required_vehicle_type_id,
+                    preparation_time_minutes: payload.preparation_time_minutes,
+                    has_schedule: !!payload.pickup_availability_schedule && Object.keys(payload.pickup_availability_schedule).length > 0,
+                    schedule_keys: payload.pickup_availability_schedule ? Object.keys(payload.pickup_availability_schedule) : [],
+                    weight_kg: payload.weight_kg,
+                    volume_cm3: payload.volume_cm3,
+                    billing_mode: payload.billing_mode,
+                });
+
                 // ✅ NOUVEAU: Retry logic avec délai progressif pour gérer le cas où le produit n'est pas encore synchronisé
                 let retryCount = 0;
                 const maxRetries = 3;
                 const retryDelays = [500, 1000, 2000]; // Délais en ms: 500ms, 1s, 2s
                 let lastError: any = null;
+                let lastResponse: any = null;
                 
                 while (retryCount <= maxRetries) {
                     try {
+                        console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] 🔄 Tentative ${retryCount + 1}/${maxRetries + 1}...`);
                         const response = await apiPost('/api/delivery/product-config', payload);
+                        lastResponse = response;
+                        
+                        console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] 📡 Réponse reçue (tentative ${retryCount + 1}):`, {
+                            success: response.success,
+                            message: response.message,
+                            error: response.error,
+                            data: response.data,
+                        });
+                        
                         if (response.success) {
+                            console.log('[SAUVEGARDE_CONFIG_LIVRAISON] ✅ === SUCCÈS sauvegarde ===');
                             Alert.alert('Succès', 'Configuration de livraison sauvegardée avec succès');
                             onSuccess?.();
                             onClose();
                             return; // Sortir de la fonction si succès
                         } else {
+                            // ✅ LOGS DÉTAILLÉS: Capturer l'erreur du backend
+                            const errorMsg = response.message || response.error || '';
+                            console.error(`[SAUVEGARDE_CONFIG_LIVRAISON] ❌ Erreur backend (tentative ${retryCount + 1}):`, {
+                                message: response.message,
+                                error: response.error,
+                                data: response.data,
+                                fullResponse: JSON.stringify(response, null, 2),
+                            });
+                            
                             // Si l'erreur indique que le produit n'existe pas, retry
-                            const errorMsg = response.message || '';
-                            if (errorMsg.includes('non trouvé') || errorMsg.includes('not found') || errorMsg.includes('Produit')) {
+                            if (errorMsg.includes('non trouvé') || errorMsg.includes('not found') || errorMsg.includes('Produit') || errorMsg.includes('synchronisé')) {
                                 if (retryCount < maxRetries) {
                                     const delay = retryDelays[retryCount] || 2000;
-                                    console.log(`[ProductDeliveryConfigModal] Produit non trouvé, retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
+                                    console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] ⏳ Produit non trouvé, retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
                                     await new Promise(resolve => setTimeout(resolve, delay));
                                     retryCount++;
                                     continue;
                                 }
                             }
-                            // Autre erreur, afficher directement
+                            // Autre erreur, afficher directement avec détails
+                            console.error('[SAUVEGARDE_CONFIG_LIVRAISON] ❌ === ERREUR FINALE ===', {
+                                errorMessage: errorMsg,
+                                fullResponse: JSON.stringify(response, null, 2),
+                                payload: JSON.stringify(payload, null, 2),
+                            });
                             Alert.alert('Erreur', errorMsg || 'Erreur lors de la sauvegarde');
                             return;
                         }
@@ -638,11 +706,19 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         lastError = error;
                         const errorMsg = error?.message || error?.error || error?.response?.data?.message || '';
                         
+                        console.error(`[SAUVEGARDE_CONFIG_LIVRAISON] ❌ Exception (tentative ${retryCount + 1}):`, {
+                            message: error?.message,
+                            error: error?.error,
+                            responseData: error?.response?.data,
+                            stack: error?.stack,
+                            fullError: JSON.stringify(error, null, 2),
+                        });
+                        
                         // Si l'erreur indique que le produit n'existe pas, retry
-                        if (errorMsg.includes('non trouvé') || errorMsg.includes('not found') || errorMsg.includes('Produit')) {
+                        if (errorMsg.includes('non trouvé') || errorMsg.includes('not found') || errorMsg.includes('Produit') || errorMsg.includes('synchronisé')) {
                             if (retryCount < maxRetries) {
                                 const delay = retryDelays[retryCount] || 2000;
-                                console.log(`[ProductDeliveryConfigModal] Produit non trouvé (exception), retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
+                                console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] ⏳ Produit non trouvé (exception), retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
                                 await new Promise(resolve => setTimeout(resolve, delay));
                                 retryCount++;
                                 continue;
@@ -654,17 +730,38 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 }
                 
                 // Si on arrive ici, toutes les tentatives ont échoué
-                console.error('Erreur sauvegarde après retries:', lastError);
-                const errorMessage = lastError?.message || lastError?.error || lastError?.response?.data?.message || 'Erreur lors de la sauvegarde de la configuration. Le produit peut ne pas être encore synchronisé. Veuillez réessayer dans quelques instants.';
+                console.error('[SAUVEGARDE_CONFIG_LIVRAISON] ❌ === ÉCHEC APRÈS TOUTES LES TENTATIVES ===');
+                console.error('[SAUVEGARDE_CONFIG_LIVRAISON] ❌ Dernière erreur:', {
+                    error: lastError,
+                    response: lastResponse,
+                    payload: JSON.stringify(payload, null, 2),
+                });
+                
+                const errorMessage = lastError?.message || lastError?.error || lastResponse?.message || lastResponse?.error || lastError?.response?.data?.message || 'Erreur lors de la sauvegarde de la configuration. Le produit peut ne pas être encore synchronisé. Veuillez réessayer dans quelques instants.';
+                console.error('[SAUVEGARDE_CONFIG_LIVRAISON] ❌ Message d\'erreur final:', errorMessage);
                 Alert.alert('Erreur', errorMessage);
             }
         } catch (error: any) {
-            console.error('Erreur sauvegarde:', error);
+            console.error('[SAUVEGARDE_CONFIG_LIVRAISON] ❌ === ERREUR CRITIQUE DANS CATCH FINAL ===');
+            console.error('[SAUVEGARDE_CONFIG_LIVRAISON] ❌ Erreur complète:', {
+                message: error?.message,
+                error: error?.error,
+                name: error?.name,
+                stack: error?.stack,
+                response: error?.response,
+                responseData: error?.response?.data,
+                responseStatus: error?.response?.status,
+                responseStatusText: error?.response?.statusText,
+                fullError: JSON.stringify(error, null, 2),
+            });
+            
             // ✅ AMÉLIORÉ: Afficher le message d'erreur détaillé du backend
-            const errorMessage = error?.message || error?.error || error?.response?.data?.message || 'Erreur lors de la sauvegarde de la configuration';
+            const errorMessage = error?.message || error?.error || error?.response?.data?.message || error?.response?.data?.error || 'Erreur lors de la sauvegarde de la configuration';
+            console.error('[SAUVEGARDE_CONFIG_LIVRAISON] ❌ Message d\'erreur final:', errorMessage);
             Alert.alert('Erreur', errorMessage);
         } finally {
             setLoading(false);
+            console.log('[SAUVEGARDE_CONFIG_LIVRAISON] ✅ === FIN handleSave (loading désactivé) ===');
         }
     };
 

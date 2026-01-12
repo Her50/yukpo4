@@ -507,5 +507,5 @@ Yukpomnang opère dans un **marché en croissance exponentielle** (90K FCFA+ mil
 
 ---
 
-*Document confidentiel - Propriété de Yukpomnang - Janvier 2026*
+*Document confidentiel - Propriété de Yukpo - Janvier 2026*
 

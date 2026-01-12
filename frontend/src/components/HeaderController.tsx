@@ -343,6 +343,13 @@ const HeaderController: React.FC = () => {
                           🚚 Gérer les partenaires
                         </Link>
                         <Link
+                          to="/admin/courier-applications"
+                          className="block px-3 py-2 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded text-orange-600 dark:text-orange-400 font-medium border-l-4 border-orange-500 mb-1"
+                          onClick={() => setOpenProfileMenu(false)}
+                        >
+                          👥 Gérer les coursiers/chauffeurs
+                        </Link>
+                        <Link
                           to={ROUTES.ADMIN_KYC_VERIFICATION}
                           className="block px-3 py-2 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded text-orange-600 dark:text-orange-400 font-medium border-l-4 border-orange-500 mb-1"
                           onClick={() => setOpenProfileMenu(false)}

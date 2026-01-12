@@ -41,7 +41,7 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menu de la Semaine - Yukpomnang</title>
+    <title>Menu de la Semaine - Yukpo</title>
     <style>
         * {
             margin: 0;
@@ -326,7 +326,7 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
         <div class="footer">
             <div style="margin-bottom: 10px;">✅ Menu généré le ${now}</div>
             <div class="yukpo-signature">
-                <div class="yukpo-logo">YUKPOMNANG</div>
+                <div class="yukpo-logo">YUKPO</div>
                 <div class="yukpo-tagline">Votre assistant intelligent pour une meilleure planification</div>
             </div>
         </div>
@@ -381,7 +381,7 @@ export async function shareMenuPDF(pdfUri: string, menuTitle: string) {
                 url: `file://${pdfUri}`,
                 type: 'application/pdf',
                 title: `Menu de la Semaine - ${menuTitle}`,
-                message: `🍽️ Voici mon menu de la semaine généré par Yukpomnang !`,
+                message: `🍽️ Voici mon menu de la semaine généré par Yukpo !`,
                 social: Share.Social.WHATSAPP,
             });
         } catch (shareError) {

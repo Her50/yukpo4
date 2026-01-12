@@ -227,9 +227,14 @@ pub struct DailyMeal {
     pub day: i32, // 1=lundi, 7=dimanche
     pub day_name: String,
     pub petit_dejeuner: Option<MealItem>,
-    pub dejeuner: Option<MealItem>,
-    pub diner: Option<MealItem>,
+    #[serde(alias = "dejeuner", alias = "diner")] // ✅ Compatibilité avec ancien format
+    pub repas_du_jour: Option<MealItem>, // ✅ NOUVEAU: Fusion déjeuner/dîner (même repas midi et soir)
     pub gouter: Option<MealItem>,
+    // ✅ DÉPRÉCIÉ: Gardé pour compatibilité descendante, mais ne sera plus utilisé
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dejeuner: Option<MealItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diner: Option<MealItem>,
 }
 
 /// Item de repas
@@ -241,6 +246,8 @@ pub struct MealItem {
     pub prep_time_minutes: Option<i32>,
     pub estimated_cost: Option<f64>,
     pub calories: Option<f64>,
+    #[serde(default)] // ✅ NOUVEAU: Compléments pour repas complet
+    pub complements: Vec<String>, // Ex: ["Riz", "Légumes"] pour un repas complet
 }
 
 /// Suggestion de recette par IA
@@ -306,6 +313,8 @@ impl MenuPlanningAIService {
                 menu.meals.iter().flat_map(|meal| {
                     vec![
                         meal.petit_dejeuner.as_ref().map(|m| m.recipe_name.clone()),
+                        meal.repas_du_jour.as_ref().map(|m| m.recipe_name.clone()),
+                        // ✅ Compatibilité: aussi extraire dejeuner/diner si présents (ancien format)
                         meal.dejeuner.as_ref().map(|m| m.recipe_name.clone()),
                         meal.diner.as_ref().map(|m| m.recipe_name.clone()),
                     ]
@@ -332,7 +341,7 @@ impl MenuPlanningAIService {
         );
 
         let cleaned_response = clean_json_response(&response);
-        let menu: WeeklyMenu = match serde_json::from_str(&cleaned_response) {
+        let mut menu: WeeklyMenu = match serde_json::from_str(&cleaned_response) {
             Ok(m) => m,
             Err(e) => {
                 log::error!(
@@ -343,6 +352,91 @@ impl MenuPlanningAIService {
                 self.create_fallback_menu(profile, week_start)
             }
         };
+
+        // ✅ NOUVEAU: Validation - S'assurer que le menu contient 7 jours
+        if menu.meals.len() < 7 {
+            log::warn!(
+                "[MenuPlanningAIService] Menu incomplet: {} jours au lieu de 7. Complétion automatique...",
+                menu.meals.len()
+            );
+            
+            // Compléter avec des jours manquants
+            let day_names = vec!["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+            let existing_days: std::collections::HashSet<i32> = menu.meals.iter().map(|m| m.day).collect();
+            
+            for day in 1..=7 {
+                if !existing_days.contains(&day) {
+                    menu.meals.push(DailyMeal {
+                        day,
+                        day_name: day_names[(day - 1) as usize].to_string(),
+                        petit_dejeuner: Some(MealItem {
+                            recipe_name: "Menu en cours de génération".to_string(),
+                            recipe_id: None,
+                            servings: profile.total_members,
+                            prep_time_minutes: None,
+                            estimated_cost: None,
+                            calories: None,
+                            complements: vec![],
+                        }),
+                        repas_du_jour: Some(MealItem {
+                            recipe_name: "Menu en cours de génération".to_string(),
+                            recipe_id: None,
+                            servings: profile.total_members,
+                            prep_time_minutes: None,
+                            estimated_cost: None,
+                            calories: None,
+                            complements: vec![],
+                        }),
+                        gouter: None,
+                        dejeuner: None,
+                        diner: None,
+                    });
+                }
+            }
+            
+            // Trier les repas par jour
+            menu.meals.sort_by_key(|m| m.day);
+        }
+
+        // ✅ NOUVEAU: Validation - S'assurer que tous les repas ont des coûts estimés
+        let mut total_cost = 0.0;
+        for meal in &mut menu.meals {
+            if let Some(ref mut petit_dej) = meal.petit_dejeuner {
+                if petit_dej.estimated_cost.is_none() {
+                    petit_dej.estimated_cost = Some(500.0); // Coût par défaut
+                }
+                total_cost += petit_dej.estimated_cost.unwrap_or(0.0);
+            }
+            if let Some(ref mut repas_jour) = meal.repas_du_jour {
+                if repas_jour.estimated_cost.is_none() {
+                    repas_jour.estimated_cost = Some(1500.0); // Coût par défaut
+                }
+                total_cost += repas_jour.estimated_cost.unwrap_or(0.0) * 2.0; // Compter 2 fois (midi et soir)
+            } else if meal.dejeuner.is_some() || meal.diner.is_some() {
+                // Compatibilité avec ancien format
+                if let Some(ref mut dejeuner) = meal.dejeuner {
+                    if dejeuner.estimated_cost.is_none() {
+                        dejeuner.estimated_cost = Some(1500.0);
+                    }
+                    total_cost += dejeuner.estimated_cost.unwrap_or(0.0);
+                }
+                if let Some(ref mut diner) = meal.diner {
+                    if diner.estimated_cost.is_none() {
+                        diner.estimated_cost = Some(1500.0);
+                    }
+                    total_cost += diner.estimated_cost.unwrap_or(0.0);
+                }
+            }
+            if let Some(ref mut gouter) = meal.gouter {
+                if gouter.estimated_cost.is_none() {
+                    gouter.estimated_cost = Some(300.0);
+                }
+                total_cost += gouter.estimated_cost.unwrap_or(0.0);
+            }
+        }
+        
+        // Mettre à jour le coût total estimé
+        menu.total_estimated_cost = Some(total_cost);
 
         Ok(menu)
     }
@@ -558,16 +652,39 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
 {}{}{}{}
 
 🎯 TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
-- Tu DOIS générer un MENU HEBDOMADAIRE avec des REPAS CONCRETS (plats, recettes)
-- Chaque jour DOIT avoir des repas réels : petit-déjeuner, déjeuner, dîner (et optionnellement goûter)
-- Chaque repas DOIT avoir un nom de plat/recette concret (ex: "Poulet DG", "Ndolé", "Riz sauté")
-- Tu NE DOIS PAS générer un calendrier, un diagramme, ou une structure vide
-- Tu DOIS générer des PLATS RÉELS avec des noms de recettes pour chaque repas de chaque jour
+- Tu DOIS générer un MENU HEBDOMADAIRE avec des REPAS CONCRETS, COMPLETS et RÉELS
+- Chaque jour DOIT avoir : petit-déjeuner ET repas_du_jour (même repas pour midi et soir, habitude locale)
+- Chaque repas DOIT être COMPLET : plat principal + accompagnements/compléments si nécessaire
+- Tu NE DOIS PAS inventer des plats qui n'existent pas dans la localité
+- Tu DOIS utiliser UNIQUEMENT des plats RÉELS et TRADITIONNELS de la région
 - Adapter les quantités au nombre de personnes
 - Respecter allergies et restrictions
 - Optimiser le budget
 - Varier les repas pour éviter la monotonie
 - RESPECTER STRICTEMENT les contextes géographique, saisonnier et de variation ci-dessus
+
+🚨 RÈGLES STRICTES SUR LES REPAS COMPLETS (CRITIQUE) :
+1. REPAS COMPLET OBLIGATOIRE :
+   - Chaque repas DOIT être un repas complet et équilibré
+   - Ne JAMAIS proposer un plat partiel ou incomplet
+   - Si le plat principal nécessite un accompagnement, il DOIT être dans "complements"
+
+2. COMPLÉMENTS OBLIGATOIRES :
+   - Si un plat nécessite un complément (ex: riz, plantain, légumes), tu DOIS le préciser dans "complements"
+   - Les compléments DOIVENT être cohérents avec le plat (ex: "Ndolé" → "Riz" ou "Plantain")
+   - Ne JAMAIS laisser un plat sans complément si c'est nécessaire pour un repas complet
+   - Le champ "complements" est un array de strings (peut être vide [] si pas nécessaire)
+
+3. COHÉRENCE CULINAIRE :
+   - Les compléments DOIVENT être adaptés au plat principal
+   - Respecter les traditions culinaires locales (ex: au Cameroun, "Ndolé" se mange avec "Riz")
+   - Ne JAMAIS proposer des combinaisons incohérentes
+
+4. PLATS RÉELS UNIQUEMENT :
+   - Utilise UNIQUEMENT des plats qui existent réellement dans la cuisine locale
+   - Ne JAMAIS inventer des noms de plats
+   - Utilise tes connaissances sur les plats traditionnels de la région
+   - Si tu ne connais pas un plat, ne l'invente pas - utilise un plat réel que tu connais
 
 📋 RÉPONSE ATTENDUE (JSON strict) :
 {{
@@ -577,15 +694,29 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
             "day": 1,
             "day_name": "Lundi",
             "petit_dejeuner": {{
-                "recipe_name": "Nom du plat",
+                "recipe_name": "Nom du plat complet",
+                "complements": ["Complément 1", "Complément 2"],
                 "servings": {},
                 "prep_time_minutes": 15,
                 "estimated_cost": 500.0,
                 "calories": 400.0
             }},
-            "dejeuner": {{ ... }},
-            "diner": {{ ... }},
-            "gouter": {{ ... }}
+            "repas_du_jour": {{
+                "recipe_name": "Nom du plat principal",
+                "complements": ["Riz", "Légumes"],
+                "servings": {},
+                "prep_time_minutes": 30,
+                "estimated_cost": 1500.0,
+                "calories": 600.0
+            }},
+            "gouter": {{
+                "recipe_name": "Nom du plat",
+                "complements": [],
+                "servings": {},
+                "prep_time_minutes": 10,
+                "estimated_cost": 300.0,
+                "calories": 200.0
+            }}
         }},
         // ... pour chaque jour (1-7)
     ],
@@ -604,6 +735,10 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
   * Utilise uniquement les ingrédients typiques et disponibles localement dans les marchés de la région
   * Privilégie les ingrédients du marché local (ex: plantain, manioc, igname, feuilles locales)
   * Évite les ingrédients importés ou difficiles à trouver localement
+- REPAS_DU_JOUR (CRITIQUE) :
+  * "repas_du_jour" est le même repas pour midi ET soir (habitude locale)
+  * C'est généralement le même plat qui est mangé à midi et le soir dans les ménages
+  * Ne JAMAIS proposer deux plats différents pour midi et soir
 - Les quantités doivent être adaptées au nombre de personnes
 - Respecter strictement les allergies
 - Varier les types de plats
@@ -613,7 +748,8 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
 ⚠️ IMPORTANT - JSON COMPLET REQUIS :
 - Tu DOIS générer un JSON COMPLET et VALIDE pour les 7 jours (Lundi à Dimanche)
 - Chaque jour DOIT avoir des repas CONCRETS avec des noms de plats RÉELS (pas de valeurs vides, pas de "null", pas de placeholders)
-- Chaque repas (petit_dejeuner, dejeuner, diner) DOIT avoir un "recipe_name" avec un nom de plat CONCRET
+- Chaque repas (petit_dejeuner, repas_du_jour) DOIT avoir un "recipe_name" avec un nom de plat CONCRET et RÉEL
+- Chaque repas DOIT avoir un champ "complements" (array, peut être vide [] si pas nécessaire)
 - Le JSON DOIT se terminer par }} pour fermer correctement toutes les structures
 - Ne JAMAIS tronquer le JSON au milieu d'une chaîne, d'un objet ou d'un array
 - Si tu atteins une limite, génère un JSON valide en fermant toutes les structures ouvertes
@@ -621,7 +757,8 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
 - RESPECTER la saisonnalité (uniquement ingrédients de saison)
 - RESPECTER la variation (éviter les répétitions) - CRITIQUE : Menu doit être DIFFÉRENT à chaque génération
 - CALORIES : Chaque repas DOIT avoir un champ "calories" avec l'apport calorique estimé par portion
-- INTERDICTION ABSOLUE : Ne JAMAIS générer un calendrier, un diagramme, ou une structure vide. Tu DOIS générer des REPAS avec des NOMS DE PLATS CONCRETS.
+- INTERDICTION ABSOLUE : Ne JAMAIS générer un calendrier, un diagramme, ou une structure vide. Tu DOIS générer des REPAS avec des NOMS DE PLATS CONCRETS et RÉELS.
+- INTERDICTION ABSOLUE : Ne JAMAIS inventer des plats qui n'existent pas. Utilise UNIQUEMENT des plats RÉELS de la cuisine locale.
 "#,
             profile.total_members,
             profile.children_count,
@@ -791,12 +928,27 @@ RÉPONSE ATTENDUE (JSON strict) :
             .meals
             .iter()
             .map(|m| {
+                let petit_dej = m.petit_dejeuner.as_ref().map(|x| {
+                    let complements = if x.complements.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" (avec: {})", x.complements.join(", "))
+                    };
+                    format!("{}{}", x.recipe_name, complements)
+                });
+                let repas_jour = m.repas_du_jour.as_ref().map(|x| {
+                    let complements = if x.complements.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" (avec: {})", x.complements.join(", "))
+                    };
+                    format!("{}{}", x.recipe_name, complements)
+                });
                 format!(
-                    "{}: Petit-déj: {:?}, Déj: {:?}, Dîner: {:?}",
+                    "{}: Petit-déj: {:?}, Repas du jour: {:?}",
                     m.day_name,
-                    m.petit_dejeuner.as_ref().map(|x| &x.recipe_name),
-                    m.dejeuner.as_ref().map(|x| &x.recipe_name),
-                    m.diner.as_ref().map(|x| &x.recipe_name)
+                    petit_dej,
+                    repas_jour
                 )
             })
             .collect::<Vec<_>>()
@@ -943,7 +1095,7 @@ Générer une recette COMPLÈTE et DÉTAILLÉE pour le plat : "{}"
     "recipe_name": "Nom exact du plat",
     "description": "Description courte et appétissante du plat",
     "cuisine_style": "Style de cuisine (déterminé automatiquement selon le pays/ville, ex: cuisine locale traditionnelle)",
-    "meal_type": ["petit_dejeuner", "dejeuner", "diner"],
+    "meal_type": ["petit_dejeuner", "repas_du_jour"],
     "difficulty": "débutant" | "intermédiaire" | "avancé",
     "prep_time_minutes": 30,
     "cook_time_minutes": 45,
@@ -1008,10 +1160,42 @@ IMPORTANT :
     }
 
     /// Crée un menu de fallback en cas d'erreur
-    fn create_fallback_menu(&self, _profile: &FamilyProfile, week_start: &str) -> WeeklyMenu {
+    fn create_fallback_menu(&self, profile: &FamilyProfile, week_start: &str) -> WeeklyMenu {
+        let day_names = vec!["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+        let meals: Vec<DailyMeal> = (1..=7)
+            .zip(day_names.iter())
+            .map(|(day, day_name)| {
+                DailyMeal {
+                    day,
+                    day_name: day_name.to_string(),
+                    petit_dejeuner: Some(MealItem {
+                        recipe_name: "Menu en cours de génération".to_string(),
+                        recipe_id: None,
+                        servings: profile.total_members,
+                        prep_time_minutes: None,
+                        estimated_cost: None,
+                        calories: None,
+                        complements: vec![],
+                    }),
+                    repas_du_jour: Some(MealItem {
+                        recipe_name: "Menu en cours de génération".to_string(),
+                        recipe_id: None,
+                        servings: profile.total_members,
+                        prep_time_minutes: None,
+                        estimated_cost: None,
+                        calories: None,
+                        complements: vec![],
+                    }),
+                    gouter: None,
+                    dejeuner: None, // ✅ DÉPRÉCIÉ
+                    diner: None, // ✅ DÉPRÉCIÉ
+                }
+            })
+            .collect();
+        
         WeeklyMenu {
             week_start: week_start.to_string(),
-            meals: vec![],
+            meals,
             total_estimated_cost: None,
             total_calories_per_day: None,
             recommendations: vec!["Menu en cours de génération. Veuillez réessayer.".to_string()],
@@ -1082,10 +1266,12 @@ IMPORTANT :
 /// ✅ NOUVEAU: Item de repas pour génération liste de courses
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MealItemForShopping {
+    #[serde(rename = "recipeName")]
     pub recipe_name: String,
     pub times: i32, // Nombre de fois de consommation
     pub servings: i32,
     pub day: String,
+    #[serde(rename = "mealType")]
     pub meal_type: String,
 }
 

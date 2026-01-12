@@ -82,17 +82,77 @@ pub async fn generate_video_for_product(
         .await
         {
             Ok(result) => {
+                info!(
+                    "[ProductVideoController] ✅ Génération vidéo réussie pour job {} - media_id: {}, service_id: {}, product_index: {}",
+                    job_id, result.media_id, result.service_id, result.product_index
+                );
+                
                 let steps = result.progress_steps.clone();
-                let result_json = serde_json::to_value(&result).unwrap_or_else(|_| json!({}));
-                if let Err(err) = state_clone
+                
+                // ✅ AMÉLIORÉ: Gestion d'erreur robuste pour la sérialisation JSON
+                let result_json = match serde_json::to_value(&result) {
+                    Ok(json) => json,
+                    Err(err) => {
+                        error!(
+                            "[ProductVideoController] ❌ Erreur sérialisation résultat pour job {}: {}",
+                            job_id, err
+                        );
+                        // Utiliser un JSON minimal si la sérialisation échoue
+                        json!({
+                            "media_id": result.media_id,
+                            "service_id": result.service_id,
+                            "product_index": result.product_index,
+                            "video_url": result.video_url,
+                            "success": result.success,
+                            "error": "Erreur sérialisation résultat complet"
+                        })
+                    }
+                };
+                
+                // ✅ AMÉLIORÉ: Gestion d'erreur robuste pour la mise à jour du statut
+                match state_clone
                     .video_jobs
                     .mark_completed(job_id, result.media_id, &steps, &result_json)
                     .await
                 {
-                    warn!(
-                        "[ProductVideoController] Impossible de marquer le job {} comme terminé: {}",
-                        job_id, err
-                    );
+                    Ok(_) => {
+                        info!(
+                            "[ProductVideoController] ✅ Job {} marqué comme terminé avec succès (media_id: {})",
+                            job_id, result.media_id
+                        );
+                    }
+                    Err(err) => {
+                        error!(
+                            "[ProductVideoController] ❌ ERREUR CRITIQUE: Impossible de marquer le job {} comme terminé: {}",
+                            job_id, err
+                        );
+                        error!(
+                            "[ProductVideoController] Détails: media_id={}, service_id={}, product_index={}, video_url={}",
+                            result.media_id, result.service_id, result.product_index, result.video_url
+                        );
+                        // ✅ NOUVEAU: Essayer de marquer le job comme "completed" avec un statut minimal
+                        // pour éviter que le job reste bloqué en "running"
+                        let minimal_json = json!({
+                            "media_id": result.media_id,
+                            "video_url": result.video_url,
+                            "error": format!("Erreur mise à jour statut: {}", err)
+                        });
+                        if let Err(mark_err) = state_clone
+                            .video_jobs
+                            .mark_completed(job_id, result.media_id, &steps, &minimal_json)
+                            .await
+                        {
+                            error!(
+                                "[ProductVideoController] ❌ ERREUR CRITIQUE: Impossible de marquer le job {} même avec JSON minimal: {}",
+                                job_id, mark_err
+                            );
+                        } else {
+                            warn!(
+                                "[ProductVideoController] ⚠️ Job {} marqué comme terminé avec JSON minimal (erreur mise à jour statut)",
+                                job_id
+                            );
+                        }
+                    }
                 }
             }
             Err(err) => {

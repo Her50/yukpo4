@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,7 +31,10 @@ interface DocumentFile {
 
 const CourierRegistrationScreen: React.FC = () => {
     const navigation = useNavigation();
+    const route = useRoute();
     const { user } = useAuth();
+    const applicationType = (route.params as any)?.applicationType as 'courier' | 'driver' | undefined; // ✅ NOUVEAU: Type d'application (coursier ou chauffeur)
+    const isDriverApplication = applicationType === 'driver'; // ✅ NOUVEAU: Indique si c'est une candidature de chauffeur
     const [loading, setLoading] = useState(false);
     const [checkingStatus, setCheckingStatus] = useState(true);
     const [applicationStatus, setApplicationStatus] = useState<'none' | 'draft' | 'submitted' | 'approved' | 'rejected'>('none');
@@ -82,49 +85,120 @@ const CourierRegistrationScreen: React.FC = () => {
     const [bio, setBio] = useState('');
     const [experience, setExperience] = useState('');
     
-    // ✅ NOUVEAU: Spécialisations
-    const [specializations, setSpecializations] = useState<string[]>([]);
+    // ✅ NOUVEAU: Type de coursier (obligatoire, en haut du formulaire)
+    const [courierType, setCourierType] = useState<string>(''); // 'classic' | 'market_shopping' | 'taxi' | 'carpooling' | 'moving'
 
     // Comptes de paiement
     const [paymentMethod, setPaymentMethod] = useState<any>(null);
 
     useEffect(() => {
+        // ✅ OPTIMISÉ: Charger d'abord les données critiques, puis les partenaires en arrière-plan
         checkApplicationStatus();
         loadUserPhoneFromServices();
-        loadPartners(); // ✅ NOUVEAU 2026-01-04: Charger les partenaires
     }, [user]);
 
-    // ✅ AMÉLIORÉ 2026-01-12: Charger la liste des partenaires actifs de type "Livraison" ou "demenagement"
+    // ✅ NOUVEAU: Recharger les partenaires quand le type de coursier change
+    useEffect(() => {
+        if (courierType) {
+            loadPartners();
+        } else {
+            setPartners([]);
+            setSelectedPartnerId(null);
+        }
+    }, [courierType]);
+
+    // ✅ AMÉLIORÉ 2026-01-12: Charger la liste des partenaires actifs selon le type de coursier sélectionné
     const loadPartners = async () => {
+        if (!courierType) {
+            // Si aucun type de coursier n'est sélectionné, ne pas charger les partenaires
+            return;
+        }
         try {
             const { apiGet } = require('../../services/api');
-            // ✅ AMÉLIORÉ: Essayer d'abord avec le filtre côté serveur pour les types livraison/demenagement
+            // ✅ NOUVEAU: Filtrer les partenaires selon le type de coursier sélectionné
+            let partnerTypesToLoad: string[] = [];
+            switch (courierType) {
+                case 'classic':
+                    partnerTypesToLoad = ['livraison'];
+                    break;
+                case 'market_shopping':
+                    partnerTypesToLoad = ['livraison_courses_marche'];
+                    break;
+                case 'taxi':
+                case 'carpooling':
+                    partnerTypesToLoad = ['chauffeur'];
+                    break;
+                case 'moving':
+                    partnerTypesToLoad = ['demenagement'];
+                    break;
+                default:
+                    partnerTypesToLoad = ['livraison', 'livraison_courses_marche', 'demenagement', 'chauffeur'];
+            }
+            
             let response;
             try {
-                // Essayer avec le paramètre partner_type pour filtrer côté serveur
-                response = await apiGet('/api/delivery/partners?partner_type=livraison&active_only=true');
-                let partnersList = response.partners || response.data?.partners || [];
-                
-                // Si aucun partenaire trouvé avec "livraison", essayer "demenagement"
-                if (partnersList.length === 0) {
-                    const response2 = await apiGet('/api/delivery/partners?partner_type=demenagement&active_only=true');
-                    partnersList = response2.partners || response2.data?.partners || [];
+                // Charger les partenaires selon les types correspondants
+                let partnersList: any[] = [];
+                for (const partnerType of partnerTypesToLoad) {
+                    try {
+                        const responseType = await apiGet(`/api/delivery/partners?type=${partnerType}`);
+                        const typePartners = responseType.partners || responseType.data?.partners || [];
+                        partnersList = [...partnersList, ...typePartners];
+                    } catch (err) {
+                        console.warn(`[CourierRegistrationScreen] Erreur chargement partenaires type ${partnerType}:`, err);
+                    }
                 }
                 
                 // Si toujours aucun, charger tous les partenaires actifs et filtrer côté client
                 if (partnersList.length === 0) {
-                    const responseAll = await apiGet('/api/delivery/partners?active_only=true');
+                    const responseAll = await apiGet('/api/delivery/partners');
                     const allPartners = responseAll.partners || responseAll.data?.partners || [];
-                    // Filtrer uniquement les partenaires actifs de type "livraison" ou "demenagement"
+                    // Filtrer uniquement les partenaires actifs de type "livraison", "livraison_courses_marche", "demenagement" ou "chauffeur"
                     partnersList = allPartners.filter((p: any) => {
                         const isActive = p.is_active !== false;
                         const partnerType = (p.partner_type || p.partnerType || '').toLowerCase();
-                        const validTypes = ['livraison', 'demenagement'];
+                        const validTypes = ['livraison', 'livraison_courses_marche', 'demenagement', 'chauffeur'];
                         return isActive && validTypes.includes(partnerType);
                     });
                 }
                 
+                // ✅ NOUVEAU: Créer le partenaire "Yukpo" par défaut et le placer en premier
+                const yukpoPartner = {
+                    id: -1, // ID spécial pour Yukpo (virtuel)
+                    name: 'Yukpo',
+                    is_active: true,
+                    partner_type: 'yukpo', // Type spécial pour Yukpo
+                };
+                
+                // Vérifier si Yukpo existe déjà dans la liste
+                const yukpoExists = partnersList.some((p: any) => p.name?.toLowerCase() === 'yukpo');
+                if (!yukpoExists) {
+                    // Placer Yukpo en premier
+                    partnersList = [yukpoPartner, ...partnersList];
+                } else {
+                    // Si Yukpo existe, le déplacer en premier
+                    const yukpoIndex = partnersList.findIndex((p: any) => p.name?.toLowerCase() === 'yukpo');
+                    if (yukpoIndex > 0) {
+                        const yukpo = partnersList.splice(yukpoIndex, 1)[0];
+                        partnersList = [yukpo, ...partnersList];
+                    }
+                }
+                
                 setPartners(partnersList);
+                
+                // ✅ NOUVEAU: Sélectionner Yukpo par défaut s'il n'y a pas de partenaire sélectionné
+                if (!selectedPartnerId && partnersList.length > 0) {
+                    const yukpoPartner = partnersList.find((p: any) => p.name?.toLowerCase() === 'yukpo');
+                    if (yukpoPartner) {
+                        setSelectedPartnerId(yukpoPartner.id);
+                        console.log('[CourierRegistrationScreen] ✅ Partenaire Yukpo sélectionné par défaut');
+                    } else {
+                        // Si Yukpo n'existe pas, sélectionner le premier partenaire
+                        setSelectedPartnerId(partnersList[0].id);
+                        console.log('[CourierRegistrationScreen] ✅ Premier partenaire sélectionné par défaut:', partnersList[0].name);
+                    }
+                }
+                
                 console.log('[CourierRegistrationScreen] ✅ Partenaires chargés:', partnersList.length);
             } catch (apiError) {
                 // Fallback: charger tous les partenaires sans filtre
@@ -135,16 +209,62 @@ const CourierRegistrationScreen: React.FC = () => {
                 const activePartners = allPartners.filter((p: any) => {
                     const isActive = p.is_active !== false;
                     const partnerType = (p.partner_type || p.partnerType || '').toLowerCase();
-                    const validTypes = ['livraison', 'demenagement'];
+                    const validTypes = ['livraison', 'livraison_courses_marche', 'demenagement', 'chauffeur'];
                     return isActive && validTypes.includes(partnerType);
                 });
+                
+                // ✅ NOUVEAU: Créer le partenaire "Yukpo" par défaut et le placer en premier
+                const yukpoPartner = {
+                    id: -1, // ID spécial pour Yukpo (virtuel)
+                    name: 'Yukpo',
+                    is_active: true,
+                    partner_type: 'yukpo', // Type spécial pour Yukpo
+                };
+                
+                // Vérifier si Yukpo existe déjà dans la liste
+                const yukpoExists = activePartners.some((p: any) => p.name?.toLowerCase() === 'yukpo');
+                if (!yukpoExists) {
+                    // Placer Yukpo en premier
+                    activePartners.unshift(yukpoPartner);
+                } else {
+                    // Si Yukpo existe, le déplacer en premier
+                    const yukpoIndex = activePartners.findIndex((p: any) => p.name?.toLowerCase() === 'yukpo');
+                    if (yukpoIndex > 0) {
+                        const yukpo = activePartners.splice(yukpoIndex, 1)[0];
+                        activePartners.unshift(yukpo);
+                    }
+                }
+                
                 setPartners(activePartners);
+                
+                // ✅ NOUVEAU: Sélectionner Yukpo par défaut s'il n'y a pas de partenaire sélectionné
+                if (!selectedPartnerId && activePartners.length > 0) {
+                    const yukpoPartner = activePartners.find((p: any) => p.name?.toLowerCase() === 'yukpo');
+                    if (yukpoPartner) {
+                        setSelectedPartnerId(yukpoPartner.id);
+                        console.log('[CourierRegistrationScreen] ✅ Partenaire Yukpo sélectionné par défaut (fallback)');
+                    } else {
+                        // Si Yukpo n'existe pas, sélectionner le premier partenaire
+                        setSelectedPartnerId(activePartners[0].id);
+                        console.log('[CourierRegistrationScreen] ✅ Premier partenaire sélectionné par défaut (fallback):', activePartners[0].name);
+                    }
+                }
+                
                 console.log('[CourierRegistrationScreen] ✅ Partenaires chargés (fallback):', activePartners.length);
             }
         } catch (error) {
             console.error('[CourierRegistrationScreen] ❌ Erreur chargement partenaires:', error);
-            // En cas d'erreur, on continue sans bloquer mais on affiche un message
-            setPartners([]);
+            // En cas d'erreur, créer quand même le partenaire Yukpo par défaut
+            const yukpoPartner = {
+                id: -1,
+                name: 'Yukpo',
+                is_active: true,
+                partner_type: 'yukpo',
+            };
+            setPartners([yukpoPartner]);
+            if (!selectedPartnerId) {
+                setSelectedPartnerId(yukpoPartner.id);
+            }
         }
     };
 
@@ -337,6 +457,10 @@ const CourierRegistrationScreen: React.FC = () => {
     };
 
     const validateForm = (): boolean => {
+        if (!courierType) {
+            Alert.alert('Erreur', 'Veuillez sélectionner votre type de coursier');
+            return false;
+        }
         if (!fullName.trim()) {
             Alert.alert('Erreur', 'Le nom complet est requis');
             return false;
@@ -443,7 +567,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 },
                 bio,
                 experience,
-                specializations, // ✅ NOUVEAU: Spécialisations du coursier
+                courier_type: courierType, // ✅ NOUVEAU: Type de coursier (obligatoire)
                 paymentMethod: paymentMethod ? {
                     type: paymentMethod.type,
                     phoneNumber: paymentMethod.phoneNumber,
@@ -595,6 +719,128 @@ const CourierRegistrationScreen: React.FC = () => {
                         Complétez ce formulaire pour devenir coursier. Toutes les informations seront vérifiées avant validation.
                     </Text>
                 </View>
+
+                {/* ✅ NOUVEAU: Type de coursier (obligatoire) - En haut du formulaire */}
+                <NativeCard style={styles.card}>
+                    <Text style={styles.sectionTitle}>Type de coursier *</Text>
+                    <Text style={styles.helperText}>
+                        Sélectionnez le type de service que vous souhaitez offrir.
+                    </Text>
+                    <View style={styles.courierTypeButtonsContainer}>
+                        <TouchableOpacity
+                            style={[
+                                styles.courierTypeButton,
+                                courierType === 'classic' && styles.courierTypeButtonSelected,
+                            ]}
+                            onPress={() => setCourierType('classic')}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon
+                                name={courierType === 'classic' ? 'check-circle' : 'circle'}
+                                size={20}
+                                color={courierType === 'classic' ? modernColors.primary : '#9CA3AF'}
+                                type="lucide"
+                            />
+                            <Text style={[
+                                styles.courierTypeButtonText,
+                                courierType === 'classic' && styles.courierTypeButtonTextSelected,
+                            ]}>
+                                📦 Coursier Classique
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[
+                                styles.courierTypeButton,
+                                courierType === 'market_shopping' && styles.courierTypeButtonSelected,
+                            ]}
+                            onPress={() => setCourierType('market_shopping')}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon
+                                name={courierType === 'market_shopping' ? 'check-circle' : 'circle'}
+                                size={20}
+                                color={courierType === 'market_shopping' ? modernColors.primary : '#9CA3AF'}
+                                type="lucide"
+                            />
+                            <Text style={[
+                                styles.courierTypeButtonText,
+                                courierType === 'market_shopping' && styles.courierTypeButtonTextSelected,
+                            ]}>
+                                🛒 Coursier pour les courses au marché
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[
+                                styles.courierTypeButton,
+                                courierType === 'taxi' && styles.courierTypeButtonSelected,
+                            ]}
+                            onPress={() => setCourierType('taxi')}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon
+                                name={courierType === 'taxi' ? 'check-circle' : 'circle'}
+                                size={20}
+                                color={courierType === 'taxi' ? modernColors.primary : '#9CA3AF'}
+                                type="lucide"
+                            />
+                            <Text style={[
+                                styles.courierTypeButtonText,
+                                courierType === 'taxi' && styles.courierTypeButtonTextSelected,
+                            ]}>
+                                🚕 Chauffeur Taxi
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[
+                                styles.courierTypeButton,
+                                courierType === 'carpooling' && styles.courierTypeButtonSelected,
+                            ]}
+                            onPress={() => setCourierType('carpooling')}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon
+                                name={courierType === 'carpooling' ? 'check-circle' : 'circle'}
+                                size={20}
+                                color={courierType === 'carpooling' ? modernColors.primary : '#9CA3AF'}
+                                type="lucide"
+                            />
+                            <Text style={[
+                                styles.courierTypeButtonText,
+                                courierType === 'carpooling' && styles.courierTypeButtonTextSelected,
+                            ]}>
+                                🚗 Chauffeur Covoiturage
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[
+                                styles.courierTypeButton,
+                                courierType === 'moving' && styles.courierTypeButtonSelected,
+                            ]}
+                            onPress={() => setCourierType('moving')}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon
+                                name={courierType === 'moving' ? 'check-circle' : 'circle'}
+                                size={20}
+                                color={courierType === 'moving' ? modernColors.primary : '#9CA3AF'}
+                                type="lucide"
+                            />
+                            <Text style={[
+                                styles.courierTypeButtonText,
+                                courierType === 'moving' && styles.courierTypeButtonTextSelected,
+                            ]}>
+                                🚚 Déménagement
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                    {!courierType && (
+                        <Text style={styles.errorText}>Ce champ est obligatoire</Text>
+                    )}
+                </NativeCard>
 
                 {/* Informations personnelles */}
                 <NativeCard style={styles.card}>
@@ -988,40 +1234,6 @@ const CourierRegistrationScreen: React.FC = () => {
                     </View>
                 </NativeCard>
 
-                {/* ✅ NOUVEAU: Spécialisations */}
-                <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>Spécialisations (optionnel)</Text>
-                    <Text style={styles.helperText}>
-                        Sélectionnez vos spécialisations pour être prioritaire sur certains types de livraisons
-                    </Text>
-                    <TouchableOpacity
-                        style={[
-                            styles.specializationButton,
-                            specializations.includes('food_shopping') && styles.specializationButtonSelected,
-                        ]}
-                        onPress={() => {
-                            if (specializations.includes('food_shopping')) {
-                                setSpecializations(specializations.filter(s => s !== 'food_shopping'));
-                            } else {
-                                setSpecializations([...specializations, 'food_shopping']);
-                            }
-                        }}
-                    >
-                        <SafeIcon 
-                            name={specializations.includes('food_shopping') ? 'check-circle' : 'circle'} 
-                            size={20} 
-                            color={specializations.includes('food_shopping') ? modernColors.primary : '#9CA3AF'} 
-                            type="lucide" 
-                        />
-                        <Text style={[
-                            styles.specializationButtonText,
-                            specializations.includes('food_shopping') && styles.specializationButtonTextSelected,
-                        ]}>
-                            🛒 Achats alimentaires (courses de marché)
-                        </Text>
-                    </TouchableOpacity>
-                </NativeCard>
-
                 {/* Bio et expérience */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Informations complémentaires</Text>
@@ -1345,6 +1557,35 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     specializationButtonTextSelected: {
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    // ✅ NOUVEAU: Styles pour le champ "Type de coursier"
+    courierTypeButtonsContainer: {
+        gap: 12,
+        marginTop: 8,
+    },
+    courierTypeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#F9FAFB',
+    },
+    courierTypeButtonSelected: {
+        borderColor: modernColors.primary,
+        backgroundColor: '#EEF2FF',
+    },
+    courierTypeButtonText: {
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#374151',
+        flex: 1,
+    },
+    courierTypeButtonTextSelected: {
         color: modernColors.primary,
         fontWeight: '600',
     },

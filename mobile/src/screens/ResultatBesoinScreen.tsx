@@ -312,51 +312,97 @@ const ResultatBesoinScreen: React.FC = () => {
     // Fonction pour trier les résultats par pertinence et proximité
     const sortResultsByRelevanceAndProximity = async (results: SearchResult[]): Promise<SearchResult[]> => {
         try {
+            // ✅ AMÉLIORÉ: Valider et filtrer les résultats invalides AVANT traitement
+            if (!results || !Array.isArray(results)) {
+                console.warn('⚠️ [ResultatBesoinScreen] Résultats invalides (non-array):', results);
+                return [];
+            }
+
+            // Filtrer les résultats null/undefined ou sans service_id
+            const validResults = results.filter((result) => {
+                if (!result || typeof result !== 'object') {
+                    console.warn('⚠️ [ResultatBesoinScreen] Résultat invalide (null/undefined/non-object):', result);
+                    return false;
+                }
+                if (!result.service_id) {
+                    console.warn('⚠️ [ResultatBesoinScreen] Résultat sans service_id:', result);
+                    return false;
+                }
+                return true;
+            });
+
+            if (validResults.length === 0) {
+                console.warn('⚠️ [ResultatBesoinScreen] Aucun résultat valide après filtrage');
+                return [];
+            }
+
             if (!location) {
                 // Si pas de géolocalisation, trier seulement par score
                 console.log('📍 Géolocalisation non disponible, tri par score uniquement');
-                return results.sort((a, b) => (b.score || 0) - (a.score || 0));
+                return validResults.sort((a, b) => (b.score || 0) - (a.score || 0));
+            }
+
+            // ✅ AMÉLIORÉ: Valider location.coords avant utilisation
+            if (!(location as any)?.coords?.latitude || !(location as any)?.coords?.longitude) {
+                console.warn('⚠️ [ResultatBesoinScreen] Coordonnées GPS invalides dans location:', location);
+                return validResults.sort((a, b) => (b.score || 0) - (a.score || 0));
             }
 
             // Enrichir les résultats avec la distance calculée
-            const enrichedResults = results.map((result) => {
-                let distance = Infinity;
-                let gpsToUse = result.gps;
+            const enrichedResults = validResults.map((result) => {
+                try {
+                    let distance = Infinity;
+                    let gpsToUse = result.gps;
 
-                // PRIORITÉ: Utiliser gps_fixe si disponible, sinon gps en temps réel
-                // Note: result.gps contient déjà la bonne valeur selon la logique backend
-                // qui priorise gps_fixe sur gps_mobile
-                console.log('📍 [ResultatBesoinScreen] GPS utilisé pour distance:', {
-                    serviceId: result.service_id,
-                    gps: result.gps
-                });
+                    // PRIORITÉ: Utiliser gps_fixe si disponible, sinon gps en temps réel
+                    // Note: result.gps contient déjà la bonne valeur selon la logique backend
+                    // qui priorise gps_fixe sur gps_mobile
+                    console.log('📍 [ResultatBesoinScreen] GPS utilisé pour distance:', {
+                        serviceId: result.service_id,
+                        gps: result.gps
+                    });
 
-                if (gpsToUse && typeof gpsToUse === 'string' && gpsToUse.includes(',')) {
-                    try {
-                        const coords = gpsToUse.split(',');
-                        if (coords.length >= 2) {
-                            const lat = parseFloat(coords[0]);
-                            const lon = parseFloat(coords[1]);
-                            if (!isNaN(lat) && !isNaN(lon)) {
-                                distance = calculateDistance(
-                                    (location as any).coords.latitude,
-                                    (location as any).coords.longitude,
-                                    lat,
-                                    lon
-                                );
-                                console.log(`✅ [ResultatBesoinScreen] Distance calculée pour ${result.service_id}: ${distance.toFixed(2)} km`);
+                    if (gpsToUse && typeof gpsToUse === 'string' && gpsToUse.includes(',')) {
+                        try {
+                            const coords = gpsToUse.split(',');
+                            if (coords.length >= 2) {
+                                const lat = parseFloat(coords[0].trim());
+                                const lon = parseFloat(coords[1].trim());
+                                if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+                                    const userLat = (location as any).coords.latitude;
+                                    const userLon = (location as any).coords.longitude;
+                                    if (!isNaN(userLat) && !isNaN(userLon)) {
+                                        distance = calculateDistance(
+                                            userLat,
+                                            userLon,
+                                            lat,
+                                            lon
+                                        );
+                                        console.log(`✅ [ResultatBesoinScreen] Distance calculée pour ${result.service_id}: ${distance.toFixed(2)} km`);
+                                    }
+                                } else {
+                                    console.warn(`⚠️ [ResultatBesoinScreen] Coordonnées GPS invalides pour ${result.service_id}: lat=${lat}, lon=${lon}`);
+                                }
                             }
+                        } catch (error) {
+                            console.warn(`⚠️ [ResultatBesoinScreen] Erreur parsing GPS pour ${result.service_id}:`, error);
                         }
-                    } catch (error) {
-                        console.warn('⚠️ [ResultatBesoinScreen] Erreur parsing GPS:', error);
                     }
-                }
 
-                return {
-                    ...result,
-                    distance,
-                    proximityScore: distance < 1 ? 1.0 : distance < 5 ? 0.8 : distance < 10 ? 0.6 : 0.4
-                };
+                    return {
+                        ...result,
+                        distance,
+                        proximityScore: distance < 1 ? 1.0 : distance < 5 ? 0.8 : distance < 10 ? 0.6 : 0.4
+                    };
+                } catch (error) {
+                    console.error(`❌ [ResultatBesoinScreen] Erreur traitement résultat ${result?.service_id}:`, error);
+                    // Retourner le résultat avec valeurs par défaut en cas d'erreur
+                    return {
+                        ...result,
+                        distance: Infinity,
+                        proximityScore: 0.4
+                    };
+                }
             });
 
             // Trier par score combiné (pertinence + proximité)
@@ -702,42 +748,93 @@ const ResultatBesoinScreen: React.FC = () => {
 
         const processResults = async () => {
             try {
-                if (initialResults && Array.isArray(initialResults) && initialResults.length > 0) {
-                    console.log('🔄 Traitement des résultats initiaux:', initialResults.length);
-                    
-                    // Marquer comme traité AVANT le traitement asynchrone
-                    hasProcessedInitialResults.current = true;
-                    initialResultsLength.current = initialResults.length;
-
-                    // Trier les résultats par score de pertinence et proximité
-                    const sortedResults = await sortResultsByRelevanceAndProximity(initialResults);
-
-                    const serviceIds = sortedResults
-                        .map((result: any) => result.service_id)
-                        .filter((id: any) => id && id !== 'undefined')
-                        .map((id: any) => id.toString());
-
-                    console.log('📋 IDs des services à charger:', serviceIds);
-
-                    if (serviceIds.length > 0) {
-                        await fetchServicesByIds(serviceIds, sortedResults);
-                    } else {
-                        console.log('⚠️ Aucun service ID valide trouvé');
-                        setLoading(false);
-                        setPrestatairesLoaded(true);
-                    }
-                } else {
-                    console.log('⚠️ Aucun résultat initial fourni');
+                // ✅ AMÉLIORÉ: Validation robuste des résultats initiaux
+                if (!initialResults) {
+                    console.log('⚠️ [ResultatBesoinScreen] Aucun résultat initial fourni (null/undefined)');
                     hasProcessedInitialResults.current = true;
                     initialResultsLength.current = 0;
                     setLoading(false);
                     setPrestatairesLoaded(true);
+                    return;
                 }
-            } catch (error) {
-                console.error('❌ Erreur lors du traitement des résultats:', error);
+
+                if (!Array.isArray(initialResults)) {
+                    console.error('❌ [ResultatBesoinScreen] Résultats initiaux ne sont pas un array:', typeof initialResults, initialResults);
+                    hasProcessedInitialResults.current = true;
+                    initialResultsLength.current = 0;
+                    setLoading(false);
+                    setPrestatairesLoaded(true);
+                    setError('Format de résultats invalide');
+                    return;
+                }
+
+                if (initialResults.length === 0) {
+                    console.log('⚠️ [ResultatBesoinScreen] Aucun résultat initial fourni (array vide)');
+                    hasProcessedInitialResults.current = true;
+                    initialResultsLength.current = 0;
+                    setLoading(false);
+                    setPrestatairesLoaded(true);
+                    return;
+                }
+
+                console.log('🔄 [ResultatBesoinScreen] Traitement des résultats initiaux:', initialResults.length);
+                
+                // Marquer comme traité AVANT le traitement asynchrone
+                hasProcessedInitialResults.current = true;
+                initialResultsLength.current = initialResults.length;
+
+                // ✅ AMÉLIORÉ: Trier les résultats avec gestion d'erreur robuste
+                let sortedResults: SearchResult[] = [];
+                try {
+                    sortedResults = await sortResultsByRelevanceAndProximity(initialResults);
+                    console.log('✅ [ResultatBesoinScreen] Résultats triés:', sortedResults.length);
+                } catch (sortError) {
+                    console.error('❌ [ResultatBesoinScreen] Erreur lors du tri des résultats:', sortError);
+                    // Fallback: utiliser les résultats initiaux sans tri
+                    sortedResults = initialResults.filter((r: any) => r && r.service_id) as SearchResult[];
+                    console.warn('⚠️ [ResultatBesoinScreen] Utilisation des résultats sans tri (fallback)');
+                }
+
+                // ✅ AMÉLIORÉ: Extraction des IDs avec validation robuste
+                const serviceIds = sortedResults
+                    .filter((result: any) => {
+                        if (!result || typeof result !== 'object') {
+                            console.warn('⚠️ [ResultatBesoinScreen] Résultat invalide lors de l\'extraction des IDs:', result);
+                            return false;
+                        }
+                        return true;
+                    })
+                    .map((result: any) => {
+                        try {
+                            const id = result.service_id;
+                            if (!id || id === 'undefined' || id === 'null') {
+                                return null;
+                            }
+                            return id.toString();
+                        } catch (error) {
+                            console.warn('⚠️ [ResultatBesoinScreen] Erreur extraction service_id:', error, result);
+                            return null;
+                        }
+                    })
+                    .filter((id: any): id is string => id !== null && id !== undefined && id !== '');
+
+                console.log('📋 [ResultatBesoinScreen] IDs des services à charger:', serviceIds.length, serviceIds);
+
+                if (serviceIds.length > 0) {
+                    await fetchServicesByIds(serviceIds, sortedResults);
+                } else {
+                    console.warn('⚠️ [ResultatBesoinScreen] Aucun service ID valide trouvé après extraction');
+                    setLoading(false);
+                    setPrestatairesLoaded(true);
+                    setError('Aucun service valide trouvé dans les résultats');
+                }
+            } catch (error: any) {
+                console.error('❌ [ResultatBesoinScreen] Erreur CRITIQUE lors du traitement des résultats:', error);
+                console.error('❌ [ResultatBesoinScreen] Stack trace:', error?.stack);
+                console.error('❌ [ResultatBesoinScreen] Résultats initiaux:', initialResults);
                 setLoading(false);
                 setPrestatairesLoaded(true);
-                setError('Erreur lors du traitement des résultats');
+                setError(`Erreur lors du traitement des résultats: ${error?.message || 'Erreur inconnue'}`);
             }
         };
 

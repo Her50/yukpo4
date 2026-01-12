@@ -677,28 +677,27 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     style={styles.input}
                     placeholderTextColor={modernColors.textSecondary}
                 />
-                {isFocused && query.length > 0 && (
-                    <TouchableOpacity onPress={() => {
-                        setQuery('');
-                        inputRef.current?.focus();
-                    }}>
-                        <SafeIcon name="x-circle" size={18} color={modernColors.textSecondary} />
+                {/* ✅ NOUVEAU: Croix rouge pour effacer rapidement le contenu */}
+                {((isFocused && query.length > 0) || (!isFocused && displayValue)) && (
+                    <TouchableOpacity 
+                        onPress={() => {
+                            if (isFocused) {
+                                setQuery('');
+                                inputRef.current?.focus();
+                            } else {
+                                onSelect({ raw: '', place_name: '' });
+                            }
+                        }}
+                        style={styles.clearIconButton}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <SafeIcon name="x" size={18} color="#EF4444" type="lucide" />
                     </TouchableOpacity>
                 )}
             </View>
 
             {enriching && (
                 <Text style={styles.enrichingText}>🌍 Enrichissement en cours...</Text>
-            )}
-
-            {!!displayValue && !isFocused && (
-                <TouchableOpacity
-                    style={styles.clearButton}
-                    onPress={() => onSelect({ raw: '', place_name: '' })}
-                >
-                    <SafeIcon name="x-circle" size={16} color={modernColors.error} />
-                    <Text style={styles.clearText}>Effacer</Text>
-                </TouchableOpacity>
             )}
 
             {/* ✅ NOUVEAU: Suggestions affichées directement sous le champ (pas dans un modal) */}
@@ -770,8 +769,11 @@ const styles = StyleSheet.create({
         padding: 0, // ✅ Important pour éviter le padding supplémentaire
     },
     enrichingText: { fontSize: 11, color: modernColors.primary, marginTop: 2 },
-    clearButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
-    clearText: { fontSize: 12, color: modernColors.error, fontWeight: '600' },
+    clearIconButton: {
+        padding: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     // ✅ NOUVEAU: Styles pour les suggestions affichées directement
     suggestionsContainer: {
         position: 'absolute',

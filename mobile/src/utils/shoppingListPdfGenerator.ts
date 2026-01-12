@@ -29,7 +29,7 @@ export async function generateShoppingListHTML(listData: ShoppingListPdfData): P
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Liste de Courses - Yukpomnang</title>
+    <title>Liste de Courses - Yukpo</title>
     <style>
         * {
             margin: 0;
@@ -246,7 +246,7 @@ export async function generateShoppingListHTML(listData: ShoppingListPdfData): P
         <div class="footer">
             <div style="margin-bottom: 10px;">✅ Liste générée le ${now}</div>
             <div class="yukpo-signature">
-                <div class="yukpo-logo">YUKPOMNANG</div>
+                <div class="yukpo-logo">YUKPO</div>
                 <div class="yukpo-tagline">Votre assistant intelligent pour une meilleure planification</div>
             </div>
         </div>
@@ -300,7 +300,7 @@ export async function shareShoppingListPDF(pdfUri: string, listTitle: string) {
                 url: `file://${pdfUri}`,
                 type: 'application/pdf',
                 title: `Liste de Courses - ${listTitle}`,
-                message: `🛒 Voici ma liste de courses générée par Yukpomnang !`,
+                message: `🛒 Voici ma liste de courses générée par Yukpo !`,
                 social: Share.Social.WHATSAPP,
             });
         } catch (shareError) {

@@ -347,7 +347,7 @@
 
 ---
 
-*Document confidentiel - Propriété de Yukpomnang - Janvier 2026*
+*Document confidentiel - Propriété de Yukpo - Janvier 2026*
 
 *Plan financier réaliste basé sur objectifs atteignables et marché local.*
 

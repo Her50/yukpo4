@@ -692,8 +692,11 @@ const PharmacieHomeScreen: React.FC = () => {
                             <KeyboardAwareScreen 
                                 style={styles.aiChatScrollView}
                                 contentContainerStyle={styles.aiChatScrollContent}
-                                extraScrollHeight={100}
+                                extraScrollHeight={150}
                                 keyboardShouldPersistTaps="handled"
+                                keyboardDismissMode="interactive"
+                                enableOnAndroid={true}
+                                enableAutomaticScroll={true}
                                 showsVerticalScrollIndicator={true}
                             >
                                 {/* Bouton analyse d'image */}
@@ -763,30 +766,35 @@ const PharmacieHomeScreen: React.FC = () => {
                                     </View>
                                 )}
 
-                                {/* Champ de question IA */}
-                                <View style={styles.aiInputContainer}>
-                                    <TextInput
-                                        style={styles.aiInput}
-                                        placeholder="Ex: Quels sont les effets secondaires de ce médicament?"
-                                        placeholderTextColor="#9CA3AF"
-                                        value={aiQuestion}
-                                        onChangeText={setAiQuestion}
-                                        multiline
-                                        maxLength={500}
-                                        textAlignVertical="top"
-                                    />
-                                    <TouchableOpacity
-                                        style={[styles.aiSendButton, (!aiQuestion.trim() || aiLoading) && styles.aiSendButtonDisabled]}
-                                        onPress={handleAskAI}
-                                        disabled={!aiQuestion.trim() || aiLoading}
-                                        activeOpacity={0.7}
-                                    >
-                                        {aiLoading ? (
-                                            <ActivityIndicator size="small" color="#FFFFFF" />
-                                        ) : (
-                                            <SafeIcon name="send" size={18} color="#FFFFFF" type="lucide" />
-                                        )}
-                                    </TouchableOpacity>
+                                {/* Champ de question IA - Fixé en bas avec KeyboardAvoidingView */}
+                                <View style={styles.aiInputWrapper}>
+                                    <View style={styles.aiInputContainer}>
+                                        <TextInput
+                                            style={styles.aiInput}
+                                            placeholder="Ex: Quels sont les effets secondaires de ce médicament?"
+                                            placeholderTextColor="#9CA3AF"
+                                            value={aiQuestion}
+                                            onChangeText={setAiQuestion}
+                                            multiline
+                                            maxLength={500}
+                                            textAlignVertical="top"
+                                            returnKeyType="send"
+                                            onSubmitEditing={handleAskAI}
+                                            blurOnSubmit={false}
+                                        />
+                                        <TouchableOpacity
+                                            style={[styles.aiSendButton, (!aiQuestion.trim() || aiLoading) && styles.aiSendButtonDisabled]}
+                                            onPress={handleAskAI}
+                                            disabled={!aiQuestion.trim() || aiLoading}
+                                            activeOpacity={0.7}
+                                        >
+                                            {aiLoading ? (
+                                                <ActivityIndicator size="small" color="#FFFFFF" />
+                                            ) : (
+                                                <SafeIcon name="send" size={18} color="#FFFFFF" type="lucide" />
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
 
                                 {/* Réponse IA */}
@@ -2440,12 +2448,21 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         textAlign: 'center',
     },
+    aiInputWrapper: {
+        position: 'relative',
+        paddingBottom: 8,
+        paddingTop: 8,
+        backgroundColor: '#F9FAFB',
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
     aiInputContainer: {
         flexDirection: 'row',
         alignItems: 'flex-end',
         gap: 8,
-        marginBottom: 12,
-        marginTop: 8,
+        marginBottom: 0,
+        marginTop: 0,
+        paddingHorizontal: 4,
     },
     aiInput: {
         flex: 1,

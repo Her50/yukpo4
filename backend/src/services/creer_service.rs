@@ -1691,7 +1691,27 @@ pub async fn creer_service(
     log::info!("[creer_service] ✅ Validation JSON réussie AVANT débit");
 
     // ✅ NOUVEAU 2025-01-27 : Validation stricte des produits si présents
-    if let Some(produits_array) = data_obj.get("produits").and_then(|v| v.as_array()) {
+    // ✅ CORRIGÉ: Chercher les produits dans le format normalisé (objet avec .valeur) OU tableau direct
+    let produits_array_for_validation = data_obj
+        .get("produits")
+        .and_then(|v| {
+            // Si c'est un tableau direct
+            if let Some(arr) = v.as_array() {
+                Some(arr)
+            }
+            // Si c'est un objet avec .valeur (format normalisé par valider_service_json)
+            else if let Some(obj) = v.as_object() {
+                obj.get("valeur").and_then(|v| v.as_array())
+            } else {
+                None
+            }
+        });
+    
+    if let Some(produits_array) = produits_array_for_validation {
+        log::info!(
+            "[creer_service] 🔍 Validation stricte de {} produits",
+            produits_array.len()
+        );
         for (index, produit) in produits_array.iter().enumerate() {
             if let Err(e) = validate_product_data_strict(produit) {
                 // ✅ NOUVEAU 2025-01-27 : Métriques - Erreur validation
@@ -1715,6 +1735,13 @@ pub async fn creer_service(
         log::info!(
             "[creer_service] ✅ Validation stricte de {} produits réussie",
             produits_array.len()
+        );
+    } else {
+        log::info!(
+            "[creer_service] 🔍 Aucun produit trouvé pour validation stricte (format: {})",
+            data_obj.get("produits")
+                .map(|v| if v.is_array() { "array" } else if v.is_object() { "object" } else { "other" })
+                .unwrap_or("none")
         );
     }
 
@@ -2783,9 +2810,20 @@ pub async fn creer_service(
         .cloned()
         .unwrap_or_default();
 
-    if let Some(produits_array) = produits_array_mut(&mut data_obj) {
+    // ✅ DIAGNOSTIC: Vérifier la présence des produits AVANT traitement
+    let produits_array_opt = produits_array_mut(&mut data_obj);
+    log::info!(
+        "[creer_service] 🔍 DIAGNOSTIC PRODUITS - produits_array trouvé: {}, service_id: {}",
+        produits_array_opt.is_some(),
+        service_id
+    );
+    if let Some(produits_array) = produits_array_opt {
         log::info!(
             "[creer_service] 📦 Sauvegarde médias pour {} produits",
+            produits_array.len()
+        );
+        log::info!(
+            "[creer_service] 🔍 DIAGNOSTIC - Produits à traiter: {}",
             produits_array.len()
         );
 
@@ -2816,6 +2854,29 @@ pub async fn creer_service(
                 cleaned
             };
 
+            // ✅ DIAGNOSTIC: Log détaillé avant création du produit
+            log::info!(
+                "[creer_service] 🔍 DIAGNOSTIC - Création produit {} pour service {}",
+                product_index,
+                service_id
+            );
+            log::info!(
+                "[creer_service] 🔍 Produit nettoyé (clés): {:?}",
+                produit_cleaned_for_creation.as_object()
+                    .map(|o| o.keys().collect::<Vec<_>>())
+                    .unwrap_or_default()
+            );
+            log::info!(
+                "[creer_service] 🔍 Produit nettoyé (nom): {}",
+                produit_cleaned_for_creation
+                    .get("nom")
+                    .and_then(|v| v.as_str())
+                    .or_else(|| produit_cleaned_for_creation
+                        .get("nom_produit")
+                        .and_then(|v| v.as_str()))
+                    .unwrap_or("Sans nom")
+            );
+
             // Créer le produit dans service_products AVANT de créer les médias
             let product_record = match products_service
                 .create_product(
@@ -2827,9 +2888,16 @@ pub async fn creer_service(
             {
                 Ok(product) => {
                     log::info!(
-                        "[creer_service] ✅ Produit {} créé dans service_products (id: {}) AVANT création médias",
+                        "[creer_service] ✅ Produit {} créé dans service_products (id: {}, is_active: {}) AVANT création médias",
                         product_index,
-                        product.id
+                        product.id,
+                        product.is_active
+                    );
+                    log::info!(
+                        "[creer_service] ✅ Produit créé - product_name: {}, product_type: {}, product_price: {:?}",
+                        product.product_name.as_deref().unwrap_or("N/A"),
+                        product.product_type.as_deref().unwrap_or("N/A"),
+                        product.product_price
                     );
                     product
                 }
@@ -2838,6 +2906,14 @@ pub async fn creer_service(
                         "[creer_service] ❌ Erreur création produit {} dans service_products: {}",
                         product_index,
                         e
+                    );
+                    log::error!(
+                        "[creer_service] ❌ Détails erreur - service_id: {}, product_index: {}, produit_data keys: {:?}",
+                        service_id,
+                        product_index,
+                        produit_cleaned_for_creation.as_object()
+                            .map(|o| o.keys().collect::<Vec<_>>())
+                            .unwrap_or_default()
                     );
                     // ⚠️ CRITIQUE: Si la création du produit échoue, on ne peut pas créer les médias
                     // On continue quand même pour ne pas bloquer les autres produits
@@ -4887,8 +4963,34 @@ pub async fn creer_service(
     // On garde cette section vide pour compatibilité, mais elle ne fait plus rien
     // car les produits sont déjà créés avec leurs médias dans la boucle précédente
     
+    // ✅ DIAGNOSTIC: Vérifier que tous les produits ont bien été créés
+    let products_count = products_service
+        .get_products_by_service(service_id)
+        .await
+        .map(|products| {
+            let count = products.len();
+            let active_count = products.iter().filter(|p| p.is_active).count();
+            log::info!(
+                "[creer_service] 🔍 DIAGNOSTIC FINAL - Produits dans service_products: {} total, {} actifs",
+                count,
+                active_count
+            );
+            for product in &products {
+                log::info!(
+                    "[creer_service] 🔍 Produit vérifié - id: {}, index: {}, is_active: {}, name: {}",
+                    product.id,
+                    product.product_index,
+                    product.is_active,
+                    product.product_name.as_deref().unwrap_or("N/A")
+                );
+            }
+            count
+        })
+        .unwrap_or(0);
+    
     log::info!(
-        "[creer_service] ✅ Tous les produits ont été créés dans service_products avec leurs médias"
+        "[creer_service] ✅ Tous les produits ont été créés dans service_products avec leurs médias ({} produits vérifiés)",
+        products_count
     );
 
     // ✅ NOUVEAU 2025-01-27 : Métriques - Succès et durée

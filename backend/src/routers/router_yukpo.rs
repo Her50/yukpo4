@@ -517,18 +517,29 @@ async fn handle_direct_search(
         });
     }
     
-    // Construire la réponse
+    // ✅ AMÉLIORÉ: S'assurer que resultats est toujours un array dans la réponse
+    let resultats_array = result
+        .get("resultats")
+        .and_then(|r| r.as_array())
+        .cloned()
+        .unwrap_or_else(|| {
+            log::warn!("[DIRECT_SEARCH] ⚠️ resultats n'est pas un array, conversion en array vide");
+            Vec::new()
+        });
+
+    // Construire la réponse avec format cohérent
     let response = serde_json::json!({
         "status": "success",
         "intention": "recherche_besoin",
-        "resultats": result,
+        "resultats": resultats_array, // ✅ Toujours un array
         "tokens_consumed": tokens_consumed,
-        "message": "Recherche directe réussie",
+        "message": format!("Recherche directe réussie: {} résultats", resultats_array.len()),
         "search_method": "text",
         "gps_filtered": gps_zone.is_some(),
         "search_radius_km": search_radius_km
     });
     
+    log::info!("[DIRECT_SEARCH] ✅ Réponse construite avec {} résultats", resultats_array.len());
     Ok(Json(response))
 }
 

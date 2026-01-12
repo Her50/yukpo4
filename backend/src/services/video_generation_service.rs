@@ -1987,7 +1987,8 @@ pub async fn generate_product_video(
             )),
         ));
         if let Some(job_id) = job_id {
-            try_store_progress(&state, job_id, "running", &progress_steps).await;
+            // ✅ Ignorer les erreurs de progression intermédiaire (non critiques)
+            let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
         }
 
         let mastered_audio_path = if let Some(service) = state.audio_mastering.clone() {
@@ -2099,7 +2100,8 @@ pub async fn generate_product_video(
             Some(format!("durée {}s", duration_seconds)),
         ));
         if let Some(job_id) = job_id {
-            try_store_progress(&state, job_id, "running", &progress_steps).await;
+            // ✅ Ignorer les erreurs de progression intermédiaire (non critiques)
+            let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
         }
     }
 
@@ -2620,11 +2622,37 @@ pub async fn generate_product_video(
         job_id,
     };
 
-    // ✅ CORRIGÉ: Finaliser le job avec logs détaillés
+    // ✅ AMÉLIORÉ: Finaliser le job avec gestion d'erreur robuste
     if let Some(job_id) = job_id {
-        info!("[VideoGeneration] ✅ Finalisation du job {} - Statut: completed", job_id);
-        try_store_progress(&state, job_id, "completed", &result.progress_steps).await;
-        info!("[VideoGeneration] ✅ Job {} marqué comme completed dans la base de données", job_id);
+        info!(
+            "[VideoGeneration] ✅ Finalisation du job {} - Statut: completed, media_id: {}",
+            job_id, inserted.id
+        );
+        
+        // ✅ AMÉLIORÉ: Gestion d'erreur robuste pour la finalisation du job
+        match try_store_progress(&state, job_id, "completed", &result.progress_steps).await {
+            Ok(_) => {
+                info!(
+                    "[VideoGeneration] ✅ Job {} marqué comme completed dans la base de données",
+                    job_id
+                );
+            }
+            Err(err) => {
+                error!(
+                    "[VideoGeneration] ❌ ERREUR: Impossible de marquer le job {} comme completed: {}",
+                    job_id, err
+                );
+                error!(
+                    "[VideoGeneration] Détails: media_id={}, service_id={}, product_index={}, video_url={}",
+                    inserted.id, service_id, product_index, public_url
+                );
+                // Ne pas faire échouer le processus pour cette erreur, la vidéo est créée
+                warn!(
+                    "[VideoGeneration] ⚠️ La vidéo a été créée avec succès (media_id: {}) mais le job {} n'a pas pu être finalisé. L'utilisateur peut récupérer la vidéo via l'API.",
+                    inserted.id, job_id
+                );
+            }
+        }
     }
 
     let total_duration_ms = overall_start.elapsed().as_millis() as i64;

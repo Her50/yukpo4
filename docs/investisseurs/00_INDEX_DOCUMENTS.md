@@ -342,7 +342,7 @@ Toute reproduction, distribution ou utilisation non autorisée est interdite.
 
 ---
 
-*Documents créés en Janvier 2026 - Propriété de Yukpomnang*
+*Documents créés en Janvier 2026 - Propriété de Yukpo*
 
 **Version** : 1.0  
 **Dernière mise à jour** : Janvier 2026

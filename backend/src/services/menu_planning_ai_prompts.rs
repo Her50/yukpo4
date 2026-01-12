@@ -2,6 +2,7 @@
 
 /// Prompt principal pour génération de menu hebdomadaire
 /// ✅ AMÉLIORATION: Format JSON strict avec instructions détaillées
+/// ✅ NOUVEAU: Fusion déjeuner/dîner en "repas_du_jour" et repas complets avec compléments
 pub const WEEKLY_MENU_GENERATION_PROMPT: &str = r#"
 Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de menus.
 
@@ -16,17 +17,39 @@ CONTEXTE FAMILLE :
 - Niveau cuisine : {cooking_level}
 - Temps disponible : {time_available_hours} heures/jour
 
-TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
-- Tu DOIS générer un MENU HEBDOMADAIRE avec des REPAS CONCRETS (plats, recettes)
-- Chaque jour DOIT avoir des repas réels : petit-déjeuner, déjeuner, dîner (et optionnellement goûter)
-- Chaque repas DOIT avoir un nom de plat/recette concret (ex: "Poulet DG", "Ndolé", "Riz sauté")
-- Tu NE DOIS PAS générer un calendrier, un diagramme, ou une structure vide
-- Tu DOIS générer des PLATS RÉELS avec des noms de recettes pour chaque repas de chaque jour
+🎯 TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
+- Tu DOIS générer un MENU HEBDOMADAIRE avec des REPAS CONCRETS et COMPLETS (plats, recettes)
+- Chaque jour DOIT avoir : petit-déjeuner ET repas du jour (même plat pour midi et soir)
+- Chaque repas DOIT être COMPLET : plat principal + accompagnements + compléments si nécessaire
+- Si un plat nécessite un complément (ex: sauce, légumes, féculents), tu DOIS le préciser clairement dans "complements"
+- Les compléments DOIVENT être cohérents avec le plat principal (ex: "Poulet DG" → complément "Riz blanc")
+- Tu NE DOIS PAS inventer des plats qui n'existent pas dans la localité
+- Tu DOIS utiliser UNIQUEMENT des plats RÉELS et TRADITIONNELS de la région
 - Adapter les quantités au nombre de personnes
 - Respecter allergies et restrictions
 - Optimiser le budget
 - Varier les repas pour éviter la monotonie
-- Suggérer des plats adaptés au contexte local/régional quand pertinent
+
+🚨 RÈGLES STRICTES SUR LES REPAS COMPLETS :
+1. REPAS COMPLET OBLIGATOIRE :
+   - Chaque repas DOIT être un repas complet et équilibré
+   - Ne JAMAIS proposer un plat partiel ou incomplet
+   - Si le plat principal nécessite un accompagnement, il DOIT être dans "complements"
+
+2. COMPLÉMENTS OBLIGATOIRES :
+   - Si un plat nécessite un complément (ex: riz, plantain, légumes), tu DOIS le préciser dans "complements"
+   - Les compléments DOIVENT être cohérents avec le plat (ex: "Ndolé" → "Riz" ou "Plantain")
+   - Ne JAMAIS laisser un plat sans complément si c'est nécessaire pour un repas complet
+
+3. COHÉRENCE CULINAIRE :
+   - Les compléments DOIVENT être adaptés au plat principal
+   - Respecter les traditions culinaires locales (ex: au Cameroun, "Ndolé" se mange avec "Riz")
+   - Ne JAMAIS proposer des combinaisons incohérentes
+
+4. PLATS RÉELS UNIQUEMENT :
+   - Utilise UNIQUEMENT des plats qui existent réellement dans la cuisine locale
+   - Ne JAMAIS inventer des noms de plats
+   - Utilise tes connaissances sur les plats traditionnels de la région
 
 FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
 {{
@@ -36,28 +59,24 @@ FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
             "day": 1,
             "day_name": "Lundi",
             "petit_dejeuner": {{
-                "recipe_name": "Nom du plat",
+                "recipe_name": "Nom du plat complet",
+                "complements": ["Complément 1", "Complément 2"],
                 "servings": {total_members},
                 "prep_time_minutes": 15,
                 "estimated_cost": 500.0,
                 "calories": 400.0
             }},
-            "dejeuner": {{
-                "recipe_name": "Nom du plat",
+            "repas_du_jour": {{
+                "recipe_name": "Nom du plat principal",
+                "complements": ["Riz", "Légumes"],
                 "servings": {total_members},
                 "prep_time_minutes": 30,
                 "estimated_cost": 1500.0,
                 "calories": 600.0
             }},
-            "diner": {{
-                "recipe_name": "Nom du plat",
-                "servings": {total_members},
-                "prep_time_minutes": 25,
-                "estimated_cost": 1200.0,
-                "calories": 500.0
-            }},
             "gouter": {{
                 "recipe_name": "Nom du plat",
+                "complements": [],
                 "servings": {total_members},
                 "prep_time_minutes": 10,
                 "estimated_cost": 300.0,
@@ -75,7 +94,12 @@ CONTRAINTES:
 - meals: tableau de 7 objets (un par jour)
 - day: entier entre 1 et 7
 - day_name: string (Lundi, Mardi, etc.)
-- recipe_name: string (nom du plat)
+- petit_dejeuner: objet avec recipe_name, complements (array), servings, prep_time_minutes, estimated_cost, calories
+- repas_du_jour: objet avec recipe_name, complements (array), servings, prep_time_minutes, estimated_cost, calories
+  * NOTE: "repas_du_jour" est le même repas pour midi ET soir (habitude locale)
+- gouter: objet optionnel avec même structure
+- recipe_name: string (nom du plat RÉEL et TRADITIONNEL de la région)
+- complements: array de strings (accompagnements nécessaires pour un repas complet, peut être vide si pas nécessaire)
 - servings: entier positif
 - prep_time_minutes: entier positif
 - estimated_cost: nombre décimal positif (en FCFA)
@@ -89,14 +113,16 @@ IMPORTANT :
 - Pas de texte avant ou après le JSON
 - Pas de markdown (```json```)
 - Pas de commentaires dans le JSON
-- Utiliser des noms de plats réalistes et adaptés au contexte local
+- Utiliser UNIQUEMENT des noms de plats RÉELS et TRADITIONNELS de la localité
+- Ne JAMAIS inventer des plats qui n'existent pas
 - Les quantités doivent être adaptées au nombre de personnes
 - Respecter strictement les allergies
 - Varier les types de plats
 - Adapter les coûts au contexte local (prix en devise locale)
 - INTERDICTION ABSOLUE : Ne JAMAIS générer un calendrier, un diagramme, ou une structure vide
-- Chaque repas DOIT avoir un "recipe_name" avec un nom de plat CONCRET (pas de valeurs vides, pas de "null", pas de placeholders)
-- Tu DOIS générer des REPAS avec des NOMS DE PLATS CONCRETS pour chaque jour
+- Chaque repas DOIT avoir un "recipe_name" avec un nom de plat CONCRET et RÉEL
+- Chaque repas DOIT être COMPLET (plat principal + compléments si nécessaire)
+- Les compléments DOIVENT être cohérents avec le plat principal
 "#;
 
 /// Prompt pour suggestions de recettes

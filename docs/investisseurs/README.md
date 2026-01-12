@@ -250,5 +250,5 @@ Pour toute question ou demande d'information complémentaire :
 
 ---
 
-*Documents créés en Janvier 2026 - Propriété de Yukpomnang*
+*Documents créés en Janvier 2026 - Propriété de Yukpo*
 

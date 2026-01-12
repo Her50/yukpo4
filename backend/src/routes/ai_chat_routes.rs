@@ -92,8 +92,54 @@ pub async fn chat_ai(
     // ✅ SÉCURITÉ: Sanitiser les inputs utilisateur
     let sanitized_message = sanitize_prompt_input(&payload.message);
 
-    // Construire le prompt avec le contexte
-    let system_prompt = "Tu es Yukpomnang, un assistant intelligent spécialisé dans les services locaux. Réponds de manière utile et concise en français.";
+    // Construire le prompt avec le contexte dynamique
+    let system_prompt = if let Some(context) = &payload.context {
+        // ✅ NOUVEAU: Détecter le type de contexte et adapter le prompt
+        let context_str = serde_json::to_string(context).unwrap_or_default();
+        let context_value: serde_json::Value = serde_json::from_str(&context_str).unwrap_or(serde_json::json!({}));
+        
+        // Si le contexte contient "category": "pharmacie", utiliser un prompt spécialisé
+        if context_value.get("category")
+            .and_then(|c| c.as_str())
+            .map(|c| c == "pharmacie")
+            .unwrap_or(false)
+        {
+            let medications = context_value.get("medications")
+                .and_then(|m| m.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+                .unwrap_or_default();
+            
+            let location_info = if let Some(loc) = context_value.get("location") {
+                format!("Localisation: {:?}", loc)
+            } else {
+                String::new()
+            };
+            
+            format!(
+                "Tu es un assistant IA spécialisé en pharmacie et médicaments pour Yukpomnang.\n\
+                Tu dois répondre de manière précise, professionnelle et sécurisée en français.\n\
+                \n\
+                CONTEXTE PHARMACIE:\n\
+                - Médicaments recherchés: {}\n\
+                {}\n\
+                \n\
+                RÈGLES IMPORTANTES:\n\
+                - Ne JAMAIS donner de diagnostic médical\n\
+                - Ne JAMAIS recommander de médicament sans prescription\n\
+                - Toujours recommander de consulter un professionnel de santé\n\
+                - Fournir des informations générales sur les médicaments (effets secondaires, posologie, interactions)\n\
+                - Être précis et factuel\n\
+                - Adapter tes réponses au contexte local (Afrique, CEMAC)",
+                if medications.is_empty() { "Aucun médicament spécifique" } else { &medications },
+                if location_info.is_empty() { "" } else { &location_info }
+            )
+        } else {
+            "Tu es Yukpomnang, un assistant intelligent spécialisé dans les services locaux. Réponds de manière utile et concise en français.".to_string()
+        }
+    } else {
+        "Tu es Yukpomnang, un assistant intelligent spécialisé dans les services locaux. Réponds de manière utile et concise en français.".to_string()
+    };
+    
     let user_message = if let Some(context) = payload.context {
         // ✅ SÉCURITÉ: Sanitiser aussi le contexte si présent
         let context_str = serde_json::to_string(&context).unwrap_or_default();

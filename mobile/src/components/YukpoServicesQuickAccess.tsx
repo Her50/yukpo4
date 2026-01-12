@@ -202,7 +202,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                 disabled={service.comingSoon}
                             >
                                 <View style={[styles.serviceMiniIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
-                                    <SafeIcon name={service.icon} size={18} color={darkenColor(service.gradient[0], 25)} />
+                                    <SafeIcon name={service.icon} size={24} color={darkenColor(service.gradient[0], 25)} />
                                     {service.comingSoon && (
                                         <View style={styles.badgeMini}>
                                             <Text style={styles.badgeMiniText}>Bientôt</Text>
@@ -234,7 +234,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                             >
                                 <View style={styles.categoryContent}>
                                     <View style={[styles.categoryIconContainer, { backgroundColor: `${category.gradient[0]}15` }]}>
-                                        <SafeIcon name={category.icon} size={22} color={darkenColor(category.gradient[0], 25)} />
+                                        <SafeIcon name={category.icon} size={30} color={darkenColor(category.gradient[0], 25)} />
                                     </View>
                                     <Text style={styles.categoryTitle} numberOfLines={2}>
                                         {category.title}
@@ -371,9 +371,9 @@ const styles = StyleSheet.create({
         borderRadius: 10,
     },
     categoryIconContainer: {
-        width: 36, // ✅ AUGMENTÉ: De 28 à 36 pour plus de visibilité
-        height: 36, // ✅ AUGMENTÉ: De 28 à 36 pour plus de visibilité
-        borderRadius: 18, // ✅ AUGMENTÉ: De 14 à 18 pour correspondre à la taille
+        width: 44, // ✅ AUGMENTÉ: De 36 à 44 pour encore plus de visibilité
+        height: 44, // ✅ AUGMENTÉ: De 36 à 44 pour encore plus de visibilité
+        borderRadius: 22, // ✅ AUGMENTÉ: De 18 à 22 pour correspondre à la taille
         backgroundColor: '#FFFFFF', // ✅ Fond blanc par défaut, sera surchargé avec la couleur de la catégorie
         justifyContent: 'center',
         alignItems: 'center',
@@ -581,9 +581,9 @@ const styles = StyleSheet.create({
         marginRight: 6, // ✅ RÉDUIT: De 8 à 6 pour moins d'espace entre les cartes
     },
     serviceMiniIconContainer: {
-        width: 40, // ✅ AUGMENTÉ: De 32 à 40 pour mieux voir les icônes
-        height: 40, // ✅ AUGMENTÉ: De 32 à 40 pour mieux voir les icônes
-        borderRadius: 20, // ✅ AUGMENTÉ: De 16 à 20 pour correspondre à la taille
+        width: 48, // ✅ AUGMENTÉ: De 40 à 48 pour encore plus de visibilité
+        height: 48, // ✅ AUGMENTÉ: De 40 à 48 pour encore plus de visibilité
+        borderRadius: 24, // ✅ AUGMENTÉ: De 20 à 24 pour correspondre à la taille
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 4, // ✅ RÉDUIT: De 6 à 4

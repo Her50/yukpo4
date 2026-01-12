@@ -8,9 +8,8 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
@@ -269,14 +268,14 @@ const RecipeSearchScreen: React.FC = () => {
                                 title={exportingRecipePDF ? 'Génération...' : 'Partager en PDF'}
                                 onPress={async () => {
                                     if (!generatedRecipe) return;
-                                    
+
                                     try {
                                         setExportingRecipePDF(true);
                                         const pdfUri = await generateAndDownloadRecipePDF({
                                             recipe: generatedRecipe,
                                             currency: 'FCFA',
                                         });
-                                        
+
                                         await shareRecipePDF(pdfUri, generatedRecipe.recipe_name);
                                         Alert.alert('Succès', 'Recette partagée avec succès !');
                                     } catch (error: any) {

@@ -1585,7 +1585,7 @@
 
 ---
 
-*Document confidentiel - Propriété de Yukpomnang - Janvier 2026*
+*Document confidentiel - Propriété de Yukpo - Janvier 2026*
 
 *Version 2.0 - Enrichie avec mécanismes détaillés, acteurs et séquences périodiques.*
 

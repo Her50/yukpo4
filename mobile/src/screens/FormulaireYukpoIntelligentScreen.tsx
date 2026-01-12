@@ -4777,8 +4777,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   {/* Navigation entre blocs (tabs simples sans scroll horizontal) */}
                   <View style={styles.blockNavigation}>
                     {displayedBlocks.map(({ block, index: originalIndex }) => {
-                      // ✅ CORRECTION: Utiliser currentDisplayIndex pour la comparaison au lieu de currentBlock
-                      const isActive = currentDisplayIndex === displayedBlocks.findIndex(item => item.index === originalIndex);
+                      // ✅ CORRECTION CRITIQUE: Comparer currentBlock (index dans blocks) avec originalIndex (index dans blocks)
+                      // currentBlock est l'index du bloc actif dans le tableau blocks
+                      // originalIndex est aussi un index dans le tableau blocks
+                      const isActive = currentBlock === originalIndex;
                       return (
                         <TouchableOpacity
                           key={block.id}

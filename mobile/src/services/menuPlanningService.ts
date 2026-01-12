@@ -22,15 +22,18 @@ export interface MealItem {
     prep_time_minutes?: number;
     estimated_cost?: number;
     calories?: number;
+    complements?: string[]; // ✅ NOUVEAU: Compléments pour repas complet (ex: ["Riz", "Légumes"])
 }
 
 export interface DailyMeal {
     day: number; // 1=lundi, 7=dimanche
     day_name: string;
     petit_dejeuner?: MealItem;
+    repas_du_jour?: MealItem; // ✅ NOUVEAU: Fusion déjeuner/dîner (même repas midi et soir)
+    gouter?: MealItem;
+    // ✅ DÉPRÉCIÉ: Gardé pour compatibilité descendante
     dejeuner?: MealItem;
     diner?: MealItem;
-    gouter?: MealItem;
 }
 
 export interface WeeklyMenu {

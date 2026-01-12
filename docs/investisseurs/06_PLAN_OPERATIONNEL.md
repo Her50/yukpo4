@@ -496,5 +496,5 @@ Le recrutement prioritaire se concentre sur les **agents commerciaux** pour :
 
 ---
 
-*Document confidentiel - Propriété de Yukpomnang - Janvier 2026*
+*Document confidentiel - Propriété de Yukpo - Janvier 2026*
 

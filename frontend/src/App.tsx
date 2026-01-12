@@ -15,6 +15,7 @@ import './config/axios';
 import { AuthProvider } from './contexts/AuthContext';
 import KYCVerificationPage from './pages/admin/KYCVerificationPage';
 import AdminUserRolesPage from './pages/admin/AdminUserRolesPage';
+import CourierAdminPage from './pages/admin/CourierAdminPage';
 import { ROUTES } from './routes/AppRoutesRegistry';
 // Pages essentielles
 import ConfirmationPage from '@/pages/ConfirmationPage';
@@ -583,6 +584,11 @@ function App() {
                         <Route path="/admin/user-roles" element={
                           <RequireAdminPage>
                             <AdminUserRolesPage />
+                          </RequireAdminPage>
+                        } />
+                        <Route path="/admin/courier-applications" element={
+                          <RequireAdminPage>
+                            <CourierAdminPage />
                           </RequireAdminPage>
                         } />
                         <Route path={ROUTES.MES_TROCS} element={

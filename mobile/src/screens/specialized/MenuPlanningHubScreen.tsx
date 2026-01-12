@@ -233,7 +233,50 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 </View>
             </LinearGradient>
 
-            {/* ✅ RÉORGANISÉ: Section génération menu EN HAUT (fonctionnalité principale) */}
+            {/* ✅ RÉORGANISÉ: Section profil famille EN HAUT (priorité) - Version compacte */}
+            <View style={[styles.section, styles.profileSectionTop]}>
+                <NativeCard style={styles.profileCard}>
+                    <View style={styles.profileHeader}>
+                        <View style={styles.profileHeaderLeft}>
+                            <SafeIcon name="Users" size={18} color={modernColors.primary} type="lucide" />
+                            <Text style={styles.profileSectionTitle}>Profil Famille</Text>
+                        </View>
+                        {/* ✅ NOUVEAU: Bouton miniaturisé en haut à droite */}
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('FamilyProfile' as never)}
+                            style={styles.profileEditButton}
+                        >
+                            <SafeIcon 
+                                name={hasProfile ? "Edit" : "Plus"} 
+                                size={16} 
+                                color={modernColors.primary} 
+                                type="lucide" 
+                            />
+                        </TouchableOpacity>
+                    </View>
+
+                    {hasProfile && profile ? (
+                        <View style={styles.profileInfoCompact}>
+                            {/* ✅ SIMPLIFIÉ: Afficher seulement le nombre total de personnes */}
+                            {typeof profile.total_members === 'number' && profile.total_members > 0 ? (
+                                <Text style={styles.profileTextCompact}>
+                                    👥 {profile.total_members} personne{profile.total_members > 1 ? 's' : ''} dans la famille
+                                </Text>
+                            ) : (
+                                <Text style={styles.profileTextCompact}>
+                                    👥 Profil configuré
+                                </Text>
+                            )}
+                        </View>
+                    ) : (
+                        <Text style={styles.profileEmptyText}>
+                            Aucun profil configuré
+                        </Text>
+                    )}
+                </NativeCard>
+            </View>
+
+            {/* ✅ RÉORGANISÉ: Section génération menu (fonctionnalité principale) */}
             <View style={[styles.section, styles.menuSection]}>
                 <Text style={styles.sectionTitle}>Menu de la Semaine</Text>
 
@@ -342,42 +385,6 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         />
                     </NativeCard>
                 )}
-            </View>
-
-            {/* ✅ RÉORGANISÉ: Section profil famille EN BAS (moins prioritaire) */}
-            <View style={styles.section}>
-                <NativeCard style={styles.profileCard}>
-                    <View style={styles.profileHeader}>
-                        <SafeIcon name="Users" size={20} color={modernColors.primary} type="lucide" />
-                        <Text style={styles.profileSectionTitle}>Profil Famille</Text>
-                    </View>
-
-                    {hasProfile && profile ? (
-                        <View style={styles.profileInfoCompact}>
-                            {/* ✅ SIMPLIFIÉ: Afficher seulement le nombre total de personnes */}
-                            {typeof profile.total_members === 'number' && profile.total_members > 0 ? (
-                                <Text style={styles.profileTextCompact}>
-                                    👥 {profile.total_members} personne{profile.total_members > 1 ? 's' : ''} dans la famille
-                                </Text>
-                            ) : (
-                                <Text style={styles.profileTextCompact}>
-                                    👥 Profil configuré
-                                </Text>
-                            )}
-                        </View>
-                    ) : (
-                        <Text style={styles.profileEmptyText}>
-                            Aucun profil configuré
-                        </Text>
-                    )}
-
-                    <NativeButton
-                        title={hasProfile ? "Modifier le profil" : "Créer un profil"}
-                        variant="outline"
-                        onPress={() => navigation.navigate('FamilyProfile' as never)}
-                        style={styles.profileButton}
-                    />
-                </NativeCard>
             </View>
 
             {/* ✅ NOUVEAU: Section historique des menus et listes d'achats */}
@@ -584,9 +591,14 @@ const styles = StyleSheet.create({
         padding: 16,
         marginTop: 8,
     },
-    menuSection: {
+    profileSectionTop: {
         marginTop: 0, // ✅ NOUVEAU: Pas de marge en haut pour être collé au header
-        paddingTop: 20, // ✅ NOUVEAU: Padding en haut pour espacement
+        paddingTop: 12, // ✅ RÉDUIT: De 20 à 12 pour gagner de l'espace
+        paddingBottom: 8, // ✅ RÉDUIT: Réduire le padding en bas
+    },
+    menuSection: {
+        marginTop: -8, // ✅ NOUVEAU: Marge négative pour remonter le bloc
+        paddingTop: 0,
     },
     sectionTitle: {
         fontSize: 20,
@@ -595,24 +607,40 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     profileCard: {
-        padding: 12, // ✅ RÉDUIT: De 16 à 12 pour version compacte
+        padding: 10, // ✅ RÉDUIT: De 12 à 10 pour version encore plus compacte
     },
     profileHeader: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between', // ✅ NOUVEAU: Espace entre titre et bouton
+        marginBottom: 6, // ✅ RÉDUIT: De 8 à 6
+    },
+    profileHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 8,
-        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8
+        flex: 1, // ✅ NOUVEAU: Prendre l'espace disponible
     },
     profileSectionTitle: {
-        fontSize: 16, // ✅ RÉDUIT: De 20 à 16 pour version compacte
+        fontSize: 15, // ✅ RÉDUIT: De 16 à 15 pour version compacte
         fontWeight: '700',
         color: '#111827',
+    },
+    profileEditButton: {
+        width: 32, // ✅ NOUVEAU: Bouton miniaturisé
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#EEF2FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E0E7FF',
     },
     profileInfo: {
         marginBottom: 12,
     },
     profileInfoCompact: {
-        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8
+        marginBottom: 0, // ✅ RÉDUIT: De 8 à 0 pour gagner encore plus d'espace
     },
     profileText: {
         fontSize: 14,
@@ -625,13 +653,10 @@ const styles = StyleSheet.create({
         marginBottom: 2, // ✅ RÉDUIT: De 4 à 2
     },
     profileEmptyText: {
-        fontSize: 14,
+        fontSize: 12, // ✅ RÉDUIT: De 14 à 12
         color: modernColors.textSecondary,
         fontStyle: 'italic',
-        marginBottom: 12,
-    },
-    profileButton: {
-        marginTop: 8,
+        marginBottom: 0, // ✅ RÉDUIT: De 12 à 0
     },
     menuCard: {
         padding: 16,

@@ -276,7 +276,7 @@ Les données de ce document sont basées sur les sources disponibles en Janvier 
 
 ---
 
-*Document de référence - Propriété de Yukpomnang - Janvier 2026*
+*Document de référence - Propriété de Yukpo - Janvier 2026*
 
 *Note : Toutes les sources sont publiques et vérifiables. Les projections sont basées sur des données réelles et des modèles économiques éprouvés.*
 

@@ -412,19 +412,10 @@ const TaxiHomeScreen: React.FC = () => {
                         <TouchableOpacity
                             onPress={() => {
                                 hapticPress();
-                                // ✅ CORRIGÉ: Navigation vers l'écran de création de profil chauffeur
-                                // Essayer d'abord PartnerRegister, sinon CovoiturageForm en mode driver
-                                try {
-                                    (navigation as any).navigate('PartnerRegister', {
-                                        partner_type: 'chauffeur',
-                                    });
-                                } catch (err) {
-                                    // Fallback: naviguer vers TaxiForm en mode driver
-                                    console.log('[TaxiHomeScreen] PartnerRegister non disponible, redirection vers TaxiForm');
-                                    (navigation as any).navigate('TaxiForm', {
-                                        mode: 'driver_profile',
-                                    });
-                                }
+                                // ✅ CORRIGÉ: Navigation vers l'écran d'enregistrement de chauffeur
+                                (navigation as any).navigate('CourierRegistration', {
+                                    applicationType: 'driver', // ✅ Indique que c'est pour un chauffeur (taxi/covoiturage)
+                                });
                             }}
                             style={styles.registerDriverButtonLeft}
                         >

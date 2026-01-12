@@ -221,36 +221,69 @@ const HomeScreen: React.FC = () => {
                 return;
             }
 
-            // Extraire et normaliser les résultats
+            // ✅ AMÉLIORÉ: Extraction et normalisation robuste des résultats
             let results: any[] = [];
 
-            // Le service retourne déjà un array normalisé dans result.resultats
-            if (Array.isArray(result.resultats)) {
-                results = result.resultats;
-            } else if (result.resultats && typeof result.resultats === 'object') {
-                // Si c'est un objet, essayer d'extraire l'array
-                if (Array.isArray(result.resultats.resultats)) {
-                    results = result.resultats.resultats;
-                } else if (Array.isArray(result.resultats.data)) {
-                    results = result.resultats.data;
-                } else if (Array.isArray(result.resultats.results)) {
-                    results = result.resultats.results;
+            try {
+                // Le service retourne déjà un array normalisé dans result.resultats
+                if (Array.isArray(result.resultats)) {
+                    results = result.resultats;
+                } else if (result.resultats && typeof result.resultats === 'object') {
+                    // Si c'est un objet, essayer d'extraire l'array
+                    if (Array.isArray(result.resultats.resultats)) {
+                        results = result.resultats.resultats;
+                    } else if (Array.isArray(result.resultats.data)) {
+                        results = result.resultats.data;
+                    } else if (Array.isArray(result.resultats.results)) {
+                        results = result.resultats.results;
+                    } else {
+                        // ✅ NOUVEAU: Vérifier si result.resultats est directement un objet avec des résultats
+                        console.warn('[HomeScreen] Format de résultats inattendu, tentative d\'extraction:', result.resultats);
+                    }
+                } else if (result.data) {
+                    // ✅ NOUVEAU: Vérifier result.data si result.resultats n'existe pas
+                    if (Array.isArray(result.data.resultats)) {
+                        results = result.data.resultats;
+                    } else if (Array.isArray(result.data)) {
+                        results = result.data;
+                    }
                 }
-            }
 
-            console.log('[HomeScreen] Résultats normalisés:', results.length, 'résultats');
-
-            if (results.length > 0) {
-                // Navigation vers les résultats
-                // ResultatBesoinScreen gère déjà la normalisation, donc on peut passer directement
-                navigate('ResultatBesoin', {
-                    results: results, // Array de résultats
-                    type: 'recherche_besoin',
-                    searchQuery: input.texte || input.text || input.description || '',
-                    hasError: false,
+                // ✅ AMÉLIORÉ: Filtrer les résultats invalides
+                results = results.filter((r: any) => {
+                    if (!r || typeof r !== 'object') {
+                        console.warn('[HomeScreen] Résultat invalide filtré:', r);
+                        return false;
+                    }
+                    // Vérifier qu'il y a au moins un service_id ou un id
+                    if (!r.service_id && !r.id) {
+                        console.warn('[HomeScreen] Résultat sans service_id/id filtré:', r);
+                        return false;
+                    }
+                    return true;
                 });
-            } else {
-                Alert.alert('Aucun résultat', 'Aucun service trouvé pour votre recherche');
+
+                console.log('[HomeScreen] ✅ Résultats normalisés:', results.length, 'résultats valides');
+
+                if (results.length > 0) {
+                    // Navigation vers les résultats
+                    // ResultatBesoinScreen gère déjà la normalisation, donc on peut passer directement
+                    navigate('ResultatBesoin', {
+                        results: results, // Array de résultats validés
+                        type: 'recherche_besoin',
+                        searchQuery: input.texte || input.text || input.description || '',
+                        hasError: false,
+                    });
+                } else {
+                    Alert.alert('Aucun résultat', 'Aucun service trouvé pour votre recherche');
+                }
+            } catch (extractError: any) {
+                console.error('[HomeScreen] ❌ Erreur lors de l\'extraction des résultats:', extractError);
+                console.error('[HomeScreen] Structure reçue:', JSON.stringify(result, null, 2));
+                Alert.alert(
+                    'Erreur',
+                    'Erreur lors du traitement des résultats de recherche. Veuillez réessayer.'
+                );
             }
 
             setLoading(false);
@@ -848,15 +881,15 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     promotionsMainIconContainer: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 44, // ✅ AUGMENTÉ: De 36 à 44 pour plus de visibilité
+        height: 44, // ✅ AUGMENTÉ: De 36 à 44 pour plus de visibilité
+        borderRadius: 22, // ✅ AUGMENTÉ: De 18 à 22 pour correspondre à la taille
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
     },
     promotionsMainIcon: {
-        fontSize: 20,
+        fontSize: 28, // ✅ AUGMENTÉ: De 20 à 28 pour plus de visibilité
     },
     promotionsMainText: {
         flex: 1,
