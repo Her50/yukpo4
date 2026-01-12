@@ -678,7 +678,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             <View style={styles.headerActions}>
                 <View style={styles.totalCostContainer}>
                     <Text style={styles.totalCostLabel}>Coût total estimé :</Text>
-                    <Text style={styles.totalCostValue}>
+                    <Text style={styles.totalCostValue} numberOfLines={1} ellipsizeMode="tail">
                         {formatPrice(calculateTotalCost())}
                     </Text>
                 </View>
@@ -723,18 +723,22 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             {/* ✅ NOUVEAU: Affichage en tableau */}
             {viewMode === 'table' ? (
                 <>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={true}
-                        style={styles.tableContainer}
-                        contentContainerStyle={styles.tableContent}
-                    >
+                    <View style={styles.tableWrapper}>
                         <ScrollView
-                            vertical
-                            showsVerticalScrollIndicator={true}
+                            horizontal={true}
+                            showsHorizontalScrollIndicator={true}
+                            bounces={false}
+                            style={styles.tableHorizontalScroll}
+                            contentContainerStyle={styles.tableHorizontalContent}
                             nestedScrollEnabled={true}
                         >
-                            <View style={styles.table}>
+                            <ScrollView
+                                showsVerticalScrollIndicator={true}
+                                nestedScrollEnabled={true}
+                                style={styles.tableVerticalScroll}
+                                contentContainerStyle={styles.tableVerticalContent}
+                            >
+                                <View style={styles.table}>
                                 {/* En-tête du tableau */}
                                 <View style={styles.tableHeader}>
                                     <View style={[styles.tableHeaderCell, styles.tableHeaderCellDay]}>
@@ -795,8 +799,9 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                     })}
                                 </View>
                             </View>
+                            </ScrollView>
                         </ScrollView>
-                    </ScrollView>
+                    </View>
                     
                     {/* ✅ NOUVEAU: Actions pour vue tableau */}
                     <View style={styles.tableActionsContainer}>
@@ -2158,6 +2163,7 @@ const styles = StyleSheet.create({
     },
     totalCostContainer: {
         flex: 1,
+        minWidth: 0, // Permet au flex de fonctionner correctement
     },
     totalCostLabel: {
         fontSize: 12,
@@ -2165,9 +2171,11 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     totalCostValue: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
         color: modernColors.primary,
+        flexWrap: 'nowrap',
+        flexShrink: 0,
     },
     headerActionsRight: {
         flexDirection: 'row',
@@ -2215,12 +2223,23 @@ const styles = StyleSheet.create({
     viewModeTextActive: {
         color: '#fff',
     },
-    tableContainer: {
+    tableWrapper: {
         flex: 1,
         backgroundColor: '#fff',
     },
-    tableContent: {
+    tableHorizontalScroll: {
+        flex: 1,
+    },
+    tableHorizontalContent: {
         padding: 16,
+        minWidth: width - 32, // Largeur minimale basée sur l'écran
+    },
+    tableVerticalScroll: {
+        flex: 1,
+        maxHeight: 500, // Hauteur maximale pour forcer le scroll vertical
+    },
+    tableVerticalContent: {
+        flexGrow: 1,
     },
     table: {
         borderWidth: 1,
@@ -2228,6 +2247,8 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         overflow: 'hidden',
         backgroundColor: '#fff',
+        // Largeur fixe: 100 (jour) + 3 * 140 (repas) = 520px
+        width: 520,
     },
     tableHeader: {
         flexDirection: 'row',
@@ -2236,19 +2257,20 @@ const styles = StyleSheet.create({
         borderBottomColor: '#E5E7EB',
     },
     tableHeaderCell: {
-        flex: 1,
-        minWidth: 120, // ✅ RÉDUIT: De 140 à 120 pour tableau plus compact
-        padding: 10, // ✅ RÉDUIT: De 12 à 10
+        width: 140, // Largeur fixe pour chaque colonne de repas
+        padding: 12,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4, // ✅ RÉDUIT: De 6 à 4
+        justifyContent: 'center',
+        gap: 6,
         borderRightWidth: 1,
         borderRightColor: '#E5E7EB',
+        flexShrink: 0, // Empêche la réduction de taille
     },
     tableHeaderCellDay: {
-        minWidth: 80, // ✅ RÉDUIT: De 100 à 80 pour plus d'espace pour les autres colonnes
-        maxWidth: 80, // ✅ NOUVEAU: Largeur fixe pour colonne jour
+        width: 100, // Largeur fixe pour colonne jour
         backgroundColor: '#F3F4F6',
+        flexShrink: 0,
     },
     tableHeaderText: {
         fontSize: 12,
@@ -2262,18 +2284,18 @@ const styles = StyleSheet.create({
         borderBottomColor: '#E5E7EB',
     },
     tableCell: {
-        flex: 1,
-        minWidth: 120, // ✅ RÉDUIT: De 140 à 120 pour tableau plus compact
-        padding: 10, // ✅ RÉDUIT: De 12 à 10
+        width: 140, // Largeur fixe pour chaque colonne de repas
+        padding: 12,
         borderRightWidth: 1,
         borderRightColor: '#E5E7EB',
         backgroundColor: '#fff',
+        flexShrink: 0, // Empêche la réduction de taille
     },
     tableCellDay: {
-        minWidth: 80, // ✅ RÉDUIT: De 100 à 80
-        maxWidth: 80, // ✅ NOUVEAU: Largeur fixe pour colonne jour
+        width: 100, // Largeur fixe pour colonne jour
         backgroundColor: '#F9FAFB',
         justifyContent: 'center',
+        flexShrink: 0,
     },
     tableCellDayName: {
         fontSize: 14,
