@@ -231,9 +231,12 @@ pub struct DailyMeal {
     pub repas_du_jour: Option<MealItem>, // ✅ NOUVEAU: Fusion déjeuner/dîner (même repas midi et soir)
     pub gouter: Option<MealItem>,
     // ✅ DÉPRÉCIÉ: Gardé pour compatibilité descendante, mais ne sera plus utilisé
-    #[serde(skip_serializing_if = "Option::is_none")]
+    // Ces champs ne peuvent jamais être remplis car serde désérialise dans repas_du_jour via les alias
+    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none", default)]
+    #[allow(dead_code)]
     pub dejeuner: Option<MealItem>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none", default)]
+    #[allow(dead_code)]
     pub diner: Option<MealItem>,
 }
 

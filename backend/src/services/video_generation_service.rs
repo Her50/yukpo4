@@ -890,7 +890,7 @@ pub async fn generate_product_video(
         )),
     ));
     if let Some(job_id) = job_id {
-        try_store_progress(&state, job_id, "running", &progress_steps).await;
+        let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
     }
 
     if payload.use_ai_templates.unwrap_or(false)
@@ -1456,7 +1456,7 @@ pub async fn generate_product_video(
         Some(format!("{} clip(s)", broll_clips.len())),
     ));
     if let Some(job_id) = job_id {
-        try_store_progress(&state, job_id, "running", &progress_steps).await;
+        let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
     }
 
     let orchestrator = ImmersiveOrchestrator::new(state.clone());
@@ -1673,7 +1673,7 @@ pub async fn generate_product_video(
                 )),
             ));
             if let Some(job_id) = job_id {
-                try_store_progress(&state, job_id, "running", &progress_steps).await;
+                let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
             }
 
             // Applique les hints de style issus du payload (transitions, effets, palette).
@@ -1767,7 +1767,7 @@ pub async fn generate_product_video(
                         Some(format!("job={}", response.job_id)),
                     ));
                     if let Some(job_id) = job_id {
-                        try_store_progress(&state, job_id, "running", &progress_steps).await;
+                        let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
                     }
                     renderer_response = Some(response);
                 }
@@ -2133,7 +2133,7 @@ pub async fn generate_product_video(
                     Some("Branding automatique".to_string()),
                 ));
                 if let Some(job_id) = job_id {
-                    try_store_progress(&state, job_id, "running", &progress_steps).await;
+                    let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
                 }
                 // Utiliser la vidéo avec watermark pour le stockage
                 source_master_path = path;
@@ -2443,7 +2443,7 @@ pub async fn generate_product_video(
         Some("Insertion dans la table media".to_string()),
     ));
     if let Some(job_id) = job_id {
-        try_store_progress(&state, job_id, "running", &progress_steps).await;
+        let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
     }
     info!("[VideoGeneration] 📝 Étape 119/120: Enregistrement média en cours...");
 
@@ -2549,7 +2549,7 @@ pub async fn generate_product_video(
         Some("Enregistrement des métriques et nettoyage".to_string()),
     ));
     if let Some(job_id) = job_id {
-        try_store_progress(&state, job_id, "running", &progress_steps).await;
+        let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
     }
     info!("[VideoGeneration] 📝 Étape 120/120: Finalisation en cours...");
 
