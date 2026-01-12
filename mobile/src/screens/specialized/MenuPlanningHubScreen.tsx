@@ -218,6 +218,18 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     <Text style={styles.headerSubtitle}>
                         Organisez vos repas de la semaine
                     </Text>
+                    {/* ✅ NOUVEAU: Bouton profil famille en haut à droite */}
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('FamilyProfile' as never)}
+                        style={styles.headerProfileButton}
+                    >
+                        <SafeIcon name="UserPlus" size={20} color="#fff" type="lucide" />
+                        {hasProfile && profile && typeof profile.total_members === 'number' && profile.total_members > 0 && (
+                            <View style={styles.profileBadge}>
+                                <Text style={styles.profileBadgeText}>{profile.total_members}</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
                 </View>
             </LinearGradient>
 
@@ -342,115 +354,14 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
                     {hasProfile && profile ? (
                         <View style={styles.profileInfoCompact}>
-                            {/* ✅ CORRIGÉ: Vérifier que total_members est un nombre valide, pas false */}
-                            {typeof profile.total_members === 'number' && profile.total_members > 0 && (
+                            {/* ✅ SIMPLIFIÉ: Afficher seulement le nombre total de personnes */}
+                            {typeof profile.total_members === 'number' && profile.total_members > 0 ? (
                                 <Text style={styles.profileTextCompact}>
-                                    👥 {profile.total_members} personne{profile.total_members > 1 ? 's' : ''}
+                                    👥 {profile.total_members} personne{profile.total_members > 1 ? 's' : ''} dans la famille
                                 </Text>
-                            )}
-                            {/* ✅ CORRIGÉ: Vérifier que children_count est un nombre valide, pas false */}
-                            {typeof profile.children_count === 'number' && profile.children_count > 0 && (
+                            ) : (
                                 <Text style={styles.profileTextCompact}>
-                                    👶 {profile.children_count} enfant{profile.children_count > 1 ? 's' : ''}
-                                </Text>
-                            )}
-                            {/* ✅ CORRIGÉ: Vérifier que adults_count est un nombre valide, pas false */}
-                            {typeof profile.adults_count === 'number' && profile.adults_count > 0 && (
-                                <Text style={styles.profileTextCompact}>
-                                    👤 {profile.adults_count} adulte{profile.adults_count > 1 ? 's' : ''}
-                                </Text>
-                            )}
-                            {/* ✅ CORRIGÉ: Filtrer les valeurs false et les chaînes vides */}
-                            {Array.isArray(profile.allergies) && profile.allergies.length > 0 && (
-                                (() => {
-                                    const validAllergies = profile.allergies.filter(a => 
-                                        a !== null && 
-                                        a !== undefined && 
-                                        a !== false && 
-                                        a !== 'false' && 
-                                        a !== '' &&
-                                        typeof a === 'string'
-                                    );
-                                    return validAllergies.length > 0 ? (
-                                        <Text style={styles.profileTextCompact}>
-                                            ⚠️ Allergies : {validAllergies.join(', ')}
-                                        </Text>
-                                    ) : null;
-                                })()
-                            )}
-                            {/* ✅ CORRIGÉ: Vérifier que budget_monthly est un nombre valide */}
-                            {typeof profile.budget_monthly === 'number' && profile.budget_monthly > 0 && (
-                                <Text style={styles.profileTextCompact}>
-                                    💰 Budget : {profile.budget_monthly.toLocaleString()} FCFA/mois
-                                </Text>
-                            )}
-                            {/* ✅ CORRIGÉ: Filtrer les valeurs false et les chaînes vides */}
-                            {Array.isArray(profile.preferences) && profile.preferences.length > 0 && (
-                                (() => {
-                                    const validPreferences = profile.preferences.filter(p => 
-                                        p !== null && 
-                                        p !== undefined && 
-                                        p !== false && 
-                                        p !== 'false' && 
-                                        p !== '' &&
-                                        typeof p === 'string'
-                                    );
-                                    return validPreferences.length > 0 ? (
-                                        <Text style={styles.profileTextCompact}>
-                                            🍽️ Préférences : {validPreferences.join(', ')}
-                                        </Text>
-                                    ) : null;
-                                })()
-                            )}
-                            {/* ✅ CORRIGÉ: Filtrer les valeurs false et les chaînes vides */}
-                            {Array.isArray(profile.dietary_restrictions) && profile.dietary_restrictions.length > 0 && (
-                                (() => {
-                                    const validRestrictions = profile.dietary_restrictions.filter(r => 
-                                        r !== null && 
-                                        r !== undefined && 
-                                        r !== false && 
-                                        r !== 'false' && 
-                                        r !== '' &&
-                                        typeof r === 'string'
-                                    );
-                                    return validRestrictions.length > 0 ? (
-                                        <Text style={styles.profileTextCompact}>
-                                            🥗 Restrictions : {validRestrictions.join(', ')}
-                                        </Text>
-                                    ) : null;
-                                })()
-                            )}
-                            {/* ✅ CORRIGÉ: Filtrer les valeurs false et les chaînes vides */}
-                            {Array.isArray(profile.cuisine_styles) && profile.cuisine_styles.length > 0 && (
-                                (() => {
-                                    const validStyles = profile.cuisine_styles.filter(c => 
-                                        c !== null && 
-                                        c !== undefined && 
-                                        c !== false && 
-                                        c !== 'false' && 
-                                        c !== '' &&
-                                        typeof c === 'string'
-                                    );
-                                    return validStyles.length > 0 ? (
-                                        <Text style={styles.profileTextCompact}>
-                                            🍳 Styles de cuisine : {validStyles.join(', ')}
-                                        </Text>
-                                    ) : null;
-                                })()
-                            )}
-                            {/* ✅ CORRIGÉ: Vérifier que cooking_level est une chaîne valide */}
-                            {typeof profile.cooking_level === 'string' && 
-                             profile.cooking_level !== '' && 
-                             profile.cooking_level !== 'false' && 
-                             profile.cooking_level.toLowerCase() !== 'false' && (
-                                <Text style={styles.profileTextCompact}>
-                                    👨‍🍳 Niveau : {profile.cooking_level}
-                                </Text>
-                            )}
-                            {/* ✅ CORRIGÉ: Vérifier que time_available_hours est un nombre valide */}
-                            {typeof profile.time_available_hours === 'number' && profile.time_available_hours > 0 && (
-                                <Text style={styles.profileTextCompact}>
-                                    ⏰ Temps disponible : {profile.time_available_hours}h/jour
+                                    👥 Profil configuré
                                 </Text>
                             )}
                         </View>
@@ -610,6 +521,39 @@ const styles = StyleSheet.create({
     },
     headerContent: {
         marginTop: 10,
+        position: 'relative',
+    },
+    headerProfileButton: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    profileBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#EF4444',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    profileBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#fff',
     },
     backButton: {
         width: 40,

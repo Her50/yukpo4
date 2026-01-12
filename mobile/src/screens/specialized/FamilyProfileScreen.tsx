@@ -171,49 +171,85 @@ const FamilyProfileScreen: React.FC = () => {
                             <Text style={styles.inputLabel}>Total</Text>
                             <TextInput
                                 style={styles.numberInput}
-                                value={profile.total_members.toString()}
+                                value={profile.total_members > 0 ? profile.total_members.toString() : ''}
                                 onChangeText={(text) => {
-                                    const num = parseInt(text) || 1;
-                                    setProfile((prev) => ({
-                                        ...prev,
-                                        total_members: num,
-                                        adults_count: Math.max(1, prev.adults_count),
-                                        children_count: Math.max(0, num - prev.adults_count),
-                                    }));
+                                    // ✅ CORRIGÉ: Permettre de vider le champ
+                                    if (text === '' || text === null || text === undefined) {
+                                        setProfile((prev) => ({
+                                            ...prev,
+                                            total_members: 0,
+                                        }));
+                                        return;
+                                    }
+                                    const num = parseInt(text);
+                                    if (!isNaN(num) && num >= 0) {
+                                        setProfile((prev) => ({
+                                            ...prev,
+                                            total_members: num,
+                                            adults_count: Math.max(1, prev.adults_count),
+                                            children_count: Math.max(0, num - prev.adults_count),
+                                        }));
+                                    }
                                 }}
                                 keyboardType="numeric"
+                                placeholder="0"
                             />
                         </View>
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>Adultes</Text>
                             <TextInput
                                 style={styles.numberInput}
-                                value={profile.adults_count.toString()}
+                                value={profile.adults_count > 0 ? profile.adults_count.toString() : ''}
                                 onChangeText={(text) => {
-                                    const num = parseInt(text) || 1;
-                                    setProfile((prev) => ({
-                                        ...prev,
-                                        adults_count: num,
-                                        children_count: Math.max(0, prev.total_members - num),
-                                    }));
+                                    // ✅ CORRIGÉ: Permettre de vider le champ
+                                    if (text === '' || text === null || text === undefined) {
+                                        setProfile((prev) => ({
+                                            ...prev,
+                                            adults_count: 0,
+                                            total_members: prev.children_count,
+                                        }));
+                                        return;
+                                    }
+                                    const num = parseInt(text);
+                                    if (!isNaN(num) && num >= 0) {
+                                        setProfile((prev) => ({
+                                            ...prev,
+                                            adults_count: num,
+                                            children_count: Math.max(0, prev.total_members - num),
+                                            total_members: num + prev.children_count,
+                                        }));
+                                    }
                                 }}
                                 keyboardType="numeric"
+                                placeholder="0"
                             />
                         </View>
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>Enfants</Text>
                             <TextInput
                                 style={styles.numberInput}
-                                value={profile.children_count.toString()}
+                                value={profile.children_count > 0 ? profile.children_count.toString() : ''}
                                 onChangeText={(text) => {
-                                    const num = parseInt(text) || 0;
-                                    setProfile((prev) => ({
-                                        ...prev,
-                                        children_count: num,
-                                        total_members: prev.adults_count + num,
-                                    }));
+                                    // ✅ CORRIGÉ: Permettre de vider le champ
+                                    if (text === '' || text === null || text === undefined) {
+                                        setProfile((prev) => ({
+                                            ...prev,
+                                            children_count: 0,
+                                            total_members: prev.adults_count,
+                                        }));
+                                        return;
+                                    }
+                                    const num = parseInt(text);
+                                    if (!isNaN(num) && num >= 0) {
+                                        setProfile((prev) => ({
+                                            ...prev,
+                                            children_count: num,
+                                            total_members: prev.adults_count + num,
+                                        }));
+                                    }
                                 }}
                                 keyboardType="numeric"
+                                placeholder="0"
                             />
                         </View>
                     </View>
