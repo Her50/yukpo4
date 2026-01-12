@@ -2408,12 +2408,11 @@ pub async fn creer_service(
             .await
             {
                 Ok(result) => {
-                    let (tx, verified_balance, new_balance, service_id) = result;
                     log::info!(
                         "[creer_service] ✅ Service créé avec succès - service_id: {}, balance: {} -> {}",
-                        service_id,
-                        verified_balance,
-                        new_balance
+                        result.3,
+                        result.1,
+                        result.2
                     );
                     break 'retry_loop result;
                 },
