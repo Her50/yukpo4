@@ -94,25 +94,57 @@ const CourierRegistrationScreen: React.FC = () => {
         loadPartners(); // ✅ NOUVEAU 2026-01-04: Charger les partenaires
     }, [user]);
 
-    // ✅ NOUVEAU 2026-01-04: Charger la liste des partenaires actifs de type "Livraison" ou "demenagement"
+    // ✅ AMÉLIORÉ 2026-01-12: Charger la liste des partenaires actifs de type "Livraison" ou "demenagement"
     const loadPartners = async () => {
         try {
             const { apiGet } = require('../../services/api');
-            // ✅ NOUVEAU 2026-01-04: Charger tous les partenaires et filtrer côté client
-            // (ou utiliser un endpoint filtré si disponible)
-            const response = await apiGet('/api/delivery/partners');
-            const partnersList = response.partners || response.data?.partners || [];
-            // ✅ NOUVEAU 2026-01-04: Filtrer uniquement les partenaires actifs de type "livraison" ou "demenagement"
-            const activePartners = partnersList.filter((p: any) => {
-                const isActive = p.is_active !== false;
-                const partnerType = p.partner_type || p.partnerType || '';
-                const validTypes = ['livraison', 'demenagement'];
-                return isActive && validTypes.includes(partnerType);
-            });
-            setPartners(activePartners);
+            // ✅ AMÉLIORÉ: Essayer d'abord avec le filtre côté serveur pour les types livraison/demenagement
+            let response;
+            try {
+                // Essayer avec le paramètre partner_type pour filtrer côté serveur
+                response = await apiGet('/api/delivery/partners?partner_type=livraison&active_only=true');
+                let partnersList = response.partners || response.data?.partners || [];
+                
+                // Si aucun partenaire trouvé avec "livraison", essayer "demenagement"
+                if (partnersList.length === 0) {
+                    const response2 = await apiGet('/api/delivery/partners?partner_type=demenagement&active_only=true');
+                    partnersList = response2.partners || response2.data?.partners || [];
+                }
+                
+                // Si toujours aucun, charger tous les partenaires actifs et filtrer côté client
+                if (partnersList.length === 0) {
+                    const responseAll = await apiGet('/api/delivery/partners?active_only=true');
+                    const allPartners = responseAll.partners || responseAll.data?.partners || [];
+                    // Filtrer uniquement les partenaires actifs de type "livraison" ou "demenagement"
+                    partnersList = allPartners.filter((p: any) => {
+                        const isActive = p.is_active !== false;
+                        const partnerType = (p.partner_type || p.partnerType || '').toLowerCase();
+                        const validTypes = ['livraison', 'demenagement'];
+                        return isActive && validTypes.includes(partnerType);
+                    });
+                }
+                
+                setPartners(partnersList);
+                console.log('[CourierRegistrationScreen] ✅ Partenaires chargés:', partnersList.length);
+            } catch (apiError) {
+                // Fallback: charger tous les partenaires sans filtre
+                console.warn('[CourierRegistrationScreen] ⚠️ Erreur avec filtres, chargement sans filtre:', apiError);
+                response = await apiGet('/api/delivery/partners');
+                const allPartners = response.partners || response.data?.partners || [];
+                // Filtrer côté client les partenaires actifs
+                const activePartners = allPartners.filter((p: any) => {
+                    const isActive = p.is_active !== false;
+                    const partnerType = (p.partner_type || p.partnerType || '').toLowerCase();
+                    const validTypes = ['livraison', 'demenagement'];
+                    return isActive && validTypes.includes(partnerType);
+                });
+                setPartners(activePartners);
+                console.log('[CourierRegistrationScreen] ✅ Partenaires chargés (fallback):', activePartners.length);
+            }
         } catch (error) {
-            console.error('[CourierRegistrationScreen] Erreur chargement partenaires:', error);
-            // En cas d'erreur (ex: pas admin), on continue sans bloquer
+            console.error('[CourierRegistrationScreen] ❌ Erreur chargement partenaires:', error);
+            // En cas d'erreur, on continue sans bloquer mais on affiche un message
+            setPartners([]);
         }
     };
 
@@ -748,16 +780,29 @@ const CourierRegistrationScreen: React.FC = () => {
                             </View>
                         </>
                     )}
-                    {/* ✅ NOUVEAU 2026-01-04: Champ partenaire (obligatoire) */}
+                    {/* ✅ AMÉLIORÉ 2026-01-12: Champ partenaire (obligatoire) - Rendu opérationnel */}
                     <View style={styles.inputContainer}>
                         <Text style={styles.inputLabel}>Partenaire de livraison *</Text>
                         <Text style={styles.helperText}>
-                            Sélectionnez le partenaire de logistique auquel vous appartenez
+                            Sélectionnez le partenaire de logistique auquel vous appartenez. Ce champ permet de gérer les coursiers qui feront les achats pour l'utilisateur au marché.
                         </Text>
                         {partners.length === 0 ? (
-                            <Text style={styles.errorText}>
-                                Aucun partenaire disponible. Veuillez contacter l'administrateur.
-                            </Text>
+                            <View style={styles.noPartnersContainer}>
+                                <SafeIcon name="alert-circle" size={24} color={modernColors.warning || '#F59E0B'} type="lucide" />
+                                <Text style={styles.errorText}>
+                                    Aucun partenaire de livraison disponible.
+                                </Text>
+                                <Text style={styles.helperText}>
+                                    Veuillez contacter l'administrateur pour créer un partenaire de livraison ou réessayez plus tard.
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.refreshButton}
+                                    onPress={loadPartners}
+                                >
+                                    <SafeIcon name="refresh-cw" size={16} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.refreshButtonText}>Actualiser</Text>
+                                </TouchableOpacity>
+                            </View>
                         ) : (
                             <View style={styles.pickerContainer}>
                                 {partners.map((partner) => (
@@ -767,19 +812,39 @@ const CourierRegistrationScreen: React.FC = () => {
                                             styles.partnerOption,
                                             selectedPartnerId === partner.id && styles.partnerOptionSelected
                                         ]}
-                                        onPress={() => setSelectedPartnerId(partner.id)}
+                                        onPress={() => {
+                                            setSelectedPartnerId(partner.id);
+                                            console.log('[CourierRegistrationScreen] ✅ Partenaire sélectionné:', partner.id, partner.name);
+                                        }}
+                                        activeOpacity={0.7}
                                     >
-                                        <Text style={[
-                                            styles.partnerOptionText,
-                                            selectedPartnerId === partner.id && styles.partnerOptionTextSelected
-                                        ]}>
-                                            {partner.name}
-                                        </Text>
+                                        <View style={styles.partnerOptionContent}>
+                                            <SafeIcon 
+                                                name="building" 
+                                                size={18} 
+                                                color={selectedPartnerId === partner.id ? modernColors.surface : modernColors.primary} 
+                                                type="lucide" 
+                                            />
+                                            <Text style={[
+                                                styles.partnerOptionText,
+                                                selectedPartnerId === partner.id && styles.partnerOptionTextSelected
+                                            ]}>
+                                                {partner.name}
+                                            </Text>
+                                        </View>
                                         {selectedPartnerId === partner.id && (
-                                            <SafeIcon name="check" size={16} color={modernColors.surface} />
+                                            <SafeIcon name="check-circle" size={20} color={modernColors.surface} type="lucide" />
                                         )}
                                     </TouchableOpacity>
                                 ))}
+                            </View>
+                        )}
+                        {selectedPartnerId && (
+                            <View style={styles.selectedPartnerInfo}>
+                                <SafeIcon name="info" size={14} color={modernColors.primary} type="lucide" />
+                                <Text style={styles.selectedPartnerInfoText}>
+                                    Partenaire sélectionné : {partners.find(p => p.id === selectedPartnerId)?.name || 'Inconnu'}
+                                </Text>
                             </View>
                         )}
                     </View>
