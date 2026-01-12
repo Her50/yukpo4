@@ -1994,6 +1994,62 @@ const styles = StyleSheet.create({
         maxHeight: '90%',
         width: '100%',
     },
+    // ✅ NOUVEAU: Styles pour modal ajouter repas
+    pickerContainer: {
+        marginTop: 8,
+    },
+    pickerRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    dayPickerButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        minWidth: 50,
+        alignItems: 'center',
+    },
+    dayPickerButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    dayPickerButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    dayPickerButtonTextActive: {
+        color: '#fff',
+    },
+    mealTypeButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    mealTypeButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    mealTypeButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    mealTypeButtonTextActive: {
+        color: '#fff',
+    },
     applyTimesContainer: {
         padding: 16,
         backgroundColor: '#F9FAFB',
