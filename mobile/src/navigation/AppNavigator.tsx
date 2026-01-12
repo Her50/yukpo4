@@ -911,6 +911,8 @@ const SecondaryStack = () => {
         <Stack.Screen name="AgenceVoyageForm" component={AgenceVoyageFormScreenWithSafeArea} />
         <Stack.Screen name="CovoiturageForm" component={CovoiturageFormScreenWithSafeArea} />
         <Stack.Screen name="TaxiForm" component={TaxiFormScreenWithSafeArea} />
+        {/* ✅ NOUVEAU: Ajouter PartnerRegister au MainStack pour navigation depuis TaxiHome et CovoiturageHome */}
+        <Stack.Screen name="PartnerRegister" component={PartnerRegisterScreenWithSafeArea} />
         {/* ✅ Phase 3: Routes recherche Taxi et Covoiturage */}
         <Stack.Screen 
           name="TaxiSearch" 
