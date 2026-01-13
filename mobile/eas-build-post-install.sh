@@ -34,6 +34,7 @@ if [ -f "create-metro-private-links.js" ]; then
     node create-metro-private-links.js || echo "⚠️ Symlinks creation failed (may not be critical)"
 fi
 
+
 echo "✅ EAS Build post-install completed successfully"
 exit 0
 

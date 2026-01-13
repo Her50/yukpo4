@@ -352,11 +352,14 @@ export const NativeInput: React.FC<NativeInputProps> = ({
         const baseLineHeight = 24;
         const linesFromBreaks = textValue.split(/\r?\n/).length;
         const approxLines = textValue.length > 0 ? Math.ceil(textValue.length / 60) : 0;
+        // ✅ CORRECTION: Calculer plus de lignes pour permettre l'affichage complet du texte
         const estimatedLines = Math.max(minLines, linesFromBreaks, approxLines, 1);
-        const estimatedHeight = estimatedLines * baseLineHeight + 24;
+        // ✅ CORRECTION: Ajouter plus de padding pour une meilleure visibilité
+        const estimatedHeight = estimatedLines * baseLineHeight + 32;
 
         setInputHeight((prev) => {
-            if (!prev || Math.abs(prev - estimatedHeight) > 8) {
+            // ✅ CORRECTION: Mettre à jour la hauteur plus fréquemment pour s'adapter au contenu
+            if (!prev || Math.abs(prev - estimatedHeight) > 4) {
                 return estimatedHeight;
             }
             return prev;
@@ -390,7 +393,7 @@ export const NativeInput: React.FC<NativeInputProps> = ({
                 autoCapitalize={autoCapitalize}
                 autoCorrect={autoCorrect}
                 placeholderTextColor={modernColors.textSecondary}
-                scrollEnabled={multiline ? false : undefined}
+                scrollEnabled={multiline ? true : undefined} // ✅ CORRECTION: Activer le scroll pour multiline pour permettre de voir tout le texte
                 blurOnSubmit={multiline ? false : undefined}
                 returnKeyType={multiline ? 'default' : undefined}
                 textBreakStrategy={multiline ? 'highQuality' : undefined}
@@ -398,7 +401,8 @@ export const NativeInput: React.FC<NativeInputProps> = ({
                     if (multiline) {
                         const { width, height } = event.nativeEvent.contentSize;
                         const lineHeight = 24;
-                        const minHeight = Math.max(minLines * lineHeight + 24, height + 24);
+                        // ✅ CORRECTION: Calculer une hauteur minimale plus grande pour permettre l'affichage complet
+                        const minHeight = Math.max(minLines * lineHeight + 32, height + 32);
                         setInputHeight(minHeight);
                         onContentSizeChange?.(width, height);
                     }
@@ -549,6 +553,7 @@ const styles = StyleSheet.create({
     inputMultiline: {
         minHeight: 120,
         textAlignVertical: 'top',
+        includeFontPadding: false, // ✅ CORRECTION: Éviter le padding supplémentaire qui peut masquer le texte
     },
 
     // Badge

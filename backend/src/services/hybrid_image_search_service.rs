@@ -496,6 +496,7 @@ impl HybridImageSearchService {
     }
 
     /// Recherche hybride: Analyse l'image de recherche + Compare avec analyses stockées
+    /// ✅ FALLBACK: Utilise signatures vectorielles si l'analyse IA échoue
     pub async fn search_by_image(
         &self,
         app_ia: &AppIA,
@@ -511,7 +512,35 @@ impl HybridImageSearchService {
 
         // ✅ CORRECTION: Utiliser le MÊME système d'analyse que la création
         log_info("[HybridImageSearch] Étape 1/3: Analyse IA avec système création...");
-        let (analysis, cost) = Self::analyze_image_like_creation(app_ia, image_base64).await?;
+        let analysis_result = Self::analyze_image_like_creation(app_ia, image_base64).await;
+        
+        // ✅ FALLBACK: Si l'analyse IA échoue, utiliser signatures vectorielles
+        let (analysis, cost) = match analysis_result {
+            Ok((analysis, cost)) => {
+                log_info(&format!(
+                    "[HybridImageSearch] ✅ Analyse IA réussie: '{}' (confiance: {:.2})",
+                    &analysis.description[..analysis.description.len().min(50)],
+                    analysis.confiance
+                ));
+                (analysis, cost)
+            }
+            Err(e) => {
+                log_warn(&format!(
+                    "[HybridImageSearch] ⚠️ Analyse IA échouée: {} - Fallback vers signatures vectorielles",
+                    e
+                ));
+                
+                // Fallback: Utiliser signatures vectorielles
+                return self.search_by_image_signature_fallback(
+                    image_base64,
+                    category_filter,
+                    gps_lat,
+                    gps_lng,
+                    search_radius_km,
+                    max_results,
+                ).await;
+            }
+        };
 
         log_info(&format!(
             "[HybridImageSearch] ✅ Analyse complétée: '{}' (confiance: {:.2})",
@@ -904,5 +933,121 @@ impl HybridImageSearchService {
             .collect();
 
         Ok(serde_json::json!({ "analyses": stats_json }))
+    }
+
+    /// ✅ FALLBACK: Recherche par signatures vectorielles si l'analyse IA échoue
+    async fn search_by_image_signature_fallback(
+        &self,
+        image_base64: &str,
+        _category_filter: Option<&str>,
+        _gps_lat: Option<f64>,
+        _gps_lng: Option<f64>,
+        _search_radius_km: Option<i32>,
+        max_results: i32,
+    ) -> AppResult<(Vec<HybridSearchResult>, ImageAnalysis, AICost)> {
+        use crate::services::image_search_service::ImageSearchService;
+        use base64::{Engine as _, engine::general_purpose};
+        use std::sync::Arc;
+        
+        log_info("[HybridImageSearch] 🔄 Fallback: Recherche par signatures vectorielles");
+        
+        // Décoder l'image base64
+        let image_base64_clean = if image_base64.contains("base64,") {
+            image_base64.split("base64,").nth(1).unwrap_or(image_base64)
+        } else {
+            image_base64
+        };
+        
+        let image_data = general_purpose::STANDARD.decode(image_base64_clean)
+            .map_err(|e| AppError::Internal(format!("Erreur décodage base64 fallback: {}", e)))?;
+        
+        // Générer la signature vectorielle
+        let signature = ImageSearchService::generate_image_signature(&image_data)
+            .map_err(|e| AppError::Internal(format!("Erreur génération signature: {}", e)))?;
+        
+        log_info(&format!(
+            "[HybridImageSearch] Signature générée: {} dimensions",
+            signature.len()
+        ));
+        
+        // Créer un pool temporaire pour ImageSearchService
+        let pool_arc = Arc::new(self.pool.clone());
+        let search_service = ImageSearchService::new(pool_arc);
+        
+        // Rechercher par signature (seuil de similarité plus bas pour fallback)
+        let signature_results = search_service
+            .search_by_image_signature(&signature, 0.2, max_results) // Seuil plus bas: 0.2
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur recherche signature: {}", e)))?;
+        
+        log_info(&format!(
+            "[HybridImageSearch] Fallback: Trouvé {} résultats par signature",
+            signature_results.len()
+        ));
+        
+        // Convertir ImageSearchResult en HybridSearchResult
+        let hybrid_results: Vec<HybridSearchResult> = signature_results
+            .into_iter()
+            .map(|sr| {
+                // Extraire les métadonnées du service_data
+                let product_description = sr.service_data
+                    .get("description")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                
+                let product_tags: Vec<String> = sr.service_data
+                    .get("tags")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                    .unwrap_or_default();
+                
+                let product_marque = sr.service_data
+                    .get("marque")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                
+                let product_couleurs: Vec<String> = sr.service_data
+                    .get("couleurs")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                    .unwrap_or_default();
+                
+                HybridSearchResult {
+                    service_id: sr.service_id,
+                    analysis_id: None,
+                    media_id: Some(sr.media_id),
+                    product_description,
+                    product_tags,
+                    product_marque,
+                    product_couleurs,
+                    match_score: sr.similarity_score * 1000.0, // Convertir 0-1 en 0-1000
+                    distance_km: None, // Pas de GPS dans fallback
+                    service_data: sr.service_data,
+                }
+            })
+            .collect();
+        
+        // Créer une analyse factice pour compatibilité
+        let fallback_analysis = ImageAnalysis {
+            description: format!("Recherche par similarité visuelle (fallback - {} résultats)", hybrid_results.len()),
+            tags: vec!["similarity_search".to_string(), "fallback".to_string()],
+            category_detected: _category_filter.unwrap_or("").to_string(),
+            marque: None,
+            couleurs: vec![],
+            caracteristiques_cles: std::collections::HashMap::new(),
+            confiance: 0.5, // Confiance moyenne pour fallback
+            search_query: "similarity_search".to_string(),
+        };
+        
+        let fallback_cost = AICost {
+            total_tokens: 0,
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            cost_usd: 0.0,
+            model_used: "signature_vector".to_string(),
+        };
+        
+        Ok((hybrid_results, fallback_analysis, fallback_cost))
     }
 }

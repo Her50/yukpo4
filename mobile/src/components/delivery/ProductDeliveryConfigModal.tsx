@@ -579,8 +579,10 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 pickup_address: primaryAddress.address.trim(),
                 pickup_latitude: primaryAddress.latitude,
                 pickup_longitude: primaryAddress.longitude,
-                // ✅ Nettoyage: Ne plus envoyer storage_location_ids et storage_location_quantities (supprimés)
-                required_vehicle_type_id: vehicleTypeId,
+                // ✅ SOLUTION OPTIMALE: Envoyer le slug au lieu de l'ID calculé pour éviter les problèmes de clé étrangère
+                // Le backend convertira le slug en ID réel depuis la base de données
+                required_vehicle_type_id: vehicleTypeId, // Garder pour compatibilité
+                vehicle_type_slug: vehicleTypeId > 0 ? getVehicleTypeFromId(vehicleTypeId) || undefined : undefined, // ✅ NOUVEAU: Envoyer le slug
                 preparation_time_minutes: preparationTime, // ✅ CORRIGÉ: Toujours envoyer (même si 0)
                 weight_kg: (config && typeof config.weight_kg === 'string' && config.weight_kg.trim()) ? parseFloat(config.weight_kg) : undefined,
                 volume_cm3: (config && typeof config.volume_cm3 === 'string' && config.volume_cm3.trim()) ? parseFloat(config.volume_cm3) : undefined,

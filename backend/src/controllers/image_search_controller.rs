@@ -8,7 +8,8 @@ use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::services::image_search_service::{ImageSearchService, ImageSearchResult};
+use crate::services::image_search_service::ImageSearchResult;
+use crate::services::hybrid_image_search_service::HybridImageSearchService;
 use crate::state::AppState;
 use crate::utils::log::{log_error, log_info};
 
@@ -88,24 +89,62 @@ pub async fn search_by_image(
 
     log_info(&format!("[ImageSearchController] Image décodée: {} octets", image_data.len()));
 
-    let search_service = ImageSearchService::new(Arc::new(state.pg.clone()));
-
+    // ✅ NOUVEAU: Utiliser HybridImageSearchService au lieu de ImageSearchService
+    let search_service = HybridImageSearchService::new(state.pg.clone());
+    
+    // Récupérer user_id depuis le token si disponible (sinon utiliser 0 pour recherche anonyme)
+    let user_id = 0; // TODO: Extraire depuis le token JWT si authentifié
+    
     // Recherche selon le type
     let results = match request.search_type.as_str() {
         "hash" => {
-            // Recherche par hash (doublons exacts)
+            // Recherche par hash (doublons exacts) - utiliser ImageSearchService pour ça
+            use crate::services::image_search_service::ImageSearchService;
             let image_hash = ImageSearchService::calculate_image_hash(&image_data);
-            search_service.search_by_image_hash(&image_hash).await
+            let hash_service = ImageSearchService::new(Arc::new(state.pg.clone()));
+            hash_service.search_by_image_hash(&image_hash).await
         }
         "signature" | _ => {
-            // Recherche par similarité (défaut)
-            search_service
-                .hybrid_image_search(
-                    &image_data,
-                    request.similarity_threshold,
+            // ✅ Recherche hybride avec analyse IA (défaut)
+            log_info("[ImageSearchController] Utilisation de HybridImageSearchService avec analyse IA");
+            
+            match search_service
+                .search_by_image(
+                    &state.ia,
+                    &image_base64,
+                    user_id,
+                    None, // category_filter
+                    None, // gps_lat
+                    None, // gps_lng
+                    None, // search_radius_km
                     request.max_results,
                 )
                 .await
+            {
+                Ok((hybrid_results, _analysis, _cost)) => {
+                    // Convertir HybridSearchResult en ImageSearchResult
+                    let converted_results: Vec<ImageSearchResult> = hybrid_results
+                        .into_iter()
+                        .map(|hr| ImageSearchResult {
+                            service_id: hr.service_id,
+                            media_id: hr.media_id.unwrap_or(0), // ✅ CORRIGÉ: unwrap Option<i32> en i32
+                            media_path: String::new(), // Non disponible dans HybridSearchResult
+                            similarity_score: hr.match_score / 1000.0, // Normaliser le score (0-1)
+                            service_data: hr.service_data,
+                            image_metadata: Some(serde_json::json!({
+                                "product_description": hr.product_description,
+                                "product_tags": hr.product_tags,
+                                "product_marque": hr.product_marque,
+                                "product_couleurs": hr.product_couleurs,
+                                "distance_km": hr.distance_km,
+                                "match_score": hr.match_score,
+                            })),
+                        })
+                        .collect();
+                    Ok(converted_results)
+                }
+                Err(e) => Err(e)
+            }
         }
     };
 
@@ -173,6 +212,7 @@ pub async fn search_product_images(
         }
     };
 
+    use crate::services::image_search_service::ImageSearchService;
     let search_service = ImageSearchService::new(Arc::new(state.pg.clone()));
     let signature = match ImageSearchService::generate_image_signature(&image_data) {
         Ok(sig) => sig,

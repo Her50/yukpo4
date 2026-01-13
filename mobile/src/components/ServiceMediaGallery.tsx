@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { ENVIRONMENT } from '../config/environment';
 import { mediaService } from '../services/mediaService';
+import { mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -48,11 +49,29 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
         }
     }, [visible, service]);
 
+    // ✅ NOUVEAU: Fonction pour normaliser les URLs de médias
+    const normalizeMediaUrl = (url: any): string | null => {
+        if (!url) return null;
+        const urlStr = typeof url === 'string' ? url : (url.valeur || url.url || url.path || String(url));
+        if (!urlStr || typeof urlStr !== 'string') return null;
+        const trimmed = urlStr.trim();
+        if (!trimmed) return null;
+        
+        // Si c'est déjà une URL complète, retourner tel quel
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+            return trimmed;
+        }
+        
+        // Normaliser via mediaService pour obtenir l'URL CDN
+        return mediaService.getVideoUrl(trimmed) || mediaService.getImageUrl(trimmed) || trimmed;
+    };
+
     const loadMedia = async () => {
         setLoading(true);
         try {
             // Extraire les médias du service
             const mediaList = [];
+            const serviceId = service.id || service.service_id;
 
             // Images du service
             if (service.data?.images) {
@@ -61,10 +80,11 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                     : [service.data.images];
 
                 images.forEach((img: any) => {
-                    if (img.valeur || img) {
+                    const normalizedUrl = normalizeMediaUrl(img);
+                    if (normalizedUrl) {
                         mediaList.push({
                             type: 'image',
-                            url: img.valeur || img,
+                            url: normalizedUrl,
                             description: 'Image du service'
                         });
                     }
@@ -73,93 +93,181 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
 
             // Logo
             if (service.data?.logo?.valeur) {
-                mediaList.push({
-                    type: 'image',
-                    url: service.data.logo.valeur,
-                    description: 'Logo'
-                });
+                const normalizedUrl = normalizeMediaUrl(service.data.logo.valeur);
+                if (normalizedUrl) {
+                    mediaList.push({
+                        type: 'image',
+                        url: normalizedUrl,
+                        description: 'Logo'
+                    });
+                }
             }
 
             // Banner
             if (service.data?.banner?.valeur) {
-                mediaList.push({
-                    type: 'image',
-                    url: service.data.banner.valeur,
-                    description: 'Bannière'
-                });
+                const normalizedUrl = normalizeMediaUrl(service.data.banner.valeur);
+                if (normalizedUrl) {
+                    mediaList.push({
+                        type: 'image',
+                        url: normalizedUrl,
+                        description: 'Bannière'
+                    });
+                }
             }
 
-            // Vidéos
+            // Vidéos du service (ancien système: services.data->videos)
             if (service.data?.videos) {
                 const videos = Array.isArray(service.data.videos)
                     ? service.data.videos
                     : [service.data.videos];
 
                 videos.forEach((vid: any) => {
-                    if (vid.valeur || vid) {
+                    const normalizedUrl = normalizeMediaUrl(vid);
+                    if (normalizedUrl) {
                         mediaList.push({
                             type: 'video',
-                            url: vid.valeur || vid,
+                            url: normalizedUrl,
                             description: 'Vidéo du service'
                         });
                     }
                 });
             }
 
-            // Médias des produits
+            // ✅ NOUVEAU 2026-01-13: Extraire aussi les médias depuis service_products.product_data (nouveau système)
+            // Médias des produits depuis services.data->produits (ancien système)
             const products = service.data?.produits || [];
-            if (Array.isArray(products)) {
-                products.forEach((product: any, index: number) => {
+            if (Array.isArray(products) && products.length > 0) {
+                // Paralléliser les appels API pour récupérer les médias depuis service_products
+                const productMediaPromises = products.map(async (product: any, index: number) => {
                     const productType = product.type || 'autre';
                     const productName = product.nom || `Produit ${index + 1}`;
+                    const productMediaList: any[] = [];
 
+                    // ✅ NOUVEAU: Récupérer les médias depuis service_products.product_data via API
+                    if (serviceId) {
+                        try {
+                            const productMediaResponse = await mediaApi.getProductMedia(serviceId, index);
+                            if (productMediaResponse.success && productMediaResponse.data) {
+                                const productMediaData = productMediaResponse.data as any;
+                                
+                                // Extraire images depuis service_products.product_data->images
+                                if (productMediaData.images && Array.isArray(productMediaData.images)) {
+                                    productMediaData.images.forEach((img: any) => {
+                                        const normalizedUrl = normalizeMediaUrl(img);
+                                        if (normalizedUrl) {
+                                            productMediaList.push({
+                                                type: 'image',
+                                                url: normalizedUrl,
+                                                description: `📦 ${productName}`,
+                                                category: productType,
+                                                source: 'service_products'
+                                            });
+                                        }
+                                    });
+                                }
+                                
+                                // Extraire vidéos depuis service_products.product_data->videos
+                                if (productMediaData.videos && Array.isArray(productMediaData.videos)) {
+                                    productMediaData.videos.forEach((vid: any) => {
+                                        const normalizedUrl = normalizeMediaUrl(vid);
+                                        if (normalizedUrl) {
+                                            productMediaList.push({
+                                                type: 'video',
+                                                url: normalizedUrl,
+                                                description: `🎬 ${productName}`,
+                                                category: productType,
+                                                source: 'service_products'
+                                            });
+                                        }
+                                    });
+                                }
+                            }
+                        } catch (error) {
+                            console.warn('[ServiceMediaGallery] Erreur récupération médias produit depuis API:', error);
+                            // Continuer avec les médias depuis service.data->produits (fallback)
+                        }
+                    }
+
+                    // Fallback: Médias depuis services.data->produits[index] (ancien système)
                     // Images du produit
                     if (product.images && Array.isArray(product.images)) {
                         product.images.forEach((img: string) => {
-                            mediaList.push({
-                                type: 'image',
-                                url: img,
-                                description: `📦 ${productName}`,
-                                category: productType
-                            });
+                            const normalizedUrl = normalizeMediaUrl(img);
+                            if (normalizedUrl) {
+                                // Vérifier si l'image n'existe pas déjà (éviter doublons)
+                                const exists = productMediaList.some(m => m.url === normalizedUrl && m.type === 'image');
+                                if (!exists) {
+                                    productMediaList.push({
+                                        type: 'image',
+                                        url: normalizedUrl,
+                                        description: `📦 ${productName}`,
+                                        category: productType,
+                                        source: 'services_data'
+                                    });
+                                }
+                            }
                         });
                     }
 
                     // Vidéos du produit
                     if (product.videos && Array.isArray(product.videos)) {
                         product.videos.forEach((vid: string) => {
-                            mediaList.push({
-                                type: 'video',
-                                url: vid,
-                                description: `🎬 ${productName}`,
-                                category: productType
-                            });
+                            const normalizedUrl = normalizeMediaUrl(vid);
+                            if (normalizedUrl) {
+                                // Vérifier si la vidéo n'existe pas déjà (éviter doublons)
+                                const exists = productMediaList.some(m => m.url === normalizedUrl && m.type === 'video');
+                                if (!exists) {
+                                    productMediaList.push({
+                                        type: 'video',
+                                        url: normalizedUrl,
+                                        description: `🎬 ${productName}`,
+                                        category: productType,
+                                        source: 'services_data'
+                                    });
+                                }
+                            }
                         });
                     }
 
                     // Images de réalisations (pour prestations de service)
                     if (product.imagesRealisations && Array.isArray(product.imagesRealisations)) {
                         product.imagesRealisations.forEach((img: string) => {
-                            mediaList.push({
-                                type: 'image',
-                                url: img,
-                                description: `💼 Réalisation - ${productName}`,
-                                category: 'prestation_service'
-                            });
+                            const normalizedUrl = normalizeMediaUrl(img);
+                            if (normalizedUrl) {
+                                productMediaList.push({
+                                    type: 'image',
+                                    url: normalizedUrl,
+                                    description: `💼 Réalisation - ${productName}`,
+                                    category: 'prestation_service',
+                                    source: 'services_data'
+                                });
+                            }
                         });
                     }
 
                     // Vidéos de réalisations (pour prestations de service)
                     if (product.videosRealisations && Array.isArray(product.videosRealisations)) {
                         product.videosRealisations.forEach((vid: string) => {
-                            mediaList.push({
-                                type: 'video',
-                                url: vid,
-                                description: `💼 Réalisation - ${productName}`,
-                                category: 'prestation_service'
-                            });
+                            const normalizedUrl = normalizeMediaUrl(vid);
+                            if (normalizedUrl) {
+                                productMediaList.push({
+                                    type: 'video',
+                                    url: normalizedUrl,
+                                    description: `💼 Réalisation - ${productName}`,
+                                    category: 'prestation_service',
+                                    source: 'services_data'
+                                });
+                            }
                         });
                     }
+
+                    return productMediaList;
+                });
+
+                // Attendre tous les appels API en parallèle
+                const allProductMedia = await Promise.all(productMediaPromises);
+                allProductMedia.forEach(productMedia => {
+                    mediaList.push(...productMedia);
                 });
             }
 

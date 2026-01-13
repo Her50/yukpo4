@@ -18,8 +18,10 @@ CONTEXTE FAMILLE :
 - Temps disponible : {time_available_hours} heures/jour
 
 🎯 TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
-- Tu DOIS générer un MENU HEBDOMADAIRE avec des REPAS CONCRETS et COMPLETS (plats, recettes)
-- Chaque jour DOIT avoir : petit-déjeuner ET repas du jour (même plat pour midi et soir)
+- Tu DOIS générer un MENU HEBDOMADAIRE avec des REPAS CONCRETS, COMPLETS et RÉELS
+- Chaque jour DOIT avoir OBLIGATOIREMENT : petit-déjeuner ET repas_du_jour (même plat pour midi et soir, habitude locale)
+- ⚠️ INTERDICTION ABSOLUE : Ne JAMAIS générer seulement le petit-déjeuner sans le repas_du_jour
+- ⚠️ INTERDICTION ABSOLUE : Ne JAMAIS générer seulement le repas_du_jour sans le petit-déjeuner
 - Chaque repas DOIT être COMPLET : plat principal + accompagnements + compléments si nécessaire
 - Si un plat nécessite un complément (ex: sauce, légumes, féculents), tu DOIS le préciser clairement dans "complements"
 - Les compléments DOIVENT être cohérents avec le plat principal (ex: "Poulet DG" → complément "Riz blanc")
@@ -35,11 +37,14 @@ CONTEXTE FAMILLE :
    - Chaque repas DOIT être un repas complet et équilibré
    - Ne JAMAIS proposer un plat partiel ou incomplet
    - Si le plat principal nécessite un accompagnement, il DOIT être dans "complements"
+   - EXEMPLE INTERDIT : "Bouillie au maïs" seul → INTERDIT car incomplet
+   - EXEMPLE CORRECT : "Bouillie au maïs" avec "complements": ["Pain", "Beurre", "Confiture"] → CORRECT car complet
 
 2. COMPLÉMENTS OBLIGATOIRES :
    - Si un plat nécessite un complément (ex: riz, plantain, légumes), tu DOIS le préciser dans "complements"
    - Les compléments DOIVENT être cohérents avec le plat (ex: "Ndolé" → "Riz" ou "Plantain")
    - Ne JAMAIS laisser un plat sans complément si c'est nécessaire pour un repas complet
+   - Le champ "complements" est un array de strings (peut être vide [] si le plat est déjà complet sans complément)
 
 3. COHÉRENCE CULINAIRE :
    - Les compléments DOIVENT être adaptés au plat principal
@@ -50,6 +55,7 @@ CONTEXTE FAMILLE :
    - Utilise UNIQUEMENT des plats qui existent réellement dans la cuisine locale
    - Ne JAMAIS inventer des noms de plats
    - Utilise tes connaissances sur les plats traditionnels de la région
+   - Si tu ne connais pas un plat, ne l'invente pas - utilise un plat réel que tu connais
 
 FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
 {{
@@ -313,14 +319,14 @@ FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
             "quantity": 2.5,
             "unit": "kg",
             "estimated_price": 5000.0,
-            "associated_meals": ["Poulet DG (Lundi - Déjeuner)", "Poulet braisé (Mercredi - Dîner)"]
+            "associated_meals": ["Poulet DG (Lundi - Repas du jour)", "Poulet braisé (Mercredi - Repas du jour)"]
         }},
         {{
             "ingredient_name": "Riz",
             "quantity": 3.0,
             "unit": "kg",
             "estimated_price": 3000.0,
-            "associated_meals": ["Riz sauté (Lundi - Déjeuner)", "Riz au gras (Mardi - Déjeuner)"]
+            "associated_meals": ["Riz sauté (Lundi - Repas du jour)", "Riz au gras (Mardi - Repas du jour)"]
         }}
     ],
     "total_estimated_cost": 50000.0

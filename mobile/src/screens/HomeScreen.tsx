@@ -579,10 +579,15 @@ const HomeScreen: React.FC = () => {
                             setIsCreateService(false);
                         }}
                     >
-                        <Text style={[
-                            styles.modeButtonText,
-                            !isCreateService && styles.modeButtonTextActive
-                        ]}>
+                        <Text 
+                            style={[
+                                styles.modeButtonText,
+                                !isCreateService && styles.modeButtonTextActive
+                            ]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.85}
+                        >
                             🔍 Rechercher
                         </Text>
                     </TouchableOpacity>
@@ -597,11 +602,16 @@ const HomeScreen: React.FC = () => {
                             setIsCreateService(true);
                         }}
                     >
-                        <Text style={[
-                            styles.modeButtonText,
-                            isCreateService && styles.modeButtonTextActive
-                        ]}>
-                            ➕ Créer un service
+                        <Text 
+                            style={[
+                                styles.modeButtonText,
+                                isCreateService && styles.modeButtonTextActive
+                            ]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.75}
+                        >
+                            ➕ Créer service
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -809,26 +819,26 @@ const styles = StyleSheet.create({
     modeSelector: {
         flexDirection: 'row',
         marginHorizontal: 16,
-        marginTop: 16, // ✅ CORRIGÉ: Augmenté pour espace blanc
-        marginBottom: 16, // ✅ CORRIGÉ: Augmenté pour espace blanc
-        backgroundColor: '#F1F5F9', // ✅ CONSERVÉ: Fond gris clair pour les boutons (garder leur couleur)
+        marginTop: 16,
+        marginBottom: 16,
+        backgroundColor: '#F1F5F9',
         borderRadius: 12,
-        padding: 5,
+        padding: 4,
     },
     modeButton: {
         flex: 1,
-        paddingVertical: 14, // ✅ AUGMENTÉ: De 10 à 14 pour plus de hauteur
-        paddingHorizontal: 20, // ✅ AUGMENTÉ: De 16 à 20 pour plus de largeur
+        paddingVertical: 10,
+        paddingHorizontal: 12,
         borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 48, // ✅ AJOUTÉ: Hauteur minimale pour cohérence
+        minHeight: 40,
     },
     modeButtonActive: {
         backgroundColor: '#6366F1', // ✅ AMÉLIORÉ: Couleur indigo harmonieuse pour les boutons actifs
     },
     modeButtonText: {
-        fontSize: 16, // ✅ AUGMENTÉ: De 14 à 16 pour plus de lisibilité
+        fontSize: 13,
         fontWeight: '600',
         color: '#6B7280',
     },

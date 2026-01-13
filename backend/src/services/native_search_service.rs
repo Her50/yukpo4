@@ -659,24 +659,28 @@ FROM (
         s.category,
         -- ✅ OPTIMISÉ 2025-12-23: Score combiné depuis CTE (évite LEFT JOIN LATERAL)
         -- ✅ AMÉLIORÉ 2025-12-30: Utiliser directement ac_score sans normalisation excessive
-        GREATEST(
-            -- Score depuis autocomplete_characteristics (priorité haute) - PAS de normalisation
-            COALESCE(ac.ac_score, 0.0),
-            -- Score depuis titre/description service (priorité basse)
-            COALESCE(
-                -- ✅ CRITIQUE 2025-12-24: PRIORISER ILIKE pour gérer accents
-                -- ✅ AMÉLIORÉ 2025-12-30: Scores augmentés pour meilleure pertinence
-                CASE WHEN LOWER(COALESCE(s.data->'titre_service'->>'valeur', '')) = LOWER($1) THEN 50.0 ELSE 0.0 END +
-                CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE $1 || '%' THEN 35.0 ELSE 0.0 END +
-                CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 25.0 ELSE 0.0 END +
-                CASE WHEN COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 15.0 ELSE 0.0 END +
-                -- Recherche full-text (fallback)
-                -- ✅ AMÉLIORÉ 2025-12-24: Utiliser langue détectée
-                -- ✅ AMÉLIORÉ 2025-12-30: Multiplicateurs augmentés
-                ts_rank(to_tsvector('{}', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('{}', $1)) * 10.0 +
-                ts_rank(to_tsvector('{}', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('{}', $1)) * 5.0,
-                0.0
-            )
+        -- ✅ CORRIGÉ 2026-01-13: Pénaliser les services dont le titre matche mais les produits ne matchent pas
+        (
+            CASE 
+                -- Si les produits matchent (priorité haute), utiliser ce score
+                WHEN COALESCE(ac.ac_score, 0.0) > 0.0 THEN ac.ac_score
+                -- Si seulement le titre matche mais pas les produits, réduire le score de 70% pour pénaliser
+                ELSE COALESCE(
+                    -- ✅ CRITIQUE 2025-12-24: PRIORISER ILIKE pour gérer accents
+                    -- ✅ AMÉLIORÉ 2025-12-30: Scores augmentés pour meilleure pertinence
+                    -- ✅ CORRIGÉ 2026-01-13: Réduire de 70% si pas de match produit
+                    (CASE WHEN LOWER(COALESCE(s.data->'titre_service'->>'valeur', '')) = LOWER($1) THEN 50.0 ELSE 0.0 END +
+                    CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE $1 || '%' THEN 35.0 ELSE 0.0 END +
+                    CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 25.0 ELSE 0.0 END +
+                    CASE WHEN COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 15.0 ELSE 0.0 END +
+                    -- Recherche full-text (fallback)
+                    -- ✅ AMÉLIORÉ 2025-12-24: Utiliser langue détectée
+                    -- ✅ AMÉLIORÉ 2025-12-30: Multiplicateurs augmentés
+                    ts_rank(to_tsvector('{}', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('{}', $1)) * 10.0 +
+                    ts_rank(to_tsvector('{}', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('{}', $1)) * 5.0) * 0.3,  -- ✅ Réduction de 70% (multiplier par 0.3)
+                    0.0
+                )
+            END
         )::REAL as fulltext_score
     FROM matched_services ms
     INNER JOIN services s ON s.id = ms.service_id
@@ -1191,14 +1195,14 @@ LIMIT 100
                         CASE WHEN LOWER(unaccent(p.product_name)) = LOWER(unaccent($1)) THEN 100.0 ELSE 0.0 END,
                         -- Score début nom (80) - gère accents et troncature
                         CASE WHEN unaccent(p.product_name) ILIKE unaccent($1) || '%' THEN 80.0 ELSE 0.0 END,
-                        -- Score partiel nom (40) - gère accents et troncature
-                        CASE WHEN unaccent(p.product_name) ILIKE '%' || unaccent($1) || '%' THEN 40.0 ELSE 0.0 END,
+                        -- Score partiel nom (50) - gère accents et troncature - ✅ CORRIGÉ 2026-01-13: Augmenté de 40.0 à 50.0 pour recherches à un seul mot
+                        CASE WHEN unaccent(p.product_name) ILIKE '%' || unaccent($1) || '%' THEN 50.0 ELSE 0.0 END,
                         -- Score exact description (55) - gère accents
                         CASE WHEN LOWER(unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', ''))) = LOWER(unaccent($1)) THEN 55.0 ELSE 0.0 END,
                         -- Score début description (45) - gère accents et troncature
                         CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) ILIKE unaccent($1) || '%' THEN 45.0 ELSE 0.0 END,
-                        -- Score partiel description (35) - gère accents et troncature
-                        CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 35.0 ELSE 0.0 END,
+                        -- Score partiel description (40) - gère accents et troncature - ✅ CORRIGÉ 2026-01-13: Augmenté de 35.0 à 40.0 pour recherches à un seul mot
+                        CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 40.0 ELSE 0.0 END,
                         -- ✅ NOUVEAU: Score sous-caractéristiques (30) - gère accents et troncature
                         CASE WHEN unaccent(extract_all_product_text(p.product_data)) ILIKE '%' || unaccent($1) || '%' THEN 30.0 ELSE 0.0 END,
                         -- Score full-text nom (25) - gère accents via to_tsvector
@@ -1276,19 +1280,21 @@ LIMIT 100
                     -- PRIORITÉ 1: Score depuis produits (pré-calculé) + sous-caractéristiques
                     COALESCE(bp.max_product_score, 0.0),
                     -- PRIORITÉ 2: Score depuis titre_service (gère accents, erreurs, troncature)
+                    -- ✅ CORRIGÉ 2026-01-13: Scores augmentés pour recherches à un seul mot
                     CASE 
                         WHEN LOWER(unaccent(COALESCE(s.data->'titre_service'->>'valeur', ''))) = LOWER(unaccent($1)) THEN 70.0
                         WHEN unaccent(COALESCE(s.data->'titre_service'->>'valeur', '')) ILIKE unaccent($1) || '%' THEN 60.0
-                        WHEN unaccent(COALESCE(s.data->'titre_service'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 30.0
+                        WHEN unaccent(COALESCE(s.data->'titre_service'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 40.0  -- ✅ Augmenté de 30.0 à 40.0
                         -- ✅ NOUVEAU: Similarité trigram (gère erreurs de saisie)
                         WHEN similarity(unaccent(LOWER(COALESCE(s.data->'titre_service'->>'valeur', ''))), unaccent(LOWER($1))) > 0.3 THEN 
-                            similarity(unaccent(LOWER(COALESCE(s.data->'titre_service'->>'valeur', ''))), unaccent(LOWER($1))) * 30.0
+                            similarity(unaccent(LOWER(COALESCE(s.data->'titre_service'->>'valeur', ''))), unaccent(LOWER($1))) * 40.0  -- ✅ Augmenté de 30.0 à 40.0
                         ELSE 0.0
                     END,
                     -- PRIORITÉ 3: Score depuis category/description (gère accents, troncature)
+                    -- ✅ CORRIGÉ 2026-01-13: Scores augmentés pour recherches à un seul mot
                     CASE 
                         WHEN unaccent(COALESCE(s.data->'category'->>'valeur', s.category, '')) ILIKE '%' || unaccent($1) || '%' THEN 50.0
-                        WHEN unaccent(COALESCE(s.data->'description'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 5.0
+                        WHEN unaccent(COALESCE(s.data->'description'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 10.0  -- ✅ Augmenté de 5.0 à 10.0
                         ELSE 0.0
                     END
                 )::REAL as keyword_score
@@ -1368,9 +1374,22 @@ LIMIT 100
         let total_results_count = results.len();
 
         let mut search_results = Vec::new();
-        // ✅ CORRIGÉ 2025-12-28: Seuil minimum de pertinence pour filtrer résultats non pertinents
-        // Score < 8.0 = correspondance uniquement dans description (non pertinent)
-        const MIN_RELEVANCE_SCORE: f32 = 8.0;
+        // ✅ CORRIGÉ 2026-01-13: Seuil adaptatif selon le nombre de mots dans la requête
+        // Pour un seul mot (ex: "chaussures"), réduire le seuil pour permettre plus de résultats
+        // Pour plusieurs mots (ex: "chaussures nike"), garder un seuil plus élevé pour la pertinence
+        let query_words: Vec<&str> = query.split_whitespace().filter(|w| w.len() >= 2).collect();
+        let is_single_word_search = query_words.len() <= 1;
+        let min_relevance_score = if is_single_word_search {
+            3.0  // ✅ Seuil réduit pour recherches à un seul mot (permet correspondances partielles)
+        } else {
+            8.0  // ✅ Seuil normal pour recherches à plusieurs mots (meilleure pertinence)
+        };
+        
+        log_info(&format!(
+            "[NativeSearch] Seuil de pertinence adaptatif: {} (recherche {} mot(s))",
+            min_relevance_score,
+            query_words.len()
+        ));
         
         for row in results {
             let service_id: i32 = row.get("id");
@@ -1383,11 +1402,11 @@ LIMIT 100
             let keyword_score: f32 = row.try_get("keyword_score").unwrap_or(0.0);
             
             // Filtrer les résultats avec score trop faible (correspondances non pertinentes)
-            if keyword_score < MIN_RELEVANCE_SCORE {
+            if keyword_score < min_relevance_score {
                 log::debug!(
                     "[NativeSearch] Résultat filtré (score {} < {}): service_id={}",
                     keyword_score,
-                    MIN_RELEVANCE_SCORE,
+                    min_relevance_score,
                     service_id
                 );
                 continue;
@@ -1505,7 +1524,7 @@ LIMIT 100
         log_info(&format!(
             "[NativeSearch] Recherche par mots-clés terminée: {} résultats pertinents (score >= {}) sur {} résultats bruts",
             search_results.len(),
-            MIN_RELEVANCE_SCORE,
+            min_relevance_score,
             total_results_count
         ));
 

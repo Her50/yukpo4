@@ -37,7 +37,10 @@
                 "gradleCommand": ":app:assembleRelease",
                 "credentialsSource": "remote",
                 "image": "latest",
-                "withoutCredentials": false
+                "withoutCredentials": false,
+                "env": {
+                    "GRADLE_OPTS": "-Dorg.gradle.daemon.idletimeout=10800000 -Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=60000"
+                }
             }
         },
         "debug": {

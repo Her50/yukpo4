@@ -414,14 +414,19 @@ pub async fn rechercher_besoin_direct(
     use crate::services::global_cache_service::GlobalCacheService;
     let global_cache = GlobalCacheService::new(Some(cache_service.clone()));
 
-    // Générer la clé de cache pour cette recherche
+    // ✅ CORRIGÉ 2026-01-13: Normaliser le texte de recherche pour la clé de cache
+    // (lowercase, trim) pour éviter des clés différentes pour "Chaussures Nike" vs "chaussures nike"
+    let normalized_query = primary_keyword.to_lowercase().trim().to_string();
+    let normalized_gps = gps_zone.map(|g| g.trim().to_lowercase()).unwrap_or_default();
+
+    // Générer la clé de cache pour cette recherche (avec texte normalisé)
     let cache_key = GlobalCacheService::generate_key(
         "search",
         &[
-            ("query", &primary_keyword as &dyn std::fmt::Display),
+            ("query", &normalized_query as &dyn std::fmt::Display),
             (
                 "gps_zone",
-                &gps_zone.unwrap_or("") as &dyn std::fmt::Display,
+                &normalized_gps as &dyn std::fmt::Display,
             ),
             (
                 "radius",

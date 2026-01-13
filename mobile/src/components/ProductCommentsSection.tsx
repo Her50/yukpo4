@@ -74,6 +74,7 @@ interface ProductCommentsSectionProps {
     serviceTitle?: string;
     onOpenChat?: (userId: number, userName: string, userAvatar?: string | null) => void;
     mode?: 'inline' | 'full';
+    compact?: boolean; // ✅ NOUVEAU 2026-01-13: Mode compact pour réduire la taille
 }
 
 const REACTION_OPTIONS = [
@@ -596,7 +597,13 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         resetComposer();
     }, [resetComposer]);
 
-    const previewComments = useMemo(() => comments.slice(0, 2), [comments]);
+    // ✅ OPTIMISÉ 2026-01-13: Réduire le nombre de commentaires en mode compact
+    const previewComments = useMemo(() => {
+        if (compact) {
+            return comments.slice(0, 1); // Un seul commentaire en mode compact
+        }
+        return comments.slice(0, 2); // Deux commentaires en mode normal
+    }, [comments, compact]);
 
     const renderCommentItem = useCallback(
         ({ item, depth }: { item: ProductComment; depth: number }) => (
@@ -1008,7 +1015,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             previewComments.map((comment) => (
                                 <View key={`preview-${comment.id}`} style={styles.previewComment}>
                                     <Text style={styles.previewAuthor}>{comment.user_name}</Text>
-                                    <Text style={styles.previewContent} numberOfLines={3}>
+                                    <Text style={styles.previewContent} numberOfLines={compact ? 2 : 3}>
                                         {comment.content}
                                     </Text>
                                     <View style={styles.previewMeta}>
@@ -1072,21 +1079,21 @@ const styles = StyleSheet.create({
         shadowRadius: 12,
     },
     previewHeader: {
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 12, // ✅ RÉDUIT 2026-01-13: 20 -> 12
+        paddingVertical: 8, // ✅ RÉDUIT 2026-01-13: 16 -> 8
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 14, // ✅ RÉDUIT 2026-01-13: 18 -> 14
         fontWeight: '700',
         color: modernColors.text,
     },
     sectionSubtitle: {
-        fontSize: 13,
+        fontSize: 11, // ✅ RÉDUIT 2026-01-13: 13 -> 11
         color: modernColors.textSecondary,
-        marginTop: 4,
+        marginTop: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
     },
     viewAllButton: {
         backgroundColor: modernColors.primary,
@@ -1112,27 +1119,27 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     previewComment: {
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 12, // ✅ RÉDUIT 2026-01-13: 20 -> 12
+        paddingVertical: 8, // ✅ RÉDUIT 2026-01-13: 16 -> 8
         borderTopWidth: StyleSheet.hairlineWidth,
         borderColor: modernColors.border,
     },
     previewAuthor: {
         fontWeight: '600',
-        fontSize: 14,
+        fontSize: 12, // ✅ RÉDUIT 2026-01-13: 14 -> 12
         color: modernColors.text,
     },
     previewContent: {
-        fontSize: 13,
+        fontSize: 11, // ✅ RÉDUIT 2026-01-13: 13 -> 11
         color: modernColors.text,
-        marginTop: 6,
-        lineHeight: 18,
+        marginTop: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
+        lineHeight: 16, // ✅ RÉDUIT 2026-01-13: 18 -> 16
     },
     previewMeta: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        marginTop: 8,
+        gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
+        marginTop: 4, // ✅ RÉDUIT 2026-01-13: 8 -> 4
     },
     previewDate: {
         fontSize: 12,

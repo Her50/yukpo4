@@ -477,124 +477,112 @@ const TaxiHomeScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* ✅ AMÉLIORÉ: Barre de recherche avec labels clairs et bouton recherche visible */}
+                    {/* ✅ REFONDU: Champs compacts mais visibles - style moderne */}
                     {viewMode === 'search' && (
                         <View style={styles.searchContainer}>
-                            <Text style={styles.searchSectionTitle}>Rechercher un taxi</Text>
-                            {/* Champs départ et destination empilés verticalement */}
-                            <View style={styles.routeContainer}>
-                                <View style={styles.routeColumn}>
-                                    {/* Départ - Initialisé avec position GPS, modifiable */}
-                                    <View style={styles.routeInputContainer}>
-                                        <View style={styles.labelContainer}>
-                                            <SafeIcon name="map-pin" size={16} color="#06B6D4" type="lucide" />
-                                            <Text style={styles.routeLabel}>
-                                                Point de départ
-                                            </Text>
-                                        </View>
-                                        <LocationSelector
-                                            label=""
-                                            value={typeof depart === 'string' ? (depart ? { raw: depart, place_name: depart } : '') : depart}
-                                            onSelect={(location: LocationObject) => {
-                                                hapticPress();
-                                                setDepart(location);
-                                                setInitializingDepart(false);
-                                            }}
-                                            placeholder={initializingDepart ? "Chargement de votre position..." : "Ex: Douala, Yaoundé, votre adresse..."}
-                                            scope="all"
-                                            enrichWithBackend={true}
-                                        />
-                                        {depart && !initializingDepart && (
-                                            <TouchableOpacity
-                                                style={styles.useCurrentLocationButton}
-                                                onPress={async () => {
-                                                    hapticPress();
-                                                    if (location?.coords) {
-                                                        try {
-                                                            const address = await getLocationAddress(location);
-                                                            
-                                                            if (address) {
-                                                                const locationObject: LocationObject = {
-                                                                    raw: address,
-                                                                    place_name: address,
-                                                                    components: {
-                                                                        ville: address.split(',')[0] || address,
-                                                                    },
-                                                                    geometry: {
-                                                                        coordinates: [location.coords.longitude, location.coords.latitude],
-                                                                        type: 'Point',
-                                                                    },
-                                                                };
-                                                                setDepart(locationObject);
-                                                            } else {
-                                                                const locationObject: LocationObject = {
-                                                                    raw: `Position actuelle (${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)})`,
-                                                                    place_name: 'Ma position actuelle',
-                                                                    components: {},
-                                                                    geometry: {
-                                                                        coordinates: [location.coords.longitude, location.coords.latitude],
-                                                                        type: 'Point',
-                                                                    },
-                                                                };
-                                                                setDepart(locationObject);
-                                                            }
-                                                        } catch (err) {
-                                                            console.warn('[TaxiHomeScreen] Erreur récupération position:', err);
-                                                        }
-                                                    }
-                                                }}
-                                            >
-                                                <SafeIcon name="crosshair" size={14} color="#06B6D4" type="lucide" />
-                                                <Text style={styles.useCurrentLocationText}>Utiliser ma position actuelle</Text>
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                    
-                                    {/* Destination - Obligatoire, lieu précis via autocomplete Google */}
-                                    <View style={styles.routeInputContainer}>
-                                        <View style={styles.labelContainer}>
-                                            <SafeIcon name="navigation" size={16} color="#06B6D4" type="lucide" />
-                                            <Text style={styles.routeLabel}>
-                                                Destination *
-                                            </Text>
-                                        </View>
-                                        <LocationSelector
-                                            label=""
-                                            value={typeof destination === 'string' ? (destination ? { raw: destination, place_name: destination } : '') : destination}
-                                            onSelect={(location: LocationObject) => {
-                                                hapticPress();
-                                                setDestination(location);
-                                            }}
-                                            placeholder="Ex: Douala, Yaoundé, adresse précise..."
-                                            scope="all"
-                                            enrichWithBackend={true}
-                                        />
-                                    </View>
+                            {/* Départ - Compact */}
+                            <View style={styles.routeInputContainer}>
+                                <View style={styles.labelRow}>
+                                    <SafeIcon name="map-pin" size={14} color="#06B6D4" type="lucide" />
+                                    <Text style={styles.routeLabel}>Départ</Text>
                                 </View>
-                            </View>
-
-                            {/* Filtres */}
-                            <View style={styles.filtersRow}>
-                                <TouchableOpacity
-                                    style={[styles.filterChip, availableOnly && styles.filterChipActive]}
-                                    onPress={() => {
+                                <LocationSelector
+                                    label=""
+                                    value={typeof depart === 'string' ? (depart ? { raw: depart, place_name: depart } : '') : depart}
+                                    onSelect={(location: LocationObject) => {
                                         hapticPress();
-                                        setAvailableOnly(!availableOnly);
+                                        setDepart(location);
+                                        setInitializingDepart(false);
                                     }}
-                                >
-                                    <SafeIcon 
-                                        name={availableOnly ? 'check-circle' : 'circle'} 
-                                        size={16} 
-                                        color={availableOnly ? '#06B6D4' : '#9CA3AF'} 
-                                        type="lucide" 
-                                    />
-                                    <Text style={[styles.filterChipText, availableOnly && styles.filterChipTextActive]}>
-                                        Afficher uniquement les taxis disponibles
-                                    </Text>
-                                </TouchableOpacity>
+                                    placeholder={initializingDepart ? "Chargement position..." : "Votre adresse..."}
+                                    scope="all"
+                                    enrichWithBackend={true}
+                                />
+                                {depart && !initializingDepart && (
+                                    <TouchableOpacity
+                                        style={styles.useCurrentLocationButton}
+                                        onPress={async () => {
+                                            hapticPress();
+                                            if (location?.coords) {
+                                                try {
+                                                    const address = await getLocationAddress(location);
+                                                    
+                                                    if (address) {
+                                                        const locationObject: LocationObject = {
+                                                            raw: address,
+                                                            place_name: address,
+                                                            components: {
+                                                                ville: address.split(',')[0] || address,
+                                                            },
+                                                            geometry: {
+                                                                coordinates: [location.coords.longitude, location.coords.latitude],
+                                                                type: 'Point',
+                                                            },
+                                                        };
+                                                        setDepart(locationObject);
+                                                    } else {
+                                                        const locationObject: LocationObject = {
+                                                            raw: `Position actuelle (${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)})`,
+                                                            place_name: 'Ma position actuelle',
+                                                            components: {},
+                                                            geometry: {
+                                                                coordinates: [location.coords.longitude, location.coords.latitude],
+                                                                type: 'Point',
+                                                            },
+                                                        };
+                                                        setDepart(locationObject);
+                                                    }
+                                                } catch (err) {
+                                                    console.warn('[TaxiHomeScreen] Erreur récupération position:', err);
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <SafeIcon name="crosshair" size={12} color="#06B6D4" type="lucide" />
+                                        <Text style={styles.useCurrentLocationText}>Ma position</Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
 
-                            {/* ✅ AMÉLIORÉ: Bouton de recherche plus visible avec meilleur contraste */}
+                            {/* Destination - Compact */}
+                            <View style={styles.routeInputContainer}>
+                                <View style={styles.labelRow}>
+                                    <SafeIcon name="navigation" size={14} color="#06B6D4" type="lucide" />
+                                    <Text style={styles.routeLabel}>Destination *</Text>
+                                </View>
+                                <LocationSelector
+                                    label=""
+                                    value={typeof destination === 'string' ? (destination ? { raw: destination, place_name: destination } : '') : destination}
+                                    onSelect={(location: LocationObject) => {
+                                        hapticPress();
+                                        setDestination(location);
+                                    }}
+                                    placeholder="Adresse précise..."
+                                    scope="all"
+                                    enrichWithBackend={true}
+                                />
+                            </View>
+
+                            {/* Filtre - Compact */}
+                            <TouchableOpacity
+                                style={[styles.filterChip, availableOnly && styles.filterChipActive]}
+                                onPress={() => {
+                                    hapticPress();
+                                    setAvailableOnly(!availableOnly);
+                                }}
+                            >
+                                <SafeIcon 
+                                    name={availableOnly ? 'check-circle' : 'circle'} 
+                                    size={14} 
+                                    color={availableOnly ? '#06B6D4' : '#9CA3AF'} 
+                                    type="lucide" 
+                                />
+                                <Text style={[styles.filterChipText, availableOnly && styles.filterChipTextActive]}>
+                                    Taxis disponibles uniquement
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* Bouton recherche */}
                             <TouchableOpacity
                                 style={[
                                     styles.searchButton,
@@ -607,25 +595,20 @@ const TaxiHomeScreen: React.FC = () => {
                                 {loading ? (
                                     <>
                                         <ActivityIndicator size="small" color="#FFFFFF" />
-                                        <Text style={styles.searchButtonText}>Recherche en cours...</Text>
+                                        <Text style={styles.searchButtonText}>Recherche...</Text>
                                     </>
                                 ) : (
                                     <>
-                                        <SafeIcon name="search" size={22} color="#FFFFFF" type="lucide" />
+                                        <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
                                         <Text 
                                             style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
                                             numberOfLines={1}
                                         >
-                                            {canSearch() ? "Rechercher des taxis" : "Remplissez la destination ci-dessus"}
+                                            {canSearch() ? "Rechercher" : "Remplir destination"}
                                         </Text>
                                     </>
                                 )}
                             </TouchableOpacity>
-                            {!canSearch() && !loading && (
-                                <Text style={styles.helpText}>
-                                    💡 Sélectionnez une destination précise pour trouver les taxis disponibles près de vous
-                                </Text>
-                            )}
                         </View>
                     )}
                 </View>
@@ -1029,23 +1012,23 @@ const styles = StyleSheet.create({
         width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     headerGradient: {
-        paddingTop: 20,
-        paddingBottom: 16,
+        paddingTop: 12,
+        paddingBottom: 12,
         paddingHorizontal: 16,
         backgroundColor: '#FFFFFF',
-        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
+        width: '100%',
     },
     headerActionsBar: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 8,
         gap: 12,
     },
     headerTop: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 12,
     },
     backButton: {
         marginRight: 12,
@@ -1096,7 +1079,7 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '700',
         color: '#111827',
     },
@@ -1106,69 +1089,51 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     searchContainer: {
-        marginTop: 8,
-        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
-    },
-    // ✅ MODIFIÉ: Styles pour champs route empilés verticalement
-    routeContainer: {
-        marginBottom: 12,
-        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
-    },
-    routeColumn: {
-        flexDirection: 'column',
-        gap: 12,
-        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
+        marginTop: 4,
+        width: '100%',
+        gap: 10,
     },
     routeInputContainer: {
-        flex: 1,
         width: '100%',
-        minHeight: 90,
-        marginBottom: 16,
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 12,
+        padding: 12,
         borderWidth: 2,
         borderColor: '#E5E7EB',
         shadowColor: '#06B6D4',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.15,
         shadowRadius: 4,
-        elevation: 2,
-    },
-    searchSectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 16,
-        marginTop: 4,
-    },
-    labelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
+        elevation: 3,
         marginBottom: 8,
     },
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 6,
+    },
     routeLabel: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '700',
         color: '#111827',
-        letterSpacing: 0.2,
+        letterSpacing: 0.1,
     },
     useCurrentLocationButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        marginTop: 8,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
+        gap: 4,
+        marginTop: 6,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
         backgroundColor: '#E0F2FE',
-        borderRadius: 8,
+        borderRadius: 6,
         alignSelf: 'flex-start',
         borderWidth: 1,
         borderColor: '#06B6D4',
     },
     useCurrentLocationText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         color: '#06B6D4',
         flexShrink: 1,
@@ -1197,25 +1162,26 @@ const styles = StyleSheet.create({
     filtersRow: {
         flexDirection: 'row',
         gap: 8,
-        marginBottom: 12,
+        marginBottom: 8,
     },
     filterChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderRadius: 20,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 12,
         backgroundColor: '#F3F4F6',
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        gap: 8,
+        gap: 6,
+        marginBottom: 8,
     },
     filterChipActive: {
         backgroundColor: '#E0F2FE',
         borderColor: '#06B6D4',
     },
     filterChipText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '600',
         color: '#6B7280',
     },
@@ -1226,19 +1192,18 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 10,
+        gap: 8,
         backgroundColor: '#06B6D4',
-        borderRadius: 14,
-        paddingVertical: 18,
-        paddingHorizontal: 28,
-        marginTop: 20,
-        marginBottom: 8,
+        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        marginTop: 4,
         shadowColor: '#06B6D4',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        elevation: 6,
-        minHeight: 56,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+        minHeight: 48,
     },
     searchButtonDisabled: {
         backgroundColor: '#E5E7EB',
@@ -1246,22 +1211,22 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     searchButtonText: {
-        fontSize: 17,
+        fontSize: 15,
         fontWeight: '700',
         color: '#FFFFFF',
         flexShrink: 1,
-        letterSpacing: 0.3,
+        letterSpacing: 0.2,
     },
     searchButtonTextDisabled: {
         color: '#6B7280',
     },
     helpText: {
-        fontSize: 13,
+        fontSize: 11,
         color: '#6B7280',
         textAlign: 'center',
-        marginTop: 8,
-        paddingHorizontal: 16,
-        lineHeight: 18,
+        marginTop: 6,
+        paddingHorizontal: 12,
+        lineHeight: 16,
     },
     centerContainer: {
         flex: 1,

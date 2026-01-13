@@ -67,6 +67,10 @@ services:
         # SQLx lit les fichiers .sqlx/query-*.json au lieu de se connecter à la base
         # ✅ Nécessite que les métadonnées soient à jour (cargo sqlx prepare)
         # ✅ Compatible avec Render.com où la DB n'est pas accessible pendant le build
+      - key: ENABLE_AUTO_MIGRATIONS
+        value: "true"
+        # ✅ IMPORTANT: Migrations automatiques activées - applique les migrations au démarrage
+        # La migration fix_parcel_types_ids sera appliquée automatiquement
     healthCheckPath: /api/ping
     # ✅ NOUVEAU 2025-12-02: Health check pour load balancer
     # Le load balancer vérifie automatiquement la santé de chaque instance

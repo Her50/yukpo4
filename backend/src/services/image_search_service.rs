@@ -239,14 +239,108 @@ impl ImageSearchService {
     }
 
     /// Générer une signature vectorielle d'image (192 dimensions)
+    /// Utilise un hash perceptuel basé sur les caractéristiques visuelles de l'image
     /// Cette fonction devrait être appelée lors de l'upload d'une image
-    pub fn generate_image_signature(_image_data: &[u8]) -> AppResult<Vec<f32>> {
-        // TODO: Implémenter la génération de signature avec une bibliothèque comme `image`
-        // Pour l'instant, retourne une signature factice
-        log_warn("[ImageSearch] Génération de signature factice - À implémenter");
+    #[cfg(feature = "image_search")]
+    pub fn generate_image_signature(image_data: &[u8]) -> AppResult<Vec<f32>> {
+        use image::{ImageReader, DynamicImage};
+        use std::io::Cursor;
         
-        // Génération basique basée sur les pixels
-        // Dans une vraie implémentation, utiliser un CNN ou un algorithme de hachage perceptuel
+        log_info("[ImageSearch] Génération de signature vectorielle d'image");
+        
+        // 1. Charger l'image
+        let img = match ImageReader::new(Cursor::new(image_data))
+            .with_guessed_format()
+            .map_err(|e| AppError::Internal(format!("Erreur lecture image: {}", e)))?
+            .decode()
+        {
+            Ok(img) => img,
+            Err(e) => {
+                log_error(&format!("[ImageSearch] Erreur décodage image: {}", e));
+                return Err(AppError::Internal(format!("Erreur décodage image: {}", e)));
+            }
+        };
+        
+        // 2. Redimensionner à 16x16 pour extraction de features
+        let resized = img.resize_exact(16, 16, image::imageops::FilterType::Lanczos3);
+        
+        // 3. Convertir en niveaux de gris
+        let gray = resized.to_luma8();
+        
+        // 4. Extraire des features: histogramme de couleurs, gradients, textures
+        let mut signature = Vec::with_capacity(192);
+        
+        // 4.1. Histogramme de luminosité (64 bins)
+        let mut histogram = vec![0u32; 64];
+        for pixel in gray.pixels() {
+            let brightness = pixel[0] as usize;
+            let bin = (brightness * 64) / 256;
+            histogram[bin.min(63)] += 1;
+        }
+        // Normaliser l'histogramme
+        let total_pixels = (16 * 16) as f32;
+        for count in histogram {
+            signature.push(count as f32 / total_pixels);
+        }
+        
+        // 4.2. Gradients horizontaux et verticaux (64 features)
+        let mut gradients = Vec::new();
+        for y in 0..15 {
+            for x in 0..15 {
+                let current = gray.get_pixel(x, y)[0] as f32;
+                let right = gray.get_pixel(x + 1, y)[0] as f32;
+                let bottom = gray.get_pixel(x, y + 1)[0] as f32;
+                
+                let grad_x = (right - current) / 255.0;
+                let grad_y = (bottom - current) / 255.0;
+                
+                gradients.push(grad_x);
+                gradients.push(grad_y);
+            }
+        }
+        // Prendre les 32 premiers gradients (64 features)
+        signature.extend(gradients.into_iter().take(64));
+        
+        // 4.3. Features de texture (DCT-like features simplifiées) (64 features)
+        // Calculer des moyennes par blocs 4x4
+        for block_y in 0..4 {
+            for block_x in 0..4 {
+                let mut sum = 0u32;
+                for y in 0..4 {
+                    for x in 0..4 {
+                        let px = gray.get_pixel(block_x * 4 + x, block_y * 4 + y)[0] as u32;
+                        sum += px;
+                    }
+                }
+                let avg = (sum / 16) as f32 / 255.0;
+                signature.push(avg);
+            }
+        }
+        // Répéter pour avoir 64 features
+        while signature.len() < 192 {
+            let last_16: Vec<f32> = signature[signature.len().saturating_sub(16)..].to_vec();
+            signature.extend(last_16.iter().take(16.min(192 - signature.len())));
+        }
+        
+        // S'assurer d'avoir exactement 192 dimensions
+        signature.truncate(192);
+        while signature.len() < 192 {
+            signature.push(0.0);
+        }
+        
+        log_info(&format!(
+            "[ImageSearch] Signature générée: {} dimensions, moyenne: {:.3}",
+            signature.len(),
+            signature.iter().sum::<f32>() / signature.len() as f32
+        ));
+        
+        Ok(signature)
+    }
+    
+    /// Version fallback sans feature image_search (retourne signature factice)
+    #[cfg(not(feature = "image_search"))]
+    pub fn generate_image_signature(_image_data: &[u8]) -> AppResult<Vec<f32>> {
+        log_warn("[ImageSearch] Feature image_search non activée - signature factice");
         Ok(vec![0.0; 192])
     }
 
@@ -257,10 +351,60 @@ impl ImageSearchService {
     }
 
     /// Extraire les métadonnées d'une image
+    #[cfg(feature = "image_search")]
     pub fn extract_image_metadata(image_data: &[u8]) -> AppResult<serde_json::Value> {
-        // TODO: Implémenter l'extraction de métadonnées avec `image` crate
-        log_warn("[ImageSearch] Extraction de métadonnées factice - À implémenter");
+        use image::{ImageReader, DynamicImage};
+        use std::io::Cursor;
         
+        // Charger l'image pour extraire les métadonnées
+        let img = match ImageReader::new(Cursor::new(image_data))
+            .with_guessed_format()
+            .map_err(|e| AppError::Internal(format!("Erreur lecture image: {}", e)))?
+            .decode()
+        {
+            Ok(img) => img,
+            Err(e) => {
+                log_error(&format!("[ImageSearch] Erreur décodage image pour métadonnées: {}", e));
+                // Retourner métadonnées basiques en cas d'erreur
+                return Ok(serde_json::json!({
+                    "width": 0,
+                    "height": 0,
+                    "format": "unknown",
+                    "file_size": image_data.len(),
+                    "status": "error_decoding"
+                }));
+            }
+        };
+        
+        let (width, height) = img.dimensions();
+        let format_name = match img {
+            DynamicImage::ImageLuma8(_) => "luma8",
+            DynamicImage::ImageLumaA8(_) => "luma_a8",
+            DynamicImage::ImageRgb8(_) => "rgb8",
+            DynamicImage::ImageRgba8(_) => "rgba8",
+            DynamicImage::ImageBgr8(_) => "bgr8",
+            DynamicImage::ImageBgra8(_) => "bgra8",
+            DynamicImage::ImageLuma16(_) => "luma16",
+            DynamicImage::ImageLumaA16(_) => "luma_a16",
+            DynamicImage::ImageRgb16(_) => "rgb16",
+            DynamicImage::ImageRgba16(_) => "rgba16",
+        };
+        
+        Ok(serde_json::json!({
+            "width": width,
+            "height": height,
+            "format": format_name,
+            "file_size": image_data.len(),
+            "status": "processed",
+            "aspect_ratio": width as f64 / height as f64,
+            "pixel_count": (width * height) as u64
+        }))
+    }
+    
+    /// Version fallback sans feature image_search
+    #[cfg(not(feature = "image_search"))]
+    pub fn extract_image_metadata(image_data: &[u8]) -> AppResult<serde_json::Value> {
+        log_warn("[ImageSearch] Feature image_search non activée - métadonnées factices");
         Ok(serde_json::json!({
             "width": 1920,
             "height": 1080,

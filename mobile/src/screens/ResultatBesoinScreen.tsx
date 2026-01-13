@@ -1,9 +1,10 @@
 ﻿// @ts-nocheck
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
     Linking,
     RefreshControl,
     ScrollView,
@@ -494,8 +495,11 @@ const ResultatBesoinScreen: React.FC = () => {
             if (validServices.length === 0) {
                 setError("Aucun service trouvé. Les services recherchés ne sont plus disponibles.");
                 setServices([]);
-            } else {
-                setServices(validServices);
+                } else {
+                    // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
+                    startTransition(() => {
+                        setServices(validServices);
+                    });
 
                 // Extraire tous les produits de tous les services
                 const extractedProducts: any[] = [];
@@ -604,7 +608,10 @@ const ResultatBesoinScreen: React.FC = () => {
                     return distA - distB;
                 });
 
-                setProducts(extractedProducts);
+                // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
+                startTransition(() => {
+                    setProducts(extractedProducts);
+                });
 
                 // Récupérer les informations des prestataires
                 const userIds = validServices.map(service => service.user_id).filter(id => id);
@@ -683,12 +690,16 @@ const ResultatBesoinScreen: React.FC = () => {
             
             if (hasPrestatairesChanges) {
                 prestatairesRef.current = newPrestataires;
-                setPrestataires(newPrestataires);
+                // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
+                startTransition(() => {
+                    setPrestataires(newPrestataires);
+                });
             }
             
             // ✅ CORRIGÉ 2025-12-30: Mettre à jour les produits avec les informations des prestataires maintenant chargés
             // Vérifier s'il y a réellement des changements avant de mettre à jour pour éviter les re-renders inutiles
             // ✅ CORRECTION 2025-01-02: Debounce les mises à jour des produits pour éviter les re-renders fréquents
+            // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
             // Annuler le timeout précédent s'il existe
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
@@ -696,38 +707,40 @@ const ResultatBesoinScreen: React.FC = () => {
             
             // Créer un timeout pour regrouper les mises à jour
             updateTimeoutRef.current = setTimeout(() => {
-                setProducts(prevProducts => {
-                    let hasChanges = false;
-                    const updatedProducts = prevProducts.map(product => {
-                        const service = product._service;
-                        if (service && service.user_id) {
-                            const prestataire = newPrestataires.get(service.user_id);
-                            // ✅ Comparaison plus stricte pour éviter les mises à jour inutiles
-                            if (prestataire) {
-                                const currentPrestataireId = product._prestataire?.userId || product._prestataire?.id;
-                                const newPrestataireId = prestataire.userId || prestataire.id;
-                                if (currentPrestataireId !== newPrestataireId) {
-                                    hasChanges = true;
-                                    return {
-                                        ...product,
-                                        _prestataire: prestataire
-                                    };
+                startTransition(() => {
+                    setProducts(prevProducts => {
+                        let hasChanges = false;
+                        const updatedProducts = prevProducts.map(product => {
+                            const service = product._service;
+                            if (service && service.user_id) {
+                                const prestataire = newPrestataires.get(service.user_id);
+                                // ✅ Comparaison plus stricte pour éviter les mises à jour inutiles
+                                if (prestataire) {
+                                    const currentPrestataireId = product._prestataire?.userId || product._prestataire?.id;
+                                    const newPrestataireId = prestataire.userId || prestataire.id;
+                                    if (currentPrestataireId !== newPrestataireId) {
+                                        hasChanges = true;
+                                        return {
+                                            ...product,
+                                            _prestataire: prestataire
+                                        };
+                                    }
                                 }
                             }
+                            return product;
+                        });
+                        
+                        // Ne retourner un nouveau tableau que s'il y a des changements réels
+                        if (!hasChanges) {
+                            return prevProducts;
                         }
-                        return product;
+                        
+                        // ✅ Utiliser une copie profonde seulement si nécessaire
+                        return updatedProducts;
                     });
-                    
-                    // Ne retourner un nouveau tableau que s'il y a des changements réels
-                    if (!hasChanges) {
-                        return prevProducts;
-                    }
-                    
-                    // ✅ Utiliser une copie profonde seulement si nécessaire
-                    return updatedProducts;
                 });
                 updateTimeoutRef.current = null;
-            }, 100); // Debounce de 100ms pour regrouper les mises à jour
+            }, 150); // ✅ Debounce augmenté à 150ms pour mieux regrouper les mises à jour
             
             setPrestatairesLoaded(true);
         } catch (error) {
@@ -1768,10 +1781,12 @@ const ResultatBesoinScreen: React.FC = () => {
                         initialFilters={categoryFilters}
                     />
 
-                    {/* ✅ CORRECTION 2025-01-02: Liste optimisée avec mémorisation des items et clés stables */}
-                    <View style={styles.servicesContainer}>
-                        {allResults.length > 0 ? (
-                            allResults.map((item) => {
+                    {/* ✅ CORRIGÉ 2026-01-13: Utiliser FlatList au lieu de .map() pour de meilleures performances */}
+                    {allResults.length > 0 ? (
+                        <FlatList
+                            data={allResults}
+                            keyExtractor={(item) => item.key}
+                            renderItem={({ item }) => {
                                 if (item.type === 'service') {
                                     // ✅ CORRIGÉ 2026-01-XX: Utiliser ProductCard pour les services (même visuel que les produits)
                                     const service = item.data as Service;
@@ -1782,19 +1797,47 @@ const ResultatBesoinScreen: React.FC = () => {
                                     // ✅ Utiliser directement renderProductCard qui retourne déjà un composant avec key
                                     return renderProductCard(product);
                                 }
-                            })
-                        ) : (
-                            <View style={styles.emptyState}>
-                                <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
-                                <Text style={styles.emptyStateSubtext}>
-                                    {Object.keys(categoryFilters).length > 0
-                                        ? 'Essayez de modifier vos filtres'
-                                        : 'Essayez de modifier votre recherche'}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
+                            }}
+                            ListEmptyComponent={
+                                <View style={styles.emptyState}>
+                                    <SafeIcon name="package" size={48} color="#D1D5DB" />
+                                    <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
+                                    <Text style={styles.emptyStateSubtext}>
+                                        {Object.keys(categoryFilters).length > 0
+                                            ? 'Essayez de modifier vos filtres'
+                                            : 'Essayez de modifier votre recherche'}
+                                    </Text>
+                                </View>
+                            }
+                            // ✅ OPTIMISATIONS FlatList pour réduire le tremblement
+                            initialNumToRender={5}
+                            maxToRenderPerBatch={5}
+                            windowSize={10}
+                            removeClippedSubviews={true}
+                            updateCellsBatchingPeriod={50}
+                            getItemLayout={(data, index) => ({
+                                length: 200, // Hauteur approximative d'une carte
+                                offset: 200 * index,
+                                index,
+                            })}
+                            // ✅ Désactiver les animations inutiles
+                            scrollEventThrottle={16}
+                            // ✅ Optimiser le rendu
+                            legacyImplementation={false}
+                            style={styles.servicesContainer}
+                            contentContainerStyle={styles.servicesContainerContent}
+                        />
+                    ) : (
+                        <View style={styles.emptyState}>
+                            <SafeIcon name="package" size={48} color="#D1D5DB" />
+                            <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
+                            <Text style={styles.emptyStateSubtext}>
+                                {Object.keys(categoryFilters).length > 0
+                                    ? 'Essayez de modifier vos filtres'
+                                    : 'Essayez de modifier votre recherche'}
+                            </Text>
+                        </View>
+                    )}
 
                 </>
             )}
@@ -2055,6 +2098,9 @@ const styles = StyleSheet.create({
         color: theme.colors.text,
     },
     servicesContainer: {
+        flex: 1,
+    },
+    servicesContainerContent: {
         padding: 16,
     },
     serviceCard: {

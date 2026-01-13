@@ -7684,6 +7684,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto align_parcel_types_with_vehicle_types: {}", e),
     }
 
+    // ✅ 2026-01-15 : Corriger les IDs de parcel_types pour garantir la cohérence avec le frontend
+    match ensure_fix_parcel_types_ids(pool).await {
+        Ok(_) => info!("✅ Migration auto: fix_parcel_types_ids OK"),
+        Err(e) => error!("❌ Erreur migration auto fix_parcel_types_ids: {}", e),
+    }
+
     // ✅ 2025-12-21 : Optimisation des UPDATE services
     match ensure_optimize_services_update_performance(pool).await {
         Ok(_) => info!("✅ Migration auto: optimize_services_update_performance OK"),
@@ -11660,7 +11666,8 @@ fn normalize_sql_command(cmd: &str) -> String {
     trimmed.to_string()
 }
 
-async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {
+/// ✅ Fonction publique pour exécuter des migrations SQL avec gestion des blocs DO $$
+pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {
     // Amélioration : gérer les blocs DO $$...END $$; et CREATE FUNCTION $$...$$ LANGUAGE correctement
     // Diviser par ";" mais préserver les blocs $$...$$;
     let mut commands = Vec::new();
@@ -13735,6 +13742,23 @@ pub async fn ensure_align_parcel_types_with_vehicle_types(pool: &PgPool) -> Resu
     execute_multiple_sql_commands(pool, migration_sql).await?;
 
     info!("✅ Migration align_parcel_types_with_vehicle_types appliquée");
+    Ok(())
+}
+
+/// ✅ 2026-01-15 : Corriger les IDs de parcel_types pour garantir la cohérence avec le frontend
+/// Migration: 20260115_fix_parcel_types_ids.sql
+/// Problème: Les IDs dans parcel_types peuvent ne pas correspondre à l'ordre attendu par le frontend
+/// Solution: Réinitialiser les IDs pour qu'ils correspondent à l'ordre des slugs (1=bike, 2=motorcycle, etc.)
+pub async fn ensure_fix_parcel_types_ids(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration fix_parcel_types_ids...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20260115_fix_parcel_types_ids.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Migration fix_parcel_types_ids appliquée");
     Ok(())
 }
 

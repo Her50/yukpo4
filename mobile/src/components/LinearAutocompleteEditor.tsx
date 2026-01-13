@@ -213,18 +213,15 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         
         // ✅ PRIORITÉ 1: Utiliser productLabels si disponible (ordre garanti depuis l'IA)
         // ✅ PRIORITÉ 2: Utiliser l'ordre des clés dans sousCaracteristiques
+        // ✅ CORRECTION CRITIQUE: Ne PAS filtrer productLabels - utiliser TOUS les labels dans l'ordre
+        // pour garantir l'alignement correct avec les valeurs parsées
         const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-            ? productLabels.filter(label => label && typeof label === 'string' && sousCaracteristiques[label])
+            ? productLabels.filter(label => label && typeof label === 'string' && label.trim().length > 0)
             : Object.keys(sousCaracteristiques);
         
-        // ✅ CORRECTION: S'assurer que le nombre de labels correspond au nombre de valeurs
-        // Si on a plus de valeurs que de labels, créer des labels temporaires pour les valeurs supplémentaires
-        // Si on a plus de labels que de valeurs, utiliser les labels disponibles
-        const maxLength = Math.max(parts.length, orderedLabels.length);
-        
         return parts.map((value, index) => {
-            // Utiliser le label correspondant si disponible
-            let label = orderedLabels[index];
+            // ✅ CORRECTION: Utiliser le label à la même position que la valeur (alignement garanti)
+            let label = index < orderedLabels.length ? orderedLabels[index] : undefined;
             
             // ✅ Si pas de label disponible, essayer de trouver un label dans sousCaracteristiques
             if (!label && index < orderedLabels.length) {

@@ -5,6 +5,7 @@ use crate::core::types::{AppError, AppResult};
 use serde_json::Value;
 use sqlx::Row;
 use std::collections::HashSet;
+use md5;
 
 /// Constantes de validation
 mod validation_constants {
@@ -221,7 +222,10 @@ fn validate_product_description(data: &Value, result: &mut ProductValidationResu
 
 /// Valide les images du produit
 fn validate_product_images(data: &Value, result: &mut ProductValidationResult) {
-    let mut image_count = 0;
+    // ✅ CORRECTION CRITIQUE: Utiliser un HashSet pour dédupliquer les images
+    // Le frontend peut envoyer les mêmes images dans plusieurs champs (images, base64_image, imageUrls)
+    // Exemple: 6 images dans "images" + les mêmes 6 dans "base64_image" = 12 images comptées au lieu de 6
+    let mut unique_images = HashSet::new();
     let mut _total_size_estimate = 0;
 
     // Chercher dans différents champs
@@ -230,42 +234,51 @@ fn validate_product_images(data: &Value, result: &mut ProductValidationResult) {
     for field in &image_fields {
         if let Some(images) = data.get(field) {
             if let Some(arr) = images.as_array() {
-                image_count += arr.len();
                 for img in arr {
                     if let Some(img_str) = img.as_str() {
-                        // Estimer la taille (base64 = ~33% plus grand que binaire)
-                        let estimated_size = (img_str.len() * 3) / 4;
-                        _total_size_estimate += estimated_size;
+                        // ✅ CORRECTION: Utiliser le hash MD5 pour dédupliquer les images
+                        // Les images identiques dans différents champs seront comptées une seule fois
+                        let image_hash = format!("{:x}", md5::compute(img_str));
+                        if unique_images.insert(image_hash) {
+                            // Image unique (première occurrence), vérifier sa taille
+                            let estimated_size = (img_str.len() * 3) / 4;
+                            _total_size_estimate += estimated_size;
 
-                        // Vérifier la taille individuelle
-                        let size_mb = estimated_size / (1024 * 1024);
-                        if size_mb > validation_constants::MAX_IMAGE_SIZE_MB {
-                            result.add_error(format!(
-                                "Image trop volumineuse : {} MB (maximum {} MB)",
-                                size_mb,
-                                validation_constants::MAX_IMAGE_SIZE_MB
-                            ));
+                            let size_mb = estimated_size / (1024 * 1024);
+                            if size_mb > validation_constants::MAX_IMAGE_SIZE_MB {
+                                result.add_error(format!(
+                                    "Image trop volumineuse : {} MB (maximum {} MB)",
+                                    size_mb,
+                                    validation_constants::MAX_IMAGE_SIZE_MB
+                                ));
+                            }
                         }
+                        // Si l'image est un doublon (déjà dans le HashSet), on l'ignore
                     }
                 }
             } else if let Some(img_str) = images.as_str() {
-                image_count += 1;
-                let estimated_size = (img_str.len() * 3) / 4;
-                _total_size_estimate += estimated_size;
+                // ✅ CORRECTION: Dédupliquer aussi les images simples (string unique)
+                let image_hash = format!("{:x}", md5::compute(img_str));
+                if unique_images.insert(image_hash) {
+                    let estimated_size = (img_str.len() * 3) / 4;
+                    _total_size_estimate += estimated_size;
 
-                let size_mb = estimated_size / (1024 * 1024);
-                if size_mb > validation_constants::MAX_IMAGE_SIZE_MB {
-                    result.add_error(format!(
-                        "Image trop volumineuse : {} MB (maximum {} MB)",
-                        size_mb,
-                        validation_constants::MAX_IMAGE_SIZE_MB
-                    ));
+                    let size_mb = estimated_size / (1024 * 1024);
+                    if size_mb > validation_constants::MAX_IMAGE_SIZE_MB {
+                        result.add_error(format!(
+                            "Image trop volumineuse : {} MB (maximum {} MB)",
+                            size_mb,
+                            validation_constants::MAX_IMAGE_SIZE_MB
+                        ));
+                    }
                 }
             }
         }
     }
 
-    // Vérifier le nombre d'images
+    let image_count = unique_images.len();
+
+    // Vérifier le nombre d'images (après déduplication)
     if image_count > validation_constants::MAX_IMAGES_COUNT {
         result.add_error(format!(
             "Trop d'images : {} (maximum {})",

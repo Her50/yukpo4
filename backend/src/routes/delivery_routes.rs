@@ -54,6 +54,8 @@ struct ProductDeliveryConfigRow {
     pickup_latitude: Option<f64>,
     pickup_longitude: Option<f64>,
     required_vehicle_type_id: Option<i32>,
+    // ✅ NOUVEAU: Accepter aussi le slug pour plus de robustesse
+    vehicle_type_slug: Option<String>,
     weight_kg: Option<f64>,
     volume_cm3: Option<f64>,
     requires_isothermal: Option<bool>,
@@ -598,6 +600,67 @@ async fn save_product_delivery_config(
         ));
     }
 
+    // ✅ SOLUTION OPTIMALE: Accepter soit ID soit slug, convertir slug en ID si nécessaire
+    let mut final_vehicle_type_id = payload.required_vehicle_type_id;
+    
+    // Si un slug est fourni, le convertir en ID
+    if let Some(ref slug) = payload.vehicle_type_slug {
+        if !slug.is_empty() {
+            let repository = delivery_repository(&state)?;
+            match repository.find_parcel_type_by_slug(slug).await {
+                Ok(Some(id)) => {
+                    final_vehicle_type_id = id;
+                    log::info!(
+                        "[save_product_delivery_config] Slug '{}' converti en ID {}",
+                        slug,
+                        id
+                    );
+                }
+                Ok(None) => {
+                    return Err(AppError::BadRequest(format!(
+                        "Le type de véhicule avec le slug '{}' n'existe pas dans la base de données. Veuillez sélectionner un type de véhicule valide.",
+                        slug
+                    )));
+                }
+                Err(e) => {
+                    log::error!(
+                        "[save_product_delivery_config] Erreur lors de la recherche du slug '{}': {}",
+                        slug,
+                        e
+                    );
+                    return Err(AppError::Internal("Erreur lors de la recherche du type de véhicule".into()));
+                }
+            }
+        }
+    }
+    
+    // ✅ CORRECTION CRITIQUE: Vérifier que required_vehicle_type_id existe dans parcel_types
+    if final_vehicle_type_id > 0 {
+        let vehicle_type_exists: Option<bool> = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM parcel_types WHERE id = $1)"
+        )
+        .bind(final_vehicle_type_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[save_product_delivery_config] Erreur vérification vehicle_type_id: {}",
+                e
+            );
+            AppError::Internal("Erreur lors de la vérification du type de véhicule".into())
+        })?;
+        
+        if vehicle_type_exists != Some(true) {
+            return Err(AppError::BadRequest(format!(
+                "Le type de véhicule avec l'ID {} n'existe pas dans la base de données. Veuillez sélectionner un type de véhicule valide.",
+                final_vehicle_type_id
+            )));
+        }
+    }
+    
+    // Utiliser final_vehicle_type_id pour le reste du code
+    let payload_vehicle_type_id = final_vehicle_type_id;
+
     // ✅ 4. Vérifier si la configuration est complète (tous les champs requis présents)
     let schedule = payload.pickup_availability_schedule.as_object();
     let has_schedule = schedule.map(|s| !s.is_empty()).unwrap_or(false);
@@ -605,7 +668,7 @@ async fn save_product_delivery_config(
     let has_preparation_time = payload.preparation_time_minutes.is_some() 
         && payload.preparation_time_minutes.unwrap_or(-1) >= 0;
     let is_complete = !payload.pickup_address.trim().is_empty()
-        && payload.required_vehicle_type_id > 0
+        && payload_vehicle_type_id > 0
         && has_schedule
         && has_preparation_time; // ✅ CORRIGÉ: Vérifier que le temps de préparation est défini (peut être 0 pour instantané)
 
@@ -684,7 +747,7 @@ async fn save_product_delivery_config(
     .bind(&payload.pickup_address)
     .bind(payload.pickup_latitude)
     .bind(payload.pickup_longitude)
-    .bind(payload.required_vehicle_type_id)
+    .bind(payload_vehicle_type_id) // ✅ CORRIGÉ: Utiliser l'ID final (converti depuis slug si nécessaire)
     .bind(payload.preparation_time_minutes) // ✅ NOUVEAU: Temps de préparation
     .bind(payload.weight_kg)
     .bind(payload.volume_cm3)

@@ -300,9 +300,10 @@ const TicketVoyageHomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            {/* ✅ REFONDU: Header avec fond blanc pour meilleur contraste - TOUJOURS VISIBLE */}
+            {/* ✅ REFONDU: Header compact avec tous les champs visibles */}
             <View style={styles.headerContainer}>
                 <View style={styles.headerGradient}>
+                    {/* Header compact */}
                     <View style={styles.headerTop}>
                         <TouchableOpacity
                             onPress={() => {
@@ -311,15 +312,10 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             }}
                             style={styles.backButton}
                         >
-                            <SafeIcon name="arrow-left" size={24} color="#111827" />
+                            <SafeIcon name="arrow-left" size={22} color="#111827" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>Tickets de Voyage</Text>
-                            {totalResults > 0 && (
-                                <Text style={styles.headerSubtitle}>
-                                    {totalResults} voyage{totalResults > 1 ? 's' : ''} disponible{totalResults > 1 ? 's' : ''}
-                                </Text>
-                            )}
                         </View>
                         <TouchableOpacity
                             onPress={() => {
@@ -330,7 +326,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         >
                             <SafeIcon 
                                 name="sliders-h" 
-                                size={22} 
+                                size={20} 
                                 color="#6B7280" 
                                 type="lucide" 
                             />
@@ -342,50 +338,47 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* ✅ AMÉLIORÉ: Champs ville de départ et ville d'arrivée avec labels clairs et bouton recherche visible */}
+                    {/* ✅ REFONDU: Champs compacts mais visibles - style moderne */}
                     <View style={styles.searchContainer}>
-                        <Text style={styles.searchSectionTitle}>Rechercher un trajet</Text>
-                        <View style={styles.citiesColumn}>
-                            <View style={styles.cityInputContainer}>
-                                <View style={styles.labelContainer}>
-                                    <SafeIcon name="map-pin" size={16} color="#8B5CF6" type="lucide" />
-                                    <Text style={styles.cityLabel}>
-                                        Ville de départ *
-                                    </Text>
-                                </View>
-                                <LocationSelector
-                                    label=""
-                                    value={typeof departureCity === 'string' ? (departureCity ? { raw: departureCity, place_name: departureCity } : '') : departureCity}
-                                    onSelect={(location: LocationObject) => {
-                                        hapticPress();
-                                        setDepartureCity(location);
-                                    }}
-                                    placeholder="Ex: Douala, Yaoundé, Bafoussam..."
-                                    scope="all"
-                                    enrichWithBackend={true}
-                                />
+                        {/* Départ - Compact */}
+                        <View style={styles.cityInputContainer}>
+                            <View style={styles.labelRow}>
+                                <SafeIcon name="map-pin" size={14} color="#8B5CF6" type="lucide" />
+                                <Text style={styles.cityLabel}>Départ *</Text>
                             </View>
-                            <View style={styles.cityInputContainer}>
-                                <View style={styles.labelContainer}>
-                                    <SafeIcon name="navigation" size={16} color="#8B5CF6" type="lucide" />
-                                    <Text style={styles.cityLabel}>
-                                        Ville d'arrivée *
-                                    </Text>
-                                </View>
-                                <LocationSelector
-                                    label=""
-                                    value={typeof arrivalCity === 'string' ? (arrivalCity ? { raw: arrivalCity, place_name: arrivalCity } : '') : arrivalCity}
-                                    onSelect={(location: LocationObject) => {
-                                        hapticPress();
-                                        setArrivalCity(location);
-                                    }}
-                                    placeholder="Ex: Douala, Yaoundé, Bafoussam..."
-                                    scope="all"
-                                    enrichWithBackend={true}
-                                />
-                            </View>
+                            <LocationSelector
+                                label=""
+                                value={typeof departureCity === 'string' ? (departureCity ? { raw: departureCity, place_name: departureCity } : '') : departureCity}
+                                onSelect={(location: LocationObject) => {
+                                    hapticPress();
+                                    setDepartureCity(location);
+                                }}
+                                placeholder="Ville de départ..."
+                                scope="all"
+                                enrichWithBackend={true}
+                            />
                         </View>
-                        {/* ✅ AMÉLIORÉ: Bouton de recherche plus visible avec meilleur contraste */}
+
+                        {/* Arrivée - Compact */}
+                        <View style={styles.cityInputContainer}>
+                            <View style={styles.labelRow}>
+                                <SafeIcon name="navigation" size={14} color="#8B5CF6" type="lucide" />
+                                <Text style={styles.cityLabel}>Arrivée *</Text>
+                            </View>
+                            <LocationSelector
+                                label=""
+                                value={typeof arrivalCity === 'string' ? (arrivalCity ? { raw: arrivalCity, place_name: arrivalCity } : '') : arrivalCity}
+                                onSelect={(location: LocationObject) => {
+                                    hapticPress();
+                                    setArrivalCity(location);
+                                }}
+                                placeholder="Ville d'arrivée..."
+                                scope="all"
+                                enrichWithBackend={true}
+                            />
+                        </View>
+
+                        {/* Bouton recherche */}
                         <TouchableOpacity
                             style={[
                                 styles.searchButton,
@@ -398,22 +391,17 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             {loading ? (
                                 <>
                                     <ActivityIndicator size="small" color="#FFFFFF" />
-                                    <Text style={styles.searchButtonText}>Recherche en cours...</Text>
+                                    <Text style={styles.searchButtonText}>Recherche...</Text>
                                 </>
                             ) : (
                                 <>
-                                    <SafeIcon name="search" size={22} color="#FFFFFF" type="lucide" />
+                                    <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
                                     <Text style={styles.searchButtonText}>
-                                        {canSearch() ? "Rechercher des tickets" : "Remplissez les champs ci-dessus"}
+                                        {canSearch() ? "Rechercher" : "Remplir départ/arrivée"}
                                     </Text>
                                 </>
                             )}
                         </TouchableOpacity>
-                        {!canSearch() && !loading && (
-                            <Text style={styles.helpText}>
-                                💡 Sélectionnez une ville de départ et une ville d'arrivée pour commencer votre recherche
-                            </Text>
-                        )}
                     </View>
                 </View>
 
@@ -940,16 +928,16 @@ const styles = StyleSheet.create({
         width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
     },
     headerGradient: {
-        backgroundColor: '#FFFFFF', // ✅ REFONDU: Fond blanc au lieu de gradient violet
-        paddingTop: 20,
-        paddingBottom: 16,
+        backgroundColor: '#FFFFFF',
+        paddingTop: 12,
+        paddingBottom: 12,
         paddingHorizontal: 16,
-        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
+        width: '100%',
     },
     headerTop: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 12,
     },
     backButton: {
         marginRight: 12,
@@ -958,13 +946,13 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '700',
-        color: '#111827', // ✅ REFONDU: Texte noir sur fond blanc
+        color: '#111827',
     },
     headerSubtitle: {
-        fontSize: 12,
-        color: '#6B7280', // ✅ REFONDU: Texte gris sur fond blanc
+        fontSize: 11,
+        color: '#6B7280',
         marginTop: 2,
     },
     filterButton: {
@@ -994,67 +982,52 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     searchContainer: {
-        marginTop: 8,
-        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
-    },
-    citiesColumn: {
-        flexDirection: 'column',
-        gap: 12,
-        width: '100%', // ✅ NOUVEAU: Assurer la largeur complète
+        marginTop: 4,
+        width: '100%',
+        gap: 10,
     },
     cityInputContainer: {
-        flex: 1,
         width: '100%',
-        minHeight: 90,
-        marginBottom: 16,
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 12,
+        padding: 12,
         borderWidth: 2,
         borderColor: '#E5E7EB',
         shadowColor: '#8B5CF6',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.15,
         shadowRadius: 4,
-        elevation: 2,
-    },
-    searchSectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 16,
-        marginTop: 4,
-    },
-    labelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
+        elevation: 3,
         marginBottom: 8,
     },
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 6,
+    },
     cityLabel: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '700',
         color: '#111827',
-        letterSpacing: 0.2,
+        letterSpacing: 0.1,
     },
-    // ✅ AMÉLIORÉ: Styles pour le bouton de recherche - plus visible
     searchButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#8B5CF6',
-        borderRadius: 14,
-        paddingVertical: 18,
-        paddingHorizontal: 28,
-        marginTop: 20,
-        marginBottom: 8,
-        gap: 10,
+        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        marginTop: 4,
+        gap: 8,
         shadowColor: '#8B5CF6',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        elevation: 6,
-        minHeight: 56,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+        minHeight: 48,
     },
     searchButtonDisabled: {
         backgroundColor: '#E5E7EB',
@@ -1062,22 +1035,22 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     searchButtonText: {
-        fontSize: 17,
+        fontSize: 15,
         fontWeight: '700',
         color: '#FFFFFF',
         flexShrink: 1,
-        letterSpacing: 0.3,
+        letterSpacing: 0.2,
     },
     searchButtonTextDisabled: {
         color: '#6B7280',
     },
     helpText: {
-        fontSize: 13,
+        fontSize: 11,
         color: '#6B7280',
         textAlign: 'center',
-        marginTop: 8,
-        paddingHorizontal: 16,
-        lineHeight: 18,
+        marginTop: 6,
+        paddingHorizontal: 12,
+        lineHeight: 16,
     },
     quickFiltersScroll: {
         maxHeight: 60,

@@ -1968,78 +1968,94 @@ pub async fn generate_product_video(
         ..Default::default()
     };
 
-    if renderer_response.is_none() {
-        let mixed_audio_path = audio_pipeline::mix_media_audio_tracks(
-            &session_dir,
-            &session_dir.join("combined.mp4"),
-            music_track.as_deref(),
-            voiceover_track.as_deref(),
-            &sfx_layers,
-            &audio_config,
-        )
-        .await?;
-        progress_steps.push(ProgressStep::completed(
-            "audio_mix",
-            "Mix audio finalisé",
-            Some(format!(
-                "musique: {} | voix: {} | sfx: {}",
-                music_track.is_some(),
-                voiceover_track.is_some(),
-                sfx_layers.len()
-            )),
-        ));
-        if let Some(job_id) = job_id {
-            // ✅ Ignorer les erreurs de progression intermédiaire (non critiques)
-            let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
-        }
+    // ✅ CORRIGÉ: Toujours faire le mixage audio, même si la vidéo immersive a été rendue
+    // La vidéo immersive rendue n'inclut pas l'audio (musique, voix, SFX), il faut le muxer
+    let video_source_for_audio = if let Some(ref renderer_resp) = renderer_response {
+        // Utiliser la vidéo immersive rendue comme source vidéo
+        renderer_resp.master_video.clone()
+    } else {
+        // Utiliser combined.mp4 (fallback FFmpeg)
+        session_dir.join("combined.mp4")
+    };
 
-        let mastered_audio_path = if let Some(service) = state.audio_mastering.clone() {
+    // ✅ CORRIGÉ: Toujours mixer l'audio, même si la vidéo immersive a été rendue
+    let mixed_audio_path = audio_pipeline::mix_media_audio_tracks(
+        &session_dir,
+        &video_source_for_audio,
+        music_track.as_deref(),
+        voiceover_track.as_deref(),
+        &sfx_layers,
+        &audio_config,
+    )
+    .await?;
+    progress_steps.push(ProgressStep::completed(
+        "audio_mix",
+        "Mix audio finalisé",
+        Some(format!(
+            "musique: {} | voix: {} | sfx: {}",
+            music_track.is_some(),
+            voiceover_track.is_some(),
+            sfx_layers.len()
+        )),
+    ));
+    if let Some(job_id) = job_id {
+        // ✅ Ignorer les erreurs de progression intermédiaire (non critiques)
+        let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
+    }
+
+    let mastered_audio_path = if let Some(service) = state.audio_mastering.clone() {
             let mastering_dir = session_dir.join("mastering");
-            match service
-                .master_audio(&mixed_audio_path, &mastering_dir, job_id)
-                .await
-            {
-                Ok(AudioMasteringOutcome::Completed(result)) => {
-                    info!(
-                        "[VideoGeneration] Mastering premium appliqué via {}",
-                        result.provider
-                    );
-                    Some(result.mastered_path)
-                }
-                Ok(AudioMasteringOutcome::Pending {
-                    job_id: audio_job_id,
-                }) => {
-                    info!(
-                        "[VideoGeneration] Mastering premium en attente (job_id={})",
-                        audio_job_id
-                    );
-                    None
-                }
-                Err(err) => {
-                    warn!(
-                        "[VideoGeneration] Mastering premium indisponible, fallback local: {err}"
-                    );
-                    None
-                }
+        match service
+            .master_audio(&mixed_audio_path, &mastering_dir, job_id)
+            .await
+        {
+            Ok(AudioMasteringOutcome::Completed(result)) => {
+                info!(
+                    "[VideoGeneration] Mastering premium appliqué via {}",
+                    result.provider
+                );
+                Some(result.mastered_path)
             }
-        } else {
-            None
-        };
-
-        let final_audio_source = mastered_audio_path.as_ref().unwrap_or(&mixed_audio_path);
-
-        let combined_path = session_dir.join("combined.mp4");
-        let final_path = session_dir.join("final.mp4");
-
-        // ✅ VALIDATION CRITIQUE: Vérifier que combined.mp4 existe avant muxage
-        if !combined_path.exists() {
-            let error_msg = format!(
-                "combined.mp4 introuvable avant muxage audio. Chemin: {:?}",
-                combined_path
-            );
-            error!("[VideoGeneration] ❌ {}", error_msg);
-            return Err(AppError::Internal(error_msg));
+            Ok(AudioMasteringOutcome::Pending {
+                job_id: audio_job_id,
+            }) => {
+                info!(
+                    "[VideoGeneration] Mastering premium en attente (job_id={})",
+                    audio_job_id
+                );
+                None
+            }
+            Err(err) => {
+                warn!(
+                    "[VideoGeneration] Mastering premium indisponible, fallback local: {err}"
+                );
+                None
+            }
         }
+    } else {
+        None
+    };
+
+    let final_audio_source = mastered_audio_path.as_ref().unwrap_or(&mixed_audio_path);
+
+    // ✅ CORRIGÉ: Utiliser la vidéo immersive rendue si disponible, sinon combined.mp4
+    let video_source_for_mux = if let Some(ref renderer_resp) = renderer_response {
+        renderer_resp.master_video.clone()
+    } else {
+        session_dir.join("combined.mp4")
+    };
+
+    let final_path = session_dir.join("final.mp4");
+
+    // ✅ VALIDATION CRITIQUE: Vérifier que la source vidéo existe avant muxage
+    if !video_source_for_mux.exists() {
+        let error_msg = format!(
+            "Source vidéo introuvable avant muxage audio. Chemin: {:?}",
+            video_source_for_mux
+        );
+        error!("[VideoGeneration] ❌ {}", error_msg);
+        return Err(AppError::Internal(error_msg));
+    }
 
         // ✅ VALIDATION CRITIQUE: Vérifier que l'audio existe avant muxage
         if !final_audio_source.exists() {
@@ -2051,60 +2067,59 @@ pub async fn generate_product_video(
             return Err(AppError::Internal(error_msg));
         }
 
-        info!(
-            "[VideoGeneration] Muxage vidéo+audio: combined={:?}, audio={:?}, output={:?}",
-            combined_path, final_audio_source, final_path
+    info!(
+        "[VideoGeneration] Muxage vidéo+audio: video={:?}, audio={:?}, output={:?}",
+        video_source_for_mux, final_audio_source, final_path
+    );
+
+    audio_pipeline::mux_video_with_audio(
+        &video_source_for_mux,
+        final_audio_source,
+        &final_path,
+    )
+    .await
+    .map_err(|err| {
+        error!(
+            "[VideoGeneration] ❌ Échec muxage vidéo+audio: {}. Video: {:?}, Audio: {:?}",
+            err, video_source_for_mux, final_audio_source
         );
+        AppError::Internal(format!(
+            "Échec muxage vidéo+audio: {}. Vérifiez que les fichiers source existent et sont valides.",
+            err
+        ))
+    })?;
 
-        audio_pipeline::mux_video_with_audio(
-            &combined_path,
-            final_audio_source,
-            &final_path,
-        )
-        .await
-        .map_err(|err| {
-            error!(
-                "[VideoGeneration] ❌ Échec muxage vidéo+audio: {}. Combined: {:?}, Audio: {:?}",
-                err, combined_path, final_audio_source
-            );
-            AppError::Internal(format!(
-                "Échec muxage vidéo+audio: {}. Vérifiez que les fichiers source existent et sont valides.",
-                err
-            ))
-        })?;
+    // ✅ VALIDATION CRITIQUE: Vérifier que final.mp4 a été créé après muxage
+    if !final_path.exists() {
+        let error_msg = format!(
+            "Le muxage a échoué: final.mp4 n'existe pas. Chemin: {:?}",
+            final_path
+        );
+        error!("[VideoGeneration] ❌ {}", error_msg);
+        return Err(AppError::Internal(error_msg));
+    }
 
-        // ✅ VALIDATION CRITIQUE: Vérifier que final.mp4 a été créé après muxage
-        if !final_path.exists() {
-            let error_msg = format!(
-                "Le muxage a échoué: final.mp4 n'existe pas. Chemin: {:?}",
-                final_path
-            );
+    // Vérifier que final.mp4 n'est pas vide
+    if let Ok(metadata) = fs::metadata(&final_path).await {
+        if metadata.len() == 0 {
+            let error_msg = "final.mp4 a été créé mais est vide (0 bytes)".to_string();
             error!("[VideoGeneration] ❌ {}", error_msg);
             return Err(AppError::Internal(error_msg));
         }
-
-        // Vérifier que final.mp4 n'est pas vide
-        if let Ok(metadata) = fs::metadata(&final_path).await {
-            if metadata.len() == 0 {
-                let error_msg = "final.mp4 a été créé mais est vide (0 bytes)".to_string();
-                error!("[VideoGeneration] ❌ {}", error_msg);
-                return Err(AppError::Internal(error_msg));
-            }
-            info!(
-                "[VideoGeneration] ✅ Muxage réussi: final.mp4 ({} bytes, {:.2} MB)",
-                metadata.len(),
-                metadata.len() as f64 / 1_048_576.0
-            );
-        }
-        progress_steps.push(ProgressStep::completed(
-            "video_mux",
-            "Vidéo master finalisée",
-            Some(format!("durée {}s", duration_seconds)),
-        ));
-        if let Some(job_id) = job_id {
-            // ✅ Ignorer les erreurs de progression intermédiaire (non critiques)
-            let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
-        }
+        info!(
+            "[VideoGeneration] ✅ Muxage réussi: final.mp4 ({} bytes, {:.2} MB)",
+            metadata.len(),
+            metadata.len() as f64 / 1_048_576.0
+        );
+    }
+    progress_steps.push(ProgressStep::completed(
+        "video_mux",
+        "Vidéo master finalisée",
+        Some(format!("durée {}s", duration_seconds)),
+    ));
+    if let Some(job_id) = job_id {
+        // ✅ Ignorer les erreurs de progression intermédiaire (non critiques)
+        let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
     }
 
     let final_filename = format!("product_video_{}.mp4", session_id);
@@ -2465,10 +2480,11 @@ pub async fn generate_product_video(
             ai_metadata,
             ai_analyzed_at,
             ai_model_used,
-            ai_confidence
+            ai_confidence,
+            uploaded_at
         )
         VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), $12, $13
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), $12, $13, NOW()
         )
         RETURNING id
         "#,
@@ -3366,6 +3382,7 @@ async fn append_video_to_service_data(
     subtitle_url: Option<String>,
     variant_urls: &[(String, String)],
 ) -> AppResult<()> {
+    // ✅ PHASE 1: Sauvegarder dans services.data->'produits'[index].videos (ancien système)
     if let Some(array) = locate_product_array_mut(service_data) {
         if let Some(product_value) = array.get_mut(product_index as usize) {
             if let Value::Object(obj) = product_value {
@@ -3387,7 +3404,7 @@ async fn append_video_to_service_data(
                     }
                 }
 
-                if let Some(url) = subtitle_url {
+                if let Some(ref url) = subtitle_url { // ✅ CORRIGÉ: utiliser ref pour éviter le move
                     let mut current_subtitles = match obj.get_mut("videos_subtitles") {
                         Some(Value::Array(existing)) => existing.clone(),
                         Some(_) => Vec::new(),
@@ -3427,7 +3444,140 @@ async fn append_video_to_service_data(
         }
     }
 
-    // ✅ CORRIGÉ: Utiliser retry_query pour gérer les erreurs TLS
+    // ✅ NOUVEAU 2026-01-13: Sauvegarder aussi dans service_products.product_data->'videos' (nouveau système)
+    // Cela garantit que les vidéos sont retrouvées lors des recherches qui utilisent service_products
+    let pool = state.pg.clone();
+    let video_url_clone = video_url.clone();
+    let subtitle_url_clone = subtitle_url.clone();
+    let variant_urls_clone: Vec<(String, String)> = variant_urls.iter().cloned().collect();
+    
+    // Mettre à jour service_products.product_data->'videos' en utilisant jsonb_set
+    let update_service_products_result = crate::utils::db_retry::retry_query(
+        &pool,
+        || {
+            let video_url_clone = video_url_clone.clone();
+            let subtitle_url_clone = subtitle_url_clone.clone();
+            let variant_urls_clone = variant_urls_clone.clone();
+            let pool_clone = pool.clone();
+            let service_id_clone = service_id;
+            let product_index_clone = product_index;
+            
+            Box::pin(async move {
+                // Récupérer le product_data actuel
+                let product_row = sqlx::query!(
+                    "SELECT product_data FROM service_products WHERE service_id = $1 AND product_index = $2",
+                    service_id_clone,
+                    product_index_clone
+                )
+                .fetch_optional(&pool_clone)
+                .await?;
+                
+                if let Some(row) = product_row {
+                    let mut product_data = row.product_data;
+                    
+                    // Ajouter la vidéo au tableau videos
+                    if let Some(obj) = product_data.as_object_mut() {
+                        match obj.get_mut("videos") {
+                            Some(Value::Array(existing)) => {
+                                // Vérifier si la vidéo n'existe pas déjà pour éviter les doublons
+                                let exists = existing.iter().any(|v| {
+                                    v.as_str().map(|s| s == video_url_clone).unwrap_or(false)
+                                });
+                                if !exists {
+                                    existing.push(Value::String(video_url_clone.clone()));
+                                }
+                            }
+                            Some(_) => {
+                                obj.insert(
+                                    "videos".to_string(),
+                                    Value::Array(vec![Value::String(video_url_clone.clone())]),
+                                );
+                            }
+                            None => {
+                                obj.insert(
+                                    "videos".to_string(),
+                                    Value::Array(vec![Value::String(video_url_clone.clone())]),
+                                );
+                            }
+                        }
+                        
+                        // Ajouter les sous-titres si disponibles
+                        if let Some(url) = subtitle_url_clone {
+                            let mut current_subtitles = match obj.get_mut("videos_subtitles") {
+                                Some(Value::Array(existing)) => existing.clone(),
+                                Some(_) => Vec::new(),
+                                None => Vec::new(),
+                            };
+                            
+                            current_subtitles.push(json!({
+                                "url": url,
+                                "created_at": Utc::now(),
+                            }));
+                            obj.insert(
+                                "videos_subtitles".to_string(),
+                                Value::Array(current_subtitles),
+                            );
+                        }
+                        
+                        // Ajouter les variantes si disponibles
+                        if !variant_urls_clone.is_empty() {
+                            let mut current_variants = match obj.get_mut("videos_variants") {
+                                Some(Value::Array(existing)) => existing.clone(),
+                                Some(_) => Vec::new(),
+                                None => Vec::new(),
+                            };
+                            
+                            for (format, url) in variant_urls_clone {
+                                current_variants.push(json!({
+                                    "format": format,
+                                    "url": url,
+                                }));
+                            }
+                            
+                            obj.insert(
+                                "videos_variants".to_string(),
+                                Value::Array(current_variants),
+                            );
+                        }
+                    }
+                    
+                    // Mettre à jour service_products
+                    sqlx::query(
+                        "UPDATE service_products SET product_data = $1, updated_at = NOW() WHERE service_id = $2 AND product_index = $3"
+                    )
+                    .bind(&product_data)
+                    .bind(service_id_clone)
+                    .bind(product_index_clone)
+                    .execute(&pool_clone)
+                    .await?;
+                    
+                    info!(
+                        "[VideoGeneration] ✅ Vidéo ajoutée à service_products.product_data->'videos' (service_id={}, product_index={})",
+                        service_id_clone, product_index_clone
+                    );
+                } else {
+                    warn!(
+                        "[VideoGeneration] ⚠️ service_products non trouvé pour service_id={}, product_index={}, vidéo sauvegardée uniquement dans services.data",
+                        service_id_clone, product_index_clone
+                    );
+                }
+                
+                Ok::<_, sqlx::Error>(())
+            })
+        },
+        10, // 10 tentatives max avec backoff adaptatif pour TLS
+    )
+    .await;
+    
+    if let Err(err) = update_service_products_result {
+        warn!(
+            "[VideoGeneration] ⚠️ Erreur mise à jour service_products (après retries): {}. La vidéo est sauvegardée dans services.data mais pas dans service_products.product_data.",
+            err
+        );
+        // Ne pas faire échouer le processus, la vidéo est quand même sauvegardée dans services.data
+    }
+
+    // ✅ PHASE 2: Mettre à jour services.data (ancien système pour compatibilité)
     let service_data_clone = serde_json::Value::clone(service_data);
     let service_id_clone = service_id;
     let pool = state.pg.clone();

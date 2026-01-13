@@ -17,6 +17,7 @@ import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPost } from '../services/api';
+import { mediaService } from '../services/mediaService';
 import { modernColors } from '../theme/modernTheme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -32,6 +33,23 @@ type FeedItem = {
     savesCount?: number;
 };
 
+// ✅ NOUVEAU 2026-01-13: Fonction pour normaliser les URLs de vidéos
+const normalizeVideoUrl = (url: any): string | null => {
+    if (!url) return null;
+    const urlStr = typeof url === 'string' ? url : String(url);
+    if (!urlStr || typeof urlStr !== 'string') return null;
+    const trimmed = urlStr.trim();
+    if (!trimmed) return null;
+    
+    // Si c'est déjà une URL complète, retourner tel quel
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+        return trimmed;
+    }
+    
+    // Normaliser via mediaService pour obtenir l'URL CDN
+    return mediaService.getVideoUrl(trimmed) || trimmed;
+};
+
 const normalizeFeed = (raw: any[]): FeedItem[] => {
     // ✅ CORRIGÉ: Vérifier que raw est un tableau avant d'utiliser .map
     if (!Array.isArray(raw)) {
@@ -40,12 +58,17 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
     }
     return raw
         .map((item, index) => {
-            const video =
+            const rawVideo =
                 item?.videoUrl ||
                 item?.video ||
                 item?.data?.video ||
                 item?.data?.videos?.[0];
+            if (!rawVideo) return null;
+            
+            // ✅ NOUVEAU 2026-01-13: Normaliser l'URL de la vidéo
+            const video = normalizeVideoUrl(rawVideo);
             if (!video) return null;
+            
             const title =
                 item?.titre ||
                 item?.title ||
@@ -57,17 +80,22 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 item?.content_id ||
                 item?.data?.id ||
                 `${index}-${video}`;
+            
+            // ✅ NOUVEAU 2026-01-13: Normaliser aussi l'URL de la miniature
+            const rawThumbnail =
+                item?.thumbnail ||
+                item?.cover ||
+                item?.data?.thumbnail ||
+                item?.data?.cover;
+            const thumbnail = rawThumbnail ? (normalizeVideoUrl(rawThumbnail) || mediaService.getImageUrl(String(rawThumbnail)) || String(rawThumbnail)) : undefined;
+            
             return {
                 id: String(id),
                 contentId: String(item?.content_id || id),
                 titre: String(title),
                 description: item?.description || item?.data?.description,
                 videoUrl: video,
-                thumbnail:
-                    item?.thumbnail ||
-                    item?.cover ||
-                    item?.data?.thumbnail ||
-                    item?.data?.cover,
+                thumbnail: thumbnail,
                 likesCount: Number(
                     item?.likes ??
                         item?.data?.likes ??

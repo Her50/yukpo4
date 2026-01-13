@@ -401,6 +401,43 @@ impl MenuPlanningAIService {
             menu.meals.sort_by_key(|m| m.day);
         }
 
+        // ✅ NOUVEAU: Validation - S'assurer que chaque jour a petit_dejeuner ET repas_du_jour
+        for meal in &mut menu.meals {
+            // Vérifier que petit_dejeuner est présent
+            if meal.petit_dejeuner.is_none() {
+                log::warn!(
+                    "[MenuPlanningAIService] Petit-déjeuner manquant pour {}, ajout d'un repas par défaut",
+                    meal.day_name
+                );
+                meal.petit_dejeuner = Some(MealItem {
+                    recipe_name: "Menu en cours de génération".to_string(),
+                    recipe_id: None,
+                    servings: profile.total_members,
+                    prep_time_minutes: None,
+                    estimated_cost: Some(500.0),
+                    calories: None,
+                    complements: vec![],
+                });
+            }
+            
+            // ✅ CRITIQUE: Vérifier que repas_du_jour est présent
+            if meal.repas_du_jour.is_none() {
+                log::warn!(
+                    "[MenuPlanningAIService] ⚠️ REPAS_DU_JOUR MANQUANT pour {} - AJOUT D'UN REPAS PAR DÉFAUT",
+                    meal.day_name
+                );
+                meal.repas_du_jour = Some(MealItem {
+                    recipe_name: "Menu en cours de génération".to_string(),
+                    recipe_id: None,
+                    servings: profile.total_members,
+                    prep_time_minutes: None,
+                    estimated_cost: Some(1500.0),
+                    calories: None,
+                    complements: vec![],
+                });
+            }
+        }
+
         // ✅ NOUVEAU: Validation - S'assurer que tous les repas ont des coûts estimés
         let mut total_cost = 0.0;
         for meal in &mut menu.meals {
@@ -414,7 +451,9 @@ impl MenuPlanningAIService {
                 if repas_jour.estimated_cost.is_none() {
                     repas_jour.estimated_cost = Some(1500.0); // Coût par défaut
                 }
-                total_cost += repas_jour.estimated_cost.unwrap_or(0.0) * 2.0; // Compter 2 fois (midi et soir)
+                // ✅ CORRIGÉ: repas_du_jour est le même repas pour midi et soir, donc le coût est déjà pour les 2 repas
+                // Pas besoin de multiplier par 2 car estimated_cost représente déjà le coût total de préparation
+                total_cost += repas_jour.estimated_cost.unwrap_or(0.0);
             } else if meal.dejeuner.is_some() || meal.diner.is_some() {
                 // Compatibilité avec ancien format
                 if let Some(ref mut dejeuner) = meal.dejeuner {
@@ -656,7 +695,11 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
 
 🎯 TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
 - Tu DOIS générer un MENU HEBDOMADAIRE avec des REPAS CONCRETS, COMPLETS et RÉELS
-- Chaque jour DOIT avoir : petit-déjeuner ET repas_du_jour (même repas pour midi et soir, habitude locale)
+- ⚠️ OBLIGATION ABSOLUE : Chaque jour DOIT avoir OBLIGATOIREMENT petit-déjeuner ET repas_du_jour
+- ⚠️ INTERDICTION ABSOLUE : Ne JAMAIS générer seulement le petit-déjeuner sans le repas_du_jour
+- ⚠️ INTERDICTION ABSOLUE : Ne JAMAIS générer seulement le repas_du_jour sans le petit-déjeuner
+- ⚠️ INTERDICTION ABSOLUE : Ne JAMAIS omettre le repas_du_jour pour un jour
+- repas_du_jour est le même repas pour midi ET soir (habitude locale)
 - Chaque repas DOIT être COMPLET : plat principal + accompagnements/compléments si nécessaire
 - Tu NE DOIS PAS inventer des plats qui n'existent pas dans la localité
 - Tu DOIS utiliser UNIQUEMENT des plats RÉELS et TRADITIONNELS de la région
@@ -750,9 +793,11 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
 
 ⚠️ IMPORTANT - JSON COMPLET REQUIS :
 - Tu DOIS générer un JSON COMPLET et VALIDE pour les 7 jours (Lundi à Dimanche)
+- ⚠️ OBLIGATION ABSOLUE : Chaque jour DOIT avoir OBLIGATOIREMENT "petit_dejeuner" ET "repas_du_jour" (pas de null, pas d'omission)
 - Chaque jour DOIT avoir des repas CONCRETS avec des noms de plats RÉELS (pas de valeurs vides, pas de "null", pas de placeholders)
 - Chaque repas (petit_dejeuner, repas_du_jour) DOIT avoir un "recipe_name" avec un nom de plat CONCRET et RÉEL
 - Chaque repas DOIT avoir un champ "complements" (array, peut être vide [] si pas nécessaire)
+- ⚠️ VALIDATION OBLIGATOIRE : Avant de retourner le JSON, vérifie que chaque jour a bien "petit_dejeuner" ET "repas_du_jour"
 - Le JSON DOIT se terminer par }} pour fermer correctement toutes les structures
 - Ne JAMAIS tronquer le JSON au milieu d'une chaîne, d'un objet ou d'un array
 - Si tu atteins une limite, génère un JSON valide en fermant toutes les structures ouvertes

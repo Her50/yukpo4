@@ -5,11 +5,13 @@
 
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
   Image,
+  Linking,
+  Platform,
   ScrollView,
   Share,
   StyleSheet,
@@ -97,6 +99,62 @@ const splitWithFallback = (input: any, primary?: string): string[] => {
   return [cleaned];
 };
 
+// ✅ NOUVEAU 2026-01-13: Fonction pour normaliser les URLs de médias (images/vidéos)
+const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): string | null => {
+  if (!media) return null;
+  
+  let url: string | null = null;
+  
+  // Extraire l'URL depuis différents formats
+  if (typeof media === 'string') {
+    url = media.trim();
+  } else if (typeof media === 'object') {
+    url = media.url || media.valeur || media.path || media.uri || media.src || null;
+    if (url && typeof url === 'string') {
+      url = url.trim();
+    } else {
+      url = null;
+    }
+  }
+  
+  if (!url || url === '' || url === 'false') return null;
+  
+  // Si c'est déjà une URL complète (http/https) ou base64, retourner tel quel
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  
+  // Si c'est un chemin relatif commençant par /, construire l'URL complète
+  if (url.startsWith('/')) {
+    const baseUrl = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_UPLOAD_URL || '';
+    if (baseUrl) {
+      return `${baseUrl.replace(/\/$/, '')}${url}`;
+    }
+    return url; // Retourner tel quel si pas de base URL configurée
+  }
+  
+  // Si ça ressemble à du base64 (pas d'URL, pas de /, longue chaîne)
+  const looksLikeBase64 = /^[A-Za-z0-9+/=]{100,}$/.test(url);
+  if (looksLikeBase64) {
+    if (type === 'image') {
+      return `data:image/jpeg;base64,${url}`;
+    } else if (type === 'video') {
+      return `data:video/mp4;base64,${url}`;
+    }
+  }
+  
+  // Si ça commence par uploads/, construire l'URL
+  if (url.startsWith('uploads/')) {
+    const baseUrl = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_UPLOAD_URL || '';
+    if (baseUrl) {
+      return `${baseUrl.replace(/\/$/, '')}/${url}`;
+    }
+  }
+  
+  // Retourner tel quel par défaut
+  return url;
+};
+
 const getCountryFlag = (country?: string): string => {
   const countryMap: Record<string, string> = {
     'Cameroun': '🇨🇲',
@@ -174,6 +232,9 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   
   const [imageError, setImageError] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
+  // ✅ NOUVEAU 2026-01-13: Ref pour le ScrollView des variations de prix
+  const variantsScrollRef = useRef<ScrollView>(null);
+  const [isScrollingManually, setIsScrollingManually] = useState(false);
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
   const [chatContext, setChatContext] = useState<{
     type: 'service' | 'private';
@@ -192,13 +253,23 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // Si le produit vient de l'API, utiliser product.product_data pour les données
   const productData = product.product_data || product;
 
-  const productVector = Array.isArray(productData.product_vector)
+  // ✅ CORRIGÉ 2026-01-13: Filtrer les valeurs booléennes et "false" string du productVector
+  const rawProductVector = Array.isArray(productData.product_vector)
     ? productData.product_vector
     : Array.isArray(productData.characteristic_vector)
       ? productData.characteristic_vector
       : typeof productData.product_vector === 'string'
         ? splitWithFallback(productData.product_vector, ',')
         : [];
+  
+  // Filtrer les valeurs booléennes, null, undefined, et "false" string
+  const productVector = rawProductVector.filter((item: any) => {
+    if (item === null || item === undefined) return false;
+    if (typeof item === 'boolean') return false;
+    if (item === 'false' || item === false) return false;
+    if (typeof item === 'string' && item.trim() === '') return false;
+    return true;
+  });
 
   const rawLocationVector = productData.location_vector || productData.locationVector || productData.location?.vector;
   const locationVector = Array.isArray(rawLocationVector)
@@ -290,26 +361,81 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const isPopular = usageCount >= 5;
   const isTrending = usageCount >= 10;
 
-  // ✅ PHASE 4: Extraire les images et vidéos depuis productData/service avec fallbacks multiples
-  const images = Array.isArray(productData.images) ? productData.images 
-    : Array.isArray(service?.images) ? service.images
+  // ✅ PHASE 4: Extraire les images et vidéos depuis product/service avec fallbacks multiples
+  // ✅ CORRIGÉ 2026-01-13: Structure de stockage des médias dans la base de données:
+  // 1. service_products.product_data->'images' et product_data->'videos' (nouveau système)
+  // 2. services.data->'produits'[index].images et produits[index].videos (ancien système)
+  // 3. services.data->'images' et data->'videos' (médias du service)
+  // ✅ CORRIGÉ 2026-01-13: Vérifier d'abord directement dans product (ajouté par ResultatBesoinScreen depuis service_products)
+  // ✅ CORRIGÉ 2026-01-13: Filtrer les valeurs invalides et normaliser les URLs
+  
+  // Priorité 1: product.images/videos (depuis service_products.product_data, ajouté par ResultatBesoinScreen)
+  // Priorité 2: productData.images/videos (product.product_data ou product directement)
+  // Priorité 3: service.data->'produits'[index].images/videos (ancien système)
+  // Priorité 4: service.data->'images'/'videos' (médias du service)
+  // Priorité 5: service.images/videos (médias du service au niveau racine)
+  
+  const rawImages = Array.isArray(product.images) ? product.images
+    : Array.isArray(productData.images) ? productData.images 
+    : Array.isArray(productData.data?.images) ? productData.data.images
+    : Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex]
+      ? (service.data.produits[productIndex].images || [])
     : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
     : Array.isArray(service?.data?.images) ? service.data.images
-    : Array.isArray(productData.data?.images) ? productData.data.images
+    : Array.isArray(service?.images) ? service.images
     : [];
   
-  const videos = Array.isArray(productData.videos) ? productData.videos
-    : Array.isArray(service?.videos) ? service.videos
+  // Filtrer et normaliser les images avec la fonction globale
+  const images = rawImages
+    .map((img: any) => normalizeMediaUrl(img, 'image'))
+    .filter((img): img is string => img !== null);
+  
+  const rawVideos = Array.isArray(product.videos) ? product.videos
+    : Array.isArray(productData.videos) ? productData.videos
+    : Array.isArray(productData.data?.videos) ? productData.data.videos
+    : Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex]
+      ? (service.data.produits[productIndex].videos || [])
     : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
     : Array.isArray(service?.data?.videos) ? service.data.videos
-    : Array.isArray(productData.data?.videos) ? productData.data.videos
+    : Array.isArray(service?.videos) ? service.videos
     : [];
+  
+  // Filtrer et normaliser les vidéos avec la fonction globale
+  const videos = rawVideos
+    .map((vid: any) => normalizeMediaUrl(vid, 'video'))
+    .filter((vid): vid is string => vid !== null);
+  
+  // ✅ DEBUG 2026-01-13: Logger pour diagnostiquer les problèmes de médias
+  if (rawImages.length > 0 || rawVideos.length > 0 || images.length > 0 || videos.length > 0) {
+    console.log(`[ProductCard] Médias extraits:`, {
+      rawImagesCount: rawImages.length,
+      rawVideosCount: rawVideos.length,
+      imagesCount: images.length,
+      videosCount: videos.length,
+      productHasImages: !!product.images,
+      productDataHasImages: !!productData.images,
+      productIndex,
+      serviceHasImages: !!service?.images,
+      serviceDataProduitsLength: Array.isArray(service?.data?.produits) ? service.data.produits.length : 0,
+      firstImage: images[0]?.substring(0, 50), // Logger les 50 premiers caractères
+      firstVideo: videos[0]?.substring(0, 50),
+    });
+  }
 
   const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
     ? variants[selectedVariantIndex]
     : null;
   const variantImage = selectedVariant?.image || selectedVariant?.images?.[0];
-  const hasMedia = (images?.length || 0) + (videos?.length || 0) > 0 || !!variantImage;
+  
+  // ✅ CORRIGÉ 2026-01-13: Normaliser l'image de variation si nécessaire
+  const normalizedVariantImage = variantImage ? normalizeMediaUrl(variantImage, 'image') : null;
+  
+  const hasMedia = (images?.length || 0) + (videos?.length || 0) > 0 || !!normalizedVariantImage;
+  
+  // ✅ DEBUG 2026-01-13: Logger hasMedia pour diagnostiquer
+  if (rawImages.length > 0 || rawVideos.length > 0) {
+    console.log(`[ProductCard] hasMedia=${hasMedia}, images=${images.length}, videos=${videos.length}, variantImage=${!!normalizedVariantImage}`);
+  }
 
   // ✅ CORRIGÉ 2026-01-04: Vérifier aussi _serviceId ajouté par ResultatBesoinScreen
   const serviceId = product._serviceId || product.service_id || service?.id;
@@ -546,6 +672,115 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     }
   };
 
+  // ✅ NOUVEAU 2026-01-13: Fonction pour ouvrir l'application de navigation GPS
+  const handleOpenNavigation = async () => {
+    try {
+      // Extraire les coordonnées GPS du produit/service
+      const productGPS = product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
+      
+      if (!productGPS) {
+        Alert.alert(
+          'Localisation indisponible',
+          'Les coordonnées GPS du commerçant ne sont pas disponibles pour le moment.'
+        );
+        return;
+      }
+
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      // Parser le GPS (peut être string "lat,lng" ou object {lat, lng} ou {latitude, longitude})
+      if (typeof productGPS === 'string') {
+        const parts = productGPS.split(',').map(p => p.trim());
+        if (parts.length >= 2) {
+          lat = parseFloat(parts[0]);
+          lng = parseFloat(parts[1]);
+        }
+      } else if (typeof productGPS === 'object') {
+        lat = productGPS.lat ?? productGPS.latitude ?? null;
+        lng = productGPS.lng ?? productGPS.longitude ?? null;
+      }
+
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+        Alert.alert(
+          'Coordonnées invalides',
+          'Les coordonnées GPS du commerçant sont invalides.'
+        );
+        return;
+      }
+
+      // Construire les URLs pour différentes applications de navigation
+      const googleMapsUrl = Platform.select({
+        ios: `maps://app?daddr=${lat},${lng}&dirflg=d`,
+        android: `google.navigation:q=${lat},${lng}`,
+        default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
+      });
+
+      const appleMapsUrl = `http://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
+      const wazeUrl = `waze://?navigate=yes&ll=${lat},${lng}`;
+      const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+      // Essayer d'ouvrir les applications dans l'ordre de préférence
+      if (Platform.OS === 'ios') {
+        // iOS : Essayer Apple Maps d'abord, puis Google Maps
+        try {
+          const canOpenAppleMaps = await Linking.canOpenURL(appleMapsUrl);
+          if (canOpenAppleMaps) {
+            await Linking.openURL(appleMapsUrl);
+            return;
+          }
+        } catch (error) {
+          console.log('[ProductCard] Apple Maps non disponible, essai Google Maps');
+        }
+
+        try {
+          const canOpenGoogleMaps = await Linking.canOpenURL(googleMapsUrl || '');
+          if (canOpenGoogleMaps && googleMapsUrl) {
+            await Linking.openURL(googleMapsUrl);
+            return;
+          }
+        } catch (error) {
+          console.log('[ProductCard] Google Maps non disponible, utilisation du fallback');
+        }
+      } else if (Platform.OS === 'android') {
+        // Android : Essayer Waze d'abord, puis Google Maps
+        try {
+          const canOpenWaze = await Linking.canOpenURL(wazeUrl);
+          if (canOpenWaze) {
+            await Linking.openURL(wazeUrl);
+            return;
+          }
+        } catch (error) {
+          console.log('[ProductCard] Waze non disponible, essai Google Maps');
+        }
+
+        try {
+          const canOpenGoogleMaps = await Linking.canOpenURL(googleMapsUrl || '');
+          if (canOpenGoogleMaps && googleMapsUrl) {
+            await Linking.openURL(googleMapsUrl);
+            return;
+          }
+        } catch (error) {
+          console.log('[ProductCard] Google Maps non disponible, utilisation du fallback');
+        }
+      }
+
+      // Fallback : Ouvrir Google Maps dans le navigateur
+      try {
+        await Linking.openURL(fallbackUrl);
+      } catch (error) {
+        console.error('[ProductCard] Erreur ouverture navigation:', error);
+        Alert.alert(
+          'Erreur',
+          'Impossible d\'ouvrir l\'application de navigation. Veuillez installer Google Maps ou Apple Maps.'
+        );
+      }
+    } catch (error) {
+      console.error('[ProductCard] Erreur navigation GPS:', error);
+      Alert.alert('Erreur', 'Impossible d\'ouvrir l\'application de navigation');
+    }
+  };
+
   const loadReactions = useCallback(async () => {
     if (!serviceId || !resolvedProductId) return;
 
@@ -579,6 +814,38 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   useEffect(() => {
     loadReactions();
   }, [loadReactions]);
+
+  // ✅ NOUVEAU 2026-01-13: Scroll automatique horizontal pour les variations de prix
+  useEffect(() => {
+    if (!hasVariant || variants.length <= 1 || isScrollingManually) return;
+
+    let currentIndex = 0;
+    const cardWidth = 120 + 8; // width + marginRight
+    const maxScroll = (variants.length - 1) * cardWidth;
+
+    const autoScrollInterval = setInterval(() => {
+      if (variantsScrollRef.current && !isScrollingManually) {
+        if (currentIndex < variants.length - 1) {
+          currentIndex++;
+          variantsScrollRef.current.scrollTo({
+            x: currentIndex * cardWidth,
+            y: 0,
+            animated: true,
+          });
+        } else {
+          // Revenir au début
+          currentIndex = 0;
+          variantsScrollRef.current.scrollTo({
+            x: 0,
+            y: 0,
+            animated: true,
+          });
+        }
+      }
+    }, 3000); // Scroll toutes les 3 secondes
+
+    return () => clearInterval(autoScrollInterval);
+  }, [hasVariant, variants.length, isScrollingManually]);
 
   const handleReaction = async (reactionType: string) => {
     if (!serviceId || !resolvedProductId) {
@@ -683,7 +950,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 <ProductMediaCarousel
                   images={images}
                   videos={videos}
-                  variantImage={variantImage}
+                  variantImage={normalizedVariantImage || undefined}
                   onImagePress={() => {
                     setShowGallery(true);
                   }}
@@ -789,15 +1056,30 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 </TouchableOpacity>
               )}
 
-              {chosenLocation && (
-                <View style={styles.locationSection}>
-                  <View style={styles.locationRow}>
-                    <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                    <Text style={styles.locationTextPrimary} numberOfLines={1}>
-                      {chosenLocation || 'Localisation non spécifiée'}
-                    </Text>
-                    {countryFlag && (
-                      <Text style={styles.locationFlag}>{countryFlag}</Text>
+              {/* ✅ CORRIGÉ 2026-01-13: Section combinée pour adresse, drapeau et bouton de navigation */}
+              {(chosenLocation || (product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur)) && (
+                <View style={styles.locationNavigationSection}>
+                  <View style={styles.locationNavigationRow}>
+                    <View style={styles.locationInfoContainer}>
+                      <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                      {chosenLocation && (
+                        <Text style={styles.locationTextPrimary} numberOfLines={1}>
+                          {chosenLocation}
+                        </Text>
+                      )}
+                      {countryFlag && (
+                        <Text style={styles.locationFlag}>{countryFlag}</Text>
+                      )}
+                    </View>
+                    {/* ✅ Bouton de navigation GPS */}
+                    {(product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur) && (
+                      <TouchableOpacity
+                        style={styles.navigationButtonCompact}
+                        onPress={handleOpenNavigation}
+                        activeOpacity={0.7}
+                      >
+                        <SafeIcon name="navigation" size={16} color={modernColors.primary} />
+                      </TouchableOpacity>
                     )}
                   </View>
                   {locationVector.length > 1 && (
@@ -847,11 +1129,16 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.chipsScroll}
                   >
-                    {productVector.map((carac: string, i: number) => (
-                      <View key={i} style={styles.chip}>
-                        <Text style={styles.chipText}>{carac}</Text>
-                      </View>
-                    ))}
+                    {productVector.map((carac: string, i: number) => {
+                      // ✅ CORRIGÉ 2026-01-13: Filtrer les valeurs booléennes avant affichage
+                      const displayValue = filterBooleanValue(carac, '');
+                      if (!displayValue) return null;
+                      return (
+                        <View key={i} style={styles.chip}>
+                          <Text style={styles.chipText}>{displayValue}</Text>
+                        </View>
+                      );
+                    })}
                   </ScrollView>
                 </View>
               )}
@@ -866,9 +1153,23 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   </View>
 
                   <ScrollView
+                    ref={variantsScrollRef}
                     horizontal
-                    showsHorizontalScrollIndicator={false}
+                    showsHorizontalScrollIndicator={true}
                     contentContainerStyle={styles.variantsScrollContainer}
+                    onScrollBeginDrag={() => setIsScrollingManually(true)}
+                    onMomentumScrollEnd={() => {
+                      // Réactiver le scroll automatique après 5 secondes d'inactivité
+                      setTimeout(() => setIsScrollingManually(false), 5000);
+                    }}
+                    onScrollEndDrag={() => {
+                      // Réactiver le scroll automatique après 5 secondes d'inactivité
+                      setTimeout(() => setIsScrollingManually(false), 5000);
+                    }}
+                    scrollEventThrottle={16}
+                    decelerationRate="fast"
+                    snapToInterval={128} // cardWidth + marginRight
+                    snapToAlignment="start"
                   >
                     {variants.map((variant: any, i: number) => (
                       <TouchableOpacity
@@ -993,6 +1294,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     <Text style={styles.secondaryActionText}>Galerie</Text>
                   </TouchableOpacity>
                 )}
+                {/* ✅ SUPPRIMÉ 2026-01-13: Bouton de navigation déplacé dans la section locationNavigationSection */}
                 <TouchableOpacity
                   style={styles.secondaryActionButton}
                   onPress={handleShare}
@@ -1007,6 +1309,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   serviceId={commentServiceId}
                   serviceTitle={serviceTitleForComments}
                   onOpenChat={handleContactUser}
+                  mode="inline"
+                  compact={true}
                 />
               )}
 
@@ -1130,7 +1434,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 140,
+    height: 100, // ✅ RÉDUIT 2026-01-13: 140 -> 100 pour réduire la taille
     overflow: 'hidden',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
@@ -1245,14 +1549,14 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   content: {
-    padding: 10,
-    gap: 8,
+    padding: 8, // ✅ RÉDUIT 2026-01-13: 10 -> 8
+    gap: 4, // ✅ RÉDUIT 2026-01-13: 8 -> 4
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
   },
   contentCompact: {
-    paddingTop: 12,
+    paddingTop: 8, // ✅ RÉDUIT 2026-01-13: 12 -> 8
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
   },
@@ -1260,57 +1564,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 2,
+    gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
+    marginBottom: 0, // ✅ RÉDUIT 2026-01-13: 2 -> 0
   },
   topStatPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
+    paddingVertical: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
+    borderRadius: 8, // ✅ RÉDUIT 2026-01-13: 12 -> 8
     borderWidth: 1,
     borderColor: '#E0E7FF',
   },
   topStatValue: {
-    fontSize: 11,
+    fontSize: 10, // ✅ RÉDUIT 2026-01-13: 11 -> 10
     fontWeight: '700',
-    marginLeft: 4,
+    marginLeft: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
   },
   productName: {
-    fontSize: 16,
+    fontSize: 14, // ✅ RÉDUIT 2026-01-13: 16 -> 14
     fontWeight: '700',
     color: '#1F2937',
-    lineHeight: 20,
+    lineHeight: 18, // ✅ RÉDUIT 2026-01-13: 20 -> 18
   },
   prestataireRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
+    paddingVertical: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
+    paddingHorizontal: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
     backgroundColor: '#F9FAFB',
-    borderRadius: 8,
+    borderRadius: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   avatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20, // ✅ RÉDUIT 2026-01-13: 24 -> 20
+    height: 20, // ✅ RÉDUIT 2026-01-13: 24 -> 20
+    borderRadius: 10, // ✅ RÉDUIT 2026-01-13: 12 -> 10
     borderWidth: 1.5,
     borderColor: '#FFF',
   },
   avatarPlaceholder: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20, // ✅ RÉDUIT 2026-01-13: 24 -> 20
+    height: 20, // ✅ RÉDUIT 2026-01-13: 24 -> 20
+    borderRadius: 10, // ✅ RÉDUIT 2026-01-13: 12 -> 10
     backgroundColor: modernColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   prestataireName: {
-    fontSize: 12,
+    fontSize: 11, // ✅ RÉDUIT 2026-01-13: 12 -> 11
     color: '#374151',
     fontWeight: '600',
     flex: 1,
@@ -1318,8 +1622,8 @@ const styles = StyleSheet.create({
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
+    gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
+    paddingVertical: 2, // ✅ RÉDUIT 2026-01-13: 6 -> 2
   },
   locationText: {
     fontSize: 14,
@@ -1327,15 +1631,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locationSection: {
-    gap: 4,
+    gap: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
+    backgroundColor: '#F9FAFB',
+    padding: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
+    borderRadius: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  // ✅ NOUVEAU 2026-01-13: Section combinée pour adresse, drapeau et navigation
+  locationNavigationSection: {
+    gap: 2,
     backgroundColor: '#F9FAFB',
     padding: 6,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  locationNavigationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  locationInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
   locationTextPrimary: {
-    fontSize: 12,
+    fontSize: 11, // ✅ RÉDUIT 2026-01-13: 12 -> 11
     fontWeight: '600',
     color: '#1F2937',
     flex: 1,
@@ -1356,28 +1681,28 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   metricsCard: {
-    marginTop: 6,
-    borderRadius: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    marginTop: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
+    borderRadius: 8, // ✅ RÉDUIT 2026-01-13: 12 -> 8
+    paddingVertical: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
+    paddingHorizontal: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
   },
   compactStatsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 6,
-    marginBottom: 6,
+    gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
+    marginTop: 2, // ✅ RÉDUIT 2026-01-13: 6 -> 2
+    marginBottom: 2, // ✅ RÉDUIT 2026-01-13: 6 -> 2
   },
   compactStatPillMuted: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F4F4F5',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: 8, // ✅ RÉDUIT 2026-01-13: 12 -> 8
+    paddingHorizontal: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
+    paddingVertical: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
     borderWidth: 1,
     borderColor: '#E4E4E7',
-    gap: 4,
+    gap: 3, // ✅ RÉDUIT 2026-01-13: 4 -> 3
   },
   compactStatEmoji: {
     fontSize: 12,
@@ -1392,7 +1717,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   characteristicsSection: {
-    gap: 4,
+    gap: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1400,7 +1725,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11, // ✅ RÉDUIT 2026-01-13: 12 -> 11
     fontWeight: '600',
     color: '#374151',
   },
@@ -1422,10 +1747,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   priceVariations: {
-    gap: 6,
+    gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
     backgroundColor: '#F9FAFB',
-    padding: 8,
-    borderRadius: 10,
+    padding: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
+    borderRadius: 8, // ✅ RÉDUIT 2026-01-13: 10 -> 8
   },
   variantsScrollContainer: {
     gap: 8,
@@ -1556,6 +1881,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1.5,
+    borderColor: modernColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // ✅ NOUVEAU 2026-01-13: Bouton de navigation compact pour la section location
+  navigationButtonCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: '#EEF2FF',
     borderWidth: 1.5,
     borderColor: modernColors.primary,

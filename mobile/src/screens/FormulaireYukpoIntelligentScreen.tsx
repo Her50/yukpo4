@@ -600,6 +600,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           placeholder: 'Ex: 50'
         },
         {
+          name: 'variabilite_prix',
+          type: 'price_variant',
+          typeDonnee: 'price_variant',
+          label: isPrestation ? 'Variantes prestation' : 'Variantes produit',
+          variable: isPrestation ? 'formule' : 'option',
+          required: false,
+          modalites: [] // ✅ Sera rempli par l'IA si détecté, sinon vide pour permettre l'ajout manuel
+        },
+        {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
@@ -701,6 +710,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           label: 'Quantité disponible',
           required: false,
           placeholder: 'Ex: 50'
+        },
+        {
+          name: 'variabilite_prix',
+          type: 'price_variant',
+          typeDonnee: 'price_variant',
+          label: isPrestation ? 'Variantes prestation' : 'Variantes produit',
+          variable: isPrestation ? 'formule' : 'option',
+          required: false,
+          modalites: [] // ✅ Sera rempli par l'IA si détecté, sinon vide pour permettre l'ajout manuel
         },
         {
           name: 'produits',
@@ -2519,13 +2537,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     if (field.typeDonnee === 'price_variant') {
       const iaModalites = Array.isArray(field.modalites) ? field.modalites : [];
-      const userModalites = valeursFormulaire[field.name]?.modalites;
+      // ✅ CORRECTION: Vérifier les deux noms possibles (variabilite_prix et price_variant)
+      // comme dans AjouterProduitSimpleScreen pour garantir la récupération des modalités
+      const userModalites = 
+        valeursFormulaire[field.name]?.modalites ||
+        valeursFormulaire['variabilite_prix']?.modalites ||
+        valeursFormulaire['price_variant']?.modalites;
       const modalitesFromUser = Array.isArray(userModalites) ? userModalites : [];
       const modalitesToRender = modalitesFromUser.length > 0 ? modalitesFromUser : iaModalites;
 
-      if (!Array.isArray(modalitesToRender) || modalitesToRender.length === 0) {
-        return null;
-      }
+      // ✅ CORRECTION: Ne pas retourner null si les modalités sont vides
+      // Permettre l'affichage du composant même sans modalités pour permettre l'ajout manuel
+      // (comme dans AjouterProduitSimpleScreen qui affiche toujours si hasExistingVariants est true)
+      // Mais si ni les modalités IA ni les modalités utilisateur n'existent, on peut afficher le composant vide
+      // pour permettre à l'utilisateur d'ajouter des variantes manuellement
 
       const typeOffre = (valeursFormulaire.type_offre || 'produit').toLowerCase();
       const isProduitPhysique = typeOffre === 'produit' || typeOffre === 'vente';
@@ -2955,6 +2980,23 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       case 'textarea':
         const isProductDescField = field.name === 'description_produit';
         const linesMinimum = isProductDescField ? 6 : 3;
+        // ✅ CORRECTION: Extraire la valeur correctement pour description_produit
+        const getTextareaValue = (): string => {
+          const rawValue = valeursFormulaire[field.name];
+          if (!rawValue) return '';
+          if (typeof rawValue === 'string') return rawValue;
+          if (typeof rawValue === 'object' && rawValue !== null) {
+            if ('valeur' in rawValue && typeof rawValue.valeur === 'string') {
+              return rawValue.valeur;
+            }
+            if ('raw' in rawValue && typeof rawValue.raw === 'string') {
+              return rawValue.raw;
+            }
+            return String(rawValue);
+          }
+          return String(rawValue);
+        };
+        
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
@@ -2962,7 +3004,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             </Text>
             <NativeInput
               placeholder={field.placeholder}
-              value={valeursFormulaire[field.name] || ''}
+              value={getTextareaValue()}
               onChangeText={(text) => handleFieldChange(field.name, text)}
               multiline
               minLines={linesMinimum}
@@ -3211,11 +3253,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return compressedMediaCache;
       };
 
-      const mergeMediaArrays = (existing: any, incoming: any): any[] => {
+      const mergeMediaArrays = (existing: any, incoming: any, maxImages?: number): any[] => {
         const base = Array.isArray(incoming) ? incoming : [];
         const current = Array.isArray(existing) ? existing : [];
         const merged = [...base, ...current];
         const unique = merged.filter(Boolean).filter((value, index, self) => self.indexOf(value) === index);
+        // ✅ CORRECTION: Limiter les images si maxImages est spécifié (pour respecter la limite backend de 10)
+        if (maxImages !== undefined && unique.length > maxImages) {
+          console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ ${unique.length} images détectées, limitées à ${maxImages} (maximum backend)`);
+          return unique.slice(0, maxImages);
+        }
         return unique;
       };
 
@@ -3307,8 +3354,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
           const buildBaseProduct = () => ({
             nom: nomFallback,
-            images: [...media.images],
-            base64_image: [...media.images],
+            // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
+            images: Array.isArray(media.images) ? media.images.slice(0, 10) : [],
+            base64_image: Array.isArray(media.images) ? media.images.slice(0, 10) : [],
             videos: media.videos ? [...media.videos] : undefined,
             video_base64: media.videos ? [...media.videos] : undefined,
             audio_base64: media.audios ? [...media.audios] : undefined,
@@ -3347,9 +3395,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 ? media.images.filter(Boolean)
                 : [];
               const mergedImages = [...newImages, ...existingImages].filter((value, index, self) => self.indexOf(value) === index);
-              if (mergedImages.length > 0) {
-                firstProduct.images = mergedImages;
-                firstProduct.base64_image = mergedImages;
+              // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
+              const limitedImages = mergedImages.slice(0, 10);
+              if (limitedImages.length > 0) {
+                firstProduct.images = limitedImages;
+                firstProduct.base64_image = limitedImages;
+              }
+              if (mergedImages.length > 10) {
+                console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ ${mergedImages.length} images détectées, limitées à 10 (maximum backend)`);
               }
 
               if (media.videos?.length) {
@@ -3502,7 +3555,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         const compressedMedia = await getCompressedMedia();
 
         if (compressedMedia?.images?.length) {
-          const mergedImages = mergeMediaArrays(nouveauProduit.images, compressedMedia.images);
+          // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
+          const mergedImages = mergeMediaArrays(nouveauProduit.images, compressedMedia.images, 10);
           if (mergedImages.length > 0) {
             nouveauProduit.images = mergedImages;
             nouveauProduit.base64_image = mergedImages;
@@ -4377,7 +4431,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   };
 
                   if (compressedMedia?.images?.length) {
-                    const mergedImages = mergeMediaArrays(produitObj.images, compressedMedia.images);
+                    // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
+                    const mergedImages = mergeMediaArrays(produitObj.images, compressedMedia.images, 10);
                     if (mergedImages.length > 0) {
                       produitObj.images = mergedImages;
                       produitObj.base64_image = mergedImages;
@@ -4962,31 +5017,39 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   showsVerticalScrollIndicator={true}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {displayedBlocks
-                    .filter(({ index: blockIndex }) => blockIndex === currentBlock) // ✅ CRITIQUE: Filtrer pour n'afficher que le bloc actif
-                    .map(({ block, index: blockIndex }) => (
-                    <View
-                      key={block.id}
-                      ref={(ref) => {
-                        blockRefs.current[blockIndex] = ref;
-                      }}
-                      onLayout={(event) => {
-                        const { y } = event.nativeEvent.layout;
-                        blockPositions.current[blockIndex] = y;
-                      }}
-                      style={styles.blockContainer}
-                    >
-                      <View style={styles.sectionContainer}>
-                        <LinearGradient
-                          colors={['#3B82F6', '#1D4ED8']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.sectionHeader}
-                        >
-                          <Text style={styles.sectionHeaderText}>
-                            {block.icon} {block.title}
-                          </Text>
-                        </LinearGradient>
+                  {/* ✅ CORRECTION CRITIQUE: Utiliser currentDisplayIndex comme source unique de vérité pour l'alignement */}
+                  {(() => {
+                    // Récupérer le bloc actif depuis displayedBlocks en utilisant currentDisplayIndex
+                    const activeDisplayedBlock = displayedBlocks[currentDisplayIndex];
+                    if (!activeDisplayedBlock) {
+                      return null;
+                    }
+                    
+                    const { block, index: blockIndex } = activeDisplayedBlock;
+                    
+                    return (
+                      <View
+                        key={block.id}
+                        ref={(ref) => {
+                          blockRefs.current[blockIndex] = ref;
+                        }}
+                        onLayout={(event) => {
+                          const { y } = event.nativeEvent.layout;
+                          blockPositions.current[blockIndex] = y;
+                        }}
+                        style={styles.blockContainer}
+                      >
+                        <View style={styles.sectionContainer}>
+                          <LinearGradient
+                            colors={['#3B82F6', '#1D4ED8']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.sectionHeader}
+                          >
+                            <Text style={styles.sectionHeaderText}>
+                              {block.icon} {block.title}
+                            </Text>
+                          </LinearGradient>
 
                         <NativeCard style={styles.sectionContent}>
                           {(Array.isArray(block.fields) ? block.fields : [])
@@ -5028,7 +5091,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         )}
                       </View>
                     </View>
-                  ))}
+                    );
+                  })()}
 
                   {/* Boutons de navigation en bas du scroll */}
                   <View style={styles.navigationButtons}>
@@ -5566,13 +5630,18 @@ const styles = StyleSheet.create({
   textareaInput: {
     minHeight: 200,
     paddingTop: 14,
+    textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut pour multiline
   },
   productDescriptionInput: {
-    minHeight: 240,
-    lineHeight: 22,
+    minHeight: 280, // ✅ CORRECTION: Hauteur minimale plus grande pour description_produit (6 lignes * 24px + padding)
+    paddingTop: 14,
+    paddingBottom: 14,
+    textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut
   },
   productDescriptionText: {
     lineHeight: 22,
+    textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut
+    includeFontPadding: false, // ✅ CORRECTION: Éviter le padding supplémentaire qui peut masquer le texte
   },
   navigationButtons: {
     flexDirection: 'row',
