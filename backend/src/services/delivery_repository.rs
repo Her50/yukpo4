@@ -3695,7 +3695,7 @@ impl DeliveryRepository {
                         user_id,
                         e
                     );
-                    AppError::DatabaseError(format!("Erreur lors de la récupération des adresses: {}", e))
+                    AppError::Database(format!("Erreur lors de la récupération des adresses: {}", e))
                 })?
             } else {
                 sqlx::query_as::<_, UserSavedAddress>(
@@ -3726,7 +3726,7 @@ impl DeliveryRepository {
                         addr_type,
                         e
                     );
-                    AppError::DatabaseError(format!("Erreur lors de la récupération des adresses: {}", e))
+                    AppError::Database(format!("Erreur lors de la récupération des adresses: {}", e))
                 })?
             }
         } else {
@@ -3755,7 +3755,7 @@ impl DeliveryRepository {
                     user_id,
                     e
                 );
-                AppError::DatabaseError(format!("Erreur lors de la récupération des adresses: {}", e))
+                AppError::Database(format!("Erreur lors de la récupération des adresses: {}", e))
             })?
         };
 

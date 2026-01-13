@@ -802,7 +802,7 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
 
 📋 RÉPONSE ATTENDUE (JSON strict) :
 {{
-    "week_start": "{}",
+    "week_start": "2024-01-01",
     "meals": [
         {{
             "day": 1,
@@ -810,7 +810,7 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
             "petit_dejeuner": {{
                 "recipe_name": "Nom du plat complet",
                 "complements": ["Complément 1", "Complément 2"],
-                "servings": {},
+                "servings": 4,
                 "prep_time_minutes": 15,
                 "estimated_cost": 500.0,
                 "calories": 400.0
@@ -818,7 +818,7 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
             "repas_du_jour": {{
                 "recipe_name": "Nom du plat principal",
                 "complements": ["Riz", "Légumes"],
-                "servings": {},
+                "servings": 4,
                 "prep_time_minutes": 30,
                 "estimated_cost": 1500.0,
                 "calories": 600.0
@@ -826,7 +826,7 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
             "gouter": {{
                 "recipe_name": "Nom du plat",
                 "complements": [],
-                "servings": {},
+                "servings": 4,
                 "prep_time_minutes": 10,
                 "estimated_cost": 300.0,
                 "calories": 200.0
@@ -914,27 +914,34 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
 - INTERDICTION ABSOLUE : Ne JAMAIS générer un calendrier, un diagramme, ou une structure vide. Tu DOIS générer des REPAS avec des NOMS DE PLATS CONCRETS et RÉELS.
 - INTERDICTION ABSOLUE : Ne JAMAIS inventer des plats qui n'existent pas. Utilise UNIQUEMENT des plats RÉELS de la cuisine locale.
 "#,
-            profile.total_members,
-            profile.children_count,
-            profile.adults_count,
-            preferences_str,
-            allergies_str,
-            restrictions_str,
-            cuisine_str,
-            budget_str,
-            weekly_budget_str,
-            profile.total_members,
-            profile.total_members,
-            profile.cooking_level,
-            profile.time_available_hours,
-            location_context,
-            seasonal_context,
-            variation_context,
-            timestamp_variation,
-            week_start,
-            profile.total_members,
-            profile.total_members,
-            profile.total_members
+            profile.total_members,        // 695
+            profile.children_count,       // 696
+            profile.adults_count,         // 696
+            preferences_str,              // 697
+            allergies_str,                // 698
+            restrictions_str,             // 699
+            cuisine_str,                  // 700
+            budget_str,                   // 701
+            profile.cooking_level,        // 702 {:?}
+            profile.time_available_hours, // 703 {:?}
+            location_context,             // 704
+            seasonal_context,             // 704
+            variation_context,            // 704
+            timestamp_variation,          // 704
+            profile.total_members,        // 716
+            budget_str,                   // 719
+            weekly_budget_str,            // 720
+            profile.total_members,        // 724
+            profile.total_members,        // 731
+            profile.total_members,        // 734
+            profile.total_members,        // 843
+            weekly_budget_str,            // 844
+            profile.total_members,        // 870
+            budget_str,                   // 875
+            weekly_budget_str,            // 876
+            profile.total_members,        // 880
+            profile.total_members,        // 888
+            profile.total_members         // 894
         );
         
         prompt

@@ -367,93 +367,30 @@ pub async fn update_family_profile(
         user_id
     );
 
-    // ✅ IMPLÉMENTÉ: Mise à jour du profil famille en base
-    let mut update_fields = Vec::new();
-    let mut bind_index = 1;
-    let mut bind_values: Vec<Box<dyn sqlx::Encode<'_, sqlx::Postgres> + Send + Sync>> = Vec::new();
+    // ✅ Vérification qu'au moins un champ est fourni pour la mise à jour
+    let has_updates = req.total_members.is_some()
+        || req.children_count.is_some()
+        || req.adults_count.is_some()
+        || req.preferences.is_some()
+        || req.allergies.is_some()
+        || req.dietary_restrictions.is_some()
+        || req.budget_monthly.is_some()
+        || req.cuisine_styles.is_some()
+        || req.cooking_level.is_some()
+        || req.time_available_hours.is_some();
 
-    if let Some(total_members) = req.total_members {
-        update_fields.push(format!("total_members = ${}", bind_index));
-        bind_values.push(Box::new(total_members));
-        bind_index += 1;
-    }
-    if let Some(children_count) = req.children_count {
-        update_fields.push(format!("children_count = ${}", bind_index));
-        bind_values.push(Box::new(children_count));
-        bind_index += 1;
-    }
-    if let Some(adults_count) = req.adults_count {
-        update_fields.push(format!("adults_count = ${}", bind_index));
-        bind_values.push(Box::new(adults_count));
-        bind_index += 1;
-    }
-    if let Some(ref preferences) = req.preferences {
-        update_fields.push(format!("preferences = ${}::jsonb", bind_index));
-        bind_values.push(Box::new(serde_json::to_value(preferences).unwrap_or(serde_json::json!([]))));
-        bind_index += 1;
-    }
-    if let Some(ref allergies) = req.allergies {
-        update_fields.push(format!("allergies = ${}", bind_index));
-        bind_values.push(Box::new(allergies.clone()));
-        bind_index += 1;
-    }
-    if let Some(ref dietary_restrictions) = req.dietary_restrictions {
-        update_fields.push(format!("dietary_restrictions = ${}", bind_index));
-        bind_values.push(Box::new(dietary_restrictions.clone()));
-        bind_index += 1;
-    }
-    if let Some(budget_monthly) = req.budget_monthly {
-        update_fields.push(format!("budget_monthly = ${}", bind_index));
-        bind_values.push(Box::new(rust_decimal::Decimal::from_f64_retain(budget_monthly).unwrap_or_default()));
-        bind_index += 1;
-        info!(
-            "[update_family_profile] Budget mensuel mis à jour: {} FCFA",
-            budget_monthly
-        );
-    }
-    if let Some(ref cuisine_styles) = req.cuisine_styles {
-        update_fields.push(format!("cuisine_styles = ${}", bind_index));
-        bind_values.push(Box::new(cuisine_styles.clone()));
-        bind_index += 1;
-    }
-    if let Some(ref cooking_level) = req.cooking_level {
-        update_fields.push(format!("cooking_level = ${}", bind_index));
-        bind_values.push(Box::new(cooking_level.clone()));
-        bind_index += 1;
-    }
-    if let Some(time_available_hours) = req.time_available_hours {
-        update_fields.push(format!("time_available_hours = ${}", bind_index));
-        bind_values.push(Box::new(rust_decimal::Decimal::from_f64_retain(time_available_hours).unwrap_or_default()));
-        bind_index += 1;
-    }
-
-    if update_fields.is_empty() {
+    if !has_updates {
         return Err(AppError::BadRequest(
             "Aucun champ à mettre à jour".to_string(),
         ));
     }
 
-    // Construire la requête SQL dynamique
-    let mut query_str = format!(
-        r#"
-        INSERT INTO family_profiles (user_id, {})
-        VALUES ($1, {})
-        ON CONFLICT (user_id) 
-        DO UPDATE SET 
-            {},
-            updated_at = NOW()
-        "#,
-        update_fields.join(", "),
-        (2..=bind_index).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", "),
-        update_fields.iter().map(|f| format!("{} = EXCLUDED.{}", f.split(" = ").next().unwrap(), f.split(" = ").next().unwrap())).collect::<Vec<_>>().join(", ")
-    );
-
-    // ✅ CORRIGÉ: Construire la requête avec sqlx::query pour éviter les problèmes de binding
-    let mut query = sqlx::query(&query_str);
-    query = query.bind(user_id);
-    for value in bind_values {
-        // Note: Cette approche nécessite de connaître les types exacts
-        // Utilisons plutôt une approche plus simple avec des requêtes conditionnelles
+    // Log pour le budget si fourni
+    if let Some(budget_monthly) = req.budget_monthly {
+        info!(
+            "[update_family_profile] Budget mensuel mis à jour: {} FCFA",
+            budget_monthly
+        );
     }
 
     // ✅ IMPLÉMENTÉ: Utiliser UPSERT pour créer ou mettre à jour le profil
