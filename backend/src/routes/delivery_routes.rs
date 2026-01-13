@@ -54,8 +54,6 @@ struct ProductDeliveryConfigRow {
     pickup_latitude: Option<f64>,
     pickup_longitude: Option<f64>,
     required_vehicle_type_id: Option<i32>,
-    // ✅ NOUVEAU: Accepter aussi le slug pour plus de robustesse
-    vehicle_type_slug: Option<String>,
     weight_kg: Option<f64>,
     volume_cm3: Option<f64>,
     requires_isothermal: Option<bool>,
