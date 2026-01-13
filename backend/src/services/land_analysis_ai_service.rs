@@ -89,7 +89,7 @@ impl LandAnalysisAIService {
 
         let prompt = format!(
             r#"
-Tu es l'expert foncier IA de Yukpomnang.
+Tu es l'expert foncier IA de Yukpo.
 
 CONTEXTE :
 - Superficie : {} m²
@@ -170,7 +170,7 @@ RÉPONSE ATTENDUE (JSON strict) :
     ) -> AppResult<LandPriceEstimate> {
         let prompt = format!(
             r#"
-Tu es l'expert évaluation foncière IA de Yukpomnang.
+Tu es l'expert évaluation foncière IA de Yukpo.
 
 CONTEXTE :
 - Superficie : {} m²
@@ -262,7 +262,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es le conseiller en développement foncier IA de Yukpomnang.
+Tu es le conseiller en développement foncier IA de Yukpo.
 
 CONTEXTE :
 - Superficie : {} m²
@@ -334,7 +334,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es l'analyste d'investissement foncier IA de Yukpomnang.
+Tu es l'analyste d'investissement foncier IA de Yukpo.
 
 CONTEXTE :
 - Superficie : {} m²

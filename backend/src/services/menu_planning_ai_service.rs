@@ -640,7 +640,7 @@ impl MenuPlanningAIService {
 
         let prompt = format!(
             r#"
-Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de menus.
+Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
 
 👥 CONTEXTE FAMILLE :
 - Nombre total de personnes : {}
@@ -818,7 +818,7 @@ Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de m
 
         let prompt = format!(
             r#"
-Tu es l'assistant culinaire intelligent de Yukpomnang.
+Tu es l'assistant culinaire intelligent de Yukpo.
 
 CONTEXTE :
 - Nombre personnes : {}
@@ -893,7 +893,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es l'assistant culinaire de Yukpomnang.
+Tu es l'assistant culinaire de Yukpo.
 
 Recette : {}
 Ingrédients de base (pour {} portions) : {}
@@ -1089,7 +1089,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es l'assistant culinaire intelligent de Yukpomnang spécialisé dans les recettes.
+Tu es l'assistant culinaire intelligent de Yukpo spécialisé dans les recettes.
 {}{}
 
 🎯 TON RÔLE :

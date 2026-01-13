@@ -176,7 +176,7 @@ ${logText}
         try {
             await Share.share({
                 message: deviceInfo,
-                title: 'Yukpomnang Debug Logs',
+                title: 'Yukpo Debug Logs',
             });
         } catch (error) {
             console.error('Erreur lors du partage:', error);

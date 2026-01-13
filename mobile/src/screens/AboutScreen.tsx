@@ -16,7 +16,7 @@ const AboutScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <Text style={styles.title}>
-            <YukpoBrand>Yukpomnang</YukpoBrand> � l'�coute qui comprend vraiment
+            <YukpoBrand>Yukpo</YukpoBrand> � l'�coute qui comprend vraiment
           </Text>
 
           <Text style={styles.paragraph}>
@@ -25,7 +25,7 @@ const AboutScreen: React.FC = () => {
           </Text>
 
           <Text style={styles.paragraph}>
-            Fid�le � cette racine linguistique et humaine, <YukpoBrand>Yukpomnang</YukpoBrand> est une plateforme de connexion directe
+            Fid�le � cette racine linguistique et humaine, <YukpoBrand>Yukpo</YukpoBrand> est une plateforme de connexion directe
             entre <Text style={styles.highlightYellow}>les besoins exprim�s</Text> et <Text style={styles.highlightOrange}>les solutions concr�tes</Text> : services, opportunit�s, accompagnement.
           </Text>
 
@@ -43,7 +43,7 @@ const AboutScreen: React.FC = () => {
 
           <Text style={styles.paragraph}>
             Que vous soyez <Text style={styles.highlightRed}>citoyen, entrepreneur, diaspora ou acteur public</Text>,
-            <YukpoBrand>Yukpomnang</YukpoBrand> vous accompagne � chaque �tape : recherche, recommandation, mise en relation.
+            <YukpoBrand>Yukpo</YukpoBrand> vous accompagne � chaque �tape : recherche, recommandation, mise en relation.
             C'est un r�seau de confiance, enracin� dans la culture et tourn� vers l'avenir.
           </Text>
 

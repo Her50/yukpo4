@@ -18,7 +18,7 @@ const AIChatScreen: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Bonjour ! Je suis votre assistant IA Yukpomnang. Comment puis-je vous aider aujourd\'hui ?',
+      text: 'Bonjour ! Je suis votre assistant IA Yukpo. Comment puis-je vous aider aujourd\'hui ?',
       isUser: false,
       timestamp: new Date(),
     },

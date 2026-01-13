@@ -9,7 +9,7 @@ const TestimonialsAndPartners = () => (
       {[
         {
           name: "Fatoumata, Dakar",
-          message: "Yukpomnang a transformé la façon dont je trouve mes prestataires ! C’est rapide et intelligent.",
+          message: "Yukpo a transformé la façon dont je trouve mes prestataires ! C’est rapide et intelligent.",
         },
         {
           name: "Jean-Pierre, Yaoundé",

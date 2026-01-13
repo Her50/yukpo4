@@ -19,7 +19,7 @@ export interface LaboratoiresPays {
 }
 
 // ============================================================================
-// 🇨🇲 CAMEROUN - Le plus détaillé (pays principal de Yukpomnang)
+// 🇨🇲 CAMEROUN - Le plus détaillé (pays principal de Yukpo)
 // ============================================================================
 export const LABORATOIRES_CAMEROUN: LaboratoiresPays = {
     code: 'CM',
@@ -841,7 +841,7 @@ export const detecterLocalisationUtilisateur = (
         if (location) return location;
     }
 
-    // 3️⃣ Fallback : Cameroun/Douala (pays principal de Yukpomnang)
+    // 3️⃣ Fallback : Cameroun/Douala (pays principal de Yukpo)
     return { codePays: 'CM', ville: 'Douala' };
 };
 

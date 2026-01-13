@@ -57,7 +57,7 @@ impl HospitalAIService {
 
         let prompt = format!(
             r#"
-Tu es l'assistant médical intelligent de Yukpomnang.
+Tu es l'assistant médical intelligent de Yukpo.
 
 CONTEXTE :
 - Symptômes décrits : {}
@@ -134,7 +134,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es un système de triage médical intelligent pour Yukpomnang.
+Tu es un système de triage médical intelligent pour Yukpo.
 
 CONTEXTE :
 - Symptômes : {}

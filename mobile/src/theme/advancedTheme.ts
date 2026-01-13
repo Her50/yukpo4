@@ -1,4 +1,4 @@
-// Thèmes avancés pour Yukpomnang
+// Thèmes avancés pour Yukpo
 export const advancedThemes = {
     // Thème principal - Glassmorphism
     glassmorphism: {

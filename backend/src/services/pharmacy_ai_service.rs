@@ -67,7 +67,7 @@ impl PharmacyAIService {
 
         let prompt = format!(
             r#"
-Tu es un pharmacien expert en interactions médicamenteuses pour Yukpomnang.
+Tu es un pharmacien expert en interactions médicamenteuses pour Yukpo.
 
 CONTEXTE :
 - Médicaments : {}
@@ -143,7 +143,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es un pharmacien expert en posologie pour Yukpomnang.
+Tu es un pharmacien expert en posologie pour Yukpo.
 
 CONTEXTE :
 - Médicament : {}
@@ -213,7 +213,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es un pharmacien expert en alternatives médicamenteuses pour Yukpomnang.
+Tu es un pharmacien expert en alternatives médicamenteuses pour Yukpo.
 
 CONTEXTE :
 - Médicament indisponible : {}

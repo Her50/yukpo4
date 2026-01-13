@@ -1,5 +1,5 @@
 /**
- * Thème sombre pour Yukpomnang
+ * Thème sombre pour Yukpo
  * Compatible avec modernTheme
  */
 

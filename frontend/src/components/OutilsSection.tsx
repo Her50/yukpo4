@@ -6,10 +6,10 @@ function OutilsSection() {
   return (
     <section id="outils" className={styles.sectionContainer}>
       <h2 className="text-2xl font-bold mb-4">
-        🛠️ Outils Yukpomnang
+        🛠️ Outils Yukpo
       </h2>
       <p className="text-gray-700 text-sm">
-        Exploitez les outils Yukpomnang : contenus intelligents, tendances sociales, prédictions, dashboard.
+        Exploitez les outils Yukpo : contenus intelligents, tendances sociales, prédictions, dashboard.
       </p>
     </section>
   );

@@ -4290,7 +4290,7 @@ pub async fn search_pathology_laboratory(
 
     let prompt = format!(
         r#"
-Tu es un expert médical pour Yukpomnang, spécialisé dans l'aide au diagnostic et la recherche de pathologies.
+Tu es un expert médical pour Yukpo, spécialisé dans l'aide au diagnostic et la recherche de pathologies.
 
 CONTEXTE :
 - Recherche : {}
@@ -4383,7 +4383,7 @@ pub async fn search_pathology_hospital(
 
     let prompt = format!(
         r#"
-Tu es un expert médical pour Yukpomnang, spécialisé dans l'aide au diagnostic et la recherche de pathologies pour hôpitaux.
+Tu es un expert médical pour Yukpo, spécialisé dans l'aide au diagnostic et la recherche de pathologies pour hôpitaux.
 
 CONTEXTE :
 - Recherche : {}

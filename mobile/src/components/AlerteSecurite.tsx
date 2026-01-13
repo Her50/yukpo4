@@ -77,7 +77,7 @@ const AlerteSecurite: React.FC<AlerteSecuriteProps> = ({
             <View style={styles.footer}>
                 <SafeIcon name="info" size={14} color="#6B7280" />
                 <Text style={styles.footerText}>
-                    Yukpomnang n'est pas responsable des transactions entre utilisateurs
+                    Yukpo n'est pas responsable des transactions entre utilisateurs
                 </Text>
             </View>
         </View>

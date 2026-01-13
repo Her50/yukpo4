@@ -1,16 +1,16 @@
 // @ts-check
 import React from 'react';
 
-export type YukpomnangPlan = 'free' | 'pro' | 'enterprise';
+export type YukpoPlan = 'free' | 'pro' | 'enterprise';
 
-export interface YukpomnangProduct {
+export interface YukpoProduct {
   id: string;
   name: string; // ✅ utilisé dans DashboardIA.tsx
   description: string;
-  plans: YukpomnangPlan[];
+  plans: YukpoPlan[];
 }
 
-export const Yukpomnang_PRODUCTS: YukpomnangProduct[] = [
+export const Yukpo_PRODUCTS: YukpoProduct[] = [
   {
     id: 'ia_match_auto',
     name: 'Match automatique intelligent',
@@ -20,7 +20,7 @@ export const Yukpomnang_PRODUCTS: YukpomnangProduct[] = [
   {
     id: 'ia_fiche_auto',
     name: 'Génération automatique de fiches',
-    description: 'Crée une fiche descriptive Yukpomnang à partir des données.',
+    description: 'Crée une fiche descriptive Yukpo à partir des données.',
     plans: ['free', 'pro', 'enterprise'],
   },
   {
@@ -31,7 +31,7 @@ export const Yukpomnang_PRODUCTS: YukpomnangProduct[] = [
   },
   {
     id: 'ia_prediction',
-    name: 'Prédictions Yukpomnang',
+    name: 'Prédictions Yukpo',
     description: 'Analyse les tendances pour prédire les opportunités.',
     plans: ['enterprise'],
   },
@@ -50,8 +50,8 @@ export const Yukpomnang_PRODUCTS: YukpomnangProduct[] = [
 ];
 
 /**
- * Retourne la liste des produits Yukpomnang accessibles selon le plan
+ * Retourne la liste des produits Yukpo accessibles selon le plan
  */
-export function getProductsByPlan(plan: YukpomnangPlan): YukpomnangProduct[] {
-  return Yukpomnang_PRODUCTS.filter((p) => p.plans.includes(plan));
+export function getProductsByPlan(plan: YukpoPlan): YukpoProduct[] {
+  return Yukpo_PRODUCTS.filter((p) => p.plans.includes(plan));
 }

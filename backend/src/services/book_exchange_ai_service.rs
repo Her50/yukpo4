@@ -90,7 +90,7 @@ impl BookExchangeAIService {
             );
                     format!(
                         r#"
-Tu es l'assistant intelligent de la Bourse du Livre de Yukpomnang.
+Tu es l'assistant intelligent de la Bourse du Livre de Yukpo.
 
 CONTEXTE :
 - Classe actuelle de l'élève : {}
@@ -194,7 +194,7 @@ RÉPONSE ATTENDUE (JSON strict) :
             );
                     format!(
                         r#"
-Tu es l'assistant intelligent de matching pour la Bourse du Livre de Yukpomnang.
+Tu es l'assistant intelligent de matching pour la Bourse du Livre de Yukpo.
 
 CONTEXTE :
 - Livre offert ID : {}
@@ -318,7 +318,7 @@ RÉPONSE ATTENDUE (JSON strict) :
                 );
                 format!(
                     r#"
-Tu es l'expert en prix de livres scolaires pour Yukpomnang.
+Tu es l'expert en prix de livres scolaires pour Yukpo.
 
 CONTEXTE :
 - Livre ID : {}

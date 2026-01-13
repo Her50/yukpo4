@@ -673,8 +673,8 @@ async fn save_product_delivery_config(
             billing_mode = EXCLUDED.billing_mode,
             billing_partner_label = EXCLUDED.billing_partner_label,
             is_configured = EXCLUDED.is_configured,
-            configured_at = CASE WHEN EXCLUDED.is_configured THEN NOW() ELSE configured_at END,
-            configured_by = CASE WHEN EXCLUDED.is_configured THEN EXCLUDED.configured_by ELSE configured_by END,
+            configured_at = CASE WHEN EXCLUDED.is_configured THEN NOW() ELSE product_delivery_config.configured_at END,
+            configured_by = CASE WHEN EXCLUDED.is_configured THEN EXCLUDED.configured_by ELSE product_delivery_config.configured_by END,
             updated_at = NOW()
         RETURNING id, is_configured
         "#,

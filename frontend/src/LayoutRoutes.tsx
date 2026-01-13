@@ -6,7 +6,7 @@ import LoginPage from './pages/LoginPage';
 import AboutPage from './pages/AboutPage'; // <- AboutPage n’a pas encore de route définie dans ROUTES, on utilisera "/about"
 import ContactPage from './pages/ContactPage';
 import Dashboard from './pages/Dashboard';
-import YukpomnangPremium from './pages/dashboard/IAPremium';
+import YukpoPremium from './pages/dashboard/IAPremium';
 import MonProfil from './pages/dashboard/MonProfil';
 import NotFound from './pages/NotFound';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -70,7 +70,7 @@ const LayoutRoutes: React.FC = () => {
               path="ia-premium"
               element={
                 <RequirePlan plan="enterprise">
-                  <YukpomnangPremium />
+                  <YukpoPremium />
                 </RequirePlan>
               }
             />

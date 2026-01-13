@@ -89,7 +89,7 @@ impl RealEstateAIService {
 
         let prompt = format!(
             r#"
-Tu es l'expert immobilier IA de Yukpomnang spécialisé dans l'évaluation de biens immobiliers en Afrique francophone.
+Tu es l'expert immobilier IA de Yukpo spécialisé dans l'évaluation de biens immobiliers en Afrique francophone.
 
 CONTEXTE :
 - Type de bien : {}
@@ -181,7 +181,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es l'assistant immobilier intelligent de Yukpomnang.
+Tu es l'assistant immobilier intelligent de Yukpo.
 
 CONTEXTE :
 - Budget maximum : {} FCFA
@@ -249,7 +249,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es l'analyste immobilier IA de Yukpomnang.
+Tu es l'analyste immobilier IA de Yukpo.
 
 CONTEXTE :
 - Ville : {}
@@ -320,7 +320,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es le conseiller financier immobilier IA de Yukpomnang.
+Tu es le conseiller financier immobilier IA de Yukpo.
 
 CONTEXTE :
 - Prix du bien : {} FCFA
@@ -412,7 +412,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es l'expert immobilier IA de Yukpomnang spécialisé dans la détection d'anomalies.
+Tu es l'expert immobilier IA de Yukpo spécialisé dans la détection d'anomalies.
 
 CONTEXTE :
 Données du bien :

@@ -60,7 +60,7 @@ IMPORTANT:
 /// Prompt pour prédiction ETA améliorée
 /// ✅ AMÉLIORATION: Format JSON strict avec instructions détaillées
 pub const ETA_PREDICTION_PROMPT: &str = r#"
-Tu es un expert en logistique et prédiction de temps de livraison pour la plateforme Yukpomnang.
+Tu es un expert en logistique et prédiction de temps de livraison pour la plateforme Yukpo.
 
 DONNÉES ACTUELLES:
 - Distance: {distance_km} km
@@ -118,7 +118,7 @@ IMPORTANT:
 /// Prompt pour forecasting de demande
 /// ✅ AMÉLIORATION: Format JSON strict avec instructions détaillées
 pub const DEMAND_FORECASTING_PROMPT: &str = r#"
-Tu es un expert en analyse prédictive de demande pour services de livraison Yukpomnang.
+Tu es un expert en analyse prédictive de demande pour services de livraison Yukpo.
 
 ZONE ANALYSÉE:
 - Zone ID: {zone_id}

@@ -160,7 +160,7 @@ class ExternalProductDatabaseService {
 
             console.log(`[ExternalDB] ✅ ${products.length} produits trouvés`);
 
-            // Transformer les produits Open Food Facts au format Yukpomnang
+            // Transformer les produits Open Food Facts au format Yukpo
             for (const product of products) {
                 try {
                     const transformed = this.transformOpenFoodFactsProduct(product, options.country);
@@ -207,7 +207,7 @@ class ExternalProductDatabaseService {
     }
 
     /**
-     * Transformer un produit Open Food Facts au format Yukpomnang
+     * Transformer un produit Open Food Facts au format Yukpo
      */
     private transformOpenFoodFactsProduct(product: any, country?: string): EnrichedProduct {
         const nom = product.product_name_fr || product.product_name || product.product_name_en || 'Produit inconnu';

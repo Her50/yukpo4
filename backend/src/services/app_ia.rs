@@ -752,7 +752,7 @@ impl AppIA {
 
         // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
-            "Tu es l'assistant IA officiel de Yukpomnang. Génére des sous-titres professionnels en langue {lang} pour la vidéo d'un produit nommé \"{product_name}\".
+            "Tu es l'assistant IA officiel de Yukpo. Génére des sous-titres professionnels en langue {lang} pour la vidéo d'un produit nommé \"{product_name}\".
 
 IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
 
@@ -931,7 +931,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
-            "Tu es le moteur TTS neural officiel de Yukpomnang.
+            "Tu es le moteur TTS neural officiel de Yukpo.
 
 IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
 
@@ -2567,7 +2567,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
-            "Tu es le directeur marketing IA de Yukpomnang. Génère {variants} variantes pour une courte vidéo produit.
+            "Tu es le directeur marketing IA de Yukpo. Génère {variants} variantes pour une courte vidéo produit.
 
 IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
 
@@ -2602,7 +2602,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             audience = request
                 .target_audience
                 .clone()
-                .unwrap_or_else(|| "Audience générale Yukpomnang".to_string()),
+                .unwrap_or_else(|| "Audience générale Yukpo".to_string()),
             tone = request.tone.clone().unwrap_or_else(|| "TikTok dynamique".to_string()),
         );
 
@@ -2781,7 +2781,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
-            "Tu es le directeur artistique IA de Yukpomnang. Pour un format {channel}, propose une direction visuelle concise.
+            "Tu es le directeur artistique IA de Yukpo. Pour un format {channel}, propose une direction visuelle concise.
 
 IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
 
@@ -2970,7 +2970,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
     ) -> AppResult<MediaAnalysisResult> {
         // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
-            "Tu es l'expert vision IA de Yukpomnang. À partir des informations suivantes, déduis le ressenti visuel.
+            "Tu es l'expert vision IA de Yukpo. À partir des informations suivantes, déduis le ressenti visuel.
 
 IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
 
@@ -3149,7 +3149,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
-            "Tu es le stratège diffusion de Yukpomnang. Produit un plan succinct.
+            "Tu es le stratège diffusion de Yukpo. Produit un plan succinct.
 
 IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
 
@@ -3175,7 +3175,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             audience = request
                 .target_audience
                 .clone()
-                .unwrap_or_else(|| "Audience générale Yukpomnang".to_string()),
+                .unwrap_or_else(|| "Audience générale Yukpo".to_string()),
             angle = request
                 .marketing_angle
                 .clone()
@@ -3400,7 +3400,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         };
 
         let prompt = format!(
-            "Tu es le monteur vidéo IA de Yukpomnang. Génère une timeline précise pour un montage vidéo.
+            "Tu es le monteur vidéo IA de Yukpo. Génère une timeline précise pour un montage vidéo.
 
 IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
 

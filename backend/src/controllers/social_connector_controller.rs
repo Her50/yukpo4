@@ -184,7 +184,7 @@ async fn persist_token_set(
 
 fn oauth_success_page(platform: &str) -> String {
     format!(
-        "<html><head><meta charset='utf-8'><title>Succès</title></head><body style=\"font-family:Arial;padding:32px;text-align:center;\"><h2>Connexion {platform} réussie ✅</h2><p>Vous pouvez revenir dans Yukpomnang.</p><script>setTimeout(function(){{window.close();}},2000);</script></body></html>"
+        "<html><head><meta charset='utf-8'><title>Succès</title></head><body style=\"font-family:Arial;padding:32px;text-align:center;\"><h2>Connexion {platform} réussie ✅</h2><p>Vous pouvez revenir dans Yukpo.</p><script>setTimeout(function(){{window.close();}},2000);</script></body></html>"
     )
 }
 

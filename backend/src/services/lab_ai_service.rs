@@ -58,7 +58,7 @@ impl LabAIService {
 
         let prompt = format!(
             r#"
-Tu es un expert en interprétation de résultats de laboratoire pour Yukpomnang.
+Tu es un expert en interprétation de résultats de laboratoire pour Yukpo.
 
 CONTEXTE :
 - Type d'examen : {}
@@ -209,7 +209,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es un expert en prescription d'examens complémentaires pour Yukpomnang.
+Tu es un expert en prescription d'examens complémentaires pour Yukpo.
 
 CONTEXTE :
 - Examen effectué : {}
@@ -277,7 +277,7 @@ RÉPONSE ATTENDUE (JSON strict) :
         // Construire le prompt pour l'analyse d'image médicale
         let prompt = format!(
             r#"
-Tu es un expert en interprétation d'images médicales et de résultats de laboratoire pour Yukpomnang.
+Tu es un expert en interprétation d'images médicales et de résultats de laboratoire pour Yukpo.
 
 CONTEXTE :
 - Type d'examen : {}

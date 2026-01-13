@@ -370,7 +370,7 @@ pub async fn generate_suggestions(
         let service_name = payload.service_name.as_deref().unwrap_or("service");
 
         let prompt = format!(
-            "Tu es un expert en marketing vidéo pour Yukpomnang. Analyse ce brief et génère 4-5 suggestions concises (une phrase chacune) pour améliorer la vidéo promotionnelle.\n\nBrief : {}\nProduit : {}\nService : {}\n\nFormat de réponse (JSON strict) :\n{{\n  \"suggestions\": [\n    \"Suggestion 1\",\n    \"Suggestion 2\",\n    \"Suggestion 3\",\n    \"Suggestion 4\"\n  ]\n}}\n\nLes suggestions doivent être :\n- Concrètes et actionnables\n- Adaptées au contexte du brief\n- Orientées vers l'engagement et la conversion\n- Maximum 15 mots chacune",
+            "Tu es un expert en marketing vidéo pour Yukpo. Analyse ce brief et génère 4-5 suggestions concises (une phrase chacune) pour améliorer la vidéo promotionnelle.\n\nBrief : {}\nProduit : {}\nService : {}\n\nFormat de réponse (JSON strict) :\n{{\n  \"suggestions\": [\n    \"Suggestion 1\",\n    \"Suggestion 2\",\n    \"Suggestion 3\",\n    \"Suggestion 4\"\n  ]\n}}\n\nLes suggestions doivent être :\n- Concrètes et actionnables\n- Adaptées au contexte du brief\n- Orientées vers l'engagement et la conversion\n- Maximum 15 mots chacune",
             payload.brief,
             product_name,
             service_name

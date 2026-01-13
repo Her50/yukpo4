@@ -108,7 +108,7 @@ impl OrientationScolaireAIService {
             );
             format!(
                 r#"
-Tu es le conseiller d'orientation intelligent de Yukpomnang.
+Tu es le conseiller d'orientation intelligent de Yukpo.
 
 CONTEXTE :
 - Profil étudiant ID : {}
@@ -229,7 +229,7 @@ RÉPONSE ATTENDUE (JSON strict) :
             );
             format!(
                 r#"
-Tu es le conseiller d'orientation intelligent de Yukpomnang.
+Tu es le conseiller d'orientation intelligent de Yukpo.
 
 CONTEXTE :
 - Profil étudiant ID : {}
@@ -354,7 +354,7 @@ RÉPONSE ATTENDUE (JSON strict) :
             );
             format!(
                 r#"
-Tu es le conseiller d'orientation intelligent de Yukpomnang.
+Tu es le conseiller d'orientation intelligent de Yukpo.
 
 CONTEXTE :
 - Profil étudiant ID : {}

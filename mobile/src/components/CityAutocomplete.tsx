@@ -124,7 +124,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
             //     setShowSuggestions(true);
             // }
 
-            // Option 2: Utiliser le backend Yukpomnang (recommandé)
+            // Option 2: Utiliser le backend Yukpo (recommandé)
             const response = await fetch(
                 `${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/geocoding/autocomplete?query=${encodeURIComponent(query)}&type=city&limit=5`
             );

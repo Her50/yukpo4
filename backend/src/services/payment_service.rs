@@ -244,7 +244,7 @@ impl PaymentService {
             amount,
             currency: "XAF".to_string(),
             transaction_reference: transaction_id.to_string(),
-            description: Some("Paiement Yukpomnang".to_string()),
+            description: Some("Paiement Yukpo".to_string()),
             callback_url: None,
         };
 
@@ -321,7 +321,7 @@ impl PaymentService {
             amount,
             currency: "XAF".to_string(),
             transaction_reference: transaction_id.to_string(),
-            description: Some("Paiement Yukpomnang".to_string()),
+            description: Some("Paiement Yukpo".to_string()),
             callback_url: None,
         };
 

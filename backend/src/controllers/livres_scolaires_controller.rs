@@ -436,7 +436,7 @@ pub async fn analyze_book_image(
     // Créer un prompt IA pour analyser l'image et extraire les caractéristiques du livre
     let prompt = format!(
         r#"
-Tu es un expert en reconnaissance de livres scolaires pour Yukpomnang.
+Tu es un expert en reconnaissance de livres scolaires pour Yukpo.
 
 CONTEXTE :
 - Image de livre fournie par l'utilisateur

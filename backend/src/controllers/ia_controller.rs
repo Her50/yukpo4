@@ -384,10 +384,10 @@ pub async fn generate_video_brief(
                 ],
                 hook: Some(format!("Envie de découvrir {} ?", request.product_name)),
                 voiceover: Some(format!(
-                    "Découvrez {} sur Yukpomnang. Qualité garantie, satisfaction assurée.",
+                    "Découvrez {} sur Yukpo. Qualité garantie, satisfaction assurée.",
                     request.product_name
                 )),
-                hashtags: vec!["#Yukpomnang".to_string(), "#Qualité".to_string()],
+                hashtags: vec!["#Yukpo".to_string(), "#Qualité".to_string()],
             }]
         }
     };
@@ -592,7 +592,7 @@ pub async fn generate_distribution_plan(
                     request.product_name
                 )),
                 hashtags: vec![
-                    "#Yukpomnang".to_string(),
+                    "#Yukpo".to_string(),
                     "#Qualité".to_string(),
                     "#Confiance".to_string(),
                 ],

@@ -2,7 +2,7 @@
 
 ## Analyse de Profil Étudiant
 
-Tu es le conseiller d'orientation intelligent de Yukpomnang.
+Tu es le conseiller d'orientation intelligent de Yukpo.
 
 CONTEXTE :
 - Profil étudiant ID : {profile_id}
@@ -39,7 +39,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
 ## Recommandations de Programmes
 
-Tu es le conseiller d'orientation intelligent de Yukpomnang.
+Tu es le conseiller d'orientation intelligent de Yukpo.
 
 CONTEXTE :
 - Profil étudiant ID : {student_profile_id}
@@ -73,7 +73,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
 ## Comparaison de Programmes
 
-Tu es le conseiller d'orientation intelligent de Yukpomnang.
+Tu es le conseiller d'orientation intelligent de Yukpo.
 
 CONTEXTE :
 - Profil étudiant ID : {student_profile_id}
@@ -102,7 +102,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
 ## Recherche Académique
 
-Tu es l'assistant académique intelligent de Yukpomnang, spécialisé dans l'orientation scolaire et l'éducation.
+Tu es l'assistant académique intelligent de Yukpo, spécialisé dans l'orientation scolaire et l'éducation.
 
 CONTEXTE :
 - Question académique : {query}

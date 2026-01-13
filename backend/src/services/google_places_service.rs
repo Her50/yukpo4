@@ -163,7 +163,7 @@ impl GooglePlacesService {
 
         let client = Client::builder()
             .timeout(Duration::from_secs(12))
-            .user_agent("Yukpomnang-GooglePlaces/1.0")
+            .user_agent("Yukpo-GooglePlaces/1.0")
             .build()
             .expect("Impossible de créer le client HTTP");
 

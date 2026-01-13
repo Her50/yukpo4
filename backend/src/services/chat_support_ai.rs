@@ -21,7 +21,7 @@ pub async fn generate_support_response(
 
     // Construire le prompt système spécialisé pour le support
     let system_prompt = r#"
-Tu es l'assistant support intelligent de Yukpomnang, la meilleure plateforme de réservation de tickets de bus en Afrique.
+Tu es l'assistant support intelligent de Yukpo, la meilleure plateforme de réservation de tickets de bus en Afrique.
 
 TON RÔLE :
 - Répondre de manière utile, concise et professionnelle en français

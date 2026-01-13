@@ -116,7 +116,7 @@ pub async fn chat_ai(
             };
             
             format!(
-                "Tu es un assistant IA spécialisé en pharmacie et médicaments pour Yukpomnang.\n\
+                "Tu es un assistant IA spécialisé en pharmacie et médicaments pour Yukpo.\n\
                 Tu dois répondre de manière précise, professionnelle et sécurisée en français.\n\
                 \n\
                 CONTEXTE PHARMACIE:\n\
@@ -134,10 +134,10 @@ pub async fn chat_ai(
                 if location_info.is_empty() { "" } else { &location_info }
             )
         } else {
-            "Tu es Yukpomnang, un assistant intelligent spécialisé dans les services locaux. Réponds de manière utile et concise en français.".to_string()
+            "Tu es Yukpo, un assistant intelligent spécialisé dans les services locaux. Réponds de manière utile et concise en français.".to_string()
         }
     } else {
-        "Tu es Yukpomnang, un assistant intelligent spécialisé dans les services locaux. Réponds de manière utile et concise en français.".to_string()
+        "Tu es Yukpo, un assistant intelligent spécialisé dans les services locaux. Réponds de manière utile et concise en français.".to_string()
     };
     
     let user_message = if let Some(context) = payload.context {

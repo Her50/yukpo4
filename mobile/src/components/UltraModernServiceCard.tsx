@@ -282,7 +282,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
             // ✅ CORRIGÉ: Utilise variable d'environnement pour URL de partage
             const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
             const serviceUrl = `${SHARE_BASE_URL}/service/${service.id}`;
-            const shareText = `🌟 Découvrez ce service sur Yukpomnang :\n\n${normalizedService.titre}\n\n${normalizedService.description}\n\n💰 Prix: ${normalizedService.prix} ${normalizedService.devise}\n📍 Localisation: ${locationData?.location || 'Non spécifiée'}\n\n🔗 ${serviceUrl}`;
+            const shareText = `🌟 Découvrez ce service sur Yukpo :\n\n${normalizedService.titre}\n\n${normalizedService.description}\n\n💰 Prix: ${normalizedService.prix} ${normalizedService.devise}\n📍 Localisation: ${locationData?.location || 'Non spécifiée'}\n\n🔗 ${serviceUrl}`;
 
             const result = await Share.share({
                 message: shareText,

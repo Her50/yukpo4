@@ -20,7 +20,7 @@ export function useSemanticRedirect(input: string): {
   }
 
   return [
-    { emoji: '🎯', label: 'Moteur Yukpomnang de matching', link: '/matching' },
+    { emoji: '🎯', label: 'Moteur Yukpo de matching', link: '/matching' },
     { emoji: '⚙️', label: 'Créer un service classique', link: '/creation' },
   ];
 }

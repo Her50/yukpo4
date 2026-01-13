@@ -11,7 +11,7 @@ const HeroBanner: React.FC = () => {
       {/* Image de fond */}
       <img
         src={banner}
-        alt="Yukpomnang background"
+        alt="Yukpo background"
         className="absolute inset-0 w-full h-full object-cover z-0"
       />
 

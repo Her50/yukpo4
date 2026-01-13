@@ -19,7 +19,7 @@ const Sidebar: React.FC = () => {
           to="/dashboard/premium"
           className={`block px-4 py-2 rounded ${isActive("/dashboard/premium")}`}
         >
-          🧠 Yukpomnang Premium
+          🧠 Yukpo Premium
         </Link>
       </RequirePlan>
     </aside>

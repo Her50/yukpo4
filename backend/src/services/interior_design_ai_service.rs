@@ -83,7 +83,7 @@ impl InteriorDesignAIService {
 
         let prompt = format!(
             r##"
-Tu es le décorateur d'intérieur IA de Yukpomnang.
+Tu es le décorateur d'intérieur IA de Yukpo.
 
 CONTEXTE :
 - Style souhaité : {}
@@ -165,7 +165,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r##"
-Tu es le visualiseur 3D IA de Yukpomnang.
+Tu es le visualiseur 3D IA de Yukpo.
 
 CONTEXTE :
 - Description du projet : {}
@@ -229,7 +229,7 @@ RÉPONSE ATTENDUE (JSON strict) :
     ) -> AppResult<DecorationCostEstimate> {
         let prompt = format!(
             r##"
-Tu es l'estimateur de coûts décoration IA de Yukpomnang.
+Tu es l'estimateur de coûts décoration IA de Yukpo.
 
 CONTEXTE :
 - Superficie : {} m²
@@ -306,7 +306,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r##"
-Tu es l'optimiseur d'espace IA de Yukpomnang.
+Tu es l'optimiseur d'espace IA de Yukpo.
 
 CONTEXTE :
 - Superficie : {} m²

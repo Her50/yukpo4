@@ -1337,7 +1337,7 @@ async fn analyser_contexte_ultra_avance(
 ) -> AppResult<ContextAnalysis> {
     let prompt_analyse = format!(
         r#"
-Tu es un expert en analyse contextuelle pour l'assistant IA Yukpomnang.
+Tu es un expert en analyse contextuelle pour l'assistant IA Yukpo.
 
 CONTEXTE UTILISATEUR:
 {}

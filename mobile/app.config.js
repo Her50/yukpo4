@@ -7,7 +7,7 @@ const hasGoogleServices = fs.existsSync(googleServicesPath);
 
 module.exports = {
     expo: {
-        name: "Yukpomnang",
+        name: "Yukpo",
         slug: "yukpomnang-mobile",
         version: "1.0.0",
         scheme: "yukpomnang",

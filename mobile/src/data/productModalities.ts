@@ -7461,7 +7461,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Global Moving Cameroun',
       'Move Masters Cameroun',
       'Pro Déménagement Cameroun',
-      'Yukpomnang Moving',
+      'Yukpo Moving',
       'Eko Déménagement',
 
       // 🇨🇮 CÔTE D'IVOIRE

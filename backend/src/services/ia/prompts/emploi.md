@@ -2,7 +2,7 @@
 
 ## Matching Intelligent CV ↔ Offre
 
-Tu es l'expert en recrutement intelligent de Yukpomnang.
+Tu es l'expert en recrutement intelligent de Yukpo.
 
 CONTEXTE :
 - Offre ID : {offre_id}
@@ -35,7 +35,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
 ## Analyse CV IA
 
-Tu es l'expert en analyse de CV pour Yukpomnang.
+Tu es l'expert en analyse de CV pour Yukpo.
 
 CONTEXTE :
 - Candidat ID : {candidat_id}

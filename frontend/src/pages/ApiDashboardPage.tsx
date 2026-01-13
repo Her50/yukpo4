@@ -104,7 +104,7 @@ const ApiDashboardPage: React.FC = () => {
           href={ROUTES.CONTACT}
           className=""
         >
-          Contacter l'équipe Yukpomnang
+          Contacter l'équipe Yukpo
         </a>
       </div>
       {/* 🚀 CONTEXTUAL BUTTONS END */}

@@ -8,7 +8,7 @@ const HeroSection: React.FC = () => {
       {/* Couche foncée + Texte centré */}
       <View style={styles.overlay}>
         <Text style={styles.title}>
-          Chez Yukpomnang, chaque besoin est une opportunité
+          Chez Yukpo, chaque besoin est une opportunité
         </Text>
       </View>
     </View>

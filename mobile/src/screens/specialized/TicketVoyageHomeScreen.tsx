@@ -1005,13 +1005,18 @@ const styles = StyleSheet.create({
     cityInputContainer: {
         flex: 1,
         width: '100%',
-        minHeight: 80,
+        minHeight: 90,
         marginBottom: 16,
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 12,
-        borderWidth: 1,
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 2,
         borderColor: '#E5E7EB',
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     searchSectionTitle: {
         fontSize: 18,
@@ -1027,9 +1032,10 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     cityLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#111827',
+        letterSpacing: 0.2,
     },
     // ✅ AMÉLIORÉ: Styles pour le bouton de recherche - plus visible
     searchButton: {

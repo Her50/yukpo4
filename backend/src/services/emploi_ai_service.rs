@@ -112,7 +112,7 @@ impl EmploiAIService {
                 );
                 format!(
                     r#"
-Tu es l'expert en recrutement intelligent de Yukpomnang.
+Tu es l'expert en recrutement intelligent de Yukpo.
 
 CONTEXTE :
 - Offre ID : {}
@@ -231,7 +231,7 @@ RÉPONSE ATTENDUE (JSON strict) :
                 );
                 format!(
                     r#"
-Tu es l'expert en analyse de CV pour Yukpomnang.
+Tu es l'expert en analyse de CV pour Yukpo.
 
 CONTEXTE :
 - Candidat ID : {}

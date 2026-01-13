@@ -12,7 +12,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onClick }) => {
       key: 'match',
       icon: '🎯',
       title: 'Mise en relation intelligente',
-      desc: 'Yukpomnang comprend vos besoins et vous connecte instantanément aux bonnes solutions.',
+      desc: 'Yukpo comprend vos besoins et vous connecte instantanément aux bonnes solutions.',
     },
     {
       key: 'creation',
@@ -23,7 +23,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onClick }) => {
     {
       key: 'outils',
       icon: '🛠️',
-      title: 'Outils Yukpomnang',
+      title: 'Outils Yukpo',
       desc: 'Explorez des outils puissants pour comprendre, anticiper et publier ce que veut votre audience.',
     },
   ];

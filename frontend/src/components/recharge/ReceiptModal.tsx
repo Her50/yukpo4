@@ -40,7 +40,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
         printWindow.document.write(`
           <html>
             <head>
-              <title>Reçu de recharge - Yukpomnang</title>
+              <title>Reçu de recharge - Yukpo</title>
               <style>
                 body { font-family: Arial, sans-serif; margin: 20px; }
                 .receipt { max-width: 400px; margin: 0 auto; }
@@ -73,7 +73,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Reçu de recharge - Yukpomnang</title>
+            <title>Reçu de recharge - Yukpo</title>
             <style>
               body { font-family: Arial, sans-serif; margin: 20px; }
               .receipt { max-width: 400px; margin: 0 auto; }
@@ -125,7 +125,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
         <CardContent>
           <div ref={receiptRef} className="receipt">
             <div className="header">
-              <div className="logo">Yukpomnang</div>
+              <div className="logo">Yukpo</div>
               <div className="text-sm text-gray-600">Reçu de recharge</div>
             </div>
 
@@ -185,7 +185,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
             </div>
 
             <div className="footer">
-              <div>Merci d'utiliser Yukpomnang !</div>
+              <div>Merci d'utiliser Yukpo !</div>
               <div>www.yukpomnang.com</div>
             </div>
           </div>

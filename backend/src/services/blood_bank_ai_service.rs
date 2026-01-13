@@ -76,7 +76,7 @@ impl BloodBankAIService {
 
         let prompt = format!(
             r#"
-Tu es un expert en prédiction de besoins sanguins pour Yukpomnang.
+Tu es un expert en prédiction de besoins sanguins pour Yukpo.
 
 CONTEXTE :
 - Banque de sang : {}
@@ -152,7 +152,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es un expert en optimisation de distribution de stocks sanguins pour Yukpomnang.
+Tu es un expert en optimisation de distribution de stocks sanguins pour Yukpo.
 
 CONTEXTE :
 - Stocks actuels par banque : {}
@@ -223,7 +223,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es un analyste expert en tendances de don de sang pour Yukpomnang.
+Tu es un analyste expert en tendances de don de sang pour Yukpo.
 
 CONTEXTE :
 - Données historiques de dons : {}

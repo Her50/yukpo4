@@ -276,7 +276,7 @@ const ServicesScreen: React.FC = () => {
     try {
       const shareUrl = `https://yukpomnang.com/service/${service.id}`;
       await Share.share({
-        message: `Découvrez ce service sur Yukpomnang: ${service.title}\n${shareUrl}`,
+        message: `Découvrez ce service sur Yukpo: ${service.title}\n${shareUrl}`,
         url: shareUrl,
         title: service.title
       });

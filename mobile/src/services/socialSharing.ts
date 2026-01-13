@@ -25,7 +25,7 @@ class SocialSharingService {
         agency: string;
     }): Promise<boolean> {
         try {
-            const message = `🚌 Voyage ${trip.departure} → ${trip.arrival}\n📅 ${trip.date}\n💰 ${trip.price.toLocaleString()} FCFA\n🏢 ${trip.agency}\n\nRéservez sur Yukpomnang !`;
+            const message = `🚌 Voyage ${trip.departure} → ${trip.arrival}\n📅 ${trip.date}\n💰 ${trip.price.toLocaleString()} FCFA\n🏢 ${trip.agency}\n\nRéservez sur Yukpo !`;
             const url = `https://yukpomnang.com/trips/${trip.departure}-${trip.arrival}`;
 
             const result = await Share.share({
@@ -59,12 +59,12 @@ class SocialSharingService {
         seats: number;
     }): Promise<boolean> {
         try {
-            const message = `✅ J'ai réservé ${ticket.seats} place(s) pour ${ticket.departure} → ${ticket.arrival} le ${ticket.date} sur Yukpomnang !`;
+            const message = `✅ J'ai réservé ${ticket.seats} place(s) pour ${ticket.departure} → ${ticket.arrival} le ${ticket.date} sur Yukpo !`;
             const url = `https://yukpomnang.com/tickets/${ticket.id}`;
 
             const result = await Share.share({
                 message: `${message}\n${url}`,
-                title: 'Ma réservation Yukpomnang',
+                title: 'Ma réservation Yukpo',
             });
 
             if (result.action === Share.sharedAction) {
@@ -91,7 +91,7 @@ class SocialSharingService {
         code?: string;
     }): Promise<boolean> {
         try {
-            const message = `🎉 ${promotion.title}\n${promotion.description}\n💰 Réduction de ${promotion.discount}%${promotion.code ? `\n🎫 Code: ${promotion.code}` : ''}\n\nProfitez-en sur Yukpomnang !`;
+            const message = `🎉 ${promotion.title}\n${promotion.description}\n💰 Réduction de ${promotion.discount}%${promotion.code ? `\n🎫 Code: ${promotion.code}` : ''}\n\nProfitez-en sur Yukpo !`;
             const url = 'https://yukpomnang.com/promotions';
 
             const result = await Share.share({
@@ -118,14 +118,14 @@ class SocialSharingService {
      */
     async shareApp(): Promise<boolean> {
         try {
-            const message = `🚀 Découvrez Yukpomnang, la meilleure plateforme de réservation de tickets de bus !\n\n✅ Réservation facile\n✅ Paiement sécurisé\n✅ Suivi en temps réel\n\nTéléchargez maintenant !`;
+            const message = `🚀 Découvrez Yukpo, la meilleure plateforme de réservation de tickets de bus !\n\n✅ Réservation facile\n✅ Paiement sécurisé\n✅ Suivi en temps réel\n\nTéléchargez maintenant !`;
             const url = Platform.OS === 'ios'
                 ? 'https://apps.apple.com/app/yukpomnang'
                 : 'https://play.google.com/store/apps/details?id=com.yukpomnang';
 
             const result = await Share.share({
                 message: `${message}\n${url}`,
-                title: 'Yukpomnang - Réservation de tickets',
+                title: 'Yukpo - Réservation de tickets',
             });
 
             if (result.action === Share.sharedAction) {

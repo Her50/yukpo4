@@ -644,7 +644,7 @@ impl KYCService {
             .post("https://netverify.com/api/v4/initiate")
             .header("Authorization", format!("Basic {}", auth))
             .header("Content-Type", "application/json")
-            .header("User-Agent", "Yukpomnang-KYC/1.0")
+            .header("User-Agent", "Yukpo-KYC/1.0")
             .json(&transaction_payload)
             .send()
             .await
@@ -1197,7 +1197,7 @@ EXTRAIRE:
         };
 
         format!(
-            r#"Tu es un expert en vérification de documents d'identité pour la plateforme Yukpomnang (Afrique - CEMAC).
+            r#"Tu es un expert en vérification de documents d'identité pour la plateforme Yukpo (Afrique - CEMAC).
 
 OBJECTIF: Analyser ce document {} et extraire TOUTES les informations pertinentes pour vérification KYC.
 

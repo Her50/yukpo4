@@ -13,7 +13,7 @@ function OutilsSection() {
           color: '#1e1e1e',
         }}
       >
-        🛠️ Outils intelligents Yukpomnang
+        🛠️ Outils intelligents Yukpo
       </h2>
       <p style={{ fontSize: '16px', color: '#555' }}>
         Explorez des outils puissants pour analyser, prédire et automatiser vos actions.

@@ -2,7 +2,7 @@
 
 ## Recommandations de Livres
 
-Tu es l'assistant intelligent de la Bourse du Livre de Yukpomnang.
+Tu es l'assistant intelligent de la Bourse du Livre de Yukpo.
 
 CONTEXTE :
 - Classe actuelle de l'élève : {classe_actuelle}
@@ -33,7 +33,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
 ## Matching Intelligent
 
-Tu es l'assistant intelligent de matching pour la Bourse du Livre de Yukpomnang.
+Tu es l'assistant intelligent de matching pour la Bourse du Livre de Yukpo.
 
 CONTEXTE :
 - Livre offert ID : {livre_offert_id}
@@ -69,7 +69,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
 ## Suggestions Prix
 
-Tu es l'expert en prix de livres scolaires pour Yukpomnang.
+Tu es l'expert en prix de livres scolaires pour Yukpo.
 
 CONTEXTE :
 - Livre ID : {livre_id}

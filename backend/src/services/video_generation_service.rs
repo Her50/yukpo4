@@ -3187,7 +3187,7 @@ fn build_slide_overlays(
             }
         })
         .or_else(|| payload.headline.clone())
-        .unwrap_or_else(|| format!("{} • Edition Yukpomnang", product_name));
+        .unwrap_or_else(|| format!("{} • Edition Yukpo", product_name));
 
     let call_to_action_text = call_to_action_override
         .and_then(|value| {
@@ -3199,7 +3199,7 @@ fn build_slide_overlays(
             }
         })
         .or_else(|| payload.call_to_action.clone())
-        .unwrap_or_else(|| "Commandez maintenant sur Yukpomnang ✅".to_string());
+        .unwrap_or_else(|| "Commandez maintenant sur Yukpo ✅".to_string());
 
     let mut slides: Vec<SlideOverlay> = Vec::new();
 

@@ -31,7 +31,7 @@ impl EmailConfig {
         let sendgrid_from_name = std::env::var("SENDGRID_FROM_NAME")
             .or_else(|_| std::env::var("EMAIL_FROM_NAME"))
             .ok()
-            .or(Some("Yukpomnang".to_string()));
+            .or(Some("Yukpo".to_string()));
 
         Self {
             enabled,
@@ -130,7 +130,7 @@ impl EmailService {
             .config
             .sendgrid_from_name
             .as_deref()
-            .unwrap_or("Yukpomnang");
+            .unwrap_or("Yukpo");
 
         let url = "https://api.sendgrid.com/v3/mail/send";
 

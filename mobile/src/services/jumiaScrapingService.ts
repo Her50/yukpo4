@@ -458,9 +458,9 @@ class JumiaScrapingService {
     }
 
     /**
-     * Transformer produits Jumia en format Yukpomnang
+     * Transformer produits Jumia en format Yukpo
      */
-    transformToYukpomnang(jumiaProduct: JumiaProduct): EnrichedProduct {
+    transformToYukpo(jumiaProduct: JumiaProduct): EnrichedProduct {
         return {
             id: `jumia_${jumiaProduct.id}`,
             nom: jumiaProduct.name,
@@ -504,7 +504,7 @@ class JumiaScrapingService {
     }
 
     /**
-     * Mapper catégorie Jumia → Catégorie Yukpomnang
+     * Mapper catégorie Jumia → Catégorie Yukpo
      */
     private mapCategory(jumiaCategory: string): string {
         const categoryMap: Record<string, string> = {

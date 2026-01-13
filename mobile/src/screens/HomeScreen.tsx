@@ -813,21 +813,22 @@ const styles = StyleSheet.create({
         marginBottom: 16, // ✅ CORRIGÉ: Augmenté pour espace blanc
         backgroundColor: '#F1F5F9', // ✅ CONSERVÉ: Fond gris clair pour les boutons (garder leur couleur)
         borderRadius: 12,
-        padding: 4,
+        padding: 5,
     },
     modeButton: {
         flex: 1,
-        paddingVertical: 10,
-        paddingHorizontal: 16,
+        paddingVertical: 14, // ✅ AUGMENTÉ: De 10 à 14 pour plus de hauteur
+        paddingHorizontal: 20, // ✅ AUGMENTÉ: De 16 à 20 pour plus de largeur
         borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
+        minHeight: 48, // ✅ AJOUTÉ: Hauteur minimale pour cohérence
     },
     modeButtonActive: {
         backgroundColor: '#6366F1', // ✅ AMÉLIORÉ: Couleur indigo harmonieuse pour les boutons actifs
     },
     modeButtonText: {
-        fontSize: 14,
+        fontSize: 16, // ✅ AUGMENTÉ: De 14 à 16 pour plus de lisibilité
         fontWeight: '600',
         color: '#6B7280',
     },

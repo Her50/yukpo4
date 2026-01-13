@@ -23,7 +23,7 @@ const AboutPage: React.FC = () => {
         <div className="max-w-4xl mx-auto bg-white/80 dark:bg-gray-900/80 rounded-xl shadow-xl p-10 backdrop-blur-sm space-y-8">
 
           <h1 className="text-4xl font-extrabold text-center">
-            <YukpoBrand>Yukpomnang</YukpoBrand> — l’écoute qui comprend vraiment
+            <YukpoBrand>Yukpo</YukpoBrand> — l’écoute qui comprend vraiment
           </h1>
 
           <p className="text-lg leading-relaxed text-center text-gray-700 dark:text-gray-300">
@@ -32,7 +32,7 @@ const AboutPage: React.FC = () => {
           </p>
 
           <p className="leading-relaxed text-gray-800 dark:text-gray-200 text-justify">
-            Fidèle à cette racine linguistique et humaine, <YukpoBrand>Yukpomnang</YukpoBrand> est une plateforme de connexion directe
+            Fidèle à cette racine linguistique et humaine, <YukpoBrand>Yukpo</YukpoBrand> est une plateforme de connexion directe
             entre <span className="text-yellow-600 font-medium">les besoins exprimés</span> et <span className="text-orange-600 font-medium">les solutions concrètes</span> : services, opportunités, accompagnement.
           </p>
 
@@ -50,7 +50,7 @@ const AboutPage: React.FC = () => {
 
           <p className="leading-relaxed text-gray-800 dark:text-gray-200 text-justify">
             Que vous soyez <span className="text-red-600 font-semibold">citoyen, entrepreneur, diaspora ou acteur public</span>,
-            <YukpoBrand>Yukpomnang</YukpoBrand> vous accompagne à chaque étape : recherche, recommandation, mise en relation.
+            <YukpoBrand>Yukpo</YukpoBrand> vous accompagne à chaque étape : recherche, recommandation, mise en relation.
             C’est un réseau de confiance, enraciné dans la culture et tourné vers l’avenir.
           </p>
 

@@ -4438,7 +4438,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Express Déménagement Cameroun', label: '🇨🇲 Express Déménagement' },
           { value: 'Global Moving Cameroun', label: '🇨🇲 Global Moving' },
           { value: 'Move Masters Cameroun', label: '🇨🇲 Move Masters' },
-          { value: 'Yukpomnang Moving', label: '🇨🇲 Yukpomnang Moving' },
+          { value: 'Yukpo Moving', label: '🇨🇲 Yukpo Moving' },
 
           // 🇨🇮 CÔTE D'IVOIRE
           { value: 'Abidjan Transports Express', label: '🇨🇮 Abidjan Transports' },

@@ -72,7 +72,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
                         <Card.Content>
                             {/* En-tête du reçu */}
                             <View style={styles.receiptHeader}>
-                                <Text style={styles.logo}>Yukpomnang</Text>
+                                <Text style={styles.logo}>Yukpo</Text>
                                 <Text style={styles.receiptTitle}>Reçu de recharge</Text>
                             </View>
 
@@ -157,7 +157,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
                             {/* Footer */}
                             <View style={styles.footer}>
-                                <Text style={styles.footerText}>Merci d'utiliser Yukpomnang !</Text>
+                                <Text style={styles.footerText}>Merci d'utiliser Yukpo !</Text>
                                 <Text style={styles.footerSubText}>www.yukpomnang.com</Text>
                             </View>
                         </Card.Content>

@@ -20,7 +20,7 @@ const CreationCard: React.FC = () => {
         Création de service assistée
       </h3>
       <p style={{ fontSize: '15px', color: '#444' }}>
-        Créez un service en un clic : texte, image, catégorie. Yukpomnang vous guide et publie.
+        Créez un service en un clic : texte, image, catégorie. Yukpo vous guide et publie.
       </p>
     </div>
   );

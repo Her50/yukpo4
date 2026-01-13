@@ -16,7 +16,7 @@ const CreationSection: React.FC = () => {
         🛠️ Création de service assistée
       </h2>
       <p style={{ fontSize: '16px', color: '#555', marginBottom: '32px' }}>
-        Créez votre service en un clic avec l'aide de Yukpomnang : description, image, voix, catégorie.
+        Créez votre service en un clic avec l'aide de Yukpo : description, image, voix, catégorie.
       </p>
 
       {/* 🚀 CONTEXTUAL BUTTONS INTÉGRÉS */}

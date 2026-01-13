@@ -80,7 +80,7 @@ impl MovingAIService {
 
         let prompt = format!(
             r#"
-Tu es l'expert déménagement IA de Yukpomnang.
+Tu es l'expert déménagement IA de Yukpo.
 
 CONTEXTE :
 - Nombre de pièces : {}
@@ -159,7 +159,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es l'estimateur de coûts déménagement IA de Yukpomnang.
+Tu es l'estimateur de coûts déménagement IA de Yukpo.
 
 CONTEXTE :
 - Adresse départ : {}
@@ -243,7 +243,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es le planificateur déménagement IA de Yukpomnang.
+Tu es le planificateur déménagement IA de Yukpo.
 
 CONTEXTE :
 - Volume : {} m³
@@ -317,7 +317,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         let prompt = format!(
             r#"
-Tu es le prédicteur de durée déménagement IA de Yukpomnang.
+Tu es le prédicteur de durée déménagement IA de Yukpo.
 
 CONTEXTE :
 - Volume : {} m³

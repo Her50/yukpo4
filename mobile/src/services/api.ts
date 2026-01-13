@@ -295,7 +295,7 @@ const apiCallInternal = async <T>(
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'User-Agent': 'Yukpomnang-Mobile/1.0.0',
+      'User-Agent': 'Yukpo-Mobile/1.0.0',
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },

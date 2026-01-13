@@ -18,7 +18,7 @@ const OutilsCard: React.FC = () => {
     >
       <div style={{ fontSize: '36px', marginBottom: '12px' }}>🛠️</div>
       <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>
-        Outils Yukpomnang
+        Outils Yukpo
       </h3>
       <p style={{ fontSize: '15px', color: '#444' }}>
         Utilisez des outils puissants : générateur de texte, prédictions, tableaux de bord, vocal et plus.

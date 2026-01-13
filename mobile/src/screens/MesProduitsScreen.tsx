@@ -518,10 +518,35 @@ const MesProduitsScreen: React.FC = () => {
         }
 
         const message = result?.headline
-            ? `${result.headline}\n\nVotre vidéo est maintenant disponible dans votre médiathèque.`
-            : 'Votre vidéo est maintenant disponible dans votre médiathèque.';
+            ? `${result.headline}\n\nVotre vidéo est maintenant disponible. Vous pouvez la voir dans la galerie du produit.`
+            : 'Votre vidéo est maintenant disponible. Vous pouvez la voir dans la galerie du produit.';
 
-        Alert.alert('🎬 Vidéo créée avec succès', message);
+        // Navigation vers le service pour voir la vidéo
+        const serviceId = result?.service_id;
+        const productIndex = result?.product_index;
+
+        Alert.alert(
+            '🎬 Vidéo créée avec succès',
+            message,
+            [
+                { text: 'OK', style: 'default' },
+                ...(serviceId ? [{
+                    text: '👁️ Voir la vidéo',
+                    onPress: () => {
+                        try {
+                            (navigation as any).navigate('ServiceDetail', {
+                                serviceId: String(serviceId),
+                                highlightProductIndex: productIndex !== undefined ? Number(productIndex) : undefined,
+                                openGallery: true // Flag pour ouvrir automatiquement la galerie
+                            });
+                        } catch (error) {
+                            console.error('[MesProduitsScreen] Erreur navigation vers ServiceDetail:', error);
+                            Alert.alert('Information', 'La vidéo est disponible dans la galerie de votre produit.');
+                        }
+                    }
+                }] : [])
+            ]
+        );
     }, [loadProducts]);
 
     // Activer/Désactiver un produit spécifique

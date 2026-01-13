@@ -86,7 +86,7 @@ impl GenerativeVideoService {
         let num_scenes = (duration / 5.0).ceil() as u32; // ~5 secondes par scène
 
         let prompt = format!(
-            r#"Tu es un expert en création de storyboards vidéo pour la plateforme Yukpomnang.
+            r#"Tu es un expert en création de storyboards vidéo pour la plateforme Yukpo.
 
 DESCRIPTION VIDÉO:
 {}

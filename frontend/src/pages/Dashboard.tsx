@@ -46,14 +46,14 @@ const Dashboard: React.FC = () => {
       )}
 
       <h1 className="text-3xl font-bold mb-6">
-        📊 Tableau de bord Yukpomnang
+        📊 Tableau de bord Yukpo
       </h1>
 
       <ul className="space-y-2">
         <RequireAccess plan="enterprise">
           <li>
             <Link to={ROUTES.DASHBOARD} className="text-blue-600 underline">
-              Accès Yukpomnang Premium
+              Accès Yukpo Premium
             </Link>
           </li>
         </RequireAccess>
@@ -77,7 +77,7 @@ const Dashboard: React.FC = () => {
           to={ROUTES.CONTACT}
           className="px-4 py-2 bg-gray-100 text-gray-800 rounded-xl hover:bg-gray-200 transition"
         >
-          Contacter l'équipe Yukpomnang
+          Contacter l'équipe Yukpo
         </Link>
       </div>
       {/* 🚀 CONTEXTUAL BUTTONS END */}

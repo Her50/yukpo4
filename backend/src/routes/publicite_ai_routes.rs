@@ -84,7 +84,7 @@ pub async fn generate_ad_suggestions(
         Err(e) => {
             log::warn!("[generate_ad_suggestions] Impossible de charger le prompt spécialisé: {:?}, utilisation du prompt inline", e);
             // Fallback au prompt inline
-            String::from("Tu es un expert en marketing digital et création de publicités pour la plateforme Yukpomnang.")
+            String::from("Tu es un expert en marketing digital et création de publicités pour la plateforme Yukpo.")
         }
     };
 

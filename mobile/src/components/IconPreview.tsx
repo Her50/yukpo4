@@ -1,5 +1,5 @@
 /**
- * Composant de preview de l'icône Yukpomnang avec motif Ndop
+ * Composant de preview de l'icône Yukpo avec motif Ndop
  * À utiliser pour visualiser l'icône avant génération finale
  */
 import React from 'react';
@@ -36,7 +36,7 @@ const IconPreview: React.FC<IconPreviewProps> = ({
     return (
         <View style={styles.container}>
             {showLabel && (
-                <Text style={styles.title}>Icône Yukpomnang - Motif Ndop</Text>
+                <Text style={styles.title}>Icône Yukpo - Motif Ndop</Text>
             )}
 
             <View style={[styles.iconContainer, { width: size, height: size }]}>
@@ -143,7 +143,7 @@ const IconPreview: React.FC<IconPreviewProps> = ({
                 <View style={styles.infoContainer}>
                     <Text style={styles.subtitle}>🎨 Design Professionnel</Text>
                     <Text style={styles.description}>
-                        Motif Ndop Bamiléké traditionnel avec le "Y" moderne de Yukpomnang
+                        Motif Ndop Bamiléké traditionnel avec le "Y" moderne de Yukpo
                     </Text>
                     <View style={styles.colorRow}>
                         <View style={styles.colorBlock}>

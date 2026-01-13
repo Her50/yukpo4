@@ -19,7 +19,7 @@ const MatchCard: React.FC = () => {
         🎯 Mise en relation intelligente
       </h3>
       <p style={{ fontSize: '14px', color: '#444', marginBottom: '24px' }}>
-        Yukpomnang vous connecte à la bonne solution en un instant.
+        Yukpo vous connecte à la bonne solution en un instant.
       </p>
 
       {/* 🚀 CONTEXTUAL BUTTONS INTÉGRÉS */}

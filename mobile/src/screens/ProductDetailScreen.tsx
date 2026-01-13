@@ -54,7 +54,7 @@ const ProductDetailScreen: React.FC = () => {
                 }));
 
                 Alert.alert(
-                    '👋 Bienvenue sur Yukpomnang!',
+                    '👋 Bienvenue sur Yukpo!',
                     'Pour voir ce produit, veuillez vous connecter ou créer un compte gratuitement.',
                     [
                         {

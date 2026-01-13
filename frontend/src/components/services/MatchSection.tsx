@@ -16,7 +16,7 @@ const MatchSection: React.FC = () => {
         🎯 Mise en relation intelligente
       </h2>
       <p style={{ fontSize: '16px', color: '#555', marginBottom: '32px' }}>
-        Yukpomnang comprend vos besoins (texte ou vocal) et vous connecte immédiatement à la solution adaptée.
+        Yukpo comprend vos besoins (texte ou vocal) et vous connecte immédiatement à la solution adaptée.
       </p>
 
       {/* 🚀 CONTEXTUAL BUTTONS INTÉGRÉS */}

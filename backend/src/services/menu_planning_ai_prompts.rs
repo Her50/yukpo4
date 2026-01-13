@@ -4,7 +4,7 @@
 /// ✅ AMÉLIORATION: Format JSON strict avec instructions détaillées
 /// ✅ NOUVEAU: Fusion déjeuner/dîner en "repas_du_jour" et repas complets avec compléments
 pub const WEEKLY_MENU_GENERATION_PROMPT: &str = r#"
-Tu es l'assistant culinaire intelligent de Yukpomnang pour la planification de menus.
+Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
 
 CONTEXTE FAMILLE :
 - Nombre total de personnes : {total_members}
@@ -128,7 +128,7 @@ IMPORTANT :
 /// Prompt pour suggestions de recettes
 /// ✅ AMÉLIORATION: Format JSON strict avec instructions détaillées
 pub const RECIPE_SUGGESTIONS_PROMPT: &str = r#"
-Tu es l'assistant culinaire intelligent de Yukpomnang.
+Tu es l'assistant culinaire intelligent de Yukpo.
 
 CONTEXTE :
 - Nombre personnes : {total_members}
@@ -182,7 +182,7 @@ IMPORTANT:
 /// Prompt pour calcul de quantités
 /// ✅ AMÉLIORATION: Format JSON strict avec instructions détaillées
 pub const QUANTITY_CALCULATION_PROMPT: &str = r#"
-Tu es l'assistant culinaire de Yukpomnang.
+Tu es l'assistant culinaire de Yukpo.
 
 RECETTE:
 - Nom: {recipe_name}
@@ -221,7 +221,7 @@ IMPORTANT:
 /// Prompt pour analyse nutritionnelle
 /// ✅ AMÉLIORATION: Format JSON strict avec instructions détaillées
 pub const NUTRITION_ANALYSIS_PROMPT: &str = r#"
-Tu es un nutritionniste expert pour la plateforme Yukpomnang.
+Tu es un nutritionniste expert pour la plateforme Yukpo.
 
 MENU HEBDOMADAIRE À ANALYSER:
 {meals_summary}
@@ -281,7 +281,7 @@ pub fn generate_shopping_list_prompt(
         .join("\n");
 
     format!(r#"
-Tu es l'assistant culinaire intelligent de Yukpomnang pour la génération de listes de courses.
+Tu es l'assistant culinaire intelligent de Yukpo pour la génération de listes de courses.
 
 CONTEXTE UTILISATEUR :
 - Nombre de personnes dans la famille : {family_members}

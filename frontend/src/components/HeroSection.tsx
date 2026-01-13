@@ -9,7 +9,7 @@ const HeroSection: React.FC = () => {
       {/* Image de fond */}
       <img
         src={banner}
-        alt="Bannière Yukpomnang"
+        alt="Bannière Yukpo"
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
       />
 
@@ -21,7 +21,7 @@ const HeroSection: React.FC = () => {
           transition={{ duration: 0.8 }}
           className="text-white text-3xl md:text-5xl font-bold text-center px-4 max-w-3xl"
         >
-          Chez Yukpomnang, chaque besoin est une opportunité
+          Chez Yukpo, chaque besoin est une opportunité
         </motion.h1>
       </div>
     </section>

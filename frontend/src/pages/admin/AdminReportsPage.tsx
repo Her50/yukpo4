@@ -49,7 +49,7 @@ const AdminReportsPage: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">📄 Rapports Techniques Yukpomnang</h1>
+      <h1 className="text-2xl font-semibold">📄 Rapports Techniques Yukpo</h1>
 
       <div className="flex flex-wrap gap-4 justify-end">
         <a

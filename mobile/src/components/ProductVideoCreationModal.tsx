@@ -226,7 +226,7 @@ const buildDefaultVoiceover = (
     if (headline) {
         lines.push(headline.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
     } else {
-        lines.push(`Découvrez ${productName} sur Yukpomnang.`);
+        lines.push(`Découvrez ${productName} sur Yukpo.`);
     }
 
     storyboardLines.slice(0, 3).forEach((line) => {
@@ -238,7 +238,7 @@ const buildDefaultVoiceover = (
     if (callToAction) {
         lines.push(callToAction.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
     } else {
-        lines.push('Contactez-nous dès maintenant via Yukpomnang.');
+        lines.push('Contactez-nous dès maintenant via Yukpo.');
     }
 
     return lines.join('\n');
@@ -290,7 +290,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [stylePreset, setStylePreset] = useState<VideoStylePreset>('tiktok');
     const [duration, setDuration] = useState<string>('28');
     const [headline, setHeadline] = useState<string>('');
-    const [callToAction, setCallToAction] = useState<string>('Commandez maintenant sur Yukpomnang ✅');
+    const [callToAction, setCallToAction] = useState<string>('Commandez maintenant sur Yukpo ✅');
     const [scriptNotes, setScriptNotes] = useState<string>('');
 
     const [includePrice, setIncludePrice] = useState<boolean>(true);
@@ -1833,7 +1833,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 throw new Error('Aucune variante générée');
             } else if (variants.length === 1) {
                 applyBriefVariant(variants[0], setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible);
-                Alert.alert('Brief généré', 'Le script et le CTA ont été optimisés par Yukpomnang IA.');
+                Alert.alert('Brief généré', 'Le script et le CTA ont été optimisés par Yukpo IA.');
             } else {
                 setVariantPickerVisible(true);
             }
@@ -2019,7 +2019,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         if (!selectedProduct) {
             setHeadline('');
-            setCallToAction('Commandez maintenant sur Yukpomnang ✅');
+            setCallToAction('Commandez maintenant sur Yukpo ✅');
             setIncludePromotion(false);
             setSelectedRelatedProducts(new Set());
             setProductMedia([]);
@@ -2033,7 +2033,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         const productName = normalizeProductName(selectedProduct);
         const defaultHeadline = `🔥 ${productName} en ${getFieldValue(selectedProduct.city) || 'promo'}`;
-        const defaultCTA = `📞 Contactez ${extractServiceName(selectedProduct, 'nous')} sur Yukpomnang`;
+        const defaultCTA = `📞 Contactez ${extractServiceName(selectedProduct, 'nous')} sur Yukpo`;
 
         setHeadline(defaultHeadline);
         setCallToAction(defaultCTA);
@@ -4214,7 +4214,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         <View style={styles.toggleText}>
                             <Text style={styles.toggleLabel}>Coordonnées & CTA</Text>
                             <Text style={styles.toggleDescription}>
-                                Ajoute votre CTA + boutons vers le chat Yukpomnang.
+                                Ajoute votre CTA + boutons vers le chat Yukpo.
                             </Text>
                         </View>
                         <Switch
@@ -4993,11 +4993,26 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     const completedSteps = job.progress_steps.filter((step: any) => step.status === 'completed').length;
                     const totalSteps = job.progress_steps.length;
                     const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
-                    setJobProgress(progress);
+                    // ✅ CORRIGÉ: Ne pas mettre 100% tant que la vidéo n'est pas vraiment disponible
+                    const hasVideoResult = !!(job.result_payload || job.result_media_id || (job as any).video_url);
+                    const finalProgress = (job.status === 'completed' && hasVideoResult) ? 100 : Math.min(progress, 95);
+                    setJobProgress(finalProgress);
                 }
 
-                // Gérer les états terminaux
+                // ✅ CORRIGÉ: Vérifier que la vidéo est vraiment disponible avant de considérer comme terminé
+                const hasVideoResult = !!(job.result_payload || job.result_media_id || (job as any).video_url);
+
+                // Gérer les états terminaux - seulement si le statut est "completed" ET que la vidéo est disponible
+                // Si le statut est "completed" mais que la vidéo n'est pas disponible, continuer le polling
                 if (job.status === 'completed') {
+                    if (!hasVideoResult) {
+                        // Le statut est "completed" mais la vidéo n'est pas encore disponible
+                        // Continuer le polling (ne pas arrêter)
+                        console.log('[ProductVideoCreationModal] ⏳ Statut completed mais vidéo pas encore disponible, continuation du polling...');
+                        return;
+                    }
+
+                    // La vidéo est disponible, on peut arrêter le polling
                     if (completionHandledRef.current) {
                         return;
                     }
@@ -5015,55 +5030,27 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     // Récupérer le résultat
                     if (job.result_payload) {
                         const videoResult = job.result_payload as GeneratedVideoResponse;
-                        Alert.alert(
-                            '✅ Vidéo générée !',
-                            'Votre vidéo a été générée avec succès.\n\n' +
-                            'Vous pouvez maintenant la visualiser et la partager.',
-                            [
-                                {
-                                    text: 'Voir la vidéo',
-                                    onPress: async () => {
-                                        await onSuccess(videoResult);
-                                        onClose();
-                                    }
-                                },
-                                {
-                                    text: 'Fermer',
-                                    onPress: () => {
-                                        onClose();
-                                    }
-                                }
-                            ]
-                        );
+                        // ✅ NOUVEAU: Afficher directement la vidéo sans passer par l'alerte
+                        await onSuccess(videoResult);
                     } else if (job.result_media_id) {
-                        // Si on a seulement l'ID du média, récupérer les détails
-                        Alert.alert(
-                            '✅ Vidéo générée !',
-                            'Votre vidéo a été générée avec succès.\n\n' +
-                            'ID média: ' + job.result_media_id,
-                            [
-                                {
-                                    text: 'OK',
-                                    onPress: () => {
-                                        onClose();
-                                    }
-                                }
-                            ]
-                        );
-                    } else {
-                        Alert.alert(
-                            '✅ Vidéo générée !',
-                            'Votre vidéo a été générée avec succès.\n\n' +
-                            'Vous pouvez la retrouver dans la section "Vidéos" de l\'application.',
-                            [
-                                {
-                                    text: 'OK',
-                                    onPress: () => {
-                                        onClose();
-                                    }
-                                }
-                            ]
-                        );
+                        // Si on a seulement l'ID du média, construire un résultat minimal
+                        // La vidéo sera disponible dans la galerie du produit
+                        const videoResult = {
+                            media_id: job.result_media_id,
+                            service_id: (job as any).service_id,
+                            product_index: (job as any).product_index,
+                            success: true,
+                        } as GeneratedVideoResponse;
+                        await onSuccess(videoResult);
+                    } else if ((job as any).video_url) {
+                        // Si on a directement l'URL de la vidéo
+                        const videoResult = {
+                            video_url: (job as any).video_url,
+                            media_id: job.result_media_id,
+                            service_id: (job as any).service_id,
+                            product_index: (job as any).product_index,
+                        } as GeneratedVideoResponse;
+                        await onSuccess(videoResult);
                     }
 
                     // Réinitialiser les états

@@ -15,6 +15,7 @@ import {
   View
 } from 'react-native';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../theme/theme';
 // TODO: Ajouter les packages OAuth pour React Native

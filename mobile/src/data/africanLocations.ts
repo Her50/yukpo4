@@ -26,7 +26,7 @@ export interface PaysInfo {
 }
 
 // ============================================================================
-// 🇨🇲 CAMEROUN - Le plus détaillé (pays principal de Yukpomnang)
+// 🇨🇲 CAMEROUN - Le plus détaillé (pays principal de Yukpo)
 // ============================================================================
 export const CAMEROUN: PaysInfo = {
     code: 'CM',

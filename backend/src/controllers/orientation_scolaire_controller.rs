@@ -865,7 +865,7 @@ pub async fn ai_academic_search(
         );
         format!(
             r#"
-Tu es l'assistant académique intelligent de Yukpomnang, spécialisé dans l'orientation scolaire et l'éducation.
+Tu es l'assistant académique intelligent de Yukpo, spécialisé dans l'orientation scolaire et l'éducation.
 
 Question académique : {}
 

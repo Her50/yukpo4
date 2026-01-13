@@ -104,7 +104,7 @@ EXTRAIRE: catégorie principale, type produit, marque, couleur(s), caractéristi
 
 {}
 
-CONTEXTE: Marketplace Yukpomnang - Connecter clients et prestataires locaux
+CONTEXTE: Marketplace Yukpo - Connecter clients et prestataires locaux
 
 INSTRUCTIONS CRITIQUES:
 1. Analyse visuelle COMPLÈTE de l'image

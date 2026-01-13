@@ -189,7 +189,7 @@ const MesProduits: React.FC = () => {
     };
 
     const handleShare = async (product: Product) => {
-        const message = `🔥 Découvrez mon produit !\n\n${getTypeInfo(product.type).icon} ${product.nom}\n\n${product.description || ''}\n\n💰 Prix: ${product.prix} ${product.devise}\n\n📱 Yukpomnang - Votre marketplace locale`;
+        const message = `🔥 Découvrez mon produit !\n\n${getTypeInfo(product.type).icon} ${product.nom}\n\n${product.description || ''}\n\n💰 Prix: ${product.prix} ${product.devise}\n\n📱 Yukpo - Votre marketplace locale`;
 
         if (navigator.share) {
             try {

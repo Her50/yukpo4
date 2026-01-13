@@ -31,6 +31,15 @@ interface DocumentFile {
     size?: number;
 }
 
+// ✅ NOUVEAU: Liste des types de coursiers disponibles
+const COURIER_TYPES = [
+    { value: 'classic', label: '📦 Coursier Classique', icon: '📦' },
+    { value: 'market_shopping', label: '🛒 Coursier pour les courses au marché', icon: '🛒' },
+    { value: 'taxi', label: '🚕 Chauffeur Taxi', icon: '🚕' },
+    { value: 'carpooling', label: '🚗 Chauffeur Covoiturage', icon: '🚗' },
+    { value: 'moving', label: '🚚 Déménagement', icon: '🚚' },
+] as const;
+
 const CourierRegistrationScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -742,16 +751,7 @@ const CourierRegistrationScreen: React.FC = () => {
                             !courierType && styles.courierTypeSelectorPlaceholder,
                         ]}>
                             {courierType 
-                                ? (() => {
-                                    const types: Record<string, string> = {
-                                        'classic': '📦 Coursier Classique',
-                                        'market_shopping': '🛒 Coursier pour les courses au marché',
-                                        'taxi': '🚕 Chauffeur Taxi',
-                                        'carpooling': '🚗 Chauffeur Covoiturage',
-                                        'moving': '🚚 Déménagement',
-                                    };
-                                    return types[courierType] || 'Sélectionner un type';
-                                })()
+                                ? COURIER_TYPES.find(t => t.value === courierType)?.label || 'Sélectionner un type'
                                 : 'Sélectionner un type de coursier'
                             }
                         </Text>
@@ -785,14 +785,12 @@ const CourierRegistrationScreen: React.FC = () => {
                                     <SafeIcon name="x" size={24} color={modernColors.textSecondary} type="lucide" />
                                 </TouchableOpacity>
                             </View>
-                            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
-                                {[
-                                    { value: 'classic', label: '📦 Coursier Classique', icon: '📦' },
-                                    { value: 'market_shopping', label: '🛒 Coursier pour les courses au marché', icon: '🛒' },
-                                    { value: 'taxi', label: '🚕 Chauffeur Taxi', icon: '🚕' },
-                                    { value: 'carpooling', label: '🚗 Chauffeur Covoiturage', icon: '🚗' },
-                                    { value: 'moving', label: '🚚 Déménagement', icon: '🚚' },
-                                ].map((type) => {
+                            <ScrollView 
+                                style={styles.modalList} 
+                                contentContainerStyle={styles.modalListContent}
+                                showsVerticalScrollIndicator={false}
+                            >
+                                {COURIER_TYPES.map((type) => {
                                     const isSelected = courierType === type.value;
                                     return (
                                         <TouchableOpacity
@@ -1604,6 +1602,10 @@ const styles = StyleSheet.create({
     },
     modalList: {
         flex: 1,
+        maxHeight: 400,
+    },
+    modalListContent: {
+        paddingVertical: 8,
     },
     modalOption: {
         flexDirection: 'row',

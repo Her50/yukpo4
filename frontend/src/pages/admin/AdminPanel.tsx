@@ -60,7 +60,7 @@ const AdminPanel: React.FC = () => {
   return (
     <RequireAccess role="user" plan="pro">
       <ResponsiveContainer className="pt-24 min-h-screen bg-white font-inter">
-        <h1 className="text-3xl font-bold mb-6">🛠️ Console d'administration Yukpomnang</h1>
+        <h1 className="text-3xl font-bold mb-6">🛠️ Console d'administration Yukpo</h1>
 
         {/* ✅ NOUVEAU: Lien vers la gestion des rôles */}
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">

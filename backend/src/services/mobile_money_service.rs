@@ -188,7 +188,7 @@ impl MobileMoneyService {
                 "partyIdType": "MSISDN",
                 "partyId": request.phone_number.replace("+", "")
             },
-            "payerMessage": request.description.unwrap_or_else(|| "Paiement Yukpomnang".to_string()),
+            "payerMessage": request.description.unwrap_or_else(|| "Paiement Yukpo".to_string()),
             "payeeNote": format!("Transaction {}", request.transaction_reference)
         });
 

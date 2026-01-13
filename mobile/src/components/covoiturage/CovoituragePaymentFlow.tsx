@@ -51,7 +51,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
             setProcessing(true);
 
             if (selectedMethod === 'wallet') {
-                // Paiement via wallet Yukpomnang
+                // Paiement via wallet Yukpo
                 if (balance < total) {
                     Alert.alert(
                         'Solde insuffisant',
@@ -167,7 +167,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                 <NativeCard style={styles.card}>
                     <Text style={styles.cardTitle}>Méthode de paiement</Text>
 
-                    {/* Wallet Yukpomnang */}
+                    {/* Wallet Yukpo */}
                     <TouchableOpacity
                         style={[
                             styles.paymentMethod,
@@ -181,7 +181,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                                 <SafeIcon name="wallet" size={24} color={modernColors.primary} />
                             </View>
                             <View style={styles.paymentMethodInfo}>
-                                <Text style={styles.paymentMethodName}>Wallet Yukpomnang</Text>
+                                <Text style={styles.paymentMethodName}>Wallet Yukpo</Text>
                                 <Text style={styles.paymentMethodBalance}>
                                     Solde: {balance.toLocaleString('fr-FR')} {devise}
                                 </Text>

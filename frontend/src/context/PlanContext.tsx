@@ -23,7 +23,7 @@ import React, {
   };
   
   const PlanContext = createContext<PlanContextValue>(defaultValue);
-  PlanContext.displayName = "YukpomnangPlanContext";
+  PlanContext.displayName = "YukpoPlanContext";
   
   /**
    * ✅ Hook principal pour récupérer le plan utilisateur

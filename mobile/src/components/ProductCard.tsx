@@ -147,6 +147,15 @@ const formatDate = (dateStr: string): string => {
   }
 };
 
+// ✅ NOUVEAU: Fonction utilitaire pour filtrer les valeurs booléennes et "false" string
+const filterBooleanValue = (value: any, defaultValue: string = ''): string => {
+  if (value === null || value === undefined) return defaultValue;
+  if (typeof value === 'boolean') return defaultValue;
+  if (value === 'false' || value === false) return defaultValue;
+  if (typeof value === 'string' && value.trim() === '') return defaultValue;
+  return String(value);
+};
+
 const ProductCard: React.FC<ProductCardProps> = React.memo(({
   product,
   service,
@@ -748,13 +757,10 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
               )}
 
               <Text style={styles.productName} numberOfLines={2}>
-                {(() => {
-                  const nom = productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur;
-                  // ✅ CORRIGÉ 2026-01-07: Éviter d'afficher "false" ou autres valeurs booléennes
-                  if (typeof nom === 'boolean') return 'Produit';
-                  if (nom === 'false' || nom === false) return 'Produit';
-                  return nom || 'Produit';
-                })()}
+                {filterBooleanValue(
+                  productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur,
+                  'Produit'
+                )}
               </Text>
 
               {prestataire.nom && (
@@ -777,13 +783,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     </View>
                   )}
                   <Text style={styles.prestataireName} numberOfLines={1}>
-                    {(() => {
-                      const nom = prestataire.nom;
-                      // ✅ CORRIGÉ 2026-01-07: Éviter d'afficher "false" ou autres valeurs booléennes
-                      if (typeof nom === 'boolean') return 'Prestataire';
-                      if (nom === 'false' || nom === false) return 'Prestataire';
-                      return nom || 'Prestataire';
-                    })()}
+                    {filterBooleanValue(prestataire.nom, 'Prestataire')}
                   </Text>
                   <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
                 </TouchableOpacity>
@@ -859,71 +859,53 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
               {hasVariant && variants.length > 0 ? (
                 <View style={styles.priceVariations}>
                   <View style={styles.sectionHeader}>
-                    <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
+                    <SafeIcon name="dollar-sign" size={12} color="#6B7280" />
                     <Text style={styles.sectionTitle}>
-                      Prix selon {(() => {
-                        const dim = productData.variant_dimension;
-                        // ✅ CORRIGÉ 2026-01-07: Éviter d'afficher "false"
-                        if (typeof dim === 'boolean' || dim === 'false' || dim === false) return 'variante';
-                        return dim || 'variante';
-                      })()}
+                      Prix selon {filterBooleanValue(productData.variant_dimension, 'variante')}
                     </Text>
                   </View>
 
-                  <View style={styles.priceTable}>
-                    <View style={styles.priceTableHeader}>
-                      <Text style={styles.tableHeaderText}>Variante</Text>
-                      <Text style={styles.tableHeaderText}>Prix</Text>
-                      <Text style={styles.tableHeaderText}>Stock</Text>
-                    </View>
-
-                    {variants.slice(0, 5).map((variant: any, i: number) => (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.variantsScrollContainer}
+                  >
+                    {variants.map((variant: any, i: number) => (
                       <TouchableOpacity
                         key={i}
                         style={[
-                          styles.priceRow,
-                          selectedVariantIndex === i && styles.priceRowSelected
+                          styles.variantCard,
+                          selectedVariantIndex === i && styles.variantCardSelected
                         ]}
                         onPress={() => {
                           setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
                         }}
                       >
-                        <View style={styles.cellVariant}>
-                          {variant.image && (
-                            <Image
-                              source={{ uri: variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}` }}
-                              style={styles.variantImageThumb}
-                              resizeMode="cover"
-                            />
-                          )}
-                          <Text style={styles.variantValue}>{variant.value || variant.valeur}</Text>
-                        </View>
-                        <View style={styles.cellPrice}>
-                          <Text style={styles.variantPrice}>
-                            {variant.prix?.toLocaleString()}
+                        {variant.image && (
+                          <Image
+                            source={{ uri: variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}` }}
+                            style={styles.variantCardImage}
+                            resizeMode="cover"
+                          />
+                        )}
+                        <Text style={styles.variantCardValue} numberOfLines={1}>
+                          {filterBooleanValue(variant.value || variant.valeur, 'Variante')}
+                        </Text>
+                        <Text style={styles.variantCardPrice}>
+                          {variant.prix?.toLocaleString() || '0'} {variant.devise || devise}
+                        </Text>
+                        <View style={[
+                          styles.variantCardStock,
+                          (variant.stock || 0) > 5 ? styles.stockOK :
+                            (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
+                        ]}>
+                          <Text style={styles.variantCardStockText}>
+                            Stock: {(variant.stock || 0) > 0 ? variant.stock : '0'}
                           </Text>
-                          <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
-                        </View>
-                        <View style={styles.cellStock}>
-                          <View style={[
-                            styles.stockBadge,
-                            (variant.stock || 0) > 5 ? styles.stockOK :
-                              (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
-                          ]}>
-                            <Text style={styles.stockText}>
-                              {(variant.stock || 0) > 0 ? `${variant.stock}` : '0'}
-                            </Text>
-                          </View>
                         </View>
                       </TouchableOpacity>
                     ))}
-
-                    {variants.length > 5 && (
-                      <Text style={styles.moreVariantsText}>
-                        +{variants.length - 5} autres variantes
-                      </Text>
-                    )}
-                  </View>
+                  </ScrollView>
 
                   <View style={styles.priceFromContainer}>
                     <Text style={styles.priceFromLabel}>À partir de</Text>
@@ -990,12 +972,15 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   onPress={handleChatPress}
                   style={[styles.actionButton, !(serviceId && isProduct) && styles.actionButtonFullWidth]}
                 />
-                <NativeButton
-                  title="👁️ Voir"
-                  variant="secondary"
-                  onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
-                  style={styles.actionButton}
-                />
+                {isProduct && (
+                  <TouchableOpacity
+                    style={styles.navButton}
+                    onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
+                    activeOpacity={0.7}
+                  >
+                    <SafeIcon name="arrow-right" size={18} color={modernColors.primary} />
+                  </TouchableOpacity>
+                )}
               </View>
 
               <View style={styles.secondaryActions}>
@@ -1124,18 +1109,18 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 const styles = StyleSheet.create({
   cardContainer: {
     overflow: 'hidden',
-    borderRadius: 26,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.82)',
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.35)',
+    borderColor: 'rgba(148, 163, 184, 0.25)',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   cardContainerCompact: {
-    borderRadius: 24,
+    borderRadius: 16,
   },
   touchableContainer: {
     flex: 1,
@@ -1145,10 +1130,10 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 220,
+    height: 140,
     overflow: 'hidden',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   countryBadge: {
     position: 'absolute',
@@ -1184,16 +1169,16 @@ const styles = StyleSheet.create({
   distanceBadgeInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginBottom: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 6,
     alignSelf: 'flex-start',
   },
   distanceTextInline: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
     color: '#6366F1',
   },
@@ -1260,72 +1245,72 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   content: {
-    padding: 20,
-    gap: 16,
+    padding: 10,
+    gap: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   contentCompact: {
-    paddingTop: 24,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    paddingTop: 12,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   topStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 4,
+    gap: 6,
+    marginBottom: 2,
   },
   topStatPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E0E7FF',
   },
   topStatValue: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
-    marginLeft: 6,
+    marginLeft: 4,
   },
   productName: {
-    fontSize: 19,
+    fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
-    lineHeight: 26,
+    lineHeight: 20,
   },
   prestataireRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
     borderColor: '#FFF',
   },
   avatarPlaceholder: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: modernColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   prestataireName: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#374151',
     fontWeight: '600',
     flex: 1,
@@ -1342,16 +1327,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locationSection: {
-    gap: 6,
+    gap: 4,
     backgroundColor: '#F9FAFB',
-    padding: 10,
+    padding: 6,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   locationTextPrimary: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: '#1F2937',
     flex: 1,
   },
@@ -1361,157 +1346,141 @@ const styles = StyleSheet.create({
   locationHierarchy: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingLeft: 20,
+    gap: 4,
+    paddingLeft: 16,
   },
   locationTextSecondary: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#6B7280',
     flex: 1,
     fontStyle: 'italic',
   },
   metricsCard: {
-    marginTop: 12,
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    marginTop: 6,
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
   },
   compactStatsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-    marginBottom: 12,
+    gap: 6,
+    marginTop: 6,
+    marginBottom: 6,
   },
   compactStatPillMuted: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F4F4F5',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderWidth: 1,
     borderColor: '#E4E4E7',
-    gap: 6,
+    gap: 4,
   },
   compactStatEmoji: {
-    fontSize: 14,
+    fontSize: 12,
   },
   compactStatValue: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '700',
     color: '#1F2937',
   },
   compactStatLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#6B7280',
   },
   characteristicsSection: {
-    gap: 8,
+    gap: 4,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#374151',
   },
   chipsScroll: {
-    gap: 6,
+    gap: 4,
     paddingVertical: 2,
   },
   chip: {
     backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: modernColors.primary,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 11,
     color: modernColors.primary,
     fontWeight: '600',
   },
   priceVariations: {
-    gap: 12,
+    gap: 6,
     backgroundColor: '#F9FAFB',
-    padding: 12,
+    padding: 8,
     borderRadius: 10,
   },
-  priceTable: {
-    gap: 6,
-  },
-  priceTableHeader: {
-    flexDirection: 'row',
-    paddingBottom: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: '#E5E7EB',
-  },
-  tableHeaderText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6B7280',
-    flex: 1,
-    textAlign: 'center',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    borderRadius: 6,
-  },
-  priceRowSelected: {
-    backgroundColor: '#EEF2FF',
-    borderWidth: 2,
-    borderColor: modernColors.primary,
-  },
-  cellVariant: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+  variantsScrollContainer: {
     gap: 8,
+    paddingVertical: 4,
+    paddingRight: 4,
   },
-  variantImageThumb: {
-    width: 32,
-    height: 32,
+  variantCard: {
+    width: 120,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    marginRight: 8,
+  },
+  variantCardSelected: {
+    borderColor: modernColors.primary,
+    backgroundColor: '#EEF2FF',
+  },
+  variantCardImage: {
+    width: '100%',
+    height: 60,
     borderRadius: 6,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  cellPrice: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  cellStock: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-  variantValue: {
-    fontSize: 14,
+  variantCardValue: {
+    fontSize: 11,
     fontWeight: '700',
     color: '#1F2937',
+    marginBottom: 4,
   },
-  variantPrice: {
-    fontSize: 15,
+  variantCardPrice: {
+    fontSize: 12,
     fontWeight: '700',
     color: modernColors.primary,
+    marginBottom: 4,
   },
-  variantDevise: {
-    fontSize: 11,
-    color: '#6B7280',
+  variantCardStock: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  variantCardStockText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#374151',
   },
   stockBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    minWidth: 50,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    minWidth: 40,
     alignItems: 'center',
   },
   stockOK: {
@@ -1524,78 +1493,87 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
   },
   stockText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
     color: '#374151',
-  },
-  moreVariantsText: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-    paddingTop: 6,
-    fontStyle: 'italic',
   },
   priceFromContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 8,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
+    marginTop: 4,
   },
   priceFromLabel: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#6B7280',
   },
   priceFromValue: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '700',
     color: modernColors.primary,
   },
   priceUniqueContainer: {
-    gap: 6,
+    gap: 4,
   },
   priceLabel: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#6B7280',
   },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
   price: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '800',
     color: modernColors.primary,
   },
   priceDevise: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
     color: '#6B7280',
   },
   actions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     alignItems: 'center',
     flexWrap: 'wrap',
-    minHeight: 48,
+    minHeight: 40,
   },
   actionButton: {
     flex: 1,
-    minWidth: 100,
+    minWidth: 80,
   },
   actionButtonFullWidth: {
     flex: 1,
     minWidth: '100%',
   },
+  navButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1.5,
+    borderColor: modernColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   actionButtonDelivery: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     backgroundColor: '#10B981',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#059669',
-    minWidth: 100,
+    minWidth: 80,
   },
   actionButtonDeliveryDisabled: {
     backgroundColor: '#E5E7EB',
@@ -1604,7 +1582,7 @@ const styles = StyleSheet.create({
   },
   actionButtonDeliveryText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   actionButtonDeliveryTextDisabled: {
@@ -1614,24 +1592,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingTop: 12,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
   footerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   footerText: {
-    fontSize: 11,
+    fontSize: 9,
     color: '#9CA3AF',
   },
   secondaryActions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-    paddingTop: 12,
+    gap: 8,
+    marginTop: 4,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -1640,23 +1618,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   secondaryActionText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
     color: modernColors.primary,
   },
   cardGradient: {
-    borderRadius: 28,
+    borderRadius: 18,
     padding: 1,
-    marginBottom: 20,
+    marginBottom: 12,
   },
 });
 

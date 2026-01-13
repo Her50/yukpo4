@@ -13,7 +13,7 @@ const StarterHero: React.FC = () => {
     <section className="relative w-full h-[400px] mt-24">
       <img
         src={banner}
-        alt="Yukpomnang bannière"
+        alt="Yukpo bannière"
         className="absolute inset-0 w-full h-full object-cover z-0"
       />
 
