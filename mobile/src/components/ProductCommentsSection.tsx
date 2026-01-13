@@ -170,6 +170,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     serviceTitle,
     onOpenChat,
     mode = 'inline',
+    compact = false,
 }) => {
     const { user } = useAuth();
     const currentUserId = useMemo(() => {

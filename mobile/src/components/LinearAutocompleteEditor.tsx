@@ -213,10 +213,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         
         // ✅ PRIORITÉ 1: Utiliser productLabels si disponible (ordre garanti depuis l'IA)
         // ✅ PRIORITÉ 2: Utiliser l'ordre des clés dans sousCaracteristiques
-        // ✅ CORRECTION CRITIQUE: Ne PAS filtrer productLabels - utiliser TOUS les labels dans l'ordre
-        // pour garantir l'alignement correct avec les valeurs parsées
+        // ✅ CORRECTION CRITIQUE: Filtrer productLabels pour ne garder que les labels qui existent dans sousCaracteristiques
+        // Cela garantit que chaque label correspond à une clé valide dans sousCaracteristiques
         const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-            ? productLabels.filter(label => label && typeof label === 'string' && label.trim().length > 0)
+            ? productLabels
+                .filter(label => label && typeof label === 'string' && label.trim().length > 0)
+                .filter(label => sousCaracteristiques.hasOwnProperty(label)) // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
             : Object.keys(sousCaracteristiques);
         
         return parts.map((value, index) => {
@@ -318,8 +320,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             // ✅ CORRECTION CRITIQUE: Construire la modalité en respectant l'ordre correct des labels
             // Priorité 1: Utiliser productLabels si disponible (ordre garanti)
             // Priorité 2: Utiliser l'ordre des clés de sousCaracteristiques (ordre d'insertion préservé en JS moderne)
+            // ✅ NOUVEAU: Filtrer productLabels pour ne garder que les labels qui existent dans sousCaracteristiques
             const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-                ? productLabels.filter(label => label && typeof label === 'string')
+                ? productLabels
+                    .filter(label => label && typeof label === 'string')
+                    .filter(label => sousCaracteristiques.hasOwnProperty(label)) // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
                 : Object.keys(sousCaracteristiques);
             
             const modalityParts: string[] = [];

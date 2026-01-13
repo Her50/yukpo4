@@ -4822,21 +4822,47 @@ async fn get_pickup_locations(
 
 // ✅ NOUVEAU : Handlers pour les adresses sauvegardées
 
+/// Paramètres de requête pour list_saved_addresses
+#[derive(Debug, Deserialize)]
+struct ListSavedAddressesQuery {
+    address_type: Option<String>,
+}
+
 /// GET /api/delivery/saved-addresses - Lister les adresses sauvegardées d'un utilisateur
 async fn list_saved_addresses(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
-    Query(params): Query<serde_json::Map<String, serde_json::Value>>,
+    Query(params): Query<ListSavedAddressesQuery>,
 ) -> AppResult<Json<Value>> {
-    let address_type = params
-        .get("address_type")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    // Validation du paramètre address_type si fourni
+    let address_type = if let Some(ref addr_type) = params.address_type {
+        let normalized = addr_type.trim().to_lowercase();
+        if !normalized.is_empty() && !["pickup", "dropoff", "both"].contains(&normalized.as_str()) {
+            return Err(AppError::BadRequest(
+                "address_type doit être 'pickup', 'dropoff' ou 'both'".to_string(),
+            ));
+        }
+        if normalized.is_empty() {
+            None
+        } else {
+            Some(normalized)
+        }
+    } else {
+        None
+    };
 
     let repo = delivery_repository(&state)?;
     let addresses = repo
         .list_saved_addresses(user.id, address_type.as_deref())
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[list_saved_addresses] Erreur lors de la récupération des adresses pour user_id={}: {}",
+                user.id,
+                e
+            );
+            e
+        })?;
 
     Ok(Json(json!({
         "success": true,

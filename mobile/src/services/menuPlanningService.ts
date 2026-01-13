@@ -209,12 +209,19 @@ export const menuPlanningService = {
 
     // ✅ NOUVEAU: Générer une recette complète avec IA
     generateRecipe: async (recipeName: string, servings?: number) => {
+        console.log('[menuPlanningService] Génération recette:', { recipeName, servings });
         const response = await apiPost<{
             success: boolean;
             recipe: GeneratedRecipe;
         }>('/api/menus/ai/generate-recipe', {
             recipe_name: recipeName,
             servings: servings || 4,
+        });
+        console.log('[menuPlanningService] Réponse génération recette:', {
+            success: response.success,
+            hasData: !!response.data,
+            hasRecipe: !!response.data?.recipe,
+            dataStructure: response.data ? Object.keys(response.data) : [],
         });
         return response;
     },

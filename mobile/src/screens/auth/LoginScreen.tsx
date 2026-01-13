@@ -249,10 +249,39 @@ const LoginScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* ✅ NOUVEAU: Bouton Devenir partenaire */}
+          {/* ✅ NOUVEAU: Bouton Devenir partenaire avec confirmation */}
           <View style={styles.partnerContainer}>
             <TouchableOpacity
-              onPress={() => navigation.navigate('PartnerRegister' as never)}
+              onPress={() => {
+                // ✅ NOUVEAU: Afficher un modal de confirmation avant de naviguer
+                Alert.alert(
+                  '⚠️ Inscription Partenaire',
+                  'Ce bouton est uniquement destiné aux partenaires de l\'application.\n\n' +
+                  '⚠️ Important :\n' +
+                  '• Les fonctionnalités utilisateurs classiques ne seront pas accessibles\n' +
+                  '• Votre compte devra être validé par un administrateur avant d\'être actif\n' +
+                  '• Vous recevrez un email de confirmation une fois votre compte approuvé\n\n' +
+                  'Êtes-vous sûr de vouloir continuer ?',
+                  [
+                    {
+                      text: 'Annuler',
+                      style: 'cancel',
+                      onPress: () => {
+                        console.log('[LoginScreen] Inscription partenaire annulée par l\'utilisateur');
+                      }
+                    },
+                    {
+                      text: 'Oui, je suis partenaire',
+                      style: 'default',
+                      onPress: () => {
+                        console.log('[LoginScreen] Confirmation inscription partenaire acceptée');
+                        navigation.navigate('PartnerRegister' as never);
+                      }
+                    }
+                  ],
+                  { cancelable: true }
+                );
+              }}
               style={styles.partnerButton}
             >
               <Text style={styles.partnerButtonText}>

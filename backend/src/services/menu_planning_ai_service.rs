@@ -533,6 +533,16 @@ impl MenuPlanningAIService {
             .budget_monthly
             .map(|b| format!("{:.2} FCFA", b))
             .unwrap_or_else(|| "Non spécifié".to_string());
+        
+        // ✅ AMÉLIORÉ 2026-01-13: Calculer le budget hebdomadaire proratisé (budget_mensuel / 30 jours * 7 jours)
+        // Plus précis que l'approximation 4.33 semaines, et cohérent avec le calcul pour la liste de courses
+        let weekly_budget_str = profile
+            .budget_monthly
+            .map(|b| {
+                let weekly = (b / 30.0) * 7.0; // Proratisation : budget_mensuel / 30 jours * 7 jours
+                format!("{:.2} FCFA", weekly)
+            })
+            .unwrap_or_else(|| "Non calculable (budget non spécifié)".to_string());
 
         // ✅ CONTEXTE 2: Localité géographique (détection dynamique) - AMÉLIORÉ pour contextualisation linguistique
         let location_context = if let (Some(country), Some(city)) = (user_country, user_city) {
@@ -545,8 +555,8 @@ impl MenuPlanningAIService {
                     - CUISINE PRÉFÉRÉE : {}\n\
                     - PRIORITÉ ABSOLUE : Plats traditionnels locaux adaptés à {}, ingrédients disponibles localement, recettes authentiques\n\
                     - LANGAGE CULINAIRE (CRITIQUE) : Tu DOIS utiliser EXACTEMENT le langage culinaire de {} ({})\n\
-                      * Utilise les noms de plats dans la langue locale (ex: au Cameroun: \"Ndolé\", \"Poulet DG\", \"Riz sauté\", \"Koki\", \"Eru\")\n\
-                      * Utilise les noms d'ingrédients dans la langue locale (ex: \"Tomate\", \"Oignon\", \"Ail\", \"Gombo\", \"Feuilles de manioc\")\n\
+                      * Utilise les noms de plats dans la langue locale de la région\n\
+                      * Utilise les noms d'ingrédients dans la langue locale de la région\n\
                       * Respecte les appellations culinaires authentiques de la région de {}\n\
                       * N'utilise JAMAIS de noms de plats étrangers inadaptés (ex: ne pas dire \"Pasta\" ou \"Sushi\" pour un résident de {})\n\
                     - INGRÉDIENTS LOCAUX : Utilise uniquement les ingrédients typiques et disponibles localement à {}\n\
@@ -569,7 +579,7 @@ impl MenuPlanningAIService {
                     - INTERDICTION STRICTE : Ne JAMAIS proposer de plats de cuisines étrangères inadaptées \
                     (ex: ne pas proposer de menu chinois, japonais, italien, mexicain à un résident de {})\n\
                     - LANGAGE CULINAIRE (CRITIQUE) : Tu DOIS utiliser EXACTEMENT le langage culinaire de {} ({})\n\
-                      * Utilise les noms de plats dans la langue locale de {} (ex: au Cameroun: \"Ndolé\", \"Poulet DG\", \"Riz sauté\", \"Koki\", \"Eru\", \"Achu\")\n\
+                      * Utilise les noms de plats dans la langue locale de {}\n\
                       * Utilise les noms d'ingrédients dans la langue locale de {} (ex: \"Tomate\", \"Oignon\", \"Ail\", \"Gombo\", \"Feuilles de manioc\", \"Plantain\")\n\
                       * Respecte les appellations culinaires authentiques de la région de {}\n\
                       * N'utilise JAMAIS de noms de plats étrangers inadaptés (ex: ne pas dire \"Pasta\", \"Sushi\", \"Tacos\" pour un résident de {})\n\
@@ -703,34 +713,92 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
 - Chaque repas DOIT être COMPLET : plat principal + accompagnements/compléments si nécessaire
 - Tu NE DOIS PAS inventer des plats qui n'existent pas dans la localité
 - Tu DOIS utiliser UNIQUEMENT des plats RÉELS et TRADITIONNELS de la région
-- Adapter les quantités au nombre de personnes
+- Adapter les quantités au nombre de personnes ({})
 - Respecter allergies et restrictions
-- Optimiser le budget
+- 💰 OPTIMISER LE BUDGET (CRITIQUE) :
+  * Le budget mensuel de la famille est : {}
+  * Budget hebdomadaire approximatif : {} (budget_mensuel / 4.33)
+  * Le coût total estimé du menu hebdomadaire DOIT respecter ce budget hebdomadaire
+  * CALCUL DES COÛTS PAR REPAS (CRITIQUE) :
+    - Chaque repas (petit_dejeuner, repas_du_jour, gouter) DOIT avoir un "estimated_cost" réaliste
+    - Le coût de chaque repas DOIT tenir compte du nombre de personnes ({}) dans la famille
+    - Le coût de chaque repas DOIT être adapté au budget disponible (budget hebdomadaire / nombre de repas)
+    - Calculer le coût total du repas pour toutes les personnes, pas le coût par personne
+  * ADAPTATION SELON LE BUDGET :
+    - Si le budget est limité, privilégier des plats économiques mais nutritifs (coûts réduits par repas)
+    - Si le budget est confortable, permettre des plats plus variés et raffinés (coûts plus élevés par repas)
+  * ADAPTATION SELON LE NOMBRE DE PERSONNES :
+    - Les coûts DOIVENT être proportionnels au nombre de personnes ({})
+    - Un repas pour 2 personnes coûte moins cher qu'un repas pour 8 personnes
+  * RÉALISME DES PRIX :
+    - Les prix estimés DOIVENT être réalistes pour le nombre de personnes ({}) et le contexte local
+    - Adapter les prix selon la réalité du marché local de la région
+  * VALIDATION :
+    - Chaque repas DOIT avoir un "estimated_cost" cohérent avec le budget total disponible
+    - Vérifier que la somme de tous les "estimated_cost" ≈ budget hebdomadaire
 - Varier les repas pour éviter la monotonie
 - RESPECTER STRICTEMENT les contextes géographique, saisonnier et de variation ci-dessus
 
-🚨 RÈGLES STRICTES SUR LES REPAS COMPLETS (CRITIQUE) :
-1. REPAS COMPLET OBLIGATOIRE :
-   - Chaque repas DOIT être un repas complet et équilibré
+🌅 RÈGLES STRICTES SUR LE PETIT-DÉJEUNER (CRITIQUE - PRIORITÉ ABSOLUE) :
+1. NATURE DU PETIT-DÉJEUNER :
+   - Le petit-déjeuner DOIT être un repas typique du matin selon les habitudes alimentaires de la zone géographique
+   - Ne JAMAIS proposer des plats de midi/soir pour le petit-déjeuner (plats en sauce, plats complets du midi/soir, etc.)
+   - Le petit-déjeuner DOIT être adapté aux habitudes locales du matin (bouillie, pain + beurre/confiture, beignets, omelette, thé/café + accompagnements, etc.)
+   - INTERDICTION : Ne JAMAIS proposer des plats en sauce ou des plats complets du midi/soir pour le petit-déjeuner
+   - Le petit-déjeuner DOIT être adapté aux habitudes locales du matin
+
+2. COHÉRENCE GÉOGRAPHIQUE ET LINGUISTIQUE :
+   - Utilise EXACTEMENT les noms de plats dans la LANGUE LOCALE de la région (même langue que l'utilisateur)
+   - Respecte les habitudes de consommation locales du petit-déjeuner
+   - Ne JAMAIS utiliser des noms de plats étrangers inadaptés à la région
+   - Si tu ne connais pas les noms locaux exacts, utilise des descriptions adaptées au contexte géographique
+
+3. COMPLÉMENTS DU PETIT-DÉJEUNER :
+   - Le petit-déjeuner DOIT être complet selon les habitudes locales
+   - Si un petit-déjeuner nécessite des compléments (ex: pain + beurre, thé + beignets), tu DOIS les préciser dans "complements"
+   - Ne JAMAIS proposer un petit-déjeuner incomplet ou partiel
+   - Le champ "complements" est un array de strings (peut être vide [] si le petit-déjeuner est déjà complet sans complément)
+
+🚨 RÈGLES STRICTES SUR LES REPAS COMPLETS (CRITIQUE - PRIORITÉ ABSOLUE) :
+1. REPAS COMPLET OBLIGATOIRE SELON LES HABITUDES ALIMENTAIRES LOCALES :
+   - Chaque repas DOIT être un repas complet et équilibré selon les habitudes alimentaires de la zone géographique
    - Ne JAMAIS proposer un plat partiel ou incomplet
-   - Si le plat principal nécessite un accompagnement, il DOIT être dans "complements"
-
-2. COMPLÉMENTS OBLIGATOIRES :
-   - Si un plat nécessite un complément (ex: riz, plantain, légumes), tu DOIS le préciser dans "complements"
-   - Les compléments DOIVENT être cohérents avec le plat (ex: "Ndolé" → "Riz" ou "Plantain")
-   - Ne JAMAIS laisser un plat sans complément si c'est nécessaire pour un repas complet
-   - Le champ "complements" est un array de strings (peut être vide [] si pas nécessaire)
-
-3. COHÉRENCE CULINAIRE :
-   - Les compléments DOIVENT être adaptés au plat principal
-   - Respecter les traditions culinaires locales (ex: au Cameroun, "Ndolé" se mange avec "Riz")
-   - Ne JAMAIS proposer des combinaisons incohérentes
-
-4. PLATS RÉELS UNIQUEMENT :
-   - Utilise UNIQUEMENT des plats qui existent réellement dans la cuisine locale
+   - PRINCIPE GÉNÉRAL : Tu DOIS déterminer intelligemment quels plats nécessitent des compléments selon les traditions culinaires locales de la région
+   - Si un plat nécessite un complément selon les habitudes locales (riz, plantain, légumes, sauce, féculents, etc.), tu DOIS OBLIGATOIREMENT le préciser dans "complements"
+   - Tu DOIS utiliser tes connaissances sur les traditions culinaires locales pour déterminer quels plats sont incomplets sans compléments
+   - RÈGLE GÉNÉRALE : Un plat en sauce, un plat de légumes, un plat de viande/poisson nécessitent généralement un complément (riz, plantain, igname, etc.) selon les habitudes locales
+   - RÈGLE GÉNÉRALE : Un plat de féculents seul (riz, plantain, etc.) nécessite généralement un complément (sauce, viande, légumes) selon les habitudes locales
+   - Tu NE PEUX PAS annoncer un repas sans son complément si c'est nécessaire selon les habitudes alimentaires locales
+   - INTERDICTION ABSOLUE : Ne JAMAIS générer un repas incomplet ou partiel
+   
+2. COMPLÉMENTS OBLIGATOIRES SELON LES TRADITIONS CULINAIRES LOCALES :
+   - Tu DOIS déterminer intelligemment quels plats nécessitent des compléments selon les traditions culinaires locales de la région
+   - Si un plat nécessite un complément selon les traditions culinaires locales, tu DOIS OBLIGATOIREMENT le préciser dans "complements"
+   - Les compléments DOIVENT être cohérents avec le plat ET avec les habitudes alimentaires locales de la région
+   - Utilise tes connaissances sur les combinaisons culinaires traditionnelles de la région pour déterminer les compléments appropriés
+   - Ne JAMAIS laisser un plat sans complément si c'est nécessaire pour un repas complet selon les habitudes locales
+   - Le champ "complements" est un array de strings (peut être vide [] SEULEMENT si le plat est déjà complet sans complément selon les habitudes locales)
+   - VALIDATION OBLIGATOIRE : Avant de générer un repas, demande-toi : "Ce plat est-il complet selon les habitudes locales ? Si non, quels compléments sont nécessaires ?"
+   
+3. COHÉRENCE CULINAIRE ET GÉOGRAPHIQUE :
+   - Les compléments DOIVENT être adaptés au plat principal ET aux habitudes alimentaires de la zone géographique
+   - Respecter STRICTEMENT les traditions culinaires locales de la région
+   - Utilise tes connaissances sur les combinaisons culinaires traditionnelles de la région pour déterminer les compléments appropriés
+   - Ne JAMAIS proposer des combinaisons incohérentes avec les habitudes locales
+   - Utilise la MÊME LANGUE que l'utilisateur pour les noms de plats et compléments
+   - PRINCIPE GÉNÉRAL : Chaque plat doit être évalué selon les habitudes culinaires locales pour déterminer s'il nécessite un complément
+   
+4. PLATS RÉELS UNIQUEMENT SELON LA ZONE GÉOGRAPHIQUE :
+   - Utilise UNIQUEMENT des plats qui existent réellement dans la cuisine locale de la région
    - Ne JAMAIS inventer des noms de plats
-   - Utilise tes connaissances sur les plats traditionnels de la région
-   - Si tu ne connais pas un plat, ne l'invente pas - utilise un plat réel que tu connais
+   - Utilise tes connaissances sur les plats traditionnels de la région spécifique
+   - Si tu ne connais pas un plat local, ne l'invente pas - utilise un plat réel que tu connais pour cette région
+   
+5. VALIDATION FINALE OBLIGATOIRE (CRITIQUE) :
+   - Avant de générer chaque repas, tu DOIS vérifier : "Ce repas est-il complet selon les habitudes locales ?"
+   - Si un plat nécessite un complément selon les traditions locales, tu DOIS OBLIGATOIREMENT l'ajouter dans "complements"
+   - Ne JAMAIS générer un repas sans vérifier s'il est complet selon les habitudes alimentaires locales
+   - INTERDICTION ABSOLUE : Ne JAMAIS générer un repas incomplet ou partiel
 
 📋 RÉPONSE ATTENDUE (JSON strict) :
 {{
@@ -771,10 +839,24 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
     "recommendations": ["Recommandation 1", "Recommandation 2"]
 }}
 
+⚠️ NOTE IMPORTANTE SUR LES COÛTS :
+- estimated_cost = PRIX TOTAL du repas pour TOUTES les personnes (nombre de personnes: {})
+- Le coût DOIT être adapté au budget hebdomadaire disponible ({})
+- Le coût DOIT être réaliste selon le marché local et le nombre de personnes
+- total_estimated_cost = somme de tous les estimated_cost de tous les repas de la semaine
+- Le total_estimated_cost DOIT respecter le budget hebdomadaire disponible
+        }},
+        // ... pour chaque jour (1-7)
+    ],
+    "total_estimated_cost": 35000.0,
+    "total_calories_per_day": 2000.0,
+    "recommendations": ["Recommandation 1", "Recommandation 2"]
+}}
+
 ✅ RÈGLES CRITIQUES (LIRE ATTENTIVEMENT) :
 - LANGAGE CULINAIRE LOCAL (PRIORITÉ ABSOLUE) :
   * Utilise EXACTEMENT les noms de plats dans la langue locale de la région de l'utilisateur
-  * Utilise les appellations culinaires authentiques (ex: au Cameroun: "Ndolé", "Poulet DG", "Koki", "Eru", "Achu", "Okok")
+  * Utilise les appellations culinaires authentiques de la région
   * N'utilise JAMAIS de noms de plats étrangers inadaptés (ex: ne pas dire "Pasta", "Sushi", "Tacos" pour un résident d'Afrique centrale)
   * Si tu ne connais pas les noms locaux exacts, utilise des descriptions adaptées au contexte géographique
 - INGRÉDIENTS LOCAUX :
@@ -785,11 +867,35 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
   * "repas_du_jour" est le même repas pour midi ET soir (habitude locale)
   * C'est généralement le même plat qui est mangé à midi et le soir dans les ménages
   * Ne JAMAIS proposer deux plats différents pour midi et soir
-- Les quantités doivent être adaptées au nombre de personnes
+- Les quantités doivent être adaptées au nombre de personnes ({})
 - Respecter strictement les allergies
 - Varier les types de plats
 - RESPECTER la localité culinaire (pas de cuisines inadaptées)
-- PRIX ESTIMÉS : Adapte les prix selon la réalité du marché local (utilise tes connaissances sur les prix moyens dans la région)
+- 💰 PRIX ESTIMÉS DES REPAS (CRITIQUE - LIRE ATTENTIVEMENT) :
+  * Le budget mensuel de la famille est : {}
+  * Budget hebdomadaire proratisé : {} (budget_mensuel / 30 jours × 7 jours)
+  * Le coût total estimé du menu hebdomadaire DOIT respecter ce budget hebdomadaire
+  * CALCUL DES COÛTS PAR REPAS (CRITIQUE) :
+    - Chaque repas (petit_dejeuner, repas_du_jour, gouter) DOIT avoir un "estimated_cost" réaliste
+    - Le coût de chaque repas DOIT tenir compte du nombre de personnes ({}) dans la famille
+    - Le coût de chaque repas DOIT être adapté au budget disponible (budget hebdomadaire / nombre de repas)
+    - Exemple de calcul : Si budget hebdomadaire = 50000 FCFA pour 7 jours avec 2 repas/jour (petit-déjeuner + repas_du_jour) = 14 repas
+      → Coût moyen par repas ≈ 3571 FCFA, mais adapter selon le type de repas (petit-déjeuner moins cher, repas_du_jour plus cher)
+  * ADAPTATION SELON LE BUDGET :
+    - Si le budget est limité, privilégier des plats économiques mais nutritifs (coûts réduits par repas)
+    - Si le budget est confortable, permettre des plats plus variés et raffinés (coûts plus élevés par repas)
+  * ADAPTATION SELON LE NOMBRE DE PERSONNES :
+    - Les coûts DOIVENT être proportionnels au nombre de personnes ({})
+    - Un repas pour 2 personnes coûte moins cher qu'un repas pour 8 personnes
+    - Calculer le coût total du repas pour toutes les personnes, pas le coût par personne
+  * RÉALISME DES PRIX :
+    - Adapter les prix selon la réalité du marché local de la région
+    - Utiliser tes connaissances sur les prix moyens dans la région
+    - Les prix DOIVENT être réalistes pour le nombre de personnes ({}) et le contexte local
+  * VALIDATION FINALE :
+    - Vérifier que la somme de tous les "estimated_cost" des repas de la semaine ≈ budget hebdomadaire
+    - Le "total_estimated_cost" DOIT être cohérent avec le budget hebdomadaire disponible
+    - Chaque repas DOIT avoir un "estimated_cost" cohérent avec le budget total disponible
 
 ⚠️ IMPORTANT - JSON COMPLET REQUIS :
 - Tu DOIS générer un JSON COMPLET et VALIDE pour les 7 jours (Lundi à Dimanche)
@@ -816,6 +922,9 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
             restrictions_str,
             cuisine_str,
             budget_str,
+            weekly_budget_str,
+            profile.total_members,
+            profile.total_members,
             profile.cooking_level,
             profile.time_available_hours,
             location_context,
@@ -1253,15 +1362,21 @@ IMPORTANT :
     }
 
     /// ✅ NOUVEAU: Génère une liste de courses intelligente en regroupant les ingrédients
+    /// ✅ AMÉLIORATION 2026-01-13: Ajout de la zone géographique pour utiliser des unités locales
+    /// ✅ AMÉLIORATION 2026-01-13: Ajout du budget proratisé pour adapter les prix selon le budget disponible
     pub async fn generate_intelligent_shopping_list(
         &self,
         meal_items: &[MealItemForShopping],
         family_members: i32,
+        user_country: Option<&str>,
+        user_city: Option<&str>,
+        budget_monthly: Option<f64>,
+        period_days: Option<i32>, // Nombre de jours pour la période (7 pour hebdomadaire, 30 pour mensuel, etc.)
     ) -> AppResult<IntelligentShoppingList> {
         use crate::services::menu_planning_ai_prompts::generate_shopping_list_prompt;
         
-        // Construire le prompt pour l'IA
-        let prompt = generate_shopping_list_prompt(meal_items, family_members);
+        // Construire le prompt pour l'IA avec la zone géographique et le budget proratisé
+        let prompt = generate_shopping_list_prompt(meal_items, family_members, user_country, user_city, budget_monthly, period_days);
         
         // Appeler l'IA
         let (_model_name, response, _tokens) = self.app_ia.predict(&prompt).await?;

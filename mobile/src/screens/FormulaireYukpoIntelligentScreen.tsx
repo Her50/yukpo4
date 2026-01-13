@@ -2,7 +2,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 // Code corrigé (remplace @ts-ignore)
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   DeviceEventEmitter,
@@ -44,6 +44,8 @@ import { DynamicField, processIASuggestion } from '../utils/formDispatcher';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoConfigPromptModal';
+// ✅ NOUVEAU: Import des fonctions de synchronisation prix_variation <-> sous-caractéristiques
+import { applyPriceVariantToProduits, extractPriceVariant } from '../utils/priceVariant';
 
 const { width } = Dimensions.get('window');
 
@@ -262,7 +264,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
 
   // États pour la navigation par blocs
-  const [currentBlock, setCurrentBlock] = useState(0);
+  // ✅ REFONTE COMPLÈTE: Utiliser currentDisplayIndex comme source de vérité unique pour la navigation
+  // currentDisplayIndex est l'index dans displayedBlocks (blocs visibles)
+  // currentBlock est calculé à partir de currentDisplayIndex pour garantir la synchronisation
+  const [currentDisplayIndex, setCurrentDisplayIndex] = useState(0);
   const [blocks, setBlocks] = useState<{
     id: string;
     title: string;
@@ -270,7 +275,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     fields: DynamicField[];
   }[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [dynamicTextareaHeights, setDynamicTextareaHeights] = useState<Record<string, number>>({});
+  // ✅ SUPPRIMÉ: dynamicTextareaHeights - plus nécessaire après refonte de description_produit
 
   const displayedBlocks = useMemo(() => {
     if (!blocks || blocks.length === 0) {
@@ -292,56 +297,74 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }, []);
   }, [blocks, isEditingServiceInfo]);
 
-  const currentDisplayIndex = useMemo(() => {
+  // ✅ REFONTE: Calculer currentBlock à partir de currentDisplayIndex pour garantir la synchronisation
+  const currentBlock = useMemo(() => {
     if (!displayedBlocks || displayedBlocks.length === 0) {
       return 0;
     }
 
-    const index = displayedBlocks.findIndex((item) => item.index === currentBlock);
-    return index === -1 ? 0 : index;
-  }, [displayedBlocks, currentBlock]);
+    // ✅ Garantir que currentDisplayIndex est valide
+    const validDisplayIndex = Math.max(0, Math.min(currentDisplayIndex, displayedBlocks.length - 1));
+    
+    // ✅ Si currentDisplayIndex a changé, le corriger
+    if (validDisplayIndex !== currentDisplayIndex) {
+      console.warn('[NAVIGATION_SYNC] ⚠️ Correction currentDisplayIndex:', currentDisplayIndex, '→', validDisplayIndex);
+      setTimeout(() => setCurrentDisplayIndex(validDisplayIndex), 0);
+    }
+
+    const displayedBlock = displayedBlocks[validDisplayIndex];
+    return displayedBlock ? displayedBlock.index : 0;
+  }, [displayedBlocks, currentDisplayIndex]);
 
   const totalVisibleBlocks = displayedBlocks.length;
   const progressPercentage = totalVisibleBlocks > 0
     ? ((currentDisplayIndex + 1) / totalVisibleBlocks) * 100
     : 0;
 
+  // ✅ REFONTE: Fonction helper pour convertir blockIndex (dans blocks) en displayIndex (dans displayedBlocks)
+  const getDisplayIndexFromBlockIndex = useCallback((blockIndex: number): number => {
+    if (!displayedBlocks || displayedBlocks.length === 0) {
+      return 0;
+    }
+    const displayIndex = displayedBlocks.findIndex(item => item && item.index === blockIndex);
+    return displayIndex === -1 ? 0 : displayIndex;
+  }, [displayedBlocks]);
+
+  // ✅ REFONTE: Fonction helper pour naviguer vers un bloc par son index dans blocks
+  const navigateToBlockIndex = useCallback((blockIndex: number) => {
+    const displayIndex = getDisplayIndexFromBlockIndex(blockIndex);
+    setCurrentDisplayIndex(displayIndex);
+  }, [getDisplayIndexFromBlockIndex]);
+
+  // ✅ REFONTE: Synchronisation automatique de currentDisplayIndex avec displayedBlocks
   useEffect(() => {
     if (!displayedBlocks || displayedBlocks.length === 0) {
       return;
     }
 
-    // ✅ CORRIGÉ 2026-01-12: Vérifier que currentBlock correspond à un bloc visible
-    const isCurrentVisible = displayedBlocks.some((item) => item.index === currentBlock);
-
-    if (!isCurrentVisible) {
-      console.log('[NAVIGATION_SYNC] ⚠️ currentBlock non visible, correction vers premier bloc visible:', {
-        currentBlock,
-        displayedBlocksIndices: displayedBlocks.map(db => db.index),
-        firstVisibleIndex: displayedBlocks[0]?.index,
+    // ✅ Garantir que currentDisplayIndex est toujours valide
+    const validDisplayIndex = Math.max(0, Math.min(currentDisplayIndex, displayedBlocks.length - 1));
+    
+    if (validDisplayIndex !== currentDisplayIndex) {
+      console.log('[NAVIGATION_SYNC] 🔄 Correction currentDisplayIndex:', {
+        ancien: currentDisplayIndex,
+        nouveau: validDisplayIndex,
+        totalBlocs: displayedBlocks.length,
       });
-      setCurrentBlock(displayedBlocks[0].index);
-    } else {
-      // ✅ NOUVEAU: Vérifier que le bloc affiché correspond bien à currentBlock
-      const displayedBlock = displayedBlocks.find(db => db.index === currentBlock);
-      const calculatedDisplayIndex = displayedBlocks.findIndex(db => db.index === currentBlock);
-      
-      if (displayedBlock) {
-        console.log('[NAVIGATION_SYNC] ✅ Synchronisation OK:', {
-          currentBlock,
-          calculatedDisplayIndex,
-          currentDisplayIndex,
-          blockId: displayedBlock.block.id,
-          blockTitle: displayedBlock.block.title,
-        });
-        
-        // ✅ CORRIGÉ: Vérifier que currentDisplayIndex correspond bien
-        if (calculatedDisplayIndex !== currentDisplayIndex && calculatedDisplayIndex !== -1) {
-          console.warn('[NAVIGATION_SYNC] ⚠️ Désynchronisation détectée, recalcul nécessaire');
-        }
-      }
+      setCurrentDisplayIndex(validDisplayIndex);
     }
-  }, [displayedBlocks, currentBlock, currentDisplayIndex]);
+
+    // ✅ Log de synchronisation pour debug
+    const displayedBlock = displayedBlocks[validDisplayIndex];
+    if (displayedBlock) {
+      console.log('[NAVIGATION_SYNC] ✅ Synchronisation OK:', {
+        currentDisplayIndex: validDisplayIndex,
+        currentBlock: displayedBlock.index,
+        blockId: displayedBlock.block.id,
+        blockTitle: displayedBlock.block.title,
+      });
+    }
+  }, [displayedBlocks, currentDisplayIndex]);
 
   useEffect(() => {
     const parseMediaValue = (value: any): any[] => {
@@ -824,7 +847,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: 'Décrivez les caractéristiques spécifiques du produit/prestation...',
           multiline: true,
-          minLines: 3
+          minLines: 3 // ✅ REFONTE: Même nombre de lignes que description (3 au lieu de 6)
         } as DynamicField);
       }
 
@@ -1227,321 +1250,148 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     return { isValid: errors.length === 0, errors, fieldErrors: newFieldErrors };
   };
 
-  // Fonctions de navigation entre blocs
+  // ✅ REFONTE COMPLÈTE: Fonctions de navigation utilisant currentDisplayIndex comme source de vérité
   const goToNextBlock = () => {
-    // ✅ LOGS DÉTAILLÉS: Capturer l'état initial pour diagnostic crash
-    const currentBlockData = blocks[currentBlock];
-    const currentBlockId = currentBlockData?.id || 'unknown';
-    const currentBlockTitle = currentBlockData?.title || 'unknown';
-    
-    console.log('[NAVIGATION_BLOC] 🚀 === DÉBUT goToNextBlock ===');
-    console.log('[NAVIGATION_BLOC] 📍 État initial:', {
-      currentBlock,
-      currentBlockId,
-      currentBlockTitle,
-      blocksLength: blocks?.length || 0,
-      displayedBlocksLength: displayedBlocks?.length || 0,
-      displayedBlocksIsArray: Array.isArray(displayedBlocks),
-      blocksIsArray: Array.isArray(blocks),
-    });
-    console.log('[NAVIGATION_BLOC] 📋 displayedBlocks:', JSON.stringify(displayedBlocks?.map((db: any) => ({
-      index: db?.index,
-      blockId: db?.block?.id,
-      blockTitle: db?.block?.title,
-    })) || []));
-    console.log('[NAVIGATION_BLOC] 📋 blocks:', JSON.stringify(blocks?.map((b: any, idx: number) => ({
-      index: idx,
-      id: b?.id,
-      title: b?.title,
-      fieldsCount: b?.fields?.length || 0,
-    })) || []));
-    
     try {
-      // ✅ CORRECTION CRITIQUE: Vérifier que displayedBlocks existe et n'est pas vide
+      // ✅ Vérifier que displayedBlocks existe et n'est pas vide
       if (!displayedBlocks || !Array.isArray(displayedBlocks) || displayedBlocks.length === 0) {
         console.error('[NAVIGATION_BLOC] ❌ displayedBlocks invalide dans goToNextBlock');
-        console.error('[NAVIGATION_BLOC] ❌ displayedBlocks:', displayedBlocks);
-        console.error('[NAVIGATION_BLOC] ❌ typeof displayedBlocks:', typeof displayedBlocks);
         Alert.alert('Erreur', 'Impossible de naviguer. Veuillez réessayer.');
         return;
       }
 
-      console.log('[NAVIGATION_BLOC] ✅ displayedBlocks valide, longueur:', displayedBlocks.length);
-
-      // Valider le bloc actuel avant de passer au suivant
-      console.log('[NAVIGATION_BLOC] 🔍 Début validation du bloc actuel...');
+      // ✅ Valider le bloc actuel avant de passer au suivant
       const validation = validateCurrentBlock();
-      console.log('[NAVIGATION_BLOC] ✅ Validation terminée:', {
-        isValid: validation.isValid,
-        errorsCount: validation.errors?.length || 0,
-        fieldErrorsCount: Object.keys(validation.fieldErrors || {}).length,
-      });
-
       if (!validation.isValid) {
-        console.warn('[NAVIGATION_BLOC] ⚠️ Validation échouée, arrêt navigation');
-        console.warn('[NAVIGATION_BLOC] ⚠️ Erreurs:', validation.errors);
-        console.warn('[NAVIGATION_BLOC] ⚠️ FieldErrors:', validation.fieldErrors);
-        
-        // Afficher les erreurs dans les champs
         setFieldErrors(validation.fieldErrors);
-
-        // ✅ CORRECTION: S'assurer que toutes les erreurs sont des strings
         const errorMessages = validation.errors
           .filter(err => err != null)
           .map(err => String(err))
           .filter(err => err.trim().length > 0);
-
         if (errorMessages.length > 0) {
-          Alert.alert(
-            'Champs invalides',
-            errorMessages.join('\n\n'),
-            [{ text: 'OK' }]
-          );
+          Alert.alert('Champs invalides', errorMessages.join('\n\n'), [{ text: 'OK' }]);
         }
         return;
       }
 
-      // Effacer les erreurs si la validation réussit
+      // ✅ Effacer les erreurs si la validation réussit
       setFieldErrors({});
-      console.log('[NAVIGATION_BLOC] ✅ Validation réussie, recherche du bloc suivant...');
 
-      // ✅ CORRECTION CRITIQUE: Vérifier que displayedBlocks est toujours valide avant findIndex
-      const currentVisibleIndex = displayedBlocks.findIndex(item => item && item.index === currentBlock);
-      console.log('[NAVIGATION_BLOC] 🔍 Recherche bloc actuel dans displayedBlocks:', {
-        currentBlock,
-        currentVisibleIndex,
-        displayedBlocksLength: displayedBlocks.length,
-      });
+      // ✅ REFONTE: Utiliser currentDisplayIndex directement (source de vérité)
+      const nextDisplayIndex = currentDisplayIndex + 1;
       
-      if (currentVisibleIndex === -1) {
-        console.warn('[NAVIGATION_BLOC] ⚠️ Bloc actuel non trouvé dans displayedBlocks:', currentBlock);
-        console.warn('[NAVIGATION_BLOC] ⚠️ displayedBlocks disponibles:', displayedBlocks.map((db: any) => db?.index));
-        // Essayer de trouver le premier bloc disponible
-        if (displayedBlocks.length > 0 && displayedBlocks[0]) {
-          console.log('[NAVIGATION_BLOC] 🔄 Fallback: navigation vers premier bloc disponible');
-          setCurrentBlock(displayedBlocks[0].index);
-        }
-        return;
-      }
-
-      const nextVisible = currentVisibleIndex !== -1 && currentVisibleIndex < displayedBlocks.length - 1
-        ? displayedBlocks[currentVisibleIndex + 1]
-        : null;
-
-      console.log('[NAVIGATION_BLOC] 🔍 Bloc suivant trouvé:', {
-        currentVisibleIndex,
-        nextVisibleExists: !!nextVisible,
-        nextBlockIndex: nextVisible?.index,
-        nextBlockId: nextVisible?.block?.id,
-        nextBlockTitle: nextVisible?.block?.title,
-        isInfoToContact: currentBlockId === 'general' && nextVisible?.block?.id === 'contact',
-      });
-
-      // ✅ LOGS SPÉCIFIQUES: Passage du bloc info général au bloc contact
-      if (currentBlockId === 'general' && nextVisible?.block?.id === 'contact') {
-        console.log('[NAVIGATION_BLOC] 🎯 === PASSAGE INFO → CONTACT ===');
-        console.log('[NAVIGATION_BLOC] 📊 État complet avant transition:', {
-          currentBlock: {
-            index: currentBlock,
-            id: currentBlockId,
-            title: currentBlockTitle,
-            fieldsCount: currentBlockData?.fields?.length || 0,
-          },
-          nextBlock: {
-            index: nextVisible.index,
-            id: nextVisible.block.id,
-            title: nextVisible.block.title,
-            fieldsCount: nextVisible.block.fields?.length || 0,
-          },
-          valeursFormulaireKeys: Object.keys(valeursFormulaire || {}),
-          valeursFormulaireSize: JSON.stringify(valeursFormulaire || {}).length,
-          mainScrollViewRefExists: !!mainScrollViewRef.current,
-          blockRefsCount: Object.keys(blockRefs.current || {}).length,
-        });
-        console.log('[NAVIGATION_BLOC] 📝 Valeurs formulaire (extrait):', JSON.stringify({
-          whatsapp: valeursFormulaire?.whatsapp,
-          telephone: valeursFormulaire?.telephone,
-          email: valeursFormulaire?.email,
-          website: valeursFormulaire?.website,
-        }));
-      }
-
-      if (nextVisible && nextVisible.index !== undefined) {
+      if (nextDisplayIndex < displayedBlocks.length) {
         console.log('[NAVIGATION_BLOC] ✅ Navigation vers bloc suivant:', {
-          from: { index: currentBlock, id: currentBlockId },
-          to: { index: nextVisible.index, id: nextVisible.block?.id },
+          from: currentDisplayIndex,
+          to: nextDisplayIndex,
+          blockId: displayedBlocks[nextDisplayIndex]?.block?.id,
+          blockTitle: displayedBlocks[nextDisplayIndex]?.block?.title,
         });
         
-        setCurrentBlock(nextVisible.index);
-        console.log('[NAVIGATION_BLOC] ✅ setCurrentBlock appelé avec:', nextVisible.index);
+        setCurrentDisplayIndex(nextDisplayIndex);
         
-        // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
-        // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
-        console.log('[NAVIGATION_BLOC] 🎬 Début requestAnimationFrame pour scroll...');
+        // ✅ REFONTE: Scroller vers le début du ScrollView pour afficher le nouveau bloc
         requestAnimationFrame(() => {
-          console.log('[NAVIGATION_BLOC] 🎬 requestAnimationFrame 1 exécuté');
           requestAnimationFrame(() => {
-            console.log('[NAVIGATION_BLOC] 🎬 requestAnimationFrame 2 exécuté, tentative scroll...');
-            // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
             try {
               if (mainScrollViewRef.current) {
-                console.log('[NAVIGATION_BLOC] ✅ mainScrollViewRef.current existe, tentative scroll...');
                 const scrollView = mainScrollViewRef.current;
-                
-                // ✅ CORRIGÉ 2026-01-12: Vérifier et utiliser la méthode appropriée pour KeyboardAwareScrollView
-                // KeyboardAwareScrollView peut avoir scrollTo, scrollToPosition, ou getScrollResponder
-                let scrollSuccess = false;
-                
-                // Méthode 1: scrollTo (méthode standard de ScrollView)
                 if (typeof scrollView.scrollTo === 'function') {
-                  try {
-                    scrollView.scrollTo({ x: 0, y: 0, animated: true });
-                    scrollSuccess = true;
-                    console.log('[NAVIGATION_BLOC] ✅ scrollTo réussi');
-                  } catch (e) {
-                    console.warn('[NAVIGATION_BLOC] ⚠️ scrollTo a échoué:', e);
-                  }
-                }
-                
-                // Méthode 2: scrollToPosition (si disponible)
-                if (!scrollSuccess && typeof scrollView.scrollToPosition === 'function') {
-                  try {
-                    scrollView.scrollToPosition(0, 0, true);
-                    scrollSuccess = true;
-                    console.log('[NAVIGATION_BLOC] ✅ scrollToPosition réussi');
-                  } catch (e) {
-                    console.warn('[NAVIGATION_BLOC] ⚠️ scrollToPosition a échoué:', e);
-                  }
-                }
-                
-                // Méthode 3: getScrollResponder (fallback)
-                if (!scrollSuccess && typeof scrollView.getScrollResponder === 'function') {
-                  try {
-                    const scrollResponder = scrollView.getScrollResponder();
-                    if (scrollResponder && typeof scrollResponder.scrollTo === 'function') {
-                      scrollResponder.scrollTo({ x: 0, y: 0, animated: true });
-                      scrollSuccess = true;
-                      console.log('[NAVIGATION_BLOC] ✅ scrollTo via getScrollResponder réussi');
-                    }
-                  } catch (e) {
-                    console.warn('[NAVIGATION_BLOC] ⚠️ getScrollResponder a échoué:', e);
-                  }
-                }
-                
-                if (!scrollSuccess) {
-                  console.warn('[NAVIGATION_BLOC] ⚠️ Aucune méthode de scroll disponible, navigation continue sans scroll');
-                }
-              } else {
-                console.warn('[NAVIGATION_BLOC] ⚠️ mainScrollViewRef.current est null');
-              }
-            } catch (scrollError) {
-              console.error('[NAVIGATION_BLOC] ❌ Erreur lors du scroll:', scrollError);
-              console.error('[NAVIGATION_BLOC] ❌ Stack trace:', (scrollError as Error)?.stack);
-              // Ne pas bloquer la navigation en cas d'erreur de scroll
-            }
-          });
-        });
-        console.log('[NAVIGATION_BLOC] ✅ === FIN goToNextBlock (succès) ===');
-      } else {
-        console.log('[NAVIGATION_BLOC] ℹ️ Dernier bloc atteint, pas de bloc suivant');
-        console.log('[NAVIGATION_BLOC] ✅ === FIN goToNextBlock (dernier bloc) ===');
-      }
-    } catch (error) {
-      console.error('[NAVIGATION_BLOC] ❌ === ERREUR CRITIQUE dans goToNextBlock ===');
-      console.error('[NAVIGATION_BLOC] ❌ Erreur:', error);
-      console.error('[NAVIGATION_BLOC] ❌ Message:', (error as Error)?.message);
-      console.error('[NAVIGATION_BLOC] ❌ Stack:', (error as Error)?.stack);
-      console.error('[NAVIGATION_BLOC] ❌ État au moment de l\'erreur:', {
-        currentBlock,
-        currentBlockId,
-        blocksLength: blocks?.length,
-        displayedBlocksLength: displayedBlocks?.length,
-        mainScrollViewRefExists: !!mainScrollViewRef.current,
-      });
-      Alert.alert(
-        'Erreur',
-        'Une erreur est survenue lors de la navigation. Veuillez réessayer.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
-  const goToPreviousBlock = () => {
-    try {
-      // ✅ CORRECTION CRITIQUE: Vérifier que displayedBlocks existe et n'est pas vide
-      if (!displayedBlocks || !Array.isArray(displayedBlocks) || displayedBlocks.length === 0) {
-        console.error('[FormulaireYukpoIntelligentScreen] ⚠️ displayedBlocks invalide dans goToPreviousBlock');
-        Alert.alert('Erreur', 'Impossible de naviguer. Veuillez réessayer.');
-        return;
-      }
-
-      const currentVisibleIndex = displayedBlocks.findIndex(item => item && item.index === currentBlock);
-      
-      if (currentVisibleIndex === -1) {
-        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Bloc actuel non trouvé dans displayedBlocks:', currentBlock);
-        return;
-      }
-
-      const previousVisible = currentVisibleIndex > 0 && displayedBlocks[currentVisibleIndex - 1]
-        ? displayedBlocks[currentVisibleIndex - 1]
-        : null;
-
-      if (previousVisible && previousVisible.index !== undefined) {
-        setCurrentBlock(previousVisible.index);
-        
-        // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
-        // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
-            try {
-              if (mainScrollViewRef.current) {
-                // ✅ CORRIGÉ 2026-01-12: KeyboardAwareScrollView utilise scrollToPosition
-                if (typeof mainScrollViewRef.current.scrollToPosition === 'function') {
-                  mainScrollViewRef.current.scrollToPosition(0, 0, true);
-                } else if (typeof mainScrollViewRef.current.getScrollResponder === 'function') {
-                  const scrollResponder = mainScrollViewRef.current.getScrollResponder();
+                  scrollView.scrollTo({ x: 0, y: 0, animated: true });
+                } else if (typeof scrollView.scrollToPosition === 'function') {
+                  scrollView.scrollToPosition(0, 0, true);
+                } else if (typeof scrollView.getScrollResponder === 'function') {
+                  const scrollResponder = scrollView.getScrollResponder();
                   if (scrollResponder && typeof scrollResponder.scrollTo === 'function') {
                     scrollResponder.scrollTo({ x: 0, y: 0, animated: true });
                   }
                 }
               }
             } catch (scrollError) {
-              console.error('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur lors du scroll:', scrollError);
-              // Ne pas bloquer la navigation en cas d'erreur de scroll
+              console.error('[NAVIGATION_BLOC] ⚠️ Erreur scroll:', scrollError);
             }
           });
         });
       } else {
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ Premier bloc atteint');
+        console.log('[NAVIGATION_BLOC] ℹ️ Dernier bloc atteint');
       }
     } catch (error) {
-      console.error('[FormulaireYukpoIntelligentScreen] ❌ ERREUR CRITIQUE dans goToPreviousBlock:', error);
-      Alert.alert(
-        'Erreur',
-        'Une erreur est survenue lors de la navigation. Veuillez réessayer.',
-        [{ text: 'OK' }]
-      );
+      console.error('[NAVIGATION_BLOC] ❌ Erreur:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la navigation. Veuillez réessayer.', [{ text: 'OK' }]);
     }
   };
 
+  // ✅ REFONTE: goToPreviousBlock utilise currentDisplayIndex
+  const goToPreviousBlock = () => {
+    try {
+      if (!displayedBlocks || !Array.isArray(displayedBlocks) || displayedBlocks.length === 0) {
+        console.error('[NAVIGATION_BLOC] ❌ displayedBlocks invalide dans goToPreviousBlock');
+        Alert.alert('Erreur', 'Impossible de naviguer. Veuillez réessayer.');
+        return;
+      }
+
+      // ✅ REFONTE: Utiliser currentDisplayIndex directement
+      const previousDisplayIndex = currentDisplayIndex - 1;
+      
+      if (previousDisplayIndex >= 0) {
+        console.log('[NAVIGATION_BLOC] ✅ Navigation vers bloc précédent:', {
+          from: currentDisplayIndex,
+          to: previousDisplayIndex,
+          blockId: displayedBlocks[previousDisplayIndex]?.block?.id,
+          blockTitle: displayedBlocks[previousDisplayIndex]?.block?.title,
+        });
+        
+        setCurrentDisplayIndex(previousDisplayIndex);
+        
+        // ✅ Scroller vers le début du ScrollView
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            try {
+              if (mainScrollViewRef.current) {
+                const scrollView = mainScrollViewRef.current;
+                if (typeof scrollView.scrollTo === 'function') {
+                  scrollView.scrollTo({ x: 0, y: 0, animated: true });
+                } else if (typeof scrollView.scrollToPosition === 'function') {
+                  scrollView.scrollToPosition(0, 0, true);
+                } else if (typeof scrollView.getScrollResponder === 'function') {
+                  const scrollResponder = scrollView.getScrollResponder();
+                  if (scrollResponder && typeof scrollResponder.scrollTo === 'function') {
+                    scrollResponder.scrollTo({ x: 0, y: 0, animated: true });
+                  }
+                }
+              }
+            } catch (scrollError) {
+              console.error('[NAVIGATION_BLOC] ⚠️ Erreur scroll:', scrollError);
+            }
+          });
+        });
+      } else {
+        console.log('[NAVIGATION_BLOC] ℹ️ Premier bloc atteint');
+      }
+    } catch (error) {
+      console.error('[NAVIGATION_BLOC] ❌ Erreur:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la navigation. Veuillez réessayer.', [{ text: 'OK' }]);
+    }
+  };
+
+  // ✅ REFONTE: goToBlock utilise currentDisplayIndex (blockIndex est l'index original dans blocks)
   const goToBlock = (blockIndex: number) => {
     try {
-      // ✅ CORRECTION CRITIQUE: Vérifier que blocks existe et que blockIndex est valide
-      if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
-        console.error('[FormulaireYukpoIntelligentScreen] ⚠️ blocks invalide dans goToBlock');
+      if (!displayedBlocks || !Array.isArray(displayedBlocks) || displayedBlocks.length === 0) {
+        console.error('[NAVIGATION_BLOC] ❌ displayedBlocks invalide dans goToBlock');
         return;
       }
 
-      if (blockIndex < 0 || blockIndex >= blocks.length || !blocks[blockIndex]) {
-        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Index de bloc invalide:', blockIndex);
+      // ✅ REFONTE: Trouver le displayIndex correspondant au blockIndex
+      const displayIndex = displayedBlocks.findIndex(item => item && item.index === blockIndex);
+      
+      if (displayIndex === -1) {
+        console.warn('[NAVIGATION_BLOC] ⚠️ Bloc non trouvé dans displayedBlocks:', blockIndex);
         return;
       }
 
+      // ✅ Vérifier la contrainte produits si nécessaire
       const productsBlockIndex = blocks.findIndex(b => b && b.id === 'products');
-
-      // ✅ CORRECTION: Empêcher de passer à un bloc après le bloc produits si le bloc produits n'a pas de produits
-      // ✅ NOUVEAU 2025-11-06: Lever contrainte si mode edit_service_info
       if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex > productsBlockIndex && !isEditingServiceInfo) {
         if (!hasAtLeastOneProduct()) {
           Alert.alert(
@@ -1554,35 +1404,40 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
       }
 
-      setCurrentBlock(blockIndex);
+      console.log('[NAVIGATION_BLOC] ✅ Navigation vers bloc:', {
+        blockIndex,
+        displayIndex,
+        blockId: displayedBlocks[displayIndex]?.block?.id,
+        blockTitle: displayedBlocks[displayIndex]?.block?.title,
+      });
       
-      // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
-      // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
+      setCurrentDisplayIndex(displayIndex);
+      
+      // ✅ Scroller vers le début du ScrollView
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
           try {
             if (mainScrollViewRef.current) {
-              // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
-              mainScrollViewRef.current.scrollTo({
-                x: 0,
-                y: 0, // Début du ScrollView = début du nouveau bloc
-                animated: true
-              });
+              const scrollView = mainScrollViewRef.current;
+              if (typeof scrollView.scrollTo === 'function') {
+                scrollView.scrollTo({ x: 0, y: 0, animated: true });
+              } else if (typeof scrollView.scrollToPosition === 'function') {
+                scrollView.scrollToPosition(0, 0, true);
+              } else if (typeof scrollView.getScrollResponder === 'function') {
+                const scrollResponder = scrollView.getScrollResponder();
+                if (scrollResponder && typeof scrollResponder.scrollTo === 'function') {
+                  scrollResponder.scrollTo({ x: 0, y: 0, animated: true });
+                }
+              }
             }
           } catch (scrollError) {
-            console.error('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur lors du scroll:', scrollError);
-            // Ne pas bloquer la navigation en cas d'erreur de scroll
+            console.error('[NAVIGATION_BLOC] ⚠️ Erreur scroll:', scrollError);
           }
         });
       });
     } catch (error) {
-      console.error('[FormulaireYukpoIntelligentScreen] ❌ ERREUR CRITIQUE dans goToBlock:', error);
-      Alert.alert(
-        'Erreur',
-        'Une erreur est survenue lors de la navigation. Veuillez réessayer.',
-        [{ text: 'OK' }]
-      );
+      console.error('[NAVIGATION_BLOC] ❌ Erreur:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la navigation. Veuillez réessayer.', [{ text: 'OK' }]);
     }
   };
 
@@ -1754,7 +1609,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // Trouver le bloc produits et l'ouvrir
       const productsBlockIndex = blocks.findIndex(block => block.id === 'products');
       if (productsBlockIndex !== -1) {
-        setCurrentBlock(productsBlockIndex);
+        navigateToBlockIndex(productsBlockIndex);
         console.log('[FormulaireYukpoIntelligentScreen] ✅ Bloc produits ouvert automatiquement (édition)');
       }
 
@@ -1765,7 +1620,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       console.log('[FormulaireYukpoIntelligentScreen] 📦 Ouverture automatique du bloc produits pour création');
       const productsBlockIndex = blocks.findIndex(block => block.id === 'products');
       if (productsBlockIndex !== -1) {
-        setCurrentBlock(productsBlockIndex);
+        navigateToBlockIndex(productsBlockIndex);
         console.log('[FormulaireYukpoIntelligentScreen] ✅ Bloc produits ouvert automatiquement (création)');
       }
     }
@@ -2007,7 +1862,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           ...componentValues // ✅ NOUVEAU: Les valeurs des field.value (nom_produit, etc.)
         }));
         setActiveStep(2); // Passer directement à l'étape 2 avec les données IA
-        setCurrentBlock(0);
+        setCurrentDisplayIndex(0);
       } else {
         console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, rester à l\'étape 1');
       }
@@ -2059,7 +1914,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       setTimeout(() => {
         const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
         if (productsBlockIndex >= 0) {
-          setCurrentBlock(productsBlockIndex);
+          navigateToBlockIndex(productsBlockIndex);
           console.log('[FormulaireYukpoIntelligentScreen] ✅ Focus sur bloc produits, index:', productsBlockIndex);
         }
       }, 500);
@@ -2087,7 +1942,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         // Attendre un peu que les blocs soient rendus
         setTimeout(() => {
-          setCurrentBlock(productsBlockIndex);
+          navigateToBlockIndex(productsBlockIndex);
         }, 300);
       }
     }
@@ -2195,7 +2050,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         setDynamicTextareaHeights({});
         setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
         setActiveStep(2);
-        setCurrentBlock(0);
+        setCurrentDisplayIndex(0);
       } else {
         console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, utilisation des composants par défaut');
 
@@ -2226,7 +2081,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         setComposants(defaultComponents);
         setActiveStep(2);
-        setCurrentBlock(0);
+        setCurrentDisplayIndex(0);
       }
 
     } catch (error) {
@@ -2499,27 +2354,58 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             categoryValue={valeursFormulaire.categorie_produit || valeursFormulaire.category || ''}
             onChange={(values, updatedSousCaracs) => {
               // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
-              if (updatedSousCaracs) {
-                handleFieldChange(field.name, {
-                  type_donnee: 'autocomplete',
-                  valeur: values,
-                  separateur: safeSeparateur, // ✅ Utiliser safeSeparateur
-                  sous_caracteristiques: updatedSousCaracs,
-                  identifiant_base: field.identifiantBase || field.name,
-                  filtrable: field.filtrable !== false,
-                  origine_champs: 'formulaire'
+              // ✅ CORRECTION 2026-01-XX: Synchronisation automatique prix_variation <-> sous-caractéristiques
+              // (comme dans AjouterProduitSimpleScreen pour garantir la cohérence)
+              const updatedProduitsValue = {
+                type_donnee: 'autocomplete',
+                valeur: values,
+                separateur: safeSeparateur,
+                sous_caracteristiques: updatedSousCaracs || currentSousCaracs,
+                identifiant_base: field.identifiantBase || field.name,
+                filtrable: field.filtrable !== false,
+                origine_champs: 'formulaire'
+              };
+
+              // ✅ NOUVEAU: Extraire et synchroniser automatiquement les prix_variation depuis les produits
+              // (comme dans AjouterProduitSimpleScreen)
+              const normalizedPriceVariant = extractPriceVariant(
+                updatedProduitsValue,
+                updatedProduitsValue.origine_champs || 'formulaire'
+              );
+
+              // Mettre à jour le champ produits
+              handleFieldChange(field.name, updatedProduitsValue);
+
+              // ✅ NOUVEAU: Si des prix_variation sont détectés, les synchroniser automatiquement
+              if (normalizedPriceVariant) {
+                // Trouver le champ price_variant correspondant (variabilite_prix ou price_variant)
+                const priceVariantFieldName = Object.keys(valeursFormulaire).find(
+                  key => key === 'variabilite_prix' || key === 'price_variant' || key === 'variation_prix'
+                ) || 'variabilite_prix';
+
+                handleFieldChange(priceVariantFieldName, {
+                  type_donnee: 'price_variant',
+                  variable: normalizedPriceVariant.variable,
+                  modalites: normalizedPriceVariant.modalites,
+                  filtrable: normalizedPriceVariant.filtrable !== false,
+                  origine_champs: normalizedPriceVariant.origine_champs || 'formulaire'
                 });
+
+                // ✅ NOUVEAU: Inférer automatiquement la devise depuis les prix_variation
+                const inferredCurrency = getCurrencyFromVariant(normalizedPriceVariant);
+                if (inferredCurrency) {
+                  handleFieldChange('devise_produit', inferredCurrency);
+                  handleFieldChange('devise', inferredCurrency);
+                }
+
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ Prix_variation synchronisés depuis produits:', normalizedPriceVariant);
               } else {
-                // Même si pas de mise à jour de sous-caracs, garder la structure complète
-                handleFieldChange(field.name, {
-                  type_donnee: 'autocomplete',
-                  valeur: values,
-                  separateur: safeSeparateur, // ✅ Utiliser safeSeparateur
-                  sous_caracteristiques: currentSousCaracs, // Garder les sous-caracs existantes
-                  identifiant_base: field.identifiantBase || field.name,
-                  filtrable: field.filtrable !== false,
-                  origine_champs: 'formulaire'
-                });
+                // Si pas de prix_variation détectés, vérifier s'il faut les supprimer
+                const existingPriceVariant = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant;
+                if (existingPriceVariant && !extractPriceVariant(updatedProduitsValue)) {
+                  // Ne pas supprimer automatiquement - laisser l'utilisateur gérer manuellement
+                  console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Prix_variation existants non synchronisés avec nouveaux produits');
+                }
               }
             }}
             required={field.required}
@@ -2562,6 +2448,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             variable={field.variable || (isProduitPhysique ? 'option' : 'formule')}
             modalites={modalitesToRender}
             onChange={(modalites) => {
+              // ✅ CORRECTION 2026-01-XX: Synchronisation automatique prix_variation <-> sous-caractéristiques
+              // (comme dans AjouterProduitSimpleScreen pour garantir la cohérence)
+              const normalizedPriceVariant = extractPriceVariant({
+                type_donnee: 'price_variant',
+                variable: field.variable || (isProduitPhysique ? 'option' : 'formule'),
+                modalites,
+                filtrable: field.filtrable !== false,
+                origine_champs: 'formulaire'
+              }, 'formulaire');
+
+              // Mettre à jour le champ price_variant
               handleFieldChange(field.name, {
                 type_donnee: 'price_variant',
                 variable: field.variable || (isProduitPhysique ? 'option' : 'formule'),
@@ -2569,6 +2466,37 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 filtrable: field.filtrable !== false,
                 origine_champs: 'formulaire'
               });
+
+              // ✅ NOUVEAU: Synchroniser automatiquement avec le champ produits (autocomplete) si disponible
+              // Trouver le champ produits correspondant
+              const produitsFieldName = Object.keys(valeursFormulaire).find(
+                key => {
+                  const fieldValue = valeursFormulaire[key];
+                  return fieldValue && typeof fieldValue === 'object' && 
+                         (fieldValue.type_donnee === 'autocomplete' || key === 'produits');
+                }
+              );
+
+              if (produitsFieldName && normalizedPriceVariant) {
+                const existingProduits = valeursFormulaire[produitsFieldName];
+                if (existingProduits && typeof existingProduits === 'object') {
+                  // ✅ NOUVEAU: Appliquer les prix_variation aux produits (comme dans AjouterProduitSimpleScreen)
+                  const updatedProduits = applyPriceVariantToProduits(existingProduits, normalizedPriceVariant);
+                  if (updatedProduits !== existingProduits) {
+                    handleFieldChange(produitsFieldName, updatedProduits);
+                    console.log('[FormulaireYukpoIntelligentScreen] ✅ Produits synchronisés avec prix_variation:', updatedProduits);
+                  }
+                }
+              }
+
+              // ✅ NOUVEAU: Inférer automatiquement la devise depuis les prix_variation
+              if (normalizedPriceVariant) {
+                const inferredCurrency = getCurrencyFromVariant(normalizedPriceVariant);
+                if (inferredCurrency) {
+                  handleFieldChange('devise_produit', inferredCurrency);
+                  handleFieldChange('devise', inferredCurrency);
+                }
+              }
             }}
             required={field.required}
             availableCurrencies={['XAF', 'EUR', 'USD']}
@@ -2978,9 +2906,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           </View>
         );
       case 'textarea':
-        const isProductDescField = field.name === 'description_produit';
-        const linesMinimum = isProductDescField ? 6 : 3;
-        // ✅ CORRECTION: Extraire la valeur correctement pour description_produit
+        // ✅ REFONTE COMPLÈTE: Utiliser le même comportement pour tous les textarea (description et description_produit)
+        // ✅ CORRECTION: Extraire la valeur correctement pour tous les champs textarea
         const getTextareaValue = (): string => {
           const rawValue = valeursFormulaire[field.name];
           if (!rawValue) return '';
@@ -2997,8 +2924,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           return String(rawValue);
         };
         
+        // ✅ REFONTE: Utiliser les mêmes paramètres pour tous les textarea (comme description)
+        const linesMinimum = field.minLines || 3; // Utiliser minLines du champ ou 3 par défaut
+        
         return (
-          <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
+          <View key={field.name} style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
@@ -3008,20 +2938,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               onChangeText={(text) => handleFieldChange(field.name, text)}
               multiline
               minLines={linesMinimum}
-              inputStyle={isProductDescField ? styles.productDescriptionText : undefined}
-              onContentSizeChange={(width, height) => {
-                const lineHeight = 24;
-                const computedLines = Math.max(linesMinimum, Math.ceil(height / lineHeight));
-                setDynamicTextareaHeights(prev => ({
-                  ...prev,
-                  [field.name]: computedLines * lineHeight + 32
-                }));
-              }}
               style={[
                 styles.fieldInput,
-                styles.textareaInput,
-                isProductDescField && styles.productDescriptionInput,
-                dynamicTextareaHeights[field.name] ? { minHeight: dynamicTextareaHeights[field.name] } : null
+                styles.textareaInput
               ]}
             />
           </View>
@@ -4955,31 +4874,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   {/* Navigation entre blocs (tabs simples sans scroll horizontal) */}
                   {/* ✅ CORRIGÉ 2026-01-12: Utiliser currentDisplayIndex pour synchroniser avec le bloc affiché */}
-                  <View key={`navigation-${currentBlock}-${currentDisplayIndex}`} style={styles.blockNavigation}>
+                  {/* ✅ REFONTE: Navigation synchronisée avec currentDisplayIndex */}
+                  <View key={`navigation-${currentDisplayIndex}`} style={styles.blockNavigation}>
                     {displayedBlocks.map(({ block, index: originalIndex }, displayIndex) => {
-                      // ✅ CORRIGÉ 2026-01-12: Utiliser currentDisplayIndex pour déterminer l'onglet actif
-                      // currentDisplayIndex est l'index dans displayedBlocks, displayIndex aussi
-                      // Cela garantit que l'onglet actif correspond toujours au bloc affiché
+                      // ✅ REFONTE: Utiliser currentDisplayIndex comme source de vérité unique
                       const isActive = currentDisplayIndex === displayIndex;
-                      
-                      // ✅ Vérification de cohérence: currentBlock doit correspondre à originalIndex si actif
-                      if (isActive && currentBlock !== originalIndex) {
-                        console.warn('[NAVIGATION_TABS] ⚠️ Incohérence détectée:', {
-                          currentDisplayIndex,
-                          displayIndex,
-                          currentBlock,
-                          originalIndex,
-                          blockId: block.id,
-                        });
-                        // Corriger automatiquement
-                        if (currentBlock !== originalIndex) {
-                          setTimeout(() => setCurrentBlock(originalIndex), 0);
-                        }
-                      }
                       
                       return (
                         <TouchableOpacity
-                          key={`tab-${block.id}-${originalIndex}-${displayIndex}`} // ✅ Key unique avec displayIndex
+                          key={`tab-${block.id}-${displayIndex}`}
                           style={[
                             styles.blockTab,
                             isActive && styles.blockTabActive
@@ -4989,9 +4892,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                               blockId: block.id,
                               originalIndex,
                               displayIndex,
-                              currentBlockAvant: currentBlock,
                               currentDisplayIndexAvant: currentDisplayIndex,
                             });
+                            // ✅ REFONTE: Utiliser goToBlock avec originalIndex (sera converti en displayIndex)
                             goToBlock(originalIndex);
                           }}
                           activeOpacity={0.7}
@@ -5628,21 +5531,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   textareaInput: {
-    minHeight: 200,
-    paddingTop: 14,
-    textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut pour multiline
-  },
-  productDescriptionInput: {
-    minHeight: 280, // ✅ CORRECTION: Hauteur minimale plus grande pour description_produit (6 lignes * 24px + padding)
+    minHeight: 100, // ✅ REFONTE: Hauteur minimale réduite pour permettre un affichage normal (3 lignes * 24px + padding)
     paddingTop: 14,
     paddingBottom: 14,
-    textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut
+    textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut pour multiline
   },
-  productDescriptionText: {
-    lineHeight: 22,
-    textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut
-    includeFontPadding: false, // ✅ CORRECTION: Éviter le padding supplémentaire qui peut masquer le texte
-  },
+  // ✅ SUPPRIMÉ: productDescriptionInput et productDescriptionText - description_produit utilise maintenant les mêmes styles que description
   navigationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',

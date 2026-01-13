@@ -585,8 +585,7 @@ const HomeScreen: React.FC = () => {
                                 !isCreateService && styles.modeButtonTextActive
                             ]}
                             numberOfLines={1}
-                            adjustsFontSizeToFit
-                            minimumFontScale={0.85}
+                            adjustsFontSizeToFit={false} // ✅ DÉSACTIVÉ: Pour éviter le rétrécissement du texte
                         >
                             🔍 Rechercher
                         </Text>
@@ -608,10 +607,9 @@ const HomeScreen: React.FC = () => {
                                 isCreateService && styles.modeButtonTextActive
                             ]}
                             numberOfLines={1}
-                            adjustsFontSizeToFit
-                            minimumFontScale={0.75}
+                            adjustsFontSizeToFit={false} // ✅ DÉSACTIVÉ: Pour éviter le rétrécissement du texte
                         >
-                            ➕ Créer service
+                            ➕ Créer service | produit
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -823,22 +821,23 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         backgroundColor: '#F1F5F9',
         borderRadius: 12,
-        padding: 4,
+        padding: 5, // ✅ AUGMENTÉ: De 4 à 5 pour plus d'espace autour des boutons
+        gap: 4, // ✅ AJOUTÉ: Espacement entre les boutons
     },
     modeButton: {
-        flex: 1,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
+        flex: 1, // ✅ HARMONISÉ: Les deux boutons (Rechercher et Créer service | produit) ont la même taille
+        paddingVertical: 12, // ✅ AUGMENTÉ: De 10 à 12 pour plus de hauteur
+        paddingHorizontal: 10, // ✅ RÉDUIT: De 14 à 10 pour permettre plus d'espace pour le texte
         borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 40,
+        minHeight: 44, // ✅ AUGMENTÉ: De 40 à 44 pour plus de hauteur
     },
     modeButtonActive: {
         backgroundColor: '#6366F1', // ✅ AMÉLIORÉ: Couleur indigo harmonieuse pour les boutons actifs
     },
     modeButtonText: {
-        fontSize: 13,
+        fontSize: 13, // ✅ HARMONISÉ: Même taille de police pour les deux boutons (Rechercher et Créer service | produit)
         fontWeight: '600',
         color: '#6B7280',
     },

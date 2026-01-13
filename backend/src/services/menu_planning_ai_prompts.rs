@@ -272,9 +272,15 @@ IMPORTANT:
 
 /// ✅ NOUVEAU: Prompt pour génération liste de courses intelligente
 /// Regroupe les ingrédients communs et calcule les quantités totales
+/// ✅ AMÉLIORATION 2026-01-13: Ajout de la zone géographique pour utiliser des unités locales
+/// ✅ AMÉLIORATION 2026-01-13: Ajout du budget proratisé pour adapter les prix selon le budget disponible
 pub fn generate_shopping_list_prompt(
     meal_items: &[crate::services::menu_planning_ai_service::MealItemForShopping],
     family_members: i32,
+    user_country: Option<&str>,
+    user_city: Option<&str>,
+    budget_monthly: Option<f64>,
+    period_days: Option<i32>, // Nombre de jours pour la période (7 pour hebdomadaire, 30 pour mensuel, etc.)
 ) -> String {
     let meals_summary: String = meal_items.iter()
         .map(|item| {
@@ -286,13 +292,42 @@ pub fn generate_shopping_list_prompt(
         .collect::<Vec<_>>()
         .join("\n");
 
+    let location_context = match (user_country, user_city) {
+        (Some(country), Some(city)) => format!("\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n- Pays : {}\n- Ville : {}", country, city),
+        (Some(country), None) => format!("\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n- Pays : {}", country),
+        (None, Some(city)) => format!("\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n- Ville : {}", city),
+        (None, None) => String::new(),
+    };
+
+    // ✅ NOUVEAU: Calculer le budget proratisé selon la période
+    let budget_context = match (budget_monthly, period_days) {
+        (Some(budget), Some(days)) => {
+            // Proratiser le budget mensuel selon la période
+            // budget_mensuel / 30 jours * nombre_jours_période
+            let budget_prorated = (budget / 30.0) * (days as f64);
+            format!(
+                "\n💰 CONTEXTE BUDGET (CRITIQUE) :\n- Budget mensuel famille : {:.2} FCFA\n- Budget proratisé pour {} jours : {:.2} FCFA\n- Le coût total estimé de la liste de courses DOIT respecter ce budget proratisé",
+                budget, days, budget_prorated
+            )
+        }
+        (Some(budget), None) => {
+            // Par défaut, considérer une période hebdomadaire (7 jours)
+            let budget_weekly = (budget / 30.0) * 7.0;
+            format!(
+                "\n💰 CONTEXTE BUDGET (CRITIQUE) :\n- Budget mensuel famille : {:.2} FCFA\n- Budget proratisé hebdomadaire (7 jours) : {:.2} FCFA\n- Le coût total estimé de la liste de courses DOIT respecter ce budget hebdomadaire",
+                budget, budget_weekly
+            )
+        }
+        (None, _) => String::new(),
+    };
+
     format!(r#"
 Tu es l'assistant culinaire intelligent de Yukpo pour la génération de listes de courses.
 
 CONTEXTE UTILISATEUR :
 - Nombre de personnes dans la famille : {family_members}
 - Repas à préparer (avec nombre de fois et portions) :
-{meals_summary}
+{meals_summary}{location_context}{budget_context}
 
 TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
 - Tu DOIS générer une liste de courses INTELLIGENTE en regroupant les ingrédients communs
@@ -304,11 +339,42 @@ TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
   * Formule : quantité_base × nombre_fois × (portions × nombre_personnes / portions_base)
   * Exemple : Si "Poulet DG" nécessite 1kg pour 4 personnes, et qu'il est consommé 2 fois pour 6 personnes :
     quantité = 1kg × 2 × (6/4) = 3kg
-- ESTIMATION DES PRIX (CRITIQUE) :
-  * Estimer les prix selon le contexte local (marchés africains, prix en FCFA)
-  * Prendre en compte la quantité totale calculée (pas seulement la quantité unitaire)
-  * Adapter les prix selon la saisonnalité et la disponibilité locale
-  * Utiliser tes connaissances sur les prix moyens dans les marchés locaux
+
+🌍 UNITÉS DE MESURE LOCALES (PRIORITÉ ABSOLUE) :
+- Tu DOIS utiliser les unités de mesure locales selon les habitudes d'achat de la zone géographique de l'utilisateur
+- Ne JAMAIS utiliser uniquement kg/g pour tout - utiliser les unités locales courantes dans les marchés locaux
+- Exemples d'unités locales à utiliser selon le contexte géographique :
+  * Riz, pâtes, haricots : "tasse", "verre", "bol", "assiette", "tas" (selon région) au lieu de toujours "kg"
+  * Plantains, bananes : "régime", "main" (selon région) au lieu de toujours "kg"
+  * Légumes, feuilles : "botte", "tas", "paquet" (selon région) au lieu de toujours "kg"
+  * Huile, eau : "verre", "bouteille", "litre" (selon région)
+  * Tomates, oignons : "tasse", "verre", "tas" (selon région) au lieu de toujours "kg"
+  * Viande, poisson : "pièce", "portion", "assiette" (selon région) au lieu de toujours "kg"
+- ADAPTER les unités selon les habitudes d'achat locales de la zone géographique
+- Si la zone géographique n'est pas fournie, utiliser des unités courantes dans les marchés africains
+- Utiliser la MÊME langue que l'utilisateur pour les unités (ex: en français pour l'Afrique centrale)
+
+💰 ESTIMATION DES PRIX (CRITIQUE - LIRE ATTENTIVEMENT) :
+  * PRIORITÉ ABSOLUE : Le prix estimé DOIT être le PRIX TOTAL pour la QUANTITÉ TOTALE calculée (pas un prix unitaire)
+  * CALCUL DU PRIX (CRITIQUE) :
+    - Le prix DOIT tenir compte de la QUANTITÉ TOTALE regroupée (qui dépend du nombre de personnes, nombre de fois, portions)
+    - Exemple : Si tu calcules 3kg de riz pour une famille de 6 personnes, le prix doit être pour 3kg (pas pour 1kg)
+    - Exemple : Si tu calcules 5 tasses de riz, le prix doit être pour 5 tasses (pas pour 1 tasse)
+  * PROFIL FAMILLE (CRITIQUE) :
+    - Prendre en compte le NOMBRE DE PERSONNES dans la famille ({family_members}) pour adapter les prix
+    - Les grandes quantités (familles nombreuses) peuvent bénéficier de prix de gros ou d'achats en vrac
+    - Les petites quantités (familles réduites) peuvent avoir des prix unitaires plus élevés
+  * BUDGET DISPONIBLE (CRITIQUE) :
+    - Si un budget proratisé est fourni, le coût total estimé (total_estimated_cost) DOIT respecter ce budget
+    - Adapter les choix d'ingrédients selon le budget disponible (ingrédients économiques si budget limité, ingrédients plus variés si budget confortable)
+    - Le total_estimated_cost DOIT être cohérent avec le budget proratisé fourni
+  * CONTEXTE LOCAL :
+    - Estimer les prix selon le contexte local (marchés de la zone géographique, prix en FCFA)
+    - Adapter les prix selon la saisonnalité et la disponibilité locale
+    - Utiliser tes connaissances sur les prix moyens dans les marchés locaux de la zone géographique
+  * COHÉRENCE :
+    - Le prix estimé DOIT être réaliste pour la QUANTITÉ TOTALE calculée avec les unités locales
+    - Vérifier que le prix total est cohérent avec la quantité (ex: 5 tasses de riz ne peut pas coûter 500 FCFA si 1 tasse coûte 200 FCFA)
 - Associer chaque ingrédient aux repas qui l'utilisent (format: "Nom recette (Jour - Type)")
 
 FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
@@ -317,14 +383,14 @@ FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
         {{
             "ingredient_name": "Nom de l'ingrédient",
             "quantity": 2.5,
-            "unit": "kg",
+            "unit": "tasse",
             "estimated_price": 5000.0,
             "associated_meals": ["Poulet DG (Lundi - Repas du jour)", "Poulet braisé (Mercredi - Repas du jour)"]
         }},
         {{
             "ingredient_name": "Riz",
             "quantity": 3.0,
-            "unit": "kg",
+            "unit": "tas",
             "estimated_price": 3000.0,
             "associated_meals": ["Riz sauté (Lundi - Repas du jour)", "Riz au gras (Mardi - Repas du jour)"]
         }}
@@ -332,14 +398,18 @@ FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
     "total_estimated_cost": 50000.0
 }}
 
+⚠️ NOTE IMPORTANTE SUR LES PRIX :
+- estimated_price = PRIX TOTAL pour la QUANTITÉ TOTALE (ex: 5000 FCFA pour 2.5 tasses, pas 5000 FCFA par tasse)
+- Le prix DOIT tenir compte du nombre de personnes ({family_members}) et de la quantité totale calculée
+
 CONTRAINTES:
 - items: tableau d'objets (un par ingrédient unique)
-- ingredient_name: string (nom de l'ingrédient, normalisé)
-- quantity: nombre décimal positif (quantité totale regroupée)
-- unit: string (unité de mesure: "kg", "g", "l", "ml", "pièce", "botte", etc.)
-- estimated_price: nombre décimal positif (prix estimé en FCFA)
+- ingredient_name: string (nom de l'ingrédient, normalisé dans la langue locale)
+- quantity: nombre décimal positif (quantité totale regroupée, calculée selon nombre de personnes × nombre de fois × portions)
+- unit: string (unité de mesure LOCALE selon les habitudes d'achat de la zone géographique: "tasse", "verre", "tas", "régime", "main", "botte", "pièce", "assiette", "bol", "bouteille", "litre", etc. - PAS toujours "kg" ou "g")
+- estimated_price: nombre décimal positif (PRIX TOTAL en FCFA pour la QUANTITÉ TOTALE calculée - pas un prix unitaire, mais le prix total pour la quantité totale regroupée)
 - associated_meals: tableau de strings (liste des repas qui utilisent cet ingrédient, format: "Nom recette (Jour - Type)")
-- total_estimated_cost: somme de tous les estimated_price
+- total_estimated_cost: somme de tous les estimated_price (coût total de la liste de courses)
 
 RÈGLES DE REGROUPEMENT:
 - Si "Tomate" apparaît dans plusieurs repas, créer UNE seule ligne "Tomate" avec quantité totale
@@ -353,11 +423,19 @@ IMPORTANT:
 - Pas de markdown (```json```)
 - Pas de commentaires dans le JSON
 - Tous les nombres doivent être des nombres (pas de strings)
-- Les prix doivent être réalistes selon le contexte local (marchés africains)
-- Les quantités doivent tenir compte du nombre de fois ET du nombre de personnes
+- 💰 PRIX (CRITIQUE) :
+  * Les prix DOIVENT être des PRIX TOTAUX pour les QUANTITÉS TOTALES calculées (pas des prix unitaires)
+  * Les prix DOIVENT tenir compte du PROFIL FAMILLE (nombre de personnes: {family_members})
+  * Les prix DOIVENT être réalistes selon le contexte local (marchés de la zone géographique)
+  * Les prix DOIVENT être cohérents avec les quantités calculées (ex: 5 tasses ne peut pas coûter moins cher que 1 tasse)
+- 📊 QUANTITÉS (CRITIQUE) :
+  * Les quantités DOIVENT tenir compte du nombre de fois ET du nombre de personnes ({family_members})
+  * Les quantités DOIVENT être regroupées intelligemment (additionner les quantités du même ingrédient)
+  * UTILISER les unités locales selon les habitudes d'achat de la zone géographique (PAS toujours kg/g)
 "#,
         family_members = family_members,
-        meals_summary = meals_summary
+        meals_summary = meals_summary,
+        location_context = location_context
     )
 }
 

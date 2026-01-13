@@ -3688,7 +3688,15 @@ impl DeliveryRepository {
                 )
                 .bind(user_id)
                 .fetch_all(&self.pool)
-                .await?
+                .await
+                .map_err(|e| {
+                    log::error!(
+                        "[DeliveryRepository::list_saved_addresses] Erreur SQL pour user_id={}, address_type='both': {}",
+                        user_id,
+                        e
+                    );
+                    AppError::DatabaseError(format!("Erreur lors de la récupération des adresses: {}", e))
+                })?
             } else {
                 sqlx::query_as::<_, UserSavedAddress>(
                     r#"
@@ -3710,7 +3718,16 @@ impl DeliveryRepository {
                 .bind(user_id)
                 .bind(addr_type)
                 .fetch_all(&self.pool)
-                .await?
+                .await
+                .map_err(|e| {
+                    log::error!(
+                        "[DeliveryRepository::list_saved_addresses] Erreur SQL pour user_id={}, address_type='{}': {}",
+                        user_id,
+                        addr_type,
+                        e
+                    );
+                    AppError::DatabaseError(format!("Erreur lors de la récupération des adresses: {}", e))
+                })?
             }
         } else {
             sqlx::query_as::<_, UserSavedAddress>(
@@ -3731,7 +3748,15 @@ impl DeliveryRepository {
             )
             .bind(user_id)
             .fetch_all(&self.pool)
-            .await?
+            .await
+            .map_err(|e| {
+                log::error!(
+                    "[DeliveryRepository::list_saved_addresses] Erreur SQL pour user_id={}, address_type=None: {}",
+                    user_id,
+                    e
+                );
+                AppError::DatabaseError(format!("Erreur lors de la récupération des adresses: {}", e))
+            })?
         };
 
         Ok(addresses)

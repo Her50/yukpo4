@@ -34,6 +34,10 @@ const RecipeSearchScreen: React.FC = () => {
 
         try {
             setLoading(true);
+            setGeneratedRecipe(null); // Réinitialiser la recette précédente
+            setShowRecipeDetails(false); // Fermer le modal précédent
+
+            console.log('[RecipeSearch] Début génération recette:', searchQuery.trim());
 
             // ✅ AMÉLIORÉ: Ajouter un timeout explicite pour éviter les chargements infinis
             const timeoutPromise = new Promise((_, reject) => {
@@ -44,18 +48,47 @@ const RecipeSearchScreen: React.FC = () => {
             const responsePromise = menuPlanningService.generateRecipe(searchQuery.trim());
             const response = await Promise.race([responsePromise, timeoutPromise]) as any;
 
-            if (response && response.success && response.data?.recipe) {
-                // ✅ CORRIGÉ: Afficher la recette dans un modal au lieu de naviguer
-                setGeneratedRecipe(response.data.recipe);
+            console.log('[RecipeSearch] Réponse reçue:', {
+                success: response?.success,
+                hasData: !!response?.data,
+                hasRecipe: !!response?.data?.recipe,
+                dataKeys: response?.data ? Object.keys(response.data) : [],
+                recipeKeys: response?.data?.recipe ? Object.keys(response.data.recipe) : [],
+            });
+
+            // ✅ CORRIGÉ: Gérer différentes structures de réponse possibles
+            let recipe: GeneratedRecipe | null = null;
+            
+            if (response && response.success) {
+                // Structure 1: response.data.recipe (structure normale)
+                if (response.data?.recipe) {
+                    recipe = response.data.recipe;
+                }
+                // Structure 2: response.data directement est la recette (fallback)
+                else if (response.data && response.data.recipe_name) {
+                    recipe = response.data as GeneratedRecipe;
+                }
+                // Structure 3: response.recipe (si le backend retourne directement)
+                else if (response.recipe) {
+                    recipe = response.recipe;
+                }
+            }
+
+            if (recipe) {
+                console.log('[RecipeSearch] ✅ Recette générée avec succès:', recipe.recipe_name);
+                setGeneratedRecipe(recipe);
                 setShowRecipeDetails(true);
                 setSearchQuery(''); // Réinitialiser le champ de recherche
             } else if (response && !response.success) {
-                Alert.alert('Erreur', response.error || 'Impossible de générer la recette');
+                const errorMsg = response.error || response.message || 'Impossible de générer la recette';
+                console.error('[RecipeSearch] ❌ Erreur dans la réponse:', errorMsg);
+                Alert.alert('Erreur', errorMsg);
             } else {
-                Alert.alert('Erreur', 'Réponse invalide du serveur');
+                console.error('[RecipeSearch] ❌ Réponse invalide:', response);
+                Alert.alert('Erreur', 'Réponse invalide du serveur. Veuillez réessayer.');
             }
         } catch (error: any) {
-            console.error('[RecipeSearch] Erreur:', error);
+            console.error('[RecipeSearch] ❌ Erreur exception:', error);
 
             // ✅ AMÉLIORÉ: Messages d'erreur plus spécifiques
             let errorMessage = 'Une erreur est survenue';
@@ -68,7 +101,7 @@ const RecipeSearchScreen: React.FC = () => {
             }
 
             // Vérifier si c'est un timeout
-            if (errorMessage.includes('temps') || errorMessage.includes('timeout') || error.code === 'ABORT_ERR') {
+            if (errorMessage.includes('temps') || errorMessage.includes('timeout') || error.code === 'ABORT_ERR' || error.name === 'AbortError') {
                 errorMessage = 'La génération prend trop de temps. Veuillez réessayer avec un nom de recette plus simple.';
             }
 
@@ -137,10 +170,10 @@ const RecipeSearchScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
 
-                        {generatedRecipe && (
-                            <ScrollView style={styles.modalBody}>
+                        {generatedRecipe ? (
+                            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={true}>
                                 <View style={styles.recipeHeader}>
-                                    <Text style={styles.recipeTitle}>{generatedRecipe.recipe_name}</Text>
+                                    <Text style={styles.recipeTitle}>{generatedRecipe.recipe_name || 'Recette sans nom'}</Text>
                                     {generatedRecipe.description && (
                                         <Text style={styles.recipeDescription}>{generatedRecipe.description}</Text>
                                     )}
@@ -167,22 +200,27 @@ const RecipeSearchScreen: React.FC = () => {
                                 </View>
 
                                 {/* Ingrédients */}
-                                {generatedRecipe.ingredients && generatedRecipe.ingredients.length > 0 && (
+                                {generatedRecipe.ingredients && generatedRecipe.ingredients.length > 0 ? (
                                     <View style={styles.recipeSection}>
                                         <Text style={styles.recipeSectionTitle}>Ingrédients</Text>
                                         {generatedRecipe.ingredients.map((ingredient, index) => (
                                             <View key={index} style={styles.ingredientItem}>
                                                 <Text style={styles.ingredientText}>
-                                                    • {ingredient.name}: {ingredient.quantity} {ingredient.unit}
+                                                    • {ingredient.name || 'Ingrédient'}: {ingredient.quantity || 0} {ingredient.unit || ''}
                                                     {ingredient.notes && ` (${ingredient.notes})`}
                                                 </Text>
                                             </View>
                                         ))}
                                     </View>
+                                ) : (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Ingrédients</Text>
+                                        <Text style={styles.emptyText}>Aucun ingrédient disponible</Text>
+                                    </View>
                                 )}
 
                                 {/* Instructions */}
-                                {generatedRecipe.instructions && generatedRecipe.instructions.length > 0 && (
+                                {generatedRecipe.instructions && generatedRecipe.instructions.length > 0 ? (
                                     <View style={styles.recipeSection}>
                                         <Text style={styles.recipeSectionTitle}>Instructions</Text>
                                         {generatedRecipe.instructions.map((instruction, index) => (
@@ -190,9 +228,14 @@ const RecipeSearchScreen: React.FC = () => {
                                                 <View style={styles.instructionNumber}>
                                                     <Text style={styles.instructionNumberText}>{index + 1}</Text>
                                                 </View>
-                                                <Text style={styles.instructionText}>{instruction}</Text>
+                                                <Text style={styles.instructionText}>{instruction || 'Étape sans description'}</Text>
                                             </View>
                                         ))}
+                                    </View>
+                                ) : (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Instructions</Text>
+                                        <Text style={styles.emptyText}>Aucune instruction disponible</Text>
                                     </View>
                                 )}
 
@@ -252,6 +295,14 @@ const RecipeSearchScreen: React.FC = () => {
                                     </View>
                                 )}
                             </ScrollView>
+                        ) : (
+                            <View style={styles.modalBody}>
+                                <View style={styles.errorContainer}>
+                                    <SafeIcon name="AlertCircle" size={48} color={modernColors.error || '#EF4444'} type="lucide" />
+                                    <Text style={styles.errorText}>Aucune recette à afficher</Text>
+                                    <Text style={styles.errorSubtext}>La recette générée est invalide ou incomplète</Text>
+                                </View>
+                            </View>
                         )}
 
                         <View style={styles.modalFooter}>
@@ -519,6 +570,34 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '700',
         color: modernColors.primary,
+    },
+    // ✅ NOUVEAU: Styles pour affichage d'erreur dans le modal
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 40,
+        minHeight: 200,
+    },
+    errorText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#111827',
+        marginTop: 16,
+        textAlign: 'center',
+    },
+    errorSubtext: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        marginTop: 8,
+        textAlign: 'center',
+    },
+    emptyText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+        textAlign: 'center',
+        paddingVertical: 12,
     },
 });
 

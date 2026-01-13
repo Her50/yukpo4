@@ -84,8 +84,12 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 // Priorité 1: productLabels (ordre garanti depuis l'IA) - CRITIQUE pour l'alignement
                 // Priorité 2: Ordre des clés dans sousCaracteristiques
                 // ✅ CORRECTION CRITIQUE: Utiliser productLabels dans l'ordre exact pour garantir l'alignement
+                // ✅ NOUVEAU: Filtrer productLabels pour ne garder que les labels qui existent dans sousCaracteristiques
+                // Cela garantit que chaque label correspond à une clé valide dans sousCaracteristiques
                 const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-                    ? productLabels.filter(label => label && typeof label === 'string' && label.trim().length > 0)
+                    ? productLabels
+                        .filter(label => label && typeof label === 'string' && label.trim().length > 0)
+                        .filter(label => sousCaracteristiques.hasOwnProperty(label)) // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
                     : Object.keys(sousCaracteristiques);
                 
                 console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés depuis productLabels:', orderedLabels);
@@ -95,12 +99,37 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 
                 // ✅ CORRECTION CRITIQUE: Mapper chaque valeur parsée à son label correspondant dans l'ordre
                 // L'ordre est garanti par productLabels qui correspond à l'ordre des valeurs dans la chaîne parsée
+                // ✅ NOUVEAU: Vérifier que le nombre de valeurs parsées correspond au nombre de labels ordonnés
+                if (parsedValues.length !== orderedLabels.length) {
+                    console.warn(`[SubCharacteristicsTable] ⚠️ INCOHÉRENCE: ${parsedValues.length} valeurs parsées mais ${orderedLabels.length} labels ordonnés`);
+                    console.warn(`[SubCharacteristicsTable] ⚠️ Valeurs parsées:`, parsedValues);
+                    console.warn(`[SubCharacteristicsTable] ⚠️ Labels ordonnés:`, orderedLabels);
+                }
+                
                 parsedValues.forEach((parsedValue, index) => {
                     let label: string;
                     
                     if (index < orderedLabels.length) {
                         // ✅ CORRECTION: Utiliser le label à la même position que la valeur (alignement garanti)
                         label = orderedLabels[index];
+                        // ✅ NOUVEAU: Vérifier que le label existe dans sousCaracteristiques
+                        if (!sousCaracteristiques.hasOwnProperty(label)) {
+                            console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" n'existe pas dans sousCaracteristiques, recherche alternative...`);
+                            // Chercher un label alternatif qui contient cette valeur
+                            const matchingLabel = Object.keys(sousCaracteristiques).find(key => {
+                                const values = sousCaracteristiques[key];
+                                return Array.isArray(values) && values.includes(parsedValue);
+                            });
+                            
+                            if (matchingLabel) {
+                                label = matchingLabel;
+                                console.log(`[SubCharacteristicsTable] 🔍 Valeur "${parsedValue}" correspond au label "${matchingLabel}" (correction)`);
+                            } else {
+                                // Dernier recours: utiliser un label générique mais descriptif
+                                label = `caractéristique_${index + 1}`;
+                                console.warn(`[SubCharacteristicsTable] ⚠️ Aucun label trouvé pour valeur "${parsedValue}", utilisation label générique: "${label}"`);
+                            }
+                        }
                     } else {
                         // ✅ Si on a plus de valeurs que de labels, essayer de trouver un label correspondant dans sousCaracteristiques
                         // en cherchant quelle clé contient cette valeur
@@ -117,6 +146,14 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                             label = `caractéristique_${index + 1}`;
                             console.warn(`[SubCharacteristicsTable] ⚠️ Aucun label trouvé pour valeur "${parsedValue}", utilisation label générique: "${label}"`);
                         }
+                    }
+                    
+                    // ✅ NOUVEAU: Vérifier que le label final existe dans sousCaracteristiques avant de créer la ligne
+                    if (!sousCaracteristiques.hasOwnProperty(label)) {
+                        console.error(`[SubCharacteristicsTable] ❌ ERREUR: Label "${label}" n'existe toujours pas dans sousCaracteristiques après correction`);
+                        console.error(`[SubCharacteristicsTable] ❌ Clés disponibles:`, Object.keys(sousCaracteristiques));
+                        // Ne pas créer de ligne avec un label invalide
+                        return;
                     }
                     
                     const row = {
@@ -149,8 +186,11 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 // ✅ FALLBACK: Si pas de valeur parsée, utiliser l'ancienne méthode (première valeur de chaque tableau)
                 // Mais utiliser productLabels pour l'ordre si disponible
                 // ✅ CORRECTION CRITIQUE: Utiliser productLabels dans l'ordre exact pour garantir l'alignement
+                // ✅ NOUVEAU: Filtrer productLabels pour ne garder que les labels qui existent dans sousCaracteristiques
                 const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-                    ? productLabels.filter(label => label && typeof label === 'string' && label.trim().length > 0)
+                    ? productLabels
+                        .filter(label => label && typeof label === 'string' && label.trim().length > 0)
+                        .filter(label => sousCaracteristiques.hasOwnProperty(label)) // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
                     : Object.keys(sousCaracteristiques);
                 
                 console.log('[SubCharacteristicsTable] 🔍 FALLBACK - Labels ordonnés depuis productLabels:', orderedLabels);

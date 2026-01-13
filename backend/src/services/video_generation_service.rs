@@ -3345,6 +3345,8 @@ fn build_ffmpeg_filter(
     if let Some(overlay) = overlay {
         if let Some(top) = &overlay.top_text {
             let sanitized = sanitize_drawtext_text(top);
+            // ✅ CORRECTION 2026-01-13: Utiliser des guillemets simples avec apostrophes doublées
+            // FFmpeg require: l'hiver → text='l''hiver' (apostrophes doublées, pas échappées)
             filter_parts.push(format!(
                 "drawtext=fontfile='{}':text='{}':fontcolor=0xFFFFFF:fontsize=54:line_spacing=6:x=(w-text_w)/2:y=140:box=1:boxcolor=0x0F172ACC:boxborderw=24",
                 font_spec, sanitized
@@ -3358,6 +3360,7 @@ fn build_ffmpeg_filter(
                 "story" => "h-220",
                 _ => "h-200",
             };
+            // ✅ CORRECTION 2026-01-13: Utiliser des guillemets simples avec apostrophes doublées
             filter_parts.push(format!(
                 "drawtext=fontfile='{}':text='{}':fontcolor=0xFFFFFF:fontsize=44:line_spacing=4:x=(w-text_w)/2:y={}:box=1:boxcolor=0x0F172ACC:boxborderw=22",
                 font_spec, sanitized, y_position
@@ -4537,14 +4540,12 @@ fn locate_font_file() -> Option<PathBuf> {
 }
 
 fn sanitize_drawtext_text(text: &str) -> String {
-    // ✅ CORRECTION RACINE: Échapper correctement tous les caractères spéciaux pour drawtext
-    // FFmpeg drawtext nécessite un échappement spécifique pour éviter les erreurs de parsing
-    text.replace('\\', "\\\\")  // Échapper les backslashes en premier
-        .replace(':', "\\:")    // Échapper les deux-points
-        .replace('\'', "\\'")    // Échapper les apostrophes
-        .replace('"', "\\\"")    // Échapper les guillemets doubles
-        .replace('[', "\\[")     // Échapper les crochets ouverts
-        .replace(']', "\\]")     // Échapper les crochets fermés
+    // ✅ CORRECTION 2026-01-13: Échappement correct pour FFmpeg drawtext avec guillemets simples
+    // Dans FFmpeg, avec des guillemets simples text='...', les apostrophes doivent être DOUBLÉES
+    // Exemple: l'hiver → l''hiver (pas l\'hiver)
+    text.replace('\'', "''")     // Doubler les apostrophes (règle FFmpeg pour guillemets simples)
+        .replace('\\', "\\\\")   // Échapper les backslashes
+        .replace(':', "\\:")     // Échapper les deux-points (séparateur de paramètres FFmpeg)
         .replace('\n', "\\n")    // Échapper les retours à la ligne
         .replace('\r', "")       // Supprimer les retours chariot
 }

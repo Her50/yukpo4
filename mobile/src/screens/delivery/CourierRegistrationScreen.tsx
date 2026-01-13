@@ -31,9 +31,9 @@ interface DocumentFile {
     size?: number;
 }
 
-// ✅ NOUVEAU: Liste des types de coursiers disponibles
+// ✅ REFONDU: Liste des types de coursiers disponibles avec labels optimisés
 const COURIER_TYPES = [
-    { value: 'classic', label: 'Coursier Classique', icon: '📦' },
+    { value: 'classic', label: 'Coursier', icon: '📦' },
     { value: 'market_shopping', label: 'Courses Marché', icon: '🛒' },
     { value: 'taxi', label: 'Chauffeur Taxi', icon: '🚕' },
     { value: 'carpooling', label: 'Covoiturage', icon: '🚗' },
@@ -469,7 +469,7 @@ const CourierRegistrationScreen: React.FC = () => {
 
     const validateForm = (): boolean => {
         if (!courierType) {
-            Alert.alert('Erreur', 'Veuillez sélectionner votre type de coursier');
+            Alert.alert('Erreur', 'Veuillez sélectionner la nature de votre activité');
             return false;
         }
         if (!fullName.trim()) {
@@ -731,42 +731,46 @@ const CourierRegistrationScreen: React.FC = () => {
                     </Text>
                 </View>
 
-                {/* ✅ NOUVEAU: Type de coursier (obligatoire) - En haut du formulaire - Grille 3 colonnes × 2 lignes */}
+                {/* ✅ REFONDU: Nature de l'activité (obligatoire) - Disposition améliorée pour éviter les retours à la ligne */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>Type de coursier *</Text>
+                    <Text style={styles.sectionTitle}>Nature de l'activité *</Text>
                     <Text style={styles.helperText}>
                         Sélectionnez le type de service que vous souhaitez offrir.
                     </Text>
-                    <View style={styles.courierTypeGrid}>
+                    <View style={styles.activityTypeGrid}>
                         {COURIER_TYPES.map((type) => {
                             const isSelected = courierType === type.value;
                             return (
                                 <TouchableOpacity
                                     key={type.value}
                                     style={[
-                                        styles.courierTypeGridItem,
-                                        isSelected && styles.courierTypeGridItemSelected,
+                                        styles.activityTypeGridItem,
+                                        isSelected && styles.activityTypeGridItemSelected,
                                     ]}
                                     onPress={() => {
-                                        hapticPress();
-                                        setCourierType(type.value);
+                                        try {
+                                            hapticPress();
+                                            setCourierType(type.value);
+                                        } catch (error) {
+                                            console.error('[CourierRegistrationScreen] Erreur lors de la sélection:', error);
+                                            Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+                                        }
                                     }}
                                     activeOpacity={0.7}
                                 >
-                                    <Text style={styles.courierTypeGridIcon}>{type.icon}</Text>
+                                    <Text style={styles.activityTypeGridIcon}>{type.icon}</Text>
                                     <Text
                                         style={[
-                                            styles.courierTypeGridLabel,
-                                            isSelected && styles.courierTypeGridLabelSelected,
+                                            styles.activityTypeGridLabel,
+                                            isSelected && styles.activityTypeGridLabelSelected,
                                         ]}
-                                        numberOfLines={2}
-                                        adjustsFontSizeToFit
-                                        minimumFontScale={0.75}
+                                        numberOfLines={1}
+                                        adjustsFontSizeToFit={false}
                                     >
                                         {type.label}
                                     </Text>
                                     {isSelected && (
-                                        <View style={styles.courierTypeGridCheck}>
+                                        <View style={styles.activityTypeGridCheck}>
                                             <SafeIcon name="check" size={14} color={modernColors.surface} type="lucide" />
                                         </View>
                                     )}
@@ -1497,33 +1501,32 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
     },
-    // ✅ NOUVEAU: Styles pour le champ "Type de coursier" - Grille 3 colonnes × 2 lignes
-    courierTypeGrid: {
+    // ✅ REFONDU: Styles pour le champ "Nature de l'activité" - Grille 3 colonnes compacte pour optimiser l'espace
+    activityTypeGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
         marginTop: 12,
-        gap: 10,
+        gap: 8,
     },
-    courierTypeGridItem: {
-        width: '30%', // 3 colonnes avec espacement
-        minHeight: 90,
-        maxHeight: 105,
+    activityTypeGridItem: {
+        width: '31%', // ✅ 3 colonnes compactes pour économiser l'espace tout en évitant les retours à la ligne
+        minHeight: 95,
         borderRadius: 10,
         borderWidth: 1.5,
         borderColor: modernColors.border,
         backgroundColor: modernColors.surface,
-        padding: 8,
+        padding: 10,
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.06,
         shadowRadius: 2,
         elevation: 1,
     },
-    courierTypeGridItemSelected: {
+    activityTypeGridItemSelected: {
         borderColor: modernColors.primary,
         backgroundColor: modernColors.primary,
         shadowColor: modernColors.primary,
@@ -1531,30 +1534,36 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
-    courierTypeGridIcon: {
-        fontSize: 28,
+    activityTypeGridIcon: {
+        fontSize: 26,
         marginBottom: 6,
     },
-    courierTypeGridLabel: {
-        fontSize: 11,
+    activityTypeGridLabel: {
+        fontSize: 11.5, // ✅ Taille optimisée pour tenir sur une ligne dans 3 colonnes
         fontWeight: '600',
         color: modernColors.text,
         textAlign: 'center',
-        lineHeight: 13,
+        lineHeight: 14,
+        width: '100%',
     },
-    courierTypeGridLabelSelected: {
+    activityTypeGridLabelSelected: {
         color: modernColors.surface,
     },
-    courierTypeGridCheck: {
+    activityTypeGridCheck: {
         position: 'absolute',
-        top: 4,
-        right: 4,
-        width: 18,
-        height: 18,
-        borderRadius: 9,
+        top: 6,
+        right: 6,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
         backgroundColor: modernColors.surface,
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 2,
     },
     errorText: {
         fontSize: 12,
