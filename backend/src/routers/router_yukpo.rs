@@ -327,130 +327,95 @@ async fn handle_direct_search(
                     ai_cost.total_tokens
                 ));
                 
-                // 2️⃣ Rechercher avec l'analyse IA + GPS
-                let gps_zone = input.gps_mobile.as_deref();
-                let search_radius_km = Some(50);
+                // ✅ NOUVEAU: Extraire TOUS les mots-clés du JSON IA et construire une requête de recherche textuelle
+                // (comme pour la transcription audio - réutiliser le même circuit de recherche)
+                let mut image_keywords = Vec::new();
                 
-                // Extraire lat/lng si GPS disponible
-                let (gps_lat, gps_lng) = if let Some(gps_str) = gps_zone {
-                    let coords: Vec<&str> = gps_str.split(',').collect();
-                    if coords.len() == 2 {
-                        (
-                            coords[0].trim().parse::<f64>().ok(),
-                            coords[1].trim().parse::<f64>().ok()
-                        )
-                    } else {
-                        (None, None)
-                    }
-                } else {
-                    (None, None)
-                };
+                // 1. Ajouter search_query (déjà optimisé par l'IA)
+                if !analysis.search_query.is_empty() {
+                    image_keywords.push(analysis.search_query.clone());
+                }
                 
-                // ✅ AMÉLIORÉ 2025-12-30: Détecter langue depuis analyse IA
-                // Mapper les langues détectées par l'IA vers les langues PostgreSQL
-                let search_lang = match analysis.description.to_lowercase().as_str() {
-                    s if s.contains("english") || s.contains("anglais") => "english",
-                    s if s.contains("spanish") || s.contains("espagnol") => "spanish",
-                    s if s.contains("portuguese") || s.contains("portugais") => "portuguese",
-                    s if s.contains("arabic") || s.contains("arabe") => "arabic",
-                    _ => "french"  // Français par défaut
-                };
+                // 2. Ajouter description (mots-clés supplémentaires)
+                if !analysis.description.is_empty() {
+                    // Extraire les mots importants de la description
+                    let desc_words: Vec<&str> = analysis.description
+                        .split_whitespace()
+                        .filter(|w| w.len() > 3)  // Ignorer mots trop courts
+                        .take(10)  // Limiter à 10 mots les plus importants
+                        .collect();
+                    image_keywords.extend(desc_words.iter().map(|s| s.to_string()));
+                }
                 
-                log_info(&format!("[DIRECT_SEARCH] Langue détectée depuis analyse IA: {}", search_lang));
+                // 3. Ajouter tous les tags
+                image_keywords.extend(analysis.tags.iter().cloned());
                 
-                // Utiliser sqlx::query() pour compatibilité offline avec langue dynamique
-                let search_results = sqlx::query(
-                    r#"SELECT * FROM search_images_by_ai_analysis(
-                        $1::TEXT,
-                        $2::TEXT[],
-                        $3::TEXT,
-                        $4::TEXT,
-                        $5::TEXT,
-                        $6::FLOAT,
-                        $7::FLOAT,
-                        $8::INTEGER,
-                        $9::INTEGER,
-                        $10::TEXT
-                    )"#
-                )
-                .bind(&analysis.search_query)
-                .bind(&analysis.tags)
-                .bind(analysis.category_detected.as_str())
-                .bind(analysis.marque.as_deref())
-                .bind(analysis.couleurs.first().map(|s| s.as_str()))
-                .bind(gps_lat)
-                .bind(gps_lng)
-                .bind(search_radius_km.unwrap_or(50) as i32)
-                .bind(20i32)
-                .bind(search_lang)  // ✅ NOUVEAU: Langue dynamique
-                .fetch_all(&_state.pg)
-                .await;
+                // 4. Ajouter catégorie
+                if !analysis.category_detected.is_empty() {
+                    image_keywords.push(analysis.category_detected.clone());
+                }
                 
-                match search_results {
-                    Ok(rows) => {
-                        use sqlx::Row;
-                        
-                        let results_count = rows.len();
-                        log_info(&format!("[DIRECT_SEARCH] Trouvé {} résultats", results_count));
-                        
-                        // ✅ RECHERCHE GRATUITE - Plus de facturation
-                        let billing_info = serde_json::json!({
-                            "charged": false,
-                            "amount": 0,
-                            "message": format!("{} résultats trouvés - Recherche gratuite", results_count),
-                            "ai_cost_usd": ai_cost.cost_usd,
-                            "ai_tokens": ai_cost.total_tokens,
-                            "results_found": results_count
-                        });
-                        
-                        // 3️⃣ Construire la réponse (extraire manuellement les champs)
-                        let results_json: Vec<Value> = rows.iter().map(|row| {
-                            json!({
-                                "service_id": row.try_get::<i32, _>("service_id").ok(),
-                                "data": row.try_get::<Value, _>("service_data").ok(),
-                                "product_name": row.try_get::<String, _>("product_name").ok(),
-                                "match_score": row.try_get::<f64, _>("match_score").ok(),
-                                "distance_km": row.try_get::<Option<f64>, _>("distance_km").ok().flatten(),
-                                "media_path": row.try_get::<String, _>("media_path").ok(),
-                                "ai_description": row.try_get::<Option<String>, _>("ai_description").ok().flatten(),
-                            })
-                        }).collect();
-                        
-                        let response = serde_json::json!({
-                            "status": "success",
-                            "intention": "recherche_besoin",
-                            "resultats": results_json,
-                            "tokens_consumed": ai_cost.total_tokens,
-                            "message": format!("Recherche par image gratuite: {} résultats", results_count),
-                            "search_method": "image_ai",
-                            "image_analysis": {
-                                "description": analysis.description,
-                                "tags": analysis.tags,
-                                "category": analysis.category_detected,
-                                "marque": analysis.marque,
-                                "couleurs": analysis.couleurs,
-                                "confiance": analysis.confiance,
-                                "search_query": analysis.search_query,
-                                "model_used": ai_cost.model_used
-                            },
-                            "billing": billing_info,
-                            "gps_filtered": gps_zone.is_some(),
-                            "search_radius_km": search_radius_km
-                        });
-                        
-                        return Ok(Json(response));
-                    },
-                    Err(e) => {
-                        log_error(&format!("[DIRECT_SEARCH] Erreur recherche SQL: {}", e));
-                        // Continuer vers recherche textuelle en fallback
+                // 5. Ajouter marque si présente
+                if let Some(marque) = &analysis.marque {
+                    if !marque.is_empty() {
+                        image_keywords.push(marque.clone());
                     }
                 }
+                
+                // 6. Ajouter toutes les couleurs
+                image_keywords.extend(analysis.couleurs.iter().cloned());
+                
+                // 7. Ajouter toutes les valeurs de caracteristiques_cles (générique - sans hardcoder)
+                for (key, value) in &analysis.caracteristiques_cles {
+                    if !key.is_empty() {
+                        image_keywords.push(key.clone());
+                    }
+                    if !value.is_empty() {
+                        // Si la valeur contient plusieurs mots, les ajouter séparément
+                        let value_words: Vec<&str> = value.split_whitespace().collect();
+                        if value_words.len() == 1 {
+                            image_keywords.push(value.clone());
+                        } else {
+                            // Plusieurs mots, ajouter les plus importants
+                            image_keywords.extend(
+                                value_words.iter()
+                                    .filter(|w| w.len() > 3)
+                                    .take(3)
+                                    .map(|s| s.to_string())
+                            );
+                        }
+                    }
+                }
+                
+                // Construire la requête de recherche textuelle à partir de tous les mots-clés
+                let image_search_query = image_keywords.join(" ");
+                
+                log_info(&format!(
+                    "[DIRECT_SEARCH] Mots-clés extraits du JSON IA: {} ({} mots-clés)",
+                    &image_search_query.chars().take(100).collect::<String>(),
+                    image_keywords.len()
+                ));
+                
+                // ✅ Utiliser le même circuit que la transcription audio : ajouter à user_text
+                if has_text {
+                    // Combiner texte existant + mots-clés de l'image
+                    user_text = format!("{} {}", user_text, image_search_query);
+                    log_info("[DIRECT_SEARCH] Texte combiné (texte original + mots-clés image IA)");
+                } else {
+                    // Utiliser uniquement les mots-clés de l'image
+                    user_text = image_search_query;
+                    log_info("[DIRECT_SEARCH] Utilisation des mots-clés image IA comme texte de recherche");
+                }
+                
+                // Continuer vers recherche textuelle normale (comme pour audio)
+                // Ne pas retourner ici, laisser le code continuer vers la recherche textuelle
             },
             Err(e) => {
-                log_error(&format!("[DIRECT_SEARCH] Erreur analyse IA: {:?}", e));
+                log_error(&format!("[DIRECT_SEARCH] ❌ Erreur analyse IA: {:?}", e));
                 
-                // Retourner erreur si image sans texte
+                // Continuer avec le texte original si disponible (comme pour audio)
                 if !has_text {
+                    log_warn("[DIRECT_SEARCH] ⚠️ Analyse image échouée et pas de texte, recherche impossible");
                     let response = serde_json::json!({
                         "status": "error",
                         "message": format!("Erreur analyse d'image: {}", e),
@@ -458,7 +423,8 @@ async fn handle_direct_search(
                     });
                     return Ok(Json(response));
                 }
-                // Sinon, continuer vers recherche textuelle
+                // Sinon, continuer vers recherche textuelle avec le texte existant
+                log_info("[DIRECT_SEARCH] Analyse image échouée, utilisation du texte original pour recherche");
             }
         }
     }
