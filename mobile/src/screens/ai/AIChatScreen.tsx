@@ -2,9 +2,10 @@
 import * as React from 'react';
 import { TouchableOpacity } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, FlatList } from 'react-native';
 import { Text, TextInput, Button, Card, Avatar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { aiService } from '../../services/api';
 
 interface Message {
@@ -107,39 +108,38 @@ const AIChatScreen: React.FC = () => {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        style={styles.messagesList}
-        contentContainerStyle={styles.messagesContent}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-      />
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Tapez votre message..."
-          mode="outlined"
-          multiline
-          style={styles.textInput}
-          disabled={loading}
+    <KeyboardAwareScreen style={styles.container}>
+      <View style={styles.contentWrapper}>
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          style={styles.messagesList}
+          contentContainerStyle={styles.messagesContent}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
-        <TouchableOpacity
-          onPress={sendMessage}
-          disabled={!inputText.trim() || loading}
-          style={styles.sendButton}
-        >
-          <Text style={{ color: "#000" }}>Envoyer</Text>
-        </TouchableOpacity>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Tapez votre message..."
+            mode="outlined"
+            multiline
+            style={styles.textInput}
+            disabled={loading}
+          />
+          <TouchableOpacity
+            onPress={sendMessage}
+            disabled={!inputText.trim() || loading}
+            style={styles.sendButton}
+          >
+            <Text style={{ color: "#000" }}>Envoyer</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScreen>
   );
 };
 
@@ -147,6 +147,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+  },
+  contentWrapper: {
+    flex: 1,
   },
   messagesList: {
     flex: 1,

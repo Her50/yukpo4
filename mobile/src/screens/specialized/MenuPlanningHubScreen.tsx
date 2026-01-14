@@ -1,12 +1,14 @@
 // ✅ Écran Hub Planification Menus
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Dimensions,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -59,6 +61,18 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const [loadingRecipe, setLoadingRecipe] = useState(false);
     const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
     const [exportingRecipePDF, setExportingRecipePDF] = useState(false);
+    const recipeInputRef = useRef<any>(null); // ✅ NOUVEAU 2026-01-14: Ref pour forcer le focus
+
+    // ✅ CORRIGÉ 2026-01-14: Forcer le focus sur le champ de recherche quand le modal s'ouvre
+    useEffect(() => {
+        if (showRecipeModal && recipeInputRef.current) {
+            // Petit délai pour s'assurer que le modal est complètement monté
+            const timer = setTimeout(() => {
+                recipeInputRef.current?.focus();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [showRecipeModal]);
 
     useFocusEffect(
         useCallback(() => {
@@ -575,14 +589,18 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 </View>
             </View>
 
-            {/* ✅ NOUVEAU: Modal pour demander une recette */}
+            {/* ✅ CORRIGÉ 2026-01-14: Modal pour demander une recette avec focus corrigé */}
             <Modal
                 visible={showRecipeModal}
                 animationType="slide"
                 transparent={true}
                 onRequestClose={() => setShowRecipeModal(false)}
             >
-                <View style={styles.modalOverlay}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.modalOverlay}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                >
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Rechercher une recette</Text>
@@ -591,7 +609,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={styles.modalBody}>
+                        <View style={styles.modalBody}>
                             <Text style={styles.modalHint}>
                                 Entrez le nom d'un plat pour générer sa recette complète.
                             </Text>
@@ -599,13 +617,17 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>Nom du plat *</Text>
                                 <NativeInput
+                                    ref={recipeInputRef}
                                     value={recipeRequest}
                                     onChangeText={setRecipeRequest}
                                     placeholder="Ex: Ndolé, Poulet DG, Riz au gras..."
-                                    autoFocus
+                                    autoFocus={true}
+                                    editable={true}
+                                    keyboardType="default"
+                                    returnKeyType="search"
                                 />
                             </View>
-                        </ScrollView>
+                        </View>
 
                         <View style={styles.modalFooter}>
                             <NativeButton
@@ -1130,8 +1152,8 @@ const styles = StyleSheet.create({
         color: '#111827',
     },
     modalBody: {
-        flex: 1,
         padding: 20,
+        // ✅ CORRIGÉ 2026-01-14: Retirer flex: 1 pour permettre le focus du TextInput
     },
     modalFooter: {
         padding: 20,

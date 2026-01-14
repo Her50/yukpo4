@@ -5,9 +5,6 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +14,8 @@ import {
 import { APP_CONFIG } from '../config/appConfig';
 import { authApi } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
+// ✅ NOUVEAU: Utiliser KeyboardAwareScreen pour une meilleure gestion du clavier
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -122,11 +121,10 @@ const RegisterScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScreen 
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      contentContainerStyle={styles.scrollContainer}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.content}>
           <Text style={styles.title}>Cr�er un compte</Text>
           <Text style={styles.subtitle}>Rejoignez la communaut� Yukpo</Text>
@@ -222,8 +220,7 @@ const RegisterScreen: React.FC = () => {
             <Text style={styles.debugText}>API URL: {APP_CONFIG.API_BASE_URL}</Text>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScreen>
   );
 };
 

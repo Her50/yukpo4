@@ -154,8 +154,13 @@ impl AppState {
             .parse::<bool>()
             .unwrap_or(false);
 
-        let delivery_repo =
-            Arc::new(crate::services::delivery_repository::DeliveryRepository::new(pg.clone()));
+        // ✅ OPTIMISÉ: DeliveryRepository avec cache Redis pour améliorer les performances
+        let delivery_repo = Arc::new(
+            crate::services::delivery_repository::DeliveryRepository::with_redis(
+                pg.clone(),
+                Some(redis_client.clone()),
+            )
+        );
         let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(
             64,
             if redis_available_for_ws {
@@ -566,8 +571,13 @@ impl AppState {
             "yukpo_history_test".to_string(),
         ));
 
-        let delivery_repo =
-            Arc::new(crate::services::delivery_repository::DeliveryRepository::new(pg.clone()));
+        // ✅ OPTIMISÉ: DeliveryRepository avec cache Redis pour les tests
+        let delivery_repo = Arc::new(
+            crate::services::delivery_repository::DeliveryRepository::with_redis(
+                pg.clone(),
+                Some(redis_client.clone()),
+            )
+        );
 
         // ✅ Initialiser cache_service avant son utilisation
         let cache_service = Arc::new(CacheService::new(Some(redis_client.clone())));

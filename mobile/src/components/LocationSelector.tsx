@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { apiGet } from '../services/api';
 import { PlaceScope, placesService, PlaceResult } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
@@ -640,6 +640,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
     const [isFocused, setIsFocused] = useState(false);
     const inputRef = React.useRef<TextInput>(null);
+    const selectingOptionRef = useRef(false); // ✅ NOUVEAU: Flag pour empêcher onBlur lors d'un clic sur une option
 
     // ✅ CORRIGÉ: Synchroniser query avec displayValue quand on commence à taper
     useEffect(() => {
@@ -657,6 +658,18 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
     const handleSelectOption = async (opt: string, index: number) => {
         console.log('[LocationSelector] handleSelectOption appelé:', { opt, index });
+        
+        // ✅ CRITIQUE: Marquer qu'on est en train de sélectionner pour empêcher onBlur de fermer
+        selectingOptionRef.current = true;
+        
+        // ✅ Fermer immédiatement les suggestions pour feedback visuel
+        setIsFocused(false);
+        setQuery('');
+        // ✅ AMÉLIORÉ: Ne pas blur immédiatement pour éviter conflit avec le clic
+        setTimeout(() => {
+            inputRef.current?.blur();
+        }, 100);
+        
         // ✅ Parser composants du lieu
         const locationObj = parseLocationString(opt);
         const enrichedResult = optionsEnriched[index];
@@ -692,6 +705,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 onSelect(finalLocation);
             } finally {
                 setEnriching(false);
+                selectingOptionRef.current = false;
             }
         } else {
             const display = formatLocationDisplay(locationObj);
@@ -703,12 +717,8 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             };
             console.log('[LocationSelector] Sans enrichissement - Appel onSelect avec:', finalLocation);
             onSelect(finalLocation);
+            selectingOptionRef.current = false;
         }
-        
-        // ✅ Fermer les suggestions après sélection
-        setQuery('');
-        setIsFocused(false);
-        inputRef.current?.blur();
     };
 
     return (
@@ -738,12 +748,15 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                         }
                     }}
                     onBlur={() => {
-                        // ✅ Délai pour permettre le clic sur une option
+                        // ✅ AMÉLIORÉ: Vérifier si on est en train de sélectionner une option
+                        // Si oui, ne pas fermer les suggestions (elles seront fermées par handleSelectOption)
                         setTimeout(() => {
-                            setIsFocused(false);
-                            onFocusChange?.(false); // ✅ NOUVEAU: Notifier le parent
-                            setQuery('');
-                        }, 200);
+                            if (!selectingOptionRef.current) {
+                                setIsFocused(false);
+                                onFocusChange?.(false); // ✅ NOUVEAU: Notifier le parent
+                                setQuery('');
+                            }
+                        }, 300); // ✅ AUGMENTÉ: Délai plus long pour permettre le clic
                     }}
                     style={styles.input}
                     placeholderTextColor={modernColors.textSecondary}
@@ -776,8 +789,9 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 <View style={styles.suggestionsContainer}>
                     <ScrollView 
                         style={styles.suggestionsList}
-                        keyboardShouldPersistTaps="handled"
+                        keyboardShouldPersistTaps="handled" // ✅ CRITIQUE: Permet les clics même quand le clavier est ouvert
                         nestedScrollEnabled={true}
+                        bounces={false} // ✅ NOUVEAU: Évite les rebonds qui peuvent interférer avec les clics
                     >
                         {loading ? (
                             <Text style={styles.loadingText}>Chargement...</Text>
@@ -793,10 +807,19 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                                 const placeIcon = getPlaceIcon(placeType, opt, enrichedResult?.types);
                                 
                                 return (
-                                    <TouchableOpacity
+                                    <Pressable
                                         key={`${opt}-${index}`}
-                                        style={styles.optionItem}
-                                        onPress={() => handleSelectOption(opt, index)}
+                                        style={({ pressed }) => [
+                                            styles.optionItem,
+                                            pressed && styles.optionItemPressed
+                                        ]}
+                                        onPress={() => {
+                                            // ✅ AMÉLIORÉ: Utiliser onPress avec gestion du flag pour éviter conflit avec onBlur
+                                            selectingOptionRef.current = true;
+                                            handleSelectOption(opt, index);
+                                        }}
+                                        delayPressIn={0} // ✅ NOUVEAU: Pas de délai pour une sélection immédiate
+                                        hitSlop={{ top: 12, bottom: 12, left: 0, right: 0 }} // ✅ AUGMENTÉ: Zone de clic plus grande
                                     >
                                         <View style={styles.optionContent}>
                                             <SafeIcon 
@@ -806,7 +829,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                                             />
                                             <Text style={styles.optionText}>{opt}</Text>
                                         </View>
-                                    </TouchableOpacity>
+                                    </Pressable>
                                 );
                             })
                         )}
@@ -818,7 +841,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 };
 
 const styles = StyleSheet.create({
-    container: { marginBottom: 12, zIndex: 9999, position: 'relative', elevation: 1000 },
+    container: { marginBottom: 12, zIndex: 9999, position: 'relative', elevation: 10000 }, // ✅ AUGMENTÉ: Pour Android
     label: { fontSize: 13, fontWeight: '600', color: modernColors.text, marginBottom: 6 },
     required: { color: modernColors.error },
     selector: {
@@ -861,8 +884,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
-        elevation: 1000,
-        zIndex: 99999,
+        elevation: 10000, // ✅ AUGMENTÉ: Pour Android (doit être très élevé)
+        zIndex: 99999, // ✅ AUGMENTÉ: Pour iOS
     },
     suggestionsList: {
         maxHeight: 200,
@@ -874,6 +897,10 @@ const styles = StyleSheet.create({
         paddingVertical: 14, 
         borderBottomWidth: 1, 
         borderBottomColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+    },
+    optionItemPressed: {
+        backgroundColor: modernColors.primary + '15', // ✅ NOUVEAU: Feedback visuel au touch
     },
     optionContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     optionText: { fontSize: 14, color: modernColors.text, flex: 1 },

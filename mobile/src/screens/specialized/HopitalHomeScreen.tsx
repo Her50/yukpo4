@@ -17,13 +17,12 @@ import {
     View,
     Image,
     Alert,
-    KeyboardAvoidingView,
-    Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { useLocation } from '../../contexts/LocationContext';
 import { hospitalService, MedicalService, PathologySearchResult, MedicalServiceAvailability } from '../../services/hospitalService';
 import { modernColors } from '../../theme/modernTheme';
@@ -626,11 +625,7 @@ const AIModal: React.FC<AIModalProps> = ({
             animationType="slide"
             onRequestClose={onClose}
         >
-            <KeyboardAvoidingView
-                style={styles.modalOverlay}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-            >
+            <View style={styles.modalOverlay}>
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>
@@ -641,10 +636,9 @@ const AIModal: React.FC<AIModalProps> = ({
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView 
-                        style={styles.modalScroll} 
+                    <KeyboardAwareScreen 
+                        style={styles.modalScroll}
                         contentContainerStyle={styles.modalScrollContent}
-                        keyboardShouldPersistTaps="handled"
                     >
                         {mode === 'pathology' ? (
                             <>
@@ -908,9 +902,9 @@ const AIModal: React.FC<AIModalProps> = ({
                                 )}
                             </>
                         )}
-                    </ScrollView>
+                    </KeyboardAwareScreen>
                 </View>
-            </KeyboardAvoidingView>
+            </View>
         </Modal>
     );
 };

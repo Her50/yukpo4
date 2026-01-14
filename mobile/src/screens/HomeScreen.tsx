@@ -14,6 +14,9 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
     Alert,
     Animated,
+    AppState,
+    AppStateStatus,
+    DeviceEventEmitter,
     ScrollView,
     StyleSheet,
     Text,
@@ -178,6 +181,8 @@ const HomeScreen: React.FC = () => {
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+    // ✅ NOUVEAU: Nombre de notifications non lues
+    const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
 
     // Navigation simplifiée
@@ -194,6 +199,73 @@ const HomeScreen: React.FC = () => {
             return false;
         }
     }, [navigation]);
+
+    // ✅ NOUVEAU: Charger le nombre de notifications non lues
+    const loadUnreadNotificationsCount = useCallback(async () => {
+        if (!user?.id) {
+            setUnreadNotificationsCount(0);
+            return;
+        }
+
+        try {
+            const response = await apiGet(API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT(String(user.id)));
+            // ✅ CORRIGÉ: Le backend retourne { success: true, count: number }
+            const count = response.data?.count ?? 0;
+            setUnreadNotificationsCount(typeof count === 'number' ? count : 0);
+            console.log('[HomeScreen] 📬 Notifications non lues:', count);
+        } catch (error) {
+            console.error('[HomeScreen] Erreur chargement notifications non lues:', error);
+            setUnreadNotificationsCount(0);
+        }
+    }, [user?.id]);
+
+    // ✅ NOUVEAU: Charger le nombre au démarrage et quand l'utilisateur change
+    React.useEffect(() => {
+        loadUnreadNotificationsCount();
+    }, [loadUnreadNotificationsCount]);
+
+    // ✅ NOUVEAU: Recharger le nombre quand l'écran est focus (utilisateur revient sur l'écran)
+    useFocusEffect(
+        useCallback(() => {
+            loadUnreadNotificationsCount();
+        }, [loadUnreadNotificationsCount])
+    );
+
+    // ✅ NOUVEAU: Recharger le nombre quand l'app revient au premier plan (notification reçue en arrière-plan)
+    React.useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+            if (nextAppState === 'active') {
+                // L'app revient au premier plan, recharger le nombre de notifications
+                loadUnreadNotificationsCount();
+            }
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, [loadUnreadNotificationsCount]);
+
+    // ✅ NOUVEAU: Écouter les événements de notifications reçues pour mettre à jour le badge en temps réel
+    React.useEffect(() => {
+        const listener = DeviceEventEmitter.addListener('notification:received', () => {
+            // Recharger le nombre de notifications non lues quand une notification est reçue
+            console.log('[HomeScreen] 📬 Notification reçue, mise à jour du badge...');
+            loadUnreadNotificationsCount();
+        });
+
+        return () => {
+            listener.remove();
+        };
+    }, [loadUnreadNotificationsCount]);
+
+    // ✅ NOUVEAU: Recharger quand le modal de notifications se ferme (notifications lues)
+    const handleNotificationModalClose = useCallback(() => {
+        setShowNotificationModal(false);
+        // Recharger le nombre après un court délai pour laisser le temps au backend de mettre à jour
+        setTimeout(() => {
+            loadUnreadNotificationsCount();
+        }, 500);
+    }, [loadUnreadNotificationsCount]);
 
     // REFONTE: Handler recherche simplifiée utilisant le nouveau service
     const handleSearch = useCallback(async (input: any) => {
@@ -554,6 +626,8 @@ const HomeScreen: React.FC = () => {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
+                // ✅ CRITIQUE: S'assurer que le ScrollView respecte le paddingTop du SafeNativeView
+                contentInsetAdjustmentBehavior="automatic"
             >
                 {/* Header avec avatar, langue, trophée et branding Yukpo */}
                 <View style={styles.header}>
@@ -608,7 +682,7 @@ const HomeScreen: React.FC = () => {
                             <Text style={styles.headerButtonIcon}>💬</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={styles.headerButton}
+                            style={[styles.headerButton, styles.notificationButton]}
                             onPress={() => {
                                 // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
                                 // hapticPress();
@@ -616,6 +690,14 @@ const HomeScreen: React.FC = () => {
                             }}
                         >
                             <Text style={styles.headerButtonIcon}>🔔</Text>
+                            {/* ✅ NOUVEAU: Badge rouge avec le nombre de notifications non lues */}
+                            {unreadNotificationsCount > 0 && (
+                                <View style={styles.notificationBadge}>
+                                    <Text style={styles.notificationBadgeText}>
+                                        {unreadNotificationsCount > 99 ? '99+' : String(unreadNotificationsCount)}
+                                    </Text>
+                                </View>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -752,8 +834,8 @@ const HomeScreen: React.FC = () => {
             {showNotificationModal && (
                 <NotificationHistoryModal
                     isOpen={true}
-                    onClose={() => setShowNotificationModal(false)}
-                    onChange={() => { }}
+                    onClose={handleNotificationModalClose}
+                    onChange={loadUnreadNotificationsCount} // ✅ NOUVEAU: Recharger le nombre quand les notifications changent
                 />
             )}
 
@@ -853,6 +935,30 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    notificationButton: {
+        position: 'relative', // ✅ NOUVEAU: Pour positionner le badge
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#EF4444', // Rouge vif
+        borderRadius: 10,
+        minWidth: 18,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        zIndex: 10,
+    },
+    notificationBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
     deliveryButton: {
         width: 40, // ✅ CORRIGÉ: Même taille que les autres boutons
         height: 40, // ✅ CORRIGÉ: Même taille que les autres boutons
@@ -891,7 +997,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#6366F1', // ✅ AMÉLIORÉ: Couleur indigo harmonieuse pour les boutons actifs
     },
     modeButtonText: {
-        fontSize: 14, // ✅ AUGMENTÉ 2026-01-14: De 13 à 14 pour une meilleure lisibilité
+        fontSize: 16, // ✅ AUGMENTÉ: De 14 à 16 pour une meilleure lisibilité
         fontWeight: '600',
         color: '#6B7280',
         textAlign: 'center', // ✅ AJOUTÉ 2026-01-14: Pour centrer le texte

@@ -6,7 +6,7 @@
  */
 import * as Notifications from 'expo-notifications';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, DeviceEventEmitter } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { setupForegroundNotificationHandler, setupNotificationResponseHandler } from '../services/pushNotifications';
@@ -29,6 +29,13 @@ const PushNotificationManager: React.FC = () => {
             const data = notification.request.content.data;
             
             console.log('[PushNotificationManager] 🔔 Notification reçue:', notification.request.content);
+
+            // ✅ NOUVEAU: Émettre un événement global pour mettre à jour les badges de notifications
+            DeviceEventEmitter.emit('notification:received', {
+                type: data?.type,
+                notification: notification.request.content
+            });
+            console.log('[PushNotificationManager] ✅ Événement notification:received émis');
 
             // Gérer les appels entrants
             if (data?.type === 'incoming_call') {
@@ -79,6 +86,12 @@ const PushNotificationManager: React.FC = () => {
             const data = response.notification.request.content.data;
             
             console.log('[PushNotificationManager] 👆 Notification tapée:', data);
+
+            // ✅ NOUVEAU: Émettre un événement pour mettre à jour le badge quand une notification est tapée
+            DeviceEventEmitter.emit('notification:received', {
+                type: data?.type,
+                notification: response.notification.request.content
+            });
 
             // Gérer les appels entrants
             if (data?.type === 'incoming_call') {

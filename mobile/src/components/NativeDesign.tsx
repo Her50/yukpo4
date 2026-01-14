@@ -345,12 +345,14 @@ export interface NativeInputProps {
     keyboardType?: any; // ✅ Ajout pour supporter différents types de clavier
     autoCapitalize?: any; // ✅ Ajout pour contrôler la capitalisation
     autoCorrect?: boolean; // ✅ Ajout pour contrôler l'auto-correction
+    autoFocus?: boolean; // ✅ NOUVEAU 2026-01-14: Support autoFocus
+    editable?: boolean; // ✅ NOUVEAU 2026-01-14: Support editable
     minLines?: number;
     onContentSizeChange?: (width: number, height: number) => void;
     testID?: string;
 }
 
-export const NativeInput: React.FC<NativeInputProps> = ({
+export const NativeInput = React.forwardRef<any, NativeInputProps>(({
     placeholder,
     value,
     onChangeText,
@@ -361,10 +363,12 @@ export const NativeInput: React.FC<NativeInputProps> = ({
     keyboardType,
     autoCapitalize,
     autoCorrect,
+    autoFocus = false, // ✅ NOUVEAU 2026-01-14: Support autoFocus
+    editable = true, // ✅ NOUVEAU 2026-01-14: Support editable (par défaut true)
     minLines = 1,
     onContentSizeChange,
     testID
-}) => {
+}, ref) => {
     const [inputHeight, setInputHeight] = React.useState<number | undefined>(undefined);
 
     React.useEffect(() => {
@@ -406,6 +410,7 @@ export const NativeInput: React.FC<NativeInputProps> = ({
     return (
         <View style={containerStyles}>
             <TextInput
+                ref={ref} // ✅ NOUVEAU 2026-01-14: Support ref pour forcer le focus
                 testID={testID}
                 style={inputStyles}
                 placeholder={placeholder}
@@ -416,6 +421,8 @@ export const NativeInput: React.FC<NativeInputProps> = ({
                 keyboardType={keyboardType}
                 autoCapitalize={autoCapitalize}
                 autoCorrect={autoCorrect}
+                autoFocus={autoFocus} // ✅ NOUVEAU 2026-01-14: Support autoFocus
+                editable={editable} // ✅ NOUVEAU 2026-01-14: Support editable
                 placeholderTextColor={modernColors.textSecondary}
                 scrollEnabled={multiline ? true : undefined} // ✅ CORRECTION: Activer le scroll pour multiline pour permettre de voir tout le texte
                 blurOnSubmit={multiline ? false : undefined}
@@ -434,7 +441,10 @@ export const NativeInput: React.FC<NativeInputProps> = ({
             />
         </View>
     );
-};
+});
+
+// ✅ NOUVEAU 2026-01-14: Ajouter displayName pour le forwardRef
+NativeInput.displayName = 'NativeInput';
 
 // Badge natif
 interface NativeBadgeProps {

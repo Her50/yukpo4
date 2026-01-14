@@ -3,9 +3,6 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,6 +13,8 @@ import { APP_CONFIG } from '../config/appConfig';
 import { authApi } from '../services/api';
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import SafeStorage from '../utils/safeStorage';
+// ✅ NOUVEAU: Utiliser KeyboardAwareScreen pour une meilleure gestion du clavier
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -69,11 +68,10 @@ const LoginScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScreen 
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      contentContainerStyle={styles.scrollContainer}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.content}>
           <Text style={styles.title}>Connexion Yukpo</Text>
 
@@ -151,8 +149,7 @@ const LoginScreen: React.FC = () => {
             <Text style={styles.debugText}>API URL: {APP_CONFIG.API_BASE_URL}</Text>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScreen>
   );
 };
 

@@ -6,9 +6,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -22,6 +19,7 @@ import SearchFilters, { SearchFilters as SearchFiltersType } from '../components
 import SearchHistory from '../components/SearchHistory';
 import SpecializedSearchAutocomplete from '../components/SpecializedSearchAutocomplete';
 import VoiceSearchButton from '../components/VoiceSearchButton';
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import { useLocation } from '../contexts/LocationContext';
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -194,15 +192,7 @@ const SpecializedSearchScreen: React.FC = () => {
     }
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
-        >
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-            >
+        <KeyboardAwareScreen style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity
@@ -404,7 +394,7 @@ const SpecializedSearchScreen: React.FC = () => {
                 initialFilters={filters}
                 specializedType={specializedType}
             />
-        </KeyboardAvoidingView>
+        </KeyboardAwareScreen>
     );
 };
 
@@ -412,12 +402,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingBottom: 40,
     },
     header: {
         flexDirection: 'row',

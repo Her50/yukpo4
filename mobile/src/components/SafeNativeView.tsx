@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Dimensions, KeyboardAvoidingView, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { Dimensions, KeyboardAvoidingView, Platform, StatusBar as RNStatusBar, StyleSheet, View } from 'react-native';
 
 const { height, width } = Dimensions.get('window');
 
@@ -35,9 +35,12 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
 }) => {
     const getStatusBarHeight = () => {
         if (Platform.OS === 'android') {
-            return StatusBar.currentHeight || 24;
+            // ✅ AMÉLIORÉ: Utiliser la hauteur réelle de la StatusBar
+            return RNStatusBar.currentHeight || 24;
         }
-        // iOS - valeurs approximatives
+        // iOS - valeurs approximatives selon le modèle
+        // iPhone X et plus récents: 44px, iPhone classiques: 20px
+        // On utilise une valeur sécurisée
         return 44;
     };
 
@@ -78,6 +81,22 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
     // React Native gère déjà les children invalides
     
     // ✅ NOUVEAU: Wrapper avec KeyboardAvoidingView si activé
+    const content = (
+        <>
+            {/* ✅ CRITIQUE: StatusBar pour s'assurer que la barre de statut est visible */}
+            {/* Note: Si l'app utilise expo-status-bar, cette StatusBar sera ignorée mais le paddingTop reste important */}
+            {Platform.OS === 'android' && (
+                <RNStatusBar
+                    barStyle="dark-content" // Texte sombre sur fond clair (ou "light-content" pour fond sombre)
+                    backgroundColor={backgroundColor}
+                    translucent={false} // ✅ CRITIQUE: false pour que le contenu ne passe pas sous la barre
+                    hidden={false} // ✅ CRITIQUE: false pour afficher la barre de statut
+                />
+            )}
+            {children}
+        </>
+    );
+    
     if (enableKeyboardAvoiding) {
         return (
             <KeyboardAvoidingView
@@ -87,14 +106,14 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
                 testID={testID}
                 pointerEvents={pointerEvents}
             >
-                {children}
+                {content}
             </KeyboardAvoidingView>
         );
     }
 
     return (
         <View style={containerStyle} testID={testID} pointerEvents={pointerEvents}>
-            {children}
+            {content}
         </View>
     );
 };

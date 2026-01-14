@@ -3023,13 +3023,25 @@ async fn get_my_courier_status(
             "rating_average": ToPrimitive::to_f64(&c.rating_average).unwrap_or(0.0),
             "rating_count": c.rating_count,
         })),
-        "application": application.map(|a| json!({
-            "id": a.id,
-            "status": format!("{:?}", a.status),
-            "submitted_at": a.submitted_at,
-            "reviewed_at": a.reviewed_at,
-            "rejection_reason": a.rejection_reason,
-        })),
+        "application": application.map(|a| {
+            // ✅ NOUVEAU: Retourner les données complètes si c'est un brouillon
+            let mut app_json = json!({
+                "id": a.id,
+                "status": format!("{:?}", a.status),
+                "submitted_at": a.submitted_at,
+                "reviewed_at": a.reviewed_at,
+                "rejection_reason": a.rejection_reason,
+            });
+            
+            // Si c'est un brouillon, inclure les données complètes pour permettre la reprise
+            if format!("{:?}", a.status).to_lowercase() == "draft" {
+                app_json["profile_data"] = a.profile_data.clone();
+                app_json["documents"] = a.documents.clone();
+                app_json["notes"] = a.notes.clone();
+            }
+            
+            app_json
+        }),
     })))
 }
 
@@ -3247,6 +3259,40 @@ async fn approve_courier_application_endpoint(
         )
         .await?;
 
+    // ✅ NOUVEAU: Envoyer une notification à l'utilisateur pour l'informer de l'approbation
+    let notification_data = serde_json::json!({
+        "application_id": application_id,
+        "courier_id": courier.id,
+        "status": "approved"
+    });
+
+    // Créer la notification en base de données
+    if let Err(e) = crate::services::notification_service::create_notification(
+        &state.pg,
+        user_id,
+        crate::services::notification_service::NotificationType::CourierApplicationApproved,
+        "✅ Candidature approuvée".to_string(),
+        "Félicitations ! Votre candidature de coursier a été approuvée. Vous pouvez maintenant commencer à accepter des livraisons.".to_string(),
+        Some(notification_data.clone()),
+    ).await {
+        log::warn!("[approve_courier_application] ⚠️ Impossible de créer la notification: {}", e);
+    } else {
+        log::info!("[approve_courier_application] ✅ Notification d'approbation créée");
+    }
+
+    // Envoyer une push notification
+    if let Err(e) = crate::services::push_notification_service::send_push_notification(
+        &state.pg,
+        user_id,
+        "✅ Candidature approuvée".to_string(),
+        "Félicitations ! Votre candidature de coursier a été approuvée. Vous pouvez maintenant commencer à accepter des livraisons.".to_string(),
+        Some(notification_data),
+    ).await {
+        log::warn!("[approve_courier_application] ⚠️ Impossible d'envoyer la push notification: {}", e);
+    } else {
+        log::info!("[approve_courier_application] ✅ Push notification envoyée");
+    }
+
     Ok(Json(json!({
         "success": true,
         "application": updated_app,
@@ -3291,7 +3337,7 @@ async fn reject_courier_application_endpoint(
             application_id,
             user.id,
             false, // reject
-            payload.rejection_reason,
+            payload.rejection_reason.clone(),
             crate::services::delivery_service::CourierProfileInput {
                 user_id: application.user_id,
                 application_id: Some(application_id),
@@ -3300,6 +3346,46 @@ async fn reject_courier_application_endpoint(
             None, // Pas d'asset pour un rejet
         )
         .await?;
+
+    // ✅ NOUVEAU: Envoyer une notification à l'utilisateur pour l'informer du rejet
+    let rejection_message = if let Some(reason) = &payload.rejection_reason {
+        format!("Votre candidature de coursier a été rejetée. Raison : {}", reason)
+    } else {
+        "Votre candidature de coursier a été rejetée. Veuillez contacter le support pour plus d'informations.".to_string()
+    };
+
+    let notification_data = serde_json::json!({
+        "application_id": application_id,
+        "status": "rejected",
+        "rejection_reason": payload.rejection_reason
+    });
+
+    // Créer la notification en base de données
+    if let Err(e) = crate::services::notification_service::create_notification(
+        &state.pg,
+        application.user_id,
+        crate::services::notification_service::NotificationType::CourierApplicationRejected,
+        "❌ Candidature rejetée".to_string(),
+        rejection_message.clone(),
+        Some(notification_data.clone()),
+    ).await {
+        log::warn!("[reject_courier_application] ⚠️ Impossible de créer la notification: {}", e);
+    } else {
+        log::info!("[reject_courier_application] ✅ Notification de rejet créée");
+    }
+
+    // Envoyer une push notification
+    if let Err(e) = crate::services::push_notification_service::send_push_notification(
+        &state.pg,
+        application.user_id,
+        "❌ Candidature rejetée".to_string(),
+        rejection_message,
+        Some(notification_data),
+    ).await {
+        log::warn!("[reject_courier_application] ⚠️ Impossible d'envoyer la push notification: {}", e);
+    } else {
+        log::info!("[reject_courier_application] ✅ Push notification envoyée");
+    }
 
     Ok(Json(json!({
         "success": true,

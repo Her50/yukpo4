@@ -38,6 +38,12 @@ pub enum NotificationType {
     DeliveryInTransit,
     DeliveryDelivered,
     DeliveryCancelled,
+    // ✅ NOUVEAU: Notifications de candidature coursier
+    CourierApplicationApproved,
+    CourierApplicationRejected,
+    // ✅ NOUVEAU: Notifications de validation partenaire
+    PartnerApplicationApproved,
+    PartnerApplicationRejected,
 }
 
 impl NotificationType {
@@ -75,6 +81,12 @@ impl NotificationType {
             NotificationType::DeliveryInTransit => "delivery_in_transit",
             NotificationType::DeliveryDelivered => "delivery_delivered",
             NotificationType::DeliveryCancelled => "delivery_cancelled",
+            // ✅ NOUVEAU: Notifications de candidature coursier
+            NotificationType::CourierApplicationApproved => "courier_application_approved",
+            NotificationType::CourierApplicationRejected => "courier_application_rejected",
+            // ✅ NOUVEAU: Notifications de validation partenaire
+            NotificationType::PartnerApplicationApproved => "partner_application_approved",
+            NotificationType::PartnerApplicationRejected => "partner_application_rejected",
         }
     }
 }

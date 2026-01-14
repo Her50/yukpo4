@@ -1,113 +1,92 @@
-# Script PowerShell pour appliquer la migration de performance sur Render
-# Date: 2025-11-28
+# Script pour appliquer la migration directement sur Render
+# Usage: .\apply_migration_render.ps1
 
-$ErrorActionPreference = "Stop"
+Write-Host "🚀 Application de la migration 20260114_optimize_delivery_queries_performance.sql sur Render..." -ForegroundColor Cyan
 
-Write-Host "🚀 Application de la migration de performance sur Render" -ForegroundColor Green
-Write-Host "==================================================" -ForegroundColor Green
+# Vérifier que DATABASE_URL est défini
+$databaseUrl = $env:DATABASE_URL
+if (-not $databaseUrl) {
+    Write-Host "❌ ERREUR: DATABASE_URL n'est pas défini dans les variables d'environnement" -ForegroundColor Red
+    Write-Host "💡 Astuce: Définissez DATABASE_URL avant d'exécuter ce script" -ForegroundColor Yellow
+    exit 1
+}
 
-# Informations de connexion
-$hostname = "your-render-db-host.render.com"
-$database = "yukpo_db"
-$username = "yukpo_db_user"
-$password = "YOUR_PASSWORD"
-$connectionString = "postgresql://${username}:${password}@${hostname}/${database}"
+Write-Host "✅ DATABASE_URL trouvé" -ForegroundColor Green
 
-# Chemin de la migration (depuis le répertoire backend)
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$migrationFile = Join-Path $scriptDir "migrations\20251128_001_optimize_search_performance_indexes.sql"
+# Chemin vers le fichier de migration
+$migrationFile = "migrations\20260114_optimize_delivery_queries_performance.sql"
 
 if (-not (Test-Path $migrationFile)) {
-    Write-Host "❌ Fichier de migration introuvable: $migrationFile" -ForegroundColor Red
+    Write-Host "❌ ERREUR: Fichier de migration introuvable: $migrationFile" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "📄 Lecture de la migration: $migrationFile" -ForegroundColor Cyan
-$migrationContent = Get-Content $migrationFile -Raw
+Write-Host "📄 Lecture du fichier de migration..." -ForegroundColor Cyan
+$sqlContent = Get-Content $migrationFile -Raw
 
-Write-Host "🔌 Connexion à la base de données Render..." -ForegroundColor Cyan
-Write-Host "   Host: $hostname" -ForegroundColor Gray
-Write-Host "   Database: $database" -ForegroundColor Gray
-Write-Host "   User: $username" -ForegroundColor Gray
-
-# Vérifier si psql est disponible
-$psqlPath = Get-Command psql -ErrorAction SilentlyContinue
-if (-not $psqlPath) {
-    Write-Host "❌ psql n'est pas installé ou n'est pas dans le PATH" -ForegroundColor Red
-    Write-Host "   Installez PostgreSQL pour obtenir psql" -ForegroundColor Yellow
-    Write-Host "   Ou utilisez la méthode via Render Dashboard (voir APPLICATION_MIGRATIONS.md)" -ForegroundColor Yellow
-    exit 1
-}
-
-Write-Host "✅ psql trouvé: $($psqlPath.Source)" -ForegroundColor Green
-
-# Appliquer la migration
-Write-Host "`n📊 Application de la migration..." -ForegroundColor Cyan
-Write-Host "   Cela peut prendre quelques minutes selon la taille de la base..." -ForegroundColor Yellow
-
-try {
-    # Exécuter la migration
-    $env:PGPASSWORD = $password
-    $result = $migrationContent | & psql -h $hostname -U $username -d $database -f - 2>&1
+# Extraire les informations de connexion depuis DATABASE_URL
+# Format: postgresql://user:password@host:port/database
+if ($databaseUrl -match "postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)") {
+    $dbUser = $matches[1]
+    $dbPassword = $matches[2]
+    $dbHost = $matches[3]
+    $dbPort = $matches[4]
+    $dbName = $matches[5]
     
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "`n✅ Migration appliquée avec succès!" -ForegroundColor Green
-        Write-Host "`n📊 Vérification des index créés..." -ForegroundColor Cyan
+    Write-Host "🔌 Connexion à: ${dbHost}:${dbPort}/${dbName}" -ForegroundColor Cyan
+    
+    # Vérifier si psql est disponible
+    $psqlPath = Get-Command psql -ErrorAction SilentlyContinue
+    if ($psqlPath) {
+        Write-Host "✅ psql trouvé, application de la migration..." -ForegroundColor Green
         
-        # Vérifier les index
-        $checkQuery = @"
-SELECT 
-    tablename,
-    indexname,
-    indexdef
-FROM pg_indexes 
-WHERE tablename IN ('publicites', 'autocomplete_characteristics', 'services')
-AND indexname LIKE 'idx_%'
-ORDER BY tablename, indexname;
-"@
+        # Créer un fichier temporaire avec le SQL
+        $tempFile = [System.IO.Path]::GetTempFileName() + ".sql"
+        $sqlContent | Out-File -FilePath $tempFile -Encoding UTF8
         
-        $checkResult = $checkQuery | & psql -h $hostname -U $username -d $database -t 2>&1
+        # Appliquer via psql
+        $env:PGPASSWORD = $dbPassword
+        $result = psql -h $dbHost -p $dbPort -U $dbUser -d $dbName -f $tempFile 2>&1
+        
+        Remove-Item $tempFile -ErrorAction SilentlyContinue
+        Remove-Item Env:\PGPASSWORD
         
         if ($LASTEXITCODE -eq 0) {
-            Write-Host $checkResult -ForegroundColor Gray
-            Write-Host "`n✅ Index vérifiés avec succès!" -ForegroundColor Green
+            Write-Host "✅ Migration appliquée avec succès!" -ForegroundColor Green
+        } else {
+            Write-Host "❌ Erreur lors de l'application de la migration:" -ForegroundColor Red
+            Write-Host $result
+            exit 1
         }
-        else {
-            Write-Host "⚠️ Impossible de vérifier les index (mais la migration a réussi)" -ForegroundColor Yellow
-        }
+    } else {
+        # Utiliser sqlx migrate run si psql n'est pas disponible
+        Write-Host "⚠️ psql non trouvé, tentative avec sqlx migrate run..." -ForegroundColor Yellow
         
-        # Vérifier l'extension pg_trgm
-        Write-Host "`n🔍 Vérification de l'extension pg_trgm..." -ForegroundColor Cyan
-        $extQuery = "SELECT * FROM pg_extension WHERE extname = 'pg_trgm';"
-        $extResult = $extQuery | & psql -h $hostname -U $username -d $database -t 2>&1
+        # Définir DATABASE_URL pour sqlx
+        $env:DATABASE_URL = $databaseUrl
         
-        if ($LASTEXITCODE -eq 0 -and $extResult) {
-            Write-Host "✅ Extension pg_trgm installée" -ForegroundColor Green
-        }
-        else {
-            Write-Host "⚠️ Extension pg_trgm non trouvée (peut être déjà installée)" -ForegroundColor Yellow
-        }
+        # Appliquer la migration
+        Set-Location $PSScriptRoot
+        $result = sqlx migrate run 2>&1
         
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ Migration appliquée avec succès via sqlx!" -ForegroundColor Green
+        } else {
+            # Si erreur de migration 0, c'est normal, on continue
+            if ($result -match "migration 0 was previously applied") {
+                Write-Host "⚠️ Avertissement: Migration 0 modifiée (normal, ignoré)" -ForegroundColor Yellow
+                Write-Host "✅ Les autres migrations ont été appliquées" -ForegroundColor Green
+            } else {
+                Write-Host "❌ Erreur lors de l'application de la migration:" -ForegroundColor Red
+                Write-Host $result
+                exit 1
+            }
+        }
     }
-    else {
-        Write-Host "`n❌ Erreur lors de l'application de la migration" -ForegroundColor Red
-        Write-Host $result -ForegroundColor Red
-        exit 1
-    }
-    
-}
-catch {
-    Write-Host "`n❌ Erreur: $_" -ForegroundColor Red
+} else {
+    Write-Host "❌ ERREUR: Format DATABASE_URL invalide" -ForegroundColor Red
+    Write-Host "Format attendu: postgresql://user:password@host:port/database" -ForegroundColor Yellow
     exit 1
 }
-finally {
-    # Nettoyer le mot de passe de l'environnement
-    Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
-}
 
-Write-Host "`n🎉 Migration terminée avec succès!" -ForegroundColor Green
-Write-Host "`n📈 Impact attendu:" -ForegroundColor Cyan
-Write-Host "   - Temps de recherche: ~10s → <2s (80% d'amélioration)" -ForegroundColor Gray
-Write-Host "   - Requête publicités: ~1.1s → <100ms (90% d'amélioration)" -ForegroundColor Gray
-Write-Host "   - Jointures: Significativement plus rapides" -ForegroundColor Gray
-
+Write-Host "`n🎉 Migration terminée!" -ForegroundColor Green

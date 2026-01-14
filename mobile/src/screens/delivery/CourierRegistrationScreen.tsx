@@ -1,7 +1,7 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -13,12 +13,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import PaymentMethodSelector from '../../components/PaymentMethodSelector';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useToaster } from '../../components/ToasterProvider';
 import { VEHICLE_TRANSPORT_OPTIONS, type VehicleOption, type VehicleType } from '../../config/deliveryConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { deliveryApi } from '../../services/api';
@@ -45,6 +46,7 @@ const CourierRegistrationScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const toaster = useToaster(); // ✅ NOUVEAU: Pour afficher les toasts de confirmation
     const applicationType = (route.params as any)?.applicationType as 'courier' | 'driver' | undefined; // ✅ NOUVEAU: Type d'application (coursier ou chauffeur)
     const isDriverApplication = applicationType === 'driver'; // ✅ NOUVEAU: Indique si c'est une candidature de chauffeur
     const [loading, setLoading] = useState(false);
@@ -104,6 +106,9 @@ const CourierRegistrationScreen: React.FC = () => {
 
     // Comptes de paiement
     const [paymentMethod, setPaymentMethod] = useState<any>(null);
+
+    // ✅ NOUVEAU: Ref pour le scroll view (gestion clavier améliorée)
+    const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
 
     useEffect(() => {
         // ✅ OPTIMISÉ: Charger d'abord les données critiques, puis les partenaires en arrière-plan
@@ -392,6 +397,8 @@ const CourierRegistrationScreen: React.FC = () => {
                     setApplicationStatus('submitted');
                 } else if (status.includes('draft')) {
                     setApplicationStatus('draft');
+                    // ✅ NOUVEAU: Charger les données du brouillon si elles existent
+                    await loadDraftData(data.application);
                 }
             }
             if (data.is_courier && data.courier) {
@@ -401,6 +408,82 @@ const CourierRegistrationScreen: React.FC = () => {
         } catch (error) {
             console.error('[CourierRegistrationScreen] Erreur vérification statut:', error);
             setCheckingStatus(false);
+        }
+    };
+
+    // ✅ NOUVEAU: Charger les données du brouillon dans le formulaire
+    const loadDraftData = async (application: any) => {
+        try {
+            // Les données complètes sont déjà dans application (retournées par /api/courier/me pour les brouillons)
+            if (application.profile_data) {
+                const profile = application.profile_data;
+
+                // Charger les informations personnelles
+                if (profile.personal) {
+                    const personal = profile.personal;
+                    if (personal.fullName) setFullName(personal.fullName);
+                    if (personal.phone) setPhone(personal.phone);
+                    if (personal.address) setAddress(personal.address);
+                    if (personal.city) {
+                        setCity(personal.city);
+                        // Créer un LocationObject minimal pour la ville
+                        setCityLocation({
+                            raw: personal.city,
+                            place_name: personal.city,
+                            components: { ville: personal.city },
+                        });
+                    }
+                    if (personal.country) {
+                        setCountry(personal.country);
+                        setCountryLocation({
+                            raw: personal.country,
+                            place_name: personal.country,
+                            components: { pays: personal.country },
+                        });
+                    }
+                    if (personal.dateOfBirth) setDateOfBirth(personal.dateOfBirth);
+                    if (personal.idNumber) setIdNumber(personal.idNumber);
+                }
+
+                // Charger les informations de transport
+                if (profile.transport) {
+                    const transport = profile.transport;
+                    if (transport.vehicleType) setVehicleType(transport.vehicleType);
+                    if (transport.vehicleBrand) setVehicleBrand(transport.vehicleBrand);
+                    if (transport.vehicleModel) setVehicleModel(transport.vehicleModel);
+                    if (transport.licensePlate) setLicensePlate(transport.licensePlate);
+                }
+
+                // Charger le type de coursier
+                if (profile.courier_type) {
+                    setCourierType(profile.courier_type);
+                }
+
+                // Charger les disponibilités
+                if (profile.availability) {
+                    if (profile.availability.days) setAvailabilityDays(profile.availability.days);
+                    if (profile.availability.hours) {
+                        if (profile.availability.hours.start) setAvailabilityStart(profile.availability.hours.start);
+                        if (profile.availability.hours.end) setAvailabilityEnd(profile.availability.hours.end);
+                    }
+                }
+
+                // Charger bio et expérience
+                if (profile.bio) setBio(profile.bio);
+                if (profile.experience) setExperience(profile.experience);
+
+                // Charger le partenaire
+                if (profile.partner_id) setSelectedPartnerId(profile.partner_id);
+
+                // Charger le mode de paiement
+                if (profile.paymentMethod) setPaymentMethod(profile.paymentMethod);
+
+                console.log('[CourierRegistrationScreen] ✅ Données du brouillon chargées');
+                toaster.info('📝 Brouillon chargé. Vous pouvez continuer à compléter votre candidature.');
+            }
+        } catch (error) {
+            console.error('[CourierRegistrationScreen] Erreur chargement brouillon:', error);
+            // Ne pas bloquer l'utilisateur si le chargement du brouillon échoue
         }
     };
 
@@ -657,11 +740,30 @@ const CourierRegistrationScreen: React.FC = () => {
 
             if (response.success) {
                 setApplicationStatus(submit ? 'submitted' : 'draft');
+                
+                // ✅ NOUVEAU: Afficher un toast de confirmation immédiatement
+                if (submit) {
+                    toaster.success(
+                        '✅ Candidature soumise avec succès !\n' +
+                        'Votre formulaire a été enregistré et est en attente de validation par les administrateurs. ' +
+                        'Vous recevrez une notification une fois la décision prise.'
+                    );
+                } else {
+                    toaster.success(
+                        '💾 Brouillon enregistré !\n' +
+                        'Votre candidature a été sauvegardée. Vous pouvez la compléter et la soumettre plus tard.'
+                    );
+                }
+                
+                // ✅ AMÉLIORÉ: Alert avec message plus clair
                 Alert.alert(
                     submit ? '✅ Candidature soumise' : '💾 Brouillon enregistré',
                     submit
-                        ? 'Votre candidature a été soumise avec succès. Elle sera examinée par notre équipe.'
-                        : 'Votre candidature a été enregistrée en brouillon.',
+                        ? 'Votre candidature a été soumise avec succès et est en attente de validation par les administrateurs.\n\n' +
+                          'Vous recevrez une notification une fois la décision prise. ' +
+                          'Merci de votre patience !'
+                        : 'Votre candidature a été enregistrée en brouillon.\n\n' +
+                          'Vous pouvez la compléter et la soumettre plus tard depuis cet écran.',
                     [
                         {
                             text: 'OK',
@@ -774,12 +876,24 @@ const CourierRegistrationScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            <KeyboardAwareScreen 
-                style={styles.scroll} 
-                contentContainerStyle={styles.scrollContent}
+            <KeyboardAwareScrollView
+                ref={scrollViewRef}
+                style={styles.scroll}
+                // ✅ AMÉLIORÉ: Configuration optimale pour éviter que le clavier masque les champs
+                enableOnAndroid={true}
+                enableAutomaticScroll={true}
+                extraHeight={120} // ✅ AUGMENTÉ: Plus d'espace pour Android
+                extraScrollHeight={150} // ✅ AUGMENTÉ: Plus d'espace pour iOS
+                enableResetScrollToCoords={false}
+                keyboardOpeningTime={0}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={true}
+                scrollEnabled={true}
+                bounces={true}
+                contentInsetAdjustmentBehavior="never"
+                // ✅ NOUVEAU: Padding supplémentaire en bas pour éviter que le clavier masque les boutons
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: 250 }]}
             >
                 <View style={styles.header}>
                     <Text style={styles.title}>Devenir coursier Yukpo</Text>
@@ -1282,20 +1396,30 @@ const CourierRegistrationScreen: React.FC = () => {
 
                 {/* Actions */}
                 <View style={styles.actions}>
-                    <NativeButton
-                        title="Enregistrer en brouillon"
-                        variant="outline"
-                        onPress={() => handleSubmit(false)}
-                        disabled={loading}
-                    />
-                    <NativeButton
-                        title={loading ? 'Envoi en cours...' : 'Soumettre la candidature'}
-                        variant="primary"
-                        onPress={() => handleSubmit(true)}
-                        disabled={loading}
-                    />
+                    <View style={styles.actionButtonContainer}>
+                        <NativeButton
+                            title="Enregistrer en brouillon"
+                            variant="outline"
+                            onPress={() => handleSubmit(false)}
+                            disabled={loading}
+                        />
+                        <Text style={styles.actionHelperText}>
+                            💾 Sauvegardez votre progression sans soumettre. Vous pourrez compléter et soumettre plus tard.
+                        </Text>
+                    </View>
+                    <View style={styles.actionButtonContainer}>
+                        <NativeButton
+                            title={loading ? 'Envoi en cours...' : 'Soumettre la candidature'}
+                            variant="primary"
+                            onPress={() => handleSubmit(true)}
+                            disabled={loading}
+                        />
+                        <Text style={styles.actionHelperText}>
+                            ✅ Soumettez votre candidature pour validation. Elle sera examinée par les administrateurs.
+                        </Text>
+                    </View>
                 </View>
-            </KeyboardAwareScreen>
+            </KeyboardAwareScrollView>
         </SafeNativeView>
     );
 };
@@ -1320,7 +1444,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: 16,
-        paddingBottom: 100,
+        paddingBottom: 250, // ✅ AUGMENTÉ: Plus d'espace en bas pour éviter que le clavier masque les boutons
     },
     header: {
         marginBottom: 24,
@@ -1496,8 +1620,18 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
     },
     actions: {
-        gap: 12,
+        gap: 16,
         marginTop: 8,
+    },
+    actionButtonContainer: {
+        gap: 6,
+    },
+    actionHelperText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        paddingHorizontal: 4,
+        lineHeight: 16,
     },
     statusContainer: {
         flex: 1,

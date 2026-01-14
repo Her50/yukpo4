@@ -194,6 +194,25 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         }
     }, [currentIndex, allMedia.length]);
 
+    // ✅ NOUVEAU 2026-01-14: Scroll automatique pour les médias (comme TikTok/Instagram)
+    useEffect(() => {
+        if (allMedia.length <= 1) return; // Pas de scroll si un seul média
+
+        const autoScrollInterval = setInterval(() => {
+            if (scrollViewRef.current) {
+                const nextIndex = (currentIndex + 1) % allMedia.length;
+                scrollViewRef.current.scrollTo({
+                    x: nextIndex * CAROUSEL_WIDTH,
+                    y: 0,
+                    animated: true,
+                });
+                setCurrentIndex(nextIndex);
+            }
+        }, 5000); // Scroll automatique toutes les 5 secondes
+
+        return () => clearInterval(autoScrollInterval);
+    }, [currentIndex, allMedia.length]);
+
     // ✅ GÉANT-LEVEL: Préchargement agressif (3-5 images suivantes comme TikTok)
     useEffect(() => {
         if (allMedia.length === 0) return;

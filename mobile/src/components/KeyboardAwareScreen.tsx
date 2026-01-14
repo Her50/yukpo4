@@ -1,9 +1,13 @@
 /**
  * KeyboardAwareScreen - Composant wrapper pour gérer automatiquement le clavier mobile
  * 
+ * ✅ SOLUTION RÉUTILISABLE : Ce composant peut être utilisé dans TOUS les écrans avec formulaires.
+ * 
  * Ce composant résout le problème où le clavier virtuel masque les champs de saisie.
  * Il utilise react-native-keyboard-aware-scroll-view pour remonter automatiquement
  * le contenu lorsque le clavier s'ouvre.
+ * 
+ * 📖 Guide d'utilisation complet : docs/KEYBOARD_AWARE_SCREEN_GUIDE.md
  * 
  * Usage:
  * ```tsx
@@ -11,6 +15,16 @@
  *   <YourContent />
  * </KeyboardAwareScreen>
  * ```
+ * 
+ * @example
+ * // Formulaire simple
+ * <KeyboardAwareScreen style={styles.container}>
+ *   <View>
+ *     <TextInput placeholder="Nom" />
+ *     <TextInput placeholder="Email" />
+ *     <Button title="Envoyer" />
+ *   </View>
+ * </KeyboardAwareScreen>
  */
 
 import React, { ReactNode, Ref } from 'react';
@@ -80,11 +94,11 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       ref={innerRef}
       style={[styles.scrollView, style]}
       contentContainerStyle={[styles.contentContainer, contentContainerStyle]}
-      // ✅ Configuration Android (crucial pour résoudre le problème)
+      // ✅ AMÉLIORÉ: Configuration Android (crucial pour résoudre le problème)
       enableOnAndroid={true}
       enableAutomaticScroll={true}
-      extraHeight={Platform.OS === 'android' ? 100 : 0}
-      extraScrollHeight={Platform.OS === 'ios' ? extraScrollHeight : 0}
+      extraHeight={Platform.OS === 'android' ? 150 : 0} // ✅ AUGMENTÉ: Plus d'espace pour Android
+      extraScrollHeight={Platform.OS === 'ios' ? Math.max(extraScrollHeight, 150) : 0} // ✅ AUGMENTÉ: Minimum 150px pour iOS
       // ✅ Configuration iOS
       enableResetScrollToCoords={false}
       keyboardOpeningTime={0}
@@ -97,6 +111,10 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       contentInsetAdjustmentBehavior="never"
       // ✅ Améliorer la réactivité
       keyboardDismissMode="interactive"
+      // ✅ NOUVEAU: Scroll automatique vers le champ actif
+      enableResetScrollToCoords={false}
+      // ✅ NOUVEAU: Délai minimal pour une réactivité optimale
+      keyboardOpeningTime={0}
     >
       {children}
     </KeyboardAwareScrollView>
@@ -112,7 +130,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flexGrow: 1,
-    paddingBottom: Platform.OS === 'android' ? 100 : 50, // ✅ Plus d'espace en bas pour Android
+    paddingBottom: Platform.OS === 'android' ? 250 : 200, // ✅ AUGMENTÉ: Beaucoup plus d'espace en bas pour éviter que le clavier masque les champs
   },
 });
 

@@ -160,7 +160,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 );
                             }
                         }
-                        let _ = sqlx::query("SET idle_in_transaction_session_timeout = '600s'")
+                        // ✅ OPTIMISÉ 2026-01-14: Réduire idle_in_transaction_session_timeout pour éviter les connexions bloquées
+                        let _ = sqlx::query("SET idle_in_transaction_session_timeout = '180s'")
                             .execute(&mut *conn)
                             .await;
                         Ok(())

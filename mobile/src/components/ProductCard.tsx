@@ -254,6 +254,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // ✅ NOUVEAU 2026-01-13: Ref pour le ScrollView des variations de prix
   const variantsScrollRef = useRef<ScrollView>(null);
   const [isScrollingManually, setIsScrollingManually] = useState(false);
+  // ✅ NOUVEAU 2026-01-14: État pour suivre l'index actuel des variations (pour scroll automatique)
+  const [currentVariantIndex, setCurrentVariantIndex] = useState(0);
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
   const [chatContext, setChatContext] = useState<{
     type: 'service' | 'private';
@@ -388,66 +390,67 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const isPopular = usageCount >= 5;
   const isTrending = usageCount >= 10;
 
-  // ✅ PHASE 4: Extraire les images et vidéos depuis product/service avec fallbacks multiples
-  // ✅ CORRIGÉ 2026-01-13: Structure de stockage des médias dans la base de données:
-  // 1. service_products.product_data->'images' et product_data->'videos' (nouveau système)
-  // 2. services.data->'produits'[index].images et produits[index].videos (ancien système)
-  // 3. services.data->'images' et data->'videos' (médias du service)
-  // ✅ CORRIGÉ 2026-01-13: Vérifier d'abord directement dans product (ajouté par ResultatBesoinScreen depuis service_products)
-  // ✅ CORRIGÉ 2026-01-13: Filtrer les valeurs invalides et normaliser les URLs
+  // ✅ CORRIGÉ 2026-01-14: Extraire les images et vidéos depuis product/service avec fallbacks multiples
+  // ✅ CORRIGÉ: Priorité absolue aux médias passés directement par ResultatBesoinScreen (product.images/videos)
+  // Structure de stockage des médias dans la base de données:
+  // 1. product.images/videos (passés directement par ResultatBesoinScreen depuis service_products ou media table)
+  // 2. productData.images/videos (product.product_data ou product directement)
+  // 3. service.data->'produits'[index].images/videos (ancien système)
+  // 4. service.data->'images'/'videos' (médias du service)
+  // 5. service.images/videos (médias du service au niveau racine)
   
-  // Priorité 1: product.images/videos (depuis service_products.product_data, ajouté par ResultatBesoinScreen)
-  // Priorité 2: productData.images/videos (product.product_data ou product directement)
-  // Priorité 3: service.data->'produits'[index].images/videos (ancien système)
-  // Priorité 4: service.data->'images'/'videos' (médias du service)
-  // Priorité 5: service.images/videos (médias du service au niveau racine)
-  
-  const rawImages = Array.isArray(product.images) ? product.images
-    : Array.isArray(productData.images) ? productData.images 
-    : Array.isArray(productData.data?.images) ? productData.data.images
+  // ✅ PRIORITÉ 1: product.images/videos (passés directement par ResultatBesoinScreen)
+  // ✅ CORRIGÉ: Vérifier d'abord product.images/videos car ils sont déjà extraits et normalisés par ResultatBesoinScreen
+  const rawImages = Array.isArray(product.images) && product.images.length > 0 ? product.images
+    : Array.isArray(productData.images) && productData.images.length > 0 ? productData.images 
+    : Array.isArray(productData.data?.images) && productData.data.images.length > 0 ? productData.data.images
     : Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex]
       ? (service.data.produits[productIndex].images || [])
-    : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
-    : Array.isArray(service?.data?.images) ? service.data.images
-    : Array.isArray(service?.images) ? service.images
+    : Array.isArray(service?.data?.images?.valeur) && service.data.images.valeur.length > 0 ? service.data.images.valeur
+    : Array.isArray(service?.data?.images) && service.data.images.length > 0 ? service.data.images
+    : Array.isArray(service?.images) && service.images.length > 0 ? service.images
     : [];
   
   // Filtrer et normaliser les images avec la fonction globale
   const images = rawImages
     .map((img: any) => normalizeMediaUrl(img, 'image'))
-    .filter((img): img is string => img !== null);
+    .filter((img): img is string => img !== null && img !== '');
   
-  const rawVideos = Array.isArray(product.videos) ? product.videos
-    : Array.isArray(productData.videos) ? productData.videos
-    : Array.isArray(productData.data?.videos) ? productData.data.videos
+  // ✅ PRIORITÉ 1: product.videos (passés directement par ResultatBesoinScreen)
+  const rawVideos = Array.isArray(product.videos) && product.videos.length > 0 ? product.videos
+    : Array.isArray(productData.videos) && productData.videos.length > 0 ? productData.videos
+    : Array.isArray(productData.data?.videos) && productData.data.videos.length > 0 ? productData.data.videos
     : Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex]
       ? (service.data.produits[productIndex].videos || [])
-    : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
-    : Array.isArray(service?.data?.videos) ? service.data.videos
-    : Array.isArray(service?.videos) ? service.videos
+    : Array.isArray(service?.data?.videos?.valeur) && service.data.videos.valeur.length > 0 ? service.data.videos.valeur
+    : Array.isArray(service?.data?.videos) && service.data.videos.length > 0 ? service.data.videos
+    : Array.isArray(service?.videos) && service.videos.length > 0 ? service.videos
     : [];
   
   // Filtrer et normaliser les vidéos avec la fonction globale
   const videos = rawVideos
     .map((vid: any) => normalizeMediaUrl(vid, 'video'))
-    .filter((vid): vid is string => vid !== null);
+    .filter((vid): vid is string => vid !== null && vid !== '');
   
-  // ✅ DEBUG 2026-01-13: Logger pour diagnostiquer les problèmes de médias
-  if (rawImages.length > 0 || rawVideos.length > 0 || images.length > 0 || videos.length > 0) {
-    console.log(`[ProductCard] Médias extraits:`, {
-      rawImagesCount: rawImages.length,
-      rawVideosCount: rawVideos.length,
-      imagesCount: images.length,
-      videosCount: videos.length,
-      productHasImages: !!product.images,
-      productDataHasImages: !!productData.images,
-      productIndex,
-      serviceHasImages: !!service?.images,
-      serviceDataProduitsLength: Array.isArray(service?.data?.produits) ? service.data.produits.length : 0,
-      firstImage: images[0]?.substring(0, 50), // Logger les 50 premiers caractères
-      firstVideo: videos[0]?.substring(0, 50),
-    });
-  }
+  // ✅ DEBUG 2026-01-14: Logger pour diagnostiquer les problèmes de médias
+  useEffect(() => {
+    if (rawImages.length > 0 || rawVideos.length > 0 || images.length > 0 || videos.length > 0) {
+      console.log(`[ProductCard] Médias extraits pour service ${serviceId}, produit ${productIndex}:`, {
+        rawImagesCount: rawImages.length,
+        rawVideosCount: rawVideos.length,
+        imagesCount: images.length,
+        videosCount: videos.length,
+        productHasImages: !!product.images,
+        productHasVideos: !!product.videos,
+        productDataHasImages: !!productData.images,
+        productDataHasVideos: !!productData.videos,
+        serviceHasImages: !!service?.images,
+        serviceHasVideos: !!service?.videos,
+        firstImage: images[0]?.substring(0, 80),
+        firstVideo: videos[0]?.substring(0, 80),
+      });
+    }
+  }, [rawImages.length, rawVideos.length, images.length, videos.length, serviceId, productIndex]);
 
   const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
     ? variants[selectedVariantIndex]
@@ -507,7 +510,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       (productData.prix !== undefined || productData.price !== undefined) // A un prix
     ));
 
-  // ✅ NOUVEAU: Vérifier si le produit a une configuration de livraison automatique
+  // ✅ CORRIGÉ 2026-01-14: Vérifier si le produit a une configuration de livraison automatique
+  // ✅ CORRIGÉ: Gérer correctement le cas où la config n'existe pas (404) vs erreur
   useEffect(() => {
     const checkDeliveryConfig = async () => {
       if (!isProduct || !serviceId || productIndex < 0) {
@@ -517,10 +521,22 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
       try {
         const config = await productDeliveryService.getDeliveryConfig(serviceId, productIndex);
-        setHasDeliveryConfig(config?.is_configured === true);
-      } catch (error) {
-        console.error('[ProductCard] Erreur vérification config livraison:', error);
-        setHasDeliveryConfig(false);
+        // ✅ CORRIGÉ: Vérifier que config n'est pas null ET que is_configured est true
+        if (config && config.is_configured === true) {
+          setHasDeliveryConfig(true);
+        } else {
+          // Config n'existe pas ou n'est pas configurée
+          setHasDeliveryConfig(false);
+        }
+      } catch (error: any) {
+        // ✅ CORRIGÉ: Ne pas logger les erreurs 404 comme des erreurs critiques
+        if (error?.message?.includes('404') || error?.response?.status === 404) {
+          // Configuration non trouvée = pas de livraison disponible
+          setHasDeliveryConfig(false);
+        } else {
+          console.error('[ProductCard] Erreur vérification config livraison:', error);
+          setHasDeliveryConfig(false);
+        }
       }
     };
 
@@ -599,19 +615,25 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // ✅ PROFESSIONNEL 2026-01-13: Variable simplifiée pour vérifier la présence de GPS
   const hasGPS = !!(product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur);
 
-  // ✅ CORRIGÉ 2026-01-13: Améliorer l'extraction du pays depuis la localisation
+  // ✅ CORRIGÉ 2026-01-14: Améliorer l'extraction du pays depuis la localisation
   // Priorité 1: Depuis service?.data?.pays?.valeur (données backend)
-  // Priorité 2: Depuis chosenLocation (extraire le pays depuis la chaîne de localisation)
-  // Priorité 3: Depuis locationVector (dernier élément)
-  // Priorité 4: Depuis productData.pays
-  // ✅ CORRIGÉ 2026-01-13: Filtrer les valeurs "false" string
+  // Priorité 2: Depuis les composants de localisation (lieu_produit.composants.pays)
+  // Priorité 3: Depuis chosenLocation (extraire le pays depuis la chaîne de localisation)
+  // Priorité 4: Depuis locationVector (dernier élément)
+  // Priorité 5: Depuis productData.pays
+  // ✅ CORRIGÉ 2026-01-14: Filtrer les valeurs "false" string et valeurs vides
   const paysFromService = filterBooleanValue(service?.data?.pays?.valeur, '');
+  const paysFromLocationComponents = filterBooleanValue(
+    service?.data?.lieu_produit?.valeur?.composants?.pays 
+    || service?.data?.lieu_produit?.valeur?.valeur?.components?.pays,
+    ''
+  );
   const paysFromLocation = chosenLocation ? extractCountryFromLocation(chosenLocation) : null;
   const paysFromVector = locationVector.length > 0 ? filterBooleanValue(locationVector[locationVector.length - 1], '') : '';
   const paysFromProduct = filterBooleanValue(productData.pays, '');
   
-  const pays = paysFromService || paysFromLocation || paysFromVector || paysFromProduct || null;
-  const countryFlag = pays ? getCountryFlag(pays) : '';
+  const pays = paysFromService || paysFromLocationComponents || paysFromLocation || paysFromVector || paysFromProduct || null;
+  const countryFlag = pays && pays.trim() !== '' ? getCountryFlag(pays) : '';
 
   const commentServiceId = Number(productData._serviceId || product.service_id || service?.id || 0);
   const serviceTitleForComments =
@@ -859,37 +881,40 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     loadReactions();
   }, [loadReactions]);
 
-  // ✅ NOUVEAU 2026-01-13: Scroll automatique horizontal pour les variations de prix
+  // ✅ CORRIGÉ 2026-01-14: Scroll automatique horizontal pour les variations de prix
+  // ✅ AMÉLIORÉ: Synchronisation avec l'état réel du scroll et gestion améliorée
   useEffect(() => {
     if (!hasVariant || variants.length <= 1 || isScrollingManually) return;
 
-    let currentIndex = 0;
-    const cardWidth = 120 + 8; // width + marginRight
-    const maxScroll = (variants.length - 1) * cardWidth;
+    const cardWidth = 120 + 8; // width + marginRight = 128 (correspond à snapToInterval)
 
     const autoScrollInterval = setInterval(() => {
       if (variantsScrollRef.current && !isScrollingManually) {
-        if (currentIndex < variants.length - 1) {
-          currentIndex++;
-          variantsScrollRef.current.scrollTo({
-            x: currentIndex * cardWidth,
+        setCurrentVariantIndex((prevIndex) => {
+          const nextIndex = (prevIndex + 1) % variants.length;
+          
+          // Scroll vers la prochaine variation
+          variantsScrollRef.current?.scrollTo({
+            x: nextIndex * cardWidth,
             y: 0,
             animated: true,
           });
-        } else {
-          // Revenir au début
-          currentIndex = 0;
-          variantsScrollRef.current.scrollTo({
-            x: 0,
-            y: 0,
-            animated: true,
-          });
-        }
+          
+          return nextIndex;
+        });
       }
-    }, 3000); // Scroll toutes les 3 secondes
+    }, 3000); // ✅ Scroll automatique toutes les 3 secondes
 
     return () => clearInterval(autoScrollInterval);
   }, [hasVariant, variants.length, isScrollingManually]);
+
+  // ✅ NOUVEAU 2026-01-14: Synchroniser currentVariantIndex avec le scroll réel
+  const handleVariantsScroll = (event: any) => {
+    const contentOffsetX = event.nativeEvent.contentOffset.x;
+    const cardWidth = 120 + 8;
+    const index = Math.round(contentOffsetX / cardWidth);
+    setCurrentVariantIndex(index);
+  };
 
   const handleReaction = async (reactionType: string) => {
     if (!serviceId || !resolvedProductId) {
@@ -1021,7 +1046,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
             )}
 
             <View style={[styles.content, !hasMedia && styles.contentCompact]}>
-              {/* ✅ NOUVEAU 2026-01-14: Ligne supérieure avec distance (cliquable), statistiques centrées, et partage à droite */}
+              {/* ✅ OPTIMISÉ 2026-01-14: Header unifié avec distance, stats et partage - Disposition équilibrée */}
               <View style={styles.topHeaderRow}>
                 {/* Distance à gauche (cliquable pour navigation) */}
                 {hasDistance && distanceKm !== undefined && (
@@ -1040,7 +1065,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   </TouchableOpacity>
                 )}
                 
-                {/* Statistiques centrées */}
+                {/* Statistiques centrées - Espacement équilibré */}
                 {topStatsData.length > 0 && (
                   <View style={styles.topStatsRowCentered}>
                     {topStatsData.map((stat) => (
@@ -1060,7 +1085,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   </View>
                 )}
                 
-                {/* Bouton partage discret à droite */}
+                {/* Bouton partage à droite - Visuellement équilibré */}
                 <TouchableOpacity
                   style={styles.shareButtonCompact}
                   onPress={handleShare}
@@ -1070,14 +1095,29 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 </TouchableOpacity>
               </View>
 
-              {/* ✅ NOUVEAU 2026-01-14: Ligne titre + nom prestataire */}
-              <View style={styles.titleRow}>
+              {/* ✅ OPTIMISÉ 2026-01-14: Section produit - Titre en pleine largeur pour meilleure lisibilité */}
+              <View style={styles.productHeaderSection}>
                 <Text style={styles.productName} numberOfLines={2}>
                   {filterBooleanValue(
                     productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur,
                     'Produit'
                   )}
                 </Text>
+                
+                {/* ✅ OPTIMISÉ 2026-01-14: Description juste sous le titre pour meilleure hiérarchie */}
+                {(productData.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur) && (
+                  <Text style={styles.productDescription} numberOfLines={2}>
+                    {filterBooleanValue(
+                      productData.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur,
+                      ''
+                    )}
+                  </Text>
+                )}
+              </View>
+
+              {/* ✅ OPTIMISÉ 2026-01-14: Section prestataire et localisation - Ligne compacte et équilibrée */}
+              <View style={styles.prestataireLocationRow}>
+                {/* Nom prestataire */}
                 {prestataire.nom && (
                   <TouchableOpacity
                     style={styles.prestataireNameCompact}
@@ -1088,39 +1128,32 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     }}
                     activeOpacity={0.7}
                   >
+                    <SafeIcon name="user" size={10} color="#6366F1" />
                     <Text style={styles.prestataireNameText} numberOfLines={1}>
                       {filterBooleanValue(prestataire.nom, 'Prestataire')}
                     </Text>
                   </TouchableOpacity>
                 )}
+                
+                {/* Adresse avec drapeau - Espacement optimal */}
+                {chosenLocation && (
+                  <View style={styles.addressRowCompact}>
+                    <SafeIcon name="map-pin" size={10} color="#6B7280" />
+                    <Text style={styles.addressTextCompact} numberOfLines={1}>
+                      {chosenLocation}
+                    </Text>
+                    {countryFlag && countryFlag !== '🌍' && (
+                      <Text style={styles.addressFlagCompact}>{countryFlag}</Text>
+                    )}
+                  </View>
+                )}
               </View>
 
-              {/* ✅ NOUVEAU 2026-01-14: Description (début) */}
-              {(productData.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur) && (
-                <Text style={styles.productDescription} numberOfLines={2}>
-                  {filterBooleanValue(
-                    productData.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur,
-                    ''
-                  )}
-                </Text>
-              )}
-
-              {/* ✅ NOUVEAU 2026-01-14: Adresse textuelle sous nom prestataire avec drapeau */}
-              {chosenLocation && (
-                <View style={styles.addressRow}>
-                  <Text style={styles.addressText} numberOfLines={1}>
-                    {chosenLocation}
-                  </Text>
-                  {countryFlag && (
-                    <Text style={styles.addressFlag}>{countryFlag}</Text>
-                  )}
-                </View>
-              )}
-
+              {/* ✅ OPTIMISÉ 2026-01-14: Statistiques intégrées de manière plus discrète et élégante */}
               {(totalReactions > 0 || usageCount > 0) && (
                 <LinearGradient
                   colors={['#EEF2FF', '#FFFFFF']}
-                  style={styles.metricsCard}
+                  style={styles.metricsCardCompact}
                 >
                   <View style={styles.compactStatsRow}>
                     {totalReactions > 0 && (
@@ -1179,21 +1212,23 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   <ScrollView
                     ref={variantsScrollRef}
                     horizontal
-                    showsHorizontalScrollIndicator={true}
+                    showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.variantsScrollContainer}
+                    onScroll={handleVariantsScroll}
+                    scrollEventThrottle={16}
                     onScrollBeginDrag={() => setIsScrollingManually(true)}
                     onMomentumScrollEnd={() => {
-                      // Réactiver le scroll automatique après 5 secondes d'inactivité
+                      // ✅ CORRIGÉ: Réactiver le scroll automatique après 5 secondes d'inactivité
                       setTimeout(() => setIsScrollingManually(false), 5000);
                     }}
                     onScrollEndDrag={() => {
-                      // Réactiver le scroll automatique après 5 secondes d'inactivité
+                      // ✅ CORRIGÉ: Réactiver le scroll automatique après 5 secondes d'inactivité
                       setTimeout(() => setIsScrollingManually(false), 5000);
                     }}
-                    scrollEventThrottle={16}
                     decelerationRate="fast"
-                    snapToInterval={128} // cardWidth + marginRight
+                    snapToInterval={128} // ✅ CORRIGÉ: cardWidth (120) + marginRight (8) = 128
                     snapToAlignment="start"
+                    pagingEnabled={false} // ✅ Utiliser snapToInterval au lieu de pagingEnabled
                   >
                     {variants.map((variant: any, i: number) => (
                       <TouchableOpacity
@@ -1300,7 +1335,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 </TouchableOpacity>
               </View>
 
-              {/* ✅ NOUVEAU 2026-01-14: Commentaires réduits */}
+              {/* ✅ CORRIGÉ 2026-01-14: Commentaires avec hauteur adaptative (non coupés) */}
               {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
                 <View style={styles.commentsContainerCompact}>
                   <ProductCommentsSection
@@ -1381,15 +1416,17 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 const styles = StyleSheet.create({
   cardContainer: {
     overflow: 'hidden',
-    borderRadius: 12, // ✅ COMPACT 2026-01-13: 16 -> 12
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    borderRadius: 14, // ✅ OPTIMISÉ 2026-01-14: 12 -> 14 pour meilleur rendu
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', // ✅ OPTIMISÉ: Plus opaque pour meilleur contraste
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.25)',
+    borderColor: 'rgba(148, 163, 184, 0.2)', // ✅ OPTIMISÉ: Bordure plus subtile
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 }, // ✅ COMPACT 2026-01-13: 4 -> 2
-    shadowOpacity: 0.06, // ✅ COMPACT 2026-01-13: 0.08 -> 0.06
-    shadowRadius: 8, // ✅ COMPACT 2026-01-13: 12 -> 8
-    elevation: 2, // ✅ COMPACT 2026-01-13: 4 -> 2
+    shadowOffset: { width: 0, height: 3 }, // ✅ OPTIMISÉ: Ombre légèrement plus prononcée
+    shadowOpacity: 0.08, // ✅ OPTIMISÉ: Ombre plus visible
+    shadowRadius: 10, // ✅ OPTIMISÉ: Ombre plus douce
+    elevation: 3, // ✅ OPTIMISÉ: Élévation Android
+    width: '100%', // ✅ OPTIMISÉ: Largeur maximale
+    maxWidth: width - 32, // ✅ OPTIMISÉ: Largeur maximale avec marges
   },
   cardContainerCompact: {
     borderRadius: 16,
@@ -1472,24 +1509,25 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   content: {
-    padding: 6, // ✅ RÉDUIT 2026-01-14: Optimisé pour nouvelle structure
-    gap: 4, // ✅ RÉDUIT 2026-01-14: Espacement minimal
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
+    padding: 12, // ✅ OPTIMISÉ 2026-01-14: Padding uniforme (12px = 3x4px)
+    gap: 8, // ✅ OPTIMISÉ: Espacement uniforme (8px = 2x4px) pour meilleure cohérence
+    backgroundColor: 'rgba(255, 255, 255, 0.98)', // ✅ OPTIMISÉ: Fond plus opaque
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
   },
   contentCompact: {
     paddingTop: 6, // ✅ RÉDUIT 2026-01-14
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
-  // ✅ NOUVEAU 2026-01-14: Ligne supérieure avec distance, stats, partage
+  // ✅ OPTIMISÉ 2026-01-14: Header unifié - Disposition équilibrée avec espacement uniforme
   topHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
-    gap: 4,
+    marginBottom: 8, // ✅ OPTIMISÉ: 8px (2x4px) pour espacement uniforme
+    gap: 8, // ✅ OPTIMISÉ: 8px pour espacement uniforme entre éléments
+    minHeight: 28, // ✅ OPTIMISÉ: Hauteur minimale pour alignement vertical
   },
   distanceBadgeClickable: {
     flexDirection: 'row',
@@ -1529,57 +1567,70 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: 'transparent',
   },
-  // ✅ NOUVEAU 2026-01-14: Ligne titre + nom prestataire
-  titleRow: {
+  // ✅ OPTIMISÉ 2026-01-14: Section produit - Titre et description avec hiérarchie claire
+  productHeaderSection: {
+    marginBottom: 8, // ✅ OPTIMISÉ: 8px (2x4px) pour espacement uniforme
+  },
+  // ✅ OPTIMISÉ 2026-01-14: Description - Positionnée juste sous le titre
+  productDescription: {
+    fontSize: 11, // ✅ OPTIMISÉ: Légèrement plus grand pour meilleure lisibilité
+    color: '#6B7280',
+    lineHeight: 16, // ✅ OPTIMISÉ: Line height augmenté pour meilleure lisibilité
+    marginTop: 4, // ✅ OPTIMISÉ: 4px d'espacement après le titre
+  },
+  // ✅ OPTIMISÉ 2026-01-14: Section prestataire et localisation - Ligne compacte et équilibrée
+  prestataireLocationRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 2,
+    gap: 8, // ✅ OPTIMISÉ: 8px entre prestataire et adresse
+    marginBottom: 8, // ✅ OPTIMISÉ: 8px avant la section suivante
+    flexWrap: 'wrap', // ✅ OPTIMISÉ: Permet le retour à la ligne si nécessaire
   },
   prestataireNameCompact: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: '#F9FAFB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4, // ✅ OPTIMISÉ: 4px entre icône et texte
+    paddingHorizontal: 8, // ✅ OPTIMISÉ: 8px padding horizontal
+    paddingVertical: 4, // ✅ OPTIMISÉ: 4px padding vertical
+    borderRadius: 8, // ✅ OPTIMISÉ: 8px border radius
+    backgroundColor: '#F3F4F6', // ✅ OPTIMISÉ: Fond plus subtil
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    maxWidth: '40%',
+    flexShrink: 1, // ✅ OPTIMISÉ: Permet de rétrécir si nécessaire
+    maxWidth: '48%', // ✅ OPTIMISÉ: Maximum 48% pour laisser place à l'adresse
   },
   prestataireNameText: {
     fontSize: 10,
     color: '#374151',
     fontWeight: '600',
+    flexShrink: 1,
   },
-  // ✅ NOUVEAU 2026-01-14: Description
-  productDescription: {
-    fontSize: 10,
-    color: '#6B7280',
-    lineHeight: 14,
-    marginBottom: 4,
-  },
-  // ✅ NOUVEAU 2026-01-14: Adresse avec drapeau
-  addressRow: {
+  // ✅ OPTIMISÉ 2026-01-14: Adresse compacte avec drapeau
+  addressRowCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
+    gap: 4, // ✅ OPTIMISÉ: 4px entre icône, texte et drapeau
+    flex: 1, // ✅ OPTIMISÉ: Prend l'espace restant
+    minWidth: '48%', // ✅ OPTIMISÉ: Minimum 48% pour équilibrer avec prestataire
   },
-  addressText: {
+  addressTextCompact: {
     fontSize: 10,
     color: '#6B7280',
     flex: 1,
+    fontWeight: '500',
   },
-  addressFlag: {
+  addressFlagCompact: {
     fontSize: 14,
+    marginLeft: 2,
   },
-  // ✅ NOUVEAU 2026-01-14: Actions sur même ligne
+  // ✅ OPTIMISÉ 2026-01-14: Actions - Boutons bien visibles avec espacement uniforme
   actionsRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8, // ✅ OPTIMISÉ: 8px entre les boutons pour espacement uniforme
     alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 4,
+    marginTop: 8, // ✅ OPTIMISÉ: 8px avant les actions
+    marginBottom: 0, // ✅ OPTIMISÉ: Pas de marge bottom car dernière section
   },
   actionButtonDeliveryCompact: {
     flexDirection: 'row',
@@ -1615,10 +1666,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  // ✅ NOUVEAU 2026-01-14: Container commentaires compact
+  // ✅ CORRIGÉ 2026-01-14: Container commentaires avec hauteur adaptative (non coupés)
   commentsContainerCompact: {
     marginTop: 4,
-    maxHeight: 120, // ✅ RÉDUIT: Limiter la hauteur des commentaires
+    minHeight: 40, // Hauteur minimale pour afficher au moins un commentaire
+    // ✅ SUPPRIMÉ: maxHeight pour éviter de couper les commentaires
   },
   topStatsRow: {
     flexDirection: 'row',
@@ -1642,11 +1694,11 @@ const styles = StyleSheet.create({
     marginLeft: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
   },
   productName: {
-    fontSize: 13, // ✅ RÉDUIT 2026-01-14: Optimisé pour nouvelle structure
+    fontSize: 15, // ✅ OPTIMISÉ 2026-01-14: Taille augmentée pour meilleure hiérarchie visuelle
     fontWeight: '700',
-    color: '#1F2937',
-    lineHeight: 16,
-    flex: 1,
+    color: '#111827', // ✅ OPTIMISÉ: Couleur plus foncée pour meilleur contraste
+    lineHeight: 20, // ✅ OPTIMISÉ: Line height augmenté pour meilleure lisibilité
+    letterSpacing: -0.2, // ✅ OPTIMISÉ: Légère réduction d'espacement pour compacité
   },
   // ✅ SUPPRIMÉ 2026-01-14: prestataireRow, avatar, avatarPlaceholder, prestataireName remplacés par prestataireNameCompact
   // ✅ SUPPRIMÉ 2026-01-14: locationRow, locationText, locationSection remplacés par addressRow
@@ -1656,6 +1708,17 @@ const styles = StyleSheet.create({
     borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
     paddingVertical: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
     paddingHorizontal: 4, // ✅ COMPACT 2026-01-13: 6 -> 4 pour réduire de 50%+
+  },
+  // ✅ OPTIMISÉ 2026-01-14: Carte métriques compacte avec fond subtil
+  metricsCardCompact: {
+    marginTop: 0, // ✅ OPTIMISÉ: Pas de marge top car déjà dans le flux
+    marginBottom: 8, // ✅ OPTIMISÉ: 8px avant la section suivante
+    borderRadius: 8, // ✅ OPTIMISÉ: 8px border radius
+    paddingVertical: 6, // ✅ OPTIMISÉ: 6px padding vertical
+    paddingHorizontal: 8, // ✅ OPTIMISÉ: 8px padding horizontal
+    backgroundColor: '#F9FAFB', // ✅ OPTIMISÉ: Fond subtil sans gradient pour simplicité
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   compactStatsRow: {
     flexDirection: 'row',

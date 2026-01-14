@@ -12,6 +12,7 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     services::geocoding_service::GeocodingService,
+    services::email_service::EmailService,
     state::AppState,
 };
 use log::warn;
@@ -141,6 +142,83 @@ pub async fn validate_partner(
             .await?;
         }
         
+        // ✅ NOUVEAU: Envoyer une notification à l'utilisateur pour l'informer de l'approbation
+        let notification_data = serde_json::json!({
+            "user_id": user_id,
+            "partner_type": partner_info.partner_type,
+            "status": "approved"
+        });
+
+        // Créer la notification en base de données
+        if let Err(e) = crate::services::notification_service::create_notification(
+            &state.pg,
+            user_id,
+            crate::services::notification_service::NotificationType::PartnerApplicationApproved,
+            "✅ Inscription partenaire approuvée".to_string(),
+            format!(
+                "Félicitations {} ! Votre inscription en tant que partenaire a été approuvée. Vous pouvez maintenant accéder à votre espace partenaire et commencer à utiliser les fonctionnalités dédiées.",
+                partner_info.nom_complet.as_ref().unwrap_or(&partner_info.email)
+            ),
+            Some(notification_data.clone()),
+        ).await {
+            warn!("[validate_partner] ⚠️ Impossible de créer la notification: {}", e);
+        } else {
+            log::info!("[validate_partner] ✅ Notification d'approbation créée");
+        }
+
+        // Envoyer une push notification
+        if let Err(e) = crate::services::push_notification_service::send_push_notification(
+            &state.pg,
+            user_id,
+            "✅ Inscription partenaire approuvée".to_string(),
+            format!(
+                "Félicitations {} ! Votre inscription en tant que partenaire a été approuvée. Vous pouvez maintenant accéder à votre espace partenaire.",
+                partner_info.nom_complet.as_ref().unwrap_or(&partner_info.email)
+            ),
+            Some(notification_data.clone()),
+        ).await {
+            warn!("[validate_partner] ⚠️ Impossible d'envoyer la push notification: {}", e);
+        } else {
+            log::info!("[validate_partner] ✅ Push notification envoyée");
+        }
+
+        // ✅ NOUVEAU: Envoyer un email au partenaire
+        let email_service = EmailService::new();
+        if email_service.is_available() {
+            let email_subject = "✅ Votre inscription partenaire a été approuvée - Yukpo";
+            let email_body = format!(
+                "Bonjour {},\n\n\
+                Félicitations ! Votre inscription en tant que partenaire sur Yukpo a été approuvée par nos administrateurs.\n\n\
+                Vous pouvez maintenant :\n\
+                - Accéder à votre espace partenaire\n\
+                - Configurer vos services spécialisés\n\
+                - Commencer à utiliser les fonctionnalités dédiées aux partenaires\n\n\
+                Connectez-vous à votre compte pour commencer.\n\n\
+                Cordialement,\n\
+                L'équipe Yukpo",
+                partner_info.nom_complet.as_ref().unwrap_or(&partner_info.email)
+            );
+
+            match email_service.send_simple_email(
+                &partner_info.email,
+                email_subject,
+                &email_body,
+            ).await {
+                Ok(result) => {
+                    if result.success {
+                        log::info!("[validate_partner] ✅ Email d'approbation envoyé à {}", partner_info.email);
+                    } else {
+                        warn!("[validate_partner] ⚠️ Échec envoi email: {:?}", result.error);
+                    }
+                }
+                Err(e) => {
+                    warn!("[validate_partner] ⚠️ Erreur envoi email: {}", e);
+                }
+            }
+        } else {
+            log::debug!("[validate_partner] Email service non disponible (non configuré)");
+        }
+        
         Ok(Json(json!({
             "success": true,
             "message": "Partenaire approuvé avec succès"
@@ -153,6 +231,87 @@ pub async fn validate_partner(
         .bind(user_id)
         .execute(&state.pg)
         .await?;
+        
+        // ✅ NOUVEAU: Envoyer une notification à l'utilisateur pour l'informer du rejet
+        let rejection_message = if let Some(reason) = &payload.reason {
+            format!(
+                "Votre inscription en tant que partenaire a été rejetée. Raison : {}. Veuillez contacter le support pour plus d'informations.",
+                reason
+            )
+        } else {
+            format!(
+                "Votre inscription en tant que partenaire a été rejetée. Veuillez contacter le support pour plus d'informations."
+            )
+        };
+
+        let notification_data = serde_json::json!({
+            "user_id": user_id,
+            "partner_type": partner_info.partner_type,
+            "status": "rejected",
+            "rejection_reason": payload.reason
+        });
+
+        // Créer la notification en base de données
+        if let Err(e) = crate::services::notification_service::create_notification(
+            &state.pg,
+            user_id,
+            crate::services::notification_service::NotificationType::PartnerApplicationRejected,
+            "❌ Inscription partenaire rejetée".to_string(),
+            rejection_message.clone(),
+            Some(notification_data.clone()),
+        ).await {
+            warn!("[validate_partner] ⚠️ Impossible de créer la notification: {}", e);
+        } else {
+            log::info!("[validate_partner] ✅ Notification de rejet créée");
+        }
+
+        // Envoyer une push notification
+        if let Err(e) = crate::services::push_notification_service::send_push_notification(
+            &state.pg,
+            user_id,
+            "❌ Inscription partenaire rejetée".to_string(),
+            rejection_message.clone(),
+            Some(notification_data.clone()),
+        ).await {
+            warn!("[validate_partner] ⚠️ Impossible d'envoyer la push notification: {}", e);
+        } else {
+            log::info!("[validate_partner] ✅ Push notification envoyée");
+        }
+
+        // ✅ NOUVEAU: Envoyer un email au partenaire
+        let email_service = EmailService::new();
+        if email_service.is_available() {
+            let email_subject = "❌ Votre inscription partenaire - Yukpo";
+            let email_body = format!(
+                "Bonjour {},\n\n\
+                Nous avons le regret de vous informer que votre inscription en tant que partenaire sur Yukpo a été rejetée.\n\n\
+                {}\n\n\
+                Si vous avez des questions ou souhaitez plus d'informations, n'hésitez pas à contacter notre support.\n\n\
+                Cordialement,\n\
+                L'équipe Yukpo",
+                partner_info.nom_complet.as_ref().unwrap_or(&partner_info.email),
+                rejection_message
+            );
+
+            match email_service.send_simple_email(
+                &partner_info.email,
+                email_subject,
+                &email_body,
+            ).await {
+                Ok(result) => {
+                    if result.success {
+                        log::info!("[validate_partner] ✅ Email de rejet envoyé à {}", partner_info.email);
+                    } else {
+                        warn!("[validate_partner] ⚠️ Échec envoi email: {:?}", result.error);
+                    }
+                }
+                Err(e) => {
+                    warn!("[validate_partner] ⚠️ Erreur envoi email: {}", e);
+                }
+            }
+        } else {
+            log::debug!("[validate_partner] Email service non disponible (non configuré)");
+        }
         
         Ok(Json(json!({
             "success": true,

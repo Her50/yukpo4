@@ -133,17 +133,9 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                     onPress={() => setSelectedType('mobile_money')}
                     disabled={readonly}
                 >
-                    {/* ✅ CORRECTION: Logo MTN Mobile Money au lieu d'emoji */}
+                    {/* ✅ CORRIGÉ: Utiliser emoji directement pour éviter les erreurs de chargement */}
                     <View style={styles.paymentTypeIconContainer}>
-                        <Image
-                            source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/MTN_Logo.svg/512px-MTN_Logo.svg.png' }}
-                            style={styles.paymentTypeIconImage}
-                            resizeMode="contain"
-                            onError={() => {
-                                // Fallback vers emoji si l'image ne charge pas
-                                console.warn('[PaymentMethodSelector] Erreur chargement logo MTN, fallback emoji');
-                            }}
-                        />
+                        <Text style={styles.paymentTypeIconEmoji}>📱</Text>
                     </View>
                     <Text style={[
                         styles.paymentTypeText,
@@ -166,17 +158,9 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                     onPress={() => setSelectedType('orange_money')}
                     disabled={readonly}
                 >
-                    {/* ✅ CORRECTION: Logo Orange Money au lieu d'emoji */}
+                    {/* ✅ CORRIGÉ: Utiliser emoji directement pour éviter les erreurs de chargement */}
                     <View style={styles.paymentTypeIconContainer}>
-                        <Image
-                            source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/512px-Orange_logo.svg.png' }}
-                            style={styles.paymentTypeIconImage}
-                            resizeMode="contain"
-                            onError={() => {
-                                // Fallback vers emoji si l'image ne charge pas
-                                console.warn('[PaymentMethodSelector] Erreur chargement logo Orange, fallback emoji');
-                            }}
-                        />
+                        <Text style={styles.paymentTypeIconEmoji}>📱</Text>
                     </View>
                     <Text style={[
                         styles.paymentTypeText,
@@ -413,6 +397,10 @@ const styles = StyleSheet.create({
     paymentTypeIconImage: {
         width: 40,
         height: 40,
+    },
+    paymentTypeIconEmoji: {
+        fontSize: 32,
+        textAlign: 'center',
     },
     paymentTypeText: {
         fontSize: 13,

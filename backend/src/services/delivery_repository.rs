@@ -16,6 +16,7 @@ use serde_json::Value;
 use sqlx::types::BigDecimal;
 use sqlx::{postgres::PgQueryResult, FromRow, PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
+use redis; // ✅ NOUVEAU: Pour cache Redis
 
 // Structs pour les requêtes migrées
 #[derive(FromRow)]
@@ -367,6 +368,7 @@ struct ClientRatingRow {
 #[derive(Clone)]
 pub struct DeliveryRepository {
     pool: PgPool,
+    redis_client: Option<redis::Client>, // ✅ NOUVEAU: Support Redis pour cache
 }
 
 #[derive(Debug, Clone)]
@@ -395,7 +397,18 @@ impl WalletEventDirection {
 
 impl DeliveryRepository {
     pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self { 
+            pool,
+            redis_client: None,
+        }
+    }
+
+    /// ✅ NOUVEAU: Constructeur avec support Redis pour cache
+    pub fn with_redis(pool: PgPool, redis_client: Option<redis::Client>) -> Self {
+        Self { 
+            pool,
+            redis_client,
+        }
     }
 
     pub fn pool(&self) -> &PgPool {
@@ -1927,12 +1940,34 @@ impl DeliveryRepository {
     /// 
     /// ⚠️ PERFORMANCE: Cette requête peut prendre ~1s à cause des nombreuses transformations ST_Y/ST_X
     /// sur les colonnes géométriques (pickup_location, dropoff_location, store_location, etc.).
-    /// Les index GIST sont déjà présents sur ces colonnes, mais les transformations restent coûteuses.
-    /// Si cette requête est appelée fréquemment, considérer l'utilisation d'un cache.
+    /// ✅ OPTIMISÉ: Utilise les colonnes calculées (pickup_lat, pickup_lng, etc.) au lieu de ST_Y/ST_X
+    /// ✅ NOUVEAU: Cache Redis pour éviter les requêtes répétées (TTL: 5 minutes)
     pub async fn get_delivery_summary(
         &self,
         delivery_id: Uuid,
     ) -> AppResult<Option<DeliverySummary>> {
+        // ✅ NOUVEAU: Vérifier le cache Redis d'abord
+        let cache_key = format!("delivery:summary:{}", delivery_id);
+        if let Some(redis) = &self.redis_client {
+            if let Ok(mut conn) = redis.get_async_connection().await {
+                match redis::cmd("GET").arg(&cache_key).query_async::<_, Option<String>>(&mut conn).await {
+                    Ok(Some(cached_json)) => {
+                        if let Ok(cached) = serde_json::from_str::<DeliverySummary>(&cached_json) {
+                            log::debug!("[DeliveryRepository] Cache hit pour delivery {}", delivery_id);
+                            return Ok(Some(cached));
+                        }
+                    }
+                    Ok(None) => {
+                        // Pas dans le cache, continuer
+                    }
+                    Err(e) => {
+                        log::debug!("[DeliveryRepository] Erreur cache Redis (continuation normale): {}", e);
+                    }
+                }
+            }
+        }
+
+        // ✅ OPTIMISÉ: Utiliser les colonnes calculées au lieu de ST_Y/ST_X
         let row: Option<DeliverySummaryRow> = sqlx::query_as(
             r#"
             SELECT
@@ -1940,10 +1975,10 @@ impl DeliveryRepository {
                 status,
                 creator_id,
                 courier_id,
-                ST_Y(pickup_location::geometry) AS pickup_lat,
-                ST_X(pickup_location::geometry) AS pickup_lng,
-                ST_Y(dropoff_location::geometry) AS dropoff_lat,
-                ST_X(dropoff_location::geometry) AS dropoff_lng,
+                COALESCE(pickup_lat, ST_Y(pickup_location::geometry)) AS pickup_lat,
+                COALESCE(pickup_lng, ST_X(pickup_location::geometry)) AS pickup_lng,
+                COALESCE(dropoff_lat, ST_Y(dropoff_location::geometry)) AS dropoff_lat,
+                COALESCE(dropoff_lng, ST_X(dropoff_location::geometry)) AS dropoff_lng,
                 dropoff_address,
                 distance_meters,
                 estimated_duration_seconds,
@@ -1962,8 +1997,8 @@ impl DeliveryRepository {
                 recipient_dropoff_updated_at,
                 recipient_chat_thread_id,
                 store_name,
-                ST_Y(store_location::geometry) AS store_lat,
-                ST_X(store_location::geometry) AS store_lng,
+                COALESCE(store_lat, ST_Y(store_location::geometry)) AS store_lat,
+                COALESCE(store_lng, ST_X(store_location::geometry)) AS store_lng,
                 COALESCE(shopping_required, FALSE) AS shopping_required,
                 COALESCE(metadata, '{}'::jsonb) AS metadata,
                 -- ✅ Aller-retour
@@ -2059,7 +2094,7 @@ impl DeliveryRepository {
                 None
             };
 
-            return Ok(Some(DeliverySummary {
+            let summary = DeliverySummary {
                 id: row.id,
                 status: row.status,
                 creator_id: row.creator_id,
@@ -2096,7 +2131,23 @@ impl DeliveryRepository {
                 return_delivery_id: row.return_delivery_id,
                 return_delivery,
                 round_trip_discount_percent: row.round_trip_discount_percent,
-            }));
+            };
+
+            // ✅ NOUVEAU: Mettre en cache dans Redis (TTL: 5 minutes = 300 secondes)
+            if let Some(redis) = &self.redis_client {
+                if let Ok(mut conn) = redis.get_async_connection().await {
+                    if let Ok(json) = serde_json::to_string(&summary) {
+                        let _ = redis::cmd("SETEX")
+                            .arg(&cache_key)
+                            .arg(300u64) // 5 minutes
+                            .arg(&json)
+                            .query_async::<_, ()>(&mut conn)
+                            .await;
+                    }
+                }
+            }
+
+            return Ok(Some(summary));
         }
 
         Ok(None)

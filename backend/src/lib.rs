@@ -50,6 +50,7 @@ use crate::routes::{
     diagnostic_routes::diagnostic_routes,
     embedding_routes::embedding_routes,
     export_routes::export_routes, // ✅ NOUVEAU Phase 2.3: Routes pour jobs d'export vidéo
+    feature_flags_routes::feature_flags_routes, // ✅ NOUVEAU: Routes pour feature flags
     extended_audio_routes::extended_audio_routes, // ✅ NOUVEAU Phase 2.2: Routes bibliothèque audio étendue
     flash_promo_routes::flash_promo_routes, // ✅ NOUVEAU: Routes pour flash promotionnels de produits (gratuit)
     generative_routes::generative_routes, // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA
@@ -294,6 +295,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let stock_media = stock_media_routes(state.clone()); // ✅ NOUVEAU Phase 2: Routes Stock Media Integration
     let plugins = plugin_routes(state.clone()); // ✅ NOUVEAU Phase 2: Routes gestion des plugins
     let studio = studio_routes(state.clone()); // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
+    let feature_flags = feature_flags_routes(state.clone()); // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
 
     let app = Router::new()
         .route("/healthz", get(healthz))
@@ -363,6 +365,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(generative_routes) // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA
         .merge(ar_routes) // ✅ NOUVEAU Phase 3.2: Routes pour preview AR/VR
         .merge(studio) // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
+        .merge(feature_flags) // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
         .merge(mobile_logs)
         .merge(delivery_external)
         .merge(negotiated_prices)

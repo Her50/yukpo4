@@ -92,6 +92,7 @@ pub mod upload_routes;
 pub mod video_hls_routes;
 pub mod video_ml_routes;
 pub mod video_routes;
+pub mod feature_flags_routes; // ✅ NOUVEAU: Routes pour feature flags
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?
