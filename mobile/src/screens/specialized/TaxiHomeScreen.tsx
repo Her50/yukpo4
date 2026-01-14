@@ -96,6 +96,8 @@ const TaxiHomeScreen: React.FC = () => {
     // États de recherche
     const [depart, setDepart] = useState<LocationObject | string>('');
     const [destination, setDestination] = useState<LocationObject | string>('');
+    // ✅ NOUVEAU: État pour tracker quel champ LocationSelector est actif (pour gérer les z-index)
+    const [activeLocationField, setActiveLocationField] = useState<'depart' | 'destination' | null>(null);
     const [taxis, setTaxis] = useState<Taxi[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -481,7 +483,10 @@ const TaxiHomeScreen: React.FC = () => {
                     {viewMode === 'search' && (
                         <View style={styles.searchContainer}>
                             {/* Départ - Compact */}
-                            <View style={styles.routeInputContainer}>
+                            <View style={[
+                                styles.routeInputContainer,
+                                activeLocationField === 'depart' && styles.routeInputContainerActive
+                            ]}>
                                 <View style={styles.labelRow}>
                                     <SafeIcon name="map-pin" size={14} color="#06B6D4" type="lucide" />
                                     <Text style={styles.routeLabel}>Départ</Text>
@@ -493,6 +498,16 @@ const TaxiHomeScreen: React.FC = () => {
                                         hapticPress();
                                         setDepart(location);
                                         setInitializingDepart(false);
+                                        setTimeout(() => setActiveLocationField(null), 100);
+                                    }}
+                                    onFocusChange={(focused) => {
+                                        if (focused) {
+                                            setActiveLocationField('depart');
+                                        } else {
+                                            setTimeout(() => {
+                                                setActiveLocationField((prev) => prev === 'depart' ? null : prev);
+                                            }, 150);
+                                        }
                                     }}
                                     placeholder={initializingDepart ? "Chargement position..." : "Votre adresse..."}
                                     scope="all"
@@ -545,7 +560,11 @@ const TaxiHomeScreen: React.FC = () => {
                             </View>
 
                             {/* Destination - Compact */}
-                            <View style={styles.routeInputContainer}>
+                            <View style={[
+                                styles.routeInputContainer,
+                                styles.routeInputContainerDestination,
+                                activeLocationField === 'destination' && styles.routeInputContainerActive
+                            ]}>
                                 <View style={styles.labelRow}>
                                     <SafeIcon name="navigation" size={14} color="#06B6D4" type="lucide" />
                                     <Text style={styles.routeLabel}>Destination *</Text>
@@ -556,6 +575,16 @@ const TaxiHomeScreen: React.FC = () => {
                                     onSelect={(location: LocationObject) => {
                                         hapticPress();
                                         setDestination(location);
+                                        setTimeout(() => setActiveLocationField(null), 100);
+                                    }}
+                                    onFocusChange={(focused) => {
+                                        if (focused) {
+                                            setActiveLocationField('destination');
+                                        } else {
+                                            setTimeout(() => {
+                                                setActiveLocationField((prev) => prev === 'destination' ? null : prev);
+                                            }, 150);
+                                        }
                                     }}
                                     placeholder="Adresse précise..."
                                     scope="all"
@@ -1106,7 +1135,15 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
         marginBottom: 8,
-        zIndex: 9999, // ✅ CORRIGÉ 2026-01-14: z-index élevé pour que les suggestions d'autocomplétion soient visibles
+        zIndex: 2, // ✅ CORRIGÉ 2026-01-14: z-index de base pour le champ départ
+        position: 'relative',
+    },
+    routeInputContainerDestination: {
+        zIndex: 1, // ✅ CORRIGÉ 2026-01-14: z-index plus bas pour le champ destination par défaut
+    },
+    routeInputContainerActive: {
+        zIndex: 10000, // ✅ CORRIGÉ 2026-01-14: z-index très élevé quand le champ est actif pour que les suggestions passent au-dessus
+        elevation: 1000,
     },
     labelRow: {
         flexDirection: 'row',

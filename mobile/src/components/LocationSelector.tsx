@@ -427,6 +427,7 @@ interface LocationSelectorProps {
     cityContext?: string; // For point/neighborhood search filtering
     required?: boolean;
     enrichWithBackend?: boolean;  // ✅ Si true, appelle /api/places/enrich
+    onFocusChange?: (focused: boolean) => void; // ✅ NOUVEAU: Callback pour notifier le parent du changement de focus
 }
 
 // ✅ NOUVEAU: Fonction pour déterminer automatiquement le scope basé sur le label
@@ -477,6 +478,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     cityContext,
     required = false,
     enrichWithBackend = false,
+    onFocusChange,
 }) => {
     // ✅ NOUVEAU: Déterminer automatiquement le scope basé sur le label si non fourni
     const finalScope = determineScopeFromLabel(label, scope);
@@ -663,6 +665,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     }}
                     onFocus={() => {
                         setIsFocused(true);
+                        onFocusChange?.(true); // ✅ NOUVEAU: Notifier le parent
                         if (displayValue) {
                             setQuery(displayValue);
                         }
@@ -671,6 +674,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                         // ✅ Délai pour permettre le clic sur une option
                         setTimeout(() => {
                             setIsFocused(false);
+                            onFocusChange?.(false); // ✅ NOUVEAU: Notifier le parent
                             setQuery('');
                         }, 200);
                     }}

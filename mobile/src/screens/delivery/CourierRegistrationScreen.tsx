@@ -69,7 +69,9 @@ const CourierRegistrationScreen: React.FC = () => {
     const [phone, setPhone] = useState('');
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
+    const [cityLocation, setCityLocation] = useState<LocationObject | null>(null); // ✅ NOUVEAU: Stocker l'objet LocationObject complet
     const [country, setCountry] = useState('');
+    const [countryLocation, setCountryLocation] = useState<LocationObject | null>(null); // ✅ NOUVEAU: Stocker l'objet LocationObject complet
     const [dateOfBirth, setDateOfBirth] = useState('');
     const [idNumber, setIdNumber] = useState('');
 
@@ -825,7 +827,7 @@ const CourierRegistrationScreen: React.FC = () => {
                                     </Text>
                                     {isSelected && (
                                         <View style={styles.activityTypeGridCheck}>
-                                            <SafeIcon name="check" size={14} color={modernColors.surface} type="lucide" />
+                                            <SafeIcon name="check" size={12} color={modernColors.surface} type="lucide" />
                                         </View>
                                     )}
                                 </TouchableOpacity>
@@ -904,13 +906,23 @@ const CourierRegistrationScreen: React.FC = () => {
                     <View style={styles.inputContainer}>
                         <LocationSelector
                             label="Ville *"
-                            value={city ? { raw: city, place_name: city } : ''}
+                            value={cityLocation || ''}
                             onSelect={(location: LocationObject) => {
+                                // ✅ CORRIGÉ: Stocker l'objet LocationObject complet pour l'affichage
+                                setCityLocation(location);
+                                // Extraire la ville pour la soumission du formulaire
                                 const ville = location.components?.ville || location.place_name || location.raw || '';
                                 setCity(ville);
                                 // Si le pays n'est pas encore défini, l'extraire aussi
                                 if (location.components?.pays && !country) {
-                                    setCountry(location.components.pays);
+                                    const pays = location.components.pays;
+                                    setCountry(pays);
+                                    // ✅ CORRIGÉ: Créer un objet LocationObject minimal pour le pays
+                                    setCountryLocation({
+                                        raw: pays,
+                                        place_name: pays,
+                                        components: { pays },
+                                    });
                                 }
                             }}
                             placeholder="Rechercher une ville..."
@@ -922,8 +934,11 @@ const CourierRegistrationScreen: React.FC = () => {
                     <View style={styles.inputContainer}>
                         <LocationSelector
                             label="Pays"
-                            value={country ? { raw: country, place_name: country } : ''}
+                            value={countryLocation || ''}
                             onSelect={(location: LocationObject) => {
+                                // ✅ CORRIGÉ: Stocker l'objet LocationObject complet pour l'affichage
+                                setCountryLocation(location);
+                                // Extraire le pays pour la soumission du formulaire
                                 const pays = location.components?.pays || location.place_name || location.raw || '';
                                 setCountry(pays);
                             }}
@@ -1555,22 +1570,22 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
     },
-    // ✅ REFONDU: Styles pour le champ "Nature de l'activité" - Grille 2 colonnes pour meilleur alignement
+    // ✅ REFONDU: Styles pour le champ "Nature de l'activité" - Grille 2 colonnes optimisée pour réduire l'espace
     activityTypeGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'flex-start',
         marginTop: 12,
-        gap: 10,
+        gap: 8, // ✅ RÉDUIT: De 10 à 8 pour réduire l'espace entre les boutons
     },
     activityTypeGridItem: {
-        width: '47%', // ✅ 2 colonnes avec gap de 10px (47% * 2 + 10px gap = ~100%)
-        minHeight: 100,
-        borderRadius: 10,
+        width: '47%', // ✅ 2 colonnes avec gap de 8px (47% * 2 + 8px gap = ~100%)
+        minHeight: 70, // ✅ RÉDUIT: De 100 à 70 pour réduire la hauteur
+        borderRadius: 8, // ✅ RÉDUIT: De 10 à 8 pour un look plus compact
         borderWidth: 1.5,
         borderColor: modernColors.border,
         backgroundColor: modernColors.surface,
-        padding: 12,
+        padding: 8, // ✅ RÉDUIT: De 12 à 8 pour réduire le padding interne
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
@@ -1589,28 +1604,28 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     activityTypeGridIcon: {
-        fontSize: 26,
-        marginBottom: 6,
+        fontSize: 20, // ✅ RÉDUIT: De 26 à 20 pour réduire la taille de l'icône
+        marginBottom: 4, // ✅ RÉDUIT: De 6 à 4 pour optimiser l'espace
     },
     activityTypeGridLabel: {
-        fontSize: 13, // ✅ Taille augmentée pour 2 colonnes
+        fontSize: 12, // ✅ RÉDUIT: De 13 à 12 pour réduire légèrement la taille du texte
         fontWeight: '600',
         color: modernColors.text,
         textAlign: 'center',
-        lineHeight: 16,
+        lineHeight: 14, // ✅ RÉDUIT: De 16 à 14 pour un espacement plus compact
         width: '100%',
-        marginTop: 4,
+        marginTop: 2, // ✅ RÉDUIT: De 4 à 2 pour optimiser l'espace
     },
     activityTypeGridLabelSelected: {
         color: modernColors.surface,
     },
     activityTypeGridCheck: {
         position: 'absolute',
-        top: 6,
-        right: 6,
-        width: 20,
-        height: 20,
-        borderRadius: 10,
+        top: 4, // ✅ RÉDUIT: De 6 à 4 pour optimiser l'espace
+        right: 4, // ✅ RÉDUIT: De 6 à 4 pour optimiser l'espace
+        width: 18, // ✅ RÉDUIT: De 20 à 18 pour réduire la taille du check
+        height: 18, // ✅ RÉDUIT: De 20 à 18 pour réduire la taille du check
+        borderRadius: 9, // ✅ RÉDUIT: De 10 à 9 pour correspondre à la nouvelle taille
         backgroundColor: modernColors.surface,
         justifyContent: 'center',
         alignItems: 'center',

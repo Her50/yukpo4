@@ -42,7 +42,11 @@ export const NativeCard: React.FC<NativeCardProps> = ({
         }
 
         // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
-        if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
+        // ✅ CORRIGÉ: Ignorer les booléens false (ne pas les convertir en texte "false")
+        if (typeof children === 'boolean') {
+            return null; // ✅ Ignorer les booléens (false et true ne doivent pas être affichés)
+        }
+        if (typeof children === 'string' || typeof children === 'number') {
             return <Text>{String(children)}</Text>;
         }
 
@@ -54,7 +58,11 @@ export const NativeCard: React.FC<NativeCardProps> = ({
                     if (typeof child === 'string' && child === '') {
                         return null;
                     }
-                    if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                    // ✅ CORRIGÉ: Ignorer les booléens false (ne pas les convertir en texte "false")
+                    if (typeof child === 'boolean') {
+                        return null; // ✅ Ignorer les booléens (false et true ne doivent pas être affichés)
+                    }
+                    if (typeof child === 'string' || typeof child === 'number') {
                         return <Text key={idx}>{String(child)}</Text>;
                     }
                     if (child == null) {
@@ -77,7 +85,11 @@ export const NativeCard: React.FC<NativeCardProps> = ({
                 return null;
             }
             // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
-            if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+            // ✅ CORRIGÉ: Ignorer les booléens false (ne pas les convertir en texte "false")
+            if (typeof child === 'boolean') {
+                return null; // ✅ Ignorer les booléens (false et true ne doivent pas être affichés)
+            }
+            if (typeof child === 'string' || typeof child === 'number') {
                 return <Text key={idx}>{String(child)}</Text>;
             }
             // Si c'est null ou undefined, retourner null
@@ -219,7 +231,11 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
         }
 
         // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
-        if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
+        // ✅ CORRIGÉ: Ignorer les booléens false (ne pas les convertir en texte "false")
+        if (typeof children === 'boolean') {
+            return null; // ✅ Ignorer les booléens (false et true ne doivent pas être affichés)
+        }
+        if (typeof children === 'string' || typeof children === 'number') {
             return <Text>{String(children)}</Text>;
         }
 
@@ -231,7 +247,11 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
                     if (typeof child === 'string' && child === '') {
                         return null;
                     }
-                    if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                    // ✅ CORRIGÉ: Ignorer les booléens false (ne pas les convertir en texte "false")
+                    if (typeof child === 'boolean') {
+                        return null; // ✅ Ignorer les booléens (false et true ne doivent pas être affichés)
+                    }
+                    if (typeof child === 'string' || typeof child === 'number') {
                         return <Text key={idx}>{String(child)}</Text>;
                     }
                     if (child == null) {
@@ -254,7 +274,11 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
                 return null;
             }
             // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
-            if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+            // ✅ CORRIGÉ: Ignorer les booléens false (ne pas les convertir en texte "false")
+            if (typeof child === 'boolean') {
+                return null; // ✅ Ignorer les booléens (false et true ne doivent pas être affichés)
+            }
+            if (typeof child === 'string' || typeof child === 'number') {
                 return <Text key={idx}>{String(child)}</Text>;
             }
             // Si c'est null ou undefined, retourner null

@@ -216,7 +216,46 @@ const HomeScreen: React.FC = () => {
 
             // Vérifier si la recherche a réussi
             if (!result.success) {
-                Alert.alert('Erreur', result.message || 'Une erreur est survenue lors de la recherche');
+                // ✅ AMÉLIORÉ: Messages d'erreur plus clairs selon le type d'erreur
+                let errorTitle = 'Erreur de recherche';
+                let errorMessage = result.message || 'Une erreur est survenue lors de la recherche';
+                
+                if (result.error === 'TIMEOUT') {
+                    errorTitle = 'Recherche trop longue';
+                    errorMessage = 'La recherche a pris trop de temps. Cela peut être dû à une connexion internet lente ou à un serveur occupé. Veuillez réessayer.';
+                } else if (result.error === 'NETWORK_ERROR') {
+                    errorTitle = 'Problème de connexion';
+                    errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.';
+                } else if (result.error === 'AUTH_REQUIRED') {
+                    errorTitle = 'Authentification requise';
+                    errorMessage = 'Vous devez être connecté pour effectuer une recherche. Veuillez vous reconnecter.';
+                } else if (result.error?.startsWith('HTTP_')) {
+                    const statusCode = result.error.replace('HTTP_', '');
+                    if (statusCode === '502') {
+                        errorTitle = 'Serveur en démarrage';
+                        errorMessage = 'Le serveur est en cours de démarrage (Bad Gateway). Cela peut prendre quelques secondes. Veuillez réessayer.';
+                    } else if (statusCode === '503') {
+                        errorTitle = 'Service indisponible';
+                        errorMessage = 'Le service est temporairement indisponible. Veuillez réessayer dans quelques instants.';
+                    } else if (statusCode === '504') {
+                        errorTitle = 'Timeout serveur';
+                        errorMessage = 'Le serveur a pris trop de temps à répondre. Veuillez réessayer.';
+                    } else if (statusCode === '500') {
+                        errorTitle = 'Erreur serveur';
+                        errorMessage = 'Une erreur interne du serveur s\'est produite. Veuillez réessayer.';
+                    } else if (statusCode === '500' || statusCode === '503' || statusCode === '504') {
+                        errorTitle = 'Serveur indisponible';
+                        errorMessage = 'Le serveur est temporairement indisponible. Veuillez réessayer dans quelques instants.';
+                    }
+                }
+                
+                console.error('[HomeScreen] Erreur recherche:', {
+                    error: result.error,
+                    message: result.message,
+                    title: errorTitle
+                });
+                
+                Alert.alert(errorTitle, errorMessage);
                 setLoading(false);
                 return;
             }
@@ -290,9 +329,24 @@ const HomeScreen: React.FC = () => {
         } catch (error: any) {
             console.error('[HomeScreen] Erreur recherche:', error);
             setLoading(false);
-            const errorMessage = error?.message || 'Une erreur est survenue lors de la recherche';
+            
+            // ✅ AMÉLIORÉ: Messages d'erreur plus clairs selon le type d'erreur
+            let errorTitle = 'Erreur de recherche';
+            let errorMessage = error?.message || 'Une erreur est survenue lors de la recherche';
+            
+            if (error?.name === 'AbortError' || error?.message?.includes('timeout') || error?.message?.includes('Timeout')) {
+                errorTitle = 'Recherche trop longue';
+                errorMessage = 'La recherche a pris trop de temps. Vérifiez votre connexion internet et réessayez.';
+            } else if (error?.message?.includes('Network request failed') || error?.message?.includes('Failed to fetch')) {
+                errorTitle = 'Problème de connexion';
+                errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.';
+            } else if (error?.message?.includes('Token') || error?.message?.includes('authentification')) {
+                errorTitle = 'Authentification requise';
+                errorMessage = 'Vous devez être connecté pour effectuer une recherche. Veuillez vous reconnecter.';
+            }
+            
             hapticError(); // ✅ Haptic feedback pour erreur critique
-            Alert.alert('Erreur', errorMessage);
+            Alert.alert(errorTitle, errorMessage);
         }
     }, [user, navigate]);
 

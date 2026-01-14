@@ -57,6 +57,8 @@ const TicketVoyageHomeScreen: React.FC = () => {
     const [departureDate, setDepartureDate] = useState('');
     const [departureTime, setDepartureTime] = useState('');
     const [agencyName, setAgencyName] = useState('');
+    // ✅ NOUVEAU: État pour tracker quel champ LocationSelector est actif (pour gérer les z-index)
+    const [activeLocationField, setActiveLocationField] = useState<'departure' | 'arrival' | null>(null);
 
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [
         { value: 'relevance', label: 'Pertinence', icon: 'star' },
@@ -341,7 +343,10 @@ const TicketVoyageHomeScreen: React.FC = () => {
                     {/* ✅ REFONDU: Champs compacts mais visibles - style moderne */}
                     <View style={styles.searchContainer}>
                         {/* Départ - Compact */}
-                        <View style={styles.cityInputContainer}>
+                        <View style={[
+                            styles.cityInputContainer,
+                            activeLocationField === 'departure' && styles.cityInputContainerActive
+                        ]}>
                             <View style={styles.labelRow}>
                                 <SafeIcon name="map-pin" size={14} color="#8B5CF6" type="lucide" />
                                 <Text style={styles.cityLabel}>Départ *</Text>
@@ -352,6 +357,18 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                 onSelect={(location: LocationObject) => {
                                     hapticPress();
                                     setDepartureCity(location);
+                                    // Ne pas réinitialiser immédiatement pour permettre la sélection
+                                    setTimeout(() => setActiveLocationField(null), 100);
+                                }}
+                                onFocusChange={(focused) => {
+                                    if (focused) {
+                                        setActiveLocationField('departure');
+                                    } else {
+                                        // Ne réinitialiser que si ce n'est pas l'autre champ qui prend le focus
+                                        setTimeout(() => {
+                                            setActiveLocationField((prev) => prev === 'departure' ? null : prev);
+                                        }, 150);
+                                    }
                                 }}
                                 placeholder="Ville de départ..."
                                 scope="all"
@@ -360,7 +377,11 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         </View>
 
                         {/* Arrivée - Compact */}
-                        <View style={styles.cityInputContainer}>
+                        <View style={[
+                            styles.cityInputContainer,
+                            styles.cityInputContainerArrival, // ✅ NOUVEAU: Style spécifique pour le champ arrivée
+                            activeLocationField === 'arrival' && styles.cityInputContainerActive
+                        ]}>
                             <View style={styles.labelRow}>
                                 <SafeIcon name="navigation" size={14} color="#8B5CF6" type="lucide" />
                                 <Text style={styles.cityLabel}>Arrivée *</Text>
@@ -371,6 +392,18 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                 onSelect={(location: LocationObject) => {
                                     hapticPress();
                                     setArrivalCity(location);
+                                    // Ne pas réinitialiser immédiatement pour permettre la sélection
+                                    setTimeout(() => setActiveLocationField(null), 100);
+                                }}
+                                onFocusChange={(focused) => {
+                                    if (focused) {
+                                        setActiveLocationField('arrival');
+                                    } else {
+                                        // Ne réinitialiser que si ce n'est pas l'autre champ qui prend le focus
+                                        setTimeout(() => {
+                                            setActiveLocationField((prev) => prev === 'arrival' ? null : prev);
+                                        }, 150);
+                                    }
                                 }}
                                 placeholder="Ville d'arrivée..."
                                 scope="all"
@@ -999,7 +1032,15 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
         marginBottom: 8,
-        zIndex: 9999, // ✅ CORRIGÉ 2026-01-14: z-index élevé pour que les suggestions d'autocomplétion soient visibles
+        zIndex: 2, // ✅ CORRIGÉ 2026-01-14: z-index de base pour le champ départ (premier dans le DOM)
+        position: 'relative',
+    },
+    cityInputContainerArrival: {
+        zIndex: 1, // ✅ CORRIGÉ 2026-01-14: z-index plus bas pour le champ arrivée par défaut
+    },
+    cityInputContainerActive: {
+        zIndex: 10000, // ✅ CORRIGÉ 2026-01-14: z-index très élevé quand le champ est actif pour que les suggestions passent au-dessus
+        elevation: 1000,
     },
     labelRow: {
         flexDirection: 'row',
