@@ -1249,8 +1249,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     }
                                 }
 
-                                if (!nouveauProduit.product_labels && formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object') {
-                                    nouveauProduit.product_labels = Object.keys(formValues.sous_caracteristiques || {});
+                                // ✅ CORRECTION: Inclure sous_caracteristiques dans le payload (OBJET COMPLET avec valeurs)
+                                if (formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object') {
+                                    nouveauProduit.sous_caracteristiques = formValues.sous_caracteristiques;
+                                    
+                                    // Garder aussi product_labels pour compatibilité (clés uniquement)
+                                    if (!nouveauProduit.product_labels) {
+                                        nouveauProduit.product_labels = Object.keys(formValues.sous_caracteristiques || {});
+                                    }
                                 }
 
                                 if (!nouveauProduit.origine_champs) {

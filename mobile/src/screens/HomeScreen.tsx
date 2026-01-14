@@ -609,7 +609,7 @@ const HomeScreen: React.FC = () => {
                             numberOfLines={1}
                             adjustsFontSizeToFit={false} // ✅ DÉSACTIVÉ: Pour éviter le rétrécissement du texte
                         >
-                            ➕ Créer service | produit
+                            Créer produit
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -825,9 +825,9 @@ const styles = StyleSheet.create({
         gap: 4, // ✅ AJOUTÉ: Espacement entre les boutons
     },
     modeButton: {
-        flex: 1, // ✅ HARMONISÉ: Les deux boutons (Rechercher et Créer service | produit) ont la même taille
+        flex: 1, // ✅ HARMONISÉ: Les deux boutons (Rechercher et Créer produit) ont la même taille
         paddingVertical: 12, // ✅ AUGMENTÉ: De 10 à 12 pour plus de hauteur
-        paddingHorizontal: 10, // ✅ RÉDUIT: De 14 à 10 pour permettre plus d'espace pour le texte
+        paddingHorizontal: 10, // ✅ CORRIGÉ 2026-01-14: Padding égal pour centrer le texte
         borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
@@ -837,9 +837,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#6366F1', // ✅ AMÉLIORÉ: Couleur indigo harmonieuse pour les boutons actifs
     },
     modeButtonText: {
-        fontSize: 13, // ✅ HARMONISÉ: Même taille de police pour les deux boutons (Rechercher et Créer service | produit)
+        fontSize: 14, // ✅ AUGMENTÉ 2026-01-14: De 13 à 14 pour une meilleure lisibilité
         fontWeight: '600',
         color: '#6B7280',
+        textAlign: 'center', // ✅ AJOUTÉ 2026-01-14: Pour centrer le texte
     },
     modeButtonTextActive: {
         color: '#FFFFFF',

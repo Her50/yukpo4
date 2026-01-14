@@ -331,6 +331,9 @@ CONTEXTE UTILISATEUR :
 
 TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
 - Tu DOIS générer une liste de courses INTELLIGENTE en regroupant les ingrédients communs
+- PRIORITÉ ABSOLUE : Les ingrédients générés DOIVENT correspondre EXACTEMENT aux repas fournis dans le menu
+- COHÉRENCE OBLIGATOIRE : Chaque ingrédient DOIT être nécessaire pour préparer AU MOINS un des repas du menu
+- INTERDICTION : Ne JAMAIS générer des ingrédients qui ne correspondent pas aux repas du menu
 - Si plusieurs repas utilisent le même ingrédient, tu DOIS regrouper en une seule ligne avec la quantité totale
 - CALCUL DES QUANTITÉS (CRITIQUE) :
   * Prendre en compte le NOMBRE DE FOIS de consommation de chaque repas (colonne "fois" dans le tableau)
@@ -340,26 +343,35 @@ TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
   * Exemple : Si "Poulet DG" nécessite 1kg pour 4 personnes, et qu'il est consommé 2 fois pour 6 personnes :
     quantité = 1kg × 2 × (6/4) = 3kg
 
-🌍 UNITÉS DE MESURE LOCALES (PRIORITÉ ABSOLUE) :
+🌍 UNITÉS DE MESURE LOCALES (PRIORITÉ ABSOLUE - COHÉRENCE CRITIQUE) :
 - Tu DOIS utiliser les unités de mesure locales selon les habitudes d'achat de la zone géographique de l'utilisateur
-- Ne JAMAIS utiliser uniquement kg/g pour tout - utiliser les unités locales courantes dans les marchés locaux
-- Exemples d'unités locales à utiliser selon le contexte géographique :
-  * Riz, pâtes, haricots : "tasse", "verre", "bol", "assiette", "tas" (selon région) au lieu de toujours "kg"
-  * Plantains, bananes : "régime", "main" (selon région) au lieu de toujours "kg"
-  * Légumes, feuilles : "botte", "tas", "paquet" (selon région) au lieu de toujours "kg"
-  * Huile, eau : "verre", "bouteille", "litre" (selon région)
-  * Tomates, oignons : "tasse", "verre", "tas" (selon région) au lieu de toujours "kg"
-  * Viande, poisson : "pièce", "portion", "assiette" (selon région) au lieu de toujours "kg"
+- INTERDICTION ABSOLUE : Ne JAMAIS utiliser "kg" ou "g" pour les ingrédients qui se vendent généralement par unités locales
+- COHÉRENCE OBLIGATOIRE : L'unité DOIT être cohérente avec l'ingrédient ET avec les habitudes d'achat locales
+- Exemples CONCRETS d'ingrédients avec leurs unités appropriées (à adapter selon la région) :
+  * Riz, pâtes, haricots : "tasse", "verre", "bol", "assiette", "tas" (JAMAIS "kg" pour ces ingrédients en petites quantités)
+  * Plantains, bananes : "régime", "main", "pièce" (JAMAIS "kg" pour ces fruits)
+  * Légumes frais (tomates, oignons, gombo, etc.) : "tas", "tasse", "verre", "pièce", "botte" (JAMAIS "kg" pour ces légumes frais)
+  * Feuilles (feuilles de manioc, épinards, etc.) : "botte", "tas", "paquet" (JAMAIS "kg" pour ces feuilles)
+  * Huile : "verre", "bouteille", "litre" (selon région)
+  * Viande, poisson : "pièce", "portion", "assiette" (JAMAIS "kg" pour ces produits en petites quantités)
+- RÈGLE GÉNÉRALE : Pour les ingrédients vendus en vrac dans les marchés locaux, utiliser les unités locales (tasse, verre, tas, botte, etc.)
+- RÈGLE GÉNÉRALE : Ne utiliser "kg" que pour les ingrédients vendus exclusivement au poids (ex: farine en grande quantité, sucre en vrac)
+- VALIDATION OBLIGATOIRE : Avant de générer une unité, demande-toi : "Cette unité est-elle cohérente avec cet ingrédient et les habitudes d'achat locales ?"
 - ADAPTER les unités selon les habitudes d'achat locales de la zone géographique
 - Si la zone géographique n'est pas fournie, utiliser des unités courantes dans les marchés africains
 - Utiliser la MÊME langue que l'utilisateur pour les unités (ex: en français pour l'Afrique centrale)
 
-💰 ESTIMATION DES PRIX (CRITIQUE - LIRE ATTENTIVEMENT) :
+💰 ESTIMATION DES PRIX (CRITIQUE - LIRE ATTENTIVEMENT - COHÉRENCE ABSOLUE) :
   * PRIORITÉ ABSOLUE : Le prix estimé DOIT être le PRIX TOTAL pour la QUANTITÉ TOTALE calculée (pas un prix unitaire)
   * CALCUL DU PRIX (CRITIQUE) :
     - Le prix DOIT tenir compte de la QUANTITÉ TOTALE regroupée (qui dépend du nombre de personnes, nombre de fois, portions)
     - Exemple : Si tu calcules 3kg de riz pour une famille de 6 personnes, le prix doit être pour 3kg (pas pour 1kg)
     - Exemple : Si tu calcules 5 tasses de riz, le prix doit être pour 5 tasses (pas pour 1 tasse)
+  * COHÉRENCE AVEC LE MENU (CRITIQUE) :
+    - Les prix de la liste de courses DOIVENT être cohérents avec les coûts estimés des repas du menu
+    - Si un repas a un coût estimé de 1500 FCFA, les ingrédients nécessaires pour ce repas DOIVENT avoir un prix total cohérent avec ce coût
+    - VALIDATION : Vérifier que la somme des prix des ingrédients pour un repas est cohérente avec le coût estimé du repas
+    - Le total_estimated_cost de la liste de courses DOIT être cohérent avec la somme des coûts estimés des repas du menu
   * PROFIL FAMILLE (CRITIQUE) :
     - Prendre en compte le NOMBRE DE PERSONNES dans la famille ({family_members}) pour adapter les prix
     - Les grandes quantités (familles nombreuses) peuvent bénéficier de prix de gros ou d'achats en vrac
@@ -372,9 +384,10 @@ TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
     - Estimer les prix selon le contexte local (marchés de la zone géographique, prix en FCFA)
     - Adapter les prix selon la saisonnalité et la disponibilité locale
     - Utiliser tes connaissances sur les prix moyens dans les marchés locaux de la zone géographique
-  * COHÉRENCE :
+  * COHÉRENCE QUANTITÉ-PRIX (CRITIQUE) :
     - Le prix estimé DOIT être réaliste pour la QUANTITÉ TOTALE calculée avec les unités locales
     - Vérifier que le prix total est cohérent avec la quantité (ex: 5 tasses de riz ne peut pas coûter 500 FCFA si 1 tasse coûte 200 FCFA)
+    - VALIDATION : Pour chaque ingrédient, vérifier que le prix est proportionnel à la quantité (plus de quantité = plus de prix)
 - Associer chaque ingrédient aux repas qui l'utilisent (format: "Nom recette (Jour - Type)")
 
 FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
@@ -417,17 +430,36 @@ RÈGLES DE REGROUPEMENT:
 - Normaliser les noms (ex: "Tomates" = "Tomate", "Oignons" = "Oignon")
 - Grouper les variantes (ex: "Huile de palme" et "Huile végétale" si c'est le même usage)
 
+✅ VALIDATION FINALE OBLIGATOIRE (CRITIQUE - À FAIRE AVANT GÉNÉRATION DU JSON) :
+- Pour CHAQUE ingrédient généré, vérifier :
+  1. L'ingrédient correspond-il à AU MOINS un repas du menu ? (OUI obligatoire)
+  2. L'unité est-elle cohérente avec l'ingrédient ET les habitudes locales ? (OUI obligatoire)
+  3. Le prix est-il cohérent avec la quantité calculée ? (OUI obligatoire)
+  4. Le prix est-il proportionnel à la quantité (plus de quantité = plus de prix) ? (OUI obligatoire)
+- Vérifier que le total_estimated_cost est cohérent avec le budget proratisé fourni
+- Vérifier que la somme des prix des ingrédients est cohérente avec les coûts estimés des repas du menu
+- Si tu trouves des incohérences, CORRIGE-les avant de générer le JSON
+
 IMPORTANT:
 - Retourne UNIQUEMENT du JSON valide
 - Pas de texte avant ou après le JSON
 - Pas de markdown (```json```)
 - Pas de commentaires dans le JSON
 - Tous les nombres doivent être des nombres (pas de strings)
+- 🔍 COHÉRENCE INGRÉDIENTS-MENU (CRITIQUE) :
+  * Les ingrédients DOIVENT correspondre EXACTEMENT aux repas du menu fourni
+  * Ne JAMAIS générer des ingrédients qui ne sont pas nécessaires pour les repas du menu
+  * Chaque ingrédient DOIT être associé à AU MOINS un repas dans "associated_meals"
+- 📏 COHÉRENCE UNITÉS (CRITIQUE) :
+  * Les unités DOIVENT être cohérentes avec les ingrédients ET les habitudes d'achat locales
+  * Ne JAMAIS utiliser "kg" ou "g" pour les ingrédients qui se vendent par unités locales (tasse, verre, tas, botte, etc.)
+  * VALIDATION : Avant de générer une unité, vérifier qu'elle est appropriée pour l'ingrédient
 - 💰 PRIX (CRITIQUE) :
   * Les prix DOIVENT être des PRIX TOTAUX pour les QUANTITÉS TOTALES calculées (pas des prix unitaires)
   * Les prix DOIVENT tenir compte du PROFIL FAMILLE (nombre de personnes: {family_members})
   * Les prix DOIVENT être réalistes selon le contexte local (marchés de la zone géographique)
   * Les prix DOIVENT être cohérents avec les quantités calculées (ex: 5 tasses ne peut pas coûter moins cher que 1 tasse)
+  * Les prix DOIVENT être cohérents avec les coûts estimés des repas du menu
 - 📊 QUANTITÉS (CRITIQUE) :
   * Les quantités DOIVENT tenir compte du nombre de fois ET du nombre de personnes ({family_members})
   * Les quantités DOIVENT être regroupées intelligemment (additionner les quantités du même ingrédient)

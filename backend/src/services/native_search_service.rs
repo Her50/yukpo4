@@ -633,6 +633,40 @@ matched_services AS (
                 OR LOWER(p.product_name) = LOWER($1)
                 -- Recherche dans description_produit depuis product_data
                 OR COALESCE(p.product_data->>'description_produit', p.product_data->>'description', '') ILIKE '%' || $1 || '%'
+                -- ✅ NOUVEAU 2026-01-XX: Recherche dans sous_caracteristiques (product_data->'sous_caracteristiques')
+                -- Recherche dans le JSONB complet des sous-caractéristiques (fallback rapide)
+                OR (p.product_data->'sous_caracteristiques')::text ILIKE '%' || $1 || '%'
+                -- Recherche détaillée dans les sous-caractéristiques (si le JSONB existe)
+                OR (
+                    p.product_data ? 'sous_caracteristiques'
+                    AND EXISTS (
+                        SELECT 1
+                        FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
+                        WHERE (
+                            -- Recherche dans les clés (dimensions)
+                            sc.key ILIKE '%' || $1 || '%'
+                            OR LOWER(sc.key) = LOWER($1)
+                            -- Recherche dans les valeurs (tableaux JSONB)
+                            OR (
+                                jsonb_typeof(sc.value) = 'array'
+                                AND EXISTS (
+                                    SELECT 1
+                                    FROM jsonb_array_elements_text(sc.value) AS val
+                                    WHERE val ILIKE '%' || $1 || '%'
+                                    OR LOWER(val) = LOWER($1)
+                                )
+                            )
+                            -- Recherche dans les valeurs (chaînes simples)
+                            OR (
+                                jsonb_typeof(sc.value) = 'string'
+                                AND (
+                                    sc.value::text ILIKE '%' || $1 || '%'
+                                    OR LOWER(sc.value::text) = LOWER($1)
+                                )
+                            )
+                        )
+                    )
+                )
                 -- Recherche full-text dans product_name
                 -- ✅ AMÉLIORÉ 2025-12-24: Utiliser langue détectée
                 OR to_tsvector('{}', p.product_name) @@ plainto_tsquery('{}', $1)

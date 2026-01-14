@@ -447,6 +447,19 @@ const ResultatBesoinScreen: React.FC = () => {
                     if (response.data) {
                         const service = response.data as Service;
 
+                        // ✅ CORRECTION: Récupérer les produits depuis l'API service_products (nouveau système)
+                        let productsFromAPI: any[] = [];
+                        try {
+                            const productsResponse = await apiGet(`/api/services/${serviceId}/products`);
+                            if (productsResponse.success && Array.isArray(productsResponse.data)) {
+                                productsFromAPI = productsResponse.data;
+                                console.log(`✅ [ResultatBesoinScreen] ${productsFromAPI.length} produits récupérés depuis API pour service ${serviceId}`);
+                            }
+                        } catch (productsError) {
+                            console.warn(`⚠️ [ResultatBesoinScreen] Erreur récupération produits API pour ${serviceId}:`, productsError);
+                            // ❌ SUPPRIMÉ: Plus de fallback vers l'ancien système - utiliser uniquement service_products
+                        }
+
                         // Récupérer le GPS des résultats de recherche (qui priorise déjà gps_fixe > gps_mobile)
                         const searchGps = originalResults[index]?.gps;
 
@@ -464,13 +477,16 @@ const ResultatBesoinScreen: React.FC = () => {
                                 ...service.data,
                                 // Si le GPS de recherche est défini et qu'il vient de gps_fixe, l'injecter
                                 gps_fixe: searchGps ? { valeur: searchGps } : service.data?.gps_fixe
-                            }
+                            },
+                            // ✅ NOUVEAU: Ajouter les produits de l'API dans un champ dédié pour traitement ultérieur
+                            _productsFromAPI: productsFromAPI
                         };
 
                         console.log(`✅ [ResultatBesoinScreen] Service ${service.id} enrichi avec GPS:`, {
                             searchGps,
                             finalGps: enrichedService.gps,
-                            gps_fixe: enrichedService.data?.gps_fixe
+                            gps_fixe: enrichedService.data?.gps_fixe,
+                            productsFromAPICount: productsFromAPI.length
                         });
 
                         return enrichedService;
@@ -506,14 +522,25 @@ const ResultatBesoinScreen: React.FC = () => {
                 const userGPS = location?.coords ? `${location.coords.latitude},${location.coords.longitude}` : null;
 
                 validServices.forEach((service) => {
-                    // ✅ CORRIGÉ: Gérer la structure produits (peut être un tableau ou un objet avec .valeur)
+                    // ✅ CORRECTION CRITIQUE: Utiliser UNIQUEMENT les produits depuis l'API service_products (nouveau système)
                     let serviceProduits: any[] = [];
-                    const produitsData = service.data?.produits;
-                    if (Array.isArray(produitsData)) {
-                        serviceProduits = produitsData;
-                    } else if (produitsData?.valeur && Array.isArray(produitsData.valeur)) {
-                        serviceProduits = produitsData.valeur;
+                    
+                    // Produits depuis l'API service_products (nouveau système uniquement)
+                    if (service._productsFromAPI && Array.isArray(service._productsFromAPI) && service._productsFromAPI.length > 0) {
+                        serviceProduits = service._productsFromAPI.map((productFromAPI: any) => {
+                            // ✅ Transformer le format API vers format attendu (product_data contient les données)
+                            const productData = productFromAPI.product_data || productFromAPI;
+                            return {
+                                ...productData,
+                                // Ajouter l'index du produit pour référence
+                                product_index: productFromAPI.product_index,
+                                // Préserver l'ID si disponible
+                                id: productFromAPI.id || productFromAPI.product_id,
+                            };
+                        });
+                        console.log(`✅ [ResultatBesoinScreen] ${serviceProduits.length} produits depuis API service_products pour service ${service.id}`);
                     }
+                    // ❌ SUPPRIMÉ: Plus de fallback vers l'ancien système (service.data.produits) - utiliser uniquement service_products
                     
                     if (serviceProduits.length > 0) {
                         serviceProduits.forEach((product: any) => {

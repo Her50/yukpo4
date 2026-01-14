@@ -40,7 +40,7 @@ import { useAuth } from '../contexts/AuthContext';
 // TODO: Fix TypeScript type issue
 // Code corrigé (remplace @ts-ignore)
 import { modernColors } from '../theme/modernTheme';
-import { DynamicField, processIASuggestion } from '../utils/formDispatcher';
+import { DynamicField, IASuggestion, processIASuggestion } from '../utils/formDispatcher';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoConfigPromptModal';
@@ -1633,6 +1633,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       console.log('[FormulaireYukpoIntelligentScreen] Suggestion disponible:', !!suggestion);
       console.log('[FormulaireYukpoIntelligentScreen] Suggestion.data:', suggestion?.data);
 
+      // ✅ CORRECTION : Gérer le cas où suggestion est vide ou mal formatée
+      if (!suggestion || !suggestion.data || typeof suggestion.data !== 'object') {
+        console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, génération composants par défaut');
+        
+        // Générer des composants par défaut
+        const defaultSuggestion: IASuggestion = {};
+        const components = processIASuggestion(defaultSuggestion);
+        
+        if (Array.isArray(components)) {
+          const organizedBlocks = organizeFieldsIntoBlocks(components, {});
+          setComposants(components);
+          setBlocks(organizedBlocks);
+          setActiveStep(2);
+          setCurrentDisplayIndex(0);
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Composants par défaut générés avec succès');
+        } else {
+          console.error('[FormulaireYukpoIntelligentScreen] ❌ processIASuggestion n\'a pas retourné un array (défaut)');
+        }
+        return;
+      }
+
       if (suggestion && suggestion.data && typeof suggestion.data === 'object') {
         console.log('[FormulaireYukpoIntelligentScreen] Données IA disponibles, génération automatique des composants');
 
@@ -1868,14 +1889,47 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('[FormulaireYukpoIntelligentScreen] ❌ ERREUR CRITIQUE dans useEffect suggestion:', error);
+      // ✅ AMÉLIORATION : Logger l'erreur complète pour diagnostic
+      console.error('[FormulaireYukpoIntelligentScreen] Détails erreur:', {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        suggestion: suggestion ? 'présent' : 'absent',
+        suggestionData: suggestion?.data ? 'présent' : 'absent',
+      });
+      
+      // ✅ AMÉLIORATION : Essayer de générer des composants par défaut en cas d'erreur
+      try {
+        console.log('[FormulaireYukpoIntelligentScreen] Tentative de récupération avec composants par défaut...');
+        const defaultSuggestion: IASuggestion = {};
+        const components = processIASuggestion(defaultSuggestion);
+        
+        if (Array.isArray(components)) {
+          const organizedBlocks = organizeFieldsIntoBlocks(components, {});
+          setComposants(components);
+          setBlocks(organizedBlocks);
+          setActiveStep(2);
+          setCurrentDisplayIndex(0);
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Récupération réussie avec composants par défaut');
+          return; // Ne pas afficher l'alerte si la récupération fonctionne
+        }
+      } catch (fallbackError) {
+        console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur lors de la récupération par défaut:', fallbackError);
+      }
+      
       // Ne pas crasher l'app, afficher un message d'erreur
       Alert.alert(
         'Erreur de chargement',
         'Impossible de charger les données du formulaire. Veuillez réessayer.',
-        [{ text: 'OK' }]
+        [{ text: 'OK', onPress: () => {
+          // ✅ AMÉLIORATION : Retour automatique si l'utilisateur est venu de MesProduits
+          if (fromMesProduits) {
+            navigation.goBack();
+          }
+        }}]
       );
     }
-  }, [suggestion]); // Se déclenche quand suggestion change
+  }, [suggestion, fromMesProduits, navigation]); // Se déclenche quand suggestion change
 
 
   // ✅ NOUVEAU 2025-11-01: Préremplir le formulaire en mode add_product
@@ -3825,14 +3879,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             }
           }
 
-          if (!nouveauProduit.product_labels && valeursFormulaire.sous_caracteristiques && typeof valeursFormulaire.sous_caracteristiques === 'object') {
-            // ✅ CORRECTION: Prioriser product_labels depuis valeursFormulaire si disponible (ordre garanti)
-            if (valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels)) {
-              nouveauProduit.product_labels = valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
-            } else {
-              // Fallback: utiliser Object.keys (ordre non garanti)
-              nouveauProduit.product_labels = Object.keys(valeursFormulaire.sous_caracteristiques || {});
-              console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Utilisation Object.keys() pour product_labels - ordre non garanti');
+          // ✅ CORRECTION: Inclure sous_caracteristiques dans le payload (OBJET COMPLET avec valeurs)
+          // Les sous-caractéristiques peuvent être dans valeursFormulaire.produits.sous_caracteristiques (objet complexe) ou valeursFormulaire.sous_caracteristiques (direct)
+          const sousCaracteristiques = (() => {
+            // 1. Vérifier si produits est un objet complexe avec sous_caracteristiques
+            if (valeursFormulaire.produits && typeof valeursFormulaire.produits === 'object' && 'sous_caracteristiques' in valeursFormulaire.produits) {
+              return valeursFormulaire.produits.sous_caracteristiques;
+            }
+            // 2. Vérifier directement dans valeursFormulaire
+            if (valeursFormulaire.sous_caracteristiques && typeof valeursFormulaire.sous_caracteristiques === 'object') {
+              return valeursFormulaire.sous_caracteristiques;
+            }
+            return null;
+          })();
+
+          if (sousCaracteristiques && typeof sousCaracteristiques === 'object') {
+            nouveauProduit.sous_caracteristiques = sousCaracteristiques;
+            
+            // Garder aussi product_labels pour compatibilité (clés uniquement)
+            if (!nouveauProduit.product_labels) {
+              // ✅ CORRECTION: Prioriser product_labels depuis valeursFormulaire si disponible (ordre garanti)
+              if (valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels)) {
+                nouveauProduit.product_labels = valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+              } else {
+                // Fallback: utiliser Object.keys (ordre non garanti)
+                nouveauProduit.product_labels = Object.keys(sousCaracteristiques || {});
+                console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Utilisation Object.keys() pour product_labels - ordre non garanti');
+              }
             }
           }
 

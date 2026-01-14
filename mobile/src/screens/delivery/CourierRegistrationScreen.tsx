@@ -23,6 +23,7 @@ import { VEHICLE_TRANSPORT_OPTIONS, type VehicleOption, type VehicleType } from 
 import { useAuth } from '../../contexts/AuthContext';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { hapticPress } from '../../utils/hapticFeedback';
 
 interface DocumentFile {
     uri: string;

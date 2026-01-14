@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import {
   Alert,
   Linking,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import { SafeNativeView } from '../components/SafeNativeView';
 
 const ContactScreen: React.FC = () => {
@@ -56,7 +56,7 @@ const ContactScreen: React.FC = () => {
 
   return (
     <SafeNativeView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScreen contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>📞 Contactez-nous</Text>
           <Text style={styles.subtitle}>
@@ -203,7 +203,7 @@ const ContactScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScreen>
     </SafeNativeView>
   );
 };

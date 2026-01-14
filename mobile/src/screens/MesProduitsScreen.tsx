@@ -32,6 +32,7 @@ import config from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch, apiPost, mediaApi } from '../services/api';
 import { productsService } from '../services/productsService';
+import { genererSuggestionsService } from '../services/yukpoclient';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
@@ -1179,7 +1180,47 @@ const MesProduitsScreen: React.FC = () => {
                         { text: 'Annuler', style: 'cancel' },
                         {
                             text: 'Créer un service',
-                            onPress: () => navigation.navigate('FormulaireYukpoIntelligent' as never)
+                            onPress: async () => {
+                                try {
+                                    // ✅ CORRECTION: Générer les suggestions IA avant de naviguer (comme dans HomeScreen)
+                                    const input = {
+                                        texte: 'Création d\'un nouveau service',
+                                    };
+                                    
+                                    const result = await genererSuggestionsService(input);
+                                    console.log('[MesProduitsScreen] Résultat génération suggestions:', JSON.stringify(result, null, 2));
+                                    
+                                    if (result && result.data) {
+                                        // Extraire les données comme dans HomeScreen
+                                        const suggestionData = result.data.service_data?.data || result.data.data || result.data;
+                                        
+                                        (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                                            suggestion: {
+                                                data: suggestionData,
+                                                intention: result.data.intention || 'creation_service',
+                                                confidence: result.data.confidence || 1.0,
+                                                tokens_consumed: result.data.tokens_consumed || 0,
+                                                session_id: result.data.session_id,
+                                            },
+                                            type: 'creation_service',
+                                            mode: 'create',
+                                            fromMesProduits: true,
+                                        });
+                                    } else {
+                                        // Fallback : naviguer sans suggestion si la génération échoue
+                                        console.warn('[MesProduitsScreen] Échec génération suggestions, navigation sans données IA');
+                                        (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                                            fromMesProduits: true,
+                                        });
+                                    }
+                                } catch (error) {
+                                    console.error('[MesProduitsScreen] Erreur génération suggestions:', error);
+                                    // Fallback : naviguer sans suggestion en cas d'erreur
+                                    (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                                        fromMesProduits: true,
+                                    });
+                                }
+                            }
                         }
                     ]
                 );

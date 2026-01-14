@@ -48,29 +48,51 @@ const RecipeSearchScreen: React.FC = () => {
             const responsePromise = menuPlanningService.generateRecipe(searchQuery.trim());
             const response = await Promise.race([responsePromise, timeoutPromise]) as any;
 
-            console.log('[RecipeSearch] Réponse reçue:', {
+            console.log('[RecipeSearch] Réponse complète reçue:', JSON.stringify(response, null, 2));
+            console.log('[RecipeSearch] Réponse détaillée:', {
                 success: response?.success,
                 hasData: !!response?.data,
-                hasRecipe: !!response?.data?.recipe,
+                dataType: typeof response?.data,
                 dataKeys: response?.data ? Object.keys(response.data) : [],
+                hasRecipe: !!response?.data?.recipe,
+                hasDataSuccess: response?.data?.success,
                 recipeKeys: response?.data?.recipe ? Object.keys(response.data.recipe) : [],
+                fullData: response?.data,
             });
 
             // ✅ CORRIGÉ: Gérer différentes structures de réponse possibles
             let recipe: GeneratedRecipe | null = null;
             
-            if (response && response.success) {
-                // Structure 1: response.data.recipe (structure normale)
+            if (response) {
+                // Structure 1: response.data.recipe (structure normale depuis apiCallInternal)
+                // Le backend retourne {"success": true, "recipe": {...}}
+                // apiCallInternal enveloppe dans {success: true, data: {success: true, recipe: {...}}}
                 if (response.data?.recipe) {
+                    console.log('[RecipeSearch] ✅ Structure 1: response.data.recipe trouvé');
                     recipe = response.data.recipe;
                 }
-                // Structure 2: response.data directement est la recette (fallback)
+                // Structure 2: response.data directement est la recette (fallback si pas d'enveloppe)
                 else if (response.data && response.data.recipe_name) {
+                    console.log('[RecipeSearch] ✅ Structure 2: response.data est directement la recette');
                     recipe = response.data as GeneratedRecipe;
                 }
-                // Structure 3: response.recipe (si le backend retourne directement)
+                // Structure 3: response.recipe (si le backend retourne directement sans enveloppe)
                 else if (response.recipe) {
+                    console.log('[RecipeSearch] ✅ Structure 3: response.recipe trouvé');
                     recipe = response.recipe;
+                }
+                // Structure 4: response.data.data.recipe (double enveloppe - fallback)
+                else if (response.data?.data?.recipe) {
+                    console.log('[RecipeSearch] ✅ Structure 4: response.data.data.recipe trouvé');
+                    recipe = response.data.data.recipe;
+                }
+                
+                // Si response.success est false, gérer l'erreur
+                if (!response.success && !recipe) {
+                    const errorMsg = response.error || response.message || response.data?.error || response.data?.message || 'Impossible de générer la recette';
+                    console.error('[RecipeSearch] ❌ Erreur dans la réponse:', errorMsg);
+                    Alert.alert('Erreur', errorMsg);
+                    return;
                 }
             }
 

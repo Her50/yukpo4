@@ -30,12 +30,12 @@ interface KeyboardAwareScreenProps {
   disableScroll?: boolean;
   /**
    * Offset vertical supplémentaire pour iOS (en pixels)
-   * @default 0
+   * @default 100
    */
   extraScrollHeight?: number;
   /**
    * Si true, le clavier sera fermé lors du scroll
-   * @default true
+   * @default 'handled'
    */
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
   /**
@@ -60,7 +60,7 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
   children,
   innerRef,
   disableScroll = false,
-  extraScrollHeight = 0,
+  extraScrollHeight = 100,
   keyboardShouldPersistTaps = 'handled',
   style,
   contentContainerStyle,
@@ -80,20 +80,23 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       ref={innerRef}
       style={[styles.scrollView, style]}
       contentContainerStyle={[styles.contentContainer, contentContainerStyle]}
-      enableOnAndroid={true} // ✅ Activer sur Android aussi
-      enableAutomaticScroll={true} // ✅ Scroll automatique vers le champ actif
-      extraScrollHeight={extraScrollHeight} // ✅ Espace supplémentaire au-dessus du clavier
-      keyboardShouldPersistTaps={keyboardShouldPersistTaps} // ✅ Permettre les interactions pendant que le clavier est ouvert
+      // ✅ Configuration Android (crucial pour résoudre le problème)
+      enableOnAndroid={true}
+      enableAutomaticScroll={true}
+      extraHeight={Platform.OS === 'android' ? 100 : 0}
+      extraScrollHeight={Platform.OS === 'ios' ? extraScrollHeight : 0}
+      // ✅ Configuration iOS
+      enableResetScrollToCoords={false}
+      keyboardOpeningTime={0}
+      // ✅ Configuration générale
+      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
       showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-      // ✅ Configuration spécifique iOS
-      enableResetScrollToCoords={true}
-      resetScrollToCoords={{ x: 0, y: 0 }}
-      // ✅ Configuration spécifique Android
-      extraHeight={Platform.OS === 'android' ? 20 : 0} // ✅ Espace supplémentaire pour Android
-      keyboardOpeningTime={0} // ✅ Pas de délai pour l'ouverture du clavier
-      // ✅ Comportement du scroll
       scrollEnabled={true}
-      bounces={false} // ✅ Désactiver le bounce pour un comportement plus prévisible
+      bounces={Platform.OS === 'ios'}
+      // ✅ Désactiver le padding automatique sur Android (géré par extraHeight)
+      contentInsetAdjustmentBehavior="never"
+      // ✅ Améliorer la réactivité
+      keyboardDismissMode="interactive"
     >
       {children}
     </KeyboardAwareScrollView>
@@ -109,7 +112,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flexGrow: 1,
-    paddingBottom: 20, // ✅ Espace en bas pour éviter que le contenu soit coupé
+    paddingBottom: Platform.OS === 'android' ? 100 : 50, // ✅ Plus d'espace en bas pour Android
   },
 });
 

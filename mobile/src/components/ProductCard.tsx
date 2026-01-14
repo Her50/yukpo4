@@ -156,36 +156,55 @@ const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): strin
 };
 
 const getCountryFlag = (country?: string): string => {
-  const countryMap: Record<string, string> = {
-    'Cameroun': '🇨🇲',
-    'Cameroon': '🇨🇲',
-    'Gabon': '🇬🇦',
-    'Congo': '🇨🇬',
-    'RDC': '🇨🇩',
-    'Sénégal': '🇸🇳',
-    'Senegal': '🇸🇳',
-    'Côte d\'Ivoire': '🇨🇮',
-    'Mali': '🇲🇱',
-    'Burkina': '🇧🇫',
-    'Niger': '🇳🇪',
-    'Tchad': '🇹🇩',
-    'Togo': '🇹🇬',
-    'Bénin': '🇧🇯',
-    'Guinée': '🇬🇳',
-    'Madagascar': '🇲🇬',
-    'France': '🇫🇷',
-    'USA': '🇺🇸',
-  };
+  if (!country || typeof country !== 'string') return '🌍';
+  
+  const countryLower = country.toLowerCase().trim();
+  
+  // Drapeaux des pays africains et internationaux (même mapping que useLocationDisplay)
+  if (countryLower.includes('cameroun') || countryLower.includes('cameroon') || countryLower.includes('douala') || countryLower.includes('yaoundé') || countryLower.includes('yaounde')) return '🇨🇲';
+  if (countryLower.includes('nigeria') || countryLower.includes('lagos') || countryLower.includes('abuja')) return '🇳🇬';
+  if (countryLower.includes('sénégal') || countryLower.includes('senegal') || countryLower.includes('dakar')) return '🇸🇳';
+  if (countryLower.includes('côte') || countryLower.includes('ivoire') || countryLower.includes('ivory') || countryLower.includes('abidjan')) return '🇨🇮';
+  if (countryLower.includes('ghana') || countryLower.includes('accra')) return '🇬🇭';
+  if (countryLower.includes('france') || countryLower.includes('paris')) return '🇫🇷';
+  if (countryLower.includes('togo') || countryLower.includes('lomé')) return '🇹🇬';
+  if (countryLower.includes('bénin') || countryLower.includes('benin') || countryLower.includes('cotonou')) return '🇧🇯';
+  if (countryLower.includes('mali')) return '🇲🇱';
+  if (countryLower.includes('burkina')) return '🇧🇫';
+  if (countryLower.includes('niger')) return '🇳🇪';
+  if (countryLower.includes('tchad') || countryLower.includes('chad')) return '🇹🇩';
+  if (countryLower.includes('gabon')) return '🇬🇦';
+  if (countryLower.includes('congo')) return '🇨🇬';
+  if (countryLower.includes('rdc')) return '🇨🇩';
+  if (countryLower.includes('guinée') || countryLower.includes('guinea')) return '🇬🇳';
+  if (countryLower.includes('madagascar')) return '🇲🇬';
+  if (countryLower.includes('usa') || countryLower.includes('united states')) return '🇺🇸';
 
-  if (!country) return '🌍';
+  return '🌍'; // Icône générique pour pays non reconnu
+};
 
-  for (const [key, flag] of Object.entries(countryMap)) {
-    if (country.toLowerCase().includes(key.toLowerCase())) {
-      return flag;
-    }
-  }
-
-  return '🌍';
+// ✅ NOUVEAU: Fonction pour extraire le pays depuis la localisation
+const extractCountryFromLocation = (location: string): string | null => {
+  if (!location || typeof location !== 'string') return null;
+  
+  const locationLower = location.toLowerCase();
+  
+  if (locationLower.includes('cameroun') || locationLower.includes('cameroon') || locationLower.includes('douala') || locationLower.includes('yaoundé') || locationLower.includes('yaounde')) return 'Cameroun';
+  if (locationLower.includes('nigeria') || locationLower.includes('lagos') || locationLower.includes('abuja')) return 'Nigeria';
+  if (locationLower.includes('sénégal') || locationLower.includes('senegal') || locationLower.includes('dakar')) return 'Sénégal';
+  if (locationLower.includes('côte') || locationLower.includes('ivoire') || locationLower.includes('ivory') || locationLower.includes('abidjan')) return 'Côte d\'Ivoire';
+  if (locationLower.includes('ghana') || locationLower.includes('accra')) return 'Ghana';
+  if (locationLower.includes('france') || locationLower.includes('paris')) return 'France';
+  if (locationLower.includes('togo') || locationLower.includes('lomé')) return 'Togo';
+  if (locationLower.includes('bénin') || locationLower.includes('benin') || locationLower.includes('cotonou')) return 'Bénin';
+  if (locationLower.includes('mali')) return 'Mali';
+  if (locationLower.includes('burkina')) return 'Burkina Faso';
+  if (locationLower.includes('niger')) return 'Niger';
+  if (locationLower.includes('tchad') || locationLower.includes('chad')) return 'Tchad';
+  if (locationLower.includes('gabon')) return 'Gabon';
+  if (locationLower.includes('congo')) return 'Congo';
+  
+  return null;
 };
 
 const formatDate = (dateStr: string): string => {
@@ -273,9 +292,16 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
   const rawLocationVector = productData.location_vector || productData.locationVector || productData.location?.vector;
   const locationVector = Array.isArray(rawLocationVector)
-    ? rawLocationVector.filter(Boolean)
+    ? rawLocationVector.filter((item: any) => {
+        // ✅ CORRIGÉ 2026-01-13: Filtrer aussi les strings "false" et valeurs booléennes
+        if (item === null || item === undefined) return false;
+        if (typeof item === 'boolean') return false;
+        if (item === 'false' || item === false) return false;
+        if (typeof item === 'string' && item.trim() === '') return false;
+        return true;
+      })
     : typeof rawLocationVector === 'string'
-      ? splitWithFallback(rawLocationVector, ',')
+      ? splitWithFallback(rawLocationVector, ',').filter((item: string) => item !== 'false' && item.trim() !== '')
       : [];
 
   // ✅ CORRIGÉ 2026-01-07: Éviter d'afficher "false" - filtrer les valeurs booléennes
@@ -287,12 +313,13 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     service?.data?.adresse_service?.valeur ||
     '';
   
-  // ✅ Filtrer les valeurs booléennes et null/undefined
-  const chosenLocation = (typeof chosenLocationRaw === 'string' && chosenLocationRaw !== 'false' && chosenLocationRaw.trim() !== '')
+  // ✅ CORRIGÉ 2026-01-13: Filtrer strictement les valeurs booléennes, "false" string, null, undefined
+  const chosenLocation = (typeof chosenLocationRaw === 'string' && 
+                          chosenLocationRaw !== 'false' && 
+                          chosenLocationRaw !== false &&
+                          chosenLocationRaw.trim() !== '')
     ? chosenLocationRaw
-    : (typeof chosenLocationRaw === 'string' && chosenLocationRaw !== 'false')
-      ? chosenLocationRaw
-      : '';
+    : '';
 
   const hasVariant = productData.has_variant || false;
   const variants = productData.variants || [];
@@ -450,29 +477,35 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     product.id ||
     (serviceId ? `${serviceId}_${productIndex}` : null);
 
-  // ✅ CORRIGÉ 2026-01-07: Distinction stricte entre produits et prestations
+  // ✅ CORRIGÉ 2026-01-13: Distinction stricte entre produits et prestations
   // Le bouton "Me livrer" ne doit s'afficher QUE pour les produits, jamais pour les prestations
-  const serviceType = service?.data?.type?.valeur || service?.data?.type || service?.category || '';
-  const productType = productData.type || productData.product_type || '';
+  const serviceType = filterBooleanValue(service?.data?.type?.valeur || service?.data?.type || service?.category || '', '');
+  const productType = filterBooleanValue(productData.type || productData.product_type || '', '');
+  const typeOffre = filterBooleanValue(service?.data?.type_offre?.valeur || productData.type_offre || '', '');
   
-  // ✅ Vérifier si c'est une prestation de service (ne doit PAS avoir le bouton "Me livrer")
+  // ✅ CORRIGÉ 2026-01-13: Vérifier si c'est une prestation de service (ne doit PAS avoir le bouton "Me livrer")
+  // Une prestation est identifiée par : type_offre === 'prestation' OU type === 'prestation_service' / 'service' / 'service_prestation'
+  // ET elle n'a PAS de données de produit (nom, prix, etc.)
   const isPrestation = 
+    typeOffre === 'prestation' ||
+    typeOffre === 'service' ||
     serviceType === 'prestation_service' ||
-    serviceType === 'service' ||
     serviceType === 'service_prestation' ||
     productType === 'prestation_service' ||
-    productType === 'service' ||
     productType === 'service_prestation' ||
-    (service?.data?.titre_service?.valeur && !product.product_data && !productData.nom && !productData.name);
+    (serviceType === 'service' && !product.product_data && !productData.nom && !productData.name && !productData.prix && !productData.price);
   
-  // ✅ C'est un produit si :
-  // 1. product.product_data existe (produit depuis service_products)
-  // 2. OU le type n'est PAS une prestation ET il y a des données de produit (nom, prix, etc.)
-  const isProduct = !isPrestation && (
+  // ✅ CORRIGÉ 2026-01-13: C'est un produit si :
+  // 1. type_offre === 'produit' (définitif)
+  // 2. OU product.product_data existe (produit depuis service_products)
+  // 3. OU le type n'est PAS une prestation ET il y a des données de produit (nom, prix, etc.)
+  const isProduct = 
+    typeOffre === 'produit' || // ✅ Définitif : type_offre = 'produit'
     product.product_data !== undefined || // Produit depuis service_products
-    (productData.nom || productData.name || productData.titre) || // A un nom de produit
-    (productData.prix !== undefined || productData.price !== undefined) // A un prix
-  );
+    (!isPrestation && (
+      (productData.nom || productData.name || productData.titre) || // A un nom de produit
+      (productData.prix !== undefined || productData.price !== undefined) // A un prix
+    ));
 
   // ✅ NOUVEAU: Vérifier si le produit a une configuration de livraison automatique
   useEffect(() => {
@@ -563,11 +596,22 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm) && distanceKm >= 0;
 
-  const pays = locationVector[locationVector.length - 1] ||
-    productData.pays ||
-    service?.data?.pays?.valeur;
+  // ✅ PROFESSIONNEL 2026-01-13: Variable simplifiée pour vérifier la présence de GPS
+  const hasGPS = !!(product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur);
 
-  const countryFlag = getCountryFlag(pays);
+  // ✅ CORRIGÉ 2026-01-13: Améliorer l'extraction du pays depuis la localisation
+  // Priorité 1: Depuis service?.data?.pays?.valeur (données backend)
+  // Priorité 2: Depuis chosenLocation (extraire le pays depuis la chaîne de localisation)
+  // Priorité 3: Depuis locationVector (dernier élément)
+  // Priorité 4: Depuis productData.pays
+  // ✅ CORRIGÉ 2026-01-13: Filtrer les valeurs "false" string
+  const paysFromService = filterBooleanValue(service?.data?.pays?.valeur, '');
+  const paysFromLocation = chosenLocation ? extractCountryFromLocation(chosenLocation) : null;
+  const paysFromVector = locationVector.length > 0 ? filterBooleanValue(locationVector[locationVector.length - 1], '') : '';
+  const paysFromProduct = filterBooleanValue(productData.pays, '');
+  
+  const pays = paysFromService || paysFromLocation || paysFromVector || paysFromProduct || null;
+  const countryFlag = pays ? getCountryFlag(pays) : '';
 
   const commentServiceId = Number(productData._serviceId || product.service_id || service?.id || 0);
   const serviceTitleForComments =
@@ -1056,29 +1100,28 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 </TouchableOpacity>
               )}
 
-              {/* ✅ CORRIGÉ 2026-01-13: Section combinée pour adresse, drapeau et bouton de navigation */}
-              {(chosenLocation || (product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur)) && (
+              {/* ✅ PROFESSIONNEL 2026-01-13: Section localisation simplifiée et propre (inspirée de ProductCard_restored) */}
+              {chosenLocation && (
                 <View style={styles.locationNavigationSection}>
                   <View style={styles.locationNavigationRow}>
                     <View style={styles.locationInfoContainer}>
                       <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                      {chosenLocation && (
-                        <Text style={styles.locationTextPrimary} numberOfLines={1}>
-                          {chosenLocation}
-                        </Text>
-                      )}
+                      <Text style={styles.locationTextPrimary} numberOfLines={1}>
+                        {chosenLocation}
+                      </Text>
                       {countryFlag && (
                         <Text style={styles.locationFlag}>{countryFlag}</Text>
                       )}
                     </View>
-                    {/* ✅ Bouton de navigation GPS */}
-                    {(product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur) && (
+                    {/* ✅ Bouton de navigation GPS - affiché uniquement si GPS disponible */}
+                    {hasGPS && (
                       <TouchableOpacity
-                        style={styles.navigationButtonCompact}
+                        style={styles.navigationButton}
                         onPress={handleOpenNavigation}
                         activeOpacity={0.7}
                       >
-                        <SafeIcon name="navigation" size={16} color={modernColors.primary} />
+                        <SafeIcon name="navigation" size={16} color="#FFFFFF" />
+                        <Text style={styles.navigationButtonText}>Itinéraire</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -1086,7 +1129,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     <View style={styles.locationHierarchy}>
                       <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
                       <Text style={styles.locationTextSecondary} numberOfLines={1}>
-                        {locationVector.slice(1).join(' › ')}
+                        {locationVector.slice(1).filter((item: string) => item !== 'false' && item.trim() !== '').join(' › ')}
                       </Text>
                     </View>
                   )}
@@ -1271,17 +1314,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   title="💬 Chat"
                   variant="primary"
                   onPress={handleChatPress}
-                  style={[styles.actionButton, !(serviceId && isProduct) && styles.actionButtonFullWidth]}
+                  style={[styles.actionButton, styles.actionButtonFullWidth]}
                 />
-                {isProduct && (
-                  <TouchableOpacity
-                    style={styles.navButton}
-                    onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
-                    activeOpacity={0.7}
-                  >
-                    <SafeIcon name="arrow-right" size={18} color={modernColors.primary} />
-                  </TouchableOpacity>
-                )}
               </View>
 
               <View style={styles.secondaryActions}>
@@ -1413,15 +1447,15 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 const styles = StyleSheet.create({
   cardContainer: {
     overflow: 'hidden',
-    borderRadius: 16,
+    borderRadius: 12, // ✅ COMPACT 2026-01-13: 16 -> 12
     backgroundColor: 'rgba(255, 255, 255, 0.82)',
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.25)',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 }, // ✅ COMPACT 2026-01-13: 4 -> 2
+    shadowOpacity: 0.06, // ✅ COMPACT 2026-01-13: 0.08 -> 0.06
+    shadowRadius: 8, // ✅ COMPACT 2026-01-13: 12 -> 8
+    elevation: 2, // ✅ COMPACT 2026-01-13: 4 -> 2
   },
   cardContainerCompact: {
     borderRadius: 16,
@@ -1434,39 +1468,39 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 100, // ✅ RÉDUIT 2026-01-13: 140 -> 100 pour réduire la taille
+    height: 60, // ✅ COMPACT 2026-01-13: 100 -> 60 pour réduire de 50%+
     overflow: 'hidden',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   countryBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 6, // ✅ COMPACT 2026-01-13: 12 -> 6 pour réduire de 50%+
+    right: 6, // ✅ COMPACT 2026-01-13: 12 -> 6
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 2,
+    paddingHorizontal: 6, // ✅ COMPACT 2026-01-13: 10 -> 6
+    paddingVertical: 3, // ✅ COMPACT 2026-01-13: 6 -> 3
+    borderRadius: 12, // ✅ COMPACT 2026-01-13: 20 -> 12
+    borderWidth: 1.5, // ✅ COMPACT 2026-01-13: 2 -> 1.5
     borderColor: '#FFF',
   },
   countryFlag: {
-    fontSize: 20,
+    fontSize: 14, // ✅ COMPACT 2026-01-13: 20 -> 14
   },
   distanceBadge: {
     position: 'absolute',
-    top: 12,
-    left: 12,
+    top: 6, // ✅ COMPACT 2026-01-13: 12 -> 6 pour réduire de 50%+
+    left: 6, // ✅ COMPACT 2026-01-13: 12 -> 6
     backgroundColor: 'rgba(99, 102, 241, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 6, // ✅ COMPACT 2026-01-13: 10 -> 6
+    paddingVertical: 3, // ✅ COMPACT 2026-01-13: 6 -> 3
+    borderRadius: 12, // ✅ COMPACT 2026-01-13: 20 -> 12
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2, // ✅ COMPACT 2026-01-13: 4 -> 2
   },
   distanceText: {
-    fontSize: 12,
+    fontSize: 10, // ✅ COMPACT 2026-01-13: 12 -> 10
     fontWeight: '700',
     color: '#FFF',
   },
@@ -1549,30 +1583,30 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   content: {
-    padding: 8, // ✅ RÉDUIT 2026-01-13: 10 -> 8
-    gap: 4, // ✅ RÉDUIT 2026-01-13: 8 -> 4
+    padding: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
+    gap: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
   contentCompact: {
-    paddingTop: 8, // ✅ RÉDUIT 2026-01-13: 12 -> 8
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    paddingTop: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   topStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
-    marginBottom: 0, // ✅ RÉDUIT 2026-01-13: 2 -> 0
+    gap: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
+    marginBottom: 0,
   },
   topStatPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
-    paddingVertical: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
-    borderRadius: 8, // ✅ RÉDUIT 2026-01-13: 12 -> 8
+    paddingHorizontal: 4, // ✅ COMPACT 2026-01-13: 6 -> 4
+    paddingVertical: 1, // ✅ COMPACT 2026-01-13: 2 -> 1
+    borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
     borderWidth: 1,
     borderColor: '#E0E7FF',
   },
@@ -1582,33 +1616,33 @@ const styles = StyleSheet.create({
     marginLeft: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
   },
   productName: {
-    fontSize: 14, // ✅ RÉDUIT 2026-01-13: 16 -> 14
+    fontSize: 12, // ✅ COMPACT 2026-01-13: 14 -> 12 pour réduire de 50%+
     fontWeight: '700',
     color: '#1F2937',
-    lineHeight: 18, // ✅ RÉDUIT 2026-01-13: 20 -> 18
+    lineHeight: 14, // ✅ COMPACT 2026-01-13: 18 -> 14 pour réduire de 50%+
   },
   prestataireRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
-    paddingVertical: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
-    paddingHorizontal: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
+    gap: 3, // ✅ COMPACT 2026-01-13: 4 -> 3
+    paddingVertical: 1, // ✅ COMPACT 2026-01-13: 2 -> 1
+    paddingHorizontal: 4, // ✅ COMPACT 2026-01-13: 6 -> 4
     backgroundColor: '#F9FAFB',
-    borderRadius: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
+    borderRadius: 4, // ✅ COMPACT 2026-01-13: 6 -> 4
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   avatar: {
-    width: 20, // ✅ RÉDUIT 2026-01-13: 24 -> 20
-    height: 20, // ✅ RÉDUIT 2026-01-13: 24 -> 20
-    borderRadius: 10, // ✅ RÉDUIT 2026-01-13: 12 -> 10
-    borderWidth: 1.5,
+    width: 16, // ✅ COMPACT 2026-01-13: 20 -> 16
+    height: 16, // ✅ COMPACT 2026-01-13: 20 -> 16
+    borderRadius: 8, // ✅ COMPACT 2026-01-13: 10 -> 8
+    borderWidth: 1,
     borderColor: '#FFF',
   },
   avatarPlaceholder: {
-    width: 20, // ✅ RÉDUIT 2026-01-13: 24 -> 20
-    height: 20, // ✅ RÉDUIT 2026-01-13: 24 -> 20
-    borderRadius: 10, // ✅ RÉDUIT 2026-01-13: 12 -> 10
+    width: 16, // ✅ COMPACT 2026-01-13: 20 -> 16
+    height: 16, // ✅ COMPACT 2026-01-13: 20 -> 16
+    borderRadius: 8, // ✅ COMPACT 2026-01-13: 10 -> 8
     backgroundColor: modernColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1640,10 +1674,10 @@ const styles = StyleSheet.create({
   },
   // ✅ NOUVEAU 2026-01-13: Section combinée pour adresse, drapeau et navigation
   locationNavigationSection: {
-    gap: 2,
+    gap: 1, // ✅ COMPACT 2026-01-13: 2 -> 1 pour réduire de 50%+
     backgroundColor: '#F9FAFB',
-    padding: 6,
-    borderRadius: 8,
+    padding: 3, // ✅ COMPACT 2026-01-13: 6 -> 3 pour réduire de 50%+
+    borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -1651,7 +1685,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
   },
   locationInfoContainer: {
     flexDirection: 'row',
@@ -1681,17 +1715,17 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   metricsCard: {
-    marginTop: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
-    borderRadius: 8, // ✅ RÉDUIT 2026-01-13: 12 -> 8
-    paddingVertical: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
-    paddingHorizontal: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
+    marginTop: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
+    borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
+    paddingVertical: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
+    paddingHorizontal: 4, // ✅ COMPACT 2026-01-13: 6 -> 4 pour réduire de 50%+
   },
   compactStatsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
-    marginTop: 2, // ✅ RÉDUIT 2026-01-13: 6 -> 2
-    marginBottom: 2, // ✅ RÉDUIT 2026-01-13: 6 -> 2
+    gap: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
+    marginTop: 1, // ✅ COMPACT 2026-01-13: 2 -> 1
+    marginBottom: 1, // ✅ COMPACT 2026-01-13: 2 -> 1
   },
   compactStatPillMuted: {
     flexDirection: 'row',
@@ -1747,10 +1781,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   priceVariations: {
-    gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
+    gap: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
     backgroundColor: '#F9FAFB',
-    padding: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
-    borderRadius: 8, // ✅ RÉDUIT 2026-01-13: 10 -> 8
+    padding: 3, // ✅ COMPACT 2026-01-13: 6 -> 3 pour réduire de 50%+
+    borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
   },
   variantsScrollContainer: {
     gap: 8,
@@ -1826,10 +1860,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 6,
+    paddingTop: 3, // ✅ COMPACT 2026-01-13: 6 -> 3 pour réduire de 50%+
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
-    marginTop: 4,
+    marginTop: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
   },
   priceFromLabel: {
     fontSize: 11,
@@ -1853,21 +1887,21 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   price: {
-    fontSize: 18,
+    fontSize: 14, // ✅ COMPACT 2026-01-13: 18 -> 14 pour réduire de 50%+
     fontWeight: '800',
     color: modernColors.primary,
   },
   priceDevise: {
-    fontSize: 12,
+    fontSize: 10, // ✅ COMPACT 2026-01-13: 12 -> 10 pour réduire de 50%+
     fontWeight: '600',
     color: '#6B7280',
   },
   actions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
     alignItems: 'center',
     flexWrap: 'wrap',
-    minHeight: 40,
+    minHeight: 32, // ✅ COMPACT 2026-01-13: 40 -> 32 pour réduire de 50%+
   },
   actionButton: {
     flex: 1,
@@ -1887,29 +1921,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // ✅ NOUVEAU 2026-01-13: Bouton de navigation compact pour la section location
-  navigationButtonCompact: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1.5,
-    borderColor: modernColors.primary,
+  // ✅ AMÉLIORÉ 2026-01-13: Bouton de navigation avec label explicatif pour accéder à la boutique
+  navigationButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4, // ✅ COMPACT 2026-01-13: 6 -> 4 pour réduire de 50%+
+    paddingVertical: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
+    paddingHorizontal: 8, // ✅ COMPACT 2026-01-13: 12 -> 8 pour réduire de 50%+
+    borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
+    backgroundColor: modernColors.primary,
+    borderWidth: 1,
+    borderColor: modernColors.primary,
+    minWidth: 80, // ✅ COMPACT 2026-01-13: 100 -> 80
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  navigationButtonText: {
+    color: '#FFFFFF',
+    fontSize: 10, // ✅ COMPACT 2026-01-13: 12 -> 10 pour réduire de 50%+
+    fontWeight: '600',
   },
   actionButtonDelivery: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    gap: 3, // ✅ COMPACT 2026-01-13: 4 -> 3
+    paddingVertical: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
+    paddingHorizontal: 8, // ✅ COMPACT 2026-01-13: 12 -> 8 pour réduire de 50%+
     backgroundColor: '#10B981',
-    borderRadius: 8,
+    borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
     borderWidth: 1,
     borderColor: '#059669',
-    minWidth: 80,
+    minWidth: 70, // ✅ COMPACT 2026-01-13: 80 -> 70
   },
   actionButtonDeliveryDisabled: {
     backgroundColor: '#E5E7EB',
@@ -1918,7 +1965,7 @@ const styles = StyleSheet.create({
   },
   actionButtonDeliveryText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 10, // ✅ COMPACT 2026-01-13: 12 -> 10 pour réduire de 50%+
     fontWeight: '600',
   },
   actionButtonDeliveryTextDisabled: {
@@ -1928,7 +1975,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingTop: 6,
+    paddingTop: 3, // ✅ COMPACT 2026-01-13: 6 -> 3 pour réduire de 50%+
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -1943,9 +1990,9 @@ const styles = StyleSheet.create({
   },
   secondaryActions: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-    paddingTop: 6,
+    gap: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
+    marginTop: 2, // ✅ COMPACT 2026-01-13: 4 -> 2
+    paddingTop: 3, // ✅ COMPACT 2026-01-13: 6 -> 3 pour réduire de 50%+
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
