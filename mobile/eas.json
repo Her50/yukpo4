@@ -26,7 +26,8 @@
                 "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
                 "EXPO_PUBLIC_ENVIRONMENT": "production",
                 "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
-                "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
+                "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
+                "GRADLE_OPTS": "-Xmx6144m -XX:MaxMetaspaceSize=1024m"
             },
             "ios": {
                 "resourceClass": "m-medium",
@@ -37,10 +38,7 @@
                 "gradleCommand": ":app:assembleRelease",
                 "credentialsSource": "remote",
                 "image": "latest",
-                "withoutCredentials": false,
-                "env": {
-                    "GRADLE_OPTS": "-Dorg.gradle.daemon.idletimeout=10800000 -Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=60000"
-                }
+                "withoutCredentials": false
             }
         },
         "debug": {

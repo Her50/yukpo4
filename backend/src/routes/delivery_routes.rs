@@ -3287,6 +3287,7 @@ async fn approve_courier_application_endpoint(
         "✅ Candidature approuvée".to_string(),
         "Félicitations ! Votre candidature de coursier a été approuvée. Vous pouvez maintenant commencer à accepter des livraisons.".to_string(),
         Some(notification_data),
+        None,
     ).await {
         log::warn!("[approve_courier_application] ⚠️ Impossible d'envoyer la push notification: {}", e);
     } else {
@@ -3381,6 +3382,7 @@ async fn reject_courier_application_endpoint(
         "❌ Candidature rejetée".to_string(),
         rejection_message,
         Some(notification_data),
+        None,
     ).await {
         log::warn!("[reject_courier_application] ⚠️ Impossible d'envoyer la push notification: {}", e);
     } else {

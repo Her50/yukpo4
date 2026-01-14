@@ -176,6 +176,7 @@ pub async fn validate_partner(
                 partner_info.nom_complet.as_ref().unwrap_or(&partner_info.email)
             ),
             Some(notification_data.clone()),
+            None,
         ).await {
             warn!("[validate_partner] ⚠️ Impossible d'envoyer la push notification: {}", e);
         } else {
@@ -272,6 +273,7 @@ pub async fn validate_partner(
             "❌ Inscription partenaire rejetée".to_string(),
             rejection_message.clone(),
             Some(notification_data.clone()),
+            None,
         ).await {
             warn!("[validate_partner] ⚠️ Impossible d'envoyer la push notification: {}", e);
         } else {
