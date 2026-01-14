@@ -908,10 +908,13 @@ const CourierRegistrationScreen: React.FC = () => {
                             label="Ville *"
                             value={cityLocation || ''}
                             onSelect={(location: LocationObject) => {
+                                console.log('[CourierRegistrationScreen] onSelect ville appelé avec:', location);
                                 // ✅ CORRIGÉ: Stocker l'objet LocationObject complet pour l'affichage
                                 setCityLocation(location);
+                                console.log('[CourierRegistrationScreen] cityLocation mis à jour:', location);
                                 // Extraire la ville pour la soumission du formulaire
                                 const ville = location.components?.ville || location.place_name || location.raw || '';
+                                console.log('[CourierRegistrationScreen] Ville extraite:', ville);
                                 setCity(ville);
                                 // Si le pays n'est pas encore défini, l'extraire aussi
                                 if (location.components?.pays && !country) {

@@ -316,6 +316,23 @@ const formatLocationDisplay = (location?: LocationObject | string | boolean | nu
         return location;
     }
 
+    // ✅ CORRIGÉ: Si location.raw est déjà une chaîne formatée et complète, l'utiliser en priorité
+    // Mais seulement si elle contient des informations structurées (virgules ou tirets)
+    if (location.raw && typeof location.raw === 'string' && location.raw.trim() !== '') {
+        // Vérifier si raw contient déjà plusieurs parties (formaté)
+        if (location.raw.includes(',') || location.raw.includes(' - ')) {
+            return location.raw;
+        }
+        // ✅ NOUVEAU: Si raw est simple mais qu'on a des components, construire depuis components
+        // (pour éviter d'afficher juste "Douala" au lieu de "Douala, Cameroun")
+        if (location.components && Object.keys(location.components).length > 0) {
+            // Continuer pour construire depuis components
+        } else {
+            // Si pas de components, utiliser raw directement
+            return location.raw;
+        }
+    }
+
     const parts: string[] = [];
 
     if (location.components?.quartier && !parts.includes(location.components.quartier)) {
@@ -343,16 +360,27 @@ const formatLocationDisplay = (location?: LocationObject | string | boolean | nu
         }
     }
 
+    // ✅ CORRIGÉ: Si parts est vide, utiliser place_name ou raw en priorité
     if (parts.length === 0) {
-        return location.place_name || location.raw || '';
+        // Si place_name existe et est différent de raw, l'utiliser
+        if (location.place_name && location.place_name.trim() !== '') {
+            return location.place_name;
+        }
+        // Sinon utiliser raw s'il existe
+        if (location.raw && typeof location.raw === 'string' && location.raw.trim() !== '') {
+            return location.raw;
+        }
+        return '';
     }
 
+    // ✅ CORRIGÉ: Retourner les parts jointes, même s'il n'y a qu'une seule partie (ex: juste la ville)
     return parts.join(', ');
 };
 
 // ✅ Enrichir avec backend GeoNames
 const enrichLocation = async (location: LocationObject): Promise<LocationObject> => {
     try {
+        console.log('[enrichLocation] Début enrichissement:', location);
         // ✅ CORRECTION: Ne pas envoyer country si vide (backend le déduit)
         const countryParam = location.components?.pays
             ? `&country=${encodeURIComponent(location.components.pays)}`
@@ -362,38 +390,51 @@ const enrichLocation = async (location: LocationObject): Promise<LocationObject>
             `/api/places/enrich?place_name=${encodeURIComponent(location.place_name)}${countryParam}`
         );
 
+        console.log('[enrichLocation] Réponse backend:', response);
+
         if (response.success && response.data) {
             const data: any = response.data;
 
+            // ✅ CORRIGÉ: Préserver les composants existants et les compléter avec les données backend
             const enriched: LocationObject = {
-                raw: location.raw,
-                place_name: data.place_name || location.place_name,
+                raw: location.raw, // Garder le raw original
+                place_name: data.place_name || location.place_name || location.raw,
                 components: {
-                    ville: data.place_name || location.place_name,
+                    // ✅ CORRIGÉ: Préserver les composants existants (surtout ville qui vient du parsing)
+                    ville: location.components?.ville || data.place_name || location.place_name || location.raw,
                     region: data.hierarchy?.parents?.[0] || location.components?.region,
                     pays: data.metadata?.country || location.components?.pays,
+                    quartier: location.components?.quartier, // Préserver le quartier s'il existe
                 },
                 coordinates: data.coordinates || location.coordinates,
                 geoname_id: data.geoname_id,
                 location_vector: data.location_vector,
             };
 
+            // ✅ CORRIGÉ: Formater le raw pour l'affichage
+            const formattedRaw = formatLocationDisplay(enriched);
+            console.log('[enrichLocation] Location enrichie:', { enriched, formattedRaw });
+
             return {
                 ...enriched,
-                raw: formatLocationDisplay(enriched),
+                raw: formattedRaw || enriched.place_name || enriched.components?.ville || location.raw,
             };
         }
 
+        // ✅ CORRIGÉ: Si pas de réponse backend, formater quand même la location originale
+        const formattedRaw = formatLocationDisplay(location);
+        console.log('[enrichLocation] Pas de réponse backend, utilisation location originale:', { location, formattedRaw });
         return {
             ...location,
-            raw: formatLocationDisplay(location),
+            raw: formattedRaw || location.place_name || location.raw,
         };
     } catch (error) {
         console.error('[enrichLocation] Erreur:', error);
-        // ✅ Fallback : retourner location originale sans crash
+        // ✅ Fallback : retourner location originale sans crash, mais formater le raw
+        const formattedRaw = formatLocationDisplay(location);
         return {
             ...location,
-            raw: formatLocationDisplay(location),
+            raw: formattedRaw || location.place_name || location.raw,
         };
     }
 };
@@ -500,8 +541,18 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     const [options, setOptions] = useState<string[]>([]);
     const [optionsEnriched, setOptionsEnriched] = useState<PlaceResult[]>([]); // ✅ NOUVEAU: Stocker résultats enrichis avec types
 
-    // ✅ Parser valeur affichée (string ou objet)
-    const displayValue = formatLocationDisplay(value as any);
+    // ✅ CORRIGÉ: Recalculer displayValue quand value change (useMemo pour éviter recalculs inutiles)
+    const displayValue = useMemo(() => {
+        const formatted = formatLocationDisplay(value as any);
+        console.log('[LocationSelector] displayValue recalculé:', {
+            value,
+            formatted,
+            valueType: typeof value,
+            isObject: typeof value === 'object' && value !== null,
+            hasComponents: typeof value === 'object' && value !== null && 'components' in (value as any),
+        });
+        return formatted;
+    }, [value]);
 
     // Debounce query
     const debouncedQuery = useMemo(() => query.trim(), [query]);
@@ -590,17 +641,26 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     const [isFocused, setIsFocused] = useState(false);
     const inputRef = React.useRef<TextInput>(null);
 
-    // ✅ Synchroniser query avec displayValue quand on commence à taper
+    // ✅ CORRIGÉ: Synchroniser query avec displayValue quand on commence à taper
     useEffect(() => {
         if (isFocused && !query && displayValue) {
             setQuery(displayValue);
         }
-    }, [isFocused]);
+    }, [isFocused, displayValue]);
+
+    // ✅ NOUVEAU: Réinitialiser query quand displayValue change et qu'on n'est pas en train de taper
+    useEffect(() => {
+        if (!isFocused && displayValue) {
+            setQuery(''); // Réinitialiser query pour que le champ affiche displayValue
+        }
+    }, [displayValue, isFocused]);
 
     const handleSelectOption = async (opt: string, index: number) => {
+        console.log('[LocationSelector] handleSelectOption appelé:', { opt, index });
         // ✅ Parser composants du lieu
         const locationObj = parseLocationString(opt);
         const enrichedResult = optionsEnriched[index];
+        console.log('[LocationSelector] locationObj parsé:', locationObj);
 
         // ✅ Enrichir avec backend si demandé
         if (enrichWithBackend) {
@@ -608,34 +668,41 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             try {
                 const enriched = await enrichLocation(locationObj);
                 const display = formatLocationDisplay(enriched);
+                console.log('[LocationSelector] Location enrichie:', { enriched, display });
                 // ✅ NOUVEAU: Inclure les types Google Places dans LocationObject
-                onSelect({
+                const finalLocation = {
                     ...enriched,
                     raw: display,
                     google_types: enrichedResult?.types,
                     place_id: enrichedResult?.place_id,
-                });
+                };
+                console.log('[LocationSelector] Appel onSelect avec:', finalLocation);
+                onSelect(finalLocation);
             } catch (error) {
                 console.error('[LocationSelector] Erreur enrichissement:', error);
                 // Fallback : retourner sans enrichissement
                 const display = formatLocationDisplay(locationObj);
-                onSelect({
+                const finalLocation = {
                     ...locationObj,
                     raw: display,
                     google_types: enrichedResult?.types,
                     place_id: enrichedResult?.place_id,
-                });
+                };
+                console.log('[LocationSelector] Fallback - Appel onSelect avec:', finalLocation);
+                onSelect(finalLocation);
             } finally {
                 setEnriching(false);
             }
         } else {
             const display = formatLocationDisplay(locationObj);
-            onSelect({
+            const finalLocation = {
                 ...locationObj,
                 raw: display,
                 google_types: enrichedResult?.types,
                 place_id: enrichedResult?.place_id,
-            });
+            };
+            console.log('[LocationSelector] Sans enrichissement - Appel onSelect avec:', finalLocation);
+            onSelect(finalLocation);
         }
         
         // ✅ Fermer les suggestions après sélection

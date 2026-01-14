@@ -1924,6 +1924,11 @@ impl DeliveryRepository {
     }
 
     /// Récupère le résumé d'une livraison
+    /// 
+    /// ⚠️ PERFORMANCE: Cette requête peut prendre ~1s à cause des nombreuses transformations ST_Y/ST_X
+    /// sur les colonnes géométriques (pickup_location, dropoff_location, store_location, etc.).
+    /// Les index GIST sont déjà présents sur ces colonnes, mais les transformations restent coûteuses.
+    /// Si cette requête est appelée fréquemment, considérer l'utilisation d'un cache.
     pub async fn get_delivery_summary(
         &self,
         delivery_id: Uuid,

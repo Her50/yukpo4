@@ -1000,23 +1000,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   }}
                 />
 
-                {countryFlag && (
-                  <View style={styles.countryBadge}>
-                    <Text style={styles.countryFlag}>{countryFlag}</Text>
-                  </View>
-                )}
-
-                {/* ✅ CORRIGÉ: Afficher la distance même sans médias */}
-                {hasDistance && distanceKm !== undefined && (
-                  <View style={styles.distanceBadge}>
-                    <SafeIcon name="navigation" size={12} color="#FFF" />
-                    <Text style={styles.distanceText}>
-                      {distanceKm < 1
-                        ? `${Math.round(distanceKm * 1000)}m`
-                        : `${distanceKm.toFixed(1)}km`}
-                    </Text>
-                  </View>
-                )}
+                {/* ✅ SUPPRIMÉ 2026-01-14: Drapeau déplacé après l'adresse textuelle */}
+                {/* ✅ SUPPRIMÉ 2026-01-14: Distance déplacée dans topHeaderRow (cliquable) */}
 
                 {isTrending && (
                   <View style={styles.trendingBadge}>
@@ -1036,102 +1021,98 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
             )}
 
             <View style={[styles.content, !hasMedia && styles.contentCompact]}>
-              {/* ✅ CORRIGÉ: Afficher la distance en haut si pas de médias */}
-              {!hasMedia && hasDistance && distanceKm !== undefined && (
-                <View style={styles.distanceBadgeInline}>
-                  <SafeIcon name="navigation" size={14} color="#6366F1" />
-                  <Text style={styles.distanceTextInline}>
-                    {distanceKm < 1
-                      ? `${Math.round(distanceKm * 1000)}m`
-                      : `${distanceKm.toFixed(1)}km`}
-                  </Text>
-                </View>
-              )}
-
-              {topStatsData.length > 0 && (
-                <View style={styles.topStatsRow}>
-                  {topStatsData.map((stat) => (
-                    <View
-                      key={stat.key}
-                      style={[
-                        styles.topStatPill,
-                        { backgroundColor: `${stat.tint}12` },
-                      ]}
-                    >
-                      <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
-                      <Text style={[styles.topStatValue, { color: stat.tint }]}>
-                        {formatCompactNumber(stat.value)}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              <Text style={styles.productName} numberOfLines={2}>
-                {filterBooleanValue(
-                  productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur,
-                  'Produit'
+              {/* ✅ NOUVEAU 2026-01-14: Ligne supérieure avec distance (cliquable), statistiques centrées, et partage à droite */}
+              <View style={styles.topHeaderRow}>
+                {/* Distance à gauche (cliquable pour navigation) */}
+                {hasDistance && distanceKm !== undefined && (
+                  <TouchableOpacity
+                    style={styles.distanceBadgeClickable}
+                    onPress={hasGPS ? handleOpenNavigation : undefined}
+                    disabled={!hasGPS}
+                    activeOpacity={hasGPS ? 0.7 : 1}
+                  >
+                    <SafeIcon name="navigation" size={12} color="#6366F1" />
+                    <Text style={styles.distanceTextClickable}>
+                      {distanceKm < 1
+                        ? `${Math.round(distanceKm * 1000)}m`
+                        : `${distanceKm.toFixed(1)}km`}
+                    </Text>
+                  </TouchableOpacity>
                 )}
-              </Text>
-
-              {prestataire.nom && (
+                
+                {/* Statistiques centrées */}
+                {topStatsData.length > 0 && (
+                  <View style={styles.topStatsRowCentered}>
+                    {topStatsData.map((stat) => (
+                      <View
+                        key={stat.key}
+                        style={[
+                          styles.topStatPillCompact,
+                          { backgroundColor: `${stat.tint}12` },
+                        ]}
+                      >
+                        <SafeIcon name={stat.icon as any} size={10} color={stat.tint} />
+                        <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
+                          {formatCompactNumber(stat.value)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                
+                {/* Bouton partage discret à droite */}
                 <TouchableOpacity
-                  style={styles.prestataireRow}
-                  onPress={() => {
-                    if (prestataire.user_id) {
-                      navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
-                    }
-                  }}
+                  style={styles.shareButtonCompact}
+                  onPress={handleShare}
+                  activeOpacity={0.7}
                 >
-                  {prestataire.avatar_url ? (
-                    <Image
-                      source={{ uri: prestataire.avatar_url }}
-                      style={styles.avatar}
-                    />
-                  ) : (
-                    <View style={styles.avatarPlaceholder}>
-                      <SafeIcon name="user" size={14} color="#FFF" />
-                    </View>
-                  )}
-                  <Text style={styles.prestataireName} numberOfLines={1}>
-                    {filterBooleanValue(prestataire.nom, 'Prestataire')}
-                  </Text>
-                  <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
+                  <SafeIcon name="share-2" size={14} color="#6B7280" />
                 </TouchableOpacity>
+              </View>
+
+              {/* ✅ NOUVEAU 2026-01-14: Ligne titre + nom prestataire */}
+              <View style={styles.titleRow}>
+                <Text style={styles.productName} numberOfLines={2}>
+                  {filterBooleanValue(
+                    productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur,
+                    'Produit'
+                  )}
+                </Text>
+                {prestataire.nom && (
+                  <TouchableOpacity
+                    style={styles.prestataireNameCompact}
+                    onPress={() => {
+                      if (prestataire.user_id) {
+                        navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.prestataireNameText} numberOfLines={1}>
+                      {filterBooleanValue(prestataire.nom, 'Prestataire')}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* ✅ NOUVEAU 2026-01-14: Description (début) */}
+              {(productData.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur) && (
+                <Text style={styles.productDescription} numberOfLines={2}>
+                  {filterBooleanValue(
+                    productData.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur,
+                    ''
+                  )}
+                </Text>
               )}
 
-              {/* ✅ PROFESSIONNEL 2026-01-13: Section localisation simplifiée et propre (inspirée de ProductCard_restored) */}
+              {/* ✅ NOUVEAU 2026-01-14: Adresse textuelle sous nom prestataire avec drapeau */}
               {chosenLocation && (
-                <View style={styles.locationNavigationSection}>
-                  <View style={styles.locationNavigationRow}>
-                    <View style={styles.locationInfoContainer}>
-                      <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                      <Text style={styles.locationTextPrimary} numberOfLines={1}>
-                        {chosenLocation}
-                      </Text>
-                      {countryFlag && (
-                        <Text style={styles.locationFlag}>{countryFlag}</Text>
-                      )}
-                    </View>
-                    {/* ✅ Bouton de navigation GPS - affiché uniquement si GPS disponible */}
-                    {hasGPS && (
-                      <TouchableOpacity
-                        style={styles.navigationButton}
-                        onPress={handleOpenNavigation}
-                        activeOpacity={0.7}
-                      >
-                        <SafeIcon name="navigation" size={16} color="#FFFFFF" />
-                        <Text style={styles.navigationButtonText}>Itinéraire</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  {locationVector.length > 1 && (
-                    <View style={styles.locationHierarchy}>
-                      <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
-                      <Text style={styles.locationTextSecondary} numberOfLines={1}>
-                        {locationVector.slice(1).filter((item: string) => item !== 'false' && item.trim() !== '').join(' › ')}
-                      </Text>
-                    </View>
+                <View style={styles.addressRow}>
+                  <Text style={styles.addressText} numberOfLines={1}>
+                    {chosenLocation}
+                  </Text>
+                  {countryFlag && (
+                    <Text style={styles.addressFlag}>{countryFlag}</Text>
                   )}
                 </View>
               )}
@@ -1270,13 +1251,12 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 </View>
               )}
 
-              <View style={styles.actions}>
-                {/* ✅ CORRIGÉ: Toujours afficher le bouton "Me livrer" pour les produits, même si désactivé */}
+              {/* ✅ NOUVEAU 2026-01-14: Actions sur même ligne */}
+              <View style={styles.actionsRow}>
                 {serviceId && isProduct && (
                   <TouchableOpacity
                     style={[
-                      styles.actionButtonDelivery,
-                      styles.actionButton,
+                      styles.actionButtonDeliveryCompact,
                       !deliveryEnabled && styles.actionButtonDeliveryDisabled
                     ]}
                     onPress={() => {
@@ -1298,11 +1278,11 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   >
                     <SafeIcon
                       name="truck"
-                      size={18}
+                      size={14}
                       color={deliveryEnabled ? "#10B981" : "#9CA3AF"}
                     />
                     <Text style={[
-                      styles.actionButtonDeliveryText,
+                      styles.actionButtonDeliveryTextCompact,
                       !deliveryEnabled && styles.actionButtonDeliveryTextDisabled
                     ]}>
                       Me livrer
@@ -1310,74 +1290,28 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   </TouchableOpacity>
                 )}
 
-                <NativeButton
-                  title="💬 Chat"
-                  variant="primary"
-                  onPress={handleChatPress}
-                  style={[styles.actionButton, styles.actionButtonFullWidth]}
-                />
-              </View>
-
-              <View style={styles.secondaryActions}>
-                {hasMedia && (
-                  <TouchableOpacity
-                    style={styles.secondaryActionButton}
-                    onPress={() => setShowGallery(true)}
-                  >
-                    <SafeIcon name="image" size={18} color={modernColors.primary} />
-                    <Text style={styles.secondaryActionText}>Galerie</Text>
-                  </TouchableOpacity>
-                )}
-                {/* ✅ SUPPRIMÉ 2026-01-13: Bouton de navigation déplacé dans la section locationNavigationSection */}
                 <TouchableOpacity
-                  style={styles.secondaryActionButton}
-                  onPress={handleShare}
+                  style={styles.actionButtonChatCompact}
+                  onPress={handleChatPress}
+                  activeOpacity={0.7}
                 >
-                  <SafeIcon name="share" size={18} color={modernColors.primary} />
-                  <Text style={styles.secondaryActionText}>Partager</Text>
+                  <SafeIcon name="message-circle" size={14} color="#FFFFFF" />
+                  <Text style={styles.actionButtonChatTextCompact}>Chat</Text>
                 </TouchableOpacity>
               </View>
 
+              {/* ✅ NOUVEAU 2026-01-14: Commentaires réduits */}
               {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
-                <ProductCommentsSection
-                  serviceId={commentServiceId}
-                  serviceTitle={serviceTitleForComments}
-                  onOpenChat={handleContactUser}
-                  mode="inline"
-                  compact={true}
-                />
+                <View style={styles.commentsContainerCompact}>
+                  <ProductCommentsSection
+                    serviceId={commentServiceId}
+                    serviceTitle={serviceTitleForComments}
+                    onOpenChat={handleContactUser}
+                    mode="inline"
+                    compact={true}
+                  />
+                </View>
               )}
-
-              <View style={styles.footer}>
-                {hasDistance && (
-                  <View style={styles.footerItem}>
-                    <SafeIcon name="map-pin" size={12} color="#9CA3AF" />
-                    <Text style={styles.footerText}>
-                      {distanceKm < 1
-                        ? 'Très proche'
-                        : distanceKm < 5
-                          ? 'À proximité'
-                          : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`}
-                    </Text>
-                  </View>
-                )}
-                {productData.usage_count && (
-                  <View style={styles.footerItem}>
-                    <SafeIcon name="eye" size={12} color="#9CA3AF" />
-                    <Text style={styles.footerText}>
-                      {productData.usage_count} vues
-                    </Text>
-                  </View>
-                )}
-                {productData.created_at && (
-                  <View style={styles.footerItem}>
-                    <SafeIcon name="clock" size={12} color="#9CA3AF" />
-                    <Text style={styles.footerText}>
-                      {formatDate(productData.created_at)}
-                    </Text>
-                  </View>
-                )}
-              </View>
             </View>
           </TouchableOpacity>
         </NativeCard>
@@ -1468,58 +1402,13 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 60, // ✅ COMPACT 2026-01-13: 100 -> 60 pour réduire de 50%+
+    height: 120, // ✅ RÉDUIT 2026-01-14: 200 -> 120 (réduction de 40%)
     overflow: 'hidden',
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
-  countryBadge: {
-    position: 'absolute',
-    top: 6, // ✅ COMPACT 2026-01-13: 12 -> 6 pour réduire de 50%+
-    right: 6, // ✅ COMPACT 2026-01-13: 12 -> 6
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 6, // ✅ COMPACT 2026-01-13: 10 -> 6
-    paddingVertical: 3, // ✅ COMPACT 2026-01-13: 6 -> 3
-    borderRadius: 12, // ✅ COMPACT 2026-01-13: 20 -> 12
-    borderWidth: 1.5, // ✅ COMPACT 2026-01-13: 2 -> 1.5
-    borderColor: '#FFF',
-  },
-  countryFlag: {
-    fontSize: 14, // ✅ COMPACT 2026-01-13: 20 -> 14
-  },
-  distanceBadge: {
-    position: 'absolute',
-    top: 6, // ✅ COMPACT 2026-01-13: 12 -> 6 pour réduire de 50%+
-    left: 6, // ✅ COMPACT 2026-01-13: 12 -> 6
-    backgroundColor: 'rgba(99, 102, 241, 0.95)',
-    paddingHorizontal: 6, // ✅ COMPACT 2026-01-13: 10 -> 6
-    paddingVertical: 3, // ✅ COMPACT 2026-01-13: 6 -> 3
-    borderRadius: 12, // ✅ COMPACT 2026-01-13: 20 -> 12
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2, // ✅ COMPACT 2026-01-13: 4 -> 2
-  },
-  distanceText: {
-    fontSize: 10, // ✅ COMPACT 2026-01-13: 12 -> 10
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  distanceBadgeInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 6,
-    alignSelf: 'flex-start',
-  },
-  distanceTextInline: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#6366F1',
-  },
+  // ✅ SUPPRIMÉ 2026-01-14: countryBadge et countryFlag supprimés (drapeau déplacé après adresse)
+  // ✅ SUPPRIMÉ 2026-01-14: distanceBadge, distanceText, distanceBadgeInline, distanceTextInline remplacés par distanceBadgeClickable
   trendingBadge: {
     position: 'absolute',
     bottom: 12,
@@ -1583,16 +1472,153 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   content: {
-    padding: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
-    gap: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
+    padding: 6, // ✅ RÉDUIT 2026-01-14: Optimisé pour nouvelle structure
+    gap: 4, // ✅ RÉDUIT 2026-01-14: Espacement minimal
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
   },
   contentCompact: {
-    paddingTop: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
+    paddingTop: 6, // ✅ RÉDUIT 2026-01-14
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
+  },
+  // ✅ NOUVEAU 2026-01-14: Ligne supérieure avec distance, stats, partage
+  topHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+    gap: 4,
+  },
+  distanceBadgeClickable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  distanceTextClickable: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6366F1',
+  },
+  topStatsRowCentered: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  topStatPillCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 2,
+  },
+  topStatValueCompact: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  shareButtonCompact: {
+    padding: 4,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+  },
+  // ✅ NOUVEAU 2026-01-14: Ligne titre + nom prestataire
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 2,
+  },
+  prestataireNameCompact: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    maxWidth: '40%',
+  },
+  prestataireNameText: {
+    fontSize: 10,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  // ✅ NOUVEAU 2026-01-14: Description
+  productDescription: {
+    fontSize: 10,
+    color: '#6B7280',
+    lineHeight: 14,
+    marginBottom: 4,
+  },
+  // ✅ NOUVEAU 2026-01-14: Adresse avec drapeau
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  addressText: {
+    fontSize: 10,
+    color: '#6B7280',
+    flex: 1,
+  },
+  addressFlag: {
+    fontSize: 14,
+  },
+  // ✅ NOUVEAU 2026-01-14: Actions sur même ligne
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  actionButtonDeliveryCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#059669',
+    flex: 1,
+  },
+  actionButtonChatCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: modernColors.primary,
+    borderRadius: 8,
+    flex: 1,
+  },
+  actionButtonDeliveryTextCompact: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  actionButtonChatTextCompact: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  // ✅ NOUVEAU 2026-01-14: Container commentaires compact
+  commentsContainerCompact: {
+    marginTop: 4,
+    maxHeight: 120, // ✅ RÉDUIT: Limiter la hauteur des commentaires
   },
   topStatsRow: {
     flexDirection: 'row',
@@ -1616,104 +1642,15 @@ const styles = StyleSheet.create({
     marginLeft: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
   },
   productName: {
-    fontSize: 12, // ✅ COMPACT 2026-01-13: 14 -> 12 pour réduire de 50%+
+    fontSize: 13, // ✅ RÉDUIT 2026-01-14: Optimisé pour nouvelle structure
     fontWeight: '700',
     color: '#1F2937',
-    lineHeight: 14, // ✅ COMPACT 2026-01-13: 18 -> 14 pour réduire de 50%+
-  },
-  prestataireRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3, // ✅ COMPACT 2026-01-13: 4 -> 3
-    paddingVertical: 1, // ✅ COMPACT 2026-01-13: 2 -> 1
-    paddingHorizontal: 4, // ✅ COMPACT 2026-01-13: 6 -> 4
-    backgroundColor: '#F9FAFB',
-    borderRadius: 4, // ✅ COMPACT 2026-01-13: 6 -> 4
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  avatar: {
-    width: 16, // ✅ COMPACT 2026-01-13: 20 -> 16
-    height: 16, // ✅ COMPACT 2026-01-13: 20 -> 16
-    borderRadius: 8, // ✅ COMPACT 2026-01-13: 10 -> 8
-    borderWidth: 1,
-    borderColor: '#FFF',
-  },
-  avatarPlaceholder: {
-    width: 16, // ✅ COMPACT 2026-01-13: 20 -> 16
-    height: 16, // ✅ COMPACT 2026-01-13: 20 -> 16
-    borderRadius: 8, // ✅ COMPACT 2026-01-13: 10 -> 8
-    backgroundColor: modernColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  prestataireName: {
-    fontSize: 11, // ✅ RÉDUIT 2026-01-13: 12 -> 11
-    color: '#374151',
-    fontWeight: '600',
+    lineHeight: 16,
     flex: 1,
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
-    paddingVertical: 2, // ✅ RÉDUIT 2026-01-13: 6 -> 2
-  },
-  locationText: {
-    fontSize: 14,
-    color: '#6B7280',
-    flex: 1,
-  },
-  locationSection: {
-    gap: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
-    backgroundColor: '#F9FAFB',
-    padding: 4, // ✅ RÉDUIT 2026-01-13: 6 -> 4
-    borderRadius: 6, // ✅ RÉDUIT 2026-01-13: 8 -> 6
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  // ✅ NOUVEAU 2026-01-13: Section combinée pour adresse, drapeau et navigation
-  locationNavigationSection: {
-    gap: 1, // ✅ COMPACT 2026-01-13: 2 -> 1 pour réduire de 50%+
-    backgroundColor: '#F9FAFB',
-    padding: 3, // ✅ COMPACT 2026-01-13: 6 -> 3 pour réduire de 50%+
-    borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  locationNavigationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
-  },
-  locationInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  locationTextPrimary: {
-    fontSize: 11, // ✅ RÉDUIT 2026-01-13: 12 -> 11
-    fontWeight: '600',
-    color: '#1F2937',
-    flex: 1,
-  },
-  locationFlag: {
-    fontSize: 16,
-  },
-  locationHierarchy: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingLeft: 16,
-  },
-  locationTextSecondary: {
-    fontSize: 10,
-    color: '#6B7280',
-    flex: 1,
-    fontStyle: 'italic',
-  },
+  // ✅ SUPPRIMÉ 2026-01-14: prestataireRow, avatar, avatarPlaceholder, prestataireName remplacés par prestataireNameCompact
+  // ✅ SUPPRIMÉ 2026-01-14: locationRow, locationText, locationSection remplacés par addressRow
+  // ✅ SUPPRIMÉ 2026-01-14: locationNavigationSection remplacée par addressRow
   metricsCard: {
     marginTop: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
     borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
@@ -1921,30 +1858,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // ✅ AMÉLIORÉ 2026-01-13: Bouton de navigation avec label explicatif pour accéder à la boutique
-  navigationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4, // ✅ COMPACT 2026-01-13: 6 -> 4 pour réduire de 50%+
-    paddingVertical: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
-    paddingHorizontal: 8, // ✅ COMPACT 2026-01-13: 12 -> 8 pour réduire de 50%+
-    borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
-    backgroundColor: modernColors.primary,
-    borderWidth: 1,
-    borderColor: modernColors.primary,
-    minWidth: 80, // ✅ COMPACT 2026-01-13: 100 -> 80
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  navigationButtonText: {
-    color: '#FFFFFF',
-    fontSize: 10, // ✅ COMPACT 2026-01-13: 12 -> 10 pour réduire de 50%+
-    fontWeight: '600',
-  },
+  // ✅ SUPPRIMÉ 2026-01-14: navigationButton et navigationButtonText supprimés (distance cliquable à la place)
   actionButtonDelivery: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1971,53 +1885,12 @@ const styles = StyleSheet.create({
   actionButtonDeliveryTextDisabled: {
     color: '#9CA3AF',
   },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingTop: 3, // ✅ COMPACT 2026-01-13: 6 -> 3 pour réduire de 50%+
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  footerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  footerText: {
-    fontSize: 9,
-    color: '#9CA3AF',
-  },
-  secondaryActions: {
-    flexDirection: 'row',
-    gap: 4, // ✅ COMPACT 2026-01-13: 8 -> 4 pour réduire de 50%+
-    marginTop: 2, // ✅ COMPACT 2026-01-13: 4 -> 2
-    paddingTop: 3, // ✅ COMPACT 2026-01-13: 6 -> 3 pour réduire de 50%+
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  secondaryActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  secondaryActionText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: modernColors.primary,
-  },
+  // ✅ SUPPRIMÉ 2026-01-14: footer supprimé (informations déplacées dans topHeaderRow)
+  // ✅ SUPPRIMÉ 2026-01-14: secondaryActions supprimé (partage déplacé en haut)
   cardGradient: {
     borderRadius: 18,
     padding: 1,
-    marginBottom: 12,
+    marginBottom: 8, // ✅ RÉDUIT 2026-01-14: 12 -> 8
   },
 });
 

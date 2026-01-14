@@ -137,7 +137,16 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 ? '/api/videos/my-videos'
                 : '/api/content/mixed?limit=30&format=video';
             const response = await apiGet(endpoint);
-            const data = response?.data || response?.items || [];
+            // ✅ CORRIGÉ: Gérer les différents formats de réponse API
+            // L'API peut retourner { success: true, data: [...] } ou directement un tableau
+            let data = response?.data;
+            if (data && typeof data === 'object' && !Array.isArray(data)) {
+                // Si data est un objet avec une propriété data, utiliser celle-ci
+                data = data.data || data.items || [];
+            } else if (!data || !Array.isArray(data)) {
+                // Fallback si data n'existe pas ou n'est pas un tableau
+                data = response?.items || [];
+            }
             const normalized = normalizeFeed(data);
             setFeed(normalized);
             setLikedMap({});

@@ -6,6 +6,7 @@ import {
     ActivityIndicator,
     Alert,
     Dimensions,
+    Modal,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -13,11 +14,23 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import { FamilyProfile, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
+import { FamilyProfile, GeneratedRecipe, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
 import { useLocationSafe } from '../../contexts/LocationContext';
+import { generateAndDownloadRecipePDF, shareRecipePDF } from '../../utils/recipePdfGenerator';
+
+// ✅ NOUVEAU: Helper pour extraire le nombre de servings
+const getServingsNumber = (servings: any): number => {
+    if (typeof servings === 'number') {
+        return servings;
+    }
+    if (servings && typeof servings === 'object' && 'number' in servings) {
+        return servings.number;
+    }
+    return 0;
+};
 
 const { width } = Dimensions.get('window');
 
@@ -38,6 +51,14 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const [historyMenus, setHistoryMenus] = useState<any[]>([]);
     const [historyShoppingLists, setHistoryShoppingLists] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
+    
+    // ✅ NOUVEAU: États pour le modal de recette
+    const [showRecipeModal, setShowRecipeModal] = useState(false);
+    const [showRecipeDetails, setShowRecipeDetails] = useState(false);
+    const [recipeRequest, setRecipeRequest] = useState('');
+    const [loadingRecipe, setLoadingRecipe] = useState(false);
+    const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
+    const [exportingRecipePDF, setExportingRecipePDF] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -85,6 +106,61 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
             console.error('[MenuPlanningHub] Erreur chargement historique:', error);
         } finally {
             setLoadingHistory(false);
+        }
+    };
+
+    // ✅ NOUVEAU: Générer une recette via IA
+    const handleGenerateRecipe = async () => {
+        if (!recipeRequest.trim()) {
+            Alert.alert('Erreur', 'Veuillez entrer le nom d\'un plat');
+            return;
+        }
+
+        try {
+            setLoadingRecipe(true);
+            const response = await menuPlanningService.generateRecipe(recipeRequest.trim());
+            
+            // ✅ CORRIGÉ: Gérer différentes structures de réponse possibles
+            let recipe: GeneratedRecipe | null = null;
+            
+            if (response) {
+                // Structure 1: response.data.recipe (structure normale)
+                if (response.data?.recipe) {
+                    recipe = response.data.recipe;
+                }
+                // Structure 2: response.data directement est la recette
+                else if (response.data && response.data.recipe_name) {
+                    recipe = response.data as GeneratedRecipe;
+                }
+                // Structure 3: response.recipe
+                else if (response.recipe) {
+                    recipe = response.recipe;
+                }
+                // Structure 4: response.data.data.recipe (double enveloppe)
+                else if (response.data?.data?.recipe) {
+                    recipe = response.data.data.recipe;
+                }
+                
+                if (!response.success && !recipe) {
+                    const errorMsg = response.error || response.message || response.data?.error || response.data?.message || 'Impossible de générer la recette';
+                    Alert.alert('Erreur', errorMsg);
+                    return;
+                }
+            }
+
+            if (recipe && recipe.recipe_name) {
+                setGeneratedRecipe(recipe);
+                setShowRecipeModal(false);
+                setShowRecipeDetails(true);
+                setRecipeRequest('');
+            } else {
+                Alert.alert('Erreur', 'Impossible d\'extraire la recette de la réponse. Veuillez réessayer.');
+            }
+        } catch (error: any) {
+            console.error('[MenuPlanningHub] Erreur génération recette:', error);
+            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+        } finally {
+            setLoadingRecipe(false);
         }
     };
 
@@ -475,7 +551,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 <View style={styles.quickActions}>
                     <TouchableOpacity
                         style={styles.quickActionCard}
-                        onPress={() => navigation.navigate('RecipeSearch' as never)}
+                        onPress={() => setShowRecipeModal(true)}
                     >
                         <SafeIcon name="BookOpen" size={28} color="#3B82F6" type="lucide" />
                         <Text style={styles.quickActionText}>Recettes</Text>
@@ -498,6 +574,235 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     </TouchableOpacity>
                 </View>
             </View>
+
+            {/* ✅ NOUVEAU: Modal pour demander une recette */}
+            <Modal
+                visible={showRecipeModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowRecipeModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Rechercher une recette</Text>
+                            <TouchableOpacity onPress={() => setShowRecipeModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            <Text style={styles.modalHint}>
+                                Entrez le nom d'un plat pour générer sa recette complète.
+                            </Text>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Nom du plat *</Text>
+                                <NativeInput
+                                    value={recipeRequest}
+                                    onChangeText={setRecipeRequest}
+                                    placeholder="Ex: Ndolé, Poulet DG, Riz au gras..."
+                                    autoFocus
+                                />
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Annuler"
+                                onPress={() => {
+                                    setShowRecipeModal(false);
+                                    setRecipeRequest('');
+                                }}
+                                variant="secondary"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title={loadingRecipe ? 'Génération...' : 'Générer la recette'}
+                                onPress={handleGenerateRecipe}
+                                variant="primary"
+                                style={styles.modalButton}
+                                disabled={!recipeRequest.trim() || loadingRecipe}
+                                loading={loadingRecipe}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ✅ NOUVEAU: Modal pour afficher la recette générée */}
+            <Modal
+                visible={showRecipeDetails}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowRecipeDetails(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Recette générée</Text>
+                            <TouchableOpacity onPress={() => setShowRecipeDetails(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {generatedRecipe && (
+                            <ScrollView style={styles.modalBody}>
+                                <View style={styles.recipeHeader}>
+                                    <Text style={styles.recipeTitle}>{generatedRecipe.recipe_name}</Text>
+                                    {generatedRecipe.description && (
+                                        <Text style={styles.recipeDescription}>{generatedRecipe.description}</Text>
+                                    )}
+                                </View>
+
+                                {/* Informations rapides */}
+                                <View style={styles.recipeInfoRow}>
+                                    {generatedRecipe.prep_time_minutes && (
+                                        <View style={styles.recipeInfoItem}>
+                                            <SafeIcon name="clock" size={16} color={modernColors.primary} type="lucide" />
+                                            <Text style={styles.recipeInfoText}>{generatedRecipe.prep_time_minutes} min</Text>
+                                        </View>
+                                    )}
+                                    {generatedRecipe.difficulty && (
+                                        <View style={styles.recipeInfoItem}>
+                                            <SafeIcon name="star" size={16} color={modernColors.primary} type="lucide" />
+                                            <Text style={styles.recipeInfoText}>{generatedRecipe.difficulty}</Text>
+                                        </View>
+                                    )}
+                                    <View style={styles.recipeInfoItem}>
+                                        <SafeIcon name="users" size={16} color={modernColors.primary} type="lucide" />
+                                        <Text style={styles.recipeInfoText}>{getServingsNumber(generatedRecipe.servings)} portions</Text>
+                                    </View>
+                                </View>
+
+                                {/* Ingrédients */}
+                                {generatedRecipe.ingredients && generatedRecipe.ingredients.length > 0 && (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Ingrédients</Text>
+                                        {generatedRecipe.ingredients.map((ingredient, index) => (
+                                            <View key={index} style={styles.ingredientItem}>
+                                                <Text style={styles.ingredientText}>
+                                                    • {ingredient.name}: {typeof ingredient.quantity === 'object' && ingredient.quantity !== null ? ingredient.quantity.number : ingredient.quantity} {ingredient.unit}
+                                                    {ingredient.notes && ` (${ingredient.notes})`}
+                                                </Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+
+                                {/* Instructions */}
+                                {generatedRecipe.instructions && generatedRecipe.instructions.length > 0 && (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Instructions</Text>
+                                        {generatedRecipe.instructions.map((instruction, index) => (
+                                            <View key={index} style={styles.instructionItem}>
+                                                <View style={styles.instructionNumber}>
+                                                    <Text style={styles.instructionNumberText}>{index + 1}</Text>
+                                                </View>
+                                                <Text style={styles.instructionText}>{instruction}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+
+                                {/* Astuces */}
+                                {generatedRecipe.tips && generatedRecipe.tips.length > 0 && (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Astuces</Text>
+                                        {generatedRecipe.tips.map((tip, index) => (
+                                            <View key={index} style={styles.tipItem}>
+                                                <SafeIcon name="lightbulb" size={16} color="#F59E0B" type="lucide" />
+                                                <Text style={styles.tipText}>{tip}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+
+                                {/* Nutrition */}
+                                {generatedRecipe.nutrition && (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Valeurs nutritionnelles (par portion)</Text>
+                                        <View style={styles.nutritionGrid}>
+                                            <View style={styles.nutritionItem}>
+                                                <Text style={styles.nutritionLabel}>Calories</Text>
+                                                <Text style={styles.nutritionValue}>
+                                                    {generatedRecipe.calories_per_serving?.toFixed(0) || 'N/A'}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.nutritionItem}>
+                                                <Text style={styles.nutritionLabel}>Protéines</Text>
+                                                <Text style={styles.nutritionValue}>
+                                                    {generatedRecipe.nutrition.proteins.toFixed(1)}g
+                                                </Text>
+                                            </View>
+                                            <View style={styles.nutritionItem}>
+                                                <Text style={styles.nutritionLabel}>Glucides</Text>
+                                                <Text style={styles.nutritionValue}>
+                                                    {generatedRecipe.nutrition.carbs.toFixed(1)}g
+                                                </Text>
+                                            </View>
+                                            <View style={styles.nutritionItem}>
+                                                <Text style={styles.nutritionLabel}>Lipides</Text>
+                                                <Text style={styles.nutritionValue}>
+                                                    {generatedRecipe.nutrition.fats.toFixed(1)}g
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                )}
+
+                                {/* Coût estimé */}
+                                {generatedRecipe.estimated_cost && (
+                                    <View style={styles.recipeSection}>
+                                        <Text style={styles.recipeSectionTitle}>Coût estimé</Text>
+                                        <Text style={styles.costText}>
+                                            {generatedRecipe.estimated_cost.toLocaleString()} FCFA
+                                        </Text>
+                                    </View>
+                                )}
+                            </ScrollView>
+                        )}
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Fermer"
+                                onPress={() => {
+                                    setShowRecipeDetails(false);
+                                    setGeneratedRecipe(null);
+                                }}
+                                variant="secondary"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title={exportingRecipePDF ? 'Génération...' : 'Partager en PDF'}
+                                onPress={async () => {
+                                    if (!generatedRecipe) return;
+                                    
+                                    try {
+                                        setExportingRecipePDF(true);
+                                        const pdfUri = await generateAndDownloadRecipePDF({
+                                            recipe: generatedRecipe,
+                                            currency: 'FCFA',
+                                        });
+                                        
+                                        await shareRecipePDF(pdfUri, generatedRecipe.recipe_name);
+                                        Alert.alert('Succès', 'Recette partagée avec succès !');
+                                    } catch (error: any) {
+                                        console.error('[MenuPlanningHub] Erreur partage recette PDF:', error);
+                                        Alert.alert('Erreur', error.message || 'Impossible de partager la recette en PDF');
+                                    } finally {
+                                        setExportingRecipePDF(false);
+                                    }
+                                }}
+                                variant="primary"
+                                style={styles.modalButton}
+                                disabled={exportingRecipePDF}
+                                loading={exportingRecipePDF}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </ScrollView>
     );
 };
@@ -797,6 +1102,181 @@ const styles = StyleSheet.create({
     historyItemSubtitle: {
         fontSize: 12,
         color: modernColors.textSecondary,
+    },
+    // ✅ NOUVEAU: Styles pour modals recette
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '90%',
+        paddingBottom: 20,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    modalBody: {
+        flex: 1,
+        padding: 20,
+    },
+    modalFooter: {
+        padding: 20,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+        flexDirection: 'row',
+        gap: 12,
+    },
+    modalButton: {
+        flex: 1,
+    },
+    modalHint: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        marginBottom: 16,
+        lineHeight: 20,
+    },
+    inputGroup: {
+        marginBottom: 16,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    // ✅ NOUVEAU: Styles pour affichage recette
+    recipeHeader: {
+        marginBottom: 20,
+    },
+    recipeTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    recipeDescription: {
+        fontSize: 16,
+        color: modernColors.textSecondary,
+        lineHeight: 24,
+    },
+    recipeInfoRow: {
+        flexDirection: 'row',
+        gap: 16,
+        marginBottom: 20,
+        flexWrap: 'wrap',
+    },
+    recipeInfoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+    },
+    recipeInfoText: {
+        fontSize: 14,
+        color: '#111827',
+        fontWeight: '500',
+    },
+    recipeSection: {
+        marginBottom: 24,
+    },
+    recipeSectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 12,
+    },
+    ingredientItem: {
+        marginBottom: 8,
+    },
+    ingredientText: {
+        fontSize: 14,
+        color: '#374151',
+        lineHeight: 20,
+    },
+    instructionItem: {
+        flexDirection: 'row',
+        marginBottom: 16,
+        gap: 12,
+    },
+    instructionNumber: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: modernColors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexShrink: 0,
+    },
+    instructionNumberText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    instructionText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#374151',
+        lineHeight: 22,
+    },
+    tipItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        marginBottom: 12,
+        padding: 12,
+        backgroundColor: '#FEF3C7',
+        borderRadius: 8,
+    },
+    tipText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#92400E',
+        lineHeight: 20,
+    },
+    nutritionGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
+    nutritionItem: {
+        flex: 1,
+        minWidth: '45%',
+        padding: 12,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    nutritionLabel: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginBottom: 4,
+    },
+    nutritionValue: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    costText: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.primary,
     },
 });
 

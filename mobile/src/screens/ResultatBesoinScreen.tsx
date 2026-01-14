@@ -723,16 +723,13 @@ const ResultatBesoinScreen: React.FC = () => {
                 });
             }
             
-            // ✅ CORRIGÉ 2025-12-30: Mettre à jour les produits avec les informations des prestataires maintenant chargés
-            // Vérifier s'il y a réellement des changements avant de mettre à jour pour éviter les re-renders inutiles
-            // ✅ CORRECTION 2025-01-02: Debounce les mises à jour des produits pour éviter les re-renders fréquents
-            // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
+            // ✅ CORRIGÉ 2026-01-14: Mettre à jour les produits avec debounce plus long pour éviter les re-renders en cascade
             // Annuler le timeout précédent s'il existe
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
             }
             
-            // Créer un timeout pour regrouper les mises à jour
+            // ✅ CORRIGÉ: Debounce augmenté à 300ms pour mieux regrouper et éviter les tremblements
             updateTimeoutRef.current = setTimeout(() => {
                 startTransition(() => {
                     setProducts(prevProducts => {
@@ -747,6 +744,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                     const newPrestataireId = prestataire.userId || prestataire.id;
                                     if (currentPrestataireId !== newPrestataireId) {
                                         hasChanges = true;
+                                        // ✅ CORRIGÉ: Créer un nouvel objet seulement si nécessaire, sans changer la référence du produit
                                         return {
                                             ...product,
                                             _prestataire: prestataire
@@ -754,20 +752,20 @@ const ResultatBesoinScreen: React.FC = () => {
                                     }
                                 }
                             }
+                            // ✅ CORRIGÉ: Retourner la même référence si pas de changement
                             return product;
                         });
                         
-                        // Ne retourner un nouveau tableau que s'il y a des changements réels
+                        // ✅ CORRIGÉ: Ne retourner un nouveau tableau que s'il y a des changements réels
                         if (!hasChanges) {
-                            return prevProducts;
+                            return prevProducts; // Même référence = pas de re-render
                         }
                         
-                        // ✅ Utiliser une copie profonde seulement si nécessaire
                         return updatedProducts;
                     });
                 });
                 updateTimeoutRef.current = null;
-            }, 150); // ✅ Debounce augmenté à 150ms pour mieux regrouper les mises à jour
+            }, 300); // ✅ Debounce augmenté à 300ms pour mieux regrouper les mises à jour et éviter les tremblements
             
             setPrestatairesLoaded(true);
         } catch (error) {
@@ -1341,22 +1339,24 @@ const ResultatBesoinScreen: React.FC = () => {
         return filterAndSortServices(services);
     }, [services, priceFilter, sortBy]);
 
-    // ✅ CORRIGÉ 2025-01-02: Mémoriser la liste combinée avec clés stables et éviter les recalculs inutiles
+    // ✅ CORRIGÉ 2026-01-14: Mémoriser la liste combinée avec clés STABLES (sans score qui change)
     const allResults = useMemo(() => {
         const services = filteredServices.map(service => ({ 
             type: 'service' as const, 
             data: service,
-            key: `service-${service.id}-${service.score || 0}`
+            // ✅ CORRIGÉ: Clé stable sans score pour éviter les re-renders
+            key: `service-${service.id}`
         }));
         const products = filteredProducts.map((product, idx) => {
-            // ✅ CORRIGÉ: Créer une clé stable basée sur des propriétés immuables
+            // ✅ CORRIGÉ: Clé stable basée uniquement sur des propriétés immuables (sans score)
             const productId = product._serviceId || product.service_id || 'unknown';
             const productName = product.nom || product.name || `product-${idx}`;
-            const productScore = product.score || 0;
+            // ✅ Utiliser un identifiant unique stable au lieu du score qui change
+            const productUniqueId = product.id || product.product_id || `${productId}-${productName}`;
             return {
                 type: 'product' as const, 
                 data: product,
-                key: `product-${productId}-${productName}-${productScore}`
+                key: `product-${productUniqueId}`
             };
         });
         return [...services, ...products];
@@ -1394,8 +1394,7 @@ const ResultatBesoinScreen: React.FC = () => {
         } : null;
     }, [location?.coords?.latitude, location?.coords?.longitude]);
 
-    // ✅ CORRIGÉ 2026-01-07: Fonction pour rendre ProductCard avec les props mémorisées et ref stable
-    // ✅ CORRIGÉ: Mémoriser renderProductCard avec dépendances correctes pour éviter les re-renders
+    // ✅ CORRIGÉ 2026-01-14: Fonction pour rendre ProductCard avec React.memo pour éviter les re-renders
     const renderProductCard = useCallback((product: any) => {
         const service = product._service;
         // ✅ Priorité: prestataire dans le produit > prestataire dans la Map > null
@@ -1426,6 +1425,7 @@ const ResultatBesoinScreen: React.FC = () => {
     }, [userLocationMemo]); // ✅ Utiliser userLocationMemo au lieu de location directement
 
     // ✅ NOUVEAU 2026-01-XX: Fonction pour rendre ProductCard pour les services (utiliser le même visuel que les produits)
+    // ✅ DÉPLACÉ avant renderListItem pour éviter les problèmes de dépendances
     const renderServiceAsProductCard = useCallback((service: Service) => {
         const prestataire = getPrestataire(service.user_id);
         
@@ -1475,6 +1475,22 @@ const ResultatBesoinScreen: React.FC = () => {
             />
         );
     }, [userLocationMemo, getPrestataire, handleServiceClick]); // ✅ Utiliser handleServiceClick au lieu de handleServicePress
+
+    // ✅ NOUVEAU 2026-01-14: renderItem mémorisé pour FlatList pour éviter les re-renders
+    const renderListItem = useCallback(({ item }: { item: { type: 'service' | 'product'; data: any; key: string } }) => {
+        if (item.type === 'service') {
+            const service = item.data as Service;
+            return renderServiceAsProductCard(service);
+        } else {
+            const product = item.data;
+            return renderProductCard(product);
+        }
+    }, [renderServiceAsProductCard, renderProductCard]);
+
+    // ✅ NOUVEAU 2026-01-14: keyExtractor mémorisé pour FlatList
+    const keyExtractor = useCallback((item: { key: string }, index: number) => {
+        return item.key || `item-${index}`;
+    }, []);
 
     // ✅ CORRECTION 2025-01-02: Composant mémorisé pour éviter les re-renders inutiles
     const ServiceCardComponent = React.memo(({ service }: { service: Service }) => {
@@ -1808,23 +1824,12 @@ const ResultatBesoinScreen: React.FC = () => {
                         initialFilters={categoryFilters}
                     />
 
-                    {/* ✅ CORRIGÉ 2026-01-13: Utiliser FlatList au lieu de .map() pour de meilleures performances */}
+                    {/* ✅ CORRIGÉ 2026-01-14: FlatList optimisée pour éviter le tremblement */}
                     {allResults.length > 0 ? (
                         <FlatList
                             data={allResults}
-                            keyExtractor={(item) => item.key}
-                            renderItem={({ item }) => {
-                                if (item.type === 'service') {
-                                    // ✅ CORRIGÉ 2026-01-XX: Utiliser ProductCard pour les services (même visuel que les produits)
-                                    const service = item.data as Service;
-                                    return renderServiceAsProductCard(service);
-                                } else {
-                                    // ✅ CORRIGÉ: Afficher le produit individuel avec clé stable
-                                    const product = item.data;
-                                    // ✅ Utiliser directement renderProductCard qui retourne déjà un composant avec key
-                                    return renderProductCard(product);
-                                }
-                            }}
+                            keyExtractor={keyExtractor}
+                            renderItem={renderListItem}
                             ListEmptyComponent={
                                 <View style={styles.emptyState}>
                                     <SafeIcon name="package" size={48} color="#D1D5DB" />
@@ -1837,20 +1842,19 @@ const ResultatBesoinScreen: React.FC = () => {
                                 </View>
                             }
                             // ✅ OPTIMISATIONS FlatList pour réduire le tremblement
-                            initialNumToRender={5}
-                            maxToRenderPerBatch={5}
-                            windowSize={10}
+                            initialNumToRender={3}
+                            maxToRenderPerBatch={3}
+                            windowSize={5}
                             removeClippedSubviews={true}
-                            updateCellsBatchingPeriod={50}
-                            getItemLayout={(data, index) => ({
-                                length: 200, // Hauteur approximative d'une carte
-                                offset: 200 * index,
-                                index,
-                            })}
+                            updateCellsBatchingPeriod={100}
+                            // ✅ CORRIGÉ 2026-01-14: Retirer getItemLayout car les hauteurs varient (causes tremblement)
+                            // getItemLayout supprimé car les cartes ont des hauteurs variables
                             // ✅ Désactiver les animations inutiles
                             scrollEventThrottle={16}
                             // ✅ Optimiser le rendu
                             legacyImplementation={false}
+                            // ✅ NOUVEAU 2026-01-14: Désactiver les animations de layout pour éviter le tremblement
+                            disableVirtualization={false}
                             style={styles.servicesContainer}
                             contentContainerStyle={styles.servicesContainerContent}
                         />
