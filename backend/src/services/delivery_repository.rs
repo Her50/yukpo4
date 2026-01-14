@@ -1949,8 +1949,8 @@ impl DeliveryRepository {
         // ✅ NOUVEAU: Vérifier le cache Redis d'abord
         let cache_key = format!("delivery:summary:{}", delivery_id);
         if let Some(redis) = &self.redis_client {
-            if let Ok(mut conn) = redis.get_async_connection().await {
-                match redis::cmd("GET").arg(&cache_key).query_async::<_, Option<String>>(&mut conn).await {
+            if let Ok(mut conn) = redis.get_multiplexed_async_connection().await {
+                match redis::cmd("GET").arg(&cache_key).query_async::<Option<String>>(&mut conn).await {
                     Ok(Some(cached_json)) => {
                         if let Ok(cached) = serde_json::from_str::<DeliverySummary>(&cached_json) {
                             log::debug!("[DeliveryRepository] Cache hit pour delivery {}", delivery_id);
@@ -2135,13 +2135,13 @@ impl DeliveryRepository {
 
             // ✅ NOUVEAU: Mettre en cache dans Redis (TTL: 5 minutes = 300 secondes)
             if let Some(redis) = &self.redis_client {
-                if let Ok(mut conn) = redis.get_async_connection().await {
+                if let Ok(mut conn) = redis.get_multiplexed_async_connection().await {
                     if let Ok(json) = serde_json::to_string(&summary) {
                         let _ = redis::cmd("SETEX")
                             .arg(&cache_key)
                             .arg(300u64) // 5 minutes
                             .arg(&json)
-                            .query_async::<_, ()>(&mut conn)
+                            .query_async::<()>(&mut conn)
                             .await;
                     }
                 }

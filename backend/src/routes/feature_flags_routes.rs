@@ -17,7 +17,7 @@ pub async fn get_feature_flags(
     }))
 }
 
-pub fn feature_flags_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+pub fn feature_flags_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/api/feature-flags", get(get_feature_flags))
 }
