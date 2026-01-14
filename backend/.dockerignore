@@ -1,26 +1,146 @@
-# Fichiers à exclure du build Docker
+# 🚀 .dockerignore optimisé pour AWS ECS/Fargate
+# Exclut les fichiers inutiles pour réduire la taille du contexte Docker
+
+############################################
+# Build artifacts et dépendances
+############################################
 target/
-*.log
-*.tmp
+Cargo.lock
+*.pdb
+*.dSYM
+
+############################################
+# Fichiers de développement
+############################################
 .env
 .env.local
+.env.*.local
 *.swp
 *.swo
 *~
 .DS_Store
+Thumbs.db
+
+############################################
+# IDE et éditeurs
+############################################
 .vscode/
 .idea/
+*.code-workspace
+*.sublime-*
+
+############################################
+# Logs et fichiers temporaires
+############################################
+*.log
+*.tmp
+logs/
+tmp/
+temp/
+*.backup
+*.bak
+
+############################################
+# Documentation (sauf README)
+############################################
 *.md
-*.txt
-*.ps1
-*.sh
 !README.md
 !MIGRATION_STATUS_REPORT.md
-migrations_old/
-*.backup
-logs/
-data/
+docs/
+*.txt
+!ia_intentions_instructions.md
 
-# Mais inclure .sqlx pour SQLx offline
+############################################
+# Scripts de développement (non nécessaires dans l'image)
+############################################
+*.ps1
+*.bat
+*.sh
+!scripts/start-cloud.sh
+scripts/*.ps1
+scripts/*.bat
+build*.sh
+build*.ps1
+
+############################################
+# Anciennes migrations et données de test
+############################################
+migrations_old/
+data/test/
+data/*.json
+data/*.csv
+!data/.gitkeep
+
+############################################
+# Tests et coverage
+############################################
+tests/
+test/
+*.test.rs
+coverage/
+.nyc_output/
+
+############################################
+# Git et versioning
+############################################
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+############################################
+# CI/CD (non nécessaires dans l'image)
+############################################
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+############################################
+# Docker files (éviter la récursion)
+############################################
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+############################################
+# AWS et cloud configs (seront injectés via secrets)
+############################################
+.aws/
+*.pem
+*.key
+*.crt
+
+############################################
+# Fichiers système
+############################################
+*.orig
+*.rej
+*.patch
+
+############################################
+# INCLUSIONS IMPORTANTES (ne pas exclure)
+############################################
+# ✅ SQLx cache (NÉCESSAIRE pour build offline)
 !.sqlx/
+!.sqlx/**/*
+
+# ✅ Code source
+!src/
+!src/**/*
+
+# ✅ Configuration
+!config/
+!config/**/*
+
+# ✅ Migrations
+!migrations/
+!migrations/**/*
+
+# ✅ Prompts IA
+!ia_prompts/
+!ia_prompts/**/*
+
+# ✅ Fichiers de configuration Rust
+!Cargo.toml
 

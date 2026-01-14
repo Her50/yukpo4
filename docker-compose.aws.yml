@@ -1,0 +1,149 @@
+# 🚀 Docker Compose pour simulation/test de configuration AWS
+# Ce fichier simule l'environnement AWS ECS/Fargate en local
+# Utilisation: docker-compose -f docker-compose.aws.yml up
+
+version: '3.8'
+
+services:
+  # 🚀 Backend optimisé pour AWS (production-like)
+  backend-aws:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.cloud
+    image: yukpomnang-backend:aws
+    environment:
+      # Base de données (simuler AWS RDS)
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@postgres-aws:5432/yukpomnang}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      
+      # Configuration AWS
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - APP_ENV=production
+      - RUST_LOG=info
+      - RUST_BACKTRACE=0
+      
+      # Ports AWS ALB
+      - PORT=8080
+      - HOST=0.0.0.0
+      
+      # Pool de connexions optimisé pour AWS RDS
+      - DB_POOL_SIZE=100
+      - DB_POOL_MIN_SIZE=20
+      - DB_ACQUIRE_TIMEOUT_SECS=30
+      
+      # Performance AWS
+      - MAX_CONCURRENT_REQUESTS=10000
+      - CACHE_TTL=300
+      
+      # Redis (simuler AWS ElastiCache)
+      - REDIS_URL=${REDIS_URL:-redis://redis-aws:6379}
+      
+      # Migrations (désactivées par défaut, gérées par ECS task séparée)
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
+      
+      # GPU (désactivé pour Fargate standard)
+      - GPU_ENABLED=false
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-aws:
+        condition: service_healthy
+      redis-aws:
+        condition: service_healthy
+    networks:
+      - aws-network
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # 🗄️ PostgreSQL (simuler AWS RDS)
+  postgres-aws:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: yukpomnang
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"  # Port différent pour éviter conflit avec postgres local
+    volumes:
+      - postgres_aws_data:/var/lib/postgresql/data
+      - ./pgvector_pg16_files:/docker-entrypoint-initdb.d
+    networks:
+      - aws-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+
+  # 🔴 Redis (simuler AWS ElastiCache)
+  redis-aws:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"  # Port différent pour éviter conflit avec redis local
+    volumes:
+      - redis_aws_data:/data
+    networks:
+      - aws-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "redis-server"
+      - "--appendonly"
+      - "yes"
+      - "--maxmemory"
+      - "512mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+
+  # ⚖️ Nginx Load Balancer (simuler AWS ALB)
+  nginx-alb:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx-aws.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend-aws
+    networks:
+      - aws-network
+    restart: unless-stopped
+
+volumes:
+  postgres_aws_data:
+    driver: local
+  redis_aws_data:
+    driver: local
+
+networks:
+  aws-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+

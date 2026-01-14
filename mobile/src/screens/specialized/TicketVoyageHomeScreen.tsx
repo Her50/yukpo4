@@ -999,7 +999,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
         marginBottom: 8,
-        zIndex: 999, // ✅ NOUVEAU: z-index élevé pour que les suggestions d'autocomplétion soient visibles
+        zIndex: 9999, // ✅ CORRIGÉ 2026-01-14: z-index élevé pour que les suggestions d'autocomplétion soient visibles
     },
     labelRow: {
         flexDirection: 'row',

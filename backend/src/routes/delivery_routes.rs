@@ -440,6 +440,11 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/delivery/partners",
             get(list_delivery_partners).post(create_delivery_partner),
         )
+        // ✅ NOUVEAU 2026-01-14: Endpoint public pour les coursiers (lecture seule, authentifié mais pas admin)
+        .route(
+            "/api/delivery/partners/public",
+            get(list_delivery_partners_public),
+        )
         .route(
             "/api/delivery/partners/{id}",
             get(get_delivery_partner).put(update_delivery_partner).delete(delete_delivery_partner),
@@ -5119,6 +5124,7 @@ async fn list_delivery_partners(
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est admin
     if user.role != "admin" {
+        log::warn!("[delivery/partners] Accès refusé pour utilisateur {} (rôle: {})", user.id, user.role);
         return Err(AppError::Forbidden("Accès réservé aux administrateurs".to_string()));
     }
 
@@ -5129,17 +5135,19 @@ async fn list_delivery_partners(
         .map(|s| s.to_string());
 
     let partners: Vec<crate::models::delivery_model::DeliveryPartner> = if let Some(partner_type) = partner_type_filter {
+        // ✅ CORRIGÉ 2026-01-14: Normaliser la casse pour éviter les problèmes de sensibilité
+        let partner_type_lower = partner_type.to_lowercase();
         sqlx::query_as(
             r#"
             SELECT id, name, description, partner_type, contact_email, contact_phone, address, city, country, 
                    continent, website, logo_url, location_latitude, location_longitude, location_address, 
                    is_active, created_by, created_at, updated_at
             FROM delivery_partners
-            WHERE partner_type::text = $1 AND is_active = TRUE
+            WHERE LOWER(partner_type::text) = $1 AND is_active = TRUE
             ORDER BY country, name ASC
             "#
         )
-        .bind(partner_type)
+        .bind(partner_type_lower)
         .fetch_all(&state.pg)
         .await?
     } else {
@@ -5155,6 +5163,59 @@ async fn list_delivery_partners(
         .fetch_all(&state.pg)
         .await?
     };
+
+    Ok(Json(json!({
+        "success": true,
+        "partners": partners,
+        "total": partners.len()
+    })))
+}
+
+/// GET /api/delivery/partners/public - Lister les partenaires actifs (authentifié, pas besoin d'être admin)
+/// Peut être filtré par type via query param ?type=livraison
+/// Utilisé par les coursiers pour sélectionner un partenaire lors de l'enregistrement
+async fn list_delivery_partners_public(
+    State(state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+    Query(params): Query<serde_json::Map<String, serde_json::Value>>,
+) -> AppResult<Json<Value>> {
+    // ✅ NOUVEAU 2026-01-14: Filtrer par type si fourni (pour l'écran d'enregistrement coursier)
+    let partner_type_filter: Option<String> = params
+        .get("type")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_lowercase()); // Normaliser la casse
+
+    let partners: Vec<crate::models::delivery_model::DeliveryPartner> = if let Some(partner_type) = partner_type_filter {
+        sqlx::query_as(
+            r#"
+            SELECT id, name, description, partner_type, contact_email, contact_phone, address, city, country, 
+                   continent, website, logo_url, location_latitude, location_longitude, location_address, 
+                   is_active, created_by, created_at, updated_at
+            FROM delivery_partners
+            WHERE LOWER(partner_type::text) = $1 AND is_active = TRUE
+            ORDER BY country, name ASC
+            "#
+        )
+        .bind(partner_type)
+        .fetch_all(&state.pg)
+        .await?
+    } else {
+        // Si aucun filtre, retourner tous les partenaires actifs
+        sqlx::query_as(
+            r#"
+            SELECT id, name, description, partner_type, contact_email, contact_phone, address, city, country, 
+                   continent, website, logo_url, location_latitude, location_longitude, location_address, 
+                   is_active, created_by, created_at, updated_at
+            FROM delivery_partners
+            WHERE is_active = TRUE
+            ORDER BY country, name ASC
+            "#
+        )
+        .fetch_all(&state.pg)
+        .await?
+    };
+
+    log::info!("[delivery/partners/public] {} partenaires retournés pour utilisateur authentifié", partners.len());
 
     Ok(Json(json!({
         "success": true,

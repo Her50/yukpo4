@@ -149,29 +149,44 @@ const CourierRegistrationScreen: React.FC = () => {
             
             let response;
             try {
+                // ✅ CORRIGÉ 2026-01-14: Utiliser l'endpoint public pour les coursiers
                 // Charger les partenaires selon les types correspondants
                 let partnersList: any[] = [];
                 for (const partnerType of partnerTypesToLoad) {
                     try {
-                        const responseType = await apiGet(`/api/delivery/partners?type=${partnerType}`);
+                        const responseType = await apiGet(`/api/delivery/partners/public?type=${partnerType}`);
                         const typePartners = responseType.partners || responseType.data?.partners || [];
                         partnersList = [...partnersList, ...typePartners];
-                    } catch (err) {
-                        console.warn(`[CourierRegistrationScreen] Erreur chargement partenaires type ${partnerType}:`, err);
+                    } catch (err: any) {
+                        console.error(`[CourierRegistrationScreen] Erreur chargement partenaires type ${partnerType}:`, err);
+                        // ✅ AMÉLIORÉ: Feedback utilisateur pour erreur 403
+                        if (err.response?.status === 403) {
+                            console.warn(`[CourierRegistrationScreen] Accès refusé pour type ${partnerType} - utilisateur non autorisé`);
+                        }
                     }
                 }
                 
                 // Si toujours aucun, charger tous les partenaires actifs et filtrer côté client
                 if (partnersList.length === 0) {
-                    const responseAll = await apiGet('/api/delivery/partners');
-                    const allPartners = responseAll.partners || responseAll.data?.partners || [];
-                    // Filtrer uniquement les partenaires actifs de type "livraison", "livraison_courses_marche", "demenagement" ou "chauffeur"
-                    partnersList = allPartners.filter((p: any) => {
-                        const isActive = p.is_active !== false;
-                        const partnerType = (p.partner_type || p.partnerType || '').toLowerCase();
-                        const validTypes = ['livraison', 'livraison_courses_marche', 'demenagement', 'chauffeur'];
-                        return isActive && validTypes.includes(partnerType);
-                    });
+                    try {
+                        const responseAll = await apiGet('/api/delivery/partners/public');
+                        const allPartners = responseAll.partners || responseAll.data?.partners || [];
+                        // Filtrer uniquement les partenaires actifs de type "livraison", "livraison_courses_marche", "demenagement" ou "chauffeur"
+                        partnersList = allPartners.filter((p: any) => {
+                            const isActive = p.is_active !== false;
+                            const partnerType = (p.partner_type || p.partnerType || '').toLowerCase();
+                            const validTypes = ['livraison', 'livraison_courses_marche', 'demenagement', 'chauffeur'];
+                            return isActive && validTypes.includes(partnerType);
+                        });
+                    } catch (err: any) {
+                        console.error('[CourierRegistrationScreen] Erreur chargement tous les partenaires:', err);
+                        if (err.response?.status === 403) {
+                            Alert.alert(
+                                'Accès refusé',
+                                'Vous n\'avez pas les permissions nécessaires pour charger les partenaires. Veuillez contacter le support.'
+                            );
+                        }
+                    }
                 }
                 
                 // ✅ NOUVEAU: Créer le partenaire "Yukpo" par défaut et le placer en premier
@@ -212,18 +227,35 @@ const CourierRegistrationScreen: React.FC = () => {
                 }
                 
                 console.log('[CourierRegistrationScreen] ✅ Partenaires chargés:', partnersList.length);
-            } catch (apiError) {
+            } catch (apiError: any) {
+                // ✅ AMÉLIORÉ 2026-01-14: Gestion d'erreur avec feedback utilisateur
+                console.error('[CourierRegistrationScreen] ⚠️ Erreur avec filtres, chargement sans filtre:', apiError);
+                
+                // Feedback utilisateur selon le type d'erreur
+                if (apiError.response?.status === 403) {
+                    Alert.alert(
+                        'Accès refusé',
+                        'Vous n\'avez pas les permissions nécessaires pour charger les partenaires. Veuillez contacter le support.'
+                    );
+                    return; // Ne pas continuer si accès refusé
+                } else if (apiError.response?.status >= 500) {
+                    Alert.alert(
+                        'Erreur serveur',
+                        'Le serveur rencontre des difficultés. Veuillez réessayer plus tard.'
+                    );
+                }
+                
                 // Fallback: charger tous les partenaires sans filtre
-                console.warn('[CourierRegistrationScreen] ⚠️ Erreur avec filtres, chargement sans filtre:', apiError);
-                response = await apiGet('/api/delivery/partners');
-                const allPartners = response.partners || response.data?.partners || [];
-                // Filtrer côté client les partenaires actifs
-                const activePartners = allPartners.filter((p: any) => {
-                    const isActive = p.is_active !== false;
-                    const partnerType = (p.partner_type || p.partnerType || '').toLowerCase();
-                    const validTypes = ['livraison', 'livraison_courses_marche', 'demenagement', 'chauffeur'];
-                    return isActive && validTypes.includes(partnerType);
-                });
+                try {
+                    response = await apiGet('/api/delivery/partners/public');
+                    const allPartners = response.partners || response.data?.partners || [];
+                    // Filtrer côté client les partenaires actifs
+                    const activePartners = allPartners.filter((p: any) => {
+                        const isActive = p.is_active !== false;
+                        const partnerType = (p.partner_type || p.partnerType || '').toLowerCase();
+                        const validTypes = ['livraison', 'livraison_courses_marche', 'demenagement', 'chauffeur'];
+                        return isActive && validTypes.includes(partnerType);
+                    });
                 
                 // ✅ NOUVEAU: Créer le partenaire "Yukpo" par défaut et le placer en premier
                 const yukpoPartner = {
@@ -263,9 +295,29 @@ const CourierRegistrationScreen: React.FC = () => {
                 }
                 
                 console.log('[CourierRegistrationScreen] ✅ Partenaires chargés (fallback):', activePartners.length);
+                } catch (fallbackError: any) {
+                    console.error('[CourierRegistrationScreen] ❌ Erreur lors du fallback:', fallbackError);
+                    Alert.alert(
+                        'Erreur',
+                        'Impossible de charger les partenaires. Veuillez vérifier votre connexion et réessayer.'
+                    );
+                }
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('[CourierRegistrationScreen] ❌ Erreur chargement partenaires:', error);
+            // ✅ AMÉLIORÉ 2026-01-14: Feedback utilisateur selon le type d'erreur
+            if (error.response?.status === 403) {
+                Alert.alert(
+                    'Accès refusé',
+                    'Vous n\'avez pas les permissions nécessaires. Veuillez contacter le support.'
+                );
+            } else if (!error.response) {
+                // Erreur réseau
+                Alert.alert(
+                    'Erreur de connexion',
+                    'Vérifiez votre connexion internet et réessayez.'
+                );
+            }
             // En cas d'erreur, créer quand même le partenaire Yukpo par défaut
             const yukpoPartner = {
                 id: -1,
@@ -392,31 +444,30 @@ const CourierRegistrationScreen: React.FC = () => {
 
     const pickImage = async (type: 'id' | 'license' | 'registration' | 'insurance' | 'vehicle') => {
         try {
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Permission requise', 'Autorisez l\'accès à la galerie pour ajouter des photos');
+            // ✅ CORRIGÉ 2026-01-14: Demander les permissions correctement
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permissionResult.granted) {
+                Alert.alert(
+                    'Permission requise',
+                    'Autorisez l\'accès à la galerie pour ajouter des photos'
+                );
                 return;
             }
 
-            if (!ImagePicker || !ImagePicker.MediaType) {
-                console.error('[CourierRegistrationScreen] ImagePicker ou MediaType est undefined');
-                Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
-                return;
-            }
-
+            // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaType.Images,
+                mediaTypes: 'images' as any,
                 allowsEditing: true,
                 quality: 0.8,
             });
 
-            if (!result.canceled && result.assets[0]) {
+            if (!result.canceled && result.assets && result.assets[0]) {
                 const asset = result.assets[0];
                 const document: DocumentFile = {
                     uri: asset.uri,
                     name: `photo_${type}_${Date.now()}.jpg`,
-                    type: 'image/jpeg',
-                    size: asset.fileSize,
+                    type: asset.mimeType || 'image/jpeg',
+                    size: asset.fileSize || 0,
                 };
 
                 switch (type) {
@@ -437,9 +488,12 @@ const CourierRegistrationScreen: React.FC = () => {
                         break;
                 }
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('[CourierRegistrationScreen] Erreur sélection image:', error);
-            Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+            Alert.alert(
+                'Erreur',
+                error.message || 'Impossible de sélectionner l\'image. Veuillez réessayer.'
+            );
         }
     };
 
@@ -765,8 +819,7 @@ const CourierRegistrationScreen: React.FC = () => {
                                             styles.activityTypeGridLabel,
                                             isSelected && styles.activityTypeGridLabelSelected,
                                         ]}
-                                        numberOfLines={1}
-                                        adjustsFontSizeToFit={false}
+                                        numberOfLines={2}
                                     >
                                         {type.label}
                                     </Text>
@@ -1502,22 +1555,22 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
     },
-    // ✅ REFONDU: Styles pour le champ "Nature de l'activité" - Grille 3 colonnes compacte pour optimiser l'espace
+    // ✅ REFONDU: Styles pour le champ "Nature de l'activité" - Grille 2 colonnes pour meilleur alignement
     activityTypeGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
         marginTop: 12,
-        gap: 8,
+        gap: 10,
     },
     activityTypeGridItem: {
-        width: '31%', // ✅ 3 colonnes compactes pour économiser l'espace tout en évitant les retours à la ligne
-        minHeight: 95,
+        width: '47%', // ✅ 2 colonnes avec gap de 10px (47% * 2 + 10px gap = ~100%)
+        minHeight: 100,
         borderRadius: 10,
         borderWidth: 1.5,
         borderColor: modernColors.border,
         backgroundColor: modernColors.surface,
-        padding: 10,
+        padding: 12,
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
@@ -1540,12 +1593,13 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     activityTypeGridLabel: {
-        fontSize: 11.5, // ✅ Taille optimisée pour tenir sur une ligne dans 3 colonnes
+        fontSize: 13, // ✅ Taille augmentée pour 2 colonnes
         fontWeight: '600',
         color: modernColors.text,
         textAlign: 'center',
-        lineHeight: 14,
+        lineHeight: 16,
         width: '100%',
+        marginTop: 4,
     },
     activityTypeGridLabelSelected: {
         color: modernColors.surface,

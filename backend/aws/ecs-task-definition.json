@@ -1,82 +1,120 @@
 {
-    "family": "yukpomnang-backend",
-    "networkMode": "awsvpc",
-    "requiresCompatibilities": [
-        "FARGATE"
-    ],
-    "cpu": "2048",
-    "memory": "4096",
-    "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
-    "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskRole",
-    "containerDefinitions": [
+  "family": "yukpomnang-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "2048",
+  "memory": "4096",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "yukpomnang-backend",
+      "image": "YOUR_ECR_REPO_URI:latest",
+      "essential": true,
+      "portMappings": [
         {
-            "name": "yukpomnang-backend",
-            "image": "YOUR_ECR_REPO/yukpomnang-backend:latest",
-            "essential": true,
-            "portMappings": [
-                {
-                    "containerPort": 3001,
-                    "protocol": "tcp"
-                }
-            ],
-            "environment": [
-                {
-                    "name": "RUST_LOG",
-                    "value": "info"
-                },
-                {
-                    "name": "ENVIRONMENT",
-                    "value": "production"
-                },
-                {
-                    "name": "BLENDER_PATH",
-                    "value": "/usr/local/bin/blender"
-                },
-                {
-                    "name": "BLENDER_RENDER_SAMPLES",
-                    "value": "256"
-                },
-                {
-                    "name": "BLENDER_USE_GPU",
-                    "value": "true"
-                },
-                {
-                    "name": "AR_RENDER_OUTPUT_DIR",
-                    "value": "/tmp/ar_renders"
-                }
-            ],
-            "secrets": [
-                {
-                    "name": "DATABASE_URL",
-                    "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:yukpomnang/database-url"
-                },
-                {
-                    "name": "JWT_SECRET",
-                    "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:yukpomnang/jwt-secret"
-                },
-                {
-                    "name": "OPENAI_API_KEY",
-                    "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:yukpomnang/openai-key"
-                }
-            ],
-            "logConfiguration": {
-                "logDriver": "awslogs",
-                "options": {
-                    "awslogs-group": "/ecs/yukpomnang-backend",
-                    "awslogs-region": "us-east-1",
-                    "awslogs-stream-prefix": "ecs"
-                }
-            },
-            "healthCheck": {
-                "command": [
-                    "CMD-SHELL",
-                    "curl -f http://localhost:3001/healthz || exit 1"
-                ],
-                "interval": 30,
-                "timeout": 5,
-                "retries": 3,
-                "startPeriod": 60
-            }
+          "containerPort": 8080,
+          "protocol": "tcp",
+          "hostPort": 8080
         }
-    ]
+      ],
+      "environment": [
+        {
+          "name": "APP_ENV",
+          "value": "production"
+        },
+        {
+          "name": "RUST_LOG",
+          "value": "info"
+        },
+        {
+          "name": "PORT",
+          "value": "8080"
+        },
+        {
+          "name": "HOST",
+          "value": "0.0.0.0"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "us-east-1"
+        },
+        {
+          "name": "DB_POOL_SIZE",
+          "value": "100"
+        },
+        {
+          "name": "DB_POOL_MIN_SIZE",
+          "value": "20"
+        },
+        {
+          "name": "DB_ACQUIRE_TIMEOUT_SECS",
+          "value": "30"
+        },
+        {
+          "name": "MAX_CONCURRENT_REQUESTS",
+          "value": "10000"
+        },
+        {
+          "name": "CACHE_TTL",
+          "value": "300"
+        },
+        {
+          "name": "RUN_MIGRATIONS",
+          "value": "false"
+        },
+        {
+          "name": "GPU_ENABLED",
+          "value": "false"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:YOUR_ACCOUNT_ID:secret:yukpomnang/database-url"
+        },
+        {
+          "name": "JWT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:YOUR_ACCOUNT_ID:secret:yukpomnang/jwt-secret"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:YOUR_ACCOUNT_ID:secret:yukpomnang/redis-url"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:YOUR_ACCOUNT_ID:secret:yukpomnang/openai-api-key"
+        },
+        {
+          "name": "GOOGLE_MAPS_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:YOUR_ACCOUNT_ID:secret:yukpomnang/google-maps-api-key"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/yukpomnang-backend",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8080/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "ulimits": [
+        {
+          "name": "nofile",
+          "softLimit": 65536,
+          "hardLimit": 65536
+        }
+      ]
+    }
+  ]
 }

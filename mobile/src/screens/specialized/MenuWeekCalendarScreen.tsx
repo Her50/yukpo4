@@ -368,7 +368,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             // Créer la commande shopping
             const shoppingItems = generatedShoppingList.items.map((item: any) => ({
                 label: item.ingredient_name,
-                quantity: item.quantity,
+                quantity: typeof item.quantity === 'object' && item.quantity !== null ? item.quantity.number : item.quantity,
                 unit: item.unit,
                 estimatedPrice: item.estimated_price,
                 estimatedTotal: item.estimated_price,
@@ -1191,7 +1191,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         {generatedRecipe.ingredients.map((ingredient, index) => (
                                             <View key={index} style={styles.ingredientItem}>
                                                 <Text style={styles.ingredientText}>
-                                                    • {ingredient.name}: {ingredient.quantity} {ingredient.unit}
+                                                    • {ingredient.name}: {typeof ingredient.quantity === 'object' && ingredient.quantity !== null ? ingredient.quantity.number : ingredient.quantity} {ingredient.unit}
                                                     {ingredient.notes && ` (${ingredient.notes})`}
                                                 </Text>
                                             </View>
@@ -1635,7 +1635,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 {item.ingredient_name}
                                             </Text>
                                             <Text style={[styles.shoppingListTableCell, { flex: 1.5 }]}>
-                                                {item.quantity} {item.unit}
+                                                {typeof item.quantity === 'object' && item.quantity !== null ? item.quantity.number : item.quantity} {item.unit}
                                             </Text>
                                             <Text style={[styles.shoppingListTableCell, { flex: 1.5, color: modernColors.primary, fontWeight: '700' }]}>
                                                 {formatPrice(item.estimated_price)}

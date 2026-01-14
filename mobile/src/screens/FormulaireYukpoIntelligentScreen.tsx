@@ -1875,7 +1875,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         // Mettre à jour les states
         setComposants(components);
-        setDynamicTextareaHeights({});
         setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
         setValeursFormulaire(prev => ({
           ...prev, // Garder les contacts précédents
@@ -2101,7 +2100,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           ...componentValues // ✅ NOUVEAU: Les valeurs des field.value
         });
         setComposants(components);
-        setDynamicTextareaHeights({});
         setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
         setActiveStep(2);
         setCurrentDisplayIndex(0);

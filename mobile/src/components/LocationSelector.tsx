@@ -747,7 +747,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 };
 
 const styles = StyleSheet.create({
-    container: { marginBottom: 12, zIndex: 1000, position: 'relative' },
+    container: { marginBottom: 12, zIndex: 9999, position: 'relative', elevation: 1000 },
     label: { fontSize: 13, fontWeight: '600', color: modernColors.text, marginBottom: 6 },
     required: { color: modernColors.error },
     selector: {
@@ -790,8 +790,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
-        elevation: 10,
-        zIndex: 10000,
+        elevation: 1000,
+        zIndex: 99999,
     },
     suggestionsList: {
         maxHeight: 200,

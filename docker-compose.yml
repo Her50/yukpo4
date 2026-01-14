@@ -21,52 +21,67 @@ services:
       timeout: 5s
       retries: 5
 
-  # 🚀 Backend Rust
+  # 🚀 Backend Rust (Développement local)
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      args:
-        DATABASE_URL: "postgresql://user:password@host:port/database"
     environment:
-      - LIVEKIT_API_URL=http://livekit:7880
-      - LIVEKIT_WS_URL=ws://localhost:7880
+      # Base de données locale
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/yukpomnang
+      - JWT_SECRET=${JWT_SECRET:-c1daf37cdbc083d458dadf8510af6722929d17bd931e9dfda90ee4ed74d6f2b6}
+      - CORS_ORIGIN=*
+      
+      # Logging
+      - RUST_LOG=${RUST_LOG:-debug}
+      - RUST_BACKTRACE=1
+      - APP_ENV=development
+      
+      # Ports
+      - PORT=3001
+      - HOST=0.0.0.0
+      
+      # LiveKit (optionnel pour développement)
+      - LIVEKIT_API_URL=${LIVEKIT_API_URL:-http://livekit:7880}
+      - LIVEKIT_WS_URL=${LIVEKIT_WS_URL:-ws://localhost:7880}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
-      - LIVEKIT_HLS_URL=http://localhost:8080/live
-      - LIVEKIT_INGRESS_MODE=rtmp
-      - LIVEKIT_ROOM_TTL_SECONDS=7200
-      - LIVE_RECORDING_ENABLED=true
-      - LIVE_FALLBACK_ENABLED=true
-      - SRS_RTMP_URL=rtmp://localhost:1935/live
-      - SRS_HLS_URL=http://localhost:8080/live
-      - RUST_LOG=info
-      - DATABASE_URL=postgresql://user:password@host:port/database
-      - JWT_SECRET=c1daf37cdbc083d458dadf8510af6722929d17bd931e9dfda90ee4ed74d6f2b6
-      - CORS_ORIGIN=*
+      
+      # SRS Streaming (optionnel)
+      - SRS_RTMP_URL=${SRS_RTMP_URL:-rtmp://localhost:1935/live}
+      - SRS_HLS_URL=${SRS_HLS_URL:-http://localhost:8080/live}
+      
       # 🎨 Blender Configuration (pour rendu 3D AR)
       - BLENDER_PATH=/usr/local/bin/blender
       - BLENDER_RENDER_SAMPLES=256
-      - BLENDER_USE_GPU=true
+      - BLENDER_USE_GPU=false
       - AR_RENDER_OUTPUT_DIR=/tmp/ar_renders
+      
+      # Pool de connexions (réduit pour développement)
+      - DB_POOL_SIZE=10
+      - DB_POOL_MIN_SIZE=2
+      
+      # Migrations automatiques en développement
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
     ports:
       - "3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
-      livekit:
-        condition: service_started
-      srs:
-        condition: service_started
     networks:
       - yukpo-network
     volumes:
+      # Montage du code source pour développement hot-reload (optionnel)
+      - ./backend/src:/app/src:ro
       - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:3001/healthz || exit 1" ]
+      test: [ "CMD-SHELL", "curl -f http://localhost:3001/health || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+    restart: unless-stopped
 
   # 🌐 Frontend React
   frontend:

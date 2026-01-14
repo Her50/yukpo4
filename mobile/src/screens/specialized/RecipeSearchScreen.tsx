@@ -96,7 +96,16 @@ const RecipeSearchScreen: React.FC = () => {
                 }
             }
 
-            if (recipe) {
+            // ✅ DEBUG: Log détaillé de l'extraction
+            console.log('[RecipeSearch] 📊 État après extraction:', {
+                hasRecipe: !!recipe,
+                recipeName: recipe?.recipe_name,
+                recipeKeys: recipe ? Object.keys(recipe) : [],
+                responseSuccess: response?.success,
+                responseHasData: !!response?.data,
+            });
+
+            if (recipe && recipe.recipe_name) {
                 console.log('[RecipeSearch] ✅ Recette générée avec succès:', recipe.recipe_name);
                 setGeneratedRecipe(recipe);
                 setShowRecipeDetails(true);
@@ -106,8 +115,12 @@ const RecipeSearchScreen: React.FC = () => {
                 console.error('[RecipeSearch] ❌ Erreur dans la réponse:', errorMsg);
                 Alert.alert('Erreur', errorMsg);
             } else {
-                console.error('[RecipeSearch] ❌ Réponse invalide:', response);
-                Alert.alert('Erreur', 'Réponse invalide du serveur. Veuillez réessayer.');
+                console.error('[RecipeSearch] ❌ Réponse invalide ou recette manquante:', {
+                    response,
+                    recipe,
+                    recipeName: recipe?.recipe_name,
+                });
+                Alert.alert('Erreur', 'Impossible d\'extraire la recette de la réponse. Veuillez réessayer.');
             }
         } catch (error: any) {
             console.error('[RecipeSearch] ❌ Erreur exception:', error);
@@ -178,10 +191,13 @@ const RecipeSearchScreen: React.FC = () => {
 
             {/* ✅ NOUVEAU: Modal pour afficher la recette générée (comme dans MenuWeekCalendarScreen) */}
             <Modal
-                visible={showRecipeDetails}
+                visible={showRecipeDetails && !!generatedRecipe}
                 animationType="slide"
                 transparent={true}
-                onRequestClose={() => setShowRecipeDetails(false)}
+                onRequestClose={() => {
+                    setShowRecipeDetails(false);
+                    setGeneratedRecipe(null);
+                }}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
