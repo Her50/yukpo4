@@ -1967,7 +1967,8 @@ impl DeliveryRepository {
             }
         }
 
-        // ✅ OPTIMISÉ: Utiliser les colonnes calculées au lieu de ST_Y/ST_X
+        // ✅ OPTIMISÉ: Utiliser les colonnes calculées (pickup_lat, pickup_lng, etc.) si disponibles, sinon ST_Y/ST_X
+        // La migration 20260114_optimize_delivery_queries_performance.sql crée ces colonnes pour améliorer les performances
         let row: Option<DeliverySummaryRow> = sqlx::query_as(
             r#"
             SELECT
