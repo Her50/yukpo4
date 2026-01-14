@@ -1372,10 +1372,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     container: {
         backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que l'en-tête et le pied de page (#f8fafc)
         borderRadius: 12,
-        padding: 10,
+        padding: 12, // ✅ AUGMENTÉ: De 10 à 12 pour plus d'espace interne
         marginHorizontal: 0,
         marginBottom: 8,
-        minHeight: 70,
+        minHeight: 85, // ✅ AUGMENTÉ: De 70 à 85 pour plus de hauteur
     },
     inputContainer: {
         borderRadius: 8,
@@ -1383,7 +1383,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         borderColor: '#CBD5E1', // ✅ AMÉLIORÉ: Bordure plus foncée harmonisée (#CBD5E1 - slate-300)
         backgroundColor: '#E0F2FE', // ✅ AMÉLIORÉ: Fond bleu clair harmonisé plus foncé (#E0F2FE = sky-100)
         marginBottom: 8,
-        minHeight: 55,
+        minHeight: 60, // ✅ AUGMENTÉ: De 55 à 60 pour plus de hauteur
     },
     inputRow: {
         flexDirection: 'row',

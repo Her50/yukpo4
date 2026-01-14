@@ -34,6 +34,7 @@ import UserAvatarMenu from '../components/UserAvatarMenu';
 import YukpoServicesQuickAccess from '../components/YukpoServicesQuickAccess';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { API_ENDPOINTS } from '../config/api.config';
 import { apiGet } from '../services/api';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 import { modernColors } from '../theme/modernTheme';
@@ -978,7 +979,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginHorizontal: 16,
         marginTop: 16,
-        marginBottom: 16,
+        marginBottom: 8, // ✅ RÉDUIT: De 16 à 8 pour réduire l'espace avec ChatInputMobile
         backgroundColor: '#F1F5F9',
         borderRadius: 12,
         padding: 5, // ✅ AUGMENTÉ: De 4 à 5 pour plus d'espace autour des boutons
@@ -1009,12 +1010,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc pour le corps de l'application
         marginHorizontal: 16,
         borderRadius: 16,
-        padding: 16,
+        padding: 12, // ✅ RÉDUIT: De 16 à 12 pour compacter davantage
         marginTop: 0, // ✅ CORRIGÉ: Pas de marge en haut (gérée par modeSelector)
-        marginBottom: 16, // ✅ CORRIGÉ: Augmenté pour espace blanc
+        marginBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour remonter les éléments
     },
     inputContainer: {
-        marginBottom: 8,
+        marginBottom: 4, // ✅ RÉDUIT: De 8 à 4 pour réduire l'espace avec les promotions
     },
     carouselErrorContainer: {
         padding: 20,
@@ -1030,9 +1031,9 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     promotionsContainer: {
-        marginTop: 16, // ✅ CORRIGÉ: Augmenté pour espace blanc autour des boutons
+        marginTop: 12, // ✅ RÉDUIT: De 16 à 12 pour remonter les éléments
         marginHorizontal: 0, // Pas de marge horizontale car déjà dans le conteneur
-        marginBottom: 16, // ✅ CORRIGÉ: Ajouté pour espace blanc en bas
+        marginBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour équilibrer
     },
     promotionsMainButton: {
         backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que les boutons des services spécialisés (#f8fafc)
@@ -1113,8 +1114,8 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     specializedServicesContainer: {
-        marginTop: 24, // ✅ CORRIGÉ: Augmenté pour espace blanc autour des boutons
-        marginBottom: 16, // ✅ CORRIGÉ: Ajouté pour espace blanc en bas
+        marginTop: 16, // ✅ RÉDUIT: De 24 à 16 pour remonter les éléments
+        marginBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour équilibrer
     },
     specializedServicesTitle: {
         fontSize: 17, // ✅ AUGMENTÉ: De 15 à 17 pour meilleure visibilité
