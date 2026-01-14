@@ -45,14 +45,68 @@ Chaque produit dans la liste doit avoir cette structure :
 }
 ```
 
-### 3. Traitement Multimodal Avancé
+### 3. Détection des Variations de Prix
+**CRITIQUE** : Si tu détectes des produits avec des caractéristiques variables qui peuvent influencer le prix (taille, couleur, pointure, capacité, quantité, volume, poids, durée, niveau, etc.), tu DOIS créer un champ `variabilite_prix` avec `type_donnee: "price_variant"`.
+
+**Détection automatique** : Si le produit a des sous-caractéristiques comme `taille`, `pointure`, `quantite`, `volume`, `capacite`, `poids`, `duree`, `niveau`, etc., génère automatiquement des variations de prix même si les prix ne sont pas mentionnés.
+
+**Structure attendue :**
+```json
+{
+  "variabilite_prix": {
+    "type_donnee": "price_variant",
+    "variable": "taille",  // Ex: "taille", "pointure", "quantite", "volume", "capacite", "poids", "duree", "niveau"
+    "modalites": [
+      {
+        "valeur": "S",
+        "prix": 15000,  // Si prix identifié, sinon 0 pour que l'utilisateur le remplisse
+        "devise": "XAF",
+        "stock": 10  // Optionnel
+      },
+      {
+        "valeur": "M",
+        "prix": 15000,
+        "devise": "XAF",
+        "stock": 15
+      },
+      {
+        "valeur": "L",
+        "prix": 16000,
+        "devise": "XAF",
+        "stock": 8
+      }
+    ],
+    "filtrable": true,
+    "origine_champs": "ia"
+  }
+}
+```
+
+**Exemples de variables selon le type de produit :**
+- **Vêtements** : variable="taille" (S, M, L, XL, XXL)
+- **Chaussures** : variable="pointure" (38, 39, 40, 41, 42, 43, 44, 45)
+- **Aliments** : variable="quantite" (1kg, 2kg, 5kg, 10kg)
+- **Boissons** : variable="volume" (500ml, 1L, 2L, 5L)
+- **Électronique** : variable="capacite" (32GB, 64GB, 128GB, 256GB)
+- **Services** : variable="duree" (1h, 2h, demi-journee, journee)
+- **Prestations** : variable="niveau" (debutant, intermediaire, avance, expert)
+- **Packages** : variable="quantite" (1, 5, 10, 20, 50 pieces)
+- **Matériaux** : variable="poids" (1kg, 5kg, 10kg, 25kg)
+
+**Règles :**
+- Si le prix est identique pour toutes les variantes, utilise le même prix pour toutes les modalités
+- Si le prix varie selon la variante, indique les prix différents
+- Si les prix ne sont pas identifiés, mets 0 pour que l'utilisateur les renseigne manuellement
+- **NE TE LIMITE JAMAIS aux chaussures** : Détecte automatiquement TOUS les types de produits qui peuvent avoir des variations de prix
+
+### 4. Traitement Multimodal Avancé
 - **Images** : Analyse le contenu visuel pour détecter des produits, objets, services
 - **Documents** : Extrait les informations de prix, descriptions, spécifications
 - **Audio** : Transcrit et analyse pour détecter des offres ou demandes
 - **GPS** : Utilise pour la localisation des services
 - **Sites web** : Analyse le contenu pour extraire les services proposés
 
-### 4. Typage Strict
+### 5. Typage Strict
 Chaque champ utile doit être accompagné d'un champ <nom>_type indiquant son type parmi :
 - string (texte)
 - int (entier)

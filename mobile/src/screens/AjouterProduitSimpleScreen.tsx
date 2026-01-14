@@ -367,6 +367,54 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const prefillPriceVariant =
         extractPriceVariant(prefill.variabilite_prix || prefill.price_variant) ||
         extractPriceVariant(prefill.produits);
+    
+    // ✅ NOUVEAU 2026-01-14: Si pas de prix_variation détecté mais qu'on a des sous-caractéristiques, générer automatiquement
+    if (!iaPriceVariant && suggestionData?.produits?.sous_caracteristiques) {
+        const produitsData = suggestionData.produits;
+        const sousCaracs = produitsData.sous_caracteristiques;
+        const productLabels = produitsData.product_labels || [];
+        
+        // Détecter les caractéristiques qui peuvent avoir des variations de prix
+        const priceVariableLabels = ['taille', 'pointure', 'quantite', 'volume', 'poids', 'capacite'];
+        const hasPriceVariable = productLabels.some((label: string) => 
+            priceVariableLabels.includes(label.toLowerCase())
+        );
+        
+        if (hasPriceVariable && Object.keys(sousCaracs).length > 0) {
+            // Trouver le premier label qui peut avoir des variations de prix
+            const variableLabel = productLabels.find((label: string) => 
+                priceVariableLabels.includes(label.toLowerCase())
+            );
+            
+            if (variableLabel && sousCaracs[variableLabel]) {
+                const variableValues = sousCaracs[variableLabel];
+                
+                if (Array.isArray(variableValues) && variableValues.length > 0) {
+                    // Générer des variations de prix basées sur les sous-caractéristiques
+                    const modalites = variableValues.map((val: string) => ({
+                        valeur: val,
+                        prix: 0, // Prix par défaut, l'utilisateur devra le remplir
+                        devise: 'XAF',
+                        stock: null
+                    }));
+                    
+                    iaPriceVariant = {
+                        type_donnee: 'price_variant',
+                        variable: variableLabel,
+                        modalites: modalites,
+                        filtrable: true,
+                        origine_champs: 'auto_generated'
+                    };
+                    
+                    console.log('[AjouterProduitSimple] ✅ Prix_variation généré automatiquement depuis sous-caractéristiques:', {
+                        variable: variableLabel,
+                        modalites_count: iaPriceVariant.modalites.length,
+                        modalites: iaPriceVariant.modalites.map((m: any) => m.valeur)
+                    });
+                }
+            }
+        }
+    }
 
     // ✅ Caractéristiques autocomplete (avec sous_caracteristiques)
     // ✅ CORRECTION: Extraire produits correctement même si c'est un objet avec valeur

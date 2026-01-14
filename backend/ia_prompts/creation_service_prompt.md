@@ -107,7 +107,17 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 ### 💰 Type `price_variant` - POUR VARIABILITÉ PRIX
 
 **UTILISE `type_donnee="price_variant"`** quand :
-- Le prix varie selon une caractéristique (taille, couleur, capacité, durée, poids, etc.)
+- Le prix varie selon une caractéristique du produit (taille, couleur, capacité, durée, poids, pointure, volume, quantité, etc.)
+- **DÉTECTION AUTOMATIQUE** : Si le produit a des sous-caractéristiques qui peuvent influencer le prix, génère automatiquement `variabilite_prix`
+
+**Caractéristiques qui génèrent automatiquement des variations de prix :**
+- **Vêtements** : taille (S, M, L, XL), couleur (si prix différent selon couleur)
+- **Chaussures** : pointure (38, 39, 40, etc.)
+- **Aliments** : quantité (1kg, 2kg, 5kg), volume (500ml, 1L, 2L)
+- **Électronique** : capacité (32GB, 64GB, 128GB), stockage (500GB, 1TB)
+- **Services** : durée (1h, 2h, journée), fréquence (ponctuel, mensuel, annuel)
+- **Prestations** : niveau (débutant, avancé, expert), package (basique, premium, VIP)
+- **Autres** : poids, dimensions, conditionnement, format, etc.
 
 **Structure obligatoire :**
 ```json
@@ -116,14 +126,17 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
     "type_donnee": "price_variant",
     "variable": "taille",
     "modalites": [
-      {"valeur": "S", "prix": 5000, "devise": "XAF", "disponible": true},
-      {"valeur": "M", "prix": 6000, "devise": "XAF", "disponible": true}
+      {"valeur": "S", "prix": 5000, "devise": "XAF", "stock": 10},
+      {"valeur": "M", "prix": 6000, "devise": "XAF", "stock": 15},
+      {"valeur": "L", "prix": 6500, "devise": "XAF", "stock": 8}
     ],
     "filtrable": true,
     "origine_champs": "ia"
   }
 }
 ```
+
+**RÈGLE CRITIQUE** : Si tu détectes des sous-caractéristiques comme `taille`, `pointure`, `quantite`, `volume`, `capacite`, `poids`, `duree`, etc. dans le champ `produits.sous_caracteristiques`, **GÉNÈRE AUTOMATIQUEMENT** un champ `variabilite_prix` avec ces caractéristiques comme modalités, même si les prix ne sont pas mentionnés (mets 0 pour que l'utilisateur les remplisse).
 
 ### 🔤 Type `autocomplete` - POUR CARACTÉRISTIQUES FILTRABLES
 
@@ -316,10 +329,20 @@ Pour les produits avec variantes ayant des prix différents (taille, pointure, q
 - ❌ Incorrect : `"prix": "15000"` ou `"prix": "15000 XAF"`
 - **PRÉ-REMPLISSAGE** : Pré-remplir la `variable` et les `valeurs` des modalités, mais laisser les `prix` à 0 si non identifiés
 
-**Exemples d'utilisation** :
-- **Chaussures** : variable="pointure", modalites avec différentes pointures
-- **Vêtements** : variable="taille", modalites avec S/M/L/XL
-- **Packages** : variable="quantite", modalites avec différentes quantités
+**Exemples d'utilisation génériques** :
+
+- **Vêtements** : variable="taille", modalites avec S/M/L/XL/XXL
+- **Chaussures** : variable="pointure", modalites avec 38/39/40/41/42/43/44/45
+- **Aliments** : variable="quantite", modalites avec 1kg/2kg/5kg/10kg
+- **Boissons** : variable="volume", modalites avec 500ml/1L/2L/5L
+- **Électronique** : variable="capacite", modalites avec 32GB/64GB/128GB/256GB
+- **Services** : variable="duree", modalites avec 1h/2h/demi-journee/journee
+- **Prestations** : variable="niveau", modalites avec debutant/intermediaire/avance/expert
+- **Packages** : variable="quantite", modalites avec 1/5/10/20/50 pieces
+- **Matériaux** : variable="poids", modalites avec 1kg/5kg/10kg/25kg
+- **Livres** : variable="format", modalites avec broche/reliure/ebook
+
+**RÈGLE ABSOLUE** : Ne te limite JAMAIS aux chaussures. Détecte automatiquement TOUS les types de produits qui peuvent avoir des variations de prix basées sur leurs caractéristiques.
 
 ## CONTEXTUALISATION GÉOGRAPHIQUE
 

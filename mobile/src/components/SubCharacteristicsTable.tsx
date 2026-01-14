@@ -108,14 +108,24 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 
                 parsedValues.forEach((parsedValue, index) => {
                     let label: string;
+                    let labelFound = false;
                     
                     if (index < orderedLabels.length) {
-                        // ✅ CORRECTION: Utiliser le label à la même position que la valeur (alignement garanti)
-                        label = orderedLabels[index];
-                        // ✅ NOUVEAU: Vérifier que le label existe dans sousCaracteristiques
-                        if (!sousCaracteristiques.hasOwnProperty(label)) {
-                            console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" n'existe pas dans sousCaracteristiques, recherche alternative...`);
-                            // Chercher un label alternatif qui contient cette valeur
+                        // ✅ CORRECTION CRITIQUE: Vérifier d'abord si la valeur correspond au label attendu
+                        const expectedLabel = orderedLabels[index];
+                        const expectedLabelValues = sousCaracteristiques[expectedLabel];
+                        
+                        // Vérifier si la valeur existe dans le tableau du label attendu
+                        if (Array.isArray(expectedLabelValues) && expectedLabelValues.includes(parsedValue)) {
+                            // ✅ La valeur correspond au label attendu, utiliser ce label
+                            label = expectedLabel;
+                            labelFound = true;
+                            console.log(`[SubCharacteristicsTable] ✅ Valeur "${parsedValue}" correspond au label attendu "${label}" [index ${index}]`);
+                        } else {
+                            // ❌ La valeur ne correspond pas au label attendu, chercher le bon label
+                            console.warn(`[SubCharacteristicsTable] ⚠️ Valeur "${parsedValue}" ne correspond pas au label attendu "${expectedLabel}" [index ${index}], recherche alternative...`);
+                            
+                            // Chercher dans tous les labels quel label contient cette valeur
                             const matchingLabel = Object.keys(sousCaracteristiques).find(key => {
                                 const values = sousCaracteristiques[key];
                                 return Array.isArray(values) && values.includes(parsedValue);
@@ -123,11 +133,14 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                             
                             if (matchingLabel) {
                                 label = matchingLabel;
-                                console.log(`[SubCharacteristicsTable] 🔍 Valeur "${parsedValue}" correspond au label "${matchingLabel}" (correction)`);
+                                labelFound = true;
+                                console.log(`[SubCharacteristicsTable] ✅ Valeur "${parsedValue}" correspond au label "${matchingLabel}" (correction depuis "${expectedLabel}")`);
                             } else {
-                                // Dernier recours: utiliser un label générique mais descriptif
-                                label = `caractéristique_${index + 1}`;
-                                console.warn(`[SubCharacteristicsTable] ⚠️ Aucun label trouvé pour valeur "${parsedValue}", utilisation label générique: "${label}"`);
+                                // Dernier recours: utiliser le label attendu même si la valeur n'y est pas
+                                // (peut arriver si l'IA a généré une nouvelle valeur)
+                                label = expectedLabel;
+                                labelFound = sousCaracteristiques.hasOwnProperty(label);
+                                console.warn(`[SubCharacteristicsTable] ⚠️ Aucun label trouvé pour valeur "${parsedValue}", utilisation label attendu: "${label}"`);
                             }
                         }
                     } else {
@@ -140,18 +153,21 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                         
                         if (matchingLabel) {
                             label = matchingLabel;
-                            console.log(`[SubCharacteristicsTable] 🔍 Valeur "${parsedValue}" correspond au label "${matchingLabel}"`);
+                            labelFound = true;
+                            console.log(`[SubCharacteristicsTable] ✅ Valeur "${parsedValue}" correspond au label "${matchingLabel}" (index hors limites)`);
                         } else {
                             // Dernier recours: utiliser un label générique mais descriptif
                             label = `caractéristique_${index + 1}`;
+                            labelFound = false;
                             console.warn(`[SubCharacteristicsTable] ⚠️ Aucun label trouvé pour valeur "${parsedValue}", utilisation label générique: "${label}"`);
                         }
                     }
                     
                     // ✅ NOUVEAU: Vérifier que le label final existe dans sousCaracteristiques avant de créer la ligne
-                    if (!sousCaracteristiques.hasOwnProperty(label)) {
-                        console.error(`[SubCharacteristicsTable] ❌ ERREUR: Label "${label}" n'existe toujours pas dans sousCaracteristiques après correction`);
+                    if (!labelFound || !sousCaracteristiques.hasOwnProperty(label)) {
+                        console.error(`[SubCharacteristicsTable] ❌ ERREUR: Label "${label}" n'existe pas dans sousCaracteristiques après correction`);
                         console.error(`[SubCharacteristicsTable] ❌ Clés disponibles:`, Object.keys(sousCaracteristiques));
+                        console.error(`[SubCharacteristicsTable] ❌ Valeur problématique: "${parsedValue}" à l'index ${index}`);
                         // Ne pas créer de ligne avec un label invalide
                         return;
                     }
