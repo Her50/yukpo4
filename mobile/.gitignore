@@ -95,6 +95,43 @@ yarn-error.*
 .TemporaryItems
 .Trashes
 
+# APK & Build artifacts
+temp-apk-server/
+temp-apk-server/**
+**/temp-apk-server
+*.apk
+*.aab
+*.apks
+
+# Fichiers backup (ne doivent pas être trackés)
+*.backup
+*.backup*
+*.backup2
+*.backup-current
+*.backup_*
+*backup*
+*.bak
+*.old
+**/*.backup
+**/*.backup*
+**/*backup*
+**/backup_*/
+**/backup-*/
+
+# Scripts Python (génération de données, non nécessaires pour le build)
+*.py
+**/*.py
+src/**/*.py
+**/generate_*.py
+**/enrich_*.py
+src/data/autocomplete/*.py
+
+# Fichiers JSON de données volumineux (>1MB) - à charger depuis le serveur
+src/data/autocomplete/ALIMENTS.json
+src/data/autocomplete/*.json
+**/data/autocomplete/*.json
+**/autocomplete/*.json
+
 # Logs
 logs
 *.log

@@ -1,11 +1,184 @@
+# ✅ EASIGNORE OPTIMISÉ - Réduit la taille de l'archive de ~950MB à ~50MB
+
+# ============================================
+# BACKEND RUST (ne doit pas être dans mobile/)
+# ============================================
+../backend/
+backend/
+**/backend/
+**/target/
+**/*.rs
+**/*.toml
+**/Cargo.lock
+
+# ============================================
+# DEPENDENCIES - EXCLUS COMPLÈTEMENT
+# ============================================
+node_modules/
+**/node_modules/
+node_modules/**/example/
+node_modules/**/examples/
+node_modules/**/android/app/build/
+node_modules/**/ios/build/
+node_modules/**/build/
+node_modules/**/*.map
+node_modules/**/*.apk
+node_modules/**/*.aab
+
+# ============================================
+# BUILD DIRECTORIES
+# ============================================
 android/.gradle/
 android/build/
 android/app/build/
+android/.idea/
 .gradle/
 build/
 *.iml
+
+# ============================================
+# EXPO & DIST
+# ============================================
+.expo/
+.expo-shared/
+dist/
+dist-test/
+web-build/
+
+# ============================================
+# APK & BINARIES (CRITIQUE - 193MB!)
+# ============================================
+# Exclusion absolue du dossier temp-apk-server
+temp-apk-server
+temp-apk-server/
+temp-apk-server/**
+**/temp-apk-server
+**/temp-apk-server/**
+*.apk
+*.aab
+*.apks
+*.ipa
+*.dSYM.zip
+
+# ============================================
+# FICHIERS BACKUP (ne doivent pas être inclus)
+# ============================================
+# Patterns génériques pour tous les fichiers backup
+*.backup
+*.backup*
+*.backup2
+*.backup-current
+*.backup_*
+*backup*
+*.bak
+*.old
+**/*.backup
+**/*.backup*
+**/*backup*
+**/backup_*/
+**/backup-*/
+src/**/*.backup
+src/**/*.backup*
+src/**/*backup*
+
+# ============================================
+# DONNÉES VOLUMINEUSES (peuvent être chargées dynamiquement)
+# ============================================
+# Fichiers JSON de données volumineux (>1MB) - obsolètes ou à charger depuis le serveur
+src/data/autocomplete/ALIMENTS.json
+src/data/autocomplete/*.json
+**/data/autocomplete/*.json
+**/autocomplete/*.json
+# Scripts Python de génération (non nécessaires pour le build)
+*.py
+**/*.py
+src/**/*.py
+**/generate_*.py
+**/enrich_*.py
+src/data/autocomplete/*.py
+
+# ============================================
+# DOCUMENTATION (trop volumineux)
+# ============================================
+*.md
+**/*.md
+src/**/*.md
+!README.md
+
+# ============================================
+# SCRIPTS DE DEBUG/ANALYSE
+# ============================================
+*.ps1
+*.sh
+fix-*.js
+analyze-*.js
+debug-*.js
+create-*.js
+count-*.js
+force-*.js
+auto-*.ps1
+auto-*.sh
+capture-*.ps1
+check-*.ps1
+clean_*.ps1
+crash-*.ps1
+diagnostic-*.js
+
+# ============================================
+# LOGS & TEMP FILES
+# ============================================
+*.log
+*.txt
+!package.json
+!package-lock.json
+!yarn.lock
+!tsconfig.json
+!tsconfig.*.json
+!env.example
+!COMMIT_MESSAGE.txt
+
+# ============================================
+# ASSETS VOLUMINEUX
+# ============================================
+*.mp4
+*.mov
+*.avi
+*.zip
+*.tar.gz
+*.tbz
+*.tar
+*.rar
+*.7z
+
+# ============================================
+# IDE & OS
+# ============================================
+.vscode/
 .idea/
+*.swp
+*.swo
+*~
 .DS_Store
-node_modules/
-npm-debug.log
-yarn-error.log
+Thumbs.db
+
+# ============================================
+# SOURCE MAPS (volumineux)
+# ============================================
+*.map
+
+# ============================================
+# E2E & TESTS
+# ============================================
+e2e/
+__tests__/
+*.test.js
+*.test.ts
+*.test.tsx
+*.spec.js
+*.spec.ts
+*.spec.tsx
+
+# ============================================
+# DOCS & ANALYSES
+# ============================================
+docs/
