@@ -744,11 +744,20 @@ impl DeliveryRepository {
         reviewer_id: Option<i32>,
         rejection_reason: Option<String>,
     ) -> AppResult<CourierApplication> {
+        // ✅ CORRIGÉ: Mettre à jour submitted_at si le statut passe à Submitted et que submitted_at est NULL
+        // ✅ CORRIGÉ: Mettre à jour reviewed_at seulement pour les statuts approved/rejected
         let row: CourierApplicationRow = sqlx::query_as(
             r#"
             UPDATE courier_applications
             SET status = $2,
-                reviewed_at = NOW(),
+                submitted_at = CASE 
+                    WHEN $2::text = 'submitted' AND submitted_at IS NULL THEN NOW()
+                    ELSE submitted_at
+                END,
+                reviewed_at = CASE 
+                    WHEN $2::text IN ('approved', 'rejected') THEN NOW()
+                    ELSE reviewed_at
+                END,
                 reviewer_id = $3,
                 rejection_reason = $4,
                 updated_at = NOW()
@@ -764,6 +773,7 @@ impl DeliveryRepository {
                 profile_data,
                 documents,
                 notes,
+                partner_id,
                 created_at,
                 updated_at
             "#,
@@ -810,6 +820,7 @@ impl DeliveryRepository {
                 profile_data,
                 documents,
                 notes,
+                partner_id,
                 created_at,
                 updated_at
             FROM courier_applications
@@ -857,6 +868,7 @@ impl DeliveryRepository {
                 profile_data,
                 documents,
                 notes,
+                partner_id,
                 created_at,
                 updated_at
             FROM courier_applications
@@ -908,6 +920,7 @@ impl DeliveryRepository {
                     profile_data,
                     documents,
                     notes,
+                    partner_id,
                     created_at,
                     updated_at
                 FROM courier_applications
@@ -936,6 +949,7 @@ impl DeliveryRepository {
                     profile_data,
                     documents,
                     notes,
+                    partner_id,
                     created_at,
                     updated_at
                 FROM courier_applications

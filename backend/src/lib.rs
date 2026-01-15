@@ -82,6 +82,7 @@ use crate::routes::{
     products_management::products_management_routes, // ✅ Routes pour gestion des produits (DELETE, PATCH, PUT)
     products_routes::products_routes, // ✅ PHASE 3: Routes pour gestion produits via table service_products
     product_reactions_routes::product_reactions_routes,
+    product_comments_routes::product_comments_routes, // ✅ NOUVEAU: Routes pour commentaires de produits
     provider_analytics_routes::provider_analytics_routes,
     publicite_ab_testing_routes::publicite_ab_testing_routes, // ✅ NOUVEAU: Routes A/B testing avancé
     publicite_ai_routes::publicite_ai_routes, // ✅ NOUVEAU: Routes IA pour suggestions publicitaires
@@ -269,6 +270,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // let scheduling_search = scheduling_search_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (scheduling_search_routes_merged)
     // let service_team = service_team_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (service_team_routes_merged)
     let product_reactions = product_reactions_routes(state.clone());
+    let product_comments = product_comments_routes(state.clone()); // ✅ NOUVEAU: Routes pour commentaires de produits
     let recommendations = recommendation_routes(); // Ne prend pas state
     let token_stats = token_stats_routes(); // Ne prend pas state
                                             // Routes déjà dans router_yukpo mais ajoutées ici pour être explicite
@@ -314,6 +316,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(creator_analytics) // ✅ NOUVEAU: Routes analytics créateurs
         .merge(uploads) // ✅ NOUVEAU: Upload préalable de fichiers
         .merge(ia)
+        .merge(product_comments) // ✅ DÉPLACÉ: Avant yukpo pour éviter les conflits de routes
         .merge(yukpo)
         .merge(echanges)
         .merge(history)
@@ -380,6 +383,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // .merge(scheduling_search) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (scheduling_search_routes_merged)
         // .merge(service_team) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (service_team_routes_merged)
         .merge(product_reactions)
+        // ✅ DÉPLACÉ: product_comments est maintenant avant yukpo pour éviter les conflits
         .merge(recommendations)
         .merge(token_stats)
         // Routes déjà dans router_yukpo mais ajoutées ici pour être explicite
