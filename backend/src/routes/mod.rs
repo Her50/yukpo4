@@ -75,6 +75,7 @@ pub mod orientation_scolaire_routes;
 pub mod plugin_routes;
 pub mod popular_products_routes;
 pub mod product_reactions_routes;
+pub mod product_comments_routes; // ✅ NOUVEAU: Routes pour commentaires de produits
 pub mod provider_analytics_routes;
 pub mod publicite_ab_testing_routes;
 pub mod publicite_ai_routes;
