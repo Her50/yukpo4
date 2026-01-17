@@ -2145,7 +2145,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   };
 
   // Gérer les changements de champs
-  const handleFieldChange = (fieldName: string, value: any) => {
+  // ✅ CORRECTION: Utiliser useCallback pour éviter les re-renders qui font sauter le curseur
+  const handleFieldChange = React.useCallback((fieldName: string, value: any) => {
     // Convertir automatiquement les prix en nombres
     let processedValue = value;
     if (fieldName === 'prix' && typeof value === 'string' && value.trim() !== '') {
@@ -2159,7 +2160,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       ...prev,
       [fieldName]: processedValue
     }));
-  };
+  }, []);
 
   // Gérer les changements d'images produit
   const updateProductImages = (nextImages: string[]) => {
@@ -2891,36 +2892,34 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         const isProductField = ['nom_produit', 'categorie_produit'].includes(field.name);
         
         // ✅ CORRECTION: Déterminer le keyboardType approprié pour les champs email et url
-        const getKeyboardType = () => {
-          if (field.type === 'email' || field.name === 'email') {
-            return 'email-address';
-          }
-          if (field.type === 'url' || field.name === 'website') {
-            return 'default'; // React Native ne supporte pas 'url', utiliser 'default'
-          }
-          return 'default';
-        };
+        const keyboardType = field.type === 'email' || field.name === 'email' 
+          ? 'email-address' 
+          : (field.type === 'url' || field.name === 'website' ? 'default' : 'default');
 
-        // ✅ CORRECTION CRITIQUE: Extraire la valeur correctement pour éviter les crashes
+        // ✅ CORRECTION CRITIQUE: Extraire la valeur AVANT le JSX pour éviter les re-renders
         // Les valeurs peuvent être des objets complexes depuis l'IA ou des strings simples
-        const getFieldValue = (): string => {
-          const rawValue = valeursFormulaire[field.name];
-          if (!rawValue) return '';
-          if (typeof rawValue === 'string') return rawValue;
-          if (typeof rawValue === 'object' && rawValue !== null) {
+        const rawValue = valeursFormulaire[field.name];
+        let fieldValue = '';
+        if (rawValue) {
+          if (typeof rawValue === 'string') {
+            fieldValue = rawValue;
+          } else if (typeof rawValue === 'object' && rawValue !== null) {
             // Si c'est un objet avec une propriété 'valeur', l'utiliser
             if ('valeur' in rawValue && typeof rawValue.valeur === 'string') {
-              return rawValue.valeur;
+              fieldValue = rawValue.valeur;
             }
             // Sinon, essayer de convertir en string
-            if ('raw' in rawValue && typeof rawValue.raw === 'string') {
-              return rawValue.raw;
+            else if ('raw' in rawValue && typeof rawValue.raw === 'string') {
+              fieldValue = rawValue.raw;
             }
             // Dernier recours: convertir en string
-            return String(rawValue);
+            else {
+              fieldValue = String(rawValue);
+            }
+          } else {
+            fieldValue = String(rawValue);
           }
-          return String(rawValue);
-        };
+        }
 
         return (
           <View key={field.name} style={isProductField ? styles.productFieldContainer : styles.fieldContainer}>
@@ -2929,7 +2928,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             </Text>
             <NativeInput
               placeholder={field.placeholder}
-              value={getFieldValue()}
+              value={fieldValue}
               onChangeText={(text) => {
                 handleFieldChange(field.name, text);
                 // Effacer l'erreur quand l'utilisateur tape
@@ -2941,7 +2940,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   });
                 }
               }}
-              keyboardType={getKeyboardType()}
+              keyboardType={keyboardType}
               autoCapitalize={field.type === 'email' || field.type === 'url' ? 'none' : 'sentences'}
               autoCorrect={field.type === 'email' || field.type === 'url' ? false : true}
               style={[
@@ -2959,25 +2958,35 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       case 'textarea':
         // ✅ REFONTE COMPLÈTE: Utiliser le même comportement pour tous les textarea (description et description_produit)
-        // ✅ CORRECTION: Extraire la valeur correctement pour tous les champs textarea
-        const getTextareaValue = (): string => {
-          const rawValue = valeursFormulaire[field.name];
-          if (!rawValue) return '';
-          if (typeof rawValue === 'string') return rawValue;
-          if (typeof rawValue === 'object' && rawValue !== null) {
-            if ('valeur' in rawValue && typeof rawValue.valeur === 'string') {
-              return rawValue.valeur;
+        // ✅ CORRECTION: Extraire la valeur AVANT le JSX pour éviter les re-renders
+        const textareaRawValue = valeursFormulaire[field.name];
+        let textareaValue = '';
+        if (textareaRawValue) {
+          if (typeof textareaRawValue === 'string') {
+            textareaValue = textareaRawValue;
+          } else if (typeof textareaRawValue === 'object' && textareaRawValue !== null) {
+            if ('valeur' in textareaRawValue && typeof textareaRawValue.valeur === 'string') {
+              textareaValue = textareaRawValue.valeur;
             }
-            if ('raw' in rawValue && typeof rawValue.raw === 'string') {
-              return rawValue.raw;
+            else if ('raw' in textareaRawValue && typeof textareaRawValue.raw === 'string') {
+              textareaValue = textareaRawValue.raw;
             }
-            return String(rawValue);
+            else {
+              textareaValue = String(textareaRawValue);
+            }
+          } else {
+            textareaValue = String(textareaRawValue);
           }
-          return String(rawValue);
-        };
+        }
         
         // ✅ REFONTE: Utiliser les mêmes paramètres pour tous les textarea (comme description)
-        const linesMinimum = field.minLines || 3; // Utiliser minLines du champ ou 3 par défaut
+        // ✅ CORRECTION CRITIQUE: Utiliser minimum 4 lignes pour description_produit pour permettre un meilleur affichage
+        const linesMinimum = field.name === 'description_produit' 
+          ? Math.max(field.minLines || 4, 4)  // Minimum 4 lignes pour description_produit
+          : (field.minLines || 3); // 3 lignes pour description standard
+        
+        // ✅ CORRECTION CRITIQUE: S'assurer que description_produit a les mêmes styles et comportement que description
+        const isProductDescription = field.name === 'description_produit';
         
         return (
           <View key={field.name} style={styles.fieldContainer}>
@@ -2986,13 +2995,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             </Text>
             <NativeInput
               placeholder={field.placeholder}
-              value={getTextareaValue()}
+              value={textareaValue}
               onChangeText={(text) => handleFieldChange(field.name, text)}
-              multiline
+              multiline={true}
               minLines={linesMinimum}
               style={[
                 styles.fieldInput,
-                styles.textareaInput
+                styles.textareaInput,
+                // ✅ CORRECTION CRITIQUE: S'assurer que description_produit a une hauteur suffisante
+                isProductDescription && {
+                  minHeight: 120, // Hauteur minimale pour description_produit (4 lignes * 24px + padding)
+                  maxHeight: undefined, // Pas de limite maximale pour permettre la croissance
+                }
               ]}
             />
           </View>
@@ -4946,10 +4960,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   {/* Navigation entre blocs (tabs simples sans scroll horizontal) */}
                   {/* ✅ CORRIGÉ 2026-01-12: Utiliser currentDisplayIndex pour synchroniser avec le bloc affiché */}
                   {/* ✅ REFONTE: Navigation synchronisée avec currentDisplayIndex */}
-                  <View key={`navigation-${currentDisplayIndex}`} style={styles.blockNavigation}>
+                  {/* ✅ CORRECTION CRITIQUE: Utiliser une clé unique basée sur currentDisplayIndex pour forcer le re-render */}
+                  <View key={`navigation-block-${currentDisplayIndex}`} style={styles.blockNavigation}>
                     {displayedBlocks.map(({ block, index: originalIndex }, displayIndex) => {
                       // ✅ REFONTE: Utiliser currentDisplayIndex comme source de vérité unique
-                      const isActive = currentDisplayIndex === displayIndex;
+                      // ✅ CORRECTION CRITIQUE: Vérifier explicitement que displayIndex correspond à currentDisplayIndex
+                      const isActive = displayIndex === currentDisplayIndex;
                       
                       return (
                         <TouchableOpacity
@@ -4992,18 +5008,29 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   keyboardShouldPersistTaps="handled"
                 >
                   {/* ✅ CORRECTION CRITIQUE: Utiliser currentDisplayIndex comme source unique de vérité pour l'alignement */}
+                  {/* ✅ CORRECTION CRITIQUE: Forcer le re-render du titre en utilisant une clé unique basée sur currentDisplayIndex */}
                   {(() => {
-                    // Récupérer le bloc actif depuis displayedBlocks en utilisant currentDisplayIndex
-                    const activeDisplayedBlock = displayedBlocks[currentDisplayIndex];
+                    // ✅ CORRECTION CRITIQUE: Vérifier que currentDisplayIndex est valide
+                    const validDisplayIndex = Math.max(0, Math.min(currentDisplayIndex, displayedBlocks.length - 1));
+                    const activeDisplayedBlock = displayedBlocks[validDisplayIndex];
                     if (!activeDisplayedBlock) {
+                      console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun bloc actif trouvé pour currentDisplayIndex:', currentDisplayIndex);
                       return null;
                     }
                     
                     const { block, index: blockIndex } = activeDisplayedBlock;
                     
+                    // ✅ CORRECTION CRITIQUE: Log pour debug
+                    console.log('[FormulaireYukpoIntelligentScreen] 📋 Affichage bloc:', {
+                      currentDisplayIndex: validDisplayIndex,
+                      blockId: block.id,
+                      blockTitle: block.title,
+                      blockIcon: block.icon
+                    });
+                    
                     return (
                       <View
-                        key={block.id}
+                        key={`block-${block.id}-${validDisplayIndex}`}
                         ref={(ref) => {
                           blockRefs.current[blockIndex] = ref;
                         }}
@@ -5020,7 +5047,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                             end={{ x: 1, y: 0 }}
                             style={styles.sectionHeader}
                           >
-                            <Text style={styles.sectionHeaderText}>
+                            {/* ✅ CORRECTION CRITIQUE: Utiliser une clé unique pour forcer le re-render du titre */}
+                            <Text key={`header-title-${block.id}-${validDisplayIndex}`} style={styles.sectionHeaderText}>
                               {block.icon} {block.title}
                             </Text>
                           </LinearGradient>
@@ -5606,6 +5634,9 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut pour multiline
+    // ✅ CORRECTION CRITIQUE: Permettre la croissance automatique et les retours à la ligne
+    flexWrap: 'wrap',
+    overflow: 'visible', // Permettre l'affichage complet du texte
   },
   // ✅ SUPPRIMÉ: productDescriptionInput et productDescriptionText - description_produit utilise maintenant les mêmes styles que description
   navigationButtons: {

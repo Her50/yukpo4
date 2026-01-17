@@ -97,8 +97,8 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       // ✅ AMÉLIORÉ: Configuration Android (crucial pour résoudre le problème)
       enableOnAndroid={true}
       enableAutomaticScroll={true}
-      extraHeight={Platform.OS === 'android' ? 150 : 0} // ✅ AUGMENTÉ: Plus d'espace pour Android
-      extraScrollHeight={Platform.OS === 'ios' ? Math.max(extraScrollHeight, 150) : 0} // ✅ AUGMENTÉ: Minimum 150px pour iOS
+      extraHeight={Platform.OS === 'android' ? 200 : 0} // ✅ AUGMENTÉ: 200px pour Android
+      extraScrollHeight={Platform.OS === 'ios' ? Math.max(extraScrollHeight, 200) : 0} // ✅ AUGMENTÉ: Minimum 200px pour iOS
       // ✅ Configuration iOS
       enableResetScrollToCoords={false}
       keyboardOpeningTime={0}
@@ -109,12 +109,10 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       bounces={Platform.OS === 'ios'}
       // ✅ Désactiver le padding automatique sur Android (géré par extraHeight)
       contentInsetAdjustmentBehavior="never"
-      // ✅ Améliorer la réactivité
+      // ✅ Améliorer la réactivité - fermer le clavier lors du scroll
       keyboardDismissMode="interactive"
-      // ✅ NOUVEAU: Scroll automatique vers le champ actif
-      enableResetScrollToCoords={false}
-      // ✅ NOUVEAU: Délai minimal pour une réactivité optimale
-      keyboardOpeningTime={0}
+      // ✅ NOUVEAU: Scroll automatique rapide vers le champ actif
+      viewIsInsideTabBar={false}
     >
       {children}
     </KeyboardAwareScrollView>
@@ -130,7 +128,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flexGrow: 1,
-    paddingBottom: Platform.OS === 'android' ? 250 : 200, // ✅ AUGMENTÉ: Beaucoup plus d'espace en bas pour éviter que le clavier masque les champs
+    paddingBottom: Platform.OS === 'android' ? 300 : 250, // ✅ AUGMENTÉ: Encore plus d'espace en bas pour éviter que le clavier masque les champs
   },
 });
 
