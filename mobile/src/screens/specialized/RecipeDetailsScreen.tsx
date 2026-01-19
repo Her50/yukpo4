@@ -156,7 +156,11 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                bounces={true}
+                alwaysBounceVertical={false}
+                keyboardShouldPersistTaps="handled"
             >
                 {/* Image recette */}
                 {recipe.image_url ? (
@@ -361,7 +365,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 20,
+        paddingBottom: 100, // ✅ CORRIGÉ: Augmenté pour permettre de voir tout le contenu
+        flexGrow: 1, // ✅ CORRIGÉ: Permet au contenu de grandir et de scroller
     },
     recipeImage: {
         width: width,
