@@ -1245,6 +1245,13 @@ impl DeliveryService {
         &self,
         input: CourierApplicationInput,
     ) -> AppResult<CourierApplication> {
+        // ✅ CORRIGÉ: Log pour diagnostiquer le problème de visibilité
+        log::info!(
+            "[submit_courier_application] Soumission candidature coursier: user_id={}, submitted={}",
+            input.user_id,
+            input.submitted
+        );
+
         let existing = self
             .repository
             .find_courier_application_by_user(input.user_id)
@@ -1263,6 +1270,12 @@ impl DeliveryService {
                 crate::models::delivery_model::DeliveryApplicationStatus::Draft
             };
 
+            log::info!(
+                "[submit_courier_application] Mise à jour candidature existante: id={}, nouveau_status={:?}",
+                app.id,
+                status
+            );
+
             // ✅ CORRIGÉ: Mettre à jour tous les champs (statut, profile_data, documents, submitted_at, partner_id)
             let updated = self
                 .repository
@@ -1276,6 +1289,13 @@ impl DeliveryService {
                 )
                 .await?;
 
+            log::info!(
+                "[submit_courier_application] ✅ Candidature mise à jour: id={}, status={:?}, submitted_at={:?}",
+                updated.id,
+                updated.status,
+                updated.submitted_at
+            );
+
             return Ok(updated);
         }
 
@@ -1284,6 +1304,12 @@ impl DeliveryService {
         } else {
             crate::models::delivery_model::DeliveryApplicationStatus::Draft
         };
+
+        log::info!(
+            "[submit_courier_application] Création nouvelle candidature: user_id={}, status={:?}",
+            input.user_id,
+            status
+        );
 
         let new_app = self
             .repository
@@ -1301,6 +1327,13 @@ impl DeliveryService {
                 partner_id: input.partner_id, // ✅ NOUVEAU 2026-01-04: Partenaire de livraison
             })
             .await?;
+
+        log::info!(
+            "[submit_courier_application] ✅ Nouvelle candidature créée: id={}, status={:?}, submitted_at={:?}",
+            new_app.id,
+            new_app.status,
+            new_app.submitted_at
+        );
 
         Ok(new_app)
     }

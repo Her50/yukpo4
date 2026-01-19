@@ -974,6 +974,8 @@ impl DeliveryRepository {
         let offset_val = offset.unwrap_or(0);
 
         let rows: Vec<CourierApplicationRow> = if let Some(status) = status_filter {
+            // ✅ CORRIGÉ: Utiliser la conversion SQLx native pour comparer l'enum PostgreSQL
+            // SQLx convertit automatiquement l'enum Rust en enum PostgreSQL avec rename_all = "snake_case"
             sqlx::query_as(
                 r#"
                 SELECT
@@ -991,13 +993,13 @@ impl DeliveryRepository {
                     created_at,
                     updated_at
                 FROM courier_applications
-                WHERE status = $1
+                WHERE status = $1::delivery_application_status
                 ORDER BY created_at DESC
                 LIMIT $2
                 OFFSET $3
                 "#,
             )
-            .bind(status)
+            .bind(status) // SQLx convertit automatiquement l'enum
             .bind(limit_val)
             .bind(offset_val)
             .fetch_all(&self.pool)
