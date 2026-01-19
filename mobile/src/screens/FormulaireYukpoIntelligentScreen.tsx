@@ -321,6 +321,23 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     ? ((currentDisplayIndex + 1) / totalVisibleBlocks) * 100
     : 0;
 
+  // ✅ CORRIGÉ: Calculer les champs à rendre pour le bloc actif avec useMemo au niveau du composant
+  // (pas dans le JSX pour éviter "Rendered more hooks than during the previous render")
+  const currentBlockFields = useMemo(() => {
+    if (!displayedBlocks || displayedBlocks.length === 0) {
+      return [];
+    }
+    const validDisplayIndex = Math.max(0, Math.min(currentDisplayIndex, displayedBlocks.length - 1));
+    const activeDisplayedBlock = displayedBlocks[validDisplayIndex];
+    if (!activeDisplayedBlock) {
+      return [];
+    }
+    const { block } = activeDisplayedBlock;
+    const fieldsToRender = (Array.isArray(block.fields) ? block.fields : [])
+      .filter(field => field && field.name !== 'devise'); // ✅ Masquer le champ devise (intégré dans prix)
+    return fieldsToRender;
+  }, [displayedBlocks, currentDisplayIndex]);
+
   // ✅ REFONTE: Fonction helper pour convertir blockIndex (dans blocks) en displayIndex (dans displayedBlocks)
   const getDisplayIndexFromBlockIndex = useCallback((blockIndex: number): number => {
     if (!displayedBlocks || displayedBlocks.length === 0) {
@@ -5055,16 +5072,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                           </LinearGradient>
 
                         <NativeCard style={styles.sectionContent}>
-                          {React.useMemo(() => {
-                            const fieldsToRender = (Array.isArray(block.fields) ? block.fields : [])
-                              .filter(field => field && field.name !== 'devise'); // ✅ Masquer le champ devise (intégré dans prix)
-                            
-                            return fieldsToRender.map((field) => (
-                              <React.Fragment key={field.name}>
-                                {renderField(field)}
-                              </React.Fragment>
-                            ));
-                          }, [block.fields, renderField])}
+                          {/* ✅ CORRIGÉ: Utiliser currentBlockFields calculé avec useMemo au niveau du composant */}
+                          {currentBlockFields.map((field) => (
+                            <React.Fragment key={field.name}>
+                              {renderField(field)}
+                            </React.Fragment>
+                          ))}
                         </NativeCard>
 
                         {!isReadonly && block.id === 'payment' && (
