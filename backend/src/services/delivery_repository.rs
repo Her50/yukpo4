@@ -864,6 +864,8 @@ impl DeliveryRepository {
             documents: row.documents,
             notes: row.notes,
             partner_id: row.partner_id,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
         })
     }
 
