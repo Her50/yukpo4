@@ -56,22 +56,22 @@ impl AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, error_code) = match &self {
-            AppError::Unauthorized(_) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED"),
-            AppError::Forbidden(_) => (StatusCode::FORBIDDEN, "FORBIDDEN"),
-            AppError::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
-            AppError::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
-            AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
-            AppError::TooManyRequests(_) => (StatusCode::TOO_MANY_REQUESTS, "TOO_MANY_REQUESTS"),
-            AppError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR"),
-            AppError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
-            AppError::NotImplemented(_) => (StatusCode::NOT_IMPLEMENTED, "NOT_IMPLEMENTED"),
+        let (status, error_code, message) = match &self {
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", msg.clone()),
+            AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, "FORBIDDEN", msg.clone()),
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg.clone()),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, "CONFLICT", msg.clone()),
+            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", msg.clone()),
+            AppError::TooManyRequests(msg) => (StatusCode::TOO_MANY_REQUESTS, "TOO_MANY_REQUESTS", msg.clone()),
+            AppError::Database(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR", msg.clone()),
+            AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", msg.clone()),
+            AppError::NotImplemented(msg) => (StatusCode::NOT_IMPLEMENTED, "NOT_IMPLEMENTED", msg.clone()),
         };
 
-        let msg = self.to_string();
-        // ✅ CORRECTION: Format d'erreur structuré avec code et message
+        // ✅ CORRIGÉ: Format d'erreur structuré avec code et message clair (sans préfixe enum)
         let body = Json(json!({
-            "error": msg,
+            "error": message,
+            "message": message, // ✅ Ajout pour compatibilité avec le frontend
             "code": error_code,
             "status": status.as_u16()
         }));

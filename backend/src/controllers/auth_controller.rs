@@ -383,18 +383,75 @@ pub async fn register_user(
             .filter(|s| !s.is_empty())
             .unwrap_or("Non spécifié");
         
+        // ✅ CORRIGÉ: Créer la table delivery_partners si elle n'existe pas (fallback)
+        let _ = sqlx::query(
+            r#"
+            DO $$
+            BEGIN
+                -- Créer l'enum delivery_partner_type si n'existe pas
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_partner_type') THEN
+                    CREATE TYPE delivery_partner_type AS ENUM (
+                        'livraison', 'livraison_courses_marche', 'pharmacie', 'hopital', 
+                        'laboratoire', 'agence de voyage', 'demenagement', 'transport', 
+                        'assureur', 'supermarche', 'telecom', 'chauffeur'
+                    );
+                END IF;
+                
+                -- Créer la table delivery_partners si n'existe pas
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.tables 
+                    WHERE table_schema = 'public' AND table_name = 'delivery_partners'
+                ) THEN
+                    CREATE TABLE delivery_partners (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        partner_type delivery_partner_type NOT NULL DEFAULT 'livraison',
+                        contact_email VARCHAR(255),
+                        contact_phone VARCHAR(50),
+                        address TEXT,
+                        city VARCHAR(100),
+                        country VARCHAR(100) NOT NULL DEFAULT 'Non spécifié',
+                        continent VARCHAR(50),
+                        website VARCHAR(255),
+                        logo_url TEXT,
+                        location_latitude DOUBLE PRECISION,
+                        location_longitude DOUBLE PRECISION,
+                        location_address TEXT,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW(),
+                        UNIQUE(name, country)
+                    );
+                    
+                    CREATE INDEX IF NOT EXISTS idx_delivery_partners_name ON delivery_partners(name);
+                    CREATE INDEX IF NOT EXISTS idx_delivery_partners_active ON delivery_partners(is_active);
+                    CREATE INDEX IF NOT EXISTS idx_delivery_partners_created_by ON delivery_partners(created_by);
+                    CREATE INDEX IF NOT EXISTS idx_delivery_partners_type ON delivery_partners(partner_type);
+                END IF;
+            END
+            $$;
+            "#
+        )
+        .execute(db)
+        .await;
+        
         // ✅ Vérifier si un partenaire existe déjà pour cet utilisateur
-        let existing_partner: Option<i32> = sqlx::query_scalar(
+        let existing_partner: Option<i32> = match sqlx::query_scalar(
             "SELECT id FROM delivery_partners WHERE created_by = $1 LIMIT 1"
         )
         .bind(new.id)
         .fetch_optional(db)
-        .await
-        .map_err(|e| {
-            error!("[register_user] ❌ Erreur lors de la vérification du partenaire existant: {}", e);
-            AppError::Internal(format!("Erreur lors de la vérification du partenaire: {}", e))
-        })?;
+        .await {
+            Ok(result) => result,
+            Err(e) => {
+                error!("[register_user] ❌ Erreur lors de la vérification du partenaire existant: {}", e);
+                return Err(AppError::Internal(format!("Erreur lors de la vérification du partenaire: {}", e)));
+            }
+        };
         
+        {
         let _partner_result = if existing_partner.is_some() {
             // Mettre à jour le partenaire existant
             sqlx::query(
@@ -487,6 +544,7 @@ pub async fn register_user(
                 )));
             }
         }
+        } // Fin du bloc de création du partenaire
     }
     
     if let Err(e) = send_verification_email(&payload.email).await {
