@@ -802,6 +802,71 @@ impl DeliveryRepository {
         })
     }
 
+    // ✅ NOUVEAU: Mettre à jour une candidature avec tous les champs (statut, données profil, documents)
+    pub async fn update_courier_application(
+        &self,
+        application_id: Uuid,
+        status: DeliveryApplicationStatus,
+        profile_data: Option<Value>,
+        documents: Option<Value>,
+        submitted_at: Option<DateTime<Utc>>,
+        partner_id: Option<i32>,
+    ) -> AppResult<CourierApplication> {
+        let row: CourierApplicationRow = sqlx::query_as(
+            r#"
+            UPDATE courier_applications
+            SET status = $2,
+                submitted_at = COALESCE($5, 
+                    CASE 
+                        WHEN $2::text = 'submitted' AND submitted_at IS NULL THEN NOW()
+                        ELSE submitted_at
+                    END
+                ),
+                profile_data = COALESCE($3, profile_data),
+                documents = COALESCE($4, documents),
+                partner_id = COALESCE($6, partner_id),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING
+                id,
+                user_id,
+                status,
+                submitted_at,
+                reviewed_at,
+                reviewer_id,
+                rejection_reason,
+                profile_data,
+                documents,
+                notes,
+                partner_id,
+                created_at,
+                updated_at
+            "#,
+        )
+        .bind(application_id)
+        .bind(status as DeliveryApplicationStatus)
+        .bind(profile_data)
+        .bind(documents)
+        .bind(submitted_at)
+        .bind(partner_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(CourierApplication {
+            id: row.id,
+            user_id: row.user_id,
+            status: row.status,
+            submitted_at: row.submitted_at,
+            reviewed_at: row.reviewed_at,
+            reviewer_id: row.reviewer_id,
+            rejection_reason: row.rejection_reason,
+            profile_data: row.profile_data,
+            documents: row.documents,
+            notes: row.notes,
+            partner_id: row.partner_id,
+        })
+    }
+
     /// Retourne la candidature active d'un utilisateur si elle existe
     pub async fn find_courier_application_by_user(
         &self,

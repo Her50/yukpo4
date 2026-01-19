@@ -2996,7 +2996,11 @@ async fn submit_courier_application(
         })
         .await?;
 
-    Ok(Json(serde_json::json!({ "application": application })))
+    // ✅ CORRIGÉ: Inclure un champ 'success' explicite pour que le frontend détecte correctement le succès
+    Ok(Json(serde_json::json!({ 
+        "success": true,
+        "application": application 
+    })))
 }
 
 // ✅ NOUVEAU : Vérifier le statut coursier de l'utilisateur connecté

@@ -2270,8 +2270,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     return examples[categorieNormalized] || 'Marque,Modèle,Couleur,Localisation,Année,État';
   };
 
-  // Rendu d'un champ (aligné sur le frontend avec tous les types)
-  const renderField = (field: DynamicField) => {
+  // ✅ CORRIGÉ: Mémoriser renderField avec useCallback pour éviter les re-renders qui font sauter le curseur
+  const renderField = React.useCallback((field: DynamicField) => {
     // ✅ Log de debug pour chaque champ rendu
     if (field.name === 'produits') {
       console.log('[FormulaireYukpoIntelligentScreen] 🔍 Rendu du champ produits:', {
@@ -2927,6 +2927,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
             <NativeInput
+              key={`input-${field.name}`}
               placeholder={field.placeholder}
               value={fieldValue}
               onChangeText={(text) => {
@@ -3123,7 +3124,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       default:
         return null;
     }
-  };
+  }, [valeursFormulaire, fieldErrors, isReadonly, handleFieldChange, updateProductImages, updateProductVideos, mediaFiles, primaryProductImage, setFieldErrors, setShowGPSModal, setGpsModalForField, setSelectedLocation, setShowProductDeliveryConfig, setProductDeliveryConfigData, getCurrencyFromVariant]);
 
   // ✅ NOUVEAU 2025-11-01: Fonction de gestion d'erreurs API améliorée (Objectif #10)
   const handleAPIError = (error: any, operation: string, retryFn?: () => void) => {
@@ -5054,9 +5055,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                           </LinearGradient>
 
                         <NativeCard style={styles.sectionContent}>
-                          {(Array.isArray(block.fields) ? block.fields : [])
-                            .filter(field => field && field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
-                            .map((field, index) => renderField(field))}
+                          {React.useMemo(() => {
+                            const fieldsToRender = (Array.isArray(block.fields) ? block.fields : [])
+                              .filter(field => field && field.name !== 'devise'); // ✅ Masquer le champ devise (intégré dans prix)
+                            
+                            return fieldsToRender.map((field) => (
+                              <React.Fragment key={field.name}>
+                                {renderField(field)}
+                              </React.Fragment>
+                            ));
+                          }, [block.fields, renderField])}
                         </NativeCard>
 
                         {!isReadonly && block.id === 'payment' && (
