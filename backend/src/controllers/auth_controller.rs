@@ -377,7 +377,11 @@ pub async fn register_user(
             .filter(|s| !s.is_empty())
             .ok_or_else(|| AppError::BadRequest("partner_name est requis pour un partenaire".into()))?;
         
-        let partner_country = payload.partner_country.as_deref().unwrap_or("");
+        // ✅ CORRIGÉ: Utiliser la valeur par défaut de la base de données si country est vide
+        let partner_country = payload.partner_country.as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .unwrap_or("Non spécifié");
         
         // ✅ Vérifier si un partenaire existe déjà pour cet utilisateur
         let existing_partner: Option<i32> = sqlx::query_scalar(
@@ -385,7 +389,11 @@ pub async fn register_user(
         )
         .bind(new.id)
         .fetch_optional(db)
-        .await?;
+        .await
+        .map_err(|e| {
+            error!("[register_user] ❌ Erreur lors de la vérification du partenaire existant: {}", e);
+            AppError::Internal(format!("Erreur lors de la vérification du partenaire: {}", e))
+        })?;
         
         let _partner_result = if existing_partner.is_some() {
             // Mettre à jour le partenaire existant
@@ -470,8 +478,13 @@ pub async fn register_user(
                 info!("[register_user] ✅ Partenaire créé dans delivery_partners pour user_id={}", new.id);
             }
             Err(e) => {
-                error!("[register_user] ⚠️ Erreur création partenaire dans delivery_partners: {}. L'utilisateur est créé mais le partenaire devra être créé manuellement.", e);
-                // Ne pas bloquer l'inscription si la création du partenaire échoue
+                error!("[register_user] ❌ Erreur création partenaire dans delivery_partners: {}", e);
+                // ✅ CORRIGÉ: Retourner une erreur 500 si la création du partenaire échoue
+                // car l'utilisateur a été créé mais le partenaire est requis pour un compte partenaire
+                return Err(AppError::Internal(format!(
+                    "Erreur lors de la création du partenaire: {}. Veuillez réessayer ou contacter le support.",
+                    e
+                )));
             }
         }
     }
