@@ -630,18 +630,21 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         borderBottomWidth: 2,
         borderBottomColor: modernColors.primary,
+        alignItems: 'center', // ✅ CORRIGÉ: Alignement vertical des en-têtes
     },
     headerLabel: {
         flex: 2,
         fontSize: 13,
         fontWeight: '700',
         color: modernColors.primary,
+        lineHeight: 18, // ✅ CORRIGÉ: Hauteur de ligne fixe pour alignement
     },
     headerValue: {
         flex: 2,
         fontSize: 13,
         fontWeight: '700',
         color: modernColors.primary,
+        lineHeight: 18, // ✅ CORRIGÉ: Hauteur de ligne fixe pour alignement
     },
     headerActions: {
         flex: 1,
@@ -659,29 +662,37 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         borderBottomWidth: 1,
         borderBottomColor: modernColors.border,
-        alignItems: 'center',
+        alignItems: 'center', // ✅ Déjà présent: Alignement vertical des éléments de la ligne
+        minHeight: 56, // ✅ CORRIGÉ: Hauteur minimale pour alignement cohérent
     },
     cell: {
         flex: 2,
         paddingRight: 8,
+        justifyContent: 'center', // ✅ CORRIGÉ: Alignement vertical
+        minHeight: 40, // ✅ CORRIGÉ: Hauteur minimale pour alignement cohérent
     },
     cellText: {
         fontSize: 14,
         color: modernColors.text,
+        lineHeight: 20, // ✅ CORRIGÉ: Hauteur de ligne fixe pour alignement
     },
     editingCell: {
         flex: 2,
         paddingRight: 8,
+        justifyContent: 'center', // ✅ CORRIGÉ: Alignement vertical
+        minHeight: 40, // ✅ CORRIGÉ: Hauteur minimale pour alignement cohérent
     },
     editingInput: {
         borderWidth: 1,
         borderColor: modernColors.primary,
         borderRadius: 6,
         paddingHorizontal: 8,
-        paddingVertical: 6,
+        paddingVertical: 8, // ✅ CORRIGÉ: Padding vertical augmenté pour alignement
         fontSize: 14,
         color: modernColors.text,
         backgroundColor: '#F9FAFB',
+        minHeight: 40, // ✅ CORRIGÉ: Hauteur minimale pour alignement cohérent
+        lineHeight: 20, // ✅ CORRIGÉ: Hauteur de ligne fixe pour alignement
     },
     actionsCell: {
         flex: 1,
