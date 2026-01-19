@@ -194,15 +194,21 @@ pub async fn register_user(
     
     // ✅ RENFORCÉ: Validation stricte du partner_type - OBLIGATOIRE pour un partenaire
     if user_role == "partenaire" {
-        let valid_types = ["pharmacie", "hopital", "laboratoire", "agence de voyage", 
+        let valid_types = ["livraison", "livraison_courses_marche", "pharmacie", "hopital", "laboratoire", "agence de voyage", 
                           "demenagement", "transport", "assureur", "supermarche", "telecom",
-                          "etablissementscolaire", "banquesang"];
+                          "etablissementscolaire", "banquesang", "chauffeur"];
+        
+        // ✅ CORRIGÉ: Ajouter des logs de debug pour identifier le problème
+        info!("[register_user] Validation partenaire - partner_type: {:?}, partner_name: {:?}", 
+              payload.partner_type, payload.partner_name.as_ref().map(|s| if s.len() > 50 { format!("{}...", &s[..50]) } else { s.clone() }));
         
         // ✅ Validation stricte: partner_type doit être présent et non vide
         match &payload.partner_type {
             Some(pt) if !pt.trim().is_empty() => {
                 let pt_trimmed = pt.trim();
                 if !valid_types.iter().any(|&vt| vt == pt_trimmed) {
+                    error!("[register_user] ❌ Type de partenaire invalide: '{}'. Types valides: {}", 
+                           pt_trimmed, valid_types.join(", "));
                     return Err(AppError::BadRequest(
                         format!("Type de partenaire invalide: '{}'. Types valides: {}", 
                                pt_trimmed, valid_types.join(", "))
@@ -210,6 +216,7 @@ pub async fn register_user(
                 }
             }
             _ => {
+                error!("[register_user] ❌ partner_type manquant ou vide pour inscription partenaire");
                 return Err(AppError::BadRequest(
                     "Le type d'établissement est obligatoire pour créer un compte partenaire. Veuillez sélectionner un type d'établissement.".into()
                 ));
@@ -217,6 +224,7 @@ pub async fn register_user(
         }
         
         if payload.partner_name.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true) {
+            error!("[register_user] ❌ partner_name manquant ou vide pour inscription partenaire");
             return Err(AppError::BadRequest("partner_name est requis pour un partenaire".into()));
         }
     }
