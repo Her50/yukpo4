@@ -59,7 +59,7 @@ impl std::fmt::Display for RedisError {
 
 impl std::error::Error for RedisError {}
 
-/// Helper pour obtenir une connexion Redis avec retry automatique
+/// Helper pour obtenir une connexion Redis avec retry automatique et timeout
 pub async fn get_redis_connection(
     client: &RedisClient,
     max_retries: u32,
@@ -67,9 +67,18 @@ pub async fn get_redis_connection(
 ) -> RedisResult<redis::aio::MultiplexedConnection> {
     let mut last_error = None;
 
+    // ✅ CORRIGÉ: Ajouter un timeout par tentative pour éviter les blocages infinis
+    // Dans AWS ECS, les connexions peuvent bloquer indéfiniment si le service n'est pas accessible
+    use tokio::time::timeout;
+    use tokio::time::Duration as TokioDuration;
+
     for attempt in 1..=max_retries {
-        match client.get_multiplexed_async_connection().await {
-            Ok(conn) => {
+        // Timeout de 3 secondes par tentative (3 tentatives * 3s = max 9s)
+        match timeout(
+            TokioDuration::from_secs(3),
+            client.get_multiplexed_async_connection()
+        ).await {
+            Ok(Ok(conn)) => {
                 if attempt > 1 {
                     log::info!(
                         "✅ [Redis] Connexion réussie après {} tentative(s)",
@@ -78,7 +87,7 @@ pub async fn get_redis_connection(
                 }
                 return Ok(conn);
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 let err_msg = format!("{}", e);
                 last_error = Some(err_msg.clone());
 
@@ -93,7 +102,7 @@ pub async fn get_redis_connection(
                             retry_delay_ms
                         );
                     }
-                    sleep(Duration::from_millis(retry_delay_ms)).await;
+                    sleep(TokioDuration::from_millis(retry_delay_ms)).await;
                 } else {
                     // ✅ CORRECTION: Logger seulement une fois toutes les 5 minutes pour éviter le spam
                     let should_log = {
@@ -106,6 +115,37 @@ pub async fn get_redis_connection(
                             "⚠️ [Redis] Toutes les tentatives ({}) ont échoué. Dernière erreur: {}. Redis non disponible - mode dégradé activé.",
                             max_retries,
                             err_msg
+                        );
+                    }
+                }
+            }
+            Err(_) => {
+                // Timeout de la tentative de connexion
+                let timeout_msg = format!("Connection timeout (3s) - tentative {}/{}", attempt, max_retries);
+                last_error = Some(timeout_msg.clone());
+                
+                if attempt < max_retries {
+                    // Pas besoin d'attendre après un timeout, on retry immédiatement avec délai réduit
+                    if log::log_enabled!(log::Level::Debug) {
+                        log::debug!(
+                            "⚠️ [Redis] Timeout connexion (tentative {}/{}). Nouvelle tentative dans {}ms...",
+                            attempt,
+                            max_retries,
+                            retry_delay_ms
+                        );
+                    }
+                    sleep(TokioDuration::from_millis(retry_delay_ms)).await;
+                } else {
+                    // Timeout final
+                    let should_log = {
+                        let mut cache_guard = REDIS_HEALTH_CACHE.lock().unwrap();
+                        let cache = cache_guard.get_or_insert_with(|| RedisHealthCache::new());
+                        cache.should_log(false)
+                    };
+                    if should_log {
+                        log::warn!(
+                            "⚠️ [Redis] Toutes les tentatives ({}) ont timeout. Redis non accessible - mode dégradé activé.",
+                            max_retries
                         );
                     }
                 }

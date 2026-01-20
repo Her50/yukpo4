@@ -973,6 +973,14 @@ impl DeliveryRepository {
         let limit_val = limit.unwrap_or(100);
         let offset_val = offset.unwrap_or(0);
 
+        // ✅ LOG: Logger les paramètres de la requête pour diagnostic
+        log::info!(
+            "[list_courier_applications] Requête DB - status_filter: {:?}, limit: {}, offset: {}",
+            status_filter,
+            limit_val,
+            offset_val
+        );
+
         let rows: Vec<CourierApplicationRow> = if let Some(status) = status_filter {
             // ✅ CORRIGÉ: Utiliser la conversion SQLx native pour comparer l'enum PostgreSQL
             // SQLx convertit automatiquement l'enum Rust en enum PostgreSQL avec rename_all = "snake_case"
@@ -1032,6 +1040,12 @@ impl DeliveryRepository {
             .fetch_all(&self.pool)
             .await?
         };
+
+        // ✅ LOG: Logger le nombre de candidatures trouvées
+        log::info!(
+            "[list_courier_applications] {} candidature(s) trouvée(s) en DB",
+            rows.len()
+        );
 
         Ok(rows
             .into_iter()

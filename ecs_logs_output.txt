@@ -1,0 +1,16 @@
+﻿aws : 
+Au caractère C:\Users\23767\AppData\Local\Temp\ps-script-231e3152-031d-46ef-8611-fc08bc3755c0.ps1:84 : 526
++ ... utput.txt"; aws logs get-log-events --log-group-name "/ecs/yukpomnang ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+usage: aws [options] <command> <subcommand> [<subcommand> ...] [parameters]
+To see help text, you can run:
+
+  aws help
+  aws <command> help
+  aws <command> <subcommand> help
+
+Unknown options: None
+

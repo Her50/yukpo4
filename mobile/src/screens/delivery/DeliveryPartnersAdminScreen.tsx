@@ -3,33 +3,36 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
+    Modal,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeCard } from '../../components/NativeDesign';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiDelete, apiGet } from '../../services/api';
+import { apiDelete, apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 interface DeliveryPartner {
     id: number;
     name: string;
     description?: string;
-    partner_type?: string; // ✅ NOUVEAU 2026-01-04: Type de partenaire
+    partner_type?: string;
     contact_email?: string;
     contact_phone?: string;
     address?: string;
     city?: string;
-    country: string; // ✅ NOUVEAU 2026-01-04: Pays obligatoire pour distinguer les partenaires
-    continent?: string; // ✅ NOUVEAU 2026-01-04: Continent pour meilleure organisation
+    country: string;
+    continent?: string;
     website?: string;
     logo_url?: string;
-    // ✅ NOUVEAU 2026-01-04: Localisation intelligente du partenaire
     location_latitude?: number;
     location_longitude?: number;
     location_address?: string;
@@ -39,11 +42,28 @@ interface DeliveryPartner {
     updated_at: string;
 }
 
+interface PendingPartner {
+    id: number;
+    email: string;
+    nom_complet: string | null;
+    partner_type: string | null;
+    partner_status: string | null;
+    created_at: string;
+}
+
 const DeliveryPartnersAdminScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
     const [partners, setPartners] = useState<DeliveryPartner[]>([]);
+    const [pendingPartners, setPendingPartners] = useState<PendingPartner[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingPending, setLoadingPending] = useState(false);
+    const [selectedPendingPartner, setSelectedPendingPartner] = useState<PendingPartner | null>(null);
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [processing, setProcessing] = useState<number | null>(null);
 
 
     useEffect(() => {
@@ -52,8 +72,12 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             navigation.goBack();
             return;
         }
-        loadPartners();
-    }, [user]);
+        if (activeTab === 'pending') {
+            loadPendingPartners();
+        } else {
+            loadPartners();
+        }
+    }, [user, activeTab]);
 
     const loadPartners = async () => {
         try {
@@ -69,38 +93,127 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         }
     };
 
+    const loadPendingPartners = async () => {
+        try {
+            setLoadingPending(true);
+            const response = await apiGet('/api/admin/partners/pending');
+            const data = response.data || response;
+            
+            if (data.partners) {
+                setPendingPartners(data.partners);
+            } else if (Array.isArray(data)) {
+                setPendingPartners(data);
+            } else {
+                setPendingPartners([]);
+            }
+        } catch (error: any) {
+            console.error('[DeliveryPartnersAdminScreen] Erreur chargement candidatures:', error);
+            Alert.alert('Erreur', error.message || 'Impossible de charger les candidatures');
+            setPendingPartners([]);
+        } finally {
+            setLoadingPending(false);
+        }
+    };
+
+    const handleApprove = async (userId: number) => {
+        try {
+            setProcessing(userId);
+            const response = await apiPost(`/api/admin/partners/${userId}/validate`, {
+                action: 'approve',
+            });
+            
+            if (response.success !== false) {
+                Alert.alert('✅ Succès', 'Le partenaire a été approuvé avec succès', [
+                    { text: 'OK', onPress: () => {
+                        setShowDetailModal(false);
+                        loadPendingPartners();
+                        loadPartners(); // Recharger aussi les partenaires validés
+                    }},
+                ]);
+            } else {
+                throw new Error(response.message || 'Erreur lors de l\'approbation');
+            }
+        } catch (error: any) {
+            console.error('[DeliveryPartnersAdminScreen] Erreur approbation:', error);
+            Alert.alert('Erreur', error.message || 'Impossible d\'approuver le partenaire');
+        } finally {
+            setProcessing(null);
+        }
+    };
+
+    const handleReject = async (userId: number) => {
+        if (!rejectionReason.trim()) {
+            Alert.alert('Erreur', 'Veuillez indiquer une raison de refus');
+            return;
+        }
+
+        try {
+            setProcessing(userId);
+            const response = await apiPost(`/api/admin/partners/${userId}/validate`, {
+                action: 'reject',
+                reason: rejectionReason,
+            });
+            
+            if (response.success !== false) {
+                Alert.alert('✅ Succès', 'Le partenaire a été rejeté', [
+                    { text: 'OK', onPress: () => {
+                        setShowRejectModal(false);
+                        setShowDetailModal(false);
+                        setRejectionReason('');
+                        loadPendingPartners();
+                    }},
+                ]);
+            } else {
+                throw new Error(response.message || 'Erreur lors du rejet');
+            }
+        } catch (error: any) {
+            console.error('[DeliveryPartnersAdminScreen] Erreur rejet:', error);
+            Alert.alert('Erreur', error.message || 'Impossible de rejeter le partenaire');
+        } finally {
+            setProcessing(null);
+        }
+    };
+
+    const formatDate = (dateString: string) => {
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        } catch {
+            return dateString;
+        }
+    };
+
     const handleCreate = () => {
         // ✅ NOUVEAU: Naviguer vers l'écran de création de partenaire
         navigation.navigate('PartnerRegister' as never);
     };
 
     const handleEdit = (partner: DeliveryPartner) => {
-        // ✅ NOUVEAU: Pour l'édition, on peut aussi naviguer vers l'écran de création avec les données pré-remplies
-        // Pour l'instant, on garde juste la suppression et on utilise l'écran de création pour créer de nouveaux partenaires
-        Alert.alert('Information', 'L\'édition des partenaires sera disponible prochainement via l\'écran de création.');
+        // ✅ NOTE: L'édition des partenaires validés n'est pas encore implémentée
+        // Les partenaires validés sont créés automatiquement lors de l'approbation d'une candidature
+        // Pour modifier un partenaire, contactez le support ou utilisez l'interface web
+        Alert.alert(
+            'Information', 
+            'L\'édition des partenaires validés n\'est pas disponible dans l\'application mobile.\n\n' +
+            'Les partenaires sont créés automatiquement lors de l\'approbation d\'une candidature.\n\n' +
+            'Pour modifier un partenaire, utilisez l\'interface web d\'administration.'
+        );
     };
 
     const handleDelete = async (partnerId: number) => {
+        // ✅ NOTE: La suppression des partenaires validés n'est pas recommandée car ils sont liés à des utilisateurs
+        // Pour désactiver un partenaire, utilisez plutôt la fonctionnalité de désactivation (is_active = false)
         Alert.alert(
-            'Confirmer la suppression',
-            'Êtes-vous sûr de vouloir supprimer ce partenaire ?',
-            [
-                { text: 'Annuler', style: 'cancel' },
-                {
-                    text: 'Supprimer',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await apiDelete(`/api/delivery/partners/${partnerId}`);
-                            Alert.alert('✅ Succès', 'Partenaire supprimé avec succès');
-                            loadPartners();
-                        } catch (error: any) {
-                            console.error('[DeliveryPartnersAdminScreen] Erreur suppression:', error);
-                            Alert.alert('Erreur', error?.message || 'Impossible de supprimer le partenaire');
-                        }
-                    },
-                },
-            ]
+            'Information',
+            'La suppression des partenaires validés n\'est pas disponible dans l\'application mobile.\n\n' +
+            'Les partenaires sont liés à des comptes utilisateurs et ne doivent pas être supprimés.\n\n' +
+            'Pour désactiver un partenaire, utilisez l\'interface web d\'administration ou contactez le support.'
         );
     };
 
@@ -118,16 +231,116 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>Gestion des partenaires</Text>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
+                </TouchableOpacity>
+                <Text style={styles.title}>Gestion des partenaires</Text>
+                {activeTab === 'approved' && (
                     <TouchableOpacity onPress={handleCreate} style={styles.addButton}>
                         <SafeIcon name="plus" size={24} color={modernColors.primary} />
                     </TouchableOpacity>
-                </View>
+                )}
+            </View>
+
+            {/* Onglets */}
+            <View style={styles.tabsContainer}>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'pending' && styles.tabActive]}
+                    onPress={() => setActiveTab('pending')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
+                        Candidatures ({pendingPartners.length})
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'approved' && styles.tabActive]}
+                    onPress={() => setActiveTab('approved')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'approved' && styles.tabTextActive]}>
+                        Partenaires validés ({partners.length})
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Contenu selon l'onglet actif */}
+            {activeTab === 'pending' ? (
+                <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+                    {loadingPending ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color={modernColors.primary} />
+                            <Text style={styles.loadingText}>Chargement...</Text>
+                        </View>
+                    ) : pendingPartners.length === 0 ? (
+                        <NativeCard style={styles.emptyCard}>
+                            <SafeIcon name="inbox" size={48} color={modernColors.textSecondary} />
+                            <Text style={styles.emptyText}>Aucune candidature en attente</Text>
+                        </NativeCard>
+                    ) : (
+                        pendingPartners.map((partner) => (
+                            <NativeCard key={partner.id} style={styles.partnerCard}>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setSelectedPendingPartner(partner);
+                                        setShowDetailModal(true);
+                                    }}
+                                >
+                                    <View style={styles.partnerHeader}>
+                                        <View style={styles.partnerInfo}>
+                                            <Text style={styles.partnerName}>
+                                                {partner.nom_complet || partner.email}
+                                            </Text>
+                                            <Text style={styles.partnerDescription}>{partner.email}</Text>
+                                            {partner.partner_type && (
+                                                <Text style={styles.partnerMetaText}>
+                                                    🏷️ Type: {partner.partner_type}
+                                                </Text>
+                                            )}
+                                            <Text style={styles.partnerMetaText}>
+                                                📅 Inscrit: {formatDate(partner.created_at)}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.statusBadgePending}>
+                                            <Text style={styles.statusTextPending}>En attente</Text>
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                                <View style={styles.partnerActions}>
+                                    <NativeButton
+                                        title="Approuver"
+                                        variant="primary"
+                                        onPress={() => {
+                                            setSelectedPendingPartner(partner);
+                                            Alert.alert(
+                                                'Confirmer',
+                                                'Êtes-vous sûr de vouloir approuver ce partenaire ?',
+                                                [
+                                                    { text: 'Annuler', style: 'cancel' },
+                                                    {
+                                                        text: 'Approuver',
+                                                        onPress: () => handleApprove(partner.id),
+                                                    },
+                                                ],
+                                            );
+                                        }}
+                                        disabled={processing === partner.id}
+                                    />
+                                    <NativeButton
+                                        title="Rejeter"
+                                        variant="outline"
+                                        onPress={() => {
+                                            setSelectedPendingPartner(partner);
+                                            setShowRejectModal(true);
+                                        }}
+                                        disabled={processing === partner.id}
+                                    />
+                                </View>
+                            </NativeCard>
+                        ))
+                    )}
+                </ScrollView>
+            ) : (
+                <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
 
                 {partners.length === 0 ? (
                     <NativeCard style={styles.emptyCard}>
@@ -199,7 +412,147 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                         </NativeCard>
                     ))
                 )}
-            </ScrollView>
+                </ScrollView>
+            )}
+
+            {/* Modal de détails pour candidature en attente */}
+            <Modal
+                visible={showDetailModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowDetailModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Détails de la candidature</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowDetailModal(false)}
+                                style={styles.closeButton}
+                            >
+                                <SafeIcon name="x" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {selectedPendingPartner && (
+                            <KeyboardAwareScreen style={styles.modalBody}>
+                                <NativeCard style={styles.detailCard}>
+                                    <Text style={styles.detailLabel}>Candidat</Text>
+                                    <Text style={styles.detailValue}>
+                                        {selectedPendingPartner.nom_complet || selectedPendingPartner.email}
+                                    </Text>
+                                    <Text style={styles.detailValue}>
+                                        {selectedPendingPartner.email}
+                                    </Text>
+                                </NativeCard>
+
+                                {selectedPendingPartner.partner_type && (
+                                    <NativeCard style={styles.detailCard}>
+                                        <Text style={styles.detailLabel}>Type de partenaire</Text>
+                                        <Text style={styles.detailValue}>
+                                            {selectedPendingPartner.partner_type}
+                                        </Text>
+                                    </NativeCard>
+                                )}
+
+                                <NativeCard style={styles.detailCard}>
+                                    <Text style={styles.detailLabel}>Date d'inscription</Text>
+                                    <Text style={styles.detailValue}>
+                                        {formatDate(selectedPendingPartner.created_at)}
+                                    </Text>
+                                </NativeCard>
+
+                                {(!selectedPendingPartner.partner_status || selectedPendingPartner.partner_status === 'pending') && (
+                                    <View style={styles.modalActions}>
+                                        <NativeButton
+                                            title="Approuver"
+                                            variant="primary"
+                                            onPress={() => {
+                                                Alert.alert(
+                                                    'Confirmer',
+                                                    'Êtes-vous sûr de vouloir approuver ce partenaire ?',
+                                                    [
+                                                        { text: 'Annuler', style: 'cancel' },
+                                                        {
+                                                            text: 'Approuver',
+                                                            onPress: () =>
+                                                                handleApprove(selectedPendingPartner.id),
+                                                        },
+                                                    ],
+                                                );
+                                            }}
+                                            disabled={processing === selectedPendingPartner.id}
+                                        />
+                                        <NativeButton
+                                            title="Rejeter"
+                                            variant="outline"
+                                            onPress={() => {
+                                                setShowRejectModal(true);
+                                            }}
+                                            disabled={processing === selectedPendingPartner.id}
+                                        />
+                                    </View>
+                                )}
+                            </KeyboardAwareScreen>
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal de rejet */}
+            <Modal
+                visible={showRejectModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowRejectModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Raison du refus</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowRejectModal(false)}
+                                style={styles.closeButton}
+                            >
+                                <SafeIcon name="x" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.modalBody}>
+                            <Text style={styles.inputLabel}>
+                                Indiquez la raison du refus (obligatoire)
+                            </Text>
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder="Ex: Documents incomplets, informations manquantes..."
+                                value={rejectionReason}
+                                onChangeText={setRejectionReason}
+                                multiline
+                                numberOfLines={4}
+                            />
+                            <View style={styles.modalActions}>
+                                <NativeButton
+                                    title="Annuler"
+                                    variant="outline"
+                                    onPress={() => {
+                                        setShowRejectModal(false);
+                                        setRejectionReason('');
+                                    }}
+                                />
+                                <NativeButton
+                                    title="Rejeter"
+                                    variant="primary"
+                                    onPress={() => {
+                                        if (selectedPendingPartner) {
+                                            handleReject(selectedPendingPartner.id);
+                                        }
+                                    }}
+                                    disabled={!rejectionReason.trim() || processing !== null}
+                                />
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeNativeView>
     );
 };
@@ -254,6 +607,78 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.primary,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    tabsContainer: {
+        flexDirection: 'row',
+        backgroundColor: modernColors.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+        paddingHorizontal: 16,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 12,
+        alignItems: 'center',
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+    tabActive: {
+        borderBottomColor: modernColors.primary,
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+    },
+    tabTextActive: {
+        color: modernColors.primary,
+    },
+    statusBadgePending: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        backgroundColor: modernColors.warning + '20' || '#FEF3C7',
+    },
+    statusTextPending: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.warning || '#F59E0B',
+    },
+    detailCard: {
+        marginBottom: 16,
+        padding: 16,
+    },
+    detailLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        marginBottom: 8,
+    },
+    detailValue: {
+        fontSize: 16,
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    closeButton: {
+        padding: 4,
+    },
+    textInput: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        color: modernColors.text,
+        backgroundColor: modernColors.background,
+        minHeight: 100,
+        textAlignVertical: 'top',
+        marginBottom: 16,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 8,
     },
     formCard: {
         marginBottom: 16,

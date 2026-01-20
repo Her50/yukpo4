@@ -107,7 +107,24 @@ class WebSocketManager implements WebSocketService {
       };
 
       this.ws.onerror = (error) => {
-        console.error('❌ [WebSocket] Erreur:', error);
+        // ✅ AMÉLIORÉ: Extraire des informations utiles de l'événement d'erreur
+        const errorInfo = error && typeof error === 'object' 
+          ? {
+              message: (error as any).message || null,
+              type: (error as any).type || null,
+              isTrusted: (error as any).isTrusted !== undefined ? (error as any).isTrusted : null,
+              url: this.url || null,
+            }
+          : { error, url: this.url || null };
+        
+        // Ne logger que si on a des informations utiles
+        if (errorInfo.message || errorInfo.type || errorInfo.url) {
+          console.error('❌ [WebSocket] Erreur:', errorInfo);
+        } else {
+          // Si l'erreur n'a pas d'informations utiles, logger juste l'URL et le statut
+          console.warn('⚠️ [WebSocket] Erreur de connexion (détails non disponibles) - URL:', this.url);
+        }
+        
         this.isConnecting = false;
         recordWebSocketError(error);
         this.notifyStatusChange('offline');

@@ -104,10 +104,75 @@ const ResultatBesoinScreen: React.FC = () => {
     // Récupérer les résultats depuis la navigation
     const routeParams = (route.params as any) || {};
     const initialResults = routeParams.results || [];
+    const searchQuery = routeParams.searchQuery || routeParams.query || '';
     
     // ✅ CORRECTION 2025-12-30: useRef pour éviter les re-renders infinis
     const hasProcessedInitialResults = useRef(false);
     const initialResultsLength = useRef(initialResults?.length || 0);
+    
+    // ✅ NOUVEAU 2026-01-20: Fonction pour calculer le score de pertinence au niveau produit
+    const calculateProductRelevanceScore = useCallback((product: any, query: string): number => {
+        if (!query || !product) return 0;
+        
+        const queryLower = query.toLowerCase().trim();
+        const queryWords = queryLower.split(/\s+/).filter(w => w.length > 0);
+        
+        if (queryWords.length === 0) return 0;
+        
+        let score = 0;
+        
+        // Extraire les textes du produit
+        const nomProduit = (product.nom_produit || product.nom || product.name || '').toLowerCase();
+        const descriptionProduit = (product.description_produit || product.description || '').toLowerCase();
+        const categorieProduit = (product.categorie_produit || product.category || '').toLowerCase();
+        const combinaisonBrute = (product.combinaison_brute || '').toLowerCase();
+        
+        // Extraire les sous-caractéristiques
+        const sousCaracteristiques = product.sous_caracteristiques || {};
+        const allCharacteristics = Object.values(sousCaracteristiques)
+            .flat()
+            .map((v: any) => String(v).toLowerCase())
+            .join(' ');
+        
+        // Construire un texte complet pour la recherche
+        const allProductText = `${nomProduit} ${descriptionProduit} ${categorieProduit} ${combinaisonBrute} ${allCharacteristics}`.toLowerCase();
+        
+        // Score pour correspondance exacte de la requête complète
+        if (allProductText.includes(queryLower)) {
+            score += 50;
+        }
+        
+        // Score pour chaque mot-clé de la requête
+        queryWords.forEach(word => {
+            if (word.length < 2) return; // Ignorer les mots trop courts
+            
+            // Correspondance exacte dans le nom (poids élevé)
+            if (nomProduit === word) {
+                score += 40;
+            } else if (nomProduit.startsWith(word)) {
+                score += 30;
+            } else if (nomProduit.includes(word)) {
+                score += 20;
+            }
+            
+            // Correspondance dans la description
+            if (descriptionProduit.includes(word)) {
+                score += 10;
+            }
+            
+            // Correspondance dans les sous-caractéristiques (marque, modèle, etc.)
+            if (allCharacteristics.includes(word)) {
+                score += 15;
+            }
+            
+            // Correspondance dans la combinaison brute
+            if (combinaisonBrute.includes(word)) {
+                score += 12;
+            }
+        });
+        
+        return score;
+    }, []);
 
     // Déterminer la catégorie dominante des produits
     const dominantCategory = useMemo(() => {
@@ -451,9 +516,38 @@ const ResultatBesoinScreen: React.FC = () => {
                         let productsFromAPI: any[] = [];
                         try {
                             const productsResponse = await apiGet(`/api/services/${serviceId}/products`);
+                            // ✅ DEBUG 2026-01-13: Logs détaillés pour diagnostiquer les problèmes d'affichage
+                            console.log(`🔍 [ResultatBesoinScreen] DEBUG produits API pour service ${serviceId}:`, {
+                                success: productsResponse.success,
+                                hasData: !!productsResponse.data,
+                                dataType: typeof productsResponse.data,
+                                isArray: Array.isArray(productsResponse.data),
+                                dataLength: Array.isArray(productsResponse.data) ? productsResponse.data.length : 'N/A',
+                                fullResponse: productsResponse
+                            });
+                            
                             if (productsResponse.success && Array.isArray(productsResponse.data)) {
                                 productsFromAPI = productsResponse.data;
                                 console.log(`✅ [ResultatBesoinScreen] ${productsFromAPI.length} produits récupérés depuis API pour service ${serviceId}`);
+                                // ✅ DEBUG: Log détaillé des produits récupérés
+                                if (productsFromAPI.length > 0) {
+                                    console.log(`📦 [ResultatBesoinScreen] Détails produits pour service ${serviceId}:`, 
+                                        productsFromAPI.map((p: any) => ({
+                                            id: p.id,
+                                            product_id: p.product_id,
+                                            product_index: p.product_index,
+                                            nom: p.product_data?.nom || p.nom || p.name,
+                                            product_data_keys: p.product_data ? Object.keys(p.product_data) : []
+                                        }))
+                                    );
+                                }
+                            } else {
+                                console.warn(`⚠️ [ResultatBesoinScreen] Réponse produits API invalide pour service ${serviceId}:`, {
+                                    success: productsResponse.success,
+                                    hasData: !!productsResponse.data,
+                                    isArray: Array.isArray(productsResponse.data),
+                                    response: productsResponse
+                                });
                             }
                         } catch (productsError) {
                             console.warn(`⚠️ [ResultatBesoinScreen] Erreur récupération produits API pour ${serviceId}:`, productsError);
@@ -525,20 +619,74 @@ const ResultatBesoinScreen: React.FC = () => {
                     // ✅ CORRECTION CRITIQUE: Utiliser UNIQUEMENT les produits depuis l'API service_products (nouveau système)
                     let serviceProduits: any[] = [];
                     
+                    // ✅ DEBUG 2026-01-13: Logs détaillés pour diagnostiquer les problèmes d'affichage
+                    console.log(`🔍 [ResultatBesoinScreen] DEBUG extraction produits pour service ${service.id}:`, {
+                        hasProductsFromAPI: !!service._productsFromAPI,
+                        isArray: Array.isArray(service._productsFromAPI),
+                        productsFromAPICount: Array.isArray(service._productsFromAPI) ? service._productsFromAPI.length : 0,
+                        productsFromAPISample: Array.isArray(service._productsFromAPI) && service._productsFromAPI.length > 0 
+                            ? service._productsFromAPI[0] 
+                            : null
+                    });
+                    
                     // Produits depuis l'API service_products (nouveau système uniquement)
                     if (service._productsFromAPI && Array.isArray(service._productsFromAPI) && service._productsFromAPI.length > 0) {
                         serviceProduits = service._productsFromAPI.map((productFromAPI: any) => {
                             // ✅ Transformer le format API vers format attendu (product_data contient les données)
                             const productData = productFromAPI.product_data || productFromAPI;
-                            return {
+                            
+                            // ✅ CORRIGÉ 2026-01-20: Extraire correctement tous les champs du produit
+                            const transformedProduct = {
+                                // ✅ Préserver toutes les propriétés de product_data
                                 ...productData,
-                                // Ajouter l'index du produit pour référence
+                                // ✅ Ajouter les propriétés de l'API si elles ne sont pas dans product_data
+                                product_name: productFromAPI.product_name || productData.nom_produit || productData.nom || productData.name,
+                                product_type: productFromAPI.product_type || productData.type || productData.product_type,
+                                product_price: productFromAPI.product_price || productData.prix_produit || productData.prix || productData.price,
+                                // ✅ Ajouter l'index du produit pour référence
                                 product_index: productFromAPI.product_index,
-                                // Préserver l'ID si disponible
+                                // ✅ Préserver l'ID si disponible
                                 id: productFromAPI.id || productFromAPI.product_id,
+                                // ✅ S'assurer que nom_produit est disponible (utilisé pour le score de pertinence)
+                                nom_produit: productData.nom_produit || productData.nom || productData.name || productFromAPI.product_name,
+                                nom: productData.nom_produit || productData.nom || productData.name || productFromAPI.product_name,
+                                name: productData.nom_produit || productData.nom || productData.name || productFromAPI.product_name,
                             };
+                            
+                            // ✅ DEBUG: Log détaillé de chaque produit transformé
+                            console.log(`📦 [ResultatBesoinScreen] Produit transformé pour service ${service.id}:`, {
+                                id: transformedProduct.id,
+                                product_index: transformedProduct.product_index,
+                                nom_produit: transformedProduct.nom_produit,
+                                nom: transformedProduct.nom,
+                                name: transformedProduct.name,
+                                product_name: transformedProduct.product_name,
+                                hasProductData: !!productFromAPI.product_data,
+                                productDataKeys: productData ? Object.keys(productData) : [],
+                                originalProductFromAPI: {
+                                    id: productFromAPI.id,
+                                    product_index: productFromAPI.product_index,
+                                    product_name: productFromAPI.product_name,
+                                    hasProductData: !!productFromAPI.product_data
+                                }
+                            });
+                            
+                            return transformedProduct;
                         });
                         console.log(`✅ [ResultatBesoinScreen] ${serviceProduits.length} produits depuis API service_products pour service ${service.id}`);
+                        
+                        // ✅ DEBUG: Log tous les noms de produits extraits
+                        console.log(`📋 [ResultatBesoinScreen] Liste des produits extraits pour service ${service.id}:`, 
+                            serviceProduits.map((p: any) => ({
+                                id: p.id,
+                                product_index: p.product_index,
+                                nom_produit: p.nom_produit,
+                                nom: p.nom,
+                                name: p.name
+                            }))
+                        );
+                    } else {
+                        console.warn(`⚠️ [ResultatBesoinScreen] Aucun produit trouvé dans _productsFromAPI pour service ${service.id}`);
                     }
                     // ❌ SUPPRIMÉ: Plus de fallback vers l'ancien système (service.data.produits) - utiliser uniquement service_products
                     
@@ -574,8 +722,25 @@ const ResultatBesoinScreen: React.FC = () => {
                                 console.log(`✅ [ResultatBesoinScreen] Distance service utilisée comme fallback: ${distance.toFixed(2)} km (${product.nom || 'produit'})`);
                             }
 
-                            // ✅ Calculer le score de priorité pour produits en promotion
+                            // ✅ NOUVEAU 2026-01-20: Calculer le score de pertinence au niveau produit
+                            // Base: score du service (pertinence générale)
                             let finalScore = service.score || 0;
+                            
+                            // ✅ AJOUT: Score de pertinence spécifique au produit par rapport à la requête
+                            if (searchQuery) {
+                                const productRelevanceScore = calculateProductRelevanceScore(product, searchQuery);
+                                // Ajouter le score de pertinence produit (poids important pour différencier les produits)
+                                finalScore += productRelevanceScore;
+                                
+                                // ✅ DEBUG: Log le score calculé pour diagnostiquer
+                                console.log(`🎯 [ResultatBesoinScreen] Score produit calculé pour "${product.nom_produit || product.nom || 'unknown'}":`, {
+                                    serviceScore: service.score || 0,
+                                    productRelevanceScore,
+                                    finalScore,
+                                    searchQuery
+                                });
+                            }
+                            
                             const isPromo = product.en_promotion || product.promotion_active;
 
                             if (isPromo) {
@@ -596,8 +761,17 @@ const ResultatBesoinScreen: React.FC = () => {
                                 : Array.isArray(service?.data?.videos) ? service.data.videos
                                 : [];
 
+                            // ✅ CORRIGÉ: Créer un identifiant unique stable pour éviter les doublons
+                            // Utiliser service_id-product_index si disponible, sinon id de la table service_products
+                            const stableProductId = product.product_index !== undefined 
+                                ? `${service.id}_${product.product_index}`
+                                : product.id || product.product_id || `${service.id}-${product.nom || product.name || 'unknown'}`;
+
                             extractedProducts.push({
                                 ...product,
+                                // ✅ CORRIGÉ: S'assurer que l'ID est toujours défini et unique
+                                id: stableProductId,
+                                product_id: stableProductId,
                                 _serviceId: service.id,
                                 _service: service,
                                 _prestataire: prestataires.get(service.user_id),
@@ -616,9 +790,86 @@ const ResultatBesoinScreen: React.FC = () => {
                 });
 
                 console.log(`📦 [ResultatBesoinScreen] ${extractedProducts.length} produits extraits de ${validServices.length} services`);
+                
+                // ✅ DEBUG 2026-01-20: Log détaillé des produits extraits avant déduplication avec tous les champs importants
+                if (extractedProducts.length > 0) {
+                    console.log(`🔍 [ResultatBesoinScreen] DEBUG produits extraits (avant déduplication):`, 
+                        extractedProducts.map((p: any) => ({
+                            id: p.id,
+                            product_id: p.product_id,
+                            product_index: p.product_index,
+                            nom_produit: p.nom_produit,
+                            nom: p.nom,
+                            name: p.name,
+                            product_name: p.product_name,
+                            _serviceId: p._serviceId,
+                            score: p.score,
+                            distance: p.distance,
+                            // ✅ Ajouter les champs de matching pour diagnostiquer
+                            combinaison_brute: p.combinaison_brute,
+                            categorie_produit: p.categorie_produit,
+                            sous_caracteristiques: p.sous_caracteristiques ? Object.keys(p.sous_caracteristiques) : []
+                        }))
+                    );
+                }
+
+                // ✅ CORRIGÉ: Dédupliquer les produits basés sur un identifiant unique stable
+                // Utiliser le même format que ProductCard pour garantir la cohérence
+                const seenProductIds = new Set<string>();
+                const deduplicatedProducts = extractedProducts.filter((product) => {
+                    // ✅ CORRIGÉ: Utiliser le même format d'ID que ProductCard
+                    // Priorité: service_id-product_index (format standard) > id de la table > fallback
+                    const serviceId = product._serviceId || product.service_id;
+                    const productIndex = product.product_index !== undefined && product.product_index !== null 
+                        ? product.product_index 
+                        : (typeof product.index === 'number' ? product.index : undefined);
+                    
+                    let productUniqueId: string;
+                    if (productIndex !== undefined && productIndex !== null && serviceId) {
+                        // Format standard: service_id-product_index
+                        productUniqueId = `${serviceId}_${productIndex}`;
+                    } else if (product.id || product.product_id) {
+                        // ID de la table service_products
+                        productUniqueId = String(product.id || product.product_id);
+                    } else {
+                        // Fallback: service_id-nom
+                        productUniqueId = serviceId 
+                            ? `${serviceId}-${product.nom || product.name || 'unknown'}`
+                            : `unknown-${product.nom || product.name || 'unknown'}`;
+                    }
+                    
+                    if (seenProductIds.has(productUniqueId)) {
+                        console.warn(`⚠️ [ResultatBesoinScreen] Produit dupliqué détecté et ignoré: ${productUniqueId} (${product.nom || product.name})`);
+                        return false;
+                    }
+                    seenProductIds.add(productUniqueId);
+                    // ✅ CORRIGÉ: S'assurer que l'ID du produit correspond au format utilisé pour la déduplication
+                    product.id = productUniqueId;
+                    product.product_id = productUniqueId;
+                    return true;
+                });
+
+                console.log(`📦 [ResultatBesoinScreen] ${deduplicatedProducts.length} produits après déduplication (${extractedProducts.length - deduplicatedProducts.length} doublons supprimés)`);
+                
+                // ✅ DEBUG 2026-01-13: Log détaillé des produits après déduplication
+                if (deduplicatedProducts.length > 0) {
+                    console.log(`🔍 [ResultatBesoinScreen] DEBUG produits après déduplication:`, 
+                        deduplicatedProducts.map((p: any) => ({
+                            id: p.id,
+                            product_id: p.product_id,
+                            product_index: p.product_index,
+                            nom: p.nom || p.name,
+                            _serviceId: p._serviceId,
+                            score: p.score,
+                            en_promotion: p.en_promotion
+                        }))
+                    );
+                } else if (extractedProducts.length > 0) {
+                    console.error(`❌ [ResultatBesoinScreen] PROBLÈME: ${extractedProducts.length} produits extraits mais 0 après déduplication!`);
+                }
 
                 // ✅ TRI PRIORITAIRE : Produits en promotion d'abord
-                extractedProducts.sort((a, b) => {
+                deduplicatedProducts.sort((a, b) => {
                     // 1. Priorité PROMO
                     const promoA = a.en_promotion || a.promotion_active ? 1 : 0;
                     const promoB = b.en_promotion || b.promotion_active ? 1 : 0;
@@ -635,9 +886,24 @@ const ResultatBesoinScreen: React.FC = () => {
                     return distA - distB;
                 });
 
+                // ✅ DEBUG 2026-01-20: Log les produits triés avant affichage
+                console.log(`📊 [ResultatBesoinScreen] Produits triés (ordre final):`, 
+                    deduplicatedProducts.map((p: any, idx: number) => ({
+                        index: idx,
+                        id: p.id,
+                        product_index: p.product_index,
+                        nom_produit: p.nom_produit || p.nom || p.name,
+                        score: p.score,
+                        distance: p.distance,
+                        en_promotion: p.en_promotion || p.promotion_active,
+                        _serviceId: p._serviceId
+                    }))
+                );
+
                 // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
                 startTransition(() => {
-                    setProducts(extractedProducts);
+                    setProducts(deduplicatedProducts);
+                    console.log(`✅ [ResultatBesoinScreen] ${deduplicatedProducts.length} produits définis dans l'état pour affichage`);
                 });
 
                 // Récupérer les informations des prestataires
@@ -1349,16 +1615,45 @@ const ResultatBesoinScreen: React.FC = () => {
         }));
         const products = filteredProducts.map((product, idx) => {
             // ✅ CORRIGÉ: Clé stable basée uniquement sur des propriétés immuables (sans score)
-            const productId = product._serviceId || product.service_id || 'unknown';
+            // Utiliser le même format d'ID que ProductCard pour garantir la cohérence
+            const serviceId = product._serviceId || product.service_id || 'unknown';
+            const productIndex = product.product_index !== undefined && product.product_index !== null 
+                ? product.product_index 
+                : (typeof product.index === 'number' ? product.index : undefined);
             const productName = product.nom || product.name || `product-${idx}`;
-            // ✅ Utiliser un identifiant unique stable au lieu du score qui change
-            const productUniqueId = product.id || product.product_id || `${productId}-${productName}`;
+            
+            // ✅ CORRIGÉ: Utiliser le même format d'ID que ProductCard et la déduplication
+            let productUniqueId: string;
+            if (productIndex !== undefined && productIndex !== null && serviceId) {
+                productUniqueId = `${serviceId}_${productIndex}`;
+            } else if (product.id || product.product_id) {
+                productUniqueId = String(product.id || product.product_id);
+            } else {
+                productUniqueId = `${serviceId}-${productName}`;
+            }
+            
             return {
                 type: 'product' as const, 
                 data: product,
                 key: `product-${productUniqueId}`
             };
         });
+        
+        // ✅ DEBUG 2026-01-20: Log les produits qui seront affichés
+        if (products.length > 0) {
+            console.log(`🖥️ [ResultatBesoinScreen] Produits qui seront affichés dans l'UI (${products.length} produits):`, 
+                products.map((p: any) => ({
+                    key: p.key,
+                    type: p.type,
+                    id: p.data.id,
+                    product_index: p.data.product_index,
+                    nom_produit: p.data.nom_produit || p.data.nom || p.data.name,
+                    _serviceId: p.data._serviceId,
+                    score: p.data.score
+                }))
+            );
+        }
+        
         return [...services, ...products];
     }, [filteredServices, filteredProducts]);
 

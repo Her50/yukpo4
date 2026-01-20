@@ -1,76 +1,46 @@
-﻿# Fichiers de build
-backend/target/
-frontend/node_modules/
-frontend/dist/
-frontend/build/
-deploy_digitalocean/backend/target/
-deploy_digitalocean/*/target/
-**/target/
-**/node_modules/
+﻿# ... existing code ...
 
-# Fichiers d'environnement
+# AWS Infrastructure
+infra/aws/terraform.tfvars
+infra/aws/*.tfstate
+infra/aws/*.tfstate.*
+infra/aws/*.tfplan
+infra/aws/.terraform/
+infra/aws/.terraform.lock.hcl
+backup_render_*.dump
+backup_render_*.sql
+
+# AWS Credentials
+.aws-credentials
+aws-credentials.txt
+
+# Backend Rust
+backend/target/
+backend/**/target/
+**/target/
+*.rs.bk
+Cargo.lock
+
+# Backend - Fichiers volumineux
+backend/blender/*.tar.xz
+backend/blender/*.tar
+backend/NONE
+
+# Archives volumineuses inutiles (backups)
+frontend/src/*.zip
+livekit*.tar.gz
+livekit-ingress*.tar.gz
+
+# Node modules (ne jamais commiter)
+node_modules/
+**/node_modules/
+video-renderer/node_modules/
+
+# Fichiers d'environnement (secrets)
 .env
-.env.local
-.env.production
+.env.*
 **/.env
 **/.env.*
-
-# Archives et fichiers LiveKit téléchargés localement
-livekit.tar.gz
-livekit-config-sample.yaml
-infra/livekit/ansible/tmp_*
-
-# Fichiers temporaires et logs
-*.log
-*.tmp
-*.temp
-logs/
-temp/
-
-# Fichiers Vercel
-.vercel/
-
-# Fichiers binaires et compilés
-*.exe
-*.dll
-*.so
-*.dylib
-*.rlib
-*.rmeta
-
-# IDE et éditeurs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Local Netlify folder
-.netlify
-
-# Mobile specific
-mobile/node_modules/
-mobile/dist/
-mobile/.expo/
-mobile/.expo-shared/
-mobile/android/
-mobile/ios/
-mobile/web-build/
-
-# Additional build artifacts
-**/dist/
-# ✅ EXCEPTION: video-renderer/dist/ DOIT être commité pour déploiement Render.com
-!video-renderer/dist/
-**/build/
-**/.expo/
-**/.expo-shared/
-mobile/temp-apk-server/
-*.apk
-
-# Fichiers volumineux à exclure
-backend/NONE
+backend/.env
+frontend/.env
+mobile/.env

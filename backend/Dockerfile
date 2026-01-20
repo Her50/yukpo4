@@ -4,13 +4,16 @@
 ############################################
 # Stage 1: Builder - Compilation Rust
 ############################################
-FROM rust:1.75-slim as builder
+FROM rust:latest AS builder
 
 WORKDIR /app
 
 # ✅ SQLx OFFLINE : Activer le mode offline SQLx dès le début
 ENV SQLX_OFFLINE=true
 ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+# Configuration réseau pour Cargo (timeout plus long pour éviter les timeouts DNS)
+ENV CARGO_NET_TIMEOUT=300
+ENV CARGO_NET_RETRY=5
 
 # Installer les dépendances système nécessaires pour la compilation
 RUN apt-get update && apt-get install -y \
@@ -24,7 +27,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copier les fichiers de configuration Rust
-COPY Cargo.toml Cargo.lock ./
+# Note: Cargo.lock sera généré automatiquement par Cargo lors du build si absent
+COPY Cargo.toml ./
 
 # ✅ SQLx OFFLINE : copier le cache SQLx AVANT le code source
 COPY .sqlx ./.sqlx
@@ -53,8 +57,15 @@ COPY config ./config
 COPY ia_intentions_instructions.md ./
 COPY migrations ./migrations
 
+# Copier les scripts (nécessaires pour certains binaires définis dans Cargo.toml)
+COPY scripts ./scripts
+
 # Créer le dossier data
 RUN mkdir -p ./data
+
+# Copier Blender depuis le contexte local si disponible (téléchargé via scripts/download-blender.ps1)
+# Note: Le dossier blender/ doit être créé par le script download-blender.ps1 avant le build
+COPY blender/ ./blender/
 
 # Construire l'application avec optimisations pour production
 RUN cargo build --release --features gpu
@@ -62,7 +73,8 @@ RUN cargo build --release --features gpu
 ############################################
 # Stage 2: Runtime - Image finale optimisée
 ############################################
-FROM debian:bookworm-slim
+# Utiliser debian:trixie-slim pour GLIBC 2.39+ (compatible avec rust:latest)
+FROM debian:trixie-slim
 
 # Métadonnées
 LABEL maintainer="Yukpomnang Team"
@@ -70,6 +82,7 @@ LABEL description="Yukpomnang Backend API - Optimisé pour AWS ECS/Fargate"
 LABEL version="1.0.0"
 
 # Installer les dépendances runtime uniquement
+# Note: Les bibliothèques X11 sont nécessaires pour Blender (même en mode headless)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libpq5 \
@@ -78,24 +91,56 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     xz-utils \
     postgresql-client \
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libxi6 \
+    libxfixes3 \
+    libxrandr2 \
+    libxcursor1 \
+    libxinerama1 \
+    libxxf86vm1 \
+    libxkbcommon0 \
+    libsm6 \
+    libice6 \
+    libfontconfig1 \
+    libfreetype6 \
+    libgl1 \
+    libglu1 \
     && rm -rf /var/lib/apt/lists/*
 
-# 🎨 Installer Blender pour rendu 3D AR (optimisé pour AWS)
-RUN wget -q https://download.blender.org/release/Blender4.0/blender-4.0.0-linux-x64.tar.xz \
-    && tar -xf blender-4.0.0-linux-x64.tar.xz \
-    && mv blender-4.0.0-linux-x64 /opt/blender \
-    && rm blender-4.0.0-linux-x64.tar.xz \
-    && ln -s /opt/blender/blender /usr/local/bin/blender \
-    && chmod +x /opt/blender/blender \
-    && blender --version \
-    && apt-get clean
+# Copier Blender depuis le contexte local (OBLIGATOIRE)
+# Accepte .tar ou .tar.xz (compressé ou non)
+COPY blender/ /tmp/blender/
+
+# Installer Blender depuis le contexte local
+# Blender est OBLIGATOIRE pour le rendu 3D AR
+RUN if [ -f "/tmp/blender/blender-4.0.0-linux-x64.tar.xz" ]; then \
+        BLENDER_ARCHIVE="/tmp/blender/blender-4.0.0-linux-x64.tar.xz"; \
+        echo "✅ Installation de Blender depuis .tar.xz..."; \
+        tar -xf "$BLENDER_ARCHIVE" -C /tmp; \
+    elif [ -f "/tmp/blender/blender-4.0.0-linux-x64.tar" ]; then \
+        BLENDER_ARCHIVE="/tmp/blender/blender-4.0.0-linux-x64.tar"; \
+        echo "✅ Installation de Blender depuis .tar..."; \
+        tar -xf "$BLENDER_ARCHIVE" -C /tmp; \
+    else \
+        echo "❌ ERREUR: Blender non trouve dans le contexte Docker!" && \
+        echo "   Placez blender-4.0.0-linux-x64.tar ou .tar.xz dans backend/blender/" && \
+        exit 1; \
+    fi && \
+    mv /tmp/blender-4.0.0-linux-x64 /opt/blender && \
+    ln -s /opt/blender/blender /usr/local/bin/blender && \
+    chmod +x /opt/blender/blender && \
+    blender --background --version && \
+    rm -rf /tmp/blender && \
+    echo "✅ Blender installe avec succes"
 
 # Créer un utilisateur non-root pour la sécurité
 RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
 
 # Créer les répertoires nécessaires
-RUN mkdir -p /app/config /app/logs /app/data /app/uploads /app/migrations /app/ia_prompts \
-    && chown -R appuser:appuser /app
+RUN mkdir -p /app/config /app/logs /app/data /app/uploads /app/migrations /app/ia_prompts /var/data/uploads \
+    && chown -R appuser:appuser /app /var/data
 
 # Copier l'exécutable depuis le builder
 COPY --from=builder --chown=appuser:appuser /app/target/release/yukpomnang_backend /app/yukpomnang_backend

@@ -6,6 +6,7 @@ import {
     ActivityIndicator,
     Alert,
     Dimensions,
+    Keyboard,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -131,6 +132,8 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
         }
 
         try {
+            // ✅ CRITIQUE: Fermer le clavier avant l'appel IA pour éviter les tremblements (transition modal + KAV)
+            Keyboard.dismiss();
             setLoadingRecipe(true);
             const response = await menuPlanningService.generateRecipe(recipeRequest.trim());
             
@@ -164,9 +167,14 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
             if (recipe && recipe.recipe_name) {
                 setGeneratedRecipe(recipe);
+                // ✅ CORRIGÉ: Fermer le modal de recherche d'abord, puis ouvrir le modal de détails avec un petit délai pour éviter les tremblements (comme dans MenuWeekCalendarScreen)
+                Keyboard.dismiss();
                 setShowRecipeModal(false);
-                setShowRecipeDetails(true);
                 setRecipeRequest('');
+                // Petit délai pour permettre la fermeture complète du premier modal avant d'ouvrir le second
+                setTimeout(() => {
+                    setShowRecipeDetails(true);
+                }, 300);
             } else {
                 Alert.alert('Erreur', 'Impossible d\'extraire la recette de la réponse. Veuillez réessayer.');
             }
@@ -649,7 +657,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             />
                         </View>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
 
             {/* ✅ NOUVEAU: Modal pour afficher la recette générée */}
@@ -669,7 +677,15 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         </View>
 
                         {generatedRecipe && (
-                            <ScrollView style={styles.modalBody}>
+                            <ScrollView 
+                                style={styles.modalBody}
+                                removeClippedSubviews={true} // ✅ CORRIGÉ: Optimise les performances
+                                scrollEventThrottle={16} // ✅ CORRIGÉ: Limite la fréquence des événements de scroll
+                                showsVerticalScrollIndicator={true}
+                                nestedScrollEnabled={true}
+                                bounces={true}
+                                keyboardShouldPersistTaps="handled"
+                            >
                                 <View style={styles.recipeHeader}>
                                     <Text style={styles.recipeTitle}>{generatedRecipe.recipe_name}</Text>
                                     {generatedRecipe.description && (
@@ -1136,6 +1152,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         maxHeight: '90%',
+        minHeight: 400, // ✅ CORRIGÉ: Hauteur minimale pour éviter les changements de layout
         paddingBottom: 20,
     },
     modalHeader: {
@@ -1152,8 +1169,9 @@ const styles = StyleSheet.create({
         color: '#111827',
     },
     modalBody: {
-        padding: 20,
-        // ✅ CORRIGÉ 2026-01-14: Retirer flex: 1 pour permettre le focus du TextInput
+        padding: 16, // ✅ CORRIGÉ: Aligné avec MenuWeekCalendarScreen qui fonctionne bien
+        maxHeight: 500, // ✅ CORRIGÉ: Hauteur maximale pour éviter les changements de layout
+        flexGrow: 1, // ✅ CORRIGÉ: Permet au contenu de grandir sans causer de tremblement
     },
     modalFooter: {
         padding: 20,
@@ -1182,7 +1200,7 @@ const styles = StyleSheet.create({
     },
     // ✅ NOUVEAU: Styles pour affichage recette
     recipeHeader: {
-        marginBottom: 20,
+        marginBottom: 16, // ✅ CORRIGÉ: Aligné avec MenuWeekCalendarScreen
     },
     recipeTitle: {
         fontSize: 24,
@@ -1191,29 +1209,29 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     recipeDescription: {
-        fontSize: 16,
-        color: modernColors.textSecondary,
-        lineHeight: 24,
+        fontSize: 14, // ✅ CORRIGÉ: Aligné avec MenuWeekCalendarScreen
+        color: '#6B7280', // ✅ CORRIGÉ: Aligné avec MenuWeekCalendarScreen
+        lineHeight: 20, // ✅ CORRIGÉ: Aligné avec MenuWeekCalendarScreen
     },
     recipeInfoRow: {
         flexDirection: 'row',
         gap: 16,
-        marginBottom: 20,
+        marginBottom: 16, // ✅ CORRIGÉ: Aligné avec MenuWeekCalendarScreen
+        paddingBottom: 16, // ✅ CORRIGÉ: Ajouté pour correspondre au style qui fonctionne
+        borderBottomWidth: 1, // ✅ CORRIGÉ: Ajouté pour correspondre au style qui fonctionne
+        borderBottomColor: '#E5E7EB', // ✅ CORRIGÉ: Ajouté pour correspondre au style qui fonctionne
         flexWrap: 'wrap',
     },
     recipeInfoItem: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 8,
+        // ✅ CORRIGÉ: Retiré paddingHorizontal, paddingVertical, backgroundColor, borderRadius pour correspondre au style qui fonctionne
     },
     recipeInfoText: {
-        fontSize: 14,
-        color: '#111827',
-        fontWeight: '500',
+        fontSize: 12, // ✅ CORRIGÉ: Aligné avec MenuWeekCalendarScreen
+        color: '#6B7280', // ✅ CORRIGÉ: Aligné avec MenuWeekCalendarScreen
+        // ✅ CORRIGÉ: Retiré fontWeight pour correspondre au style qui fonctionne
     },
     recipeSection: {
         marginBottom: 24,
@@ -1261,10 +1279,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 8,
-        marginBottom: 12,
+        marginBottom: 8, // ✅ CORRIGÉ: Aligné avec MenuWeekCalendarScreen
         padding: 12,
-        backgroundColor: '#FEF3C7',
+        backgroundColor: '#FFFBEB', // ✅ CORRIGÉ: Aligné avec MenuWeekCalendarScreen
         borderRadius: 8,
+        borderWidth: 1, // ✅ CORRIGÉ: Ajouté pour correspondre au style qui fonctionne
+        borderColor: '#FEF3C7', // ✅ CORRIGÉ: Ajouté pour correspondre au style qui fonctionne
     },
     tipText: {
         flex: 1,

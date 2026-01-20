@@ -1,4 +1,4 @@
-# ✅ EASIGNORE OPTIMISÉ - Réduit la taille de l'archive de ~950MB à ~50MB
+# ✅ EASIGNORE OPTIMISÉ - Réduit la taille de l'archive de ~377MB à ~130-150MB
 
 # ============================================
 # BACKEND RUST (ne doit pas être dans mobile/)
@@ -12,18 +12,79 @@ backend/
 **/Cargo.lock
 
 # ============================================
+# FRONTEND WEB (ne doit pas être dans mobile/)
+# ============================================
+../frontend/
+frontend/
+**/frontend/
+
+# ============================================
+# AUTRES DOSSIERS RACINE (ne doivent pas être dans mobile/)
+# ============================================
+../imgsmlr/
+imgsmlr/
+**/imgsmlr/
+../pgvector/
+pgvector/
+**/pgvector/
+../video-renderer/
+video-renderer/
+**/video-renderer/
+../deploy_digitalocean/
+deploy_digitalocean/
+**/deploy_digitalocean/
+../deployment/
+deployment/
+**/deployment/
+../infra/
+infra/
+**/infra/
+../monitoring/
+monitoring/
+**/monitoring/
+../scripts/
+scripts/
+**/scripts/
+../config/
+config/
+**/config/
+../docs/
+docs/
+**/docs/
+../nginx/
+nginx/
+**/nginx/
+
+# ============================================
 # DEPENDENCIES - EXCLUS COMPLÈTEMENT
 # ============================================
 node_modules/
 **/node_modules/
+# Exemples et builds dans node_modules (volumineux)
 node_modules/**/example/
 node_modules/**/examples/
+node_modules/**/example/**
+node_modules/**/examples/**
 node_modules/**/android/app/build/
 node_modules/**/ios/build/
 node_modules/**/build/
+node_modules/**/build/**
+# Source maps volumineux (TensorFlow, etc.)
 node_modules/**/*.map
+# Binaires non-Android (win64, osx, etc.)
+node_modules/**/win64-bin/
+node_modules/**/osx-bin/
+node_modules/**/win32-*/
+node_modules/**/darwin-*/
+node_modules/**/*.exe
+node_modules/**/*.dll
+node_modules/**/*.dylib
+# APK/AAB dans node_modules
 node_modules/**/*.apk
 node_modules/**/*.aab
+# Archives volumineuses
+node_modules/**/*.tbz
+node_modules/**/*.tar.gz
 
 # ============================================
 # BUILD DIRECTORIES
@@ -48,7 +109,10 @@ web-build/
 # ============================================
 # APK & BINARIES (CRITIQUE - 193MB!)
 # ============================================
-# Exclusion absolue du dossier temp-apk-server
+# Exclusion absolue du dossier temp-apk-server (DOIT être en premier)
+/temp-apk-server
+/temp-apk-server/
+/temp-apk-server/**
 temp-apk-server
 temp-apk-server/
 temp-apk-server/**

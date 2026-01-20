@@ -256,6 +256,10 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const [isScrollingManually, setIsScrollingManually] = useState(false);
   // ✅ NOUVEAU 2026-01-14: État pour suivre l'index actuel des variations (pour scroll automatique)
   const [currentVariantIndex, setCurrentVariantIndex] = useState(0);
+  // ✅ NOUVEAU 2026-01-14: Ref et état pour le scroll automatique des caractéristiques
+  const characteristicsScrollRef = useRef<ScrollView>(null);
+  const [isScrollingCharacteristicsManually, setIsScrollingCharacteristicsManually] = useState(false);
+  const [currentCharacteristicIndex, setCurrentCharacteristicIndex] = useState(0);
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
   const [chatContext, setChatContext] = useState<{
     type: 'service' | 'private';
@@ -306,25 +310,141 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       ? splitWithFallback(rawLocationVector, ',').filter((item: string) => item !== 'false' && item.trim() !== '')
       : [];
 
-  // ✅ CORRIGÉ 2026-01-07: Éviter d'afficher "false" - filtrer les valeurs booléennes
+  // ✅ CORRIGÉ 2026-01-20: Améliorer l'extraction de la localisation (quartier/ville)
+  // Priorité 1: chosen_location depuis productData
+  // Priorité 2: locationVector (peut contenir quartier, ville, etc.)
+  // Priorité 3: adresse depuis productData
+  // Priorité 4: adresse depuis service.data
+  // Priorité 5: lieu_produit depuis service.data (composants quartier/ville)
   const chosenLocationRaw = productData.chosen_location ||
-    locationVector[0] ||
+    (locationVector.length > 0 ? locationVector.join(', ') : null) ||
     productData.adresse ||
     productData.address ||
     service?.data?.adresse?.valeur ||
     service?.data?.adresse_service?.valeur ||
+    (service?.data?.lieu_produit?.valeur?.composants ? 
+      [service.data.lieu_produit.valeur.composants.quartier, 
+       service.data.lieu_produit.valeur.composants.ville]
+        .filter(Boolean)
+        .join(', ') : null) ||
+    (service?.data?.lieu_produit?.valeur?.valeur?.components ?
+      [service.data.lieu_produit.valeur.valeur.components.quartier,
+       service.data.lieu_produit.valeur.valeur.components.ville]
+        .filter(Boolean)
+        .join(', ') : null) ||
     '';
   
-  // ✅ CORRIGÉ 2026-01-13: Filtrer strictement les valeurs booléennes, "false" string, null, undefined
+  // ✅ CORRIGÉ 2026-01-20: Filtrer strictement les valeurs booléennes, "false" string, null, undefined
   const chosenLocation = (typeof chosenLocationRaw === 'string' && 
                           chosenLocationRaw !== 'false' && 
                           chosenLocationRaw !== false &&
                           chosenLocationRaw.trim() !== '')
-    ? chosenLocationRaw
+    ? chosenLocationRaw.trim()
     : '';
+  
+  // ✅ DEBUG 2026-01-20: Logger l'extraction de la localisation
+  useEffect(() => {
+    if (chosenLocation) {
+      console.log('[ProductCard] 📍 Localisation extraite:', {
+        chosenLocation,
+        hasLocationVector: locationVector.length > 0,
+        locationVector,
+        hasProductDataChosenLocation: !!productData.chosen_location,
+        hasServiceAdresse: !!service?.data?.adresse?.valeur,
+        hasLieuProduit: !!service?.data?.lieu_produit?.valeur
+      });
+    } else {
+      console.log('[ProductCard] ⚠️ Aucune localisation trouvée:', {
+        hasProductDataChosenLocation: !!productData.chosen_location,
+        locationVectorLength: locationVector.length,
+        hasProductDataAdresse: !!productData.adresse,
+        hasServiceAdresse: !!service?.data?.adresse?.valeur,
+        hasLieuProduit: !!service?.data?.lieu_produit?.valeur
+      });
+    }
+  }, [chosenLocation, locationVector.length]);
 
-  const hasVariant = productData.has_variant || false;
-  const variants = productData.variants || [];
+  // ✅ CORRIGÉ 2026-01-20: Transformer variation_prix en variants si nécessaire
+  // Vérifier si variation_prix existe et n'a pas encore été transformé
+  let hasVariant = productData.has_variant || product.has_variant || false;
+  let variants = productData.variants || product.variants || [];
+  
+  // Si pas de variants mais qu'on a variation_prix, le transformer
+  if (!hasVariant && variants.length === 0) {
+    // ✅ CORRIGÉ: Vérifier aussi dans product directement (pas seulement productData)
+    const variationPrix = productData.variation_prix || productData.variabilite_prix || productData.price_variant
+      || product.variation_prix || product.variabilite_prix || product.price_variant;
+    
+    if (variationPrix) {
+      console.log('[ProductCard] 🔍 variation_prix trouvé:', {
+        type: typeof variationPrix,
+        isArray: Array.isArray(variationPrix),
+        keys: typeof variationPrix === 'object' && !Array.isArray(variationPrix) ? Object.keys(variationPrix) : [],
+        hasModalites: typeof variationPrix === 'object' && !Array.isArray(variationPrix) && 'modalites' in variationPrix,
+      });
+      // Si c'est un objet avec modalites
+      if (typeof variationPrix === 'object' && !Array.isArray(variationPrix)) {
+        const modalites = variationPrix.modalites || variationPrix.valeur || variationPrix;
+        
+        if (Array.isArray(modalites) && modalites.length > 0) {
+          variants = modalites.map((modalite: any) => {
+            const variant: any = {};
+            if (modalite.valeur || modalite.value) {
+              variant.value = modalite.valeur || modalite.value;
+              variant.valeur = modalite.valeur || modalite.value;
+            }
+            if (modalite.prix !== undefined || modalite.price !== undefined) {
+              variant.prix = modalite.prix || modalite.price;
+            }
+            if (modalite.devise || modalite.currency) {
+              variant.devise = modalite.devise || modalite.currency;
+            }
+            if (modalite.stock !== undefined || modalite.quantite !== undefined) {
+              variant.stock = modalite.stock || modalite.quantite;
+            }
+            if (modalite.image) {
+              variant.image = modalite.image;
+            }
+            return variant;
+          });
+          
+          hasVariant = variants.length > 0;
+          
+          if (variationPrix.variable) {
+            productData.variant_dimension = variationPrix.variable;
+          }
+          
+          console.log('[ProductCard] ✅ variation_prix transformé en variants:', variants.length);
+        }
+      }
+      // Si c'est directement un tableau
+      else if (Array.isArray(variationPrix) && variationPrix.length > 0) {
+        variants = variationPrix.map((modalite: any) => {
+          const variant: any = {};
+          if (modalite.valeur || modalite.value) {
+            variant.value = modalite.valeur || modalite.value;
+            variant.valeur = modalite.valeur || modalite.value;
+          }
+          if (modalite.prix !== undefined || modalite.price !== undefined) {
+            variant.prix = modalite.prix || modalite.price;
+          }
+          if (modalite.devise || modalite.currency) {
+            variant.devise = modalite.devise || modalite.currency;
+          }
+          if (modalite.stock !== undefined || modalite.quantite !== undefined) {
+            variant.stock = modalite.stock || modalite.quantite;
+          }
+          if (modalite.image) {
+            variant.image = modalite.image;
+          }
+          return variant;
+        });
+        
+        hasVariant = variants.length > 0;
+        console.log('[ProductCard] ✅ variation_prix (array) transformé en variants:', variants.length);
+      }
+    }
+  }
   const rawPrestataire =
     prestataireFromProps ||
     productData.prestataire ||
@@ -475,10 +595,20 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       : typeof product.index === 'number'
         ? product.index
         : 0;
-  const resolvedProductId =
-    product.product_id ||
-    product.id ||
-    (serviceId ? `${serviceId}_${productIndex}` : null);
+  // ✅ CORRIGÉ: Utiliser un format d'ID cohérent pour éviter les doublons
+  // Priorité: service_id-product_index (format standard) > id de la table > fallback
+  const resolvedProductId = (() => {
+    // Si product_index est disponible, utiliser le format service_id-product_index (standard)
+    if (productIndex !== undefined && productIndex !== null && serviceId) {
+      return `${serviceId}_${productIndex}`;
+    }
+    // Sinon, utiliser l'ID de la table service_products si disponible
+    if (product.product_id || product.id) {
+      return String(product.product_id || product.id);
+    }
+    // Fallback: construire depuis service_id et nom
+    return serviceId ? `${serviceId}-${productData.nom || productData.name || 'unknown'}` : null;
+  })();
 
   // ✅ CORRIGÉ 2026-01-13: Distinction stricte entre produits et prestations
   // Le bouton "Me livrer" ne doit s'afficher QUE pour les produits, jamais pour les prestations
@@ -510,31 +640,78 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       (productData.prix !== undefined || productData.price !== undefined) // A un prix
     ));
 
-  // ✅ CORRIGÉ 2026-01-14: Vérifier si le produit a une configuration de livraison automatique
+  // ✅ CORRIGÉ 2026-01-20: Vérifier si le produit a une configuration de livraison automatique
   // ✅ CORRIGÉ: Gérer correctement le cas où la config n'existe pas (404) vs erreur
   useEffect(() => {
     const checkDeliveryConfig = async () => {
-      if (!isProduct || !serviceId || productIndex < 0) {
+      // ✅ CORRIGÉ: Convertir serviceId en number si c'est une string
+      const numericServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
+      
+      // ✅ CORRIGÉ 2026-01-20: Vérifier que productIndex est valide (pas juste 0 par défaut)
+      // Si productIndex est 0 mais qu'il n'était pas explicitement défini, ne pas vérifier
+      const hasValidProductIndex = productIndex !== undefined && productIndex !== null && productIndex >= 0;
+      
+      if (!isProduct || !numericServiceId || isNaN(numericServiceId) || !hasValidProductIndex) {
+        console.log('[ProductCard] ⚠️ Vérification config livraison ignorée:', {
+          isProduct,
+          serviceId: numericServiceId,
+          productIndex,
+          hasValidProductIndex,
+          reason: !isProduct ? 'pas un produit' : !numericServiceId || isNaN(numericServiceId) ? 'serviceId invalide' : !hasValidProductIndex ? 'productIndex invalide' : 'inconnu'
+        });
         setHasDeliveryConfig(false);
         return;
       }
 
+      console.log('[ProductCard] 🔍 Vérification config livraison pour:', {
+        serviceId: numericServiceId,
+        productIndex,
+        serviceIdType: typeof serviceId,
+        productIndexType: typeof productIndex
+      });
+
       try {
-        const config = await productDeliveryService.getDeliveryConfig(serviceId, productIndex);
+        const config = await productDeliveryService.getDeliveryConfig(numericServiceId, productIndex);
+        console.log('[ProductCard] 📦 Config livraison reçue:', {
+          config: config ? {
+            id: config.id,
+            service_id: config.service_id,
+            product_index: config.product_index,
+            is_configured: config.is_configured,
+            is_immediately_available: config.is_immediately_available
+          } : null
+        });
+        
         // ✅ CORRIGÉ: Vérifier que config n'est pas null ET que is_configured est true
         if (config && config.is_configured === true) {
+          console.log('[ProductCard] ✅ Config livraison valide - bouton activé');
           setHasDeliveryConfig(true);
         } else {
+          console.log('[ProductCard] ⚠️ Config livraison invalide ou non configurée:', {
+            hasConfig: !!config,
+            is_configured: config?.is_configured
+          });
           // Config n'existe pas ou n'est pas configurée
           setHasDeliveryConfig(false);
         }
       } catch (error: any) {
         // ✅ CORRIGÉ: Ne pas logger les erreurs 404 comme des erreurs critiques
         if (error?.message?.includes('404') || error?.response?.status === 404) {
+          console.log('[ProductCard] ℹ️ Config livraison non trouvée (404)');
           // Configuration non trouvée = pas de livraison disponible
           setHasDeliveryConfig(false);
+        } else if (error?.message?.includes('Token') || error?.message?.includes('authentification') || error?.message?.includes('401')) {
+          // ✅ CORRIGÉ 2026-01-20: Gérer le cas où le token est manquant ou expiré
+          console.log('[ProductCard] ⚠️ Token d\'authentification manquant ou expiré - config livraison non vérifiée');
+          setHasDeliveryConfig(false);
         } else {
-          console.error('[ProductCard] Erreur vérification config livraison:', error);
+          console.error('[ProductCard] ❌ Erreur vérification config livraison:', {
+            error: error?.message || error,
+            serviceId: numericServiceId,
+            productIndex,
+            errorType: error?.constructor?.name,
+            errorStack: error?.stack?.substring(0, 200)
+          });
           setHasDeliveryConfig(false);
         }
       }
@@ -549,6 +726,20 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const deliveryEnabled = isProduct && // ✅ CRITIQUE: Uniquement pour les produits
     serviceId && // ✅ S'assurer qu'il y a un serviceId
     hasDeliveryConfig === true; // ✅ NOUVEAU: Vérifier que la configuration de livraison existe et est configurée
+  
+  // ✅ DEBUG 2026-01-20: Logger l'état du bouton pour déboguer
+  useEffect(() => {
+    if (isProduct && serviceId) {
+      console.log('[ProductCard] 🔘 État bouton "Me livrer":', {
+        deliveryEnabled,
+        isProduct,
+        serviceId,
+        hasDeliveryConfig,
+        productIndex,
+        serviceIdType: typeof serviceId
+      });
+    }
+  }, [deliveryEnabled, isProduct, serviceId, hasDeliveryConfig, productIndex]);
 
   const displayPrice = hasVariant && variants.length > 0
     ? Math.min(...variants.map((v: any) => v.prix || 0))
@@ -634,6 +825,30 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   
   const pays = paysFromService || paysFromLocationComponents || paysFromLocation || paysFromVector || paysFromProduct || null;
   const countryFlag = pays && pays.trim() !== '' ? getCountryFlag(pays) : '';
+  
+  // ✅ DEBUG 2026-01-20: Logger l'extraction du pays et du drapeau
+  useEffect(() => {
+    if (pays || countryFlag) {
+      console.log('[ProductCard] 🏳️ Pays et drapeau extraits:', {
+        pays,
+        countryFlag,
+        paysFromService,
+        paysFromLocationComponents,
+        paysFromLocation,
+        paysFromVector,
+        paysFromProduct
+      });
+    } else {
+      console.log('[ProductCard] ⚠️ Aucun pays trouvé:', {
+        hasPaysFromService: !!paysFromService,
+        hasPaysFromLocationComponents: !!paysFromLocationComponents,
+        hasPaysFromLocation: !!paysFromLocation,
+        hasPaysFromVector: !!paysFromVector,
+        hasPaysFromProduct: !!paysFromProduct,
+        chosenLocation
+      });
+    }
+  }, [pays, countryFlag]);
 
   const commentServiceId = Number(productData._serviceId || product.service_id || service?.id || 0);
   const serviceTitleForComments =
@@ -908,12 +1123,57 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     return () => clearInterval(autoScrollInterval);
   }, [hasVariant, variants.length, isScrollingManually]);
 
+  // ✅ NOUVEAU 2026-01-14: Scroll automatique horizontal pour les caractéristiques (comme prix_variation)
+  useEffect(() => {
+    if (productVector.length <= 1 || isScrollingCharacteristicsManually) return;
+
+    // ✅ AMÉLIORÉ: Calculer la largeur approximative basée sur la longueur moyenne du texte
+    // paddingHorizontal (8*2) + texte (11px * longueur moyenne) + gap (4)
+    const avgTextLength = productVector.reduce((sum: number, carac: string) => {
+      const displayValue = filterBooleanValue(carac, '');
+      return sum + (displayValue ? displayValue.length : 0);
+    }, 0) / productVector.length;
+    const chipWidth = Math.max(60, Math.min(150, (8 * 2) + (avgTextLength * 7) + 4)); // Min 60px, max 150px
+
+    const autoScrollInterval = setInterval(() => {
+      if (characteristicsScrollRef.current && !isScrollingCharacteristicsManually) {
+        setCurrentCharacteristicIndex((prevIndex) => {
+          const nextIndex = (prevIndex + 1) % productVector.length;
+          
+          // Scroll vers la prochaine caractéristique
+          characteristicsScrollRef.current?.scrollTo({
+            x: nextIndex * chipWidth,
+            y: 0,
+            animated: true,
+          });
+          
+          return nextIndex;
+        });
+      }
+    }, 3000); // ✅ Scroll automatique toutes les 3 secondes
+
+    return () => clearInterval(autoScrollInterval);
+  }, [productVector.length, isScrollingCharacteristicsManually, productVector]);
+
   // ✅ NOUVEAU 2026-01-14: Synchroniser currentVariantIndex avec le scroll réel
   const handleVariantsScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     const cardWidth = 120 + 8;
     const index = Math.round(contentOffsetX / cardWidth);
     setCurrentVariantIndex(index);
+  };
+
+  // ✅ NOUVEAU 2026-01-14: Handler pour le scroll des caractéristiques
+  const handleCharacteristicsScroll = (event: any) => {
+    const contentOffsetX = event.nativeEvent.contentOffset.x;
+    // ✅ AMÉLIORÉ: Calculer la largeur approximative basée sur la longueur moyenne du texte
+    const avgTextLength = productVector.reduce((sum: number, carac: string) => {
+      const displayValue = filterBooleanValue(carac, '');
+      return sum + (displayValue ? displayValue.length : 0);
+    }, 0) / productVector.length;
+    const chipWidth = Math.max(60, Math.min(150, (8 * 2) + (avgTextLength * 7) + 4)); // Min 60px, max 150px
+    const index = Math.round(contentOffsetX / chipWidth);
+    setCurrentCharacteristicIndex(index);
   };
 
   const handleReaction = async (reactionType: string) => {
@@ -1123,12 +1383,18 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     style={styles.prestataireNameCompact}
                     onPress={() => {
                       if (prestataire.user_id) {
-                        navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
+                        // ✅ NOUVEAU 2026-01-20: Rediriger vers la boutique du prestataire
+                        navigation.navigate('PrestataireBoutique' as any, { 
+                          userId: prestataire.user_id,
+                          user_id: prestataire.user_id,
+                          prestataireName: prestataire.nom || prestataire.nom_complet || prestataire.name,
+                          name: prestataire.nom || prestataire.nom_complet || prestataire.name,
+                        });
                       }
                     }}
                     activeOpacity={0.7}
                   >
-                    <SafeIcon name="user" size={10} color="#6366F1" />
+                    <SafeIcon name="store" size={10} color="#6366F1" />
                     <Text style={styles.prestataireNameText} numberOfLines={1}>
                       {filterBooleanValue(prestataire.nom, 'Prestataire')}
                     </Text>
@@ -1136,12 +1402,16 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 )}
                 
                 {/* Adresse avec drapeau - Espacement optimal */}
-                {chosenLocation && (
+                {(chosenLocation || countryFlag) && (
                   <View style={styles.addressRowCompact}>
-                    <SafeIcon name="map-pin" size={10} color="#6B7280" />
-                    <Text style={styles.addressTextCompact} numberOfLines={1}>
-                      {chosenLocation}
-                    </Text>
+                    {chosenLocation && (
+                      <>
+                        <SafeIcon name="map-pin" size={10} color="#6B7280" />
+                        <Text style={styles.addressTextCompact} numberOfLines={1}>
+                          {chosenLocation}
+                        </Text>
+                      </>
+                    )}
                     {countryFlag && countryFlag !== '🌍' && (
                       <Text style={styles.addressFlagCompact}>{countryFlag}</Text>
                     )}
@@ -1182,9 +1452,22 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     <Text style={styles.sectionTitle}>Caractéristiques</Text>
                   </View>
                   <ScrollView
+                    ref={characteristicsScrollRef}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.chipsScroll}
+                    onScroll={handleCharacteristicsScroll}
+                    scrollEventThrottle={16}
+                    onScrollBeginDrag={() => setIsScrollingCharacteristicsManually(true)}
+                    onMomentumScrollEnd={() => {
+                      // ✅ CORRIGÉ: Réactiver le scroll automatique après 5 secondes d'inactivité
+                      setTimeout(() => setIsScrollingCharacteristicsManually(false), 5000);
+                    }}
+                    onScrollEndDrag={() => {
+                      // ✅ CORRIGÉ: Réactiver le scroll automatique après 5 secondes d'inactivité
+                      setTimeout(() => setIsScrollingCharacteristicsManually(false), 5000);
+                    }}
+                    decelerationRate="fast"
                   >
                     {productVector.map((carac: string, i: number) => {
                       // ✅ CORRIGÉ 2026-01-13: Filtrer les valeurs booléennes avant affichage

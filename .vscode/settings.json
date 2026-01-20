@@ -1,0 +1,25 @@
+{
+    "workbench.colorTheme":  "Default Dark+",
+    "typescript.suggest.autoImports":  true,
+    "typescript.preferences.importModuleSpecifier":  "relative",
+    "cursor.cpp.disabledLanguages":  [
+                                         "cpp",
+                                         "c"
+                                     ],
+    "editor.formatOnSave":  true,
+    "git.enableSmartCommit":  true,
+    "cursor.general.enableAutoSave":  true,
+    "rust-analyzer.checkOnSave":  true,
+    "editor.codeActionsOnSave":  {
+        "source.organizeImports": "explicit",
+        "source.fixAll.eslint": "explicit"
+    },
+    "terminal.integrated.defaultProfile.windows":  "PowerShell",
+    "cursor.general.enableAutoSaveOnFocusChange":  true,
+    "files.associations":  {
+                               "*.rs":  "rust",
+                               "*.toml":  "toml",
+                               "*.sql":  "sql"
+                           },
+    "rust-analyzer.cargo.features":  "all"
+}

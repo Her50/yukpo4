@@ -1099,6 +1099,72 @@ pub async fn get_services_for_prestataire(
     (StatusCode::OK, Json(serde_json::Value::Array(result))).into_response()
 }
 
+/// ✅ NOUVEAU 2026-01-20: Récupère tous les services actifs d'un utilisateur spécifique (pour boutique prestataire)
+pub async fn get_services_by_user_id(
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<i32>,
+) -> axum::response::Response {
+    let pg_pool = &state.pg;
+    
+    info!("[get_services_by_user_id] Récupération des services pour utilisateur {}", user_id);
+    
+    let rows = match sqlx::query(
+        r#"
+        SELECT 
+            id, 
+            data, 
+            is_active, 
+            created_at,
+            user_id,
+            gps
+        FROM services 
+        WHERE user_id = $1 
+        AND is_active = true
+        ORDER BY created_at DESC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(pg_pool)
+    .await {
+        Ok(r) => r,
+        Err(e) => {
+            error!("[get_services_by_user_id] Erreur requête SQL: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "success": false,
+                "error": format!("Erreur lors de la récupération: {}", e)
+            }))).into_response();
+        }
+    };
+    
+    info!("[get_services_by_user_id] {} services trouvés pour utilisateur {}", rows.len(), user_id);
+    
+    let result: Vec<_> = rows
+        .into_iter()
+        .map(|r| {
+            let id: i32 = r.try_get("id").unwrap_or_default();
+            let data: Value = r.try_get("data").unwrap_or(Value::Null);
+            let is_active: bool = r.try_get("is_active").unwrap_or(false);
+            let created_at = r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok();
+            let user_id_val: i32 = r.try_get("user_id").unwrap_or_default();
+            let gps: Option<String> = r.try_get("gps").ok();
+            
+            json!({
+                "id": id,
+                "data": data,
+                "is_active": is_active,
+                "created_at": created_at,
+                "user_id": user_id_val,
+                "gps": gps
+            })
+        })
+        .collect();
+    
+    (StatusCode::OK, Json(json!({
+        "success": true,
+        "data": result
+    }))).into_response()
+}
+
 /// Récupère un service pour le partage public avec restrictions de sécurité
 pub async fn get_shared_service(
     State(state): State<Arc<AppState>>,

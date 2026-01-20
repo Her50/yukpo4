@@ -17,7 +17,9 @@ import {
     AppState,
     AppStateStatus,
     DeviceEventEmitter,
+    Platform,
     ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -621,8 +623,94 @@ const HomeScreen: React.FC = () => {
     );
 
 
+    // ✅ NOUVEAU: Calculer le paddingTop du header pour tenir compte du safe area
+    const getStatusBarHeight = () => {
+        if (Platform.OS === 'android') {
+            return StatusBar.currentHeight || 24;
+        }
+        // iOS - valeurs approximatives selon le modèle
+        return 44;
+    };
+
+    const statusBarHeight = getStatusBarHeight();
+    const headerPaddingTop = statusBarHeight + 4; // 4px de marge supplémentaire
+    const headerTotalHeight = headerPaddingTop + 56; // paddingTop + minHeight du header
+
     return (
         <SafeNativeView style={styles.container}>
+            {/* Header fixe avec avatar, langue, trophée et branding Yukpo */}
+            <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+                {/* Colonne gauche: Avatar + Langue + Trophée */}
+                <View style={styles.headerLeft}>
+                    <View style={styles.avatarContainer}>
+                        <UserAvatarMenu
+                            onNavigate={(route) => (navigation as any).navigate(route)}
+                            balance={user?.credits || 0}
+                            weatherLocation={selectedLocation}
+                        />
+                    </View>
+                    <LanguageSelector
+                        selectedLanguage={language}
+                        onLanguageChange={setLanguage}
+                        compact={true}
+                    />
+                </View>
+
+                {/* Titre centré avec branding Yukpo */}
+                <View style={styles.headerCenter}>
+                    <Text style={styles.brandTitle}>
+                        <Text style={styles.brandYuk}>Yuk</Text>
+                        <Text style={styles.brandPo}>po</Text>
+                    </Text>
+                </View>
+
+                {/* Colonne droite: Livraison + Chat + Notifications */}
+                <View style={styles.headerRight}>
+                    <TouchableOpacity
+                        style={styles.deliveryButton}
+                        onPress={() => {
+                            // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour navigation fluide
+                            // hapticPress();
+                            navigate('Delivery');
+                        }}
+                    >
+                        <SafeIcon
+                            name="Bike"
+                            size={22}
+                            color="#6B7280"
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.headerButton}
+                        onPress={() => {
+                            // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
+                            // hapticPress();
+                            setShowChatModal(true);
+                        }}
+                    >
+                        <Text style={styles.headerButtonIcon}>💬</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.headerButton, styles.notificationButton]}
+                        onPress={() => {
+                            // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
+                            // hapticPress();
+                            setShowNotificationModal(true);
+                        }}
+                    >
+                        <Text style={styles.headerButtonIcon}>🔔</Text>
+                        {/* ✅ NOUVEAU: Badge rouge avec le nombre de notifications non lues */}
+                        {unreadNotificationsCount > 0 && (
+                            <View style={styles.notificationBadge}>
+                                <Text style={styles.notificationBadgeText}>
+                                    {unreadNotificationsCount > 99 ? '99+' : String(unreadNotificationsCount)}
+                                </Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </View>
+
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
@@ -630,78 +718,8 @@ const HomeScreen: React.FC = () => {
                 // ✅ CRITIQUE: S'assurer que le ScrollView respecte le paddingTop du SafeNativeView
                 contentInsetAdjustmentBehavior="automatic"
             >
-                {/* Header avec avatar, langue, trophée et branding Yukpo */}
-                <View style={styles.header}>
-                    {/* Colonne gauche: Avatar + Langue + Trophée */}
-                    <View style={styles.headerLeft}>
-                        <View style={styles.avatarContainer}>
-                            <UserAvatarMenu
-                                onNavigate={(route) => (navigation as any).navigate(route)}
-                                balance={user?.credits || 0}
-                                weatherLocation={selectedLocation}
-                            />
-                        </View>
-                        <LanguageSelector
-                            selectedLanguage={language}
-                            onLanguageChange={setLanguage}
-                            compact={true}
-                        />
-                    </View>
-
-                    {/* Titre centré avec branding Yukpo */}
-                    <View style={styles.headerCenter}>
-                        <Text style={styles.brandTitle}>
-                            <Text style={styles.brandYuk}>Yuk</Text>
-                            <Text style={styles.brandPo}>po</Text>
-                        </Text>
-                    </View>
-
-                    {/* Colonne droite: Livraison + Chat + Notifications */}
-                    <View style={styles.headerRight}>
-                        <TouchableOpacity
-                            style={styles.deliveryButton}
-                            onPress={() => {
-                                // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour navigation fluide
-                                // hapticPress();
-                                navigate('Delivery');
-                            }}
-                        >
-                            <SafeIcon
-                                name="Bike"
-                                size={22}
-                                color="#6B7280"
-                            />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.headerButton}
-                            onPress={() => {
-                                // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
-                                // hapticPress();
-                                setShowChatModal(true);
-                            }}
-                        >
-                            <Text style={styles.headerButtonIcon}>💬</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.headerButton, styles.notificationButton]}
-                            onPress={() => {
-                                // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
-                                // hapticPress();
-                                setShowNotificationModal(true);
-                            }}
-                        >
-                            <Text style={styles.headerButtonIcon}>🔔</Text>
-                            {/* ✅ NOUVEAU: Badge rouge avec le nombre de notifications non lues */}
-                            {unreadNotificationsCount > 0 && (
-                                <View style={styles.notificationBadge}>
-                                    <Text style={styles.notificationBadgeText}>
-                                        {unreadNotificationsCount > 99 ? '99+' : String(unreadNotificationsCount)}
-                                    </Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                {/* ✅ AJOUTÉ: Espace pour compenser la hauteur de l'en-tête fixe */}
+                <View style={{ height: headerTotalHeight }} />
 
                 {/* Sélecteur de mode */}
                 <View style={styles.modeSelector}>
@@ -868,16 +886,20 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
     },
     header: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 12,
+        paddingBottom: 8,
         backgroundColor: modernColors.background,
         borderBottomWidth: 1,
         borderBottomColor: modernColors.border,
-        minHeight: 60,
+        minHeight: 56, // Hauteur minimale du contenu du header
         // Ombre discrète pour effet premium
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -978,7 +1000,7 @@ const styles = StyleSheet.create({
     modeSelector: {
         flexDirection: 'row',
         marginHorizontal: 16,
-        marginTop: 16,
+        marginTop: 8, // ✅ RÉDUIT: De 16 à 8 pour réduire l'espace en haut
         marginBottom: 8, // ✅ RÉDUIT: De 16 à 8 pour réduire l'espace avec ChatInputMobile
         backgroundColor: '#F1F5F9',
         borderRadius: 12,

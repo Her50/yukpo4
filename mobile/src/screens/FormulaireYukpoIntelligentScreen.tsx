@@ -321,22 +321,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     ? ((currentDisplayIndex + 1) / totalVisibleBlocks) * 100
     : 0;
 
-  // ✅ CORRIGÉ: Calculer les champs à rendre pour le bloc actif avec useMemo au niveau du composant
-  // (pas dans le JSX pour éviter "Rendered more hooks than during the previous render")
-  const currentBlockFields = useMemo(() => {
+  // ✅ CORRIGÉ: Calculer le bloc actif UNE SEULE FOIS pour garantir la synchronisation entre l'en-tête et les champs
+  const activeBlockData = useMemo(() => {
     if (!displayedBlocks || displayedBlocks.length === 0) {
-      return [];
+      return null;
     }
     const validDisplayIndex = Math.max(0, Math.min(currentDisplayIndex, displayedBlocks.length - 1));
     const activeDisplayedBlock = displayedBlocks[validDisplayIndex];
     if (!activeDisplayedBlock) {
+      return null;
+    }
+    return {
+      validDisplayIndex,
+      activeDisplayedBlock,
+      block: activeDisplayedBlock.block,
+      blockIndex: activeDisplayedBlock.index,
+    };
+  }, [displayedBlocks, currentDisplayIndex]);
+
+  // ✅ CORRIGÉ: Calculer les champs à partir du bloc actif synchronisé
+  const currentBlockFields = useMemo(() => {
+    if (!activeBlockData || !activeBlockData.block) {
       return [];
     }
-    const { block } = activeDisplayedBlock;
-    const fieldsToRender = (Array.isArray(block.fields) ? block.fields : [])
+    const fieldsToRender = (Array.isArray(activeBlockData.block.fields) ? activeBlockData.block.fields : [])
       .filter(field => field && field.name !== 'devise'); // ✅ Masquer le champ devise (intégré dans prix)
     return fieldsToRender;
-  }, [displayedBlocks, currentDisplayIndex]);
+  }, [activeBlockData]);
 
   // ✅ REFONTE: Fonction helper pour convertir blockIndex (dans blocks) en displayIndex (dans displayedBlocks)
   const getDisplayIndexFromBlockIndex = useCallback((blockIndex: number): number => {
@@ -2161,8 +2172,26 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   };
 
+  // ✅ NOUVEAU: Refs pour stocker temporairement les valeurs pendant la saisie (évite les re-renders)
+  const pendingValuesRef = React.useRef<Record<string, any>>({});
+  const debounceTimeoutsRef = React.useRef<Record<string, NodeJS.Timeout>>({});
+
+  // ✅ NOUVEAU: Nettoyer les timeouts au démontage du composant
+  React.useEffect(() => {
+    return () => {
+      // Nettoyer tous les timeouts en cours
+      Object.values(debounceTimeoutsRef.current).forEach(timeout => {
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+      });
+      debounceTimeoutsRef.current = {};
+      pendingValuesRef.current = {};
+    };
+  }, []);
+
   // Gérer les changements de champs
-  // ✅ CORRECTION: Utiliser useCallback pour éviter les re-renders qui font sauter le curseur
+  // ✅ CORRECTION CRITIQUE: Utiliser debounce pour éviter les re-renders qui font sauter le curseur
   const handleFieldChange = React.useCallback((fieldName: string, value: any) => {
     // Convertir automatiquement les prix en nombres
     let processedValue = value;
@@ -2173,10 +2202,35 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
     }
 
-    setValeursFormulaire(prev => ({
+    // ✅ NOUVEAU: Stocker la valeur temporairement pour l'affichage immédiat
+    pendingValuesRef.current[fieldName] = processedValue;
+
+    // ✅ NOUVEAU: Annuler le timeout précédent pour ce champ
+    if (debounceTimeoutsRef.current[fieldName]) {
+      clearTimeout(debounceTimeoutsRef.current[fieldName]);
+    }
+
+    // ✅ NOUVEAU: Débouncer la mise à jour de l'état pour éviter les re-renders fréquents
+    // Pour les champs texte simples, utiliser un délai de 150ms
+    // Pour les autres champs (select, checkbox, etc.), mettre à jour immédiatement
+    const isTextInput = typeof processedValue === 'string';
+    const debounceDelay = isTextInput ? 150 : 0;
+
+    debounceTimeoutsRef.current[fieldName] = setTimeout(() => {
+      setValeursFormulaire(prev => {
+        // ✅ Vérifier si la valeur a changé depuis le dernier rendu pour éviter les re-renders inutiles
+        if (prev[fieldName] === processedValue) {
+          return prev;
+        }
+        return {
       ...prev,
       [fieldName]: processedValue
-    }));
+        };
+      });
+      // Nettoyer la valeur temporaire après la mise à jour
+      delete pendingValuesRef.current[fieldName];
+      delete debounceTimeoutsRef.current[fieldName];
+    }, debounceDelay);
   }, []);
 
   // Gérer les changements d'images produit
@@ -2914,8 +2968,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           : (field.type === 'url' || field.name === 'website' ? 'default' : 'default');
 
         // ✅ CORRECTION CRITIQUE: Extraire la valeur AVANT le JSX pour éviter les re-renders
-        // Les valeurs peuvent être des objets complexes depuis l'IA ou des strings simples
-        const rawValue = valeursFormulaire[field.name];
+        // ✅ NOUVEAU: Utiliser la valeur temporaire si disponible (pendant la saisie) pour éviter les sauts de curseur
+        const rawValue = pendingValuesRef.current[field.name] !== undefined 
+          ? pendingValuesRef.current[field.name] 
+          : valeursFormulaire[field.name];
         let fieldValue = '';
         if (rawValue) {
           if (typeof rawValue === 'string') {
@@ -2977,7 +3033,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       case 'textarea':
         // ✅ REFONTE COMPLÈTE: Utiliser le même comportement pour tous les textarea (description et description_produit)
         // ✅ CORRECTION: Extraire la valeur AVANT le JSX pour éviter les re-renders
-        const textareaRawValue = valeursFormulaire[field.name];
+        // ✅ NOUVEAU: Utiliser la valeur temporaire si disponible (pendant la saisie) pour éviter les sauts de curseur
+        const textareaRawValue = pendingValuesRef.current[field.name] !== undefined 
+          ? pendingValuesRef.current[field.name] 
+          : valeursFormulaire[field.name];
         let textareaValue = '';
         if (textareaRawValue) {
           if (typeof textareaRawValue === 'string') {
@@ -5025,20 +5084,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   showsVerticalScrollIndicator={true}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {/* ✅ CORRECTION CRITIQUE: Utiliser currentDisplayIndex comme source unique de vérité pour l'alignement */}
-                  {/* ✅ CORRECTION CRITIQUE: Forcer le re-render du titre en utilisant une clé unique basée sur currentDisplayIndex */}
-                  {(() => {
-                    // ✅ CORRECTION CRITIQUE: Vérifier que currentDisplayIndex est valide
-                    const validDisplayIndex = Math.max(0, Math.min(currentDisplayIndex, displayedBlocks.length - 1));
-                    const activeDisplayedBlock = displayedBlocks[validDisplayIndex];
-                    if (!activeDisplayedBlock) {
-                      console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun bloc actif trouvé pour currentDisplayIndex:', currentDisplayIndex);
-                      return null;
-                    }
+                  {/* ✅ CORRIGÉ: Utiliser activeBlockData comme source unique de vérité pour garantir la synchronisation */}
+                  {activeBlockData ? (() => {
+                    const { block, blockIndex, validDisplayIndex } = activeBlockData;
                     
-                    const { block, index: blockIndex } = activeDisplayedBlock;
-                    
-                    // ✅ CORRECTION CRITIQUE: Log pour debug
+                    // ✅ Log pour debug
                     console.log('[FormulaireYukpoIntelligentScreen] 📋 Affichage bloc:', {
                       currentDisplayIndex: validDisplayIndex,
                       blockId: block.id,
@@ -5065,7 +5115,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                             end={{ x: 1, y: 0 }}
                             style={styles.sectionHeader}
                           >
-                            {/* ✅ CORRECTION CRITIQUE: Utiliser une clé unique pour forcer le re-render du titre */}
+                            {/* ✅ CORRIGÉ: Utiliser activeBlockData.block pour garantir la synchronisation avec currentBlockFields */}
                             <Text key={`header-title-${block.id}-${validDisplayIndex}`} style={styles.sectionHeaderText}>
                               {block.icon} {block.title}
                             </Text>
@@ -5080,7 +5130,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                           ))}
                         </NativeCard>
 
-                        {!isReadonly && block.id === 'payment' && (
+                        {!isReadonly && activeBlockData && activeBlockData.block.id === 'payment' && (
                           <View style={styles.finalActionContainer}>
                             <Text style={styles.finalActionTitle}>Finaliser le service</Text>
                             <Text style={styles.finalActionSubtitle}>
@@ -5115,7 +5165,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       </View>
                     </View>
                     );
-                  })()}
+                  })() : null}
 
                   {/* Boutons de navigation en bas du scroll */}
                   <View style={styles.navigationButtons}>

@@ -1,0 +1,9 @@
+﻿b/39439828726796506613614913812951944734811339285058486272/s	f/39439829040924803480117271396644640291501813915106607106/s
+aws : 
+Au caractère C:\Users\23767\AppData\Local\Temp\ps-script-d962aca9-9637-4316-a13e-3ed5452d333e.ps1:84 : 661
++ ... NG="utf-8"; aws logs get-log-events --log-group-name "/ecs/yukpomnang ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+'charmap' codec can't encode character '\U0001f680' in position 21: character maps to <undefined>

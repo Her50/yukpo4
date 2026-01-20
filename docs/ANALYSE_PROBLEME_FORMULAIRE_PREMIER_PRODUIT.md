@@ -109,3 +109,8 @@ Il faut:
 3. Vérifier les conditions de rendu
 4. Tester avec un débogueur React Native
 
+
+
+
+
+

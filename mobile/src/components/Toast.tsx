@@ -117,7 +117,7 @@ const Toast: React.FC<ToastProps> = ({
             ]}
         >
             <SafeIcon name={getIcon()} size={20} color={getColor()} />
-            <Text style={[styles.message, { color: getColor() }]} numberOfLines={2}>
+            <Text style={[styles.message, { color: getColor() }]} numberOfLines={3}>
                 {message}
             </Text>
         </Animated.View>

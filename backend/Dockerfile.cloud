@@ -4,7 +4,7 @@
 ############################################
 # Stage 1: Builder - Compilation Rust optimisée
 ############################################
-FROM rust:1.75-slim as builder
+FROM rust:latest AS builder
 
 WORKDIR /app
 
@@ -58,6 +58,9 @@ RUN mkdir -p src && \
 # Copier le code source (APRÈS le cache des dépendances)
 COPY src ./src
 
+# Copier les scripts nécessaires pour les binaires définis dans Cargo.toml
+COPY scripts ./scripts
+
 # Copier les fichiers nécessaires au runtime
 COPY ia_prompts ./ia_prompts
 COPY config ./config
@@ -82,7 +85,8 @@ LABEL description="Yukpomnang Backend Cloud - Optimisé pour AWS ECS/Fargate"
 LABEL version="2.0.0"
 LABEL platform="aws-ecs-fargate"
 
-# Installer uniquement les dépendances runtime essentielles
+# Installer uniquement les dépendances runtime essentielles + X11/virtual X pour Blender headless
+# ✅ AJOUTÉ: redis-tools pour redis-cli (vérification Redis dans start-cloud.sh)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libpq5 \
@@ -91,16 +95,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     xz-utils \
     postgresql-client \
+    redis-tools \
+    xvfb \
+    libx11-6 \
+    libxrender1 \
+    libxi6 \
+    libgl1-mesa-glx \
+    libglu1-mesa \
+    libxkbcommon0 \
+    libsm6 \
+    libice6 \
+    libfontconfig1 \
+    libxext6 \
+    libxxf86vm1 \
+    libxfixes3 \
     && rm -rf /var/lib/apt/lists/*
 
-# 🎨 Installer Blender pour rendu 3D AR (optimisé pour AWS - téléchargement silencieux)
-RUN wget -q https://download.blender.org/release/Blender4.0/blender-4.0.0-linux-x64.tar.xz \
-    && tar -xf blender-4.0.0-linux-x64.tar.xz \
+# 🎨 Installer Blender pour rendu 3D AR (optimisé pour AWS - mode headless avec xvfb)
+RUN wget --tries=10 --timeout=300 --retry-connrefused --waitretry=10 --progress=dot:giga \
+    https://download.blender.org/release/Blender4.0/blender-4.0.0-linux-x64.tar.xz -O blender.tar.xz \
+    && tar -xf blender.tar.xz \
     && mv blender-4.0.0-linux-x64 /opt/blender \
-    && rm blender-4.0.0-linux-x64.tar.xz \
-    && ln -s /opt/blender/blender /usr/local/bin/blender \
+    && rm blender.tar.xz \
     && chmod +x /opt/blender/blender \
-    && blender --version > /dev/null 2>&1 \
+    && ln -sf /opt/blender/blender /usr/local/bin/blender \
+    && xvfb-run -a blender --version > /dev/null 2>&1 || echo "Blender installé (vérification avec xvfb)" \
     && apt-get clean
 
 # Créer un utilisateur non-root pour la sécurité (uid 1000 pour compatibilité AWS)

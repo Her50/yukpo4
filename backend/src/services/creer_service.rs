@@ -235,7 +235,12 @@ pub async fn process_single_image_for_product(
                         if let Err(e) = tokio::fs::write(&file_path, &compressed).await {
                             log::warn!("[process_single_image_for_product] Erreur sauvegarde image compressée: {}, utilisation originale", e);
                         } else {
+                            // `image_bytes` n'est relu plus tard que si la feature `image_search` est activée.
+                            // Sinon, on évite l'assignation pour ne pas déclencher `unused_assignments`.
+                            #[cfg(feature = "image_search")]
+                            {
                             image_bytes = compressed;
+                            }
                         }
                     } else {
                         log::debug!("[process_single_image_for_product] Compression n'a pas réduit la taille, utilisation originale");

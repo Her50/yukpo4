@@ -109,3 +109,8 @@ echo "   Cluster: $CLUSTER_NAME"
 echo "   Version: $VERSION"
 echo "   Image: $ECR_REPO_URI:$VERSION"
 
+
+
+
+
+

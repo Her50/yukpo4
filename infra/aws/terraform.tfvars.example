@@ -1,0 +1,51 @@
+# Copy this file to terraform.tfvars and fill in your values
+# terraform.tfvars is in .gitignore and will not be committed
+
+# AWS Configuration
+aws_region  = "eu-west-1"
+project_name = "yukpomnang"
+environment  = "production"
+
+# Network Configuration
+vpc_cidr          = "10.0.0.0/16"
+enable_nat_gateway = true
+
+# RDS Configuration
+rds_instance_class      = "db.t3.medium"
+rds_engine_version      = "15.4"
+rds_allocated_storage   = 20
+rds_max_allocated_storage = 100
+rds_database_name        = "yukpomnang"
+rds_username            = "yukpo_admin"
+rds_password            = "CHANGE_ME_STRONG_PASSWORD_HERE"
+rds_backup_retention    = 7
+
+# ElastiCache Configuration
+redis_engine_version = "7.0"
+redis_node_type      = "cache.t3.small"
+redis_num_nodes      = 1
+
+# ECS Configuration
+ecs_cpu          = 1024  # 1 vCPU
+ecs_memory       = 2048  # 2 GB
+ecs_desired_count = 2
+ecs_min_count    = 2
+ecs_max_count    = 10
+
+# Application Configuration
+jwt_secret      = "CHANGE_ME_GENERATE_STRONG_JWT_SECRET"
+rust_log_level  = "info"
+health_check_path = "/health"
+
+# SSL Certificate (optional - leave empty to skip HTTPS)
+# acm_certificate_arn = "arn:aws:acm:eu-west-1:123456789012:certificate/xxxxx"
+
+# Monitoring
+enable_container_insights = true
+log_retention_days        = 7
+
+
+
+
+
+

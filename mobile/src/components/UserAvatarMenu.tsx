@@ -32,7 +32,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             title: 'Gérer les partenaires',
             icon: '🚚',
             route: 'DeliveryPartnersAdmin',
-            description: 'Gérer les partenaires de livraison',
+            description: 'Valider les candidatures et gérer les partenaires',
             highlighted: true,
             adminOnly: true
         },

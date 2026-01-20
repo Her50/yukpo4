@@ -49,25 +49,40 @@ fi
 
 if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
     echo "❌ ERREUR: Impossible de se connecter à la base de données après $MAX_RETRIES tentatives"
+    echo "   DB_HOST: ${DB_HOST:-non défini}"
+    echo "   DB_PORT: ${DB_PORT:-non défini}"
+    echo "   DATABASE_URL: ${DATABASE_URL:0:50}... (tronqué pour sécurité)"
     exit 1
 fi
 
 echo "✅ Base de données AWS RDS accessible"
 
-# Vérifier la connectivité Redis (AWS ElastiCache) - optionnel
+# Vérifier la connectivité Redis (AWS ElastiCache) - optionnel et non-bloquant
 if [ -n "$REDIS_URL" ]; then
     echo "🔍 Vérification de la connectivité Redis (AWS ElastiCache)..."
+    # ✅ OPTIMISÉ: Réduire à 3 tentatives max (6 secondes) pour ne pas bloquer le démarrage
+    # Redis est optionnel - l'application peut fonctionner sans cache Redis
+    MAX_REDIS_RETRIES=3
     RETRY_COUNT=0
-    until redis-cli -u "$REDIS_URL" ping 2>/dev/null || [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        echo "⏳ En attente de Redis (AWS ElastiCache)... (tentative $RETRY_COUNT/$MAX_RETRIES)"
-        sleep 2
-    done
+    REDIS_AVAILABLE=false
     
-    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-        echo "⚠️ WARNING: Redis non accessible, l'application continuera sans cache Redis"
+    # Vérifier si redis-cli est disponible
+    if command -v redis-cli &> /dev/null; then
+        until redis-cli -u "$REDIS_URL" ping 2>/dev/null || [ $RETRY_COUNT -ge $MAX_REDIS_RETRIES ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ En attente de Redis (AWS ElastiCache)... (tentative $RETRY_COUNT/$MAX_REDIS_RETRIES)"
+            sleep 2
+        done
+        
+        if [ $RETRY_COUNT -lt $MAX_REDIS_RETRIES ]; then
+            REDIS_AVAILABLE=true
+            echo "✅ Redis (AWS ElastiCache) accessible"
+        else
+            echo "⚠️ WARNING: Redis non accessible après $MAX_REDIS_RETRIES tentatives, l'application continuera sans cache Redis"
+        fi
     else
-        echo "✅ Redis (AWS ElastiCache) accessible"
+        echo "⚠️ WARNING: redis-cli non disponible dans l'image, vérification Redis ignorée"
+        echo "   L'application démarrera et tentera de se connecter à Redis au runtime"
     fi
 else
     echo "ℹ️ REDIS_URL non définie, l'application fonctionnera sans cache Redis"
@@ -130,7 +145,17 @@ echo "   Command: ./yukpomnang_backend"
 echo "   Port: $PORT"
 echo "   Host: $HOST"
 echo "   Log Level: $RUST_LOG"
+echo "   APP_ENV: $APP_ENV"
+echo "   DATABASE_URL: ${DATABASE_URL:0:30}... (présent)"
+echo "   REDIS_URL: ${REDIS_URL:+présent}${REDIS_URL:-non défini}"
+echo "   JWT_SECRET: ${JWT_SECRET:+présent}${JWT_SECRET:-non défini}"
 
 # Utiliser exec pour que le processus principal soit le backend
 # Cela permet à AWS ECS de gérer correctement les signaux (SIGTERM, etc.)
-exec ./yukpomnang_backend 
+# Capturer les erreurs et les logger avant de quitter
+if ! ./yukpomnang_backend; then
+    EXIT_CODE=$?
+    echo "❌ ERREUR: L'application backend a quitté avec le code $EXIT_CODE"
+    echo "   Vérifiez les logs ci-dessus pour plus de détails"
+    exit $EXIT_CODE
+fi 

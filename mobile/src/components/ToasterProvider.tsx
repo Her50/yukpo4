@@ -26,15 +26,16 @@ export const ToasterProvider: React.FC<ToasterProviderProps> = ({ children }) =>
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   const showToast = (message: string, type: ToastType) => {
+    console.log('[ToasterProvider] Affichage toast:', { message, type });
     const id = `${Date.now()}-${Math.random()}`;
     const newToast: ToastData = { id, message, type };
 
     setToasts(prev => [...prev, newToast]);
 
-    // Auto-remove après 3 secondes
+    // ✅ CORRIGÉ: Auto-remove après 5 secondes (augmenté pour plus de visibilité, surtout si Alert suit)
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3000);
+    }, 5000);
   };
 
   const success = (message: string) => {

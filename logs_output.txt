@@ -1,0 +1,5 @@
+﻿Latest stream: backend/backend/81dc790290ac42019e1759d4eff29acc
+
+Error getting events: 
+'charmap' codec can't encode character '\U0001f680' in position 1: character maps to <undefined>
+

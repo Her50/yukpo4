@@ -370,7 +370,10 @@ export const NativeInput = React.forwardRef<any, NativeInputProps>(({
     testID
 }, ref) => {
     const [inputHeight, setInputHeight] = React.useState<number | undefined>(undefined);
+    const isFocusedRef = React.useRef(false);
+    const heightUpdateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+    // ✅ CORRECTION CRITIQUE: Délayer les mises à jour de hauteur pendant la saisie active pour éviter les sauts de curseur
     React.useEffect(() => {
         if (!multiline) {
             return;
@@ -380,18 +383,35 @@ export const NativeInput = React.forwardRef<any, NativeInputProps>(({
         const baseLineHeight = 24;
         const linesFromBreaks = textValue.split(/\r?\n/).length;
         const approxLines = textValue.length > 0 ? Math.ceil(textValue.length / 60) : 0;
-        // ✅ CORRECTION: Calculer plus de lignes pour permettre l'affichage complet du texte
         const estimatedLines = Math.max(minLines, linesFromBreaks, approxLines, 1);
-        // ✅ CORRECTION: Ajouter plus de padding pour une meilleure visibilité
         const estimatedHeight = estimatedLines * baseLineHeight + 32;
 
-        setInputHeight((prev) => {
-            // ✅ CORRECTION: Mettre à jour la hauteur plus fréquemment pour s'adapter au contenu
-            if (!prev || Math.abs(prev - estimatedHeight) > 4) {
-                return estimatedHeight;
+        // ✅ NOUVEAU: Si le champ est en focus, délayer la mise à jour pour éviter les sauts de curseur
+        const updateHeight = () => {
+            setInputHeight((prev) => {
+                if (!prev || Math.abs(prev - estimatedHeight) > 4) {
+                    return estimatedHeight;
+                }
+                return prev;
+            });
+        };
+
+        // ✅ CORRECTION: Si le champ est en focus, attendre 300ms avant de mettre à jour la hauteur
+        // Sinon, mettre à jour immédiatement
+        if (isFocusedRef.current) {
+            if (heightUpdateTimeoutRef.current) {
+                clearTimeout(heightUpdateTimeoutRef.current);
             }
-            return prev;
-        });
+            heightUpdateTimeoutRef.current = setTimeout(updateHeight, 300);
+        } else {
+            updateHeight();
+        }
+
+        return () => {
+            if (heightUpdateTimeoutRef.current) {
+                clearTimeout(heightUpdateTimeoutRef.current);
+            }
+        };
     }, [multiline, value, minLines]);
 
     const containerStyles = [
@@ -428,13 +448,44 @@ export const NativeInput = React.forwardRef<any, NativeInputProps>(({
                 blurOnSubmit={multiline ? false : undefined}
                 returnKeyType={multiline ? 'default' : undefined}
                 textBreakStrategy={multiline ? 'highQuality' : undefined}
+                onFocus={() => {
+                    // ✅ NOUVEAU: Marquer le champ comme en focus pour délayer les mises à jour de hauteur
+                    isFocusedRef.current = true;
+                }}
+                onBlur={() => {
+                    // ✅ NOUVEAU: Marquer le champ comme non focus et mettre à jour la hauteur immédiatement
+                    isFocusedRef.current = false;
+                    if (heightUpdateTimeoutRef.current) {
+                        clearTimeout(heightUpdateTimeoutRef.current);
+                    }
+                    // Mettre à jour la hauteur immédiatement après le blur
+                    if (multiline && value) {
+                        const textValue = typeof value === 'string' ? value : '';
+                        const baseLineHeight = 24;
+                        const linesFromBreaks = textValue.split(/\r?\n/).length;
+                        const approxLines = textValue.length > 0 ? Math.ceil(textValue.length / 60) : 0;
+                        const estimatedLines = Math.max(minLines, linesFromBreaks, approxLines, 1);
+                        const estimatedHeight = estimatedLines * baseLineHeight + 32;
+                        setInputHeight(estimatedHeight);
+                    }
+                }}
                 onContentSizeChange={(event) => {
                     if (multiline) {
                         const { width, height } = event.nativeEvent.contentSize;
                         const lineHeight = 24;
                         // ✅ CORRECTION: Calculer une hauteur minimale plus grande pour permettre l'affichage complet
                         const minHeight = Math.max(minLines * lineHeight + 32, height + 32);
-                        setInputHeight(minHeight);
+                        // ✅ CORRECTION: Délayer la mise à jour si le champ est en focus
+                        if (isFocusedRef.current) {
+                            if (heightUpdateTimeoutRef.current) {
+                                clearTimeout(heightUpdateTimeoutRef.current);
+                            }
+                            heightUpdateTimeoutRef.current = setTimeout(() => {
+                                setInputHeight(minHeight);
+                            }, 300);
+                        } else {
+                            setInputHeight(minHeight);
+                        }
                         onContentSizeChange?.(width, height);
                     }
                 }}

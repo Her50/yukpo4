@@ -66,3 +66,8 @@ Après ces corrections :
 3. Vérifier les logs dans la console React Native pour les erreurs éventuelles
 4. Vérifier que l'erreur SQL `user_saved_addresses` n'apparaît plus (après exécution de la migration)
 
+
+
+
+
+

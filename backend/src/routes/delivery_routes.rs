@@ -3088,25 +3088,60 @@ async fn list_courier_applications(
         .and_then(|v| v.as_i64())
         .or(Some(0));
 
+    // ✅ LOG: Logger les paramètres de la requête pour diagnostic
+    log::info!(
+        "[list_courier_applications] Requête candidatures - status_filter: {:?}, limit: {:?}, offset: {:?}",
+        status_filter,
+        limit,
+        offset
+    );
+
     let applications = service
         .list_courier_applications(status_filter, limit, offset)
         .await?;
 
+    // ✅ LOG: Logger le nombre de candidatures trouvées
+    log::info!(
+        "[list_courier_applications] {} candidature(s) trouvée(s)",
+        applications.len()
+    );
+
     // Récupérer les informations utilisateur pour chaque candidature
     let mut applications_with_user = Vec::new();
     for app in applications {
-        let user_info: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+        // ✅ CORRIGÉ: Utiliser query_as avec un struct FromRow au lieu d'un tuple
+        #[derive(sqlx::FromRow)]
+        struct UserInfoRow {
+            nom_complet: Option<String>,
+            email: Option<String>,
+            avatar_url: Option<String>,
+        }
+
+        let user_info = sqlx::query_as::<_, UserInfoRow>(
             "SELECT nom_complet, email, avatar_url FROM users WHERE id = $1",
         )
         .bind(app.user_id)
         .fetch_optional(&state.pg)
-        .await
-        .ok()
-        .flatten();
+        .await;
 
-        let (name, email, avatar) = user_info.unwrap_or_else(|| {
+        let (name, email, avatar) = match user_info {
+            Ok(Some(u)) => (
+                u.nom_complet.unwrap_or_else(|| format!("User {}", app.user_id)),
+                u.email,
+                u.avatar_url,
+            ),
+            Ok(None) | Err(_) => {
+                // ✅ LOG: Logger l'erreur si la requête échoue
+                if let Err(e) = user_info {
+                    log::warn!(
+                        "[list_courier_applications] Erreur récupération utilisateur {}: {}",
+                        app.user_id,
+                        e
+                    );
+                }
             (format!("User {}", app.user_id), None, None)
-        });
+            }
+        };
 
         applications_with_user.push(json!({
             "id": app.id,

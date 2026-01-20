@@ -1,6 +1,23 @@
 -- ✅ Migration : Table de configuration des prix par type d'engin
 -- Permet de paramétrer le coût de livraison selon le type d'engin utilisé
 
+-- ✅ CORRIGÉ: Créer le type enum s'il n'existe pas (au cas où la migration 20251110001_100_create_delivery_enums.sql n'a pas été appliquée)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_engine_type') THEN
+        CREATE TYPE delivery_engine_type AS ENUM (
+            'moto',
+            'scooter',
+            'voiture',
+            'camionnette',
+            'velo_cargo',
+            'pieton',
+            'camion_leger',
+            'autre'
+        );
+    END IF;
+END $$;
+
 -- Ajouter tricycle à l'enum si pas déjà présent
 DO $$
 BEGIN

@@ -32,17 +32,6 @@ const { width, height } = Dimensions.get('window');
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const DAYS_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-// ✅ NOUVEAU: Helper pour extraire le nombre de servings (gère ancien format nombre et nouveau format objet)
-const getServingsNumber = (servings: any): number => {
-    if (typeof servings === 'number') {
-        return servings;
-    }
-    if (servings && typeof servings === 'object' && 'number' in servings) {
-        return servings.number;
-    }
-    return 0;
-};
-
 interface MenuWeekCalendarScreenProps { }
 
 const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
@@ -157,7 +146,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     mealType: 'petit_dejeuner',
                     mealTypeLabel: 'Petit-déjeuner',
                     recipeName: meal.petit_dejeuner.recipe_name,
-                    servings: getServingsNumber(meal.petit_dejeuner.servings),
+                    servings: meal.petit_dejeuner.servings,
                     estimatedCost: meal.petit_dejeuner.estimated_cost || 0,
                     times: 1, // Par défaut 1 fois
                 });
@@ -171,7 +160,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     mealType: 'repas_du_jour',
                     mealTypeLabel: 'Repas du jour',
                     recipeName: meal.repas_du_jour.recipe_name,
-                    servings: getServingsNumber(meal.repas_du_jour.servings),
+                    servings: meal.repas_du_jour.servings,
                     estimatedCost: meal.repas_du_jour.estimated_cost || 0,
                     times: 2, // ✅ CORRIGÉ: 2 fois car c'est pour midi ET soir
                 });
@@ -188,7 +177,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                         mealType: 'repas_du_jour',
                         mealTypeLabel: 'Repas du jour',
                         recipeName: repas.recipe_name,
-                        servings: getServingsNumber(repas.servings),
+                        servings: repas.servings,
                         estimatedCost: repas.estimated_cost || 0,
                         times: 2, // 2 fois car c'est pour midi ET soir
                     });
@@ -379,7 +368,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             // Créer la commande shopping
             const shoppingItems = generatedShoppingList.items.map((item: any) => ({
                 label: item.ingredient_name,
-                quantity: typeof item.quantity === 'object' && item.quantity !== null ? item.quantity.number : item.quantity,
+                quantity: item.quantity,
                 unit: item.unit,
                 estimatedPrice: item.estimated_price,
                 estimatedTotal: item.estimated_price,
@@ -624,7 +613,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 )}
                 {meal.servings && (
                     <Text style={styles.tableCellServings}>
-                        👥 {getServingsNumber(meal.servings)} portion{getServingsNumber(meal.servings) > 1 ? 's' : ''}
+                        👥 {meal.servings} portion{meal.servings > 1 ? 's' : ''}
                     </Text>
                 )}
                 <TouchableOpacity
@@ -698,7 +687,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     {meal.estimated_cost && (
                         <Text style={styles.mealInfoText}>💰 {formatPrice(meal.estimated_cost)}</Text>
                     )}
-                    <Text style={styles.mealInfoText}>👥 {getServingsNumber(meal.servings)} portions</Text>
+                    <Text style={styles.mealInfoText}>👥 {meal.servings} portions</Text>
                 </View>
                 <View style={styles.recipeButtonContainer}>
                     <TouchableOpacity
@@ -934,7 +923,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                             )}
                                             <Text style={styles.listMealInfo}>
                                                 {formatPrice(dayMeal.petit_dejeuner.estimated_cost)} • 
-                                                👥 {getServingsNumber(dayMeal.petit_dejeuner.servings)} portion{getServingsNumber(dayMeal.petit_dejeuner.servings) > 1 ? 's' : ''}
+                                                👥 {dayMeal.petit_dejeuner.servings} portion{dayMeal.petit_dejeuner.servings > 1 ? 's' : ''}
                                             </Text>
                                             <TouchableOpacity
                                                 style={styles.listRecipeButton}
@@ -963,7 +952,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                             )}
                                             <Text style={styles.listMealInfo}>
                                                 {formatPrice(dayMeal.repas_du_jour.estimated_cost || 0)} • 
-                                                👥 {getServingsNumber(dayMeal.repas_du_jour.servings)} portion{getServingsNumber(dayMeal.repas_du_jour.servings) > 1 ? 's' : ''} (midi + soir)
+                                                👥 {dayMeal.repas_du_jour.servings} portion{dayMeal.repas_du_jour.servings > 1 ? 's' : ''} (midi + soir)
                                             </Text>
                                             <TouchableOpacity
                                                 style={styles.listRecipeButton}
@@ -989,7 +978,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                     <Text style={styles.listMealName}>{dayMeal.dejeuner.recipe_name}</Text>
                                                     <Text style={styles.listMealInfo}>
                                                         {formatPrice(dayMeal.dejeuner.estimated_cost)} • 
-                                                        👥 {getServingsNumber(dayMeal.dejeuner.servings)} portion{getServingsNumber(dayMeal.dejeuner.servings) > 1 ? 's' : ''}
+                                                        👥 {dayMeal.dejeuner.servings} portion{dayMeal.dejeuner.servings > 1 ? 's' : ''}
                                                     </Text>
                                                     <TouchableOpacity
                                                         style={styles.listRecipeButton}
@@ -1011,7 +1000,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                     <Text style={styles.listMealName}>{dayMeal.diner.recipe_name}</Text>
                                                     <Text style={styles.listMealInfo}>
                                                         {formatPrice(dayMeal.diner.estimated_cost)} • 
-                                                        👥 {getServingsNumber(dayMeal.diner.servings)} portion{getServingsNumber(dayMeal.diner.servings) > 1 ? 's' : ''}
+                                                        👥 {dayMeal.diner.servings} portion{dayMeal.diner.servings > 1 ? 's' : ''}
                                                     </Text>
                                                     <TouchableOpacity
                                                         style={styles.listRecipeButton}
@@ -1191,7 +1180,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                     )}
                                     <View style={styles.recipeInfoItem}>
                                         <SafeIcon name="users" size={16} color={modernColors.primary} type="lucide" />
-                                        <Text style={styles.recipeInfoText}>{getServingsNumber(generatedRecipe.servings)} portions</Text>
+                                        <Text style={styles.recipeInfoText}>{generatedRecipe.servings} portions</Text>
                                     </View>
                                 </View>
 
@@ -1202,7 +1191,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         {generatedRecipe.ingredients.map((ingredient, index) => (
                                             <View key={index} style={styles.ingredientItem}>
                                                 <Text style={styles.ingredientText}>
-                                                    • {ingredient.name}: {typeof ingredient.quantity === 'object' && ingredient.quantity !== null ? ingredient.quantity.number : ingredient.quantity} {ingredient.unit}
+                                                    • {ingredient.name}: {ingredient.quantity} {ingredient.unit}
                                                     {ingredient.notes && ` (${ingredient.notes})`}
                                                 </Text>
                                             </View>
@@ -1646,7 +1635,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 {item.ingredient_name}
                                             </Text>
                                             <Text style={[styles.shoppingListTableCell, { flex: 1.5 }]}>
-                                                {typeof item.quantity === 'object' && item.quantity !== null ? item.quantity.number : item.quantity} {item.unit}
+                                                {item.quantity} {item.unit}
                                             </Text>
                                             <Text style={[styles.shoppingListTableCell, { flex: 1.5, color: modernColors.primary, fontWeight: '700' }]}>
                                                 {formatPrice(item.estimated_price)}

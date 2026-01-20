@@ -516,10 +516,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(client) => {
             // ✅ CORRIGÉ: Utiliser le helper Redis avec retry pour tester la connexion
             use yukpomnang_backend::utils::redis_helper;
+            use tokio::time::{timeout, Duration};
 
-            // Tester la connexion avec retry (3 tentatives, 1 seconde entre chaque)
-            let (is_available, error_detail) =
-                redis_helper::check_redis_health_with_error(&client).await;
+            // ✅ CORRIGÉ: Ajouter un timeout de 10 secondes pour éviter que l'application bloque indéfiniment
+            // get_redis_connection a maintenant un timeout de 3s par tentative (3 tentatives = max 9s)
+            // Ce timeout de 10s est une sécurité supplémentaire
+            let (is_available, error_detail) = match timeout(
+                Duration::from_secs(10),
+                redis_helper::check_redis_health_with_error(&client)
+            ).await {
+                Ok(result) => result,
+                Err(_) => {
+                    log::warn!("⚠️ Redis: Timeout de connexion (10s) - Redis non accessible");
+                    (false, Some("Connection timeout after 10 seconds".to_string()))
+                }
+            };
             match is_available {
                 true => {
                     log::info!("✅ Connexion Redis établie avec succès");
@@ -1102,9 +1113,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         //.merge(yukpomnang_backend::openapi::swagger_router()) // Swagger d?sactiv? temporairement
         .with_state(app_state.clone());
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
-    log::info!("✅ Serveur lance sur http://{}", addr);
-    println!("✅ Serveur lance sur http://{}", addr);
+    // ✅ CORRIGÉ: Utiliser la variable d'environnement PORT (défaut: 8080 pour AWS ALB)
+    let port = env::var("PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse::<u16>()
+        .unwrap_or(8080);
+    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    log::info!("✅ Serveur lance sur http://{}:{}", host, port);
+    println!("✅ Serveur lance sur http://{}:{}", host, port);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     serve(listener, app).await?;

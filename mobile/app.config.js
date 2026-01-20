@@ -20,7 +20,12 @@ module.exports = {
             backgroundColor: "#ffffff"
         },
         assetBundlePatterns: [
-            "**/*"
+            "assets/images/**/*",
+            "assets/fonts/**/*",
+            "assets/icons/**/*",
+            "!assets/**/*.md",
+            "!assets/**/*.txt",
+            "!node_modules/**/*"
         ],
         ios: {
             supportsTablet: true,
@@ -115,7 +120,16 @@ module.exports = {
                         targetSdkVersion: 35,
                         buildToolsVersion: "35.0.0",
                         minSdkVersion: 24,
-                        kotlinVersion: "2.0.0"
+                        kotlinVersion: "2.0.0",
+                        // ✅ OPTIMISATION TAILLE BUILD
+                        enableProguardInReleaseBuilds: true,
+                        enableShrinkResourcesInReleaseBuilds: true,
+                        enableR8: true,
+                        enableR8FullMode: true,
+                        proguardMinifyEnabled: true,
+                        packagingOptions: {
+                            pickFirst: ['**/libc++_shared.so', '**/libfbjni.so']
+                        }
                     }
                 }
             ],

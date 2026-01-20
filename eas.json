@@ -9,7 +9,14 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "env": {
+          "ANDROID_ENABLE_PROGUARD": "true",
+          "ANDROID_ENABLE_SHRINK_RESOURCES": "true"
+        }
+      }
     },
     "production": {
       "autoIncrement": true

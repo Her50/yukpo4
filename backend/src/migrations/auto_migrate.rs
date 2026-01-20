@@ -3195,6 +3195,32 @@ pub async fn ensure_image_search_vector_matching_optimization(pool: &PgPool) -> 
     Ok(())
 }
 
+/// ✅ 2026-01-14: Correction erreur to_tsvector avec langue dynamique
+pub async fn ensure_fix_image_search_to_tsvector_error(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration fix image search to_tsvector error...");
+    let migration_sql = include_str!("../../migrations/20260114_fix_image_search_to_tsvector_error.sql");
+    
+    sqlx::query(migration_sql)
+        .execute(pool)
+        .await?;
+    
+    info!("✅ Migration fix image search to_tsvector error appliquée");
+    Ok(())
+}
+
+/// ✅ 2026-01-15: Correction recherche image - Gestion images non analysées
+pub async fn ensure_fix_image_search_empty_results(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration fix image search empty results...");
+    let migration_sql = include_str!("../../migrations/20260115_fix_image_search_empty_results.sql");
+    
+    sqlx::query(migration_sql)
+        .execute(pool)
+        .await?;
+    
+    info!("✅ Migration fix image search empty results appliquée");
+    Ok(())
+}
+
 /// ✅ 2025-12-30: Optimisation recherche audio avec cache et post-traitement
 pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration audio search cache optimization...");
@@ -7783,6 +7809,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto optimize_delivery_queries_additional: {}", e),
     }
 
+    // ✅ 2026-01-14 : Optimisation des performances de recherche (publicites, delivery_matching_queue, delivery_parcels)
+    match ensure_optimize_search_performance(pool).await {
+        Ok(_) => info!("✅ Migration auto: optimize_search_performance OK"),
+        Err(e) => error!("❌ Erreur migration auto optimize_search_performance: {}", e),
+    }
+
     // ✅ 2025-11-25 : Fonctions de recherche avec planification (pharmacie/hôpital)
     match ensure_scheduling_search_functions(pool).await {
         Ok(_) => info!("✅ Migration auto: scheduling search functions OK"),
@@ -8277,6 +8309,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_image_search_vector_matching_optimization(pool).await {
         Ok(_) => info!("✅ Migration auto: image search vector matching optimization OK"),
         Err(e) => error!("❌ Erreur migration auto image search vector matching: {}", e),
+    }
+
+    // ✅ 2026-01-14: Correction erreur to_tsvector avec langue dynamique
+    match ensure_fix_image_search_to_tsvector_error(pool).await {
+        Ok(_) => info!("✅ Migration auto: fix image search to_tsvector error OK"),
+        Err(e) => error!("❌ Erreur migration auto fix image search to_tsvector: {}", e),
     }
 
     // ✅ 2025-12-30: Optimisation recherche audio avec cache
@@ -11382,6 +11420,20 @@ pub async fn ensure_optimize_delivery_queries_additional(pool: &PgPool) -> Resul
     let migration_sql = include_str!("../../migrations/20260111_optimize_delivery_queries_additional.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration optimize_delivery_queries_additional appliquée");
+    Ok(())
+}
+
+/// ✅ 2026-01-14 : Optimisation des performances de recherche
+/// Migration: 20260114_optimize_search_performance.sql
+/// Problèmes corrigés:
+///   - Requête publicites lente (1.136s) → <50ms avec index
+///   - UPDATE delivery_matching_queue lent (1.288s) → <50ms avec index
+///   - SELECT delivery_parcels avec sous-requête lente (436-765ms) → <50ms avec JOIN + index
+pub async fn ensure_optimize_search_performance(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration optimize_search_performance...");
+    let migration_sql = include_str!("../../migrations/20260114_optimize_search_performance.sql");
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    info!("✅ Migration optimize_search_performance appliquée");
     Ok(())
 }
 

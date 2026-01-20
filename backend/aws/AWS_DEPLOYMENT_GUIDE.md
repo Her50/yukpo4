@@ -346,3 +346,8 @@ aws ecs describe-services \
 - [AWS Fargate Pricing](https://aws.amazon.com/fargate/pricing/)
 - [ECS Best Practices](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/)
 
+
+
+
+
+

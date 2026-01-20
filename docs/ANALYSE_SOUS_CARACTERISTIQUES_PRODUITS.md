@@ -241,3 +241,8 @@ Pour vérifier que les corrections fonctionnent :
 - Il faut gérer la compatibilité entre les deux systèmes pendant la migration
 - La table `autocomplete_characteristics` doit être alimentée depuis `service_products` pour la recherche
 
+
+
+
+
+

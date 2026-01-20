@@ -452,7 +452,38 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             );
                             
                             if (validRows.length > 0) {
-                                const modality = validRows.map(row => row.value).join(separateur);
+                                // ✅ CORRECTION CRITIQUE: Construire la modalité en respectant l'ordre correct des labels
+                                // Utiliser le même mécanisme que handleTableValidate pour garantir la cohérence
+                                // Priorité 1: Utiliser productLabels si disponible (ordre garanti)
+                                // Priorité 2: Utiliser l'ordre des clés de sousCaracteristiques
+                                const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
+                                    ? productLabels
+                                        .filter(label => label && typeof label === 'string')
+                                        .filter(label => sousCaracteristiques.hasOwnProperty(label)) // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
+                                    : Object.keys(sousCaracteristiques);
+                                
+                                const modalityParts: string[] = [];
+                                
+                                // Parcourir les labels dans l'ordre garanti
+                                orderedLabels.forEach(label => {
+                                    // Trouver la ligne correspondante dans le tableau
+                                    const matchingRow = validRows.find(row => row.label === label);
+                                    if (matchingRow && matchingRow.value) {
+                                        modalityParts.push(matchingRow.value);
+                                    } else {
+                                        // Si pas de ligne correspondante, utiliser la première valeur de sousCaracteristiques
+                                        const defaultValue = Array.isArray(sousCaracteristiques[label]) && sousCaracteristiques[label].length > 0
+                                            ? sousCaracteristiques[label][0]
+                                            : '';
+                                        if (defaultValue) {
+                                            modalityParts.push(defaultValue);
+                                        }
+                                    }
+                                });
+                                
+                                // Construire la modalité concaténée dans l'ordre correct
+                                const modality = modalityParts.join(separateur);
+                                
                                 const updatedSousCaracs: Record<string, string[]> = {};
                                 validRows.forEach(row => {
                                     if (!updatedSousCaracs[row.label]) {
@@ -465,7 +496,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                 
                                 // ✅ Sauvegarder dans le formulaire (sans sauvegarde DB immédiate)
                                 onChange([modality], updatedSousCaracs);
-                                console.log('[LinearAutocompleteEditor] 💾 Modifications sauvegardées automatiquement dans le formulaire');
+                                console.log('[LinearAutocompleteEditor] 💾 Modifications sauvegardées automatiquement dans le formulaire (ordre garanti par productLabels)');
                             }
                         }}
                     />

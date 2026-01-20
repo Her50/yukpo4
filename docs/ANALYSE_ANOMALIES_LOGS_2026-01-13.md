@@ -287,3 +287,8 @@ Voir les fichiers de correction suivants :
 - `mobile/src/components/ProductCard.tsx` : Corrections drapeau, bouton, filtrage
 - `backend/src/services/search_service.rs` : Corrections recherches (si nécessaire)
 
+
+
+
+
+

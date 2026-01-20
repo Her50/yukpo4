@@ -7,7 +7,7 @@ use base64::Engine;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 #[cfg(feature = "gpu")]
-use image::{DynamicImage, GenericImageView, ImageBuffer, ImageFormat};
+use image::GenericImageView;
 use std::time::Instant;
 
 /// ?? Optimiseur GPU avec fallback CPU automatique

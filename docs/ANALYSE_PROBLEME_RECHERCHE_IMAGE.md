@@ -1,189 +1,221 @@
 # 🔍 Analyse du Problème de Recherche par Image
 
-## 📋 Résumé du Problème
+## 📋 Résumé
 
-L'utilisateur a pris une image d'une chaussure pour rechercher, mais la recherche ne trouve rien en base de données.
+L'analyse des logs montre que la recherche par image ne fonctionne pas malgré une analyse IA réussie. L'image d'une chaussure est correctement identifiée, mais la recherche SQL retourne 0 résultats.
 
-## 🔎 Analyse des Logs Fournis
-
-### Observations
-
-1. **Aucune trace de recherche par image dans les logs**
-   - Pas d'appel à `/api/search/direct` avec `base64_image`
-   - Pas d'appel à `/api/search/by-image`
-   - Pas de logs `[ImageSearchController]` ou `[DIRECT_SEARCH] 🖼️`
-   - Pas d'analyse IA d'image (`[ImageAnalysis]`)
-   - Pas d'appel à `search_images_by_ai_analysis` ou `hybrid_image_search`
-
-2. **Les logs montrent uniquement** :
-   - Requêtes de matching de deliveries
-   - Requêtes de product_creation_queue
-   - Logs mobiles (erreurs réseau)
-   - Requêtes de courier availability
-
-### Conclusion
-
-**La requête de recherche par image n'arrive jamais au backend**, ou elle échoue silencieusement avant d'atteindre le code de recherche.
-
-## 🏗️ Architecture de la Recherche par Image
-
-### Deux Systèmes Différents
-
-#### 1. **`/api/search/direct` (Utilisé par le mobile)**
-- **Route** : `POST /api/search/direct`
-- **Service** : `router_yukpo.rs::direct_search()`
-- **Fonction SQL** : `search_images_by_ai_analysis()`
-- **Flux** :
-  1. Analyse IA de l'image avec `IntelligentImageAnalysisService::analyze_image_multimodel()`
-  2. Génération de tags depuis l'analyse IA
-  3. Appel à `search_images_by_ai_analysis()` avec les tags
-  4. Retour des résultats
-
-#### 2. **`/api/search/by-image` (Endpoint dédié)**
-- **Route** : `POST /api/search/by-image`
-- **Service** : `ImageSearchService::hybrid_image_search()`
-- **Problème** : ⚠️ **Génération de signature factice**
-  ```rust
-  pub fn generate_image_signature(_image_data: &[u8]) -> AppResult<Vec<f32>> {
-      // TODO: Implémenter la génération de signature
-      log_warn("[ImageSearch] Génération de signature factice - À implémenter");
-      Ok(vec![0.0; 192])  // ❌ Tous des zéros !
-  }
-  ```
-- **Impact** : Toutes les images ont la même signature (zéros), donc la recherche par similarité vectorielle ne peut pas fonctionner.
+---
 
 ## 🐛 Problèmes Identifiés
 
-### Problème 1 : Signature Vectorielle Factice
+### 1. ❌ Erreur SQL Critique : `to_tsvector(text, text) does not exist`
 
-**Fichier** : `backend/src/services/image_search_service.rs:243-251`
-
-```rust
-pub fn generate_image_signature(_image_data: &[u8]) -> AppResult<Vec<f32>> {
-    // TODO: Implémenter la génération de signature
-    log_warn("[ImageSearch] Génération de signature factice - À implémenter");
-    Ok(vec![0.0; 192])  // ❌ Tous des zéros !
-}
+**Erreur dans les logs :**
+```
+[ERREUR] [DIRECT_SEARCH] Erreur recherche SQL: error returned from database: function to_tsvector(text, text) does not exist
 ```
 
-**Impact** :
-- Toutes les images ont la même signature (192 zéros)
-- La fonction `calculate_image_similarity()` retourne toujours la même valeur
-- La recherche par similarité vectorielle ne peut pas distinguer les images
+**Cause :**
+- Dans la migration `20251230_optimize_image_search_vector_matching.sql`, la fonction `search_images_by_ai_analysis()` utilise `to_tsvector(detected_lang, ...)` où `detected_lang` est un paramètre **TEXT**.
+- PostgreSQL attend un **regconfig** comme premier paramètre de `to_tsvector()`, pas un TEXT.
+- La fonction standard est : `to_tsvector(regconfig, text)` où `regconfig` est un type spécial (comme 'french', 'english', etc.).
 
-**Solution** : Implémenter une vraie génération de signature vectorielle (ex: Perceptual Hash, CNN features, etc.)
+**Lignes problématiques :**
+- Ligne 134 : `to_tsvector(detected_lang, COALESCE(m.normalized_ai_description, ''))`
+- Ligne 227 : `to_tsvector(detected_lang, COALESCE(m.normalized_ai_description, '')) @@ plainto_tsquery(detected_lang, ...)`
 
-### Problème 2 : Absence de Logs de Recherche
+**Solution :**
+✅ Migration créée : `20260114_fix_image_search_to_tsvector_error.sql`
+- Ajoute une fonction helper `get_text_search_config(TEXT)` qui convertit le texte en regconfig valide
+- Modifie `search_images_by_ai_analysis()` pour utiliser `lang_config regconfig` au lieu de `detected_lang TEXT`
+- Convertit la langue avec `lang_config := get_text_search_config(detected_lang)`
 
-**Hypothèses** :
-1. La requête n'arrive jamais au backend (erreur réseau côté client)
-2. La requête arrive mais échoue avant d'atteindre le code de recherche
-3. Les logs ne sont pas au niveau DEBUG pour cette fonctionnalité
+---
 
-**Vérifications nécessaires** :
-- Vérifier que l'endpoint `/api/search/direct` est bien enregistré
-- Vérifier les logs au niveau DEBUG pour `[DIRECT_SEARCH]` et `[ImageAnalysis]`
-- Vérifier les erreurs réseau côté mobile
+### 2. ⚠️ Mots-clés Extraits Vides (Normal)
 
-### Problème 3 : Fonction SQL `hybrid_image_search` Non Utilisée
+**Dans les logs :**
+```
+[INFO] [RECHERCHE_DIRECTE] Mots-clés extraits: []
+[INFO] [RECHERCHE_DIRECTE] Recherche directe avec texte utilisateur: '' (GPS: None, Rayon: Some(50)km, specialized_type: None)
+```
 
-**Fichier** : `backend/migrations/20250101_OPTIMIZE_HYBRID_IMAGE_SEARCH_WITH_UNACCENT_SIMILARITY.sql`
+**Explication :**
+- C'est **normal** car l'utilisateur a envoyé une **image sans texte**.
+- La recherche par image ne nécessite pas de texte utilisateur.
+- Les mots-clés sont extraits de l'**analyse IA de l'image**, pas du texte utilisateur.
 
-La fonction SQL `hybrid_image_search()` attend des **tags textuels** (TEXT[]), pas une signature vectorielle. Elle est conçue pour :
-- Recevoir des tags générés par analyse IA
-- Rechercher dans `autocomplete_characteristics` et `service_products`
-- Utiliser `unaccent()` et `similarity()` pour le matching
+**Pas un problème** - c'est le comportement attendu pour une recherche purement par image.
 
-**Mais** : `ImageSearchService::hybrid_image_search()` n'utilise pas cette fonction SQL. Elle utilise plutôt `calculate_image_similarity()` avec des signatures vectorielles.
+---
 
-## 🔧 Solutions Proposées
+### 3. ✅ Analyse IA Réussie
 
-### Solution 1 : Utiliser le Bon Service pour la Recherche par Image
+**Dans les logs :**
+```
+[INFO] [DIRECT_SEARCH] ✅ Analyse IA réussie: 'Chaussure de sport de couleur verte avec des lacet' (confiance: 0.95, tokens: 1944)
+[INFO] [DIRECT_SEARCH] Langue détectée depuis analyse IA: french
+```
 
-**Problème** : `ImageSearchService` génère des signatures factices.
+**Confirmation :**
+- L'analyse IA fonctionne correctement
+- L'image est identifiée comme "Chaussure de sport de couleur verte avec des lacet"
+- La langue est détectée comme "french"
+- La confiance est élevée (0.95)
 
-**Solution** : Utiliser `HybridImageSearchService` qui :
-1. Analyse l'image avec IA pour générer des tags
-2. Appelle la fonction SQL `hybrid_image_search()` avec les tags
-3. Retourne des résultats pertinents
+**Pas un problème** - l'analyse IA fonctionne parfaitement.
 
-**Modification** : Modifier `image_search_controller.rs` pour utiliser `HybridImageSearchService` au lieu de `ImageSearchService`.
+---
 
-### Solution 2 : Implémenter la Génération de Signature Vectorielle
+### 4. ❌ 0 Résultats Retournés
 
-**Option A** : Utiliser une bibliothèque Rust comme `image` + `phash` pour générer des signatures perceptuelles.
+**Dans les logs :**
+```
+[DIRECT_SEARCH] ✅ Réponse construite avec 0 résultats
+```
 
-**Option B** : Utiliser un modèle d'embedding d'image (ex: CLIP, ResNet) pour générer des vecteurs de 192 dimensions.
+**Cause probable :**
+1. **Erreur SQL** : L'erreur `to_tsvector(text, text)` empêche la fonction SQL de s'exécuter correctement
+2. **Données manquantes** : Les images dans la base de données n'ont peut-être pas été analysées avec l'IA (pas de `ai_description` remplie)
+3. **Mismatch de données** : Les descriptions IA des images en base ne correspondent pas à la recherche
 
-**Option C** : Utiliser l'extension PostgreSQL `imgsmlr` qui est déjà dans le projet.
+**Vérifications nécessaires :**
+- Vérifier que les images en base ont `ai_description IS NOT NULL`
+- Vérifier que les descriptions contiennent des mots-clés pertinents (ex: "chaussure", "sport", "vert")
+- Vérifier que la fonction SQL s'exécute sans erreur après la correction
 
-### Solution 3 : Améliorer le Logging
+---
 
-Ajouter des logs DEBUG pour :
-- L'arrivée de la requête avec image
-- L'analyse IA de l'image
-- L'appel à la fonction SQL de recherche
-- Les résultats retournés
+## 🔧 Solutions Appliquées
 
-### Solution 4 : Vérifier la Route et l'Intégration
+### Migration de Correction
 
-Vérifier que :
-- La route `/api/search/direct` est bien enregistrée dans le router
-- Le mobile envoie bien `base64_image` dans la requête
-- Les logs montrent l'arrivée de la requête
+**Fichier :** `backend/migrations/20260114_fix_image_search_to_tsvector_error.sql`
 
-## 📊 Diagnostic Immédiat
+**Changements :**
+1. ✅ Création de `get_text_search_config(TEXT)` pour convertir langue TEXT → regconfig
+2. ✅ Modification de `search_images_by_ai_analysis()` pour utiliser `lang_config regconfig`
+3. ✅ Correction de toutes les utilisations de `to_tsvector()` dans la fonction
+4. ✅ Ajout d'un filtre `WHERE match_score > 0.0` pour éviter les résultats sans pertinence
 
-### Étapes de Diagnostic
+---
 
-1. **Vérifier les logs au niveau DEBUG** :
-   ```bash
-   # Chercher dans les logs
-   grep -i "direct_search\|image.*search\|ImageAnalysis" logs.txt
-   ```
+## 📝 Actions à Effectuer
 
-2. **Vérifier que la route est enregistrée** :
-   - Vérifier `backend/src/routers/router_yukpo.rs`
-   - Vérifier que `image_search_routes` est monté
+### 1. Appliquer la Migration
 
-3. **Tester l'endpoint directement** :
-   ```bash
-   curl -X POST https://yukpomnang.onrender.com/api/search/direct \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer TOKEN" \
-     -d '{
-       "base64_image": ["data:image/jpeg;base64,..."],
-       "gps_mobile": "4.03,9.82"
-     }'
-   ```
+```bash
+# Depuis le répertoire backend
+sqlx migrate run
+```
 
-4. **Vérifier la fonction SQL** :
+Ou manuellement :
+```sql
+\i backend/migrations/20260114_fix_image_search_to_tsvector_error.sql
+```
+
+### 2. Vérifier les Données en Base
+
+```sql
+-- Vérifier que les images ont des descriptions IA
+SELECT 
+    COUNT(*) as total_images,
+    COUNT(ai_description) as images_with_ai_description,
+    COUNT(*) - COUNT(ai_description) as images_without_ai_description
+FROM media 
+WHERE type = 'image';
+
+-- Vérifier les descriptions IA existantes
+SELECT 
+    id,
+    service_id,
+    ai_description,
+    ai_tags,
+    ai_category
+FROM media 
+WHERE type = 'image' 
+AND ai_description IS NOT NULL
+LIMIT 10;
+
+-- Rechercher des chaussures dans les descriptions
+SELECT 
+    id,
+    service_id,
+    ai_description,
+    ai_tags
+FROM media 
+WHERE type = 'image' 
+AND ai_description ILIKE '%chaussure%'
+LIMIT 10;
+```
+
+### 3. Tester la Fonction Corrigée
+
+```sql
+-- Test avec les paramètres de l'analyse IA réussie
+SELECT * FROM search_images_by_ai_analysis(
+    'Chaussure de sport de couleur verte avec des lacet',  -- search_query
+    ARRAY['chaussure', 'sport', 'vert', 'lacet'],          -- search_tags
+    'vetement',                                            -- search_category (si détectée)
+    NULL,                                                  -- search_marque
+    'vert',                                                -- search_couleur
+    NULL,                                                  -- gps_lat
+    NULL,                                                  -- gps_lng
+    50,                                                    -- search_radius_km
+    20,                                                    -- max_results
+    'french'                                               -- detected_lang
+);
+```
+
+### 4. Vérifier les Logs Après Correction
+
+Après avoir appliqué la migration, relancer une recherche par image et vérifier :
+- ✅ Plus d'erreur `to_tsvector(text, text)`
+- ✅ La fonction SQL s'exécute sans erreur
+- ✅ Des résultats sont retournés si des images correspondantes existent
+
+---
+
+## 🔍 Diagnostic Supplémentaire
+
+### Si Toujours 0 Résultats Après Correction
+
+1. **Vérifier que les images en base ont été analysées :**
    ```sql
-   -- Vérifier que la fonction existe
-   SELECT proname, prosrc 
-   FROM pg_proc 
-   WHERE proname = 'search_images_by_ai_analysis';
-   
-   -- Tester la fonction
-   SELECT * FROM search_images_by_ai_analysis(
-     'chaussure'::TEXT,
-     ARRAY['chaussure', 'sport']::TEXT[],
-     NULL, NULL, NULL,
-     4.03::FLOAT, 9.82::FLOAT,
-     50, 20, 'french'
-   );
+   SELECT COUNT(*) FROM media 
+   WHERE type = 'image' 
+   AND ai_description IS NOT NULL;
    ```
 
-## 🎯 Actions Prioritaires
+2. **Vérifier la correspondance des descriptions :**
+   - Les descriptions IA doivent contenir des mots-clés pertinents
+   - La normalisation (accents, minuscules) doit fonctionner
+   - Les tags doivent être correctement stockés
 
-1. **Immédiat** : Vérifier les logs au niveau DEBUG pour voir si la requête arrive
-2. **Court terme** : Modifier `image_search_controller.rs` pour utiliser `HybridImageSearchService`
-3. **Moyen terme** : Implémenter la génération de signature vectorielle réelle
-4. **Long terme** : Unifier les deux systèmes de recherche par image
+3. **Vérifier les scores de matching :**
+   - Le filtre `WHERE match_score > 0.0` peut être trop strict
+   - Tester sans ce filtre pour voir si des résultats apparaissent
 
-## 📝 Notes
+4. **Vérifier les catégories :**
+   - La catégorie détectée par l'IA doit correspondre à `ai_category` en base
+   - Tester avec `search_category = NULL` pour ignorer ce filtre
 
-- Le système actuel utilise `search_images_by_ai_analysis()` qui fonctionne avec des tags textuels
-- Le système `ImageSearchService` avec signatures vectorielles n'est pas fonctionnel (signatures factices)
-- La recherche par image devrait utiliser l'analyse IA + tags, pas les signatures vectorielles
+---
 
+## 📊 Résumé des Problèmes
+
+| Problème | Status | Solution |
+|----------|--------|----------|
+| Erreur SQL `to_tsvector(text, text)` | ❌ Critique | ✅ Migration créée |
+| Mots-clés vides | ⚠️ Normal | Pas d'action |
+| Analyse IA | ✅ Fonctionne | Pas d'action |
+| 0 résultats | ❌ Problème | À vérifier après correction SQL |
+
+---
+
+## ✅ Prochaines Étapes
+
+1. **Immédiat :** Appliquer la migration `20260114_fix_image_search_to_tsvector_error.sql`
+2. **Vérification :** Tester la fonction SQL corrigée
+3. **Diagnostic :** Vérifier les données en base si toujours 0 résultats
+4. **Optimisation :** Ajuster les seuils de matching si nécessaire

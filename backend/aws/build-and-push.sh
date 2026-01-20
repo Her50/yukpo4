@@ -62,3 +62,8 @@ echo "🎉 Build et Push terminés!"
 echo "   Image: $ECR_REPO_URI:$VERSION"
 echo "   Image: $ECR_REPO_URI:latest"
 
+
+
+
+
+

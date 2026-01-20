@@ -1774,6 +1774,8 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
         "du",
         "de",
         "d'",
+        "au",   // ✅ AJOUTÉ 2026-01-13: Contraction française (ex: "Sac au dos" -> "Sac dos")
+        "aux",  // ✅ AJOUTÉ 2026-01-13: Contraction française plurielle
         "ce",
         "cette",
         "ces",

@@ -4,7 +4,7 @@
 #[cfg(feature = "image")]
 use crate::core::types::{AppError, AppResult};
 #[cfg(feature = "image")]
-use image::{ImageFormat, ImageOutputFormat};
+use image::ImageOutputFormat;
 #[cfg(feature = "image")]
 use std::io::Cursor;
 

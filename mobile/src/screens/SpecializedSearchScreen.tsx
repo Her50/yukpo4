@@ -373,7 +373,6 @@ const SpecializedSearchScreen: React.FC = () => {
                         style={styles.searchButton}
                     />
                 </View>
-            </ScrollView>
 
             {/* Modal GPS */}
             <ModernGPSModal

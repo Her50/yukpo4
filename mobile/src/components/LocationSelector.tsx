@@ -316,23 +316,7 @@ const formatLocationDisplay = (location?: LocationObject | string | boolean | nu
         return location;
     }
 
-    // ✅ CORRIGÉ: Si location.raw est déjà une chaîne formatée et complète, l'utiliser en priorité
-    // Mais seulement si elle contient des informations structurées (virgules ou tirets)
-    if (location.raw && typeof location.raw === 'string' && location.raw.trim() !== '') {
-        // Vérifier si raw contient déjà plusieurs parties (formaté)
-        if (location.raw.includes(',') || location.raw.includes(' - ')) {
-            return location.raw;
-        }
-        // ✅ NOUVEAU: Si raw est simple mais qu'on a des components, construire depuis components
-        // (pour éviter d'afficher juste "Douala" au lieu de "Douala, Cameroun")
-        if (location.components && Object.keys(location.components).length > 0) {
-            // Continuer pour construire depuis components
-        } else {
-            // Si pas de components, utiliser raw directement
-            return location.raw;
-        }
-    }
-
+    // ✅ CORRIGÉ: Construire depuis components en priorité si disponibles (plus fiable)
     const parts: string[] = [];
 
     if (location.components?.quartier && !parts.includes(location.components.quartier)) {
@@ -360,21 +344,27 @@ const formatLocationDisplay = (location?: LocationObject | string | boolean | nu
         }
     }
 
-    // ✅ CORRIGÉ: Si parts est vide, utiliser place_name ou raw en priorité
-    if (parts.length === 0) {
-        // Si place_name existe et est différent de raw, l'utiliser
-        if (location.place_name && location.place_name.trim() !== '') {
-            return location.place_name;
-        }
-        // Sinon utiliser raw s'il existe
-        if (location.raw && typeof location.raw === 'string' && location.raw.trim() !== '') {
-            return location.raw;
-        }
-        return '';
+    // ✅ CORRIGÉ: Si on a des parts, les utiliser (même une seule partie)
+    if (parts.length > 0) {
+        return parts.join(', ');
     }
 
-    // ✅ CORRIGÉ: Retourner les parts jointes, même s'il n'y a qu'une seule partie (ex: juste la ville)
-    return parts.join(', ');
+    // ✅ FALLBACK: Si pas de components, utiliser raw s'il est formaté (contient virgule ou tiret)
+    if (location.raw && typeof location.raw === 'string' && location.raw.trim() !== '') {
+        // Si raw contient déjà plusieurs parties (formaté), l'utiliser directement
+        if (location.raw.includes(',') || location.raw.includes(' - ')) {
+            return location.raw;
+        }
+        // Sinon utiliser raw même s'il est simple
+        return location.raw;
+    }
+
+    // ✅ DERNIER FALLBACK: Utiliser place_name
+    if (location.place_name && location.place_name.trim() !== '') {
+        return location.place_name;
+    }
+
+    return '';
 };
 
 // ✅ Enrichir avec backend GeoNames
@@ -760,6 +750,8 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     }}
                     style={styles.input}
                     placeholderTextColor={modernColors.textSecondary}
+                    // ✅ NOUVEAU: Force le re-render quand displayValue change
+                    key={`input-${displayValue}`}
                 />
                 {/* ✅ NOUVEAU: Croix rouge pour effacer rapidement le contenu */}
                 {((isFocused && query.length > 0) || (!isFocused && displayValue)) && (

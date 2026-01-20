@@ -254,8 +254,7 @@ const iconToEmoji: { [key: string]: string } = {
     'TabletPortrait': '📱',
     'smartphone': '📱',
     'Smartphone': '📱',
-    'phone': '📱',
-    'Phone': '📱',
+    // Note: 'phone' est déjà défini ligne 77 avec '📞' (téléphone classique pour appels)
     'music': '🎵',
     'Music': '🎵',
     'headphones': '🎧',

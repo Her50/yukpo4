@@ -148,6 +148,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 data = response?.items || [];
             }
             const normalized = normalizeFeed(data);
+            console.log(`[VideoFeedScreen] 📹 Feed chargé: ${normalized.length} vidéos`);
             setFeed(normalized);
             setLikedMap({});
             setSavedMap({});
@@ -183,7 +184,9 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         videoRefs.current.forEach((ref, index) => {
             if (!ref) return;
             if (index === currentIndex) {
-                ref.playAsync().catch(() => undefined);
+                ref.playAsync()
+                    .then(() => console.log(`[VideoFeedScreen] ✅ Vidéo ${index} en lecture`))
+                    .catch((error) => console.warn(`[VideoFeedScreen] ⚠️ Erreur démarrage vidéo ${index}:`, error));
             } else {
                 ref.pauseAsync().catch(() => undefined);
             }
@@ -248,6 +251,27 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     shouldPlay={index === currentIndex}
                     isLooping
                     useNativeControls={false}
+                    onLoad={() => {
+                        if (index === currentIndex) {
+                            const ref = videoRefs.current.get(index);
+                            ref?.playAsync().catch(() => undefined);
+                        }
+                    }}
+                    onReadyForDisplay={() => {
+                        if (index === currentIndex) {
+                            const ref = videoRefs.current.get(index);
+                            ref?.playAsync().catch(() => undefined);
+                        }
+                    }}
+                    onError={(error) => {
+                        console.error(`[VideoFeedScreen] ❌ Erreur vidéo ${index}:`, error);
+                    }}
+                    onPlaybackStatusUpdate={(status) => {
+                        if (status.isLoaded && index === currentIndex && !status.isPlaying && !status.didJustFinish) {
+                            const ref = videoRefs.current.get(index);
+                            ref?.playAsync().catch(() => undefined);
+                        }
+                    }}
                 />
                 <View style={styles.overlay}>
                     <Text numberOfLines={2} style={styles.title}>

@@ -5,7 +5,7 @@
 # Build artifacts et dépendances
 ############################################
 target/
-Cargo.lock
+# Cargo.lock - INCLUS car nécessaire pour builds reproductibles
 *.pdb
 *.dSYM
 
@@ -143,4 +143,9 @@ docker-compose*.yml
 
 # ✅ Fichiers de configuration Rust
 !Cargo.toml
+!Cargo.lock
+
+# ✅ Blender (téléchargé manuellement)
+!blender/
+!blender/**/*
 

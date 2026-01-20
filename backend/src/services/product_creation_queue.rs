@@ -3,7 +3,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 use std::time::Duration;

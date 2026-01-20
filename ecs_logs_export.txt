@@ -1,0 +1,16 @@
+﻿aws : 
+Au caractère C:\Users\23767\AppData\Local\Temp\ps-script-9eaa8052-4716-4e87-be32-e85a39af87a0.ps1:85 : 502
++ ... S_PAGER=""; aws logs get-log-events --log-group-name "/ecs/yukpomnang ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+usage: aws [options] <command> <subcommand> [<subcommand> ...] [parameters]
+To see help text, you can run:
+
+  aws help
+  aws <command> help
+  aws <command> <subcommand> help
+
+Unknown options: None
+

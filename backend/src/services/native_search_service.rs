@@ -415,15 +415,18 @@ impl NativeSearchService {
         // 4. Scoring amélioré avec bonus pour matches exacts et usage_count
         // 5. Détection automatique de langue pour to_tsvector/plainto_tsquery
         // 
-        // ✅ NOUVEAU 2025-12-30: Matching vectoriel optimisé avec similarité en une seule passe
-        // Normaliser les mots-clés pour le matching vectoriel (supprimer accents)
-        let search_keywords_normalized: Vec<String> = query
-            .split_whitespace()
-            .filter(|w| w.len() >= 2)
+        // ✅ AMÉLIORÉ 2026-01-13: Matching vectoriel avec test vectoriel unique (équivalent %in% en R)
+        // Utiliser extract_keywords_from_text pour filtrer les stop words de manière générique
+        let keywords = extract_keywords_from_text(query);
+        let search_keywords_normalized: Vec<String> = keywords
+            .iter()
             .map(|w| self.normalize_word_for_vector_matching(w))
             .collect();
         
-        log_info(&format!("[NativeSearch] Mots-clés normalisés pour matching vectoriel: {:?}", search_keywords_normalized));
+        log_info(&format!(
+            "[NativeSearch] Mots-clés extraits (après filtrage stop words): {:?} -> normalisés: {:?}", 
+            keywords, search_keywords_normalized
+        ));
         
         // ✅ OPTIMISÉ 2025-12-30: Requête ULTRA-SIMPLIFIÉE pour performance < 2s
         // Réduit de 5 CTE à 2 CTE, utilise calculate_best_vector_match_score (une seule passe)
@@ -1411,18 +1414,25 @@ LIMIT 100
         // ✅ CORRIGÉ 2026-01-13: Seuil adaptatif selon le nombre de mots dans la requête
         // Pour un seul mot (ex: "chaussures"), réduire le seuil pour permettre plus de résultats
         // Pour plusieurs mots (ex: "chaussures nike"), garder un seuil plus élevé pour la pertinence
+        // ✅ AMÉLIORÉ 2026-01-13: Seuil plus élevé pour mots très courts (3-4 caractères) pour éviter résultats peu pertinents
         let query_words: Vec<&str> = query.split_whitespace().filter(|w| w.len() >= 2).collect();
         let is_single_word_search = query_words.len() <= 1;
+        let is_very_short_word = query_words.len() == 1 && query_words[0].len() <= 4;
         let min_relevance_score = if is_single_word_search {
-            3.0  // ✅ Seuil réduit pour recherches à un seul mot (permet correspondances partielles)
+            if is_very_short_word {
+                15.0  // ✅ Seuil élevé pour mots très courts (3-4 caractères) pour éviter résultats peu pertinents
+            } else {
+                3.0   // ✅ Seuil réduit pour recherches à un seul mot long (permet correspondances partielles)
+            }
         } else {
             8.0  // ✅ Seuil normal pour recherches à plusieurs mots (meilleure pertinence)
         };
         
         log_info(&format!(
-            "[NativeSearch] Seuil de pertinence adaptatif: {} (recherche {} mot(s))",
+            "[NativeSearch] Seuil de pertinence adaptatif: {} (recherche {} mot(s), mot court: {})",
             min_relevance_score,
-            query_words.len()
+            query_words.len(),
+            is_very_short_word
         ));
         
         for row in results {
@@ -1621,7 +1631,10 @@ LIMIT 100
     }
 
     /// Normaliser un mot (supprimer accents, minuscules) - pour matching vectoriel optimisé
+    /// ✅ GÉNÉRIQUE 2026-01-13: Seulement normalisation accents (pas de règles spécifiques par langue)
+    /// Les stop words sont filtrés par extract_keywords_from_text avant d'arriver ici
     fn normalize_word_for_vector_matching(&self, word: &str) -> String {
+        // ✅ GÉNÉRIQUE: Seulement normalisation accents (fonctionne pour toutes les langues)
         word.to_lowercase()
             .chars()
             .map(|c| match c {

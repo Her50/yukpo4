@@ -178,3 +178,8 @@ Après ces corrections :
 2. ✅ Ajouter l'affichage des sous-caractéristiques dans `ProductCard`
 3. ✅ Migration complète de l'ancien système JSONB vers le nouveau système `service_products`
 
+
+
+
+
+

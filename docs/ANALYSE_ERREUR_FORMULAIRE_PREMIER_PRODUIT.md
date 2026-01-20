@@ -186,3 +186,8 @@ Pour identifier précisément l'erreur qui se produit :
 3. Vérifier si `processIASuggestion` peut gérer un objet vide
 4. Vérifier les erreurs JavaScript dans la console
 
+
+
+
+
+

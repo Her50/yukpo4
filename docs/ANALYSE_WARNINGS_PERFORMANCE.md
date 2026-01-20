@@ -186,3 +186,8 @@ WHERE is_online = TRUE;
 - Taux d'erreur 404 sur `/api/feature-flags` (objectif: 0%)
 - Temps de réponse `/api/search/direct` (objectif: <1s)
 
+
+
+
+
+

@@ -1,7 +1,7 @@
 // ✅ Écran Détails Recette - Planification Menus
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -114,16 +114,33 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
         }
     };
 
-    const adjustServings = (newServings: number) => {
+    // ✅ CORRIGÉ: Mémoriser adjustServings pour éviter les re-renders
+    const adjustServings = useCallback((newServings: number) => {
         if (newServings < 1) return;
         setServings(newServings);
-    };
+    }, []);
 
-    const calculateAdjustedQuantity = (quantity: number): number => {
+    // ✅ CORRIGÉ: Mémoriser calculateAdjustedQuantity pour éviter les recalculs
+    const calculateAdjustedQuantity = useCallback((quantity: number): number => {
         if (!recipe) return quantity;
         const ratio = servings / recipe.servings;
         return Math.round(quantity * ratio * 10) / 10;
-    };
+    }, [recipe, servings]);
+
+    // ✅ CORRIGÉ: Mémoriser totalTime pour éviter les recalculs
+    const totalTime = useMemo(() => {
+        if (!recipe) return 0;
+        return (recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0);
+    }, [recipe]);
+
+    // ✅ CORRIGÉ: Mémoriser les ingrédients ajustés pour éviter les recalculs à chaque render
+    const adjustedIngredients = useMemo(() => {
+        if (!recipe) return [];
+        return recipe.ingredients.map(ingredient => ({
+            ...ingredient,
+            adjustedQuantity: calculateAdjustedQuantity(ingredient.quantity),
+        }));
+    }, [recipe, servings, calculateAdjustedQuantity]);
 
     if (loading) {
         return (
@@ -148,8 +165,6 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
         );
     }
 
-    const totalTime = (recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0);
-
     return (
         <View style={styles.container}>
             {/* Header avec image */}
@@ -161,6 +176,8 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
                 bounces={true}
                 alwaysBounceVertical={false}
                 keyboardShouldPersistTaps="handled"
+                removeClippedSubviews={true} // ✅ CORRIGÉ: Optimise les performances en retirant les vues hors écran
+                scrollEventThrottle={16} // ✅ CORRIGÉ: Limite la fréquence des événements de scroll
             >
                 {/* Image recette */}
                 {recipe.image_url ? (
@@ -247,12 +264,13 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Ingrédients</Text>
                     <NativeCard style={styles.ingredientsCard}>
-                        {recipe.ingredients.map((ingredient, index) => (
-                            <View key={index} style={styles.ingredientRow}>
+                        {/* ✅ CORRIGÉ: Utiliser adjustedIngredients mémorisé pour éviter les recalculs */}
+                        {adjustedIngredients.map((ingredient, index) => (
+                            <View key={`ingredient-${index}-${ingredient.name}`} style={styles.ingredientRow}>
                                 <View style={styles.ingredientDot} />
                                 <Text style={styles.ingredientName}>{ingredient.name}</Text>
                                 <Text style={styles.ingredientQuantity}>
-                                    {calculateAdjustedQuantity(ingredient.quantity)} {ingredient.unit}
+                                    {ingredient.adjustedQuantity} {ingredient.unit}
                                 </Text>
                             </View>
                         ))}
@@ -263,8 +281,9 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Instructions</Text>
                     <NativeCard style={styles.instructionsCard}>
+                        {/* ✅ CORRIGÉ: Clé stable pour éviter les re-renders */}
                         {recipe.instructions.map((instruction, index) => (
-                            <View key={index} style={styles.instructionStep}>
+                            <View key={`instruction-${index}-${instruction.substring(0, 20)}`} style={styles.instructionStep}>
                                 <View style={styles.stepNumber}>
                                     <Text style={styles.stepNumberText}>{index + 1}</Text>
                                 </View>
@@ -372,6 +391,7 @@ const styles = StyleSheet.create({
         width: width,
         height: 250,
         resizeMode: 'cover',
+        backgroundColor: '#E5E7EB', // ✅ CORRIGÉ: Couleur de fond pour éviter le flash blanc pendant le chargement
     },
     recipeImagePlaceholder: {
         width: width,
@@ -414,6 +434,7 @@ const styles = StyleSheet.create({
         gap: 12,
         padding: 16,
         marginTop: -40,
+        zIndex: 1, // ✅ CORRIGÉ: Assure que les cartes sont au-dessus du gradient
     },
     infoCard: {
         flex: 1,

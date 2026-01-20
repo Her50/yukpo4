@@ -235,7 +235,7 @@ impl OptimizedMediaProcessor {
     async fn compress_image_adaptive(
         &self,
         image_bytes: &[u8],
-        _file_path: &str,
+        file_path: &str,
     ) -> AppResult<(Vec<u8>, Option<f64>)> {
         // Déterminer la qualité selon la taille originale
         let size_mb = image_bytes.len() as f64 / (1024.0 * 1024.0);
@@ -298,7 +298,7 @@ impl OptimizedMediaProcessor {
     }
 
     /// Génère un thumbnail (200x200)
-    async fn generate_thumbnail(&self, _image_bytes: &[u8], _max_size: i32) -> AppResult<String> {
+    async fn generate_thumbnail(&self, image_bytes: &[u8], service_id: i32) -> AppResult<String> {
         #[cfg(feature = "image")]
         {
             use image::ImageFormat;

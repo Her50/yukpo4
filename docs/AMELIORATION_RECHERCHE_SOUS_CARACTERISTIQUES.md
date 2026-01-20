@@ -213,3 +213,8 @@ Après cette amélioration :
 2. ✅ Ajouter la recherche full-text (tsvector) dans les sous-caractéristiques
 3. ✅ Optimiser la recherche pour utiliser les index trigram sur les valeurs
 
+
+
+
+
+

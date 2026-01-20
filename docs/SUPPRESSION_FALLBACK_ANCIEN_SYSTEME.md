@@ -129,3 +129,8 @@ La fonction `getServicePrice` (ligne ~165) utilise encore `service.data?.produit
 2. ✅ Vérifier et mettre à jour d'autres fichiers qui utilisent encore `service.data.produits`
 3. ✅ Migrer complètement tous les produits de l'ancien système vers `service_products`
 
+
+
+
+
+

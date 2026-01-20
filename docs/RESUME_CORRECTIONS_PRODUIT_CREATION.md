@@ -138,3 +138,8 @@
 2. **Prompt IA** : ✅ Maintenant générique, mais il faudra tester pour confirmer que l'IA suit bien les nouvelles instructions
 3. **Génération automatique** : ✅ Fonctionne côté frontend même si l'IA ne détecte pas les variations
 
+
+
+
+
+

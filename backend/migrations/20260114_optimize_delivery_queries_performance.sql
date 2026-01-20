@@ -93,3 +93,8 @@ COMMENT ON COLUMN deliveries.dropoff_lng IS 'Longitude calculée depuis dropoff_
 COMMENT ON COLUMN deliveries.store_lat IS 'Latitude calculée depuis store_location (évite ST_Y à chaque requête)';
 COMMENT ON COLUMN deliveries.store_lng IS 'Longitude calculée depuis store_location (évite ST_X à chaque requête)';
 
+
+
+
+
+

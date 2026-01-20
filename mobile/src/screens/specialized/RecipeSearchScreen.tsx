@@ -203,13 +203,22 @@ const RecipeSearchScreen: React.FC = () => {
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Recette générée</Text>
-                            <TouchableOpacity onPress={() => setShowRecipeDetails(false)}>
+                            <TouchableOpacity onPress={() => {
+                                setShowRecipeDetails(false);
+                                setGeneratedRecipe(null);
+                            }}>
                                 <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
                             </TouchableOpacity>
                         </View>
 
                         {generatedRecipe ? (
-                            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={true}>
+                            <ScrollView 
+                                style={styles.modalBody} 
+                                contentContainerStyle={styles.modalBodyContent}
+                                showsVerticalScrollIndicator={true}
+                                nestedScrollEnabled={true}
+                                bounces={true}
+                            >
                                 <View style={styles.recipeHeader}>
                                     <Text style={styles.recipeTitle}>{generatedRecipe.recipe_name || 'Recette sans nom'}</Text>
                                     {generatedRecipe.description && (
@@ -461,7 +470,8 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         maxHeight: '90%',
-        paddingBottom: 20,
+        flexDirection: 'column', // ✅ CORRIGÉ: S'assurer que la direction est column
+        justifyContent: 'flex-start', // ✅ CORRIGÉ: Aligner en haut
     },
     modalHeader: {
         flexDirection: 'row',
@@ -478,7 +488,11 @@ const styles = StyleSheet.create({
     },
     modalBody: {
         flex: 1,
+        maxHeight: '100%', // ✅ CORRIGÉ: Permettre au ScrollView de prendre toute la hauteur disponible
+    },
+    modalBodyContent: {
         padding: 20,
+        paddingBottom: 100, // ✅ CORRIGÉ: Ajouter padding en bas suffisant pour permettre de scroller jusqu'en bas (espace pour le footer)
     },
     modalFooter: {
         padding: 20,

@@ -78,6 +78,7 @@ import ProviderOrderManagementScreen from '../screens/ProviderOrderManagementScr
 import PubliciteDashboardScreen from '../screens/PubliciteDashboardScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
+import PrestataireBoutiqueScreen from '../screens/PrestataireBoutiqueScreen';
 import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import AgenceVoyageFormScreen from '../screens/specialized/AgenceVoyageFormScreen';
@@ -227,6 +228,7 @@ const AjouterProduitSimpleWithSafeArea = withNavigatorSafeArea(AjouterProduitSim
 const ProductDetailScreenWithSafeArea = withNavigatorSafeArea(ProductDetailScreen);
 const ServiceDetailSharedScreenWithSafeArea = withNavigatorSafeArea(ServiceDetailSharedScreen);
 const ResultatBesoinScreenWithSafeArea = withNavigatorSafeArea(ResultatBesoinScreen);
+const PrestataireBoutiqueScreenWithSafeArea = withNavigatorSafeArea(PrestataireBoutiqueScreen);
 const OrderStatusScreenWithSafeArea = withNavigatorSafeArea(OrderStatusScreen);
 const ProviderOrderManagementScreenWithSafeArea = withNavigatorSafeArea(ProviderOrderManagementScreen);
 const CreatePubliciteScreenWithSafeArea = withNavigatorSafeArea(CreatePubliciteScreen);
@@ -1527,6 +1529,15 @@ const SecondaryStack = () => {
           options={{
             ...defaultScreenOptions,
             ...transitionConfig.scale, // ✅ PHASE 3: Transition scale pour résultats
+          }}
+        />
+        <Stack.Screen
+          name="PrestataireBoutique"
+          component={PrestataireBoutiqueScreenWithSafeArea}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Boutique',
+            ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour boutique
           }}
         />
         <Stack.Screen

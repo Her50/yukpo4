@@ -738,42 +738,84 @@ const CourierRegistrationScreen: React.FC = () => {
                 partner_id: selectedPartnerId, // ✅ NOUVEAU 2026-01-04: Envoyer aussi partner_id à la racine pour le backend
             });
 
-            if (response.success) {
+            // ✅ CORRIGÉ: Vérifier la réponse avec plus de flexibilité
+            const isSuccess = response.success === true || 
+                             (response.data && (response.data.application || response.data.success !== false)) ||
+                             (!response.error && !response.status);
+            
+            if (isSuccess) {
                 setApplicationStatus(submit ? 'submitted' : 'draft');
                 
-                // ✅ NOUVEAU: Afficher un toast de confirmation immédiatement
-                if (submit) {
-                    toaster.success(
-                        '✅ Candidature soumise avec succès !\n' +
-                        'Votre formulaire a été enregistré et est en attente de validation par les administrateurs. ' +
-                        'Vous recevrez une notification une fois la décision prise.'
-                    );
-                } else {
-                    toaster.success(
-                        '💾 Brouillon enregistré !\n' +
-                        'Votre candidature a été sauvegardée. Vous pouvez la compléter et la soumettre plus tard.'
-                    );
+                // ✅ CORRIGÉ: Afficher le toast de confirmation immédiatement
+                const toastMessage = submit
+                    ? '✅ Candidature soumise avec succès ! Votre formulaire est en attente de validation.'
+                    : '💾 Brouillon enregistré ! Vous pouvez compléter et soumettre plus tard.';
+                
+                console.log('[CourierRegistrationScreen] ✅ Réponse succès, affichage toast:', toastMessage);
+                console.log('[CourierRegistrationScreen] Structure réponse:', {
+                    success: response.success,
+                    hasData: !!response.data,
+                    hasError: !!response.error,
+                    status: response.status,
+                });
+                
+                // ✅ CORRIGÉ: Afficher le toast immédiatement
+                try {
+                    toaster.success(toastMessage);
+                    console.log('[CourierRegistrationScreen] ✅ Toast affiché avec succès');
+                } catch (toastError) {
+                    console.error('[CourierRegistrationScreen] ❌ Erreur affichage toast:', toastError);
                 }
                 
-                // ✅ AMÉLIORÉ: Alert avec message plus clair
-                Alert.alert(
-                    submit ? '✅ Candidature soumise' : '💾 Brouillon enregistré',
-                    submit
-                        ? 'Votre candidature a été soumise avec succès et est en attente de validation par les administrateurs.\n\n' +
-                          'Vous recevrez une notification une fois la décision prise. ' +
-                          'Merci de votre patience !'
-                        : 'Votre candidature a été enregistrée en brouillon.\n\n' +
-                          'Vous pouvez la compléter et la soumettre plus tard depuis cet écran.',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => {
-                                if (submit) {
-                                    navigation.goBack();
-                                }
+                // ✅ CORRIGÉ: Afficher l'Alert APRÈS un délai pour que le toast soit visible d'abord
+                // Le toast reste visible pendant 5 secondes, on affiche l'Alert après 1.5 secondes
+                // pour que le toast soit bien visible avant que l'Alert n'apparaisse
+                setTimeout(() => {
+                    console.log('[CourierRegistrationScreen] Affichage Alert après toast (1.5s)');
+                    // ✅ AMÉLIORÉ: Alert avec message plus clair
+                    Alert.alert(
+                        submit ? '✅ Candidature soumise' : '💾 Brouillon enregistré',
+                        submit
+                            ? 'Votre candidature a été soumise avec succès et est en attente de validation par les administrateurs.\n\n' +
+                              'Vous recevrez une notification une fois la décision prise. ' +
+                              'Merci de votre patience !'
+                            : 'Votre candidature a été enregistrée en brouillon.\n\n' +
+                              'Vous pouvez la compléter et la soumettre plus tard depuis cet écran.',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => {
+                                    // ✅ NOUVEAU: Réafficher le toast après la fermeture de l'Alert pour confirmation
+                                    // Cela garantit que l'utilisateur voit bien le message de confirmation
+                                    try {
+                                        toaster.success(toastMessage);
+                                        console.log('[CourierRegistrationScreen] ✅ Toast réaffiché après fermeture Alert');
+                                    } catch (toastError2) {
+                                        console.error('[CourierRegistrationScreen] ❌ Erreur réaffichage toast:', toastError2);
+                                    }
+                                    
+                                    if (submit) {
+                                        // Petit délai avant navigation pour laisser le toast s'afficher
+                                        setTimeout(() => {
+                                            navigation.goBack();
+                                        }, 500);
+                                    }
+                                },
                             },
-                        },
-                    ]
+                        ]
+                    );
+                }, 1500); // ✅ Délai de 1500ms (1.5 secondes) - le toast reste visible 5s donc il sera encore visible
+            } else {
+                // ✅ NOUVEAU: Gérer le cas où la réponse n'est pas un succès
+                console.error('[CourierRegistrationScreen] ❌ Réponse non-succès:', {
+                    success: response.success,
+                    error: response.error,
+                    status: response.status,
+                    data: response.data,
+                });
+                Alert.alert(
+                    'Erreur',
+                    response.error || 'Impossible de soumettre la candidature. Veuillez réessayer.'
                 );
             }
         } catch (error: any) {

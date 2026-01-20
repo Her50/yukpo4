@@ -133,15 +133,8 @@ async fn get_pending_offer(
         ));
     }
 
-    // ✅ CORRIGÉ: Déterminer le client_user_id (celui qui a créé l'offre)
-    // Le client_user_id est toujours celui qui n'est pas le prestataire du service
-    let client_user_id = if prestataire_id == user.id {
-        // L'utilisateur actuel est le prestataire, donc le client est client_id
-        client_id
-    } else {
-        // L'utilisateur actuel est le client, donc le client_user_id est client_id
-        client_id
-    };
+    // ✅ CORRIGÉ: Le client_user_id est toujours client_id (celui qui n'est pas le prestataire)
+    let client_user_id = client_id;
 
     let service = NegotiatedPriceService::new(state.pg.clone());
     let offer = service
