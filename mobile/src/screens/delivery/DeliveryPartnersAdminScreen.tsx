@@ -58,7 +58,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
     const [partners, setPartners] = useState<DeliveryPartner[]>([]);
     const [pendingPartners, setPendingPartners] = useState<PendingPartner[]>([]);
     const [loading, setLoading] = useState(true);
-    const [loadingPending, setLoadingPending] = useState(false);
+    const [loadingPending, setLoadingPending] = useState(true); // ✅ CORRIGÉ: Initialiser à true car l'onglet pending est actif par défaut
     const [selectedPendingPartner, setSelectedPendingPartner] = useState<PendingPartner | null>(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
@@ -97,12 +97,32 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         try {
             setLoadingPending(true);
             const response = await apiGet('/api/admin/partners/pending');
-            const data = response.data || response;
             
-            if (data.partners) {
-                setPendingPartners(data.partners);
-            } else if (Array.isArray(data)) {
-                setPendingPartners(data);
+            // ✅ CORRECTION: Parser correctement la réponse API
+            let data;
+            if (response && typeof response === 'object') {
+                // Vérifier si la réponse a une propriété 'data'
+                if ('data' in response && response.data) {
+                    data = response.data;
+                } else {
+                    data = response;
+                }
+            } else {
+                data = response;
+            }
+            
+            // ✅ CORRECTION: Gérer toutes les structures possibles de réponse
+            if (data && typeof data === 'object') {
+                if (Array.isArray(data.partners)) {
+                    setPendingPartners(data.partners);
+                } else if (Array.isArray(data)) {
+                    setPendingPartners(data);
+                } else if (data.partners && Array.isArray(data.partners)) {
+                    setPendingPartners(data.partners);
+                } else {
+                    console.warn('[DeliveryPartnersAdminScreen] Format de réponse inattendu:', data);
+                    setPendingPartners([]);
+                }
             } else {
                 setPendingPartners([]);
             }

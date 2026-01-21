@@ -1,6 +1,6 @@
 // ✅ Écran de recherche de recettes
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -25,11 +25,54 @@ const RecipeSearchScreen: React.FC = () => {
     const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
     const [showRecipeDetails, setShowRecipeDetails] = useState(false);
     const [exportingRecipePDF, setExportingRecipePDF] = useState(false);
+    
+    // ✅ CORRECTION CRITIQUE: Refs pour éviter les re-renders qui causent les tremblements
+    const pendingSearchQueryRef = useRef<string>('');
+    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    
+    // ✅ CORRECTION CRITIQUE: Nettoyer le timeout au démontage
+    useEffect(() => {
+        return () => {
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+            }
+        };
+    }, []);
+    
+    // ✅ CORRECTION CRITIQUE: Fonction pour gérer les changements avec debounce
+    const handleSearchQueryChange = (text: string) => {
+        // Stocker immédiatement dans le ref pour l'affichage
+        pendingSearchQueryRef.current = text;
+        
+        // Annuler le timeout précédent
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+        }
+        
+        // Débouncer la mise à jour de l'état pour éviter les re-renders fréquents
+        debounceTimeoutRef.current = setTimeout(() => {
+            setSearchQuery(text);
+            debounceTimeoutRef.current = null;
+        }, 200); // 200ms de debounce pour une recherche fluide
+    };
+    
+    // ✅ CORRECTION CRITIQUE: Utiliser la valeur du ref si disponible, sinon l'état
+    const displaySearchQuery = pendingSearchQueryRef.current !== '' 
+        ? pendingSearchQueryRef.current 
+        : searchQuery;
 
     const handleSearch = async () => {
-        if (!searchQuery.trim()) {
+        // ✅ CORRECTION CRITIQUE: Utiliser la valeur du ref si disponible (saisie en cours)
+        const queryToUse = pendingSearchQueryRef.current.trim() || searchQuery.trim();
+        
+        if (!queryToUse) {
             Alert.alert('Erreur', 'Veuillez saisir un nom de recette');
             return;
+        }
+        
+        // ✅ CORRECTION CRITIQUE: Mettre à jour l'état immédiatement avant la recherche
+        if (pendingSearchQueryRef.current !== searchQuery) {
+            setSearchQuery(pendingSearchQueryRef.current);
         }
 
         try {
@@ -37,7 +80,7 @@ const RecipeSearchScreen: React.FC = () => {
             setGeneratedRecipe(null); // Réinitialiser la recette précédente
             setShowRecipeDetails(false); // Fermer le modal précédent
 
-            console.log('[RecipeSearch] Début génération recette:', searchQuery.trim());
+            console.log('[RecipeSearch] Début génération recette:', queryToUse);
 
             // ✅ AMÉLIORÉ: Ajouter un timeout explicite pour éviter les chargements infinis
             const timeoutPromise = new Promise((_, reject) => {
@@ -45,7 +88,7 @@ const RecipeSearchScreen: React.FC = () => {
             });
 
             // Générer une recette avec l'IA
-            const responsePromise = menuPlanningService.generateRecipe(searchQuery.trim());
+            const responsePromise = menuPlanningService.generateRecipe(queryToUse);
             const response = await Promise.race([responsePromise, timeoutPromise]) as any;
 
             console.log('[RecipeSearch] Réponse complète reçue:', JSON.stringify(response, null, 2));
@@ -109,8 +152,10 @@ const RecipeSearchScreen: React.FC = () => {
                 console.log('[RecipeSearch] ✅ Recette générée avec succès:', recipe.recipe_name);
                 setGeneratedRecipe(recipe);
                 setShowRecipeDetails(true);
-                setSearchQuery(''); // Réinitialiser le champ de recherche
-            } else if (response && !response.success) {
+                // ✅ CORRECTION CRITIQUE: Réinitialiser à la fois l'état et le ref
+                setSearchQuery('');
+                pendingSearchQueryRef.current = '';
+                } else if (response && !response.success) {
                 const errorMsg = response.error || response.message || 'Impossible de générer la recette';
                 console.error('[RecipeSearch] ❌ Erreur dans la réponse:', errorMsg);
                 Alert.alert('Erreur', errorMsg);
@@ -161,8 +206,8 @@ const RecipeSearchScreen: React.FC = () => {
                     <Text style={styles.label}>🔍 Rechercher une recette</Text>
                     <View style={styles.searchContainer}>
                         <NativeInput
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
+                            value={displaySearchQuery}
+                            onChangeText={handleSearchQueryChange}
                             placeholder="Ex: Poulet DG, Ndolé, Riz sauté..."
                             onSubmitEditing={handleSearch}
                             returnKeyType="search"
@@ -175,7 +220,7 @@ const RecipeSearchScreen: React.FC = () => {
                             variant="primary"
                             size="small"
                             style={styles.searchButton}
-                            disabled={!searchQuery.trim() || loading}
+                            disabled={!displaySearchQuery.trim() || loading}
                         />
                     </View>
                 </NativeCard>

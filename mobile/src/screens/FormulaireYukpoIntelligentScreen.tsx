@@ -2210,11 +2210,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       clearTimeout(debounceTimeoutsRef.current[fieldName]);
     }
 
-    // ✅ NOUVEAU: Débouncer la mise à jour de l'état pour éviter les re-renders fréquents
-    // Pour les champs texte simples, utiliser un délai de 150ms
+    // ✅ CORRECTION CRITIQUE: Débouncer la mise à jour de l'état pour éviter les re-renders fréquents
+    // Pour les champs texte simples, utiliser un délai de 300ms (augmenté pour éviter les sauts de curseur)
     // Pour les autres champs (select, checkbox, etc.), mettre à jour immédiatement
     const isTextInput = typeof processedValue === 'string';
-    const debounceDelay = isTextInput ? 150 : 0;
+    const debounceDelay = isTextInput ? 300 : 0; // ✅ AUGMENTÉ: De 150ms à 300ms pour plus de stabilité
 
     debounceTimeoutsRef.current[fieldName] = setTimeout(() => {
       setValeursFormulaire(prev => {
@@ -3004,10 +3004,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               placeholder={field.placeholder}
               value={fieldValue}
               onChangeText={(text) => {
+                // ✅ CORRECTION CRITIQUE: Appeler handleFieldChange uniquement
+                // Ne pas mettre à jour fieldErrors ici pour éviter les re-renders qui causent les sauts de curseur
                 handleFieldChange(field.name, text);
-                // Effacer l'erreur quand l'utilisateur tape
+              }}
+              onBlur={() => {
+                // ✅ CORRECTION CRITIQUE: Effacer l'erreur seulement lors du blur (quand l'utilisateur quitte le champ)
                 if (hasError) {
                   setFieldErrors(prev => {
+                    if (!prev[field.name]) return prev;
                     const newErrors = { ...prev };
                     delete newErrors[field.name];
                     return newErrors;

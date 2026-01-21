@@ -97,8 +97,9 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 console.log('[SubCharacteristicsTable] 🔍 Nombre de labels ordonnés:', orderedLabels.length);
                 console.log('[SubCharacteristicsTable] 🔍 Clés dans sousCaracteristiques:', Object.keys(sousCaracteristiques));
                 
-                // ✅ CORRECTION CRITIQUE: Mapper chaque valeur parsée à son label correspondant dans l'ordre
+                // ✅ CORRECTION CRITIQUE: Mapper chaque valeur parsée à son label correspondant dans l'ordre STRICT
                 // L'ordre est garanti par productLabels qui correspond à l'ordre des valeurs dans la chaîne parsée
+                // ✅ CRITIQUE: TOUJOURS utiliser le label à l'index correspondant pour maintenir l'alignement
                 // ✅ NOUVEAU: Vérifier que le nombre de valeurs parsées correspond au nombre de labels ordonnés
                 if (parsedValues.length !== orderedLabels.length) {
                     console.warn(`[SubCharacteristicsTable] ⚠️ INCOHÉRENCE: ${parsedValues.length} valeurs parsées mais ${orderedLabels.length} labels ordonnés`);
@@ -106,84 +107,47 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     console.warn(`[SubCharacteristicsTable] ⚠️ Labels ordonnés:`, orderedLabels);
                 }
                 
+                // ✅ CORRECTION CRITIQUE: Mapper STRICTEMENT les valeurs aux labels dans l'ordre
+                // Ne pas chercher dans d'autres labels pour éviter les décalages
+                // Chaque valeur à l'index N correspond au label à l'index N dans orderedLabels
                 parsedValues.forEach((parsedValue, index) => {
-                    let label: string;
-                    let labelFound = false;
-                    
+                    // ✅ CRITIQUE: TOUJOURS utiliser le label à l'index correspondant dans orderedLabels
                     if (index < orderedLabels.length) {
-                        // ✅ CORRECTION CRITIQUE: Vérifier d'abord si la valeur correspond au label attendu
-                        const expectedLabel = orderedLabels[index];
-                        const expectedLabelValues = sousCaracteristiques[expectedLabel];
+                        const label = orderedLabels[index];
                         
-                        // Vérifier si la valeur existe dans le tableau du label attendu
-                        if (Array.isArray(expectedLabelValues) && expectedLabelValues.includes(parsedValue)) {
-                            // ✅ La valeur correspond au label attendu, utiliser ce label
-                            label = expectedLabel;
-                            labelFound = true;
-                            console.log(`[SubCharacteristicsTable] ✅ Valeur "${parsedValue}" correspond au label attendu "${label}" [index ${index}]`);
-                        } else {
-                            // ❌ La valeur ne correspond pas au label attendu, chercher le bon label
-                            console.warn(`[SubCharacteristicsTable] ⚠️ Valeur "${parsedValue}" ne correspond pas au label attendu "${expectedLabel}" [index ${index}], recherche alternative...`);
-                            
-                            // Chercher dans tous les labels quel label contient cette valeur
-                            const matchingLabel = Object.keys(sousCaracteristiques).find(key => {
-                                const values = sousCaracteristiques[key];
-                                return Array.isArray(values) && values.includes(parsedValue);
-                            });
-                            
-                            if (matchingLabel) {
-                                label = matchingLabel;
-                                labelFound = true;
-                                console.log(`[SubCharacteristicsTable] ✅ Valeur "${parsedValue}" correspond au label "${matchingLabel}" (correction depuis "${expectedLabel}")`);
-                            } else {
-                                // Dernier recours: utiliser le label attendu même si la valeur n'y est pas
-                                // (peut arriver si l'IA a généré une nouvelle valeur)
-                                label = expectedLabel;
-                                labelFound = sousCaracteristiques.hasOwnProperty(label);
-                                console.warn(`[SubCharacteristicsTable] ⚠️ Aucun label trouvé pour valeur "${parsedValue}", utilisation label attendu: "${label}"`);
-                            }
+                        // Vérifier que le label existe dans sousCaracteristiques
+                        if (!sousCaracteristiques.hasOwnProperty(label)) {
+                            console.error(`[SubCharacteristicsTable] ❌ ERREUR: Label "${label}" n'existe pas dans sousCaracteristiques à l'index ${index}`);
+                            console.error(`[SubCharacteristicsTable] ❌ Clés disponibles:`, Object.keys(sousCaracteristiques));
+                            console.error(`[SubCharacteristicsTable] ❌ Valeur problématique: "${parsedValue}" à l'index ${index}`);
+                            // Ne pas créer de ligne avec un label invalide
+                            return;
                         }
+                        
+                        // ✅ CORRECTION: Utiliser TOUJOURS le label à l'index correspondant, même si la valeur ne correspond pas exactement
+                        // (l'IA peut avoir généré une nouvelle valeur pour ce label)
+                        const row = {
+                            label: label.trim(),
+                            value: parsedValue.trim(),
+                        };
+                        console.log(`[SubCharacteristicsTable] ✅ Ligne créée [index ${index}]: ${row.label} = ${row.value}`);
+                        initialRowsFromIA.push(row);
                     } else {
-                        // ✅ Si on a plus de valeurs que de labels, essayer de trouver un label correspondant dans sousCaracteristiques
-                        // en cherchant quelle clé contient cette valeur
-                        const matchingLabel = Object.keys(sousCaracteristiques).find(key => {
-                            const values = sousCaracteristiques[key];
-                            return Array.isArray(values) && values.includes(parsedValue);
-                        });
-                        
-                        if (matchingLabel) {
-                            label = matchingLabel;
-                            labelFound = true;
-                            console.log(`[SubCharacteristicsTable] ✅ Valeur "${parsedValue}" correspond au label "${matchingLabel}" (index hors limites)`);
-                        } else {
-                            // Dernier recours: utiliser un label générique mais descriptif
-                            label = `caractéristique_${index + 1}`;
-                            labelFound = false;
-                            console.warn(`[SubCharacteristicsTable] ⚠️ Aucun label trouvé pour valeur "${parsedValue}", utilisation label générique: "${label}"`);
-                        }
+                        // ✅ Si on a plus de valeurs que de labels, ignorer ces valeurs supplémentaires
+                        // (ne devrait pas arriver normalement, mais mieux vaut être défensif)
+                        console.warn(`[SubCharacteristicsTable] ⚠️ Valeur "${parsedValue}" à l'index ${index} ignorée (pas de label correspondant)`);
                     }
-                    
-                    // ✅ NOUVEAU: Vérifier que le label final existe dans sousCaracteristiques avant de créer la ligne
-                    if (!labelFound || !sousCaracteristiques.hasOwnProperty(label)) {
-                        console.error(`[SubCharacteristicsTable] ❌ ERREUR: Label "${label}" n'existe pas dans sousCaracteristiques après correction`);
-                        console.error(`[SubCharacteristicsTable] ❌ Clés disponibles:`, Object.keys(sousCaracteristiques));
-                        console.error(`[SubCharacteristicsTable] ❌ Valeur problématique: "${parsedValue}" à l'index ${index}`);
-                        // Ne pas créer de ligne avec un label invalide
-                        return;
-                    }
-                    
-                    const row = {
-                        label: label.trim(),
-                        value: parsedValue.trim(),
-                    };
-                    console.log(`[SubCharacteristicsTable] ✅ Ligne créée depuis valeur parsée [index ${index}]: ${row.label} = ${row.value}`);
-                    initialRowsFromIA.push(row);
                 });
                 
-                // Ajouter les labels manquants (qui n'ont pas de valeur dans la chaîne parsée)
+                // ✅ CORRECTION CRITIQUE: Ajouter les labels manquants (qui n'ont pas de valeur dans la chaîne parsée)
+                // Seulement pour les labels qui n'ont PAS déjà été ajoutés avec une valeur parsée
                 orderedLabels.forEach((label, index) => {
-                    if (index >= parsedValues.length) {
-                        // Ce label n'a pas de valeur dans la chaîne parsée, utiliser la première valeur du tableau
+                    // Vérifier si ce label a déjà été ajouté avec une valeur parsée
+                    const alreadyAdded = initialRowsFromIA.some(row => row.label === label);
+                    
+                    if (!alreadyAdded && index >= parsedValues.length) {
+                        // Ce label n'a pas de valeur dans la chaîne parsée et n'a pas encore été ajouté
+                        // Utiliser la première valeur du tableau de sousCaracteristiques
                         const values = sousCaracteristiques[label];
                         if (Array.isArray(values) && values.length > 0) {
                             const defaultValue = values[0];

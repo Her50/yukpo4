@@ -65,12 +65,32 @@ const CourierAdminScreen: React.FC = () => {
             setLoading(true);
             const statusParam = filter !== 'all' ? `?status=${filter}` : '';
             const response = await apiGet(`/api/courier/applications${statusParam}`);
-            const data = response.data || response;
             
-            if (data.applications) {
-                setApplications(data.applications);
-            } else if (Array.isArray(data)) {
-                setApplications(data);
+            // ✅ CORRECTION: Parser correctement la réponse API
+            let data;
+            if (response && typeof response === 'object') {
+                // Vérifier si la réponse a une propriété 'data'
+                if ('data' in response && response.data) {
+                    data = response.data;
+                } else {
+                    data = response;
+                }
+            } else {
+                data = response;
+            }
+            
+            // ✅ CORRECTION: Gérer toutes les structures possibles de réponse
+            if (data && typeof data === 'object') {
+                if (Array.isArray(data.applications)) {
+                    setApplications(data.applications);
+                } else if (Array.isArray(data)) {
+                    setApplications(data);
+                } else if (data.applications && Array.isArray(data.applications)) {
+                    setApplications(data.applications);
+                } else {
+                    console.warn('[CourierAdminScreen] Format de réponse inattendu:', data);
+                    setApplications([]);
+                }
             } else {
                 setApplications([]);
             }
