@@ -110,7 +110,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const hasProcessedInitialResults = useRef(false);
     const initialResultsLength = useRef(initialResults?.length || 0);
     
-    // ✅ NOUVEAU 2026-01-20: Fonction pour calculer le score de pertinence au niveau produit
+    // ✅ CORRIGÉ 2026-01-21: Fonction améliorée pour calculer le score de pertinence au niveau produit
     const calculateProductRelevanceScore = useCallback((product: any, query: string): number => {
         if (!query || !product) return 0;
         
@@ -121,14 +121,15 @@ const ResultatBesoinScreen: React.FC = () => {
         
         let score = 0;
         
-        // Extraire les textes du produit
-        const nomProduit = (product.nom_produit || product.nom || product.name || '').toLowerCase();
-        const descriptionProduit = (product.description_produit || product.description || '').toLowerCase();
-        const categorieProduit = (product.categorie_produit || product.category || '').toLowerCase();
-        const combinaisonBrute = (product.combinaison_brute || '').toLowerCase();
+        // Extraire les textes du produit (avec fallbacks multiples)
+        const productData = product.product_data || product;
+        const nomProduit = (productData.nom_produit || productData.nom || productData.name || product.nom_produit || product.nom || product.name || '').toLowerCase();
+        const descriptionProduit = (productData.description_produit || productData.description || product.description_produit || product.description || '').toLowerCase();
+        const categorieProduit = (productData.categorie_produit || productData.category || product.categorie_produit || product.category || '').toLowerCase();
+        const combinaisonBrute = (productData.combinaison_brute || product.combinaison_brute || '').toLowerCase();
         
-        // Extraire les sous-caractéristiques
-        const sousCaracteristiques = product.sous_caracteristiques || {};
+        // Extraire les sous-caractéristiques (marque, modèle, etc.)
+        const sousCaracteristiques = productData.sous_caracteristiques || product.sous_caracteristiques || {};
         const allCharacteristics = Object.values(sousCaracteristiques)
             .flat()
             .map((v: any) => String(v).toLowerCase())
@@ -137,22 +138,29 @@ const ResultatBesoinScreen: React.FC = () => {
         // Construire un texte complet pour la recherche
         const allProductText = `${nomProduit} ${descriptionProduit} ${categorieProduit} ${combinaisonBrute} ${allCharacteristics}`.toLowerCase();
         
-        // Score pour correspondance exacte de la requête complète
-        if (allProductText.includes(queryLower)) {
+        // ✅ AMÉLIORÉ: Score pour correspondance exacte de la requête complète dans le nom
+        if (nomProduit.includes(queryLower)) {
+            score += 100; // Bonus très élevé pour correspondance exacte dans le nom
+        } else if (allProductText.includes(queryLower)) {
             score += 50;
         }
         
-        // Score pour chaque mot-clé de la requête
+        // ✅ AMÉLIORÉ: Score pondéré pour chaque mot-clé de la requête
         queryWords.forEach(word => {
             if (word.length < 2) return; // Ignorer les mots trop courts
             
-            // Correspondance exacte dans le nom (poids élevé)
+            // ✅ CORRIGÉ: Correspondance dans le nom (priorité absolue)
             if (nomProduit === word) {
-                score += 40;
+                score += 50; // Correspondance exacte d'un mot dans le nom
             } else if (nomProduit.startsWith(word)) {
-                score += 30;
+                score += 40; // Commence par le mot
             } else if (nomProduit.includes(word)) {
-                score += 20;
+                score += 30; // Contient le mot
+            }
+            
+            // ✅ AMÉLIORÉ: Correspondance dans les sous-caractéristiques (marque, modèle, etc.) - important pour "Samsonite"
+            if (allCharacteristics.includes(word)) {
+                score += 25; // Bon score pour correspondance de marque/modèle
             }
             
             // Correspondance dans la description
@@ -160,16 +168,21 @@ const ResultatBesoinScreen: React.FC = () => {
                 score += 10;
             }
             
-            // Correspondance dans les sous-caractéristiques (marque, modèle, etc.)
-            if (allCharacteristics.includes(word)) {
-                score += 15;
-            }
-            
             // Correspondance dans la combinaison brute
             if (combinaisonBrute.includes(word)) {
                 score += 12;
             }
         });
+        
+        // ✅ NOUVEAU: Bonus pour correspondance de plusieurs mots-clés (ex: "Sac", "au", "dos", "Samsonite")
+        const matchingWords = queryWords.filter(word => 
+            word.length >= 2 && allProductText.includes(word)
+        );
+        if (matchingWords.length === queryWords.length) {
+            score += 30; // Bonus si tous les mots correspondent
+        } else if (matchingWords.length >= queryWords.length / 2) {
+            score += 15; // Bonus partiel si au moins la moitié correspond
+        }
         
         return score;
     }, []);

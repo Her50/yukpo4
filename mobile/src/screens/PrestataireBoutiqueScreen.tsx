@@ -64,6 +64,15 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
 
       // 2. Charger tous les services du prestataire
       const servicesResponse = await apiGet(`/api/services/user/${prestataireUserId}`);
+      console.log(`🔍 [PrestataireBoutiqueScreen] Réponse services pour prestataire ${prestataireUserId}:`, {
+        success: servicesResponse.success,
+        hasData: !!servicesResponse.data,
+        dataType: typeof servicesResponse.data,
+        isArray: Array.isArray(servicesResponse.data),
+        responseKeys: servicesResponse.data ? Object.keys(servicesResponse.data) : [],
+        rawResponse: JSON.stringify(servicesResponse).substring(0, 500)
+      });
+      
       // ✅ Gérer différents formats de réponse
       let servicesData: any[] = [];
       if (servicesResponse.success && servicesResponse.data) {
@@ -72,9 +81,21 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
           : (Array.isArray(servicesResponse.data.data) ? servicesResponse.data.data : []);
       } else if (Array.isArray(servicesResponse.data)) {
         servicesData = servicesResponse.data;
+      } else if (servicesResponse.data && typeof servicesResponse.data === 'object') {
+        // ✅ CORRIGÉ 2026-01-21: Vérifier aussi servicesResponse.data.data directement
+        if (Array.isArray(servicesResponse.data.data)) {
+          servicesData = servicesResponse.data.data;
+        } else if (Array.isArray(servicesResponse.data.services)) {
+          servicesData = servicesResponse.data.services;
+        } else if (Array.isArray(servicesResponse.data.resultats)) {
+          servicesData = servicesResponse.data.resultats;
+        }
       }
+      
       setServices(servicesData);
-      console.log(`✅ [PrestataireBoutiqueScreen] ${servicesData.length} services chargés pour prestataire ${prestataireUserId}`);
+      console.log(`✅ [PrestataireBoutiqueScreen] ${servicesData.length} services chargés pour prestataire ${prestataireUserId}:`, 
+        servicesData.map((s: any) => ({ id: s.id, hasData: !!s.data, user_id: s.user_id }))
+      );
 
       // 3. Extraire tous les produits de tous les services
       const allProducts: any[] = [];
@@ -83,15 +104,27 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       // Charger les produits pour chaque service
       const productPromises = serviceIds.map(async (serviceId: number) => {
         try {
+          console.log(`🔍 [PrestataireBoutiqueScreen] Chargement produits pour service ${serviceId}...`);
           const productsResponse = await apiGet(`/api/services/${serviceId}/products`);
-          if (productsResponse.success && Array.isArray(productsResponse.data)) {
-            return productsResponse.data.map((productFromAPI: any) => {
+          
+          console.log(`📦 [PrestataireBoutiqueScreen] Réponse produits service ${serviceId}:`, {
+            success: productsResponse.success,
+            hasData: !!productsResponse.data,
+            isArray: Array.isArray(productsResponse.data),
+            dataLength: Array.isArray(productsResponse.data) ? productsResponse.data.length : 0,
+            error: productsResponse.error
+          });
+          
+          if (productsResponse.success && Array.isArray(productsResponse.data) && productsResponse.data.length > 0) {
+            const mappedProducts = productsResponse.data.map((productFromAPI: any) => {
               const productData = productFromAPI.product_data || productFromAPI;
               const service = servicesData.find((s: any) => s.id === serviceId);
 
-              return {
+              const transformedProduct = {
                 ...productData,
-                id: productFromAPI.id || productFromAPI.product_id,
+                // ✅ CORRIGÉ 2026-01-21: Préserver product_data pour ProductCard
+                product_data: productData,
+                id: productFromAPI.id || productFromAPI.product_id || `${serviceId}_${productFromAPI.product_index}`,
                 product_index: productFromAPI.product_index,
                 product_name: productFromAPI.product_name || productData.nom_produit || productData.nom || productData.name,
                 product_type: productFromAPI.product_type,
@@ -103,17 +136,40 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
                 _service: service,
                 _prestataire: prestataireResponse.data,
               };
+              
+              console.log(`✅ [PrestataireBoutiqueScreen] Produit transformé:`, {
+                id: transformedProduct.id,
+                nom: transformedProduct.nom,
+                _serviceId: transformedProduct._serviceId,
+                hasProductData: !!transformedProduct.product_data
+              });
+              
+              return transformedProduct;
             });
+            
+            console.log(`✅ [PrestataireBoutiqueScreen] ${mappedProducts.length} produits mappés pour service ${serviceId}`);
+            return mappedProducts;
+          } else {
+            console.log(`⚠️ [PrestataireBoutiqueScreen] Aucun produit trouvé pour service ${serviceId}`);
           }
           return [];
-        } catch (error) {
-          console.warn(`[PrestataireBoutiqueScreen] Erreur chargement produits service ${serviceId}:`, error);
+        } catch (error: any) {
+          console.error(`❌ [PrestataireBoutiqueScreen] Erreur chargement produits service ${serviceId}:`, error?.message || error);
           return [];
         }
       });
 
       const productsArrays = await Promise.all(productPromises);
       const extractedProducts = productsArrays.flat();
+      
+      console.log(`📊 [PrestataireBoutiqueScreen] Total produits extraits: ${extractedProducts.length}`, {
+        servicesProcessed: serviceIds.length,
+        productsPerService: productsArrays.map((arr, idx) => ({ serviceId: serviceIds[idx], count: arr.length }))
+      });
+
+      if (extractedProducts.length === 0) {
+        console.warn(`⚠️ [PrestataireBoutiqueScreen] Aucun produit trouvé pour prestataire ${prestataireUserId} (${servicesData.length} services)`);
+      }
 
       // Calculer la distance pour chaque produit
       const userGPS = location?.coords ? `${location.coords.latitude},${location.coords.longitude}` : null;
@@ -159,6 +215,21 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
 
       setProducts(productsWithDistance);
       console.log(`✅ [PrestataireBoutiqueScreen] ${productsWithDistance.length} produits chargés pour prestataire ${prestataireUserId}`);
+      
+      // ✅ DEBUG 2026-01-21: Log final des produits
+      if (productsWithDistance.length > 0) {
+        console.log(`📦 [PrestataireBoutiqueScreen] Détails des produits chargés:`, 
+          productsWithDistance.map((p: any) => ({
+            id: p.id,
+            nom: p.nom || p.name || p.nom_produit,
+            _serviceId: p._serviceId,
+            hasService: !!p._service,
+            hasProductData: !!p.product_data
+          }))
+        );
+      } else {
+        console.warn(`⚠️ [PrestataireBoutiqueScreen] AUCUN produit trouvé pour prestataire ${prestataireUserId} après traitement`);
+      }
     } catch (error: any) {
       console.error('[PrestataireBoutiqueScreen] Erreur chargement données:', error);
       setError(error.message || 'Erreur lors du chargement des données');
@@ -185,6 +256,15 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
   }, [location?.coords?.latitude, location?.coords?.longitude]);
 
   const renderProductCard = useCallback((product: any) => {
+    console.log(`🎨 [PrestataireBoutiqueScreen] Rendu ProductCard pour:`, {
+      productId: product.id,
+      productNom: product.nom || product.name || product.nom_produit,
+      hasService: !!product._service,
+      serviceId: product._service?.id,
+      hasPrestataire: !!(product._prestataire || prestataire),
+      hasProductData: !!product.product_data
+    });
+    
     return (
       <ProductCard
         key={`product-${product._serviceId}-${product.product_index || product.id}`}
@@ -322,7 +402,17 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
         ) : (
           <FlatList
             data={products}
-            renderItem={({ item }) => renderProductCard(item)}
+            renderItem={({ item, index }) => {
+              // ✅ DEBUG 2026-01-21: Log chaque rendu de produit
+              if (index === 0) {
+                console.log(`🖥️ [PrestataireBoutiqueScreen] Premier produit rendu:`, {
+                  id: item.id,
+                  nom: item.nom || item.name || item.nom_produit,
+                  totalProducts: products.length
+                });
+              }
+              return renderProductCard(item);
+            }}
             keyExtractor={(item, index) => 
               `product-${item._serviceId}-${item.product_index || item.id || index}`
             }
@@ -335,6 +425,15 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
               />
             }
             showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <SafeIcon name="package" size={64} color={modernColors.textSecondary} />
+                <Text style={styles.emptyText}>Aucun produit disponible</Text>
+                <Text style={styles.emptySubtext}>
+                  Ce prestataire n'a pas encore de produits en ligne
+                </Text>
+              </View>
+            }
           />
         )}
       </SafeNativeView>

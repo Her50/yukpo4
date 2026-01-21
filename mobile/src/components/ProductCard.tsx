@@ -310,31 +310,49 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       ? splitWithFallback(rawLocationVector, ',').filter((item: string) => item !== 'false' && item.trim() !== '')
       : [];
 
-  // ✅ CORRIGÉ 2026-01-20: Améliorer l'extraction de la localisation (quartier/ville)
-  // Priorité 1: chosen_location depuis productData
-  // Priorité 2: locationVector (peut contenir quartier, ville, etc.)
-  // Priorité 3: adresse depuis productData
-  // Priorité 4: adresse depuis service.data
-  // Priorité 5: lieu_produit depuis service.data (composants quartier/ville)
-  const chosenLocationRaw = productData.chosen_location ||
-    (locationVector.length > 0 ? locationVector.join(', ') : null) ||
+  // ✅ CORRIGÉ 2026-01-21: Améliorer l'extraction de la localisation (quartier/ville) - Priorité aux composants
+  // Priorité 1: lieu_produit.composants (quartier, ville) - FORMAT PREFERE
+  // Priorité 2: chosen_location depuis productData
+  // Priorité 3: locationVector (peut contenir quartier, ville, etc.)
+  // Priorité 4: adresse depuis productData ou service.data
+  const lieuProduitComposants = service?.data?.lieu_produit?.valeur?.composants 
+    || service?.data?.lieu_produit?.valeur?.valeur?.components
+    || productData.lieu_produit?.valeur?.composants
+    || productData.lieu_produit?.valeur?.valeur?.components;
+  
+  // ✅ PRIORITAIRE: Extraire quartier et ville depuis les composants
+  const quartier = lieuProduitComposants?.quartier 
+    ? filterBooleanValue(lieuProduitComposants.quartier, '')
+    : null;
+  const ville = lieuProduitComposants?.ville 
+    ? filterBooleanValue(lieuProduitComposants.ville, '')
+    : null;
+  
+  // Construire la localisation préférée : "quartier, ville" ou juste l'un des deux
+  let locationDisplay = '';
+  if (quartier && ville) {
+    locationDisplay = `${quartier}, ${ville}`;
+  } else if (quartier) {
+    locationDisplay = quartier;
+  } else if (ville) {
+    locationDisplay = ville;
+  }
+  
+  // Fallback si pas de composants : utiliser les autres sources
+  const chosenLocationRaw = locationDisplay ||
+    productData.chosen_location ||
+    (locationVector.length > 0 ? locationVector.filter((item: any) => {
+      const itemStr = filterBooleanValue(item, '');
+      // Éviter d'afficher le pays dans la localisation principale
+      return itemStr && !itemStr.toLowerCase().includes('cameroun') && !itemStr.toLowerCase().includes('cameroon');
+    }).join(', ') : null) ||
     productData.adresse ||
     productData.address ||
     service?.data?.adresse?.valeur ||
     service?.data?.adresse_service?.valeur ||
-    (service?.data?.lieu_produit?.valeur?.composants ? 
-      [service.data.lieu_produit.valeur.composants.quartier, 
-       service.data.lieu_produit.valeur.composants.ville]
-        .filter(Boolean)
-        .join(', ') : null) ||
-    (service?.data?.lieu_produit?.valeur?.valeur?.components ?
-      [service.data.lieu_produit.valeur.valeur.components.quartier,
-       service.data.lieu_produit.valeur.valeur.components.ville]
-        .filter(Boolean)
-        .join(', ') : null) ||
     '';
   
-  // ✅ CORRIGÉ 2026-01-20: Filtrer strictement les valeurs booléennes, "false" string, null, undefined
+  // ✅ CORRIGÉ 2026-01-21: Filtrer strictement les valeurs booléennes, "false" string, null, undefined
   const chosenLocation = (typeof chosenLocationRaw === 'string' && 
                           chosenLocationRaw !== 'false' && 
                           chosenLocationRaw !== false &&
@@ -342,27 +360,31 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     ? chosenLocationRaw.trim()
     : '';
   
-  // ✅ DEBUG 2026-01-20: Logger l'extraction de la localisation
+  // ✅ DEBUG 2026-01-21: Logger l'extraction de la localisation avec quartier/ville
   useEffect(() => {
     if (chosenLocation) {
       console.log('[ProductCard] 📍 Localisation extraite:', {
         chosenLocation,
+        quartier,
+        ville,
+        hasLieuProduitComposants: !!lieuProduitComposants,
         hasLocationVector: locationVector.length > 0,
         locationVector,
         hasProductDataChosenLocation: !!productData.chosen_location,
         hasServiceAdresse: !!service?.data?.adresse?.valeur,
-        hasLieuProduit: !!service?.data?.lieu_produit?.valeur
       });
     } else {
       console.log('[ProductCard] ⚠️ Aucune localisation trouvée:', {
+        quartier,
+        ville,
+        hasLieuProduitComposants: !!lieuProduitComposants,
         hasProductDataChosenLocation: !!productData.chosen_location,
         locationVectorLength: locationVector.length,
         hasProductDataAdresse: !!productData.adresse,
         hasServiceAdresse: !!service?.data?.adresse?.valeur,
-        hasLieuProduit: !!service?.data?.lieu_produit?.valeur
       });
     }
-  }, [chosenLocation, locationVector.length]);
+  }, [chosenLocation, quartier, ville, locationVector.length]);
 
   // ✅ CORRIGÉ 2026-01-20: Transformer variation_prix en variants si nécessaire
   // Vérifier si variation_prix existe et n'a pas encore été transformé
@@ -1401,7 +1423,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   </TouchableOpacity>
                 )}
                 
-                {/* Adresse avec drapeau - Espacement optimal */}
+                {/* Adresse avec drapeau - Quartier/Ville + drapeau collé */}
                 {(chosenLocation || countryFlag) && (
                   <View style={styles.addressRowCompact}>
                     {chosenLocation && (
@@ -1410,9 +1432,14 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                         <Text style={styles.addressTextCompact} numberOfLines={1}>
                           {chosenLocation}
                         </Text>
+                        {/* ✅ CORRIGÉ 2026-01-21: Drapeau juste après quartier/ville sans espacement */}
+                        {countryFlag && countryFlag !== '🌍' && (
+                          <Text style={styles.addressFlagCompact}>{countryFlag}</Text>
+                        )}
                       </>
                     )}
-                    {countryFlag && countryFlag !== '🌍' && (
+                    {/* Si pas de localisation mais drapeau disponible */}
+                    {!chosenLocation && countryFlag && countryFlag !== '🌍' && (
                       <Text style={styles.addressFlagCompact}>{countryFlag}</Text>
                     )}
                   </View>
@@ -1905,7 +1932,7 @@ const styles = StyleSheet.create({
   },
   addressFlagCompact: {
     fontSize: 14,
-    marginLeft: 2,
+    marginLeft: 4, // ✅ CORRIGÉ 2026-01-21: Réduire l'espacement pour que le drapeau soit juste après quartier/ville
   },
   // ✅ OPTIMISÉ 2026-01-14: Actions - Boutons bien visibles avec espacement uniforme
   actionsRow: {

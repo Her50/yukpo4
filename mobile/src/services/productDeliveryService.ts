@@ -4,7 +4,7 @@
  */
 
 import { API_BASE_URL } from '../config/api';
-import { getToken } from '../lib/yukpoaclient';
+import SafeStorage from '../utils/safeStorage';
 
 export interface ProductDeliveryConfig {
     id: number;
@@ -27,7 +27,15 @@ export const productDeliveryService = {
      * Retourne : is_immediately_available, preparation_time_minutes, availability_days
      */
     getDeliveryConfig: async (serviceId: number, productIndex: number): Promise<ProductDeliveryConfig | null> => {
-        const token = await getToken();
+        // ✅ CORRIGÉ 2026-01-21: Utiliser SafeStorage directement pour récupérer le token
+        let token: string | null = null;
+        try {
+            token = await SafeStorage.getItem('auth_token');
+        } catch (tokenError: any) {
+            console.warn('[productDeliveryService] Erreur récupération token:', tokenError?.message || tokenError);
+            throw new Error('Token d\'authentification manquant');
+        }
+        
         if (!token) {
             throw new Error('Token d\'authentification manquant');
         }
