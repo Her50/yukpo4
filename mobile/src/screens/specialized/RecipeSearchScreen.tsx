@@ -33,7 +33,7 @@ const RecipeSearchScreen: React.FC = () => {
         setSearchQuery(text);
     }, []);
 
-    const handleSearch = async () => {
+    const handleSearch = React.useCallback(async () => {
         // ✅ CORRECTION CRITIQUE: Utiliser directement searchQuery (StableTextInput synchronise automatiquement)
         const queryToUse = searchQuery.trim();
         
@@ -42,10 +42,20 @@ const RecipeSearchScreen: React.FC = () => {
             return;
         }
 
-        try {
-            setLoading(true);
+        // ✅ CORRECTION CRITIQUE: Regrouper les mises à jour d'état pour éviter les re-renders multiples
+        // Utiliser React.startTransition pour les mises à jour non urgentes
+        React.startTransition(() => {
             setGeneratedRecipe(null); // Réinitialiser la recette précédente
             setShowRecipeDetails(false); // Fermer le modal précédent
+        });
+        
+        // ✅ CORRECTION CRITIQUE: Mettre à jour loading immédiatement mais de manière stable
+        // Utiliser requestAnimationFrame pour synchroniser avec le cycle de rendu et éviter les tremblements
+        requestAnimationFrame(() => {
+            setLoading(true);
+        });
+
+        try {
 
             console.log('[RecipeSearch] Début génération recette:', queryToUse);
 
@@ -117,10 +127,16 @@ const RecipeSearchScreen: React.FC = () => {
 
             if (recipe && recipe.recipe_name) {
                 console.log('[RecipeSearch] ✅ Recette générée avec succès:', recipe.recipe_name);
-                setGeneratedRecipe(recipe);
-                setShowRecipeDetails(true);
-                // ✅ CORRECTION CRITIQUE: Réinitialiser l'état (StableTextInput se synchronisera automatiquement)
-                setSearchQuery('');
+                // ✅ CORRECTION CRITIQUE: Regrouper les mises à jour d'état pour éviter les re-renders multiples
+                // Utiliser requestAnimationFrame pour synchroniser les mises à jour avec le cycle de rendu
+                requestAnimationFrame(() => {
+                    React.startTransition(() => {
+                        setGeneratedRecipe(recipe);
+                        setShowRecipeDetails(true);
+                        // ✅ CORRECTION CRITIQUE: Réinitialiser l'état (StableTextInput se synchronisera automatiquement)
+                        setSearchQuery('');
+                    });
+                });
                 } else if (response && !response.success) {
                 const errorMsg = response.error || response.message || 'Impossible de générer la recette';
                 console.error('[RecipeSearch] ❌ Erreur dans la réponse:', errorMsg);
@@ -153,9 +169,12 @@ const RecipeSearchScreen: React.FC = () => {
 
             Alert.alert('Erreur', errorMessage);
         } finally {
-            setLoading(false);
+            // ✅ CORRECTION CRITIQUE: Mettre à jour loading de manière stable avec requestAnimationFrame
+            requestAnimationFrame(() => {
+                setLoading(false);
+            });
         }
-    };
+    }, [searchQuery]);
 
 
     return (
@@ -192,13 +211,12 @@ const RecipeSearchScreen: React.FC = () => {
                     </View>
                 </NativeCard>
 
-                {loading && (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Génération de la recette en cours...</Text>
-                        <Text style={styles.loadingSubtext}>Cela peut prendre jusqu'à 90 secondes</Text>
-                    </View>
-                )}
+                {/* ✅ CORRECTION CRITIQUE: Utiliser opacity au lieu de conditionnel pour éviter les changements de layout */}
+                <View style={[styles.loadingContainer, { opacity: loading ? 1 : 0, pointerEvents: loading ? 'auto' : 'none' }]}>
+                    <ActivityIndicator size="large" color={modernColors.primary} animating={loading} />
+                    <Text style={styles.loadingText}>Génération de la recette en cours...</Text>
+                    <Text style={styles.loadingSubtext}>Cela peut prendre jusqu'à 90 secondes</Text>
+                </View>
             </View>
 
             {/* ✅ NOUVEAU: Modal pour afficher la recette générée (comme dans MenuWeekCalendarScreen) */}
@@ -434,6 +452,7 @@ const styles = StyleSheet.create({
     },
     form: {
         padding: 16,
+        position: 'relative', // ✅ CORRECTION CRITIQUE: Position relative pour le loadingContainer en absolute
     },
     searchCard: {
         marginBottom: 16,
@@ -458,6 +477,8 @@ const styles = StyleSheet.create({
     loadingContainer: {
         alignItems: 'center',
         padding: 24,
+        minHeight: 120, // ✅ CORRECTION CRITIQUE: Hauteur minimale fixe pour éviter les changements de layout
+        justifyContent: 'center', // ✅ CORRECTION CRITIQUE: Centrer verticalement
     },
     loadingText: {
         marginTop: 12,
