@@ -74,95 +74,127 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             console.log('[SubCharacteristicsTable] 🔍 valeur parsée:', valeur);
             console.log('[SubCharacteristicsTable] 🔍 productLabels:', productLabels);
             
-            // ✅ NOUVEAU: Si on a une valeur parsée, l'utiliser pour mapper correctement les labels et valeurs
+            // ✅ CORRECTION MAJEURE: Ne PAS utiliser la chaîne valeur pour mapper les valeurs aux labels
+            // Car la chaîne valeur peut contenir des valeurs incohérentes ou des valeurs supplémentaires
+            // À la place, utiliser DIRECTEMENT sous_caracteristiques et productLabels
+            
+            // Déterminer l'ordre des labels
+            // Priorité 1: productLabels (ordre garanti depuis l'IA) - CRITIQUE pour l'alignement
+            // Priorité 2: Ordre des clés dans sousCaracteristiques
+            // ✅ CORRECTION CRITIQUE: Utiliser productLabels dans l'ordre exact pour garantir l'alignement
+            // ✅ NOUVEAU: Filtrer productLabels pour ne garder que les labels qui existent dans sousCaracteristiques
+            // ✅ NOUVEAU: Supprimer les doublons de labels pour éviter les répétitions
+            let orderedLabels: string[] = [];
+            if (productLabels && Array.isArray(productLabels) && productLabels.length > 0) {
+                const seenLabels = new Set<string>();
+                orderedLabels = productLabels
+                    .filter(label => label && typeof label === 'string' && label.trim().length > 0)
+                    .filter(label => {
+                        const trimmedLabel = label.trim();
+                        // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
+                        if (!sousCaracteristiques.hasOwnProperty(trimmedLabel)) {
+                            console.warn(`[SubCharacteristicsTable] ⚠️ Label "${trimmedLabel}" ignoré (n'existe pas dans sousCaracteristiques)`);
+                            return false;
+                        }
+                        // ✅ NOUVEAU: Supprimer les doublons
+                        if (seenLabels.has(trimmedLabel)) {
+                            console.warn(`[SubCharacteristicsTable] ⚠️ Label dupliqué ignoré: "${trimmedLabel}"`);
+                            return false;
+                        }
+                        seenLabels.add(trimmedLabel);
+                        return true;
+                    });
+            }
+            
+            // Si aucun label valide dans productLabels, utiliser les clés de sousCaracteristiques (sans doublons)
+            if (orderedLabels.length === 0) {
+                orderedLabels = Array.from(new Set(Object.keys(sousCaracteristiques)));
+                console.log('[SubCharacteristicsTable] 🔍 Aucun label valide dans productLabels, utilisation des clés de sousCaracteristiques (sans doublons):', orderedLabels);
+            }
+            
+            console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés depuis productLabels:', orderedLabels);
+            console.log('[SubCharacteristicsTable] 🔍 Clés dans sousCaracteristiques:', Object.keys(sousCaracteristiques));
+            
+            // ✅ NOUVEAU: Si on a une valeur parsée ET qu'elle est cohérente, l'utiliser pour pré-remplir les valeurs préférées par l'IA
+            // Mais TOUJOURS vérifier que la valeur existe dans le tableau de sousCaracteristiques[label]
+            let parsedValues: string[] = [];
             if (valeur && valeur.trim().length > 0) {
-                // Parser la valeur en utilisant le séparateur
-                const parsedValues = valeur.split(separateur).map(v => v.trim()).filter(v => v.length > 0);
-                console.log('[SubCharacteristicsTable] 🔍 Valeurs parsées:', parsedValues);
-                
-                // Déterminer l'ordre des labels
-                // Priorité 1: productLabels (ordre garanti depuis l'IA) - CRITIQUE pour l'alignement
-                // Priorité 2: Ordre des clés dans sousCaracteristiques
-                // ✅ CORRECTION CRITIQUE: Utiliser productLabels dans l'ordre exact pour garantir l'alignement
-                // ✅ NOUVEAU: Filtrer productLabels pour ne garder que les labels qui existent dans sousCaracteristiques
-                // Cela garantit que chaque label correspond à une clé valide dans sousCaracteristiques
-                const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-                    ? productLabels
-                        .filter(label => label && typeof label === 'string' && label.trim().length > 0)
-                        .filter(label => sousCaracteristiques.hasOwnProperty(label)) // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
-                    : Object.keys(sousCaracteristiques);
-                
-                console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés depuis productLabels:', orderedLabels);
+                parsedValues = valeur.split(separateur).map(v => v.trim()).filter(v => v.length > 0);
+                console.log('[SubCharacteristicsTable] 🔍 Valeurs parsées depuis valeur:', parsedValues);
                 console.log('[SubCharacteristicsTable] 🔍 Nombre de valeurs parsées:', parsedValues.length);
                 console.log('[SubCharacteristicsTable] 🔍 Nombre de labels ordonnés:', orderedLabels.length);
-                console.log('[SubCharacteristicsTable] 🔍 Clés dans sousCaracteristiques:', Object.keys(sousCaracteristiques));
                 
-                // ✅ CORRECTION CRITIQUE: Mapper chaque valeur parsée à son label correspondant dans l'ordre STRICT
-                // L'ordre est garanti par productLabels qui correspond à l'ordre des valeurs dans la chaîne parsée
-                // ✅ CRITIQUE: TOUJOURS utiliser le label à l'index correspondant pour maintenir l'alignement
-                // ✅ NOUVEAU: Vérifier que le nombre de valeurs parsées correspond au nombre de labels ordonnés
+                // Vérifier si la valeur parsée est cohérente (même nombre de valeurs que de labels)
                 if (parsedValues.length !== orderedLabels.length) {
-                    console.warn(`[SubCharacteristicsTable] ⚠️ INCOHÉRENCE: ${parsedValues.length} valeurs parsées mais ${orderedLabels.length} labels ordonnés`);
+                    console.warn(`[SubCharacteristicsTable] ⚠️ INCOHÉRENCE DÉTECTÉE: ${parsedValues.length} valeurs parsées mais ${orderedLabels.length} labels`);
                     console.warn(`[SubCharacteristicsTable] ⚠️ Valeurs parsées:`, parsedValues);
                     console.warn(`[SubCharacteristicsTable] ⚠️ Labels ordonnés:`, orderedLabels);
+                    console.warn(`[SubCharacteristicsTable] ⚠️ IGNORATION de la chaîne valeur - utilisation directe de sous_caracteristiques`);
+                    parsedValues = []; // Ignorer la chaîne valeur si elle est incohérente
+                }
+            }
+            
+            // ✅ CORRECTION CRITIQUE: Parcourir les labels dans l'ordre garanti par productLabels
+            // Pour chaque label, utiliser la valeur de la chaîne parsée SI elle existe dans sousCaracteristiques[label]
+            // Sinon, utiliser la première valeur de sousCaracteristiques[label]
+            orderedLabels.forEach((label, index) => {
+                const values = sousCaracteristiques[label];
+                if (!Array.isArray(values) || values.length === 0) {
+                    console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" [index ${index}] - Aucune valeur disponible dans sousCaracteristiques`);
+                    // Créer une ligne vide pour permettre l'édition
+                    const row = {
+                        label: label.trim(),
+                        value: '',
+                    };
+                    initialRowsFromIA.push(row);
+                    return;
                 }
                 
-                // ✅ CORRECTION CRITIQUE: Mapper STRICTEMENT les valeurs aux labels dans l'ordre
-                // Ne pas chercher dans d'autres labels pour éviter les décalages
-                // Chaque valeur à l'index N correspond au label à l'index N dans orderedLabels
-                parsedValues.forEach((parsedValue, index) => {
-                    // ✅ CRITIQUE: TOUJOURS utiliser le label à l'index correspondant dans orderedLabels
-                    if (index < orderedLabels.length) {
-                        const label = orderedLabels[index];
-                        
-                        // Vérifier que le label existe dans sousCaracteristiques
-                        if (!sousCaracteristiques.hasOwnProperty(label)) {
-                            console.error(`[SubCharacteristicsTable] ❌ ERREUR: Label "${label}" n'existe pas dans sousCaracteristiques à l'index ${index}`);
-                            console.error(`[SubCharacteristicsTable] ❌ Clés disponibles:`, Object.keys(sousCaracteristiques));
-                            console.error(`[SubCharacteristicsTable] ❌ Valeur problématique: "${parsedValue}" à l'index ${index}`);
-                            // Ne pas créer de ligne avec un label invalide
-                            return;
-                        }
-                        
-                        // ✅ CORRECTION: Utiliser TOUJOURS le label à l'index correspondant, même si la valeur ne correspond pas exactement
-                        // (l'IA peut avoir généré une nouvelle valeur pour ce label)
-                        const row = {
-                            label: label.trim(),
-                            value: parsedValue.trim(),
-                        };
-                        console.log(`[SubCharacteristicsTable] ✅ Ligne créée [index ${index}]: ${row.label} = ${row.value}`);
-                        initialRowsFromIA.push(row);
+                // ✅ NOUVEAU: Si on a une valeur parsée cohérente, vérifier si la valeur à l'index correspond existe dans le tableau
+                let selectedValue: string | null = null;
+                if (parsedValues.length > 0 && index < parsedValues.length) {
+                    const parsedValue = parsedValues[index];
+                    // Vérifier que la valeur parsée existe dans le tableau de sousCaracteristiques[label]
+                    if (values.includes(parsedValue)) {
+                        selectedValue = parsedValue;
+                        console.log(`[SubCharacteristicsTable] ✅ Valeur parsée trouvée pour "${label}" [index ${index}]: "${parsedValue}"`);
                     } else {
-                        // ✅ Si on a plus de valeurs que de labels, ignorer ces valeurs supplémentaires
-                        // (ne devrait pas arriver normalement, mais mieux vaut être défensif)
-                        console.warn(`[SubCharacteristicsTable] ⚠️ Valeur "${parsedValue}" à l'index ${index} ignorée (pas de label correspondant)`);
+                        console.warn(`[SubCharacteristicsTable] ⚠️ Valeur parsée "${parsedValue}" pour "${label}" [index ${index}] n'existe pas dans sousCaracteristiques. Valeurs disponibles:`, values);
+                        // Continuer pour utiliser la première valeur à la place
                     }
-                });
+                }
                 
-                // ✅ CORRECTION CRITIQUE: Ajouter les labels manquants (qui n'ont pas de valeur dans la chaîne parsée)
-                // Seulement pour les labels qui n'ont PAS déjà été ajoutés avec une valeur parsée
-                orderedLabels.forEach((label, index) => {
-                    // Vérifier si ce label a déjà été ajouté avec une valeur parsée
-                    const alreadyAdded = initialRowsFromIA.some(row => row.label === label);
-                    
-                    if (!alreadyAdded && index >= parsedValues.length) {
-                        // Ce label n'a pas de valeur dans la chaîne parsée et n'a pas encore été ajouté
-                        // Utiliser la première valeur du tableau de sousCaracteristiques
-                        const values = sousCaracteristiques[label];
-                        if (Array.isArray(values) && values.length > 0) {
-                            const defaultValue = values[0];
-                            if (defaultValue && typeof defaultValue === 'string' && defaultValue.trim().length > 0) {
-                                const row = {
-                                    label: label.trim(),
-                                    value: defaultValue.trim(),
-                                };
-                                console.log(`[SubCharacteristicsTable] ✅ Ligne créée depuis sousCaracteristiques (label manquant): ${row.label} = ${row.value}`);
-                                initialRowsFromIA.push(row);
-                            }
-                        }
-                    }
-                });
-            } else {
+                // Si aucune valeur parsée valide, utiliser la première valeur du tableau
+                if (!selectedValue) {
+                    selectedValue = values[0];
+                    console.log(`[SubCharacteristicsTable] ✅ Utilisation première valeur pour "${label}" [index ${index}]: "${selectedValue}"`);
+                }
+                
+                if (selectedValue && typeof selectedValue === 'string' && selectedValue.trim().length > 0) {
+                    const row = {
+                        label: label.trim(),
+                        value: selectedValue.trim(),
+                    };
+                    console.log(`[SubCharacteristicsTable] ✅ Ligne créée [index ${index}]: ${row.label} = ${row.value}`);
+                    initialRowsFromIA.push(row);
+                } else {
+                    console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" [index ${index}] - Aucune valeur valide trouvée`);
+                    // Créer une ligne vide pour permettre l'édition
+                    const row = {
+                        label: label.trim(),
+                        value: '',
+                    };
+                    initialRowsFromIA.push(row);
+                }
+            });
+            
+            // ✅ CORRECTION: Si on avait une valeur parsée mais qu'elle était incohérente, logger un avertissement
+            if (valeur && valeur.trim().length > 0 && parsedValues.length === 0) {
+                console.warn(`[SubCharacteristicsTable] ⚠️ Chaîne valeur ignorée car incohérente. Utilisation directe de sous_caracteristiques.`);
+            }
+            
+            // ✅ SUPPRIMÉ: L'ancienne logique qui tentait de mapper la chaîne valeur aux labels
+            // Cette logique causait des incohérences car la chaîne valeur peut contenir des valeurs supplémentaires ou des valeurs qui ne correspondent pas à l'ordre des labels
                 // ✅ FALLBACK: Si pas de valeur parsée, utiliser l'ancienne méthode (première valeur de chaque tableau)
                 // Mais utiliser productLabels pour l'ordre si disponible
                 // ✅ CORRECTION CRITIQUE: Utiliser productLabels dans l'ordre exact pour garantir l'alignement

@@ -66,36 +66,56 @@ const CourierAdminScreen: React.FC = () => {
             const statusParam = filter !== 'all' ? `?status=${filter}` : '';
             const response = await apiGet(`/api/courier/applications${statusParam}`);
             
-            // ✅ CORRECTION: Parser correctement la réponse API
-            let data;
+            // ✅ CORRECTION CRITIQUE: apiGet retourne ApiResponse<T> avec structure { success?, data?, error? }
+            // Le backend retourne { applications: [...], total: ... }
+            // Donc response.data devrait contenir { applications: [...], total: ... }
+            
+            console.log('[CourierAdminScreen] 🔍 Réponse API complète:', JSON.stringify(response, null, 2));
+            
+            let applicationsList: CourierApplication[] = [];
+            
+            // Vérifier la structure de la réponse
             if (response && typeof response === 'object') {
-                // Vérifier si la réponse a une propriété 'data'
-                if ('data' in response && response.data) {
-                    data = response.data;
-                } else {
-                    data = response;
+                // Cas 1: response.data.applications (structure normale)
+                if (response.data && typeof response.data === 'object' && Array.isArray(response.data.applications)) {
+                    applicationsList = response.data.applications;
+                    console.log('[CourierAdminScreen] ✅ Applications trouvées dans response.data.applications:', applicationsList.length);
+                }
+                // Cas 2: response.applications (si data n'existe pas)
+                else if (Array.isArray(response.applications)) {
+                    applicationsList = response.applications;
+                    console.log('[CourierAdminScreen] ✅ Applications trouvées dans response.applications:', applicationsList.length);
+                }
+                // Cas 3: response.data est directement un tableau
+                else if (Array.isArray(response.data)) {
+                    applicationsList = response.data;
+                    console.log('[CourierAdminScreen] ✅ Applications trouvées dans response.data (tableau direct):', applicationsList.length);
+                }
+                // Cas 4: response est directement un tableau
+                else if (Array.isArray(response)) {
+                    applicationsList = response;
+                    console.log('[CourierAdminScreen] ✅ Applications trouvées dans response (tableau direct):', applicationsList.length);
+                }
+                // Cas 5: response.data existe mais structure inattendue
+                else if (response.data && typeof response.data === 'object') {
+                    console.warn('[CourierAdminScreen] ⚠️ Structure de réponse.data inattendue:', Object.keys(response.data));
+                    console.warn('[CourierAdminScreen] ⚠️ Contenu de response.data:', JSON.stringify(response.data, null, 2));
+                    applicationsList = [];
+                }
+                else {
+                    console.warn('[CourierAdminScreen] ⚠️ Format de réponse complètement inattendu:', typeof response, Object.keys(response || {}));
+                    applicationsList = [];
                 }
             } else {
-                data = response;
+                console.warn('[CourierAdminScreen] ⚠️ Réponse n\'est pas un objet:', typeof response);
+                applicationsList = [];
             }
             
-            // ✅ CORRECTION: Gérer toutes les structures possibles de réponse
-            if (data && typeof data === 'object') {
-                if (Array.isArray(data.applications)) {
-                    setApplications(data.applications);
-                } else if (Array.isArray(data)) {
-                    setApplications(data);
-                } else if (data.applications && Array.isArray(data.applications)) {
-                    setApplications(data.applications);
-                } else {
-                    console.warn('[CourierAdminScreen] Format de réponse inattendu:', data);
-                    setApplications([]);
-                }
-            } else {
-                setApplications([]);
-            }
+            console.log('[CourierAdminScreen] ✅ Applications finales à afficher:', applicationsList.length);
+            setApplications(applicationsList);
         } catch (error: any) {
-            console.error('[CourierAdminScreen] Erreur chargement candidatures:', error);
+            console.error('[CourierAdminScreen] ❌ Erreur chargement candidatures:', error);
+            console.error('[CourierAdminScreen] ❌ Stack trace:', error.stack);
             Alert.alert('Erreur', error.message || 'Impossible de charger les candidatures');
             setApplications([]);
         } finally {

@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
+import StableTextInput from '../../components/StableTextInput';
 import { GeneratedRecipe, menuPlanningService } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
 import { generateAndDownloadRecipePDF, shareRecipePDF } from '../../utils/recipePdfGenerator';
@@ -26,53 +27,19 @@ const RecipeSearchScreen: React.FC = () => {
     const [showRecipeDetails, setShowRecipeDetails] = useState(false);
     const [exportingRecipePDF, setExportingRecipePDF] = useState(false);
     
-    // ✅ CORRECTION CRITIQUE: Refs pour éviter les re-renders qui causent les tremblements
-    const pendingSearchQueryRef = useRef<string>('');
-    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    
-    // ✅ CORRECTION CRITIQUE: Nettoyer le timeout au démontage
-    useEffect(() => {
-        return () => {
-            if (debounceTimeoutRef.current) {
-                clearTimeout(debounceTimeoutRef.current);
-            }
-        };
+    // ✅ CORRECTION CRITIQUE: Utiliser StableTextInput qui gère l'état local
+    // Plus besoin de refs complexes - StableTextInput gère tout en interne
+    const handleSearchQueryChange = React.useCallback((text: string) => {
+        setSearchQuery(text);
     }, []);
-    
-    // ✅ CORRECTION CRITIQUE: Fonction pour gérer les changements avec debounce
-    const handleSearchQueryChange = (text: string) => {
-        // Stocker immédiatement dans le ref pour l'affichage
-        pendingSearchQueryRef.current = text;
-        
-        // Annuler le timeout précédent
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current);
-        }
-        
-        // Débouncer la mise à jour de l'état pour éviter les re-renders fréquents
-        debounceTimeoutRef.current = setTimeout(() => {
-            setSearchQuery(text);
-            debounceTimeoutRef.current = null;
-        }, 200); // 200ms de debounce pour une recherche fluide
-    };
-    
-    // ✅ CORRECTION CRITIQUE: Utiliser la valeur du ref si disponible, sinon l'état
-    const displaySearchQuery = pendingSearchQueryRef.current !== '' 
-        ? pendingSearchQueryRef.current 
-        : searchQuery;
 
     const handleSearch = async () => {
-        // ✅ CORRECTION CRITIQUE: Utiliser la valeur du ref si disponible (saisie en cours)
-        const queryToUse = pendingSearchQueryRef.current.trim() || searchQuery.trim();
+        // ✅ CORRECTION CRITIQUE: Utiliser directement searchQuery (StableTextInput synchronise automatiquement)
+        const queryToUse = searchQuery.trim();
         
         if (!queryToUse) {
             Alert.alert('Erreur', 'Veuillez saisir un nom de recette');
             return;
-        }
-        
-        // ✅ CORRECTION CRITIQUE: Mettre à jour l'état immédiatement avant la recherche
-        if (pendingSearchQueryRef.current !== searchQuery) {
-            setSearchQuery(pendingSearchQueryRef.current);
         }
 
         try {
@@ -152,9 +119,8 @@ const RecipeSearchScreen: React.FC = () => {
                 console.log('[RecipeSearch] ✅ Recette générée avec succès:', recipe.recipe_name);
                 setGeneratedRecipe(recipe);
                 setShowRecipeDetails(true);
-                // ✅ CORRECTION CRITIQUE: Réinitialiser à la fois l'état et le ref
+                // ✅ CORRECTION CRITIQUE: Réinitialiser l'état (StableTextInput se synchronisera automatiquement)
                 setSearchQuery('');
-                pendingSearchQueryRef.current = '';
                 } else if (response && !response.success) {
                 const errorMsg = response.error || response.message || 'Impossible de générer la recette';
                 console.error('[RecipeSearch] ❌ Erreur dans la réponse:', errorMsg);
@@ -205,12 +171,13 @@ const RecipeSearchScreen: React.FC = () => {
                 <NativeCard style={styles.searchCard}>
                     <Text style={styles.label}>🔍 Rechercher une recette</Text>
                     <View style={styles.searchContainer}>
-                        <NativeInput
-                            value={displaySearchQuery}
+                        <StableTextInput
+                            value={searchQuery}
                             onChangeText={handleSearchQueryChange}
                             placeholder="Ex: Poulet DG, Ndolé, Riz sauté..."
                             onSubmitEditing={handleSearch}
                             returnKeyType="search"
+                            debounceMs={300}
                             style={styles.searchInput}
                         />
                         <NativeButton
@@ -220,7 +187,7 @@ const RecipeSearchScreen: React.FC = () => {
                             variant="primary"
                             size="small"
                             style={styles.searchButton}
-                            disabled={!displaySearchQuery.trim() || loading}
+                            disabled={!searchQuery.trim() || loading}
                         />
                     </View>
                 </NativeCard>

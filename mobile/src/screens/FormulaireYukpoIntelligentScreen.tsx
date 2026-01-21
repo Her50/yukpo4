@@ -28,6 +28,7 @@ import ModernGPSModal from '../components/ModernGPSModal';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 // Code corrigé (remplace @ts-ignore)
 import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
+import StableTextInput from '../components/StableTextInput';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 // ✅ SUPPRIMÉ: ProductManagerMobile intégré directement dans le formulaire
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
@@ -2999,13 +3000,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <Text style={styles.fieldLabel}>
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
-            <NativeInput
+            <StableTextInput
               key={`input-${field.name}`}
               placeholder={field.placeholder}
               value={fieldValue}
               onChangeText={(text) => {
-                // ✅ CORRECTION CRITIQUE: Appeler handleFieldChange uniquement
-                // Ne pas mettre à jour fieldErrors ici pour éviter les re-renders qui causent les sauts de curseur
+                // ✅ CORRECTION CRITIQUE: Utiliser StableTextInput qui gère l'état local
+                // Cela évite les re-renders pendant la saisie qui causent les sauts de curseur
                 handleFieldChange(field.name, text);
               }}
               onBlur={() => {
@@ -3022,6 +3023,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               keyboardType={keyboardType}
               autoCapitalize={field.type === 'email' || field.type === 'url' ? 'none' : 'sentences'}
               autoCorrect={field.type === 'email' || field.type === 'url' ? false : true}
+              debounceMs={300}
               style={[
                 styles.fieldInput,
                 hasError && styles.fieldInputError,

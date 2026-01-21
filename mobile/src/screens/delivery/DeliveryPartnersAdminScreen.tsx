@@ -57,7 +57,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
     const [partners, setPartners] = useState<DeliveryPartner[]>([]);
     const [pendingPartners, setPendingPartners] = useState<PendingPartner[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false); // ✅ CORRIGÉ: Initialiser à false car l'onglet pending est actif par défaut (loadingPending gère cet onglet)
     const [loadingPending, setLoadingPending] = useState(true); // ✅ CORRIGÉ: Initialiser à true car l'onglet pending est actif par défaut
     const [selectedPendingPartner, setSelectedPendingPartner] = useState<PendingPartner | null>(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
@@ -98,36 +98,56 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             setLoadingPending(true);
             const response = await apiGet('/api/admin/partners/pending');
             
-            // ✅ CORRECTION: Parser correctement la réponse API
-            let data;
+            // ✅ CORRECTION CRITIQUE: apiGet retourne ApiResponse<T> avec structure { success?, data?, error? }
+            // Le backend retourne probablement { partners: [...] } ou directement un tableau
+            // Donc response.data devrait contenir { partners: [...] } ou directement un tableau
+            
+            console.log('[DeliveryPartnersAdminScreen] 🔍 Réponse API complète:', JSON.stringify(response, null, 2));
+            
+            let partnersList: PendingPartner[] = [];
+            
+            // Vérifier la structure de la réponse
             if (response && typeof response === 'object') {
-                // Vérifier si la réponse a une propriété 'data'
-                if ('data' in response && response.data) {
-                    data = response.data;
-                } else {
-                    data = response;
+                // Cas 1: response.data.partners (structure normale)
+                if (response.data && typeof response.data === 'object' && Array.isArray(response.data.partners)) {
+                    partnersList = response.data.partners;
+                    console.log('[DeliveryPartnersAdminScreen] ✅ Partenaires trouvés dans response.data.partners:', partnersList.length);
+                }
+                // Cas 2: response.partners (si data n'existe pas)
+                else if (Array.isArray(response.partners)) {
+                    partnersList = response.partners;
+                    console.log('[DeliveryPartnersAdminScreen] ✅ Partenaires trouvés dans response.partners:', partnersList.length);
+                }
+                // Cas 3: response.data est directement un tableau
+                else if (Array.isArray(response.data)) {
+                    partnersList = response.data;
+                    console.log('[DeliveryPartnersAdminScreen] ✅ Partenaires trouvés dans response.data (tableau direct):', partnersList.length);
+                }
+                // Cas 4: response est directement un tableau
+                else if (Array.isArray(response)) {
+                    partnersList = response;
+                    console.log('[DeliveryPartnersAdminScreen] ✅ Partenaires trouvés dans response (tableau direct):', partnersList.length);
+                }
+                // Cas 5: response.data existe mais structure inattendue
+                else if (response.data && typeof response.data === 'object') {
+                    console.warn('[DeliveryPartnersAdminScreen] ⚠️ Structure de réponse.data inattendue:', Object.keys(response.data));
+                    console.warn('[DeliveryPartnersAdminScreen] ⚠️ Contenu de response.data:', JSON.stringify(response.data, null, 2));
+                    partnersList = [];
+                }
+                else {
+                    console.warn('[DeliveryPartnersAdminScreen] ⚠️ Format de réponse complètement inattendu:', typeof response, Object.keys(response || {}));
+                    partnersList = [];
                 }
             } else {
-                data = response;
+                console.warn('[DeliveryPartnersAdminScreen] ⚠️ Réponse n\'est pas un objet:', typeof response);
+                partnersList = [];
             }
             
-            // ✅ CORRECTION: Gérer toutes les structures possibles de réponse
-            if (data && typeof data === 'object') {
-                if (Array.isArray(data.partners)) {
-                    setPendingPartners(data.partners);
-                } else if (Array.isArray(data)) {
-                    setPendingPartners(data);
-                } else if (data.partners && Array.isArray(data.partners)) {
-                    setPendingPartners(data.partners);
-                } else {
-                    console.warn('[DeliveryPartnersAdminScreen] Format de réponse inattendu:', data);
-                    setPendingPartners([]);
-                }
-            } else {
-                setPendingPartners([]);
-            }
+            console.log('[DeliveryPartnersAdminScreen] ✅ Partenaires finaux à afficher:', partnersList.length);
+            setPendingPartners(partnersList);
         } catch (error: any) {
-            console.error('[DeliveryPartnersAdminScreen] Erreur chargement candidatures:', error);
+            console.error('[DeliveryPartnersAdminScreen] ❌ Erreur chargement candidatures:', error);
+            console.error('[DeliveryPartnersAdminScreen] ❌ Stack trace:', error.stack);
             Alert.alert('Erreur', error.message || 'Impossible de charger les candidatures');
             setPendingPartners([]);
         } finally {
@@ -238,16 +258,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
     };
 
 
-    if (loading) {
-        return (
-            <SafeNativeView style={styles.container}>
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
-                </View>
-            </SafeNativeView>
-        );
-    }
+    // ✅ CORRECTION: Ne pas bloquer le render complet - le chargement est géré par loading/loadingPending dans les onglets
 
     return (
         <SafeNativeView style={styles.container}>
@@ -603,7 +614,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 24,
+        padding: 16,
+        backgroundColor: modernColors.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
     },
     backButton: {
         width: 40,
