@@ -335,6 +335,8 @@ impl OptimizedMediaProcessor {
 
         #[cfg(not(feature = "image"))]
         {
+            let _image_bytes = image_bytes;
+            let _service_id = service_id;
             Err(AppError::Internal(
                 "Génération thumbnail non disponible sans feature image".to_string(),
             ))
