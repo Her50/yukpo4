@@ -1067,6 +1067,80 @@ impl DeliveryRepository {
             .collect())
     }
 
+    /// ✅ NOUVEAU : Liste les candidatures avec un ensemble de statuts (admin / backoffice)
+    ///
+    /// Utile pour l'écran "à valider" (submitted + under_review + draft, selon les clients).
+    pub async fn list_courier_applications_by_statuses(
+        &self,
+        statuses: Vec<DeliveryApplicationStatus>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> AppResult<Vec<CourierApplication>> {
+        let limit_val = limit.unwrap_or(100);
+        let offset_val = offset.unwrap_or(0);
+
+        // ✅ LOG: Logger les paramètres de la requête pour diagnostic
+        log::info!(
+            "[list_courier_applications_by_statuses] Requête DB - statuses: {:?}, limit: {}, offset: {}",
+            statuses,
+            limit_val,
+            offset_val
+        );
+
+        let rows: Vec<CourierApplicationRow> = sqlx::query_as(
+            r#"
+            SELECT
+                id,
+                user_id,
+                status,
+                submitted_at,
+                reviewed_at,
+                reviewer_id,
+                rejection_reason,
+                profile_data,
+                documents,
+                notes,
+                partner_id,
+                created_at,
+                updated_at
+            FROM courier_applications
+            WHERE status = ANY($1::delivery_application_status[])
+            ORDER BY created_at DESC
+            LIMIT $2
+            OFFSET $3
+            "#,
+        )
+        .bind(statuses)
+        .bind(limit_val)
+        .bind(offset_val)
+        .fetch_all(&self.pool)
+        .await?;
+
+        log::info!(
+            "[list_courier_applications_by_statuses] {} candidature(s) trouvée(s) en DB",
+            rows.len()
+        );
+
+        Ok(rows
+            .into_iter()
+            .map(|row| CourierApplication {
+                id: row.id,
+                user_id: row.user_id,
+                status: row.status,
+                submitted_at: row.submitted_at,
+                reviewed_at: row.reviewed_at,
+                reviewer_id: row.reviewer_id,
+                rejection_reason: row.rejection_reason,
+                profile_data: row.profile_data,
+                documents: row.documents,
+                notes: row.notes,
+                partner_id: row.partner_id,
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+            })
+            .collect())
+    }
+
     /// Récupère le profil coursier associé à un utilisateur
     pub async fn find_courier_by_user(&self, user_id: i32) -> AppResult<Option<Courier>> {
         let row: Option<CourierRow> = sqlx::query_as(

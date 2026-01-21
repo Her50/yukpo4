@@ -4048,6 +4048,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
           console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit (complètes):', {
             ...nouveauProduit,
+            nom_produit: nouveauProduit.nom_produit || nouveauProduit.nom,
+            description_produit: nouveauProduit.description_produit || 'ABSENT',
+            description: nouveauProduit.description || 'ABSENT',
             has_variant: nouveauProduit.has_variant,
             variants_count: nouveauProduit.variants ? nouveauProduit.variants.length : 0,
             characteristic_vector: nouveauProduit.characteristic_vector?.length || 0

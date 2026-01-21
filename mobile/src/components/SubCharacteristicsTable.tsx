@@ -193,49 +193,6 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 console.warn(`[SubCharacteristicsTable] ⚠️ Chaîne valeur ignorée car incohérente. Utilisation directe de sous_caracteristiques.`);
             }
             
-            // ✅ SUPPRIMÉ: L'ancienne logique qui tentait de mapper la chaîne valeur aux labels
-            // Cette logique causait des incohérences car la chaîne valeur peut contenir des valeurs supplémentaires ou des valeurs qui ne correspondent pas à l'ordre des labels
-                // ✅ FALLBACK: Si pas de valeur parsée, utiliser l'ancienne méthode (première valeur de chaque tableau)
-                // Mais utiliser productLabels pour l'ordre si disponible
-                // ✅ CORRECTION CRITIQUE: Utiliser productLabels dans l'ordre exact pour garantir l'alignement
-                // ✅ NOUVEAU: Filtrer productLabels pour ne garder que les labels qui existent dans sousCaracteristiques
-                const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-                    ? productLabels
-                        .filter(label => label && typeof label === 'string' && label.trim().length > 0)
-                        .filter(label => sousCaracteristiques.hasOwnProperty(label)) // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
-                    : Object.keys(sousCaracteristiques);
-                
-                console.log('[SubCharacteristicsTable] 🔍 FALLBACK - Labels ordonnés depuis productLabels:', orderedLabels);
-                
-                // ✅ CORRECTION: Parcourir les labels dans l'ordre garanti par productLabels
-                orderedLabels.forEach((label, index) => {
-                    const values = sousCaracteristiques[label];
-                    if (Array.isArray(values) && values.length > 0) {
-                        const preferredValue = values[0];
-                        console.log(`[SubCharacteristicsTable] 🔍 Label "${label}" [index ${index}] - Première valeur extraite: "${preferredValue}"`);
-                        
-                        if (preferredValue && typeof preferredValue === 'string' && preferredValue.trim().length > 0) {
-                            const row = {
-                                label: label.trim(),
-                                value: preferredValue.trim(),
-                            };
-                            console.log(`[SubCharacteristicsTable] ✅ Ligne créée [index ${index}]: ${row.label} = ${row.value}`);
-                            initialRowsFromIA.push(row);
-                        } else {
-                            console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" [index ${index}] - Première valeur invalide:`, preferredValue);
-                        }
-                    } else {
-                        // ✅ NOUVEAU: Si le label n'existe pas dans sousCaracteristiques, créer une ligne vide pour permettre l'édition
-                        console.log(`[SubCharacteristicsTable] 🔍 Label "${label}" [index ${index}] - Non trouvé dans sousCaracteristiques, création ligne vide`);
-                        const row = {
-                            label: label.trim(),
-                            value: '', // Ligne vide pour permettre l'édition
-                        };
-                        initialRowsFromIA.push(row);
-                    }
-                });
-            }
-            
             console.log('[SubCharacteristicsTable] ✅ Tableau final initialisé avec', initialRowsFromIA.length, 'lignes:', 
                 initialRowsFromIA.map(r => `${r.label}: ${r.value}`).join(', '));
             setRows(initialRowsFromIA);

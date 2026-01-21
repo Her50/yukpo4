@@ -5491,29 +5491,110 @@ pub async fn save_ia_combinations_to_db(
             continue;
         }
 
-        // Extraire les labels des sous-caractéristiques (dimensions)
-        let mut product_labels: Vec<String> = if let Some(sous_caracs) = produits_field
+        // ✅ CORRECTION DÉFINITIVE: Mapping intelligent des valeurs aux labels
+        // Au lieu de créer des labels génériques, mapper chaque valeur à sa dimension correcte
+        let (mut product_labels, mut mapped_product_vector): (Vec<String>, Vec<String>) = 
+        if let Some(sous_caracs) = produits_field
             .get("sous_caracteristiques")
             .and_then(|v| v.as_object())
         {
-            sous_caracs.keys().map(|k| k.to_string()).collect()
-        } else {
-            vec![]
-        };
-
-        // ✅ CORRIGÉ: S'assurer que product_labels a la même longueur que product_vector
-        // La contrainte check_vectors_labels_length exige que les deux tableaux aient la même longueur
-        if product_labels.len() != product_vector.len() {
-            log::warn!(
-                "[save_ia_combinations_to_db] Product labels ({}) et product vector ({}) ont des longueurs différentes. Création de labels par défaut.",
-                product_labels.len(),
-                product_vector.len()
+            // Construire un index inversé : valeur -> liste des dimensions possibles
+            let mut value_to_dimensions: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+            let dimension_order: Vec<String> = sous_caracs.keys().map(|k| k.to_string()).collect();
+            
+            for (dimension, values_array) in sous_caracs.iter() {
+                if let Some(values) = values_array.as_array() {
+                    for value_val in values {
+                        if let Some(value_str) = value_val.as_str() {
+                            let normalized_value = value_str.trim().to_lowercase();
+                            value_to_dimensions
+                                .entry(normalized_value)
+                                .or_insert_with(Vec::new)
+                                .push(dimension.clone());
+                        }
+                    }
+                }
+            }
+            
+            // Track quelles dimensions ont déjà été assignées et quelles valeurs ont été mappées
+            let mut assigned_dimensions: std::collections::HashSet<String> = std::collections::HashSet::new();
+            let mut mapped_values: Vec<(String, String)> = vec![]; // (dimension, value)
+            
+            // Étape 1: Mapper les valeurs qui correspondent exactement à une dimension
+            for value in &product_vector {
+                let normalized_value = value.trim().to_lowercase();
+                if let Some(possible_dimensions) = value_to_dimensions.get(&normalized_value) {
+                    // Prendre la première dimension non assignée, ou la première disponible
+                    if let Some(dimension) = possible_dimensions.iter()
+                        .find(|d| !assigned_dimensions.contains(*d))
+                        .or_else(|| possible_dimensions.first())
+                    {
+                        mapped_values.push((dimension.clone(), value.clone()));
+                        assigned_dimensions.insert(dimension.clone());
+                    }
+                }
+            }
+            
+            // Étape 2: Construire le résultat final dans l'ordre des dimensions
+            let mut final_labels: Vec<String> = vec![];
+            let mut final_values: Vec<String> = vec![];
+            
+            for dimension in &dimension_order {
+                if let Some((_, value)) = mapped_values.iter().find(|(dim, _)| dim == dimension) {
+                    // Cette dimension a été assignée
+                    final_labels.push(dimension.clone());
+                    final_values.push(value.clone());
+                } else {
+                    // Cette dimension n'a pas été assignée, ajouter valeur vide
+                    final_labels.push(dimension.clone());
+                    final_values.push(String::new());
+                }
+            }
+            
+            // Étape 3: Ajouter les valeurs restantes qui n'ont pas été mappées (valeurs inconnues)
+            for value in &product_vector {
+                if !mapped_values.iter().any(|(_, v)| v == value) {
+                    final_labels.push(format!("caracteristique_{}", final_labels.len()));
+                    final_values.push(value.clone());
+                }
+            }
+            
+            // Log détaillé pour debug
+            log::info!(
+                "[save_ia_combinations_to_db] Mapping intelligent appliqué: {} labels pour {} valeurs. Dimensions mappées: {:?}",
+                final_labels.len(),
+                final_values.len(),
+                assigned_dimensions
             );
-            // Créer des labels par défaut pour correspondre à la longueur du vecteur
-            product_labels = (0..product_vector.len())
+            
+            (final_labels, final_values)
+        } else {
+            // Fallback si pas de sous_caracteristiques
+            let labels = (0..product_vector.len())
                 .map(|i| format!("caracteristique_{}", i))
                 .collect();
+            (labels, product_vector.clone())
+        };
+        
+        // ✅ VÉRIFICATION FINALE: S'assurer que product_labels a la même longueur que product_vector
+        if product_labels.len() != mapped_product_vector.len() {
+            log::warn!(
+                "[save_ia_combinations_to_db] Product labels ({}) et product vector ({}) ont des longueurs différentes après mapping. Ajustement final.",
+                product_labels.len(),
+                mapped_product_vector.len()
+            );
+            // Ajuster à la longueur la plus grande
+            let max_len = std::cmp::max(product_labels.len(), mapped_product_vector.len());
+            while product_labels.len() < max_len {
+                product_labels.push(format!("caracteristique_{}", product_labels.len()));
+            }
+            while mapped_product_vector.len() < max_len {
+                mapped_product_vector.push(String::new());
+            }
         }
+        
+        // Utiliser le vecteur mappé au lieu de l'original
+        let product_vector = mapped_product_vector;
 
         // Insérer dans autocomplete_combinations (SANS lieu)
         let is_ai_preferred = index == ai_preferred_index;

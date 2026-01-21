@@ -1351,6 +1351,18 @@ impl DeliveryService {
             .await
     }
 
+    /// ✅ NOUVEAU : Liste des candidatures par ensemble de statuts (admin/backoffice)
+    pub async fn list_courier_applications_by_statuses(
+        &self,
+        statuses: Vec<crate::models::delivery_model::DeliveryApplicationStatus>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> AppResult<Vec<CourierApplication>> {
+        self.repository
+            .list_courier_applications_by_statuses(statuses, limit, offset)
+            .await
+    }
+
     pub async fn approve_courier_application(
         &self,
         application_id: Uuid,

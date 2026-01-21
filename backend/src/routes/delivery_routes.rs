@@ -3065,19 +3065,41 @@ async fn list_courier_applications(
     let service = delivery_service(&state)?;
 
     // Récupérer les paramètres de filtrage
-    let status_filter: Option<crate::models::delivery_model::DeliveryApplicationStatus> = params
-        .get("status")
-        .and_then(|v| v.as_str())
-        .and_then(|s| {
-            match s.to_lowercase().as_str() {
-                "draft" => Some(crate::models::delivery_model::DeliveryApplicationStatus::Draft),
-                "submitted" => Some(crate::models::delivery_model::DeliveryApplicationStatus::Submitted),
-                "under_review" => Some(crate::models::delivery_model::DeliveryApplicationStatus::UnderReview),
-                "approved" => Some(crate::models::delivery_model::DeliveryApplicationStatus::Approved),
-                "rejected" => Some(crate::models::delivery_model::DeliveryApplicationStatus::Rejected),
-                _ => None,
-            }
+    // ✅ AMÉLIORÉ: "submitted" sur mobile = souvent "à valider".
+    // Certains clients anciens peuvent laisser la candidature en draft malgré un clic "soumettre".
+    // On élargit donc le filtre "submitted" à plusieurs statuts.
+    let status_param = params.get("status").and_then(|v| v.as_str()).map(|s| s.to_lowercase());
+
+    let statuses_filter: Option<Vec<crate::models::delivery_model::DeliveryApplicationStatus>> =
+        status_param.as_deref().and_then(|s| match s {
+            // Filtre standard
+            "draft" => Some(vec![crate::models::delivery_model::DeliveryApplicationStatus::Draft]),
+            "under_review" => Some(vec![
+                crate::models::delivery_model::DeliveryApplicationStatus::UnderReview,
+            ]),
+            "approved" => Some(vec![
+                crate::models::delivery_model::DeliveryApplicationStatus::Approved,
+            ]),
+            "rejected" => Some(vec![
+                crate::models::delivery_model::DeliveryApplicationStatus::Rejected,
+            ]),
+
+            // ✅ Compat: "submitted" = file d'attente de validation
+            // (submitted + under_review + draft)
+            "submitted" | "pending" | "to_validate" | "pending_validation" => Some(vec![
+                crate::models::delivery_model::DeliveryApplicationStatus::Submitted,
+                crate::models::delivery_model::DeliveryApplicationStatus::UnderReview,
+                crate::models::delivery_model::DeliveryApplicationStatus::Draft,
+            ]),
+            _ => None,
         });
+
+    // Conserver le comportement précédent si on n'a qu'un seul statut
+    let status_filter: Option<crate::models::delivery_model::DeliveryApplicationStatus> =
+        match &statuses_filter {
+            Some(v) if v.len() == 1 => v.first().copied(),
+            _ => None,
+        };
 
     let limit = params
         .get("limit")
@@ -3096,9 +3118,20 @@ async fn list_courier_applications(
         offset
     );
 
-    let applications = service
-        .list_courier_applications(status_filter, limit, offset)
-        .await?;
+    let applications = match statuses_filter {
+        Some(statuses) if statuses.len() > 1 => {
+            log::info!(
+                "[list_courier_applications] Filtre multi-status activé: {:?}",
+                statuses
+            );
+            service
+                .list_courier_applications_by_statuses(statuses, limit, offset)
+                .await?
+        }
+        _ => service
+            .list_courier_applications(status_filter, limit, offset)
+            .await?,
+    };
 
     // ✅ LOG: Logger le nombre de candidatures trouvées
     log::info!(

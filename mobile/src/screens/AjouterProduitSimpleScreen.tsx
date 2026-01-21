@@ -37,6 +37,131 @@ import { applyPriceVariantToProduits, extractPriceVariant } from '../utils/price
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoConfigPromptModal';
 
+/**
+ * ✅ CORRECTION DÉFINITIVE: Mapping intelligent des valeurs aux labels
+ * Gère les cas où product_vector et product_labels ont des longueurs différentes
+ * en utilisant les sous_caracteristiques pour mapper correctement chaque valeur à sa dimension
+ */
+const mapProductVectorToSousCaracteristiques = (
+    productVector: string[],
+    productLabels: string[],
+    sousCaracteristiquesIA?: Record<string, string[]>
+): Record<string, string[]> => {
+    const sousCaracsObj: Record<string, string[]> = {};
+    
+    // Si longueurs identiques, mapping direct par index
+    if (productVector.length === productLabels.length) {
+        productVector.forEach((value: string, index: number) => {
+            const label = productLabels[index];
+            if (label && typeof label === 'string' && value && typeof value === 'string') {
+                if (!sousCaracsObj[label]) {
+                    sousCaracsObj[label] = [value];
+                } else {
+                    const existingValues = sousCaracsObj[label];
+                    if (!existingValues.includes(value)) {
+                        sousCaracsObj[label] = [value, ...existingValues];
+                    }
+                }
+            }
+        });
+        return sousCaracsObj;
+    }
+    
+    // Si longueurs différentes et sous_caracteristiques disponibles, mapping intelligent
+    if (sousCaracteristiquesIA && typeof sousCaracteristiquesIA === 'object') {
+        // Construire un index inversé : valeur -> dimensions possibles
+        const valueToDimensions: Record<string, string[]> = {};
+        const dimensionOrder: string[] = Object.keys(sousCaracteristiquesIA);
+        
+        for (const dimension of dimensionOrder) {
+            const valuesArray = sousCaracteristiquesIA[dimension];
+            if (Array.isArray(valuesArray)) {
+                for (const possibleValue of valuesArray) {
+                    const normalizedValue = String(possibleValue).trim().toLowerCase();
+                    if (!valueToDimensions[normalizedValue]) {
+                        valueToDimensions[normalizedValue] = [];
+                    }
+                    if (!valueToDimensions[normalizedValue].includes(dimension)) {
+                        valueToDimensions[normalizedValue].push(dimension);
+                    }
+                }
+            }
+        }
+        
+        // Track des dimensions assignées
+        const assignedDimensions = new Set<string>();
+        const mappedValues: Array<{dimension: string, value: string}> = [];
+        
+        // Étape 1: Mapper les valeurs qui correspondent à une dimension
+        for (const value of productVector) {
+            if (!value || typeof value !== 'string') continue;
+            
+            const normalizedValue = value.trim().toLowerCase();
+            const possibleDimensions = valueToDimensions[normalizedValue];
+            
+            if (possibleDimensions && possibleDimensions.length > 0) {
+                // Prendre la première dimension non assignée, ou la première disponible
+                const dimension = possibleDimensions.find(d => !assignedDimensions.has(d)) || possibleDimensions[0];
+                mappedValues.push({ dimension, value });
+                assignedDimensions.add(dimension);
+            }
+        }
+        
+        // Étape 2: Construire l'objet final dans l'ordre des dimensions
+        for (const dimension of dimensionOrder) {
+            const mapped = mappedValues.find(m => m.dimension === dimension);
+            if (mapped) {
+                if (!sousCaracsObj[dimension]) {
+                    sousCaracsObj[dimension] = [];
+                }
+                if (!sousCaracsObj[dimension].includes(mapped.value)) {
+                    sousCaracsObj[dimension].push(mapped.value);
+                }
+            }
+        }
+        
+        // Étape 3: Ajouter les valeurs non mappées avec leur label par index si disponible
+        for (let i = 0; i < productVector.length; i++) {
+            const value = productVector[i];
+            if (!value || typeof value !== 'string') continue;
+            
+            const alreadyMapped = mappedValues.some(m => m.value === value);
+            if (!alreadyMapped && i < productLabels.length) {
+                const label = productLabels[i];
+                if (label && typeof label === 'string') {
+                    if (!sousCaracsObj[label]) {
+                        sousCaracsObj[label] = [];
+                    }
+                    if (!sousCaracsObj[label].includes(value)) {
+                        sousCaracsObj[label].push(value);
+                    }
+                }
+            }
+        }
+        
+        return sousCaracsObj;
+    }
+    
+    // Fallback: mapping par index avec les labels disponibles
+    productVector.forEach((value: string, index: number) => {
+        if (index < productLabels.length) {
+            const label = productLabels[index];
+            if (label && typeof label === 'string' && value && typeof value === 'string') {
+                if (!sousCaracsObj[label]) {
+                    sousCaracsObj[label] = [value];
+                } else {
+                    const existingValues = sousCaracsObj[label];
+                    if (!existingValues.includes(value)) {
+                        sousCaracsObj[label] = [value, ...existingValues];
+                    }
+                }
+            }
+        }
+    });
+    
+    return sousCaracsObj;
+};
+
 const AjouterProduitSimpleScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -451,9 +576,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         sous_caracteristiques = suggestionData.sous_caracteristiques;
     }
     // PRIORITÉ 3: Construire depuis product_vector et product_labels si disponibles
+    // ✅ CORRECTION DÉFINITIVE: Mapping intelligent même si longueurs différentes
     else if (suggestionData.produits?.product_vector && Array.isArray(suggestionData.produits.product_vector) &&
         suggestionData.produits.product_labels && Array.isArray(suggestionData.produits.product_labels) &&
-        suggestionData.produits.product_vector.length > 0 && suggestionData.produits.product_vector.length === suggestionData.produits.product_labels.length) {
+        suggestionData.produits.product_vector.length > 0) {
         const sousCaracsObj: Record<string, string[]> = {};
         
         // ✅ DEBUG: Logger pour diagnostiquer
@@ -461,33 +587,26 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             product_vector: suggestionData.produits.product_vector,
             product_labels: suggestionData.produits.product_labels,
             length_vector: suggestionData.produits.product_vector.length,
-            length_labels: suggestionData.produits.product_labels.length
+            length_labels: suggestionData.produits.product_labels.length,
+            sous_caracteristiques_ia: suggestionData.produits.sous_caracteristiques
         });
         
-        suggestionData.produits.product_vector.forEach((value: string, index: number) => {
-            const label = suggestionData.produits.product_labels[index];
-            console.log(`[AjouterProduitSimple] 🔍 Index ${index}: label="${label}", value="${value}"`);
-            
-            if (label && typeof label === 'string' && value && typeof value === 'string') {
-                // ✅ CRITIQUE: Chaque valeur doit être associée à son label correspondant par index
-                // Si le label existe déjà, on ajoute la valeur (cas où même label apparaît plusieurs fois)
-                if (!sousCaracsObj[label]) {
-                    sousCaracsObj[label] = [value];
-                    console.log(`[AjouterProduitSimple] ✅ Nouveau label créé: "${label}" = ["${value}"]`);
-                } else {
-                    // Si le label existe déjà, ajouter la valeur (pour gérer les labels dupliqués)
-                    const existingValues = sousCaracsObj[label];
-                    if (!existingValues.includes(value)) {
-                        sousCaracsObj[label] = [value, ...existingValues];
-                        console.log(`[AjouterProduitSimple] ✅ Label existant mis à jour: "${label}" = ["${value}", ...]`);
-                    } else {
-                        console.log(`[AjouterProduitSimple] ⚠️ Valeur déjà présente pour "${label}": "${value}"`);
-                    }
-                }
-            } else {
-                console.warn(`[AjouterProduitSimple] ⚠️ Index ${index}: label ou value invalide`, { label, value });
-            }
-        });
+        // ✅ CORRECTION DÉFINITIVE: Utiliser la fonction helper pour mapping intelligent
+        const iaSousCaracs = suggestionData.produits.sous_caracteristiques;
+        const hasLengthMismatch = suggestionData.produits.product_vector.length !== suggestionData.produits.product_labels.length;
+        
+        if (hasLengthMismatch) {
+            console.warn(`[AjouterProduitSimple] ⚠️ Incohérence détectée: ${suggestionData.produits.product_vector.length} valeurs pour ${suggestionData.produits.product_labels.length} labels. Mapping intelligent activé.`);
+        }
+        
+        const mappedSousCaracs = mapProductVectorToSousCaracteristiques(
+            suggestionData.produits.product_vector,
+            suggestionData.produits.product_labels,
+            iaSousCaracs
+        );
+        
+        // Copier le résultat dans sousCaracsObj
+        Object.assign(sousCaracsObj, mappedSousCaracs);
         
         console.log('[AjouterProduitSimple] ✅ Résultat construction initiale:', sousCaracsObj);
         if (Object.keys(sousCaracsObj).length > 0) {
@@ -839,30 +958,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             // ✅ CORRECTION: Convertir product_labels (tableau) en objet pour sous_caracteristiques
                             // product_labels est un tableau qui correspond à l'ordre de product_vector
                             // On doit le convertir en objet { dimension: [valeurs] } pour sous_caracteristiques
-                            const sousCaracsObj: Record<string, string[]> = {};
-                            if (Array.isArray(preferred.product_labels) && preferred.product_labels.length > 0) {
-                                // ✅ CRITIQUE: Grouper les labels par dimension avec la valeur préférée en PREMIÈRE position
-                                preferred.product_vector.forEach((value: string, index: number) => {
-                                    const label = preferred.product_labels[index];
-                                    if (label && typeof label === 'string') {
-                                        // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position
-                                        if (!sousCaracsObj[label]) {
-                                            sousCaracsObj[label] = [value];
-                                        } else {
-                                            // Si le label existe déjà, s'assurer que la valeur préférée est en première position
-                                            const existingValues = sousCaracsObj[label];
-                                            if (!existingValues.includes(value)) {
-                                                // Insérer la valeur préférée en première position
-                                                sousCaracsObj[label] = [value, ...existingValues];
-                                            } else {
-                                                // Si la valeur existe déjà mais n'est pas en première position, la déplacer
-                                                const filtered = existingValues.filter(v => v !== value);
-                                                sousCaracsObj[label] = [value, ...filtered];
-                                            }
-                                        }
-                                    }
-                                });
-                            }
+                            // ✅ CORRECTION DÉFINITIVE: Utiliser la fonction helper pour mapping intelligent
+                            const sousCaracsObj = mapProductVectorToSousCaracteristiques(
+                                preferred.product_vector,
+                                preferred.product_labels || [],
+                                preferred.sous_caracteristiques
+                            );
 
                             // Mettre à jour formValues avec la combinaison préférée
                             setFormValues((prev: any) => ({
@@ -903,30 +1004,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             if (preferred && preferred.product_vector && Array.isArray(preferred.product_vector) && preferred.product_vector.length > 0) {
                                 const separateur = preferred.separateur || ',';
                                 const combinationString = preferred.product_vector.join(separateur);
-                                const sousCaracsObj: Record<string, string[]> = {};
-                                if (Array.isArray(preferred.product_labels) && preferred.product_labels.length > 0) {
-                                    // ✅ CRITIQUE: Grouper les labels par dimension avec la valeur préférée en PREMIÈRE position
-                                    preferred.product_vector.forEach((value: string, index: number) => {
-                                        const label = preferred.product_labels[index];
-                                        if (label && typeof label === 'string') {
-                                            // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position
-                                            if (!sousCaracsObj[label]) {
-                                                sousCaracsObj[label] = [value];
-                                            } else {
-                                                // Si le label existe déjà, s'assurer que la valeur préférée est en première position
-                                                const existingValues = sousCaracsObj[label];
-                                                if (!existingValues.includes(value)) {
-                                                    // Insérer la valeur préférée en première position
-                                                    sousCaracsObj[label] = [value, ...existingValues];
-                                                } else {
-                                                    // Si la valeur existe déjà mais n'est pas en première position, la déplacer
-                                                    const filtered = existingValues.filter(v => v !== value);
-                                                    sousCaracsObj[label] = [value, ...filtered];
-                                                }
-                                            }
-                                        }
-                                    });
-                                }
+                                // ✅ CORRECTION DÉFINITIVE: Utiliser la fonction helper pour mapping intelligent
+                                const sousCaracsObj = mapProductVectorToSousCaracteristiques(
+                                    preferred.product_vector,
+                                    preferred.product_labels || [],
+                                    preferred.sous_caracteristiques
+                                );
                                 setFormValues((prev: any) => ({
                                     ...prev,
                                     produits: [combinationString],
@@ -1591,6 +1674,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     userId,
                                     serviceId,
                                     productDataKeys: Object.keys(productDataForAPI),
+                                    nom_produit: productDataForAPI.nom_produit || productDataForAPI.nom,
+                                    description_produit: productDataForAPI.description_produit || 'ABSENT',
+                                    description: productDataForAPI.description || 'ABSENT',
                                     payloadSize: `${payloadSizeMB} MB (${payloadSizeBytes} bytes)`,
                                     base64MediaSize: `${totalBase64SizeMB} MB (sera traité séparément par le backend)`,
                                     hasImages: !!(productDataForAPI.images && productDataForAPI.images.length > 0),
@@ -2089,44 +2175,24 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     }
 
                                     // ✅ PRIORITÉ 1B: Fallback vers product_vector/product_labels (combinaison préférée uniquement)
-                                    // Si on n'a pas sous_caracteristiques complets, utiliser la combinaison préférée
+                                    // ✅ CORRECTION DÉFINITIVE: Si on n'a pas sous_caracteristiques complets, utiliser la combinaison préférée avec mapping intelligent
                                     if (formValues.product_vector && Array.isArray(formValues.product_vector) &&
                                         formValues.product_labels && Array.isArray(formValues.product_labels) &&
-                                        formValues.product_vector.length > 0 && formValues.product_vector.length === formValues.product_labels.length) {
+                                        formValues.product_vector.length > 0) {
 
-                                        const sousCaracsFromPreferred: Record<string, string[]> = {};
+                                        // ✅ Utiliser la fonction helper pour mapping intelligent (gère les longueurs différentes)
+                                        const sousCaracsFromPreferred = mapProductVectorToSousCaracteristiques(
+                                            formValues.product_vector,
+                                            formValues.product_labels,
+                                            formValues.sous_caracteristiques
+                                        );
                                         
-                                        // ✅ DEBUG: Logger les données d'entrée pour diagnostiquer
                                         console.log('[AjouterProduitSimple] 🔍 Construction depuis product_vector/product_labels:', {
                                             product_vector: formValues.product_vector,
                                             product_labels: formValues.product_labels,
                                             length_vector: formValues.product_vector.length,
-                                            length_labels: formValues.product_labels.length
-                                        });
-                                        
-                                        formValues.product_vector.forEach((value: string, index: number) => {
-                                            const label = formValues.product_labels[index];
-                                            console.log(`[AjouterProduitSimple] 🔍 Index ${index}: label="${label}", value="${value}"`);
-                                            
-                                            if (label && typeof label === 'string' && value && typeof value === 'string') {
-                                                // ✅ CRITIQUE: Chaque valeur doit être associée à son label correspondant par index
-                                                // Si le label existe déjà, on ajoute la valeur (cas où même label apparaît plusieurs fois)
-                                                if (!sousCaracsFromPreferred[label]) {
-                                                    sousCaracsFromPreferred[label] = [value];
-                                                    console.log(`[AjouterProduitSimple] ✅ Nouveau label créé: "${label}" = ["${value}"]`);
-                                                } else {
-                                                    // Si le label existe déjà, ajouter la valeur (pour gérer les labels dupliqués)
-                                                    const existingValues = sousCaracsFromPreferred[label];
-                                                    if (!existingValues.includes(value)) {
-                                                        sousCaracsFromPreferred[label] = [value, ...existingValues];
-                                                        console.log(`[AjouterProduitSimple] ✅ Label existant mis à jour: "${label}" = ["${value}", ...]`);
-                                                    } else {
-                                                        console.log(`[AjouterProduitSimple] ⚠️ Valeur déjà présente pour "${label}": "${value}"`);
-                                                    }
-                                                }
-                                            } else {
-                                                console.warn(`[AjouterProduitSimple] ⚠️ Index ${index}: label ou value invalide`, { label, value });
-                                            }
+                                            length_labels: formValues.product_labels.length,
+                                            resultDimensions: Object.keys(sousCaracsFromPreferred)
                                         });
                                         
                                         console.log('[AjouterProduitSimple] ✅ Résultat construction depuis product_vector/product_labels:', sousCaracsFromPreferred);

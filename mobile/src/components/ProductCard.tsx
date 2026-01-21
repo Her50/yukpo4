@@ -312,30 +312,66 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
   // ✅ CORRIGÉ 2026-01-21: Améliorer l'extraction de la localisation (quartier/ville) - Priorité aux composants
   // Priorité 1: lieu_produit.composants (quartier, ville) - FORMAT PREFERE
-  // Priorité 2: chosen_location depuis productData
-  // Priorité 3: locationVector (peut contenir quartier, ville, etc.)
-  // Priorité 4: adresse depuis productData ou service.data
+  // Priorité 2: Parser la valeur de lieu_produit si elle contient "quartier, ville"
+  // Priorité 3: chosen_location depuis productData
+  // Priorité 4: locationVector (peut contenir quartier, ville, etc.)
+  // Priorité 5: adresse depuis productData ou service.data
   const lieuProduitComposants = service?.data?.lieu_produit?.valeur?.composants 
     || service?.data?.lieu_produit?.valeur?.valeur?.components
     || productData.lieu_produit?.valeur?.composants
-    || productData.lieu_produit?.valeur?.valeur?.components;
+    || productData.lieu_produit?.valeur?.valeur?.components
+    || productData.lieu_produit?.composants;
   
   // ✅ PRIORITAIRE: Extraire quartier et ville depuis les composants
-  const quartier = lieuProduitComposants?.quartier 
+  let quartier = lieuProduitComposants?.quartier 
     ? filterBooleanValue(lieuProduitComposants.quartier, '')
     : null;
-  const ville = lieuProduitComposants?.ville 
+  let ville = lieuProduitComposants?.ville 
     ? filterBooleanValue(lieuProduitComposants.ville, '')
     : null;
+  
+  // ✅ NOUVEAU 2026-01-21: Si pas de composants, essayer de parser la valeur de lieu_produit
+  if (!quartier || !ville) {
+    const lieuProduitValeur = service?.data?.lieu_produit?.valeur 
+      || productData.lieu_produit?.valeur
+      || productData.lieu_produit;
+    
+    // Si c'est une chaîne, essayer de la parser (format "quartier, ville" ou "ville")
+    if (typeof lieuProduitValeur === 'string') {
+      const parts = lieuProduitValeur.split(',').map((p: string) => p.trim());
+      if (parts.length >= 2) {
+        // Probablement "quartier, ville"
+        if (!quartier) quartier = parts[0];
+        if (!ville) ville = parts.slice(1).join(', '); // Prendre le reste comme ville (peut contenir pays)
+      } else if (parts.length === 1 && !ville) {
+        // Juste une ville
+        ville = parts[0];
+      }
+    } else if (typeof lieuProduitValeur === 'object' && lieuProduitValeur !== null) {
+      // Si c'est un objet, essayer d'extraire directement
+      const lieuObj = lieuProduitValeur as any;
+      if (!quartier && lieuObj.quartier) quartier = filterBooleanValue(lieuObj.quartier, '');
+      if (!ville && lieuObj.ville) ville = filterBooleanValue(lieuObj.ville, '');
+      if (!ville && lieuObj.valeur && typeof lieuObj.valeur === 'string') {
+        // Si valeur est une chaîne, essayer de parser
+        const parts = lieuObj.valeur.split(',').map((p: string) => p.trim());
+        if (parts.length >= 2 && !quartier) quartier = parts[0];
+        if (parts.length >= 1 && !ville) ville = parts[parts.length - 1]; // Prendre la dernière partie comme ville
+      }
+    }
+  }
   
   // Construire la localisation préférée : "quartier, ville" ou juste l'un des deux
   let locationDisplay = '';
   if (quartier && ville) {
-    locationDisplay = `${quartier}, ${ville}`;
+    // ✅ CORRIGÉ 2026-01-21: Afficher "quartier, ville" (enlever le pays si présent dans ville)
+    const villeClean = ville.replace(/,\s*(Cameroun|Cameroon)$/i, '').trim();
+    locationDisplay = `${quartier}, ${villeClean}`;
   } else if (quartier) {
     locationDisplay = quartier;
   } else if (ville) {
-    locationDisplay = ville;
+    // Enlever le pays si présent
+    locationDisplay = ville.replace(/,\s*(Cameroun|Cameroon)$/i, '').trim();
   }
   
   // Fallback si pas de composants : utiliser les autres sources
@@ -951,7 +987,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const handleShare = async () => {
     try {
       const productName = productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
-      const productDesc = productData.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur || '';
+      // ✅ CORRIGÉ 2026-01-21: Utiliser UNIQUEMENT productData.description pour éviter confusion avec autres produits
+      const productDesc = productData.description || productData.description_produit || '';
       const price = displayPrice > 0 ? `${displayPrice.toLocaleString()} ${devise}` : '';
       const location = chosenLocation || '';
 
@@ -1387,14 +1424,23 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 </Text>
                 
                 {/* ✅ OPTIMISÉ 2026-01-14: Description juste sous le titre pour meilleure hiérarchie */}
-                {(productData.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur) && (
+                {/* ✅ CORRIGÉ 2026-01-21: Utiliser UNIQUEMENT productData.description pour éviter confusion avec autres produits du service */}
+                {(productData.description || productData.description_produit) && (
                   <Text style={styles.productDescription} numberOfLines={2}>
                     {filterBooleanValue(
-                      productData.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur,
+                      productData.description || productData.description_produit,
                       ''
                     )}
                   </Text>
                 )}
+                {/* ✅ DEBUG 2026-01-21: Log pour vérifier la description affichée */}
+                {__DEV__ && console.log('[ProductCard] Description affichée pour produit:', {
+                  nom: productData.nom || productData.nom_produit || productData.name,
+                  description: productData.description,
+                  description_produit: productData.description_produit,
+                  hasServiceData: !!service?.data,
+                  serviceDescriptionProduit: service?.data?.description_produit?.valeur
+                })}
               </View>
 
               {/* ✅ OPTIMISÉ 2026-01-14: Section prestataire et localisation - Ligne compacte et équilibrée */}
@@ -1487,14 +1533,15 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     scrollEventThrottle={16}
                     onScrollBeginDrag={() => setIsScrollingCharacteristicsManually(true)}
                     onMomentumScrollEnd={() => {
-                      // ✅ CORRIGÉ: Réactiver le scroll automatique après 5 secondes d'inactivité
-                      setTimeout(() => setIsScrollingCharacteristicsManually(false), 5000);
+                      // ✅ CORRIGÉ 2026-01-21: Réactiver le scroll automatique après 3 secondes d'inactivité
+                      setTimeout(() => setIsScrollingCharacteristicsManually(false), 3000);
                     }}
                     onScrollEndDrag={() => {
-                      // ✅ CORRIGÉ: Réactiver le scroll automatique après 5 secondes d'inactivité
-                      setTimeout(() => setIsScrollingCharacteristicsManually(false), 5000);
+                      // ✅ CORRIGÉ 2026-01-21: Réactiver le scroll automatique après 3 secondes d'inactivité
+                      setTimeout(() => setIsScrollingCharacteristicsManually(false), 3000);
                     }}
                     decelerationRate="fast"
+                    style={{ flexGrow: 0 }} // ✅ CORRIGÉ 2026-01-21: Forcer le ScrollView à prendre seulement la largeur nécessaire
                   >
                     {productVector.map((carac: string, i: number) => {
                       // ✅ CORRIGÉ 2026-01-13: Filtrer les valeurs booléennes avant affichage
@@ -1522,23 +1569,24 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   <ScrollView
                     ref={variantsScrollRef}
                     horizontal
-                    showsHorizontalScrollIndicator={false}
+                    showsHorizontalScrollIndicator={true}
                     contentContainerStyle={styles.variantsScrollContainer}
                     onScroll={handleVariantsScroll}
                     scrollEventThrottle={16}
                     onScrollBeginDrag={() => setIsScrollingManually(true)}
                     onMomentumScrollEnd={() => {
-                      // ✅ CORRIGÉ: Réactiver le scroll automatique après 5 secondes d'inactivité
-                      setTimeout(() => setIsScrollingManually(false), 5000);
+                      // ✅ CORRIGÉ 2026-01-21: Réactiver le scroll automatique après 3 secondes d'inactivité
+                      setTimeout(() => setIsScrollingManually(false), 3000);
                     }}
                     onScrollEndDrag={() => {
-                      // ✅ CORRIGÉ: Réactiver le scroll automatique après 5 secondes d'inactivité
-                      setTimeout(() => setIsScrollingManually(false), 5000);
+                      // ✅ CORRIGÉ 2026-01-21: Réactiver le scroll automatique après 3 secondes d'inactivité
+                      setTimeout(() => setIsScrollingManually(false), 3000);
                     }}
                     decelerationRate="fast"
                     snapToInterval={128} // ✅ CORRIGÉ: cardWidth (120) + marginRight (8) = 128
                     snapToAlignment="start"
                     pagingEnabled={false} // ✅ Utiliser snapToInterval au lieu de pagingEnabled
+                    style={{ flexGrow: 0 }} // ✅ CORRIGÉ 2026-01-21: Forcer le ScrollView à prendre seulement la largeur nécessaire
                   >
                     {variants.map((variant: any, i: number) => (
                       <TouchableOpacity

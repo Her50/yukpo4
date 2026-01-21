@@ -649,9 +649,13 @@ const ResultatBesoinScreen: React.FC = () => {
                             const productData = productFromAPI.product_data || productFromAPI;
                             
                             // ✅ CORRIGÉ 2026-01-20: Extraire correctement tous les champs du produit
+                            // ✅ CORRIGÉ 2026-01-21: S'assurer que les images et vidéos sont bien incluses depuis product_data
                             const transformedProduct = {
                                 // ✅ Préserver toutes les propriétés de product_data
                                 ...productData,
+                                // ✅ CORRIGÉ 2026-01-21: S'assurer que les images/vidéos sont bien extraites depuis product_data
+                                images: productData.images || [],
+                                videos: productData.videos || [],
                                 // ✅ Ajouter les propriétés de l'API si elles ne sont pas dans product_data
                                 product_name: productFromAPI.product_name || productData.nom_produit || productData.nom || productData.name,
                                 product_type: productFromAPI.product_type || productData.type || productData.product_type,
@@ -666,7 +670,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 name: productData.nom_produit || productData.nom || productData.name || productFromAPI.product_name,
                             };
                             
-                            // ✅ DEBUG: Log détaillé de chaque produit transformé
+                            // ✅ DEBUG 2026-01-21: Log détaillé de chaque produit transformé avec description et images
                             console.log(`📦 [ResultatBesoinScreen] Produit transformé pour service ${service.id}:`, {
                                 id: transformedProduct.id,
                                 product_index: transformedProduct.product_index,
@@ -674,13 +678,21 @@ const ResultatBesoinScreen: React.FC = () => {
                                 nom: transformedProduct.nom,
                                 name: transformedProduct.name,
                                 product_name: transformedProduct.product_name,
+                                description: transformedProduct.description,
+                                description_produit: transformedProduct.description_produit,
+                                images_count: Array.isArray(transformedProduct.images) ? transformedProduct.images.length : 0,
+                                videos_count: Array.isArray(transformedProduct.videos) ? transformedProduct.videos.length : 0,
                                 hasProductData: !!productFromAPI.product_data,
                                 productDataKeys: productData ? Object.keys(productData) : [],
                                 originalProductFromAPI: {
                                     id: productFromAPI.id,
                                     product_index: productFromAPI.product_index,
                                     product_name: productFromAPI.product_name,
-                                    hasProductData: !!productFromAPI.product_data
+                                    hasProductData: !!productFromAPI.product_data,
+                                    product_data_description: productData?.description,
+                                    product_data_description_produit: productData?.description_produit,
+                                    product_data_images_count: Array.isArray(productData?.images) ? productData.images.length : 0,
+                                    product_data_videos_count: Array.isArray(productData?.videos) ? productData.videos.length : 0
                                 }
                             });
                             

@@ -42,10 +42,38 @@ pub async fn process_product_creation(
     
     log_info(&format!("[process_product_creation] 🔄 Traitement produit pour service {} (user_id: {})", service_id, user_id));
     
+    // ✅ DEBUG 2026-01-21: Logger la description reçue avant nettoyage
+    let product_name = product_data
+        .get("nom")
+        .or_else(|| product_data.get("nom_produit"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("Nouveau produit");
+    let product_description = product_data
+        .get("description_produit")
+        .or_else(|| product_data.get("description"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    log::info!(
+        "[process_product_creation] 📝 Produit reçu - Nom: '{}', Description: '{}'",
+        product_name,
+        if product_description.is_empty() { "ABSENTE" } else { product_description }
+    );
+    
     // Nettoyer les médias du JSON
     let mut product_data_cleaned = product_data.clone();
     let mut removed_count = 0;
     clean_media_recursive_final(&mut product_data_cleaned, &mut removed_count);
+    
+    // ✅ DEBUG 2026-01-21: Logger la description après nettoyage pour vérifier qu'elle est toujours là
+    let product_description_after = product_data_cleaned
+        .get("description_produit")
+        .or_else(|| product_data_cleaned.get("description"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    log::info!(
+        "[process_product_creation] 📝 Produit après nettoyage - Description: '{}'",
+        if product_description_after.is_empty() { "ABSENTE" } else { product_description_after }
+    );
     
     // ✅ PHASE 1: Écriture UNIQUEMENT dans table products (JSONB supprimé)
     // Calculer le product_index depuis le nombre de produits existants

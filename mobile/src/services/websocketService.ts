@@ -8,10 +8,14 @@ import {
   recordWebSocketStatusChange,
 } from '../observability';
 
+// Message WebSocket normalisé côté client (certains serveurs envoient `message_type`)
 interface WebSocketMessage {
   type: string;
   data: any;
-  timestamp: string;
+  timestamp?: string;
+  // compat backend
+  message_type?: string;
+  user_id?: string | number;
 }
 
 interface WebSocketService {
@@ -84,7 +88,12 @@ class WebSocketManager implements WebSocketService {
 
       this.ws.onmessage = (event) => {
         try {
-          const message: WebSocketMessage = JSON.parse(event.data);
+          const raw = JSON.parse(event.data);
+          // ✅ Normaliser les payloads backend: `message_type` -> `type`
+          const message: WebSocketMessage = {
+            ...raw,
+            type: raw?.type || raw?.message_type || 'unknown',
+          };
           console.log('📨 [WebSocket] Message reçu:', message.type);
           recordWebSocketMessage(message.type);
           this.messageCallbacks.forEach(callback => callback(message));
@@ -191,7 +200,8 @@ class WebSocketManager implements WebSocketService {
 
     setTimeout(() => {
       if (this.reconnectAttempts <= this.maxReconnectAttempts) {
-        this.connect();
+        // ✅ IMPORTANT: conserver le userId pour reconstruire l'URL
+        this.connect(this.currentUserId ?? undefined);
       } else {
         console.error('❌ [WebSocket] Nombre maximum de tentatives de reconnexion atteint');
         Alert.alert(

@@ -629,7 +629,8 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                     value={recipeRequest}
                                     onChangeText={setRecipeRequest}
                                     placeholder="Ex: Ndolé, Poulet DG, Riz au gras..."
-                                    autoFocus={true}
+                                    // ✅ IMPORTANT: éviter le double focus (autoFocus + focus() différé) qui peut provoquer un “tremblement” (KAV/keyboard) sur Android
+                                    autoFocus={false}
                                     editable={true}
                                     keyboardType="default"
                                     returnKeyType="search"

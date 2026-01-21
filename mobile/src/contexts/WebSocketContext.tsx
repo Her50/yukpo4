@@ -168,7 +168,28 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             switch (messageType) {
                 case 'notification':
                     // Afficher une notification locale
-                    const notification = message as NotificationMessage;
+                    // ✅ Normaliser un payload “notification” minimal (certains backends n’envoient pas title/priority)
+                    const notification = (() => {
+                        const raw = message as any;
+                        const data = raw?.data ?? {};
+                        const title = data.title ?? 'Notification';
+                        const msg = data.message ?? data.msg ?? data.text ?? 'Nouvelle notification disponible';
+                        const userId = data.user_id ?? raw?.user_id ?? String(user?.id ?? '');
+                        return {
+                            type: 'notification',
+                            data: {
+                                id: data.id ?? `${Date.now()}`,
+                                user_id: String(userId),
+                                title,
+                                message: msg,
+                                type: data.type ?? 'info',
+                                // on accepte timestamp au root ou dans data
+                                timestamp: data.timestamp ?? raw?.timestamp ?? new Date().toISOString(),
+                                // compat optionnelle
+                                priority: data.priority,
+                            }
+                        } as unknown as NotificationMessage & { data: any };
+                    })();
                     console.log('[WebSocketContext] 🔔 Notification:', notification.data?.title);
 
                     // ✅ SÉCURITÉ: Notifier tous les handlers enregistrés (vérifier que ce sont des fonctions)
@@ -179,7 +200,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     });
 
                     // Afficher une alerte si l'app est au premier plan
-                    if (notification.data.priority === 'high') {
+                    if (notification.data?.priority === 'high') {
                         Alert.alert(
                             notification.data.title,
                             notification.data.message,
