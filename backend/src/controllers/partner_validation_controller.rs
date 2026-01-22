@@ -119,10 +119,10 @@ pub async fn validate_partner(
             let user_country = get_user_country(&state, user_id).await;
             // ✅ CORRIGÉ: Utiliser une valeur par défaut au lieu de NULL pour éviter les problèmes avec la contrainte UNIQUE
             // En PostgreSQL, NULL != NULL, donc l'ON CONFLICT ne fonctionne pas correctement avec NULL
-            let country = user_country.unwrap_or_else(|| "Non spécifié".to_string());
             if user_country.is_none() {
                 warn!("[validate_partner] Impossible de déterminer le pays pour user_id={}, utilisation de 'Non spécifié'", user_id);
             }
+            let country = user_country.unwrap_or_else(|| "Non spécifié".to_string());
             
             // Note: Les autres infos (phone, address, etc.) ne sont pas stockées dans users
             // Elles seront complétées lors de la configuration du service spécialisé
