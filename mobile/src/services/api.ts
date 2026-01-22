@@ -1071,6 +1071,7 @@ export const deliveryApi = {
     profile_data: Record<string, unknown>;
     documents: Record<string, unknown>;
     submitted: boolean;
+    partner_id?: number; // ✅ NOUVEAU 2026-01-22: ID du partenaire de livraison
   }) => {
     return apiCall('/api/courier/applications', {
       method: 'POST',

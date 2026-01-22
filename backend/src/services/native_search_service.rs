@@ -135,6 +135,11 @@ impl NativeSearchService {
         log_info(&format!("[NativeSearch] Requête normalisée: '{}' -> '{}' (wildcards: {})", 
             query_with_keywords, normalized_query, has_wildcards));
         
+        // ✅ CORRIGÉ 2026-01-22: Utiliser la requête originale (sans variantes) pour la recherche SQL
+        // PostgreSQL unaccent() gère déjà les accents, pas besoin de variantes dans la requête SQL
+        // Les variantes sont utiles pour le matching vectoriel mais pas pour ILIKE/unaccent()
+        let query_for_sql = query_with_keywords.trim().to_lowercase();
+        
         // ✅ OPTIMISÉ 2025-01-01: Utiliser keyword_search_with_gps en PRIORITÉ (fonction la plus pertinente)
         // - keyword_search_with_gps: 4.46s → 3 résultats (PERTINENTE, optimisée à ~0.3s) - PRIORITÉ
         // - fulltext_search_with_gps: 12.4ms → 0 résultats (fallback si pas assez de résultats)
@@ -142,7 +147,7 @@ impl NativeSearchService {
         // 
         // Stratégie: Appeler keyword_search_with_gps en premier, puis fallback si nécessaire
         let mut fulltext_results = self.keyword_search_with_gps(
-            &normalized_query, 
+            &query_for_sql, 
             category_filter, 
             location_filter,
             gps_zone,
@@ -155,7 +160,7 @@ impl NativeSearchService {
         if fulltext_results.is_empty() {
             log_info(&format!("[NativeSearch] Fallback fulltext_search_with_gps (0 résultats trouvés)"));
             let fulltext_fallback_results = self.fulltext_search_with_gps_and_lang(
-                &normalized_query, 
+                &query_for_sql, 
                 category_filter, 
                 location_filter,
                 gps_zone,
@@ -177,7 +182,7 @@ impl NativeSearchService {
         if fulltext_results.is_empty() {
             log_info(&format!("[NativeSearch] Fallback trigram_search_with_gps (0 résultats trouvés)"));
             let trigram_results = self.trigram_search_with_gps(
-                &normalized_query, 
+                &query_for_sql, 
                 category_filter, 
                 location_filter,
                 gps_zone,
@@ -1208,7 +1213,7 @@ LIMIT 100
             prefiltered_services_for_products AS (
                 -- ✅ ÉTAPE 2A: Pré-filtrer services AVANT de décomposer produits (utilise index existants)
                 -- ✅ CORRIGÉ 2026-01-22: NE PAS filtrer par titre/description service - recherche UNIQUEMENT dans produits
-                -- ✅ CRITIQUE pour scalabilité: Limite à 200 services max même avec millions de produits
+                -- ✅ CORRIGÉ 2026-01-22: Supprimer la limite de 200 services - elle excluait des services pertinents
                 -- ✅ OPTIMISÉ: Pré-filtrer seulement les services qui ont des produits actifs (évite de traiter tous les services)
                 SELECT DISTINCT s.id
                 FROM services s
@@ -1216,7 +1221,7 @@ LIMIT 100
                 WHERE s.is_active = true
                 -- ✅ SUPPRIMÉ 2026-01-22: Ne plus filtrer par titre/description service
                 -- La recherche se concentre UNIQUEMENT sur les produits et leurs caractéristiques
-                LIMIT 200  -- ✅ LIMIT AVANT de décomposer produits (critique pour scalabilité)
+                -- ✅ SUPPRIMÉ 2026-01-22: Ne plus limiter à 200 services - la limite sera appliquée après la recherche (LIMIT 50)
             ),
             product_scores AS (
                 -- ✅ PHASE 3: Pré-calculer scores produits SEULEMENT pour services pré-filtrés depuis table service_products

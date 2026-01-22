@@ -738,9 +738,24 @@ const CourierRegistrationScreen: React.FC = () => {
                 partner_id: selectedPartnerId, // ✅ NOUVEAU 2026-01-04: Envoyer aussi partner_id à la racine pour le backend
             });
 
+            // ✅ DEBUG: Log complet de la réponse pour diagnostic
+            console.log('[CourierRegistrationScreen] 🔍 Réponse complète API:', JSON.stringify(response, null, 2));
+            console.log('[CourierRegistrationScreen] 🔍 Détails réponse:', {
+                'response.success': response.success,
+                'response.error': response.error,
+                'response.status': response.status,
+                'response.data': response.data,
+                'response.data?.success': response.data?.success,
+                'response.data?.application': !!response.data?.application,
+                'response.data?.application?.id': response.data?.application?.id,
+                'response.data?.application?.status': response.data?.application?.status,
+            });
+
             // ✅ CORRIGÉ: Vérifier la réponse avec plus de flexibilité
+            // Le backend retourne {success: true, application: {...}}
+            // apiCall retourne {success: true, data: {success: true, application: {...}}}
             const isSuccess = response.success === true || 
-                             (response.data && (response.data.application || response.data.success !== false)) ||
+                             (response.data && (response.data.application || response.data.success === true)) ||
                              (!response.error && !response.status);
             
             if (isSuccess) {

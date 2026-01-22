@@ -1113,10 +1113,14 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                             style={[styles.searchSendButton, loading && styles.sendButtonDisabled]}
                             onPress={() => handleSubmit()}
                             disabled={loading}
-                            accessibilityLabel={loading ? "Envoi en cours" : "Rechercher"}
+                            accessibilityLabel={loading ? "Recherche en cours" : "Rechercher"}
                             accessibilityRole="button"
                         >
-                            <SafeIcon name="send" size={20} color="#FFFFFF" />
+                            {loading ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <SafeIcon name="send" size={20} color="#FFFFFF" />
+                            )}
                         </TouchableOpacity>
                     )}
                 </View>
@@ -1322,12 +1326,16 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     <TouchableOpacity
                         style={[styles.submitButtonBottom, loading && styles.sendButtonDisabled]}
                         onPress={() => handleSubmit()}
-                        disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading - permettre toujours l'envoi
+                        disabled={loading} // ✅ CORRIGÉ 2026-01-22: Désactiver pendant le chargement
                         accessibilityLabel={loading ? "Envoi en cours" : (isCreateService ? "Créer un service" : "Rechercher")}
                         accessibilityRole="button"
                         accessibilityState={{ disabled: loading || (!text.trim() && images.length === 0 && videos.length === 0 && audioUri === null && documents.length === 0 && excelFiles.length === 0) }}
                     >
-                        <Text style={styles.sendIcon}>🚀</Text>
+                        {loading ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                        ) : (
+                            <Text style={styles.sendIcon}>🚀</Text>
+                        )}
                         <Text
                             style={[styles.submitButtonText, loading && styles.submitButtonTextLoading]}
                             numberOfLines={1}

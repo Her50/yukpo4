@@ -2985,16 +2985,42 @@ async fn submit_courier_application(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CourierApplicationPayload>,
 ) -> AppResult<Json<Value>> {
+    // ✅ LOG: Logger la soumission pour diagnostic
+    log::info!(
+        "[submit_courier_application] Soumission candidature - user_id: {}, submitted: {}, partner_id: {:?}",
+        user.id,
+        payload.submitted,
+        payload.partner_id
+    );
+    
     let service = delivery_service(&state)?;
-    let application = service
+    let application = match service
         .submit_courier_application(CourierApplicationInput {
             user_id: user.id,
-            profile_data: payload.profile_data,
-            documents: payload.documents,
+            profile_data: payload.profile_data.clone(),
+            documents: payload.documents.clone(),
             submitted: payload.submitted,
             partner_id: payload.partner_id, // ✅ NOUVEAU 2026-01-04: Partenaire de livraison
         })
-        .await?;
+        .await
+    {
+        Ok(app) => {
+            log::info!(
+                "[submit_courier_application] ✅ Candidature créée/mise à jour avec succès - id: {}, status: {:?}",
+                app.id,
+                app.status
+            );
+            app
+        }
+        Err(e) => {
+            log::error!(
+                "[submit_courier_application] ❌ Erreur soumission candidature - user_id: {}, erreur: {}",
+                user.id,
+                e
+            );
+            return Err(e);
+        }
+    };
 
     // ✅ CORRIGÉ: Inclure un champ 'success' explicite pour que le frontend détecte correctement le succès
     Ok(Json(serde_json::json!({ 

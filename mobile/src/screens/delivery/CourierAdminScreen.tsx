@@ -43,7 +43,8 @@ const CourierAdminScreen: React.FC = () => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [applications, setApplications] = useState<CourierApplication[]>([]);
-    const [filter, setFilter] = useState<'all' | 'submitted' | 'under_review' | 'approved' | 'rejected'>('all');
+    // ✅ CORRIGÉ 2026-01-22: Filtrer par défaut sur "submitted" pour voir les candidatures à valider
+    const [filter, setFilter] = useState<'all' | 'submitted' | 'under_review' | 'approved' | 'rejected'>('submitted');
     const [selectedApplication, setSelectedApplication] = useState<CourierApplication | null>(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
