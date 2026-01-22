@@ -1290,9 +1290,10 @@ impl DeliveryService {
                 .await?;
 
             log::info!(
-                "[submit_courier_application] ✅ Candidature mise à jour: id={}, status={:?}, submitted_at={:?}",
+                "[submit_courier_application] ✅ Candidature mise à jour: id={}, status={:?}, submitted={}, submitted_at={:?}",
                 updated.id,
                 updated.status,
+                input.submitted,
                 updated.submitted_at
             );
 
@@ -1328,12 +1329,13 @@ impl DeliveryService {
             })
             .await?;
 
-        log::info!(
-            "[submit_courier_application] ✅ Nouvelle candidature créée: id={}, status={:?}, submitted_at={:?}",
-            new_app.id,
-            new_app.status,
-            new_app.submitted_at
-        );
+            log::info!(
+                "[submit_courier_application] ✅ Nouvelle candidature créée: id={}, status={:?}, submitted={}, submitted_at={:?}",
+                new_app.id,
+                new_app.status,
+                input.submitted,
+                new_app.submitted_at
+            );
 
         Ok(new_app)
     }

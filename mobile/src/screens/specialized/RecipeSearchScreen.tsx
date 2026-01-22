@@ -1,6 +1,6 @@
-// ✅ Écran de recherche de recettes
+// ✅ Écran de recherche de recettes - VERSION REFONDUE (sans tremblements)
 import { useNavigation } from '@react-navigation/native';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -8,16 +8,24 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
-    View
+    View,
+    Keyboard,
+    Platform,
 } from 'react-native';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
-import StableTextInput from '../../components/StableTextInput';
 import { GeneratedRecipe, menuPlanningService } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
 import { generateAndDownloadRecipePDF, shareRecipePDF } from '../../utils/recipePdfGenerator';
+
+// Fonction utilitaire pour extraire le nombre de portions
+const getServingsNumber = (servings: number | { number: number; size: string } | undefined): number => {
+    if (!servings) return 0;
+    if (typeof servings === 'number') return servings;
+    return servings.number;
+};
 
 const RecipeSearchScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -26,15 +34,9 @@ const RecipeSearchScreen: React.FC = () => {
     const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
     const [showRecipeDetails, setShowRecipeDetails] = useState(false);
     const [exportingRecipePDF, setExportingRecipePDF] = useState(false);
-    
-    // ✅ CORRECTION CRITIQUE: Utiliser StableTextInput qui gère l'état local
-    // Plus besoin de refs complexes - StableTextInput gère tout en interne
-    const handleSearchQueryChange = React.useCallback((text: string) => {
-        setSearchQuery(text);
-    }, []);
 
-    const handleSearch = React.useCallback(async () => {
-        // ✅ CORRECTION CRITIQUE: Utiliser directement searchQuery (StableTextInput synchronise automatiquement)
+    // ✅ SIMPLIFIÉ: Handler de recherche sans complexité inutile
+    const handleSearch = useCallback(async () => {
         const queryToUse = searchQuery.trim();
         
         if (!queryToUse) {
@@ -42,117 +44,64 @@ const RecipeSearchScreen: React.FC = () => {
             return;
         }
 
-        // ✅ CORRECTION CRITIQUE: Regrouper les mises à jour d'état pour éviter les re-renders multiples
-        // Utiliser React.startTransition pour les mises à jour non urgentes
-        React.startTransition(() => {
-            setGeneratedRecipe(null); // Réinitialiser la recette précédente
-            setShowRecipeDetails(false); // Fermer le modal précédent
-        });
+        // Fermer le clavier immédiatement
+        Keyboard.dismiss();
         
-        // ✅ CORRECTION CRITIQUE: Mettre à jour loading immédiatement mais de manière stable
-        // Utiliser requestAnimationFrame pour synchroniser avec le cycle de rendu et éviter les tremblements
-        requestAnimationFrame(() => {
-            setLoading(true);
-        });
+        // Mettre à jour l'état de manière simple
+        setLoading(true);
+        setGeneratedRecipe(null);
+        setShowRecipeDetails(false);
 
         try {
-
             console.log('[RecipeSearch] Début génération recette:', queryToUse);
 
-            // ✅ AMÉLIORÉ: Ajouter un timeout explicite pour éviter les chargements infinis
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('La génération de la recette prend trop de temps. Veuillez réessayer.')), 95000); // 95s (légèrement inférieur au timeout API)
+                setTimeout(() => reject(new Error('La génération de la recette prend trop de temps. Veuillez réessayer.')), 95000);
             });
 
-            // Générer une recette avec l'IA
             const responsePromise = menuPlanningService.generateRecipe(queryToUse);
             const response = await Promise.race([responsePromise, timeoutPromise]) as any;
 
-            console.log('[RecipeSearch] Réponse complète reçue:', JSON.stringify(response, null, 2));
-            console.log('[RecipeSearch] Réponse détaillée:', {
-                success: response?.success,
-                hasData: !!response?.data,
-                dataType: typeof response?.data,
-                dataKeys: response?.data ? Object.keys(response.data) : [],
-                hasRecipe: !!response?.data?.recipe,
-                hasDataSuccess: response?.data?.success,
-                recipeKeys: response?.data?.recipe ? Object.keys(response.data.recipe) : [],
-                fullData: response?.data,
-            });
+            console.log('[RecipeSearch] Réponse reçue:', response?.success);
 
-            // ✅ CORRIGÉ: Gérer différentes structures de réponse possibles
+            // Extraire la recette de différentes structures possibles
             let recipe: GeneratedRecipe | null = null;
             
             if (response) {
-                // Structure 1: response.data.recipe (structure normale depuis apiCallInternal)
-                // Le backend retourne {"success": true, "recipe": {...}}
-                // apiCallInternal enveloppe dans {success: true, data: {success: true, recipe: {...}}}
                 if (response.data?.recipe) {
-                    console.log('[RecipeSearch] ✅ Structure 1: response.data.recipe trouvé');
                     recipe = response.data.recipe;
-                }
-                // Structure 2: response.data directement est la recette (fallback si pas d'enveloppe)
-                else if (response.data && response.data.recipe_name) {
-                    console.log('[RecipeSearch] ✅ Structure 2: response.data est directement la recette');
+                } else if (response.data && response.data.recipe_name) {
                     recipe = response.data as GeneratedRecipe;
-                }
-                // Structure 3: response.recipe (si le backend retourne directement sans enveloppe)
-                else if (response.recipe) {
-                    console.log('[RecipeSearch] ✅ Structure 3: response.recipe trouvé');
+                } else if (response.recipe) {
                     recipe = response.recipe;
-                }
-                // Structure 4: response.data.data.recipe (double enveloppe - fallback)
-                else if (response.data?.data?.recipe) {
-                    console.log('[RecipeSearch] ✅ Structure 4: response.data.data.recipe trouvé');
+                } else if (response.data?.data?.recipe) {
                     recipe = response.data.data.recipe;
                 }
                 
-                // Si response.success est false, gérer l'erreur
                 if (!response.success && !recipe) {
                     const errorMsg = response.error || response.message || response.data?.error || response.data?.message || 'Impossible de générer la recette';
-                    console.error('[RecipeSearch] ❌ Erreur dans la réponse:', errorMsg);
                     Alert.alert('Erreur', errorMsg);
+                    setLoading(false);
                     return;
                 }
             }
 
-            // ✅ DEBUG: Log détaillé de l'extraction
-            console.log('[RecipeSearch] 📊 État après extraction:', {
-                hasRecipe: !!recipe,
-                recipeName: recipe?.recipe_name,
-                recipeKeys: recipe ? Object.keys(recipe) : [],
-                responseSuccess: response?.success,
-                responseHasData: !!response?.data,
-            });
-
             if (recipe && recipe.recipe_name) {
-                console.log('[RecipeSearch] ✅ Recette générée avec succès:', recipe.recipe_name);
-                // ✅ CORRECTION CRITIQUE: Regrouper les mises à jour d'état pour éviter les re-renders multiples
-                // Utiliser requestAnimationFrame pour synchroniser les mises à jour avec le cycle de rendu
-                requestAnimationFrame(() => {
-                    React.startTransition(() => {
-                        setGeneratedRecipe(recipe);
-                        setShowRecipeDetails(true);
-                        // ✅ CORRECTION CRITIQUE: Réinitialiser l'état (StableTextInput se synchronisera automatiquement)
-                        setSearchQuery('');
-                    });
-                });
-                } else if (response && !response.success) {
-                const errorMsg = response.error || response.message || 'Impossible de générer la recette';
-                console.error('[RecipeSearch] ❌ Erreur dans la réponse:', errorMsg);
-                Alert.alert('Erreur', errorMsg);
+                console.log('[RecipeSearch] ✅ Recette générée:', recipe.recipe_name);
+                setGeneratedRecipe(recipe);
+                setSearchQuery('');
+                // Petit délai pour permettre la fermeture du clavier avant d'ouvrir le modal
+                setTimeout(() => {
+                    setShowRecipeDetails(true);
+                    setLoading(false);
+                }, 200);
             } else {
-                console.error('[RecipeSearch] ❌ Réponse invalide ou recette manquante:', {
-                    response,
-                    recipe,
-                    recipeName: recipe?.recipe_name,
-                });
                 Alert.alert('Erreur', 'Impossible d\'extraire la recette de la réponse. Veuillez réessayer.');
+                setLoading(false);
             }
         } catch (error: any) {
-            console.error('[RecipeSearch] ❌ Erreur exception:', error);
-
-            // ✅ AMÉLIORÉ: Messages d'erreur plus spécifiques
+            console.error('[RecipeSearch] ❌ Erreur:', error);
+            
             let errorMessage = 'Une erreur est survenue';
             if (error.message) {
                 errorMessage = error.message;
@@ -162,23 +111,27 @@ const RecipeSearchScreen: React.FC = () => {
                 errorMessage = error;
             }
 
-            // Vérifier si c'est un timeout
             if (errorMessage.includes('temps') || errorMessage.includes('timeout') || error.code === 'ABORT_ERR' || error.name === 'AbortError') {
                 errorMessage = 'La génération prend trop de temps. Veuillez réessayer avec un nom de recette plus simple.';
             }
 
             Alert.alert('Erreur', errorMessage);
-        } finally {
-            // ✅ CORRECTION CRITIQUE: Mettre à jour loading de manière stable avec requestAnimationFrame
-            requestAnimationFrame(() => {
-                setLoading(false);
-            });
+            setLoading(false);
         }
     }, [searchQuery]);
 
+    // ✅ MÉMORISÉ: Composant de chargement pour éviter les re-renders
+    const loadingView = useMemo(() => (
+        <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={modernColors.primary} animating={loading} />
+            <Text style={styles.loadingText}>Génération de la recette en cours...</Text>
+            <Text style={styles.loadingSubtext}>Cela peut prendre jusqu'à 90 secondes</Text>
+        </View>
+    ), [loading]);
 
     return (
-        <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.container}>
+            {/* Header fixe */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
@@ -186,40 +139,45 @@ const RecipeSearchScreen: React.FC = () => {
                 <Text style={styles.title}>Recherche de Recettes</Text>
             </View>
 
-            <View style={styles.form}>
-                <NativeCard style={styles.searchCard}>
-                    <Text style={styles.label}>🔍 Rechercher une recette</Text>
-                    <View style={styles.searchContainer}>
-                        <StableTextInput
-                            value={searchQuery}
-                            onChangeText={handleSearchQueryChange}
-                            placeholder="Ex: Poulet DG, Ndolé, Riz sauté..."
-                            onSubmitEditing={handleSearch}
-                            returnKeyType="search"
-                            debounceMs={300}
-                            style={styles.searchInput}
-                        />
-                        <NativeButton
-                            title="Rechercher"
-                            onPress={handleSearch}
-                            loading={loading}
-                            variant="primary"
-                            size="small"
-                            style={styles.searchButton}
-                            disabled={!searchQuery.trim() || loading}
-                        />
-                    </View>
-                </NativeCard>
+            {/* Contenu scrollable */}
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+            >
+                <View style={styles.form}>
+                    <NativeCard style={styles.searchCard}>
+                        <Text style={styles.label}>🔍 Rechercher une recette</Text>
+                        <View style={styles.searchContainer}>
+                            <TextInput
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                placeholder="Ex: Poulet DG, Ndolé, Riz sauté..."
+                                onSubmitEditing={handleSearch}
+                                returnKeyType="search"
+                                style={styles.searchInput}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                            <NativeButton
+                                title="Rechercher"
+                                onPress={handleSearch}
+                                loading={loading}
+                                variant="primary"
+                                size="small"
+                                style={styles.searchButton}
+                                disabled={!searchQuery.trim() || loading}
+                            />
+                        </View>
+                    </NativeCard>
 
-                {/* ✅ CORRECTION CRITIQUE: Utiliser opacity au lieu de conditionnel pour éviter les changements de layout */}
-                <View style={[styles.loadingContainer, { opacity: loading ? 1 : 0, pointerEvents: loading ? 'auto' : 'none' }]}>
-                    <ActivityIndicator size="large" color={modernColors.primary} animating={loading} />
-                    <Text style={styles.loadingText}>Génération de la recette en cours...</Text>
-                    <Text style={styles.loadingSubtext}>Cela peut prendre jusqu'à 90 secondes</Text>
+                    {/* Indicateur de chargement avec hauteur fixe pour éviter les changements de layout */}
+                    {loading && loadingView}
                 </View>
-            </View>
+            </ScrollView>
 
-            {/* ✅ NOUVEAU: Modal pour afficher la recette générée (comme dans MenuWeekCalendarScreen) */}
+            {/* Modal de recette générée - SIMPLIFIÉ sans KeyboardAvoidingView */}
             <Modal
                 visible={showRecipeDetails && !!generatedRecipe}
                 animationType="slide"
@@ -247,7 +205,7 @@ const RecipeSearchScreen: React.FC = () => {
                                 contentContainerStyle={styles.modalBodyContent}
                                 showsVerticalScrollIndicator={true}
                                 nestedScrollEnabled={true}
-                                bounces={true}
+                                keyboardShouldPersistTaps="handled"
                             >
                                 <View style={styles.recipeHeader}>
                                     <Text style={styles.recipeTitle}>{generatedRecipe.recipe_name || 'Recette sans nom'}</Text>
@@ -272,7 +230,7 @@ const RecipeSearchScreen: React.FC = () => {
                                     )}
                                     <View style={styles.recipeInfoItem}>
                                         <SafeIcon name="users" size={16} color={modernColors.primary} type="lucide" />
-                                        <Text style={styles.recipeInfoText}>{generatedRecipe.servings} portions</Text>
+                                        <Text style={styles.recipeInfoText}>{getServingsNumber(generatedRecipe.servings)} portions</Text>
                                     </View>
                                 </View>
 
@@ -422,7 +380,7 @@ const RecipeSearchScreen: React.FC = () => {
                     </View>
                 </View>
             </Modal>
-        </KeyboardAwareScreen>
+        </View>
     );
 };
 
@@ -431,13 +389,11 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F9FAFB',
     },
-    scrollContent: {
-        paddingBottom: 20,
-    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
+        paddingTop: Platform.OS === 'ios' ? 50 : 16,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
@@ -450,9 +406,14 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#111827',
     },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 20,
+    },
     form: {
         padding: 16,
-        position: 'relative', // ✅ CORRECTION CRITIQUE: Position relative pour le loadingContainer en absolute
     },
     searchCard: {
         marginBottom: 16,
@@ -470,6 +431,14 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         flex: 1,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        backgroundColor: '#fff',
+        fontSize: 16,
+        color: '#111827',
     },
     searchButton: {
         minWidth: 100,
@@ -477,8 +446,8 @@ const styles = StyleSheet.create({
     loadingContainer: {
         alignItems: 'center',
         padding: 24,
-        minHeight: 120, // ✅ CORRECTION CRITIQUE: Hauteur minimale fixe pour éviter les changements de layout
-        justifyContent: 'center', // ✅ CORRECTION CRITIQUE: Centrer verticalement
+        minHeight: 120,
+        justifyContent: 'center',
     },
     loadingText: {
         marginTop: 12,
@@ -492,7 +461,6 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         fontStyle: 'italic',
     },
-    // ✅ NOUVEAU: Styles pour le modal de recette
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -503,8 +471,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         maxHeight: '90%',
-        flexDirection: 'column', // ✅ CORRIGÉ: S'assurer que la direction est column
-        justifyContent: 'flex-start', // ✅ CORRIGÉ: Aligner en haut
+        flexDirection: 'column',
     },
     modalHeader: {
         flexDirection: 'row',
@@ -521,11 +488,10 @@ const styles = StyleSheet.create({
     },
     modalBody: {
         flex: 1,
-        maxHeight: '100%', // ✅ CORRIGÉ: Permettre au ScrollView de prendre toute la hauteur disponible
     },
     modalBodyContent: {
         padding: 20,
-        paddingBottom: 100, // ✅ CORRIGÉ: Ajouter padding en bas suffisant pour permettre de scroller jusqu'en bas (espace pour le footer)
+        paddingBottom: 100,
     },
     modalFooter: {
         padding: 20,
@@ -656,7 +622,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: modernColors.primary,
     },
-    // ✅ NOUVEAU: Styles pour affichage d'erreur dans le modal
     errorContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -687,4 +652,3 @@ const styles = StyleSheet.create({
 });
 
 export default RecipeSearchScreen;
-

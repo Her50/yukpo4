@@ -1,19 +1,19 @@
 // ✅ Écran Hub Planification Menus
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Dimensions,
     Keyboard,
-    KeyboardAvoidingView,
     Modal,
     Platform,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -62,18 +62,8 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const [loadingRecipe, setLoadingRecipe] = useState(false);
     const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
     const [exportingRecipePDF, setExportingRecipePDF] = useState(false);
-    const recipeInputRef = useRef<any>(null); // ✅ NOUVEAU 2026-01-14: Ref pour forcer le focus
 
-    // ✅ CORRIGÉ 2026-01-14: Forcer le focus sur le champ de recherche quand le modal s'ouvre
-    useEffect(() => {
-        if (showRecipeModal && recipeInputRef.current) {
-            // Petit délai pour s'assurer que le modal est complètement monté
-            const timer = setTimeout(() => {
-                recipeInputRef.current?.focus();
-            }, 300);
-            return () => clearTimeout(timer);
-        }
-    }, [showRecipeModal]);
+    // ✅ SUPPRIMÉ: Plus besoin de focus automatique qui cause des tremblements
 
     useFocusEffect(
         useCallback(() => {
@@ -124,64 +114,58 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
         }
     };
 
-    // ✅ NOUVEAU: Générer une recette via IA
+    // ✅ REFONDU: Générer une recette via IA - SIMPLIFIÉ
     const handleGenerateRecipe = async () => {
         if (!recipeRequest.trim()) {
             Alert.alert('Erreur', 'Veuillez entrer le nom d\'un plat');
             return;
         }
 
+        // Fermer le clavier immédiatement
+        Keyboard.dismiss();
+        setLoadingRecipe(true);
+
         try {
-            // ✅ CRITIQUE: Fermer le clavier avant l'appel IA pour éviter les tremblements (transition modal + KAV)
-            Keyboard.dismiss();
-            setLoadingRecipe(true);
             const response = await menuPlanningService.generateRecipe(recipeRequest.trim());
             
-            // ✅ CORRIGÉ: Gérer différentes structures de réponse possibles
+            // Extraire la recette de différentes structures possibles
             let recipe: GeneratedRecipe | null = null;
             
             if (response) {
-                // Structure 1: response.data.recipe (structure normale)
                 if (response.data?.recipe) {
                     recipe = response.data.recipe;
-                }
-                // Structure 2: response.data directement est la recette
-                else if (response.data && response.data.recipe_name) {
+                } else if (response.data && response.data.recipe_name) {
                     recipe = response.data as GeneratedRecipe;
-                }
-                // Structure 3: response.recipe
-                else if (response.recipe) {
+                } else if (response.recipe) {
                     recipe = response.recipe;
-                }
-                // Structure 4: response.data.data.recipe (double enveloppe)
-                else if (response.data?.data?.recipe) {
+                } else if (response.data?.data?.recipe) {
                     recipe = response.data.data.recipe;
                 }
                 
                 if (!response.success && !recipe) {
                     const errorMsg = response.error || response.message || response.data?.error || response.data?.message || 'Impossible de générer la recette';
                     Alert.alert('Erreur', errorMsg);
+                    setLoadingRecipe(false);
                     return;
                 }
             }
 
             if (recipe && recipe.recipe_name) {
                 setGeneratedRecipe(recipe);
-                // ✅ CORRIGÉ: Fermer le modal de recherche d'abord, puis ouvrir le modal de détails avec un petit délai pour éviter les tremblements (comme dans MenuWeekCalendarScreen)
-                Keyboard.dismiss();
                 setShowRecipeModal(false);
                 setRecipeRequest('');
-                // Petit délai pour permettre la fermeture complète du premier modal avant d'ouvrir le second
+                setLoadingRecipe(false);
+                // Petit délai pour permettre la fermeture complète du modal avant d'ouvrir le suivant
                 setTimeout(() => {
                     setShowRecipeDetails(true);
-                }, 300);
+                }, 200);
             } else {
                 Alert.alert('Erreur', 'Impossible d\'extraire la recette de la réponse. Veuillez réessayer.');
+                setLoadingRecipe(false);
             }
         } catch (error: any) {
             console.error('[MenuPlanningHub] Erreur génération recette:', error);
             Alert.alert('Erreur', error.message || 'Une erreur est survenue');
-        } finally {
             setLoadingRecipe(false);
         }
     };
@@ -597,22 +581,32 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 </View>
             </View>
 
-            {/* ✅ CORRIGÉ 2026-01-14: Modal pour demander une recette avec focus corrigé */}
+            {/* ✅ REFONDU: Modal pour demander une recette - SIMPLIFIÉ sans KeyboardAvoidingView */}
             <Modal
                 visible={showRecipeModal}
                 animationType="slide"
                 transparent={true}
-                onRequestClose={() => setShowRecipeModal(false)}
+                onRequestClose={() => {
+                    Keyboard.dismiss();
+                    setShowRecipeModal(false);
+                }}
             >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.modalOverlay}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-                >
-                    <View style={styles.modalContent}>
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity 
+                        style={styles.modalOverlayTouchable}
+                        activeOpacity={1}
+                        onPress={() => {
+                            Keyboard.dismiss();
+                            setShowRecipeModal(false);
+                        }}
+                    />
+                    <View style={styles.modalContentRecipe}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Rechercher une recette</Text>
-                            <TouchableOpacity onPress={() => setShowRecipeModal(false)}>
+                            <TouchableOpacity onPress={() => {
+                                Keyboard.dismiss();
+                                setShowRecipeModal(false);
+                            }}>
                                 <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
                             </TouchableOpacity>
                         </View>
@@ -624,16 +618,17 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>Nom du plat *</Text>
-                                <NativeInput
-                                    ref={recipeInputRef}
+                                <TextInput
                                     value={recipeRequest}
                                     onChangeText={setRecipeRequest}
                                     placeholder="Ex: Ndolé, Poulet DG, Riz au gras..."
-                                    // ✅ IMPORTANT: éviter le double focus (autoFocus + focus() différé) qui peut provoquer un “tremblement” (KAV/keyboard) sur Android
-                                    autoFocus={false}
-                                    editable={true}
-                                    keyboardType="default"
+                                    placeholderTextColor="#9CA3AF"
+                                    onSubmitEditing={handleGenerateRecipe}
                                     returnKeyType="search"
+                                    style={styles.recipeInput}
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                    keyboardType="default"
                                 />
                             </View>
                         </View>
@@ -642,6 +637,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             <NativeButton
                                 title="Annuler"
                                 onPress={() => {
+                                    Keyboard.dismiss();
                                     setShowRecipeModal(false);
                                     setRecipeRequest('');
                                 }}
@@ -658,7 +654,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             />
                         </View>
                     </View>
-                </KeyboardAvoidingView>
+                </View>
             </Modal>
 
             {/* ✅ NOUVEAU: Modal pour afficher la recette générée */}
@@ -1142,19 +1138,40 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.textSecondary,
     },
-    // ✅ NOUVEAU: Styles pour modals recette
+    // ✅ REFONDU: Styles pour modals recette - SIMPLIFIÉ
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'flex-end',
+    },
+    modalOverlayTouchable: {
+        flex: 1,
     },
     modalContent: {
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         maxHeight: '90%',
-        minHeight: 400, // ✅ CORRIGÉ: Hauteur minimale pour éviter les changements de layout
+        minHeight: 400,
         paddingBottom: 20,
+    },
+    modalContentRecipe: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '60%',
+        paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    },
+    recipeInput: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        backgroundColor: '#fff',
+        fontSize: 16,
+        color: '#111827',
+        minHeight: 48,
     },
     modalHeader: {
         flexDirection: 'row',

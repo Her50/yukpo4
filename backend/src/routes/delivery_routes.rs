@@ -3121,16 +3121,29 @@ async fn list_courier_applications(
     let applications = match statuses_filter {
         Some(statuses) if statuses.len() > 1 => {
             log::info!(
-                "[list_courier_applications] Filtre multi-status activé: {:?}",
+                "[list_courier_applications] Filtre multi-status activé: {:?} ({} statuts)",
+                statuses,
+                statuses.len()
+            );
+            let result = service
+                .list_courier_applications_by_statuses(statuses.clone(), limit, offset)
+                .await?;
+            log::info!(
+                "[list_courier_applications] Résultat filtre multi-status: {} candidature(s) trouvée(s) pour {:?}",
+                result.len(),
                 statuses
             );
+            result
+        }
+        _ => {
+            log::info!(
+                "[list_courier_applications] Filtre single-status: {:?}",
+                status_filter
+            );
             service
-                .list_courier_applications_by_statuses(statuses, limit, offset)
+                .list_courier_applications(status_filter, limit, offset)
                 .await?
         }
-        _ => service
-            .list_courier_applications(status_filter, limit, offset)
-            .await?,
     };
 
     // ✅ LOG: Logger le nombre de candidatures trouvées

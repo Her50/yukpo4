@@ -100,6 +100,7 @@ const splitWithFallback = (input: any, primary?: string): string[] => {
 };
 
 // ✅ NOUVEAU 2026-01-13: Fonction pour normaliser les URLs de médias (images/vidéos)
+// ✅ CORRIGÉ 2026-01-22: Gérer correctement les URLs CDN depuis la table media
 const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): string | null => {
   if (!media) return null;
   
@@ -109,6 +110,7 @@ const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): strin
   if (typeof media === 'string') {
     url = media.trim();
   } else if (typeof media === 'object') {
+    // ✅ CORRIGÉ 2026-01-22: Prioriser les champs qui contiennent les URLs CDN
     url = media.url || media.valeur || media.path || media.uri || media.src || null;
     if (url && typeof url === 'string') {
       url = url.trim();
@@ -119,8 +121,13 @@ const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): strin
   
   if (!url || url === '' || url === 'false') return null;
   
+  // ✅ CORRIGÉ 2026-01-22: Les URLs CDN depuis la table media sont déjà des URLs complètes (https://...)
   // Si c'est déjà une URL complète (http/https) ou base64, retourner tel quel
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    // ✅ DEBUG: Log pour diagnostiquer les URLs CDN
+    if (__DEV__ && url.startsWith('https://')) {
+      console.log(`[ProductCard] ✅ URL CDN détectée (${type}):`, url.substring(0, 80) + '...');
+    }
     return url;
   }
   
@@ -799,11 +806,93 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     }
   }, [deliveryEnabled, isProduct, serviceId, hasDeliveryConfig, productIndex]);
 
-  const displayPrice = hasVariant && variants.length > 0
-    ? Math.min(...variants.map((v: any) => v.prix || 0))
-    : productData.prix || 0;
+  // ✅ CORRIGÉ 2026-01-22: Extraire le prix depuis toutes les sources possibles
+  // Le prix peut être dans : prix, prix_produit, prix.valeur, prix_produit.valeur, price, product_price
+  const extractPrice = (data: any): number => {
+    if (!data) return 0;
+    
+    // Vérifier les variations de prix d'abord
+    if (hasVariant && variants.length > 0) {
+      const variantPrices = variants.map((v: any) => {
+        const variantPrice = v.prix || v.price || 0;
+        return typeof variantPrice === 'number' ? variantPrice : parseFloat(variantPrice) || 0;
+      }).filter((p: number) => p > 0);
+      if (variantPrices.length > 0) {
+        return Math.min(...variantPrices);
+      }
+    }
+    
+    // Vérifier prix direct (nombre)
+    if (typeof data.prix === 'number') return data.prix;
+    if (typeof data.price === 'number') return data.price;
+    if (typeof data.product_price === 'number') return data.product_price;
+    
+    // Vérifier prix_produit direct (nombre)
+    if (typeof data.prix_produit === 'number') return data.prix_produit;
+    
+    // Vérifier prix structuré (objet avec valeur)
+    if (data.prix && typeof data.prix === 'object') {
+      const prixValue = data.prix.valeur || data.prix.value || data.prix;
+      if (typeof prixValue === 'number') return prixValue;
+      if (typeof prixValue === 'string') {
+        const parsed = parseFloat(prixValue);
+        if (!isNaN(parsed)) return parsed;
+      }
+    }
+    
+    // Vérifier prix_produit structuré (objet avec valeur)
+    if (data.prix_produit && typeof data.prix_produit === 'object') {
+      const prixProduitValue = data.prix_produit.valeur || data.prix_produit.value || data.prix_produit;
+      if (typeof prixProduitValue === 'number') return prixProduitValue;
+      if (typeof prixProduitValue === 'string') {
+        const parsed = parseFloat(prixProduitValue);
+        if (!isNaN(parsed)) return parsed;
+      }
+    }
+    
+    // Vérifier prix en string
+    if (typeof data.prix === 'string') {
+      const parsed = parseFloat(data.prix);
+      if (!isNaN(parsed)) return parsed;
+    }
+    if (typeof data.price === 'string') {
+      const parsed = parseFloat(data.price);
+      if (!isNaN(parsed)) return parsed;
+    }
+    if (typeof data.prix_produit === 'string') {
+      const parsed = parseFloat(data.prix_produit);
+      if (!isNaN(parsed)) return parsed;
+    }
+    
+    return 0;
+  };
+  
+  // ✅ CORRIGÉ 2026-01-22: Extraire le prix depuis productData ET product (si disponible)
+  const displayPrice = extractPrice(productData) || extractPrice(product) || 0;
 
-  const devise = productData.devise || variants[0]?.devise || 'XAF';
+  // ✅ CORRIGÉ 2026-01-22: Extraire la devise depuis toutes les sources possibles
+  const extractDevise = (data: any): string => {
+    if (!data) return 'XAF';
+    
+    // Vérifier devise directe
+    if (data.devise && typeof data.devise === 'string') return data.devise;
+    if (data.currency && typeof data.currency === 'string') return data.currency;
+    if (data.devise_produit && typeof data.devise_produit === 'string') return data.devise_produit;
+    
+    // Vérifier devise structurée (objet avec valeur)
+    if (data.devise && typeof data.devise === 'object') {
+      const deviseValue = data.devise.valeur || data.devise.value || data.devise;
+      if (typeof deviseValue === 'string') return deviseValue;
+    }
+    if (data.devise_produit && typeof data.devise_produit === 'object') {
+      const deviseProduitValue = data.devise_produit.valeur || data.devise_produit.value || data.devise_produit;
+      if (typeof deviseProduitValue === 'string') return deviseProduitValue;
+    }
+    
+    return 'XAF';
+  };
+  
+  const devise = extractDevise(productData) || extractDevise(product) || variants[0]?.devise || 'XAF';
 
   // ✅ CORRIGÉ 2025-01-01: Mémoriser le calcul de distance pour éviter les recalculs à chaque render
   // ✅ CORRIGÉ 2026-01-04: Vérifier aussi dans product directement (pas seulement productData)
@@ -1475,13 +1564,16 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     {chosenLocation && (
                       <>
                         <SafeIcon name="map-pin" size={10} color="#6B7280" />
-                        <Text style={styles.addressTextCompact} numberOfLines={1}>
-                          {chosenLocation}
-                        </Text>
-                        {/* ✅ CORRIGÉ 2026-01-21: Drapeau juste après quartier/ville sans espacement */}
-                        {countryFlag && countryFlag !== '🌍' && (
-                          <Text style={styles.addressFlagCompact}>{countryFlag}</Text>
-                        )}
+                        {/* ✅ CORRIGÉ 2026-01-22: Conteneur pour texte + drapeau (collés ensemble) */}
+                        <View style={styles.addressTextWithFlagContainer}>
+                          <Text style={styles.addressTextCompact} numberOfLines={1}>
+                            {chosenLocation}
+                          </Text>
+                          {/* ✅ CORRIGÉ 2026-01-22: Drapeau juste à côté du texte (pas à l'extrême droite) */}
+                          {countryFlag && countryFlag !== '🌍' && (
+                            <Text style={styles.addressFlagCompact}>{countryFlag}</Text>
+                          )}
+                        </View>
                       </>
                     )}
                     {/* Si pas de localisation mais drapeau disponible */}
@@ -1965,22 +2057,31 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   // ✅ OPTIMISÉ 2026-01-14: Adresse compacte avec drapeau
+  // ✅ CORRIGÉ 2026-01-22: Drapeau juste à côté du texte (pas à l'extrême droite)
   addressRowCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4, // ✅ OPTIMISÉ: 4px entre icône, texte et drapeau
+    gap: 4, // ✅ OPTIMISÉ: 4px entre icône et conteneur texte+drapeau
     flex: 1, // ✅ OPTIMISÉ: Prend l'espace restant
     minWidth: '48%', // ✅ OPTIMISÉ: Minimum 48% pour équilibrer avec prestataire
+    flexWrap: 'wrap', // ✅ CORRIGÉ 2026-01-22: Permet le retour à la ligne si nécessaire
+  },
+  // ✅ NOUVEAU 2026-01-22: Conteneur pour texte + drapeau (collés ensemble)
+  addressTextWithFlagContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2, // ✅ Espacement minimal entre texte et drapeau
+    flexShrink: 1, // ✅ Permet de rétrécir si nécessaire
   },
   addressTextCompact: {
     fontSize: 10,
     color: '#6B7280',
-    flex: 1,
     fontWeight: '500',
+    flexShrink: 1, // ✅ Permet de rétrécir si nécessaire
   },
   addressFlagCompact: {
     fontSize: 14,
-    marginLeft: 4, // ✅ CORRIGÉ 2026-01-21: Réduire l'espacement pour que le drapeau soit juste après quartier/ville
+    flexShrink: 0, // ✅ CORRIGÉ 2026-01-22: Le drapeau ne doit pas rétrécir
   },
   // ✅ OPTIMISÉ 2026-01-14: Actions - Boutons bien visibles avec espacement uniforme
   actionsRow: {

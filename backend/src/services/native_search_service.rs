@@ -1207,18 +1207,15 @@ LIMIT 100
             ),
             prefiltered_services_for_products AS (
                 -- ✅ ÉTAPE 2A: Pré-filtrer services AVANT de décomposer produits (utilise index existants)
+                -- ✅ CORRIGÉ 2026-01-22: NE PAS filtrer par titre/description service - recherche UNIQUEMENT dans produits
                 -- ✅ CRITIQUE pour scalabilité: Limite à 200 services max même avec millions de produits
+                -- ✅ OPTIMISÉ: Pré-filtrer seulement les services qui ont des produits actifs (évite de traiter tous les services)
                 SELECT DISTINCT s.id
                 FROM services s
+                INNER JOIN service_products p ON p.service_id = s.id AND p.is_active = true
                 WHERE s.is_active = true
-                AND (
-                    -- Utilise index GIN full-text existant (rapide même avec millions)
-                    to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                    OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                    -- Utilise index trigram existant (rapide même avec millions)
-                    OR (COALESCE(s.data->'titre_service'->>'valeur', '')) % $1
-                    OR (COALESCE(s.data->'category'->>'valeur', s.category, '')) % $1
-                )
+                -- ✅ SUPPRIMÉ 2026-01-22: Ne plus filtrer par titre/description service
+                -- La recherche se concentre UNIQUEMENT sur les produits et leurs caractéristiques
                 LIMIT 200  -- ✅ LIMIT AVANT de décomposer produits (critique pour scalabilité)
             ),
             product_scores AS (
@@ -1228,46 +1225,124 @@ LIMIT 100
             SELECT 
                     p.service_id,
                 GREATEST(
-                        -- Score exact nom (100) - gère accents
-                        CASE WHEN LOWER(unaccent(p.product_name)) = LOWER(unaccent($1)) THEN 100.0 ELSE 0.0 END,
-                        -- Score début nom (80) - gère accents et troncature
-                        CASE WHEN unaccent(p.product_name) ILIKE unaccent($1) || '%' THEN 80.0 ELSE 0.0 END,
-                        -- Score partiel nom (50) - gère accents et troncature - ✅ CORRIGÉ 2026-01-13: Augmenté de 40.0 à 50.0 pour recherches à un seul mot
-                        CASE WHEN unaccent(p.product_name) ILIKE '%' || unaccent($1) || '%' THEN 50.0 ELSE 0.0 END,
-                        -- Score exact description (55) - gère accents
-                        CASE WHEN LOWER(unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', ''))) = LOWER(unaccent($1)) THEN 55.0 ELSE 0.0 END,
-                        -- Score début description (45) - gère accents et troncature
-                        CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) ILIKE unaccent($1) || '%' THEN 45.0 ELSE 0.0 END,
-                        -- Score partiel description (40) - gère accents et troncature - ✅ CORRIGÉ 2026-01-13: Augmenté de 35.0 à 40.0 pour recherches à un seul mot
-                        CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 40.0 ELSE 0.0 END,
-                        -- ✅ NOUVEAU: Score sous-caractéristiques (30) - gère accents et troncature
-                        CASE WHEN unaccent(extract_all_product_text(p.product_data)) ILIKE '%' || unaccent($1) || '%' THEN 30.0 ELSE 0.0 END,
-                        -- Score full-text nom (25) - gère accents via to_tsvector
+                        -- ✅ PRIORITÉ MAXIMALE 2026-01-22: SOUS-CARACTÉRISTIQUES (150-180) - PRIORITÉ ABSOLUE
+                        -- Recherche directe dans les valeurs des sous-caractéristiques (exact)
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
+                            WHERE jsonb_typeof(sc.value) = 'array'
+                            AND EXISTS (
+                                SELECT 1 FROM jsonb_array_elements_text(sc.value) AS val
+                                WHERE LOWER(unaccent(val)) = LOWER(unaccent($1))
+                            )
+                        ) THEN 180.0 ELSE 0.0 END,
+                        -- Recherche directe dans les valeurs des sous-caractéristiques (début)
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
+                            WHERE jsonb_typeof(sc.value) = 'array'
+                            AND EXISTS (
+                                SELECT 1 FROM jsonb_array_elements_text(sc.value) AS val
+                                WHERE unaccent(val) ILIKE unaccent($1) || '%'
+                            )
+                        ) THEN 160.0 ELSE 0.0 END,
+                        -- Recherche directe dans les valeurs des sous-caractéristiques (partiel)
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
+                            WHERE (
+                                (jsonb_typeof(sc.value) = 'array' AND EXISTS (
+                                    SELECT 1 FROM jsonb_array_elements_text(sc.value) AS val
+                                    WHERE unaccent(val) ILIKE '%' || unaccent($1) || '%'
+                                ))
+                                OR (jsonb_typeof(sc.value) = 'string' AND unaccent(sc.value::text) ILIKE '%' || unaccent($1) || '%')
+                                OR unaccent(sc.key) ILIKE '%' || unaccent($1) || '%'
+                            )
+                        ) THEN 150.0 ELSE 0.0 END,
+                        -- ✅ PRIORITÉ HAUTE 2026-01-22: DESCRIPTION PRODUIT (120-150) - PRIORITÉ TRÈS HAUTE
+                        CASE WHEN LOWER(unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', ''))) = LOWER(unaccent($1)) THEN 150.0 ELSE 0.0 END,
+                        CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) ILIKE unaccent($1) || '%' THEN 130.0 ELSE 0.0 END,
+                        CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 120.0 ELSE 0.0 END,
+                        -- ✅ PRIORITÉ MOYENNE 2026-01-22: NOM PRODUIT (60-80) - MOINS IMPORTANT
+                        CASE WHEN LOWER(unaccent(p.product_name)) = LOWER(unaccent($1)) THEN 80.0 ELSE 0.0 END,
+                        CASE WHEN unaccent(p.product_name) ILIKE unaccent($1) || '%' THEN 70.0 ELSE 0.0 END,
+                        CASE WHEN unaccent(p.product_name) ILIKE '%' || unaccent($1) || '%' THEN 60.0 ELSE 0.0 END,
+                        -- ✅ PRIORITÉ BASSE 2026-01-22: CATÉGORIE PRODUIT (40-60) - MOINS IMPORTANTE
+                        CASE WHEN LOWER(unaccent(COALESCE(p.product_data->>'categorie_produit', ''))) = LOWER(unaccent($1)) THEN 60.0 ELSE 0.0 END,
+                        CASE WHEN unaccent(COALESCE(p.product_data->>'categorie_produit', '')) ILIKE unaccent($1) || '%' THEN 55.0 ELSE 0.0 END,
+                        CASE WHEN unaccent(COALESCE(p.product_data->>'categorie_produit', '')) ILIKE '%' || unaccent($1) || '%' THEN 50.0 ELSE 0.0 END,
+                        -- ✅ Full-text scores (fallback) - ordre de priorité maintenu
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
+                            WHERE to_tsvector('french', COALESCE(sc.value::text, '')) @@ plainto_tsquery('french', $1)
+                        ) THEN 35.0 ELSE 0.0 END,
+                        CASE WHEN to_tsvector('french', COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1) THEN 30.0 ELSE 0.0 END,
                         CASE WHEN to_tsvector('french', p.product_name) @@ plainto_tsquery('french', $1) THEN 25.0 ELSE 0.0 END,
-                        -- Score full-text description (20) - gère accents via to_tsvector
-                        CASE WHEN to_tsvector('french', COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1) THEN 20.0 ELSE 0.0 END,
-                        -- ✅ NOUVEAU: Score full-text tous champs (15) - inclut sous-caractéristiques
-                        CASE WHEN to_tsvector('french', extract_all_product_text(p.product_data)) @@ plainto_tsquery('french', $1) THEN 15.0 ELSE 0.0 END,
-                        -- ✅ NOUVEAU: Score similarité trigram nom (12) - gère erreurs de saisie
+                        CASE WHEN to_tsvector('french', COALESCE(p.product_data->>'categorie_produit', '')) @@ plainto_tsquery('french', $1) THEN 22.0 ELSE 0.0 END,
+                        -- ✅ Similarité trigram (fallback) - ordre de priorité maintenu
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
+                            WHERE jsonb_typeof(sc.value) = 'array'
+                            AND EXISTS (
+                                SELECT 1 FROM jsonb_array_elements_text(sc.value) AS val
+                                WHERE similarity(unaccent(LOWER(val)), unaccent(LOWER($1))) > 0.3
+                            )
+                        ) THEN 18.0 ELSE 0.0 END,
+                        CASE WHEN similarity(unaccent(LOWER(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', ''))), unaccent(LOWER($1))) > 0.3 THEN 
+                            similarity(unaccent(LOWER(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', ''))), unaccent(LOWER($1))) * 15.0 
+                        ELSE 0.0 END,
                         CASE WHEN similarity(unaccent(LOWER(p.product_name)), unaccent(LOWER($1))) > 0.3 THEN 
                             similarity(unaccent(LOWER(p.product_name)), unaccent(LOWER($1))) * 12.0 
+                        ELSE 0.0 END,
+                        CASE WHEN similarity(unaccent(LOWER(COALESCE(p.product_data->>'categorie_produit', ''))), unaccent(LOWER($1))) > 0.3 THEN 
+                            similarity(unaccent(LOWER(COALESCE(p.product_data->>'categorie_produit', ''))), unaccent(LOWER($1))) * 11.0 
                         ELSE 0.0 END
                     )::REAL as product_score
                 FROM prefiltered_services_for_products pf
                 INNER JOIN service_products p ON p.service_id = pf.id AND p.is_active = true
                 -- ✅ PHASE 3: Pré-filtrer: seulement les produits qui matchent (gère accents, erreurs, troncature)
+                -- ✅ CORRIGÉ 2026-01-22: PRIORISER sous-caractéristiques et description produit
                 WHERE (
-                    -- Match avec accents et troncature
-                    unaccent(p.product_name) ILIKE '%' || unaccent($1) || '%'
+                    -- ✅ PRIORITÉ 1: Recherche dans SOUS-CARACTÉRISTIQUES (priorité maximale)
+                    EXISTS (
+                        SELECT 1 FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
+                        WHERE (
+                            (jsonb_typeof(sc.value) = 'array' AND EXISTS (
+                                SELECT 1 FROM jsonb_array_elements_text(sc.value) AS val
+                                WHERE unaccent(val) ILIKE '%' || unaccent($1) || '%'
+                                OR LOWER(unaccent(val)) = LOWER(unaccent($1))
+                            ))
+                            OR (jsonb_typeof(sc.value) = 'string' AND (
+                                unaccent(sc.value::text) ILIKE '%' || unaccent($1) || '%'
+                                OR LOWER(unaccent(sc.value::text)) = LOWER(unaccent($1))
+                            ))
+                            OR unaccent(sc.key) ILIKE '%' || unaccent($1) || '%'
+                            OR LOWER(unaccent(sc.key)) = LOWER(unaccent($1))
+                        )
+                    )
+                    -- ✅ PRIORITÉ 2: Recherche dans DESCRIPTION PRODUIT (priorité haute)
                     OR unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%'
-                    OR unaccent(extract_all_product_text(p.product_data)) ILIKE '%' || unaccent($1) || '%'  -- ✅ NOUVEAU: sous-caractéristiques
-                    -- Full-text (gère accents)
-                    OR to_tsvector('french', p.product_name) @@ plainto_tsquery('french', $1)
+                    -- ✅ PRIORITÉ 3: Recherche dans NOM PRODUIT (priorité moyenne)
+                    OR unaccent(p.product_name) ILIKE '%' || unaccent($1) || '%'
+                    -- ✅ PRIORITÉ 4: Recherche dans CATÉGORIE PRODUIT (priorité basse)
+                    OR unaccent(COALESCE(p.product_data->>'categorie_produit', '')) ILIKE '%' || unaccent($1) || '%'
+                    -- Full-text (fallback) - ordre de priorité maintenu
+                    OR EXISTS (
+                        SELECT 1 FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
+                        WHERE to_tsvector('french', COALESCE(sc.value::text, '')) @@ plainto_tsquery('french', $1)
+                    )
                     OR to_tsvector('french', COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                    OR to_tsvector('french', extract_all_product_text(p.product_data)) @@ plainto_tsquery('french', $1)  -- ✅ NOUVEAU: sous-caractéristiques
-                    -- ✅ NOUVEAU: Similarité trigram (gère erreurs de saisie)
-                    OR similarity(unaccent(LOWER(p.product_name)), unaccent(LOWER($1))) > 0.3
+                    OR to_tsvector('french', p.product_name) @@ plainto_tsquery('french', $1)
+                    OR to_tsvector('french', COALESCE(p.product_data->>'categorie_produit', '')) @@ plainto_tsquery('french', $1)
+                    -- Similarité trigram (fallback) - ordre de priorité maintenu
+                    OR EXISTS (
+                        SELECT 1 FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
+                        WHERE jsonb_typeof(sc.value) = 'array'
+                        AND EXISTS (
+                            SELECT 1 FROM jsonb_array_elements_text(sc.value) AS val
+                            WHERE similarity(unaccent(LOWER(val)), unaccent(LOWER($1))) > 0.3
+                        )
+                    )
                     OR similarity(unaccent(LOWER(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', ''))), unaccent(LOWER($1))) > 0.3
+                    OR similarity(unaccent(LOWER(p.product_name)), unaccent(LOWER($1))) > 0.3
+                    OR similarity(unaccent(LOWER(COALESCE(p.product_data->>'categorie_produit', ''))), unaccent(LOWER($1))) > 0.3
                 )
                 LIMIT 500
             ),
@@ -1283,6 +1358,7 @@ LIMIT 100
             ),
             quick_filter AS (
                 -- ✅ ÉTAPE 4: Pré-filtrer les services (rapide, utilise index existants)
+                -- ✅ CORRIGÉ 2026-01-22: Recherche UNIQUEMENT dans produits - NE PAS filtrer par titre/description service
                 -- ✅ SCALABLE: Utilise index GIN et trigram existants (rapide même avec millions)
                 SELECT DISTINCT s.id
             FROM services s
@@ -1290,16 +1366,11 @@ LIMIT 100
                 LEFT JOIN best_product_per_service bp ON bp.service_id = s.id
             WHERE s.is_active = true
             AND (
+                -- ✅ PRIORITÉ: Seulement les services avec matches produits (autocomplete ou produits directs)
                 ac.service_id IS NOT NULL
                     OR bp.service_id IS NOT NULL
-                    -- Full-text (gère accents, utilise index GIN existant)
-                OR to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                    -- Utilise index trigram existant (rapide même avec millions)
-                    OR (COALESCE(s.data->'titre_service'->>'valeur', '')) % $1
-                    OR (COALESCE(s.data->'category'->>'valeur', s.category, '')) % $1
-                    -- Fallback ILIKE (seulement si index ne trouve rien)
-                    OR unaccent(COALESCE(s.data->'titre_service'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%'
-                    OR unaccent(COALESCE(s.data->'category'->>'valeur', s.category, '')) ILIKE '%' || unaccent($1) || '%'
+                -- ✅ SUPPRIMÉ 2026-01-22: Ne plus filtrer par titre/description service
+                -- La recherche se concentre UNIQUEMENT sur les produits et leurs caractéristiques
                 )
                 LIMIT 100
             )
@@ -1310,30 +1381,16 @@ LIMIT 100
                 s.user_id,
                 s.gps,
                 s.category,
-                -- ✅ ÉTAPE 5: Scoring simplifié (4 priorités au lieu de 14)
+                -- ✅ ÉTAPE 5: Scoring simplifié - UNIQUEMENT produits (sous-caractéristiques, description, nom, catégorie)
+                -- ✅ CORRIGÉ 2026-01-22: Recherche UNIQUEMENT dans produits - NE PAS utiliser titre/description service
                 GREATEST(
-                    -- PRIORITÉ 0: Score depuis autocomplete_characteristics
+                    -- PRIORITÉ 0: Score depuis autocomplete_characteristics (caractéristiques produits)
                     COALESCE(ac.ac_score, 0.0),
-                    -- PRIORITÉ 1: Score depuis produits (pré-calculé) + sous-caractéristiques
-                    COALESCE(bp.max_product_score, 0.0),
-                    -- PRIORITÉ 2: Score depuis titre_service (gère accents, erreurs, troncature)
-                    -- ✅ CORRIGÉ 2026-01-13: Scores augmentés pour recherches à un seul mot
-                    CASE 
-                        WHEN LOWER(unaccent(COALESCE(s.data->'titre_service'->>'valeur', ''))) = LOWER(unaccent($1)) THEN 70.0
-                        WHEN unaccent(COALESCE(s.data->'titre_service'->>'valeur', '')) ILIKE unaccent($1) || '%' THEN 60.0
-                        WHEN unaccent(COALESCE(s.data->'titre_service'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 40.0  -- ✅ Augmenté de 30.0 à 40.0
-                        -- ✅ NOUVEAU: Similarité trigram (gère erreurs de saisie)
-                        WHEN similarity(unaccent(LOWER(COALESCE(s.data->'titre_service'->>'valeur', ''))), unaccent(LOWER($1))) > 0.3 THEN 
-                            similarity(unaccent(LOWER(COALESCE(s.data->'titre_service'->>'valeur', ''))), unaccent(LOWER($1))) * 40.0  -- ✅ Augmenté de 30.0 à 40.0
-                        ELSE 0.0
-                    END,
-                    -- PRIORITÉ 3: Score depuis category/description (gère accents, troncature)
-                    -- ✅ CORRIGÉ 2026-01-13: Scores augmentés pour recherches à un seul mot
-                    CASE 
-                        WHEN unaccent(COALESCE(s.data->'category'->>'valeur', s.category, '')) ILIKE '%' || unaccent($1) || '%' THEN 50.0
-                        WHEN unaccent(COALESCE(s.data->'description'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 10.0  -- ✅ Augmenté de 5.0 à 10.0
-                        ELSE 0.0
-                    END
+                    -- PRIORITÉ 1: Score depuis produits (pré-calculé) + sous-caractéristiques - PRIORITÉ MAXIMALE
+                    -- ✅ CORRIGÉ 2026-01-22: Les produits ont TOUJOURS priorité - titre/description service IGNORÉS
+                    COALESCE(bp.max_product_score, 0.0)
+                    -- ✅ SUPPRIMÉ 2026-01-22: Ne plus scorer titre/description/category du service
+                    -- La recherche se concentre UNIQUEMENT sur les produits et leurs caractéristiques
                 )::REAL as keyword_score
             FROM quick_filter qf
             INNER JOIN services s ON s.id = qf.id

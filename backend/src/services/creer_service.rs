@@ -5519,8 +5519,10 @@ pub async fn save_ia_combinations_to_db(
             // Track quelles dimensions ont déjà été assignées et quelles valeurs ont été mappées
             let mut assigned_dimensions: std::collections::HashSet<String> = std::collections::HashSet::new();
             let mut mapped_values: Vec<(String, String)> = vec![]; // (dimension, value)
+            let mut unmapped_values: Vec<String> = vec![]; // Valeurs qui n'ont pas pu être mappées
             
             // Étape 1: Mapper les valeurs qui correspondent exactement à une dimension
+            // ✅ CORRECTION: Permettre plusieurs valeurs pour la même dimension si nécessaire
             for value in &product_vector {
                 let normalized_value = value.trim().to_lowercase();
                 if let Some(possible_dimensions) = value_to_dimensions.get(&normalized_value) {
@@ -5531,19 +5533,52 @@ pub async fn save_ia_combinations_to_db(
                     {
                         mapped_values.push((dimension.clone(), value.clone()));
                         assigned_dimensions.insert(dimension.clone());
+                    } else {
+                        // ✅ NOUVEAU: Si toutes les dimensions possibles sont déjà assignées,
+                        // mais que la valeur correspond à une dimension, on peut quand même l'ajouter
+                        // en créant une entrée supplémentaire pour cette dimension
+                        if let Some(dimension) = possible_dimensions.first() {
+                            // Vérifier si cette valeur est déjà mappée à cette dimension
+                            if !mapped_values.iter().any(|(dim, val)| dim == dimension && val == value) {
+                                mapped_values.push((dimension.clone(), value.clone()));
+                            } else {
+                                unmapped_values.push(value.clone());
+                            }
+                        } else {
+                            unmapped_values.push(value.clone());
+                        }
                     }
+                } else {
+                    unmapped_values.push(value.clone());
                 }
             }
             
             // Étape 2: Construire le résultat final dans l'ordre des dimensions
+            // ✅ CORRECTION: Gérer le cas où plusieurs valeurs correspondent à la même dimension
             let mut final_labels: Vec<String> = vec![];
             let mut final_values: Vec<String> = vec![];
             
+            // Grouper les valeurs par dimension
+            let mut dimension_to_values: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+            for (dimension, value) in &mapped_values {
+                dimension_to_values
+                    .entry(dimension.clone())
+                    .or_insert_with(Vec::new)
+                    .push(value.clone());
+            }
+            
             for dimension in &dimension_order {
-                if let Some((_, value)) = mapped_values.iter().find(|(dim, _)| dim == dimension) {
-                    // Cette dimension a été assignée
-                    final_labels.push(dimension.clone());
-                    final_values.push(value.clone());
+                if let Some(values) = dimension_to_values.get(dimension) {
+                    // Cette dimension a été assignée - prendre la première valeur
+                    // ✅ CORRECTION: Si plusieurs valeurs correspondent à la même dimension,
+                    // on prend la première qui correspond exactement
+                    if let Some(value) = values.first() {
+                        final_labels.push(dimension.clone());
+                        final_values.push(value.clone());
+                    } else {
+                        final_labels.push(dimension.clone());
+                        final_values.push(String::new());
+                    }
                 } else {
                     // Cette dimension n'a pas été assignée, ajouter valeur vide
                     final_labels.push(dimension.clone());
@@ -5552,19 +5587,43 @@ pub async fn save_ia_combinations_to_db(
             }
             
             // Étape 3: Ajouter les valeurs restantes qui n'ont pas été mappées (valeurs inconnues)
-            for value in &product_vector {
-                if !mapped_values.iter().any(|(_, v)| v == value) {
-                    final_labels.push(format!("caracteristique_{}", final_labels.len()));
-                    final_values.push(value.clone());
-                }
+            for value in &unmapped_values {
+                final_labels.push(format!("caracteristique_{}", final_labels.len()));
+                final_values.push(value.clone());
             }
             
-            // Log détaillé pour debug
+            // ✅ NOUVEAU: Log détaillé pour identifier les problèmes de mapping
+            let mut mapping_details: Vec<String> = vec![];
+            for (dimension, values) in &dimension_to_values {
+                if values.len() > 1 {
+                    mapping_details.push(format!("{}: {} valeurs ({})", dimension, values.len(), values.join(", ")));
+                }
+            }
+            if !mapping_details.is_empty() {
+                log::warn!(
+                    "[save_ia_combinations_to_db] ⚠️ Dimensions avec plusieurs valeurs: {}",
+                    mapping_details.join("; ")
+                );
+            }
+            
+            // ✅ NOUVEAU: Log détaillé pour identifier les valeurs non mappées
+            if !unmapped_values.is_empty() {
+                log::warn!(
+                    "[save_ia_combinations_to_db] ⚠️ Valeurs non mappées: {}",
+                    unmapped_values.join(", ")
+                );
+            }
+            
+            // ✅ NOUVEAU: Log détaillé du mapping final pour debug
+            let mapping_pairs: Vec<String> = final_labels.iter()
+                .zip(final_values.iter())
+                .map(|(label, value)| format!("{}:{}", label, if value.is_empty() { "(vide)" } else { value }))
+                .collect();
             log::info!(
-                "[save_ia_combinations_to_db] Mapping intelligent appliqué: {} labels pour {} valeurs. Dimensions mappées: {:?}",
+                "[save_ia_combinations_to_db] Mapping intelligent appliqué: {} labels pour {} valeurs. Mapping: [{}]",
                 final_labels.len(),
                 final_values.len(),
-                assigned_dimensions
+                mapping_pairs.join(", ")
             );
             
             (final_labels, final_values)

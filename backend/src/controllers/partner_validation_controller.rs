@@ -117,13 +117,16 @@ pub async fn validate_partner(
             
             // ✅ Récupérer dynamiquement le pays de l'utilisateur depuis GPS
             let user_country = get_user_country(&state, user_id).await;
+            // ✅ CORRIGÉ: Utiliser une valeur par défaut au lieu de NULL pour éviter les problèmes avec la contrainte UNIQUE
+            // En PostgreSQL, NULL != NULL, donc l'ON CONFLICT ne fonctionne pas correctement avec NULL
+            let country = user_country.unwrap_or_else(|| "Non spécifié".to_string());
             if user_country.is_none() {
-                warn!("[validate_partner] Impossible de déterminer le pays pour user_id={}, utilisation de NULL", user_id);
+                warn!("[validate_partner] Impossible de déterminer le pays pour user_id={}, utilisation de 'Non spécifié'", user_id);
             }
             
             // Note: Les autres infos (phone, address, etc.) ne sont pas stockées dans users
             // Elles seront complétées lors de la configuration du service spécialisé
-            let _partner_id = sqlx::query_scalar::<_, i32>(
+            let partner_id_result = sqlx::query_scalar::<_, i32>(
                 r#"
                 INSERT INTO delivery_partners 
                 (name, partner_type, contact_email, user_id, is_active, created_by, country)
@@ -137,9 +140,15 @@ pub async fn validate_partner(
             .bind(partner_type)
             .bind(&partner_info.email)
             .bind(user_id)
-            .bind(user_country.as_deref())
+            .bind(&country)
             .fetch_optional(&state.pg)
             .await?;
+            
+            if let Some(partner_id) = partner_id_result {
+                log::info!("[validate_partner] ✅ Partenaire créé/mis à jour dans delivery_partners: id={}, country={}", partner_id, country);
+            } else {
+                warn!("[validate_partner] ⚠️ Échec création partenaire dans delivery_partners pour user_id={}", user_id);
+            }
         }
         
         // ✅ NOUVEAU: Envoyer une notification à l'utilisateur pour l'informer de l'approbation

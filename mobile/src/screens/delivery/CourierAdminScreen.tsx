@@ -350,25 +350,31 @@ const CourierAdminScreen: React.FC = () => {
 
             {/* Modal de détails */}
             <Modal
-                visible={showDetailModal}
+                visible={showDetailModal && !!selectedApplication}
                 animationType="slide"
                 transparent={true}
-                onRequestClose={() => setShowDetailModal(false)}
+                onRequestClose={() => {
+                    setShowDetailModal(false);
+                    setSelectedApplication(null);
+                }}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Détails de la candidature</Text>
                             <TouchableOpacity
-                                onPress={() => setShowDetailModal(false)}
+                                onPress={() => {
+                                    setShowDetailModal(false);
+                                    setSelectedApplication(null);
+                                }}
                                 style={styles.closeButton}
                             >
                                 <SafeIcon name="x" size={24} color={modernColors.text} />
                             </TouchableOpacity>
                         </View>
 
-                        {selectedApplication && (
-                            <KeyboardAwareScreen style={styles.modalBody}>
+                        {selectedApplication ? (
+                            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={true}>
                                 <NativeCard style={styles.detailCard}>
                                     <Text style={styles.detailLabel}>Candidat</Text>
                                     <Text style={styles.detailValue}>
@@ -490,8 +496,8 @@ const CourierAdminScreen: React.FC = () => {
                                         />
                                     </View>
                                 ) : null}
-                            </KeyboardAwareScreen>
-                        )}
+                            </ScrollView>
+                        ) : null}
                     </View>
                 </View>
             </Modal>
@@ -695,12 +701,20 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'flex-end',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
     },
     modalContent: {
         backgroundColor: modernColors.surface,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         maxHeight: '90%',
+        width: '100%',
+        zIndex: 1001,
     },
     modalHeader: {
         flexDirection: 'row',

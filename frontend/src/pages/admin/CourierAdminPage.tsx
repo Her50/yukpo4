@@ -50,13 +50,26 @@ const CourierAdminPage: React.FC = () => {
             const response = await axios.get(`/api/courier/applications${statusParam}`);
             const data = response.data;
             
-            if (data.applications) {
-                setApplications(data.applications);
-            } else if (Array.isArray(data)) {
-                setApplications(data);
-            } else {
-                setApplications([]);
+            // ✅ CORRIGÉ: Gérer la structure de réponse comme le mobile
+            // Le backend peut retourner { applications: [...], total: ... } ou directement un tableau
+            let applicationsList: CourierApplication[] = [];
+            
+            if (data && typeof data === 'object') {
+                // Cas 1: response.data.applications (structure normale)
+                if (data.applications && Array.isArray(data.applications)) {
+                    applicationsList = data.applications;
+                }
+                // Cas 2: response.data.data.applications (double wrapping)
+                else if (data.data && data.data.applications && Array.isArray(data.data.applications)) {
+                    applicationsList = data.data.applications;
+                }
+                // Cas 3: Tableau direct
+                else if (Array.isArray(data)) {
+                    applicationsList = data;
+                }
             }
+            
+            setApplications(applicationsList);
         } catch (error: any) {
             console.error('[CourierAdminPage] Erreur chargement candidatures:', error);
             toast({
@@ -311,8 +324,8 @@ const CourierAdminPage: React.FC = () => {
 
                 {/* Modal de détails */}
                 {showDetailModal && selectedApplication && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50">
-                        <div className="bg-white rounded-t-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ zIndex: 1000 }}>
+                        <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
                             <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
                                 <h3 className="text-xl font-bold text-gray-800">
                                     Détails de la candidature

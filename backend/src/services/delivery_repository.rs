@@ -1087,7 +1087,19 @@ impl DeliveryRepository {
             offset_val
         );
 
-        let rows: Vec<CourierApplicationRow> = sqlx::query_as(
+        // ✅ CORRIGÉ: Utiliser IN avec des placeholders dynamiques au lieu de ANY avec tableau
+        // SQLx ne peut pas automatiquement convertir Vec<Enum> en tableau PostgreSQL
+        if statuses.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Construire la requête avec des placeholders dynamiques
+        let placeholders: Vec<String> = (1..=statuses.len())
+            .map(|i| format!("${}", i))
+            .collect();
+        let placeholders_str = placeholders.join(", ");
+
+        let query_str = format!(
             r#"
             SELECT
                 id,
@@ -1104,21 +1116,36 @@ impl DeliveryRepository {
                 created_at,
                 updated_at
             FROM courier_applications
-            WHERE status = ANY($1::delivery_application_status[])
+            WHERE status IN ({})
             ORDER BY created_at DESC
-            LIMIT $2
-            OFFSET $3
+            LIMIT ${}
+            OFFSET ${}
             "#,
-        )
-        .bind(statuses)
-        .bind(limit_val)
-        .bind(offset_val)
-        .fetch_all(&self.pool)
-        .await?;
+            placeholders_str,
+            statuses.len() + 1,
+            statuses.len() + 2
+        );
+
+        // ✅ LOG: Afficher la requête construite pour diagnostic
+        log::debug!(
+            "[list_courier_applications_by_statuses] Requête SQL: {}",
+            query_str
+        );
+
+        // Construire la requête avec les bindings
+        let mut query = sqlx::query_as::<_, CourierApplicationRow>(&query_str);
+        for status in &statuses {
+            query = query.bind(*status);
+        }
+        query = query.bind(limit_val);
+        query = query.bind(offset_val);
+
+        let rows = query.fetch_all(&self.pool).await?;
 
         log::info!(
-            "[list_courier_applications_by_statuses] {} candidature(s) trouvée(s) en DB",
-            rows.len()
+            "[list_courier_applications_by_statuses] {} candidature(s) trouvée(s) en DB pour statuts: {:?}",
+            rows.len(),
+            statuses
         );
 
         Ok(rows

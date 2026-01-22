@@ -17,7 +17,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiDelete, apiGet, apiPost } from '../../services/api';
+import { apiDelete, apiGet, apiPost, apiPut } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 interface DeliveryPartner {
@@ -64,6 +64,26 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [processing, setProcessing] = useState<number | null>(null);
+    // ✅ NOUVEAU: États pour le modal d'édition
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingPartner, setEditingPartner] = useState<DeliveryPartner | null>(null);
+    const [editForm, setEditForm] = useState({
+        name: '',
+        description: '',
+        partner_type: 'livraison',
+        contact_email: '',
+        contact_phone: '',
+        address: '',
+        city: '',
+        country: '',
+        continent: '',
+        website: '',
+        logo_url: '',
+        location_latitude: undefined as number | undefined,
+        location_longitude: undefined as number | undefined,
+        location_address: '',
+        is_active: true,
+    });
 
 
     useEffect(() => {
@@ -235,15 +255,57 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
     };
 
     const handleEdit = (partner: DeliveryPartner) => {
-        // ✅ NOTE: L'édition des partenaires validés n'est pas encore implémentée
-        // Les partenaires validés sont créés automatiquement lors de l'approbation d'une candidature
-        // Pour modifier un partenaire, contactez le support ou utilisez l'interface web
-        Alert.alert(
-            'Information', 
-            'L\'édition des partenaires validés n\'est pas disponible dans l\'application mobile.\n\n' +
-            'Les partenaires sont créés automatiquement lors de l\'approbation d\'une candidature.\n\n' +
-            'Pour modifier un partenaire, utilisez l\'interface web d\'administration.'
-        );
+        // ✅ IMPLÉMENTÉ: Ouvrir le modal d'édition avec les données du partenaire
+        setEditingPartner(partner);
+        setEditForm({
+            name: partner.name || '',
+            description: partner.description || '',
+            partner_type: partner.partner_type || 'livraison',
+            contact_email: partner.contact_email || '',
+            contact_phone: partner.contact_phone || '',
+            address: partner.address || '',
+            city: partner.city || '',
+            country: partner.country || '',
+            continent: partner.continent || '',
+            website: partner.website || '',
+            logo_url: partner.logo_url || '',
+            location_latitude: partner.location_latitude,
+            location_longitude: partner.location_longitude,
+            location_address: partner.location_address || '',
+            is_active: partner.is_active,
+        });
+        setShowEditModal(true);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingPartner) return;
+
+        if (!editForm.name.trim()) {
+            Alert.alert('Erreur', 'Le nom est requis');
+            return;
+        }
+
+        try {
+            setProcessing(editingPartner.id);
+            const response = await apiPut(`/api/delivery/partners/${editingPartner.id}`, editForm);
+            
+            if (response.success !== false) {
+                Alert.alert('✅ Succès', 'Le partenaire a été modifié avec succès', [
+                    { text: 'OK', onPress: () => {
+                        setShowEditModal(false);
+                        setEditingPartner(null);
+                        loadPartners();
+                    }},
+                ]);
+            } else {
+                throw new Error(response.message || 'Erreur lors de la modification');
+            }
+        } catch (error: any) {
+            console.error('[DeliveryPartnersAdminScreen] Erreur modification:', error);
+            Alert.alert('Erreur', error.message || 'Impossible de modifier le partenaire');
+        } finally {
+            setProcessing(null);
+        }
     };
 
     const handleDelete = async (partnerId: number) => {
@@ -448,25 +510,31 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
 
             {/* Modal de détails pour candidature en attente */}
             <Modal
-                visible={showDetailModal}
+                visible={showDetailModal && !!selectedPendingPartner}
                 animationType="slide"
                 transparent={true}
-                onRequestClose={() => setShowDetailModal(false)}
+                onRequestClose={() => {
+                    setShowDetailModal(false);
+                    setSelectedPendingPartner(null);
+                }}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Détails de la candidature</Text>
                             <TouchableOpacity
-                                onPress={() => setShowDetailModal(false)}
+                                onPress={() => {
+                                    setShowDetailModal(false);
+                                    setSelectedPendingPartner(null);
+                                }}
                                 style={styles.closeButton}
                             >
                                 <SafeIcon name="x" size={24} color={modernColors.text} />
                             </TouchableOpacity>
                         </View>
 
-                        {selectedPendingPartner && (
-                            <KeyboardAwareScreen style={styles.modalBody}>
+                        {selectedPendingPartner ? (
+                            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={true}>
                                 <NativeCard style={styles.detailCard}>
                                     <Text style={styles.detailLabel}>Candidat</Text>
                                     <Text style={styles.detailValue}>
@@ -524,8 +592,8 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                         />
                                     </View>
                                 )}
-                            </KeyboardAwareScreen>
-                        )}
+                            </ScrollView>
+                        ) : null}
                     </View>
                 </View>
             </Modal>
@@ -581,6 +649,235 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                 />
                             </View>
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ✅ NOUVEAU: Modal d'édition de partenaire */}
+            <Modal
+                visible={showEditModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => {
+                    setShowEditModal(false);
+                    setEditingPartner(null);
+                }}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Modifier le partenaire</Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setShowEditModal(false);
+                                    setEditingPartner(null);
+                                }}
+                                style={styles.closeButton}
+                            >
+                                <SafeIcon name="x" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+                        <KeyboardAwareScreen style={styles.modalBody}>
+                            <ScrollView showsVerticalScrollIndicator={true}>
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Nom *</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="Nom du partenaire"
+                                        value={editForm.name}
+                                        onChangeText={(text) => setEditForm({ ...editForm, name: text })}
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Description</Text>
+                                    <TextInput
+                                        style={[styles.textInput, styles.textArea]}
+                                        placeholder="Description du partenaire"
+                                        value={editForm.description}
+                                        onChangeText={(text) => setEditForm({ ...editForm, description: text })}
+                                        multiline
+                                        numberOfLines={3}
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Type de partenaire</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="livraison, pharmacie, etc."
+                                        value={editForm.partner_type}
+                                        onChangeText={(text) => setEditForm({ ...editForm, partner_type: text })}
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Email de contact</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="contact@partenaire.com"
+                                        value={editForm.contact_email}
+                                        onChangeText={(text) => setEditForm({ ...editForm, contact_email: text })}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Téléphone</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="+237 6XX XXX XXX"
+                                        value={editForm.contact_phone}
+                                        onChangeText={(text) => setEditForm({ ...editForm, contact_phone: text })}
+                                        keyboardType="phone-pad"
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Adresse</Text>
+                                    <TextInput
+                                        style={[styles.textInput, styles.textArea]}
+                                        placeholder="Adresse complète"
+                                        value={editForm.address}
+                                        onChangeText={(text) => setEditForm({ ...editForm, address: text })}
+                                        multiline
+                                        numberOfLines={2}
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Ville</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="Ville"
+                                        value={editForm.city}
+                                        onChangeText={(text) => setEditForm({ ...editForm, city: text })}
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Pays *</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="Cameroun, Sénégal, etc."
+                                        value={editForm.country}
+                                        onChangeText={(text) => setEditForm({ ...editForm, country: text })}
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Continent</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="Afrique, Europe, etc."
+                                        value={editForm.continent}
+                                        onChangeText={(text) => setEditForm({ ...editForm, continent: text })}
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Site web</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="https://..."
+                                        value={editForm.website}
+                                        onChangeText={(text) => setEditForm({ ...editForm, website: text })}
+                                        keyboardType="url"
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>URL du logo</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="https://..."
+                                        value={editForm.logo_url}
+                                        onChangeText={(text) => setEditForm({ ...editForm, logo_url: text })}
+                                        keyboardType="url"
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Adresse de localisation</Text>
+                                    <TextInput
+                                        style={[styles.textInput, styles.textArea]}
+                                        placeholder="Adresse formatée"
+                                        value={editForm.location_address}
+                                        onChangeText={(text) => setEditForm({ ...editForm, location_address: text })}
+                                        multiline
+                                        numberOfLines={2}
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Latitude</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="4.0511"
+                                        value={editForm.location_latitude?.toString() || ''}
+                                        onChangeText={(text) => setEditForm({ 
+                                            ...editForm, 
+                                            location_latitude: text ? parseFloat(text) : undefined 
+                                        })}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Longitude</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="9.7679"
+                                        value={editForm.location_longitude?.toString() || ''}
+                                        onChangeText={(text) => setEditForm({ 
+                                            ...editForm, 
+                                            location_longitude: text ? parseFloat(text) : undefined 
+                                        })}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.checkboxContainer,
+                                            editForm.is_active && styles.checkboxContainerActive
+                                        ]}
+                                        onPress={() => setEditForm({ ...editForm, is_active: !editForm.is_active })}
+                                    >
+                                        <SafeIcon 
+                                            name={editForm.is_active ? "check-square" : "square"} 
+                                            size={20} 
+                                            color={editForm.is_active ? modernColors.primary : modernColors.textSecondary} 
+                                        />
+                                        <Text style={styles.checkboxLabel}>Partenaire actif</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.modalActions}>
+                                    <NativeButton
+                                        title="Annuler"
+                                        variant="outline"
+                                        onPress={() => {
+                                            setShowEditModal(false);
+                                            setEditingPartner(null);
+                                        }}
+                                        style={styles.modalButton}
+                                    />
+                                    <NativeButton
+                                        title={processing === editingPartner?.id ? 'Enregistrement...' : 'Enregistrer'}
+                                        variant="primary"
+                                        onPress={handleSaveEdit}
+                                        disabled={!editForm.name.trim() || processing === editingPartner?.id}
+                                        loading={processing === editingPartner?.id}
+                                        style={styles.modalButton}
+                                    />
+                                </View>
+                            </ScrollView>
+                        </KeyboardAwareScreen>
                     </View>
                 </View>
             </Modal>
@@ -773,6 +1070,29 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         marginTop: 8,
+    },
+    checkboxContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+        marginBottom: 12,
+    },
+    checkboxContainerActive: {
+        borderColor: modernColors.primary,
+        backgroundColor: modernColors.primary + '10',
+    },
+    checkboxLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.text,
+    },
+    modalButton: {
+        flex: 1,
     },
     emptyCard: {
         padding: 32,
@@ -967,12 +1287,20 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
     },
     modalContent: {
         backgroundColor: modernColors.surface,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        maxHeight: '70%',
+        maxHeight: '90%',
+        width: '100%',
+        zIndex: 1001,
     },
     modalHeader: {
         flexDirection: 'row',

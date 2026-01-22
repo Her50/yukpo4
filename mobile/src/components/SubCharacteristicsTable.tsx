@@ -154,13 +154,28 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 let selectedValue: string | null = null;
                 if (parsedValues.length > 0 && index < parsedValues.length) {
                     const parsedValue = parsedValues[index];
-                    // Vérifier que la valeur parsée existe dans le tableau de sousCaracteristiques[label]
+                    // ✅ CORRECTION CRITIQUE: Vérifier que la valeur parsée existe dans le tableau de sousCaracteristiques[label]
                     if (values.includes(parsedValue)) {
                         selectedValue = parsedValue;
                         console.log(`[SubCharacteristicsTable] ✅ Valeur parsée trouvée pour "${label}" [index ${index}]: "${parsedValue}"`);
                     } else {
                         console.warn(`[SubCharacteristicsTable] ⚠️ Valeur parsée "${parsedValue}" pour "${label}" [index ${index}] n'existe pas dans sousCaracteristiques. Valeurs disponibles:`, values);
-                        // Continuer pour utiliser la première valeur à la place
+                        // ✅ NOUVEAU: Chercher si cette valeur existe dans un autre label
+                        const matchingLabel = Object.keys(sousCaracteristiques).find(key => {
+                            const otherValues = sousCaracteristiques[key];
+                            return Array.isArray(otherValues) && otherValues.includes(parsedValue);
+                        });
+                        if (matchingLabel) {
+                            console.warn(`[SubCharacteristicsTable] ⚠️ Valeur "${parsedValue}" trouvée dans label "${matchingLabel}" au lieu de "${label}" - CORRECTION AUTOMATIQUE`);
+                            // Si le label correct n'a pas encore été traité, on peut l'utiliser
+                            // Sinon, on utilise la première valeur du label actuel
+                            if (orderedLabels.indexOf(matchingLabel) > index) {
+                                // Le label correct sera traité plus tard, on peut utiliser cette valeur
+                                selectedValue = parsedValue;
+                                console.log(`[SubCharacteristicsTable] ✅ Valeur "${parsedValue}" sera utilisée pour "${matchingLabel}" plus tard`);
+                            }
+                        }
+                        // Continuer pour utiliser la première valeur à la place si pas de correspondance
                     }
                 }
                 

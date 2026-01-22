@@ -35,7 +35,7 @@ impl ProductEnrichmentService {
             is_immediately_available: Option<bool>,
             preparation_time_minutes: Option<i32>,
             max_preparation_time_minutes: Option<i32>,
-            availability_days: Option<Value>,
+            availability_days: Option<Vec<i32>>, // ✅ CORRIGÉ 2026-01-22: INTEGER[] au lieu de JSONB
             pickup_availability_schedule: Option<Value>,
             pickup_address: Option<String>,
             is_configured: Option<bool>,
@@ -63,7 +63,7 @@ impl ProductEnrichmentService {
             is_immediately_available: row.get::<Option<_>, _>("is_immediately_available"),
             preparation_time_minutes: row.get::<Option<_>, _>("preparation_time_minutes"),
             max_preparation_time_minutes: row.get::<Option<_>, _>("max_preparation_time_minutes"),
-            availability_days: row.get::<Option<_>, _>("availability_days"),
+            availability_days: row.get::<Option<Vec<i32>>, _>("availability_days"), // ✅ CORRIGÉ 2026-01-22: Décoder directement comme Vec<i32>
             pickup_availability_schedule: row.get::<Option<_>, _>("pickup_availability_schedule"),
             pickup_address: row.get::<Option<_>, _>("pickup_address"),
             is_configured: row.get::<Option<_>, _>("is_configured"),
@@ -92,11 +92,8 @@ impl ProductEnrichmentService {
         let now = Utc::now();
         let current_weekday = now.weekday().num_days_from_sunday() as i32;
 
-        // Vérifier les jours de disponibilité
-        let availability_days: Vec<i32> = config
-            .availability_days
-            .and_then(|v| serde_json::from_value(v).ok())
-            .unwrap_or_default();
+        // ✅ CORRIGÉ 2026-01-22: Vérifier les jours de disponibilité (déjà Vec<i32>, pas besoin de conversion JSON)
+        let availability_days: Vec<i32> = config.availability_days.unwrap_or_default();
         let is_available_today =
             availability_days.is_empty() || availability_days.contains(&current_weekday);
 

@@ -41,6 +41,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
   const [prestataire, setPrestataire] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
+  const [screenTitle, setScreenTitle] = useState<string>('Boutique'); // ✅ NOUVEAU: Titre dynamique selon type_offre
 
   // Fonction pour charger les données du prestataire
   const loadPrestataireData = useCallback(async (isRefresh = false) => {
@@ -112,18 +113,43 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
             hasData: !!productsResponse.data,
             isArray: Array.isArray(productsResponse.data),
             dataLength: Array.isArray(productsResponse.data) ? productsResponse.data.length : 0,
-            error: productsResponse.error
+            error: productsResponse.error,
+            rawResponse: JSON.stringify(productsResponse).substring(0, 200)
           });
           
-          if (productsResponse.success && Array.isArray(productsResponse.data) && productsResponse.data.length > 0) {
-            const mappedProducts = productsResponse.data.map((productFromAPI: any) => {
+          // ✅ CORRIGÉ 2026-01-22: Gérer le cas où l'endpoint retourne directement un tableau
+          let productsArray: any[] = [];
+          if (Array.isArray(productsResponse.data)) {
+            productsArray = productsResponse.data;
+          } else if (Array.isArray(productsResponse)) {
+            // Si la réponse est directement un tableau (cas où l'endpoint retourne Json<Vec<T>>)
+            productsArray = productsResponse;
+          } else if (productsResponse.success && productsResponse.data) {
+            // Si la réponse est dans un wrapper
+            if (Array.isArray(productsResponse.data)) {
+              productsArray = productsResponse.data;
+            } else if (Array.isArray(productsResponse.data.data)) {
+              productsArray = productsResponse.data.data;
+            }
+          }
+          
+          if (productsArray.length > 0) {
+            const mappedProducts = productsArray.map((productFromAPI: any) => {
               const productData = productFromAPI.product_data || productFromAPI;
               const service = servicesData.find((s: any) => s.id === serviceId);
 
+              // ✅ NOUVEAU 2026-01-22: Extraire type_offre depuis product_data ou service.data
+              const typeOffre = productData.type_offre || 
+                               productData.type_offre?.valeur || 
+                               service?.data?.type_offre?.valeur || 
+                               '';
+              
               const transformedProduct = {
                 ...productData,
                 // ✅ CORRIGÉ 2026-01-21: Préserver product_data pour ProductCard
                 product_data: productData,
+                // ✅ NOUVEAU 2026-01-22: Inclure type_offre pour déterminer le titre de l'écran
+                type_offre: typeOffre,
                 id: productFromAPI.id || productFromAPI.product_id || `${serviceId}_${productFromAPI.product_index}`,
                 product_index: productFromAPI.product_index,
                 product_name: productFromAPI.product_name || productData.nom_produit || productData.nom || productData.name,
@@ -216,6 +242,29 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       setProducts(productsWithDistance);
       console.log(`✅ [PrestataireBoutiqueScreen] ${productsWithDistance.length} produits chargés pour prestataire ${prestataireUserId}`);
       
+      // ✅ NOUVEAU 2026-01-22: Déterminer le titre de l'écran selon type_offre
+      // Vérifier si au moins un produit/prestation a type_offre = 'prestation'
+      const hasPrestation = productsWithDistance.some((p: any) => {
+        const typeOffre = p.type_offre || p.product_data?.type_offre || p._service?.data?.type_offre?.valeur || '';
+        return typeOffre === 'prestation' || typeOffre === 'prestation_service';
+      });
+      
+      // Si tous les produits sont des prestations, utiliser "Prestation de service"
+      // Sinon, utiliser "Boutique"
+      const allArePrestations = productsWithDistance.length > 0 && productsWithDistance.every((p: any) => {
+        const typeOffre = p.type_offre || p.product_data?.type_offre || p._service?.data?.type_offre?.valeur || '';
+        return typeOffre === 'prestation' || typeOffre === 'prestation_service';
+      });
+      
+      if (allArePrestations) {
+        setScreenTitle('Prestation de service');
+      } else if (hasPrestation) {
+        // Mix de produits et prestations : utiliser "Boutique" par défaut
+        setScreenTitle('Boutique');
+      } else {
+        setScreenTitle('Boutique');
+      }
+      
       // ✅ DEBUG 2026-01-21: Log final des produits
       if (productsWithDistance.length > 0) {
         console.log(`📦 [PrestataireBoutiqueScreen] Détails des produits chargés:`, 
@@ -224,7 +273,8 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
             nom: p.nom || p.name || p.nom_produit,
             _serviceId: p._serviceId,
             hasService: !!p._service,
-            hasProductData: !!p.product_data
+            hasProductData: !!p.product_data,
+            type_offre: p.type_offre || p.product_data?.type_offre || p._service?.data?.type_offre?.valeur
           }))
         );
       } else {
@@ -313,9 +363,15 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
           <View style={styles.headerContent}>
             <SafeIcon name="store" size={24} color={modernColors.primary} />
             <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>Boutique de {prestataireName}</Text>
+              <Text style={styles.headerTitle}>
+                {screenTitle === 'Prestation de service' 
+                  ? `Prestation de service de ${prestataireName}`
+                  : `Boutique de ${prestataireName}`}
+              </Text>
               <Text style={styles.headerSubtitle}>
-                {products.length} {products.length === 1 ? 'produit' : 'produits'}
+                {products.length} {products.length === 1 
+                  ? (screenTitle === 'Prestation de service' ? 'prestation' : 'produit')
+                  : (screenTitle === 'Prestation de service' ? 'prestations' : 'produits')}
               </Text>
             </View>
           </View>
@@ -393,10 +449,16 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
         {/* Liste des produits */}
         {products.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <SafeIcon name="package" size={64} color={modernColors.textSecondary} />
-            <Text style={styles.emptyText}>Aucun produit disponible</Text>
+            <SafeIcon name={screenTitle === 'Prestation de service' ? "briefcase" : "package"} size={64} color={modernColors.textSecondary} />
+            <Text style={styles.emptyText}>
+              {screenTitle === 'Prestation de service' 
+                ? 'Aucune prestation disponible'
+                : 'Aucun produit disponible'}
+            </Text>
             <Text style={styles.emptySubtext}>
-              Ce prestataire n'a pas encore de produits en ligne
+              {screenTitle === 'Prestation de service'
+                ? 'Ce prestataire n\'a pas encore de prestations en ligne'
+                : 'Ce prestataire n\'a pas encore de produits en ligne'}
             </Text>
           </View>
         ) : (
@@ -427,10 +489,16 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <SafeIcon name="package" size={64} color={modernColors.textSecondary} />
-                <Text style={styles.emptyText}>Aucun produit disponible</Text>
+                <SafeIcon name={screenTitle === 'Prestation de service' ? "briefcase" : "package"} size={64} color={modernColors.textSecondary} />
+                <Text style={styles.emptyText}>
+                  {screenTitle === 'Prestation de service' 
+                    ? 'Aucune prestation disponible'
+                    : 'Aucun produit disponible'}
+                </Text>
                 <Text style={styles.emptySubtext}>
-                  Ce prestataire n'a pas encore de produits en ligne
+                  {screenTitle === 'Prestation de service'
+                    ? 'Ce prestataire n\'a pas encore de prestations en ligne'
+                    : 'Ce prestataire n\'a pas encore de produits en ligne'}
                 </Text>
               </View>
             }

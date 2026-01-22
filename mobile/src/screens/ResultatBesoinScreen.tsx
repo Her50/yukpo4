@@ -773,18 +773,36 @@ const ResultatBesoinScreen: React.FC = () => {
                                 finalScore += 100; // Forte priorité pour affichage
                             }
 
-                            // ✅ CORRIGÉ: Extraire les images et vidéos du produit/service
-                            const productImages = Array.isArray(product.images) ? product.images 
+                            // ✅ CORRIGÉ 2026-01-22: Extraire les images et vidéos du produit/service
+                            // ✅ PRIORITÉ: product.images/videos (depuis product_data enrichi par le backend avec URLs CDN depuis table media)
+                            // ✅ Le backend ajoute les images depuis la table media dans product_data.images avec URLs CDN complètes
+                            const productImages = Array.isArray(product.images) && product.images.length > 0 ? product.images 
+                                : Array.isArray(productData?.images) && productData.images.length > 0 ? productData.images
                                 : Array.isArray(service?.images) ? service.images
                                 : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
                                 : Array.isArray(service?.data?.images) ? service.data.images
                                 : [];
                             
-                            const productVideos = Array.isArray(product.videos) ? product.videos
+                            const productVideos = Array.isArray(product.videos) && product.videos.length > 0 ? product.videos
+                                : Array.isArray(productData?.videos) && productData.videos.length > 0 ? productData.videos
                                 : Array.isArray(service?.videos) ? service.videos
                                 : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
                                 : Array.isArray(service?.data?.videos) ? service.data.videos
                                 : [];
+                            
+                            // ✅ DEBUG 2026-01-22: Log pour diagnostiquer les images depuis la table media
+                            if (__DEV__ && (productImages.length > 0 || productVideos.length > 0)) {
+                                console.log(`[ResultatBesoinScreen] Images/vidéos extraites pour produit ${product.nom || product.name}:`, {
+                                    productImagesCount: productImages.length,
+                                    productVideosCount: productVideos.length,
+                                    productHasImages: !!product.images,
+                                    productHasVideos: !!product.videos,
+                                    productDataHasImages: !!productData?.images,
+                                    productDataHasVideos: !!productData?.videos,
+                                    firstImageUrl: productImages[0]?.substring?.(0, 80) || productImages[0],
+                                    firstVideoUrl: productVideos[0]?.substring?.(0, 80) || productVideos[0],
+                                });
+                            }
 
                             // ✅ CORRIGÉ: Créer un identifiant unique stable pour éviter les doublons
                             // Utiliser service_id-product_index si disponible, sinon id de la table service_products
@@ -804,8 +822,11 @@ const ResultatBesoinScreen: React.FC = () => {
                                 _gpsSource: productGPS ? 'product' : (serviceGPSFixe ? 'service_fixe' : 'service_realtime'),
                                 distance: distance,
                                 distance_km: distance, // ✅ Ajout pour compatibilité ProductCard
-                                images: productImages, // ✅ CORRIGÉ: S'assurer que les images sont extraites
-                                videos: productVideos, // ✅ CORRIGÉ: S'assurer que les vidéos sont extraites
+                                // ✅ CORRIGÉ 2026-01-22: S'assurer que les images/vidéos depuis la table media sont bien incluses
+                                // ✅ Les URLs CDN sont déjà des URLs complètes (https://...) depuis le backend via build_public_url()
+                                // ✅ Priorité: productImages/productVideos (depuis product_data enrichi) > product.images/videos
+                                images: productImages.length > 0 ? productImages : (product.images || []),
+                                videos: productVideos.length > 0 ? productVideos : (product.videos || []),
                                 score: finalScore, // ✅ Score ajusté avec bonus promo
                                 en_promotion: isPromo, // Passer le flag
                                 promotion_active: isPromo

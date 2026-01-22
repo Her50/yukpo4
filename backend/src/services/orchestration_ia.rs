@@ -1905,8 +1905,13 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
         .split_whitespace()
         .filter(|word| {
             let word = word.trim_matches(|c: char| !c.is_alphanumeric());
-            !word.is_empty() &&
-            word.len() > 2 && // Mots de plus de 2 caractères
+            if word.is_empty() {
+                return false;
+            }
+            // ✅ CORRIGÉ 2026-01-22: Permettre TOUS les mots de 2+ caractères (générique, pas seulement acronymes)
+            // La recherche SQL (ILIKE, plainto_tsquery) peut matcher des mots de n'importe quelle longueur
+            let is_long_enough = word.len() >= 2;
+            is_long_enough &&
             !stop_words.contains(&word) &&
             !word.chars().all(|c| c.is_numeric()) && // Pas que des chiffres
             !word.chars().all(|c| c.is_ascii_digit()) // Pas que des chiffres ASCII
@@ -1922,8 +1927,12 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
             .trim_matches(|c: char| !c.is_alphanumeric())
             .to_string();
 
+        // ✅ CORRIGÉ 2026-01-22: Permettre TOUS les mots de 2+ caractères (générique)
+        // La recherche SQL peut matcher des mots courts comme "tv", "pc", "hd", etc.
+        let is_long_enough = clean_word.len() >= 2;
+        
         // Ignorer les mots trop courts ou déjà vus
-        if clean_word.len() < 3 || seen_words.contains(&clean_word) {
+        if !is_long_enough || seen_words.contains(&clean_word) {
             continue;
         }
 

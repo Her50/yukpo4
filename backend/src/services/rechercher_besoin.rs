@@ -765,16 +765,16 @@ pub async fn rechercher_besoin_direct(
                     >>()
             })
         },
-        // BATCH QUERY 3: Récupérer les images et vidéos
+        // BATCH QUERY 3: Récupérer les images et vidéos avec product_index pour association aux produits
         async {
             sqlx::query(
                 r#"
-                SELECT service_id, type, path
+                SELECT service_id, product_index, type, path
                 FROM media
                 WHERE service_id = ANY($1::int[])
                 AND type IN ('image', 'video')
                 AND path IS NOT NULL
-                ORDER BY service_id, uploaded_at ASC
+                ORDER BY service_id, COALESCE(product_index, -1), uploaded_at ASC
                 "#,
             )
             .bind(&service_ids)
@@ -784,12 +784,30 @@ pub async fn rechercher_besoin_direct(
                 crate::core::types::AppError::Internal(format!("Erreur batch query media: {}", e))
             })
             .map(|rows| {
+                // ✅ CORRIGÉ 2026-01-22: Structure pour stocker médias par service ET par product_index
+                // Structure: HashMap<service_id, HashMap<product_index, (images, videos)>>
                 let mut media_map: HashMap<i32, (Vec<String>, Vec<String>)> = HashMap::new();
+                let mut product_media_map: HashMap<(i32, i32), (Vec<String>, Vec<String>)> = HashMap::new();
+                
                 for row in rows {
                     let service_id = row.get::<i32, _>("service_id");
+                    let product_index: Option<i32> = row.try_get("product_index").ok().flatten();
                     let media_type = row.get::<String, _>("type");
                     let path = row.get::<String, _>("path");
-                    {
+                    
+                    // ✅ CORRIGÉ 2026-01-22: Si product_index est NULL, ajouter aux médias globaux du service
+                    // Sinon, ajouter aux médias du produit spécifique
+                    if let Some(prod_idx) = product_index {
+                        let entry = product_media_map
+                            .entry((service_id, prod_idx))
+                            .or_insert_with(|| (Vec::new(), Vec::new()));
+                        match media_type.as_str() {
+                            "image" => entry.0.push(path),
+                            "video" => entry.1.push(path),
+                            _ => {}
+                        }
+                    } else {
+                        // Médias globaux du service (sans product_index)
                         let entry = media_map
                             .entry(service_id)
                             .or_insert_with(|| (Vec::new(), Vec::new()));
@@ -800,7 +818,9 @@ pub async fn rechercher_besoin_direct(
                         }
                     }
                 }
-                media_map
+                
+                // ✅ CORRIGÉ 2026-01-22: Retourner les deux maps pour enrichissement
+                (media_map, product_media_map)
             })
         },
         // ✅ NOUVEAU BATCH QUERY 4: Récupérer les produits depuis service_products (nouveau système)
@@ -848,7 +868,7 @@ pub async fn rechercher_besoin_direct(
 
     let service_user_info_map = service_user_info_map_result?;
     let product_info_map = product_info_map_result?;
-    let media_map = media_map_result?;
+    let (media_map, product_media_map) = media_map_result?; // ✅ CORRIGÉ 2026-01-22: Séparer médias globaux et médias produits
     let service_products_map = service_products_map_result?; // ✅ NOUVEAU: Produits depuis service_products
 
     // Créer user_info_map pour compatibilité avec le code existant
@@ -1073,8 +1093,99 @@ pub async fn rechercher_besoin_direct(
         // Plus de lien avec l'ancien système (service.data->produits)
         if let Some(service_products_list) = service_products_map.get(&service_id) {
             if !service_products_list.is_empty() {
-                // Convertir les produits depuis service_products en format compatible
-                let produits_from_table: Vec<Value> = service_products_list.iter().cloned().collect();
+                // ✅ CORRIGÉ 2026-01-22: Enrichir chaque produit avec ses images/vidéos depuis product_media_map
+                let mut enriched_products: Vec<Value> = Vec::new();
+                for product in service_products_list.iter() {
+                    let mut enriched_product = product.clone();
+                    
+                    // Récupérer product_index depuis le produit
+                    let product_index = product
+                        .as_object()
+                        .and_then(|obj| obj.get("product_index"))
+                        .and_then(|v| v.as_i64().map(|i| i as i32));
+                    
+                    // ✅ CORRIGÉ 2026-01-22: Ajouter les images/vidéos depuis product_media_map si disponibles
+                    if let Some(prod_idx) = product_index {
+                        if let Some((product_images, product_videos)) = product_media_map.get(&(service_id, prod_idx)) {
+                            // Transformer les chemins en URLs CDN
+                            let images_cdn: Vec<String> = product_images.iter().map(|img| {
+                                if let Some(ref storage) = media_storage {
+                                    if !img.starts_with("http://") && !img.starts_with("https://") {
+                                        storage.build_public_url(img)
+                                    } else {
+                                        img.clone()
+                                    }
+                                } else {
+                                    img.clone()
+                                }
+                            }).collect();
+                            
+                            let videos_cdn: Vec<String> = product_videos.iter().map(|vid| {
+                                if let Some(ref storage) = media_storage {
+                                    if !vid.starts_with("http://") && !vid.starts_with("https://") {
+                                        storage.build_public_url(vid)
+                                    } else {
+                                        vid.clone()
+                                    }
+                                } else {
+                                    vid.clone()
+                                }
+                            }).collect();
+                            
+                            // ✅ CORRIGÉ 2026-01-22: Fusionner avec les images/vidéos existantes dans product_data
+                            if let Some(obj) = enriched_product.as_object_mut() {
+                                // Fusionner les images
+                                let existing_images: Vec<String> = obj
+                                    .get("images")
+                                    .and_then(|v| v.as_array())
+                                    .map(|arr| {
+                                        arr.iter()
+                                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                            .collect()
+                                    })
+                                    .unwrap_or_default();
+                                
+                                let mut merged_images = existing_images;
+                                for img in images_cdn {
+                                    if !merged_images.contains(&img) {
+                                        merged_images.push(img);
+                                    }
+                                }
+                                
+                                if !merged_images.is_empty() {
+                                    obj.insert("images".to_string(), json!(merged_images));
+                                }
+                                
+                                // Fusionner les vidéos
+                                let existing_videos: Vec<String> = obj
+                                    .get("videos")
+                                    .and_then(|v| v.as_array())
+                                    .map(|arr| {
+                                        arr.iter()
+                                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                            .collect()
+                                    })
+                                    .unwrap_or_default();
+                                
+                                let mut merged_videos = existing_videos;
+                                for vid in videos_cdn {
+                                    if !merged_videos.contains(&vid) {
+                                        merged_videos.push(vid);
+                                    }
+                                }
+                                
+                                if !merged_videos.is_empty() {
+                                    obj.insert("videos".to_string(), json!(merged_videos));
+                                }
+                            }
+                        }
+                    }
+                    
+                    enriched_products.push(enriched_product);
+                }
+                
+                // Convertir les produits enrichis en format compatible
+                let produits_from_table: Vec<Value> = enriched_products;
                 
                 // Récupérer data ou le créer
                 let data_value = enriched_result.get_mut("data").cloned();

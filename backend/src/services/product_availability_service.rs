@@ -48,7 +48,7 @@ impl ProductAvailabilityService {
         struct Config {
             preparation_time_minutes: Option<i32>,
             _max_preparation_time_minutes: Option<i32>,
-            availability_days: Option<Value>,
+            availability_days: Option<Vec<i32>>, // ✅ CORRIGÉ 2026-01-22: INTEGER[] au lieu de JSONB
             is_immediately_available: Option<bool>,
             pickup_availability_schedule: Option<Value>,
         }
@@ -70,7 +70,7 @@ impl ProductAvailabilityService {
         .map(|row: sqlx::postgres::PgRow| Config {
             preparation_time_minutes: row.get::<Option<_>, _>("preparation_time_minutes"),
             _max_preparation_time_minutes: row.get::<Option<_>, _>("max_preparation_time_minutes"),
-            availability_days: row.get::<Option<_>, _>("availability_days"),
+            availability_days: row.get::<Option<Vec<i32>>, _>("availability_days"), // ✅ CORRIGÉ 2026-01-22: Décoder directement comme Vec<i32>
             is_immediately_available: row.get::<Option<_>, _>("is_immediately_available"),
             pickup_availability_schedule: row.get::<Option<_>, _>("pickup_availability_schedule"),
         })
@@ -90,11 +90,8 @@ impl ProductAvailabilityService {
             }
         };
 
-        // Vérifier les jours de disponibilité
-        let availability_days: Vec<i32> = config
-            .availability_days
-            .and_then(|v| serde_json::from_value(v).ok())
-            .unwrap_or_default();
+        // ✅ CORRIGÉ 2026-01-22: Vérifier les jours de disponibilité (déjà Vec<i32>, pas besoin de conversion JSON)
+        let availability_days: Vec<i32> = config.availability_days.unwrap_or_default();
         let is_available_today =
             availability_days.is_empty() || availability_days.contains(&current_weekday);
 
@@ -182,7 +179,7 @@ impl ProductAvailabilityService {
         struct Config2 {
             preparation_time_minutes: Option<i32>,
             max_preparation_time_minutes: Option<i32>,
-            availability_days: Option<Value>,
+            availability_days: Option<Vec<i32>>, // ✅ CORRIGÉ 2026-01-22: INTEGER[] au lieu de JSONB
             is_immediately_available: Option<bool>,
         }
 
@@ -202,7 +199,7 @@ impl ProductAvailabilityService {
         .map(|row: sqlx::postgres::PgRow| Config2 {
             preparation_time_minutes: row.get::<Option<_>, _>("preparation_time_minutes"),
             max_preparation_time_minutes: row.get::<Option<_>, _>("max_preparation_time_minutes"),
-            availability_days: row.get::<Option<_>, _>("availability_days"),
+            availability_days: row.get::<Option<Vec<i32>>, _>("availability_days"), // ✅ CORRIGÉ 2026-01-22: Décoder directement comme Vec<i32>
             is_immediately_available: row.get::<Option<_>, _>("is_immediately_available"),
         })
         .fetch_optional(&self.pool)
@@ -213,10 +210,8 @@ impl ProductAvailabilityService {
             None => return Ok(None),
         };
 
-        let availability_days: Vec<i32> = config
-            .availability_days
-            .and_then(|v| serde_json::from_value(v).ok())
-            .unwrap_or_else(|| vec![0, 1, 2, 3, 4, 5, 6]);
+        // ✅ CORRIGÉ 2026-01-22: Utiliser directement Vec<i32> (déjà décodé depuis INTEGER[])
+        let availability_days: Vec<i32> = config.availability_days.unwrap_or_else(|| vec![0, 1, 2, 3, 4, 5, 6]);
         let now = Utc::now();
         let current_weekday = now.weekday().num_days_from_sunday() as i32;
         let is_available =

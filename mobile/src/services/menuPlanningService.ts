@@ -100,7 +100,7 @@ export interface GeneratedRecipe {
     prep_time_minutes?: number;
     cook_time_minutes?: number;
     total_time_minutes?: number;
-    servings: number;
+    servings: number | { number: number; size: string };
     ingredients: Array<{
         name: string;
         quantity: number;

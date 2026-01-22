@@ -32,6 +32,13 @@ const { width, height } = Dimensions.get('window');
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const DAYS_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
+// Fonction utilitaire pour extraire le nombre de portions
+const getServingsNumber = (servings: number | { number: number; size: string } | undefined): number => {
+    if (!servings) return 0;
+    if (typeof servings === 'number') return servings;
+    return servings.number;
+};
+
 interface MenuWeekCalendarScreenProps { }
 
 const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
@@ -613,7 +620,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 )}
                 {meal.servings && (
                     <Text style={styles.tableCellServings}>
-                        👥 {meal.servings} portion{meal.servings > 1 ? 's' : ''}
+                        👥 {getServingsNumber(meal.servings)} portion{getServingsNumber(meal.servings) > 1 ? 's' : ''}
                     </Text>
                 )}
                 <TouchableOpacity
@@ -687,7 +694,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     {meal.estimated_cost && (
                         <Text style={styles.mealInfoText}>💰 {formatPrice(meal.estimated_cost)}</Text>
                     )}
-                    <Text style={styles.mealInfoText}>👥 {meal.servings} portions</Text>
+                    <Text style={styles.mealInfoText}>👥 {getServingsNumber(meal.servings)} portions</Text>
                 </View>
                 <View style={styles.recipeButtonContainer}>
                     <TouchableOpacity
@@ -1180,7 +1187,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                     )}
                                     <View style={styles.recipeInfoItem}>
                                         <SafeIcon name="users" size={16} color={modernColors.primary} type="lucide" />
-                                        <Text style={styles.recipeInfoText}>{generatedRecipe.servings} portions</Text>
+                                        <Text style={styles.recipeInfoText}>{getServingsNumber(generatedRecipe.servings)} portions</Text>
                                     </View>
                                 </View>
 
