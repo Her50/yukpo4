@@ -1323,7 +1323,7 @@ Générer la recette EXACTE et COMPLÈTE du plat spécifique demandé : "{}"
     "prep_time_minutes": 30,
     "cook_time_minutes": 45,
     "total_time_minutes": 75,
-    "servings": {{}},
+    "servings": {},
     "ingredients": [
         {{
             "name": "Nom ingrédient",
@@ -1388,7 +1388,7 @@ IMPORTANT :
             recipe_name,  // 1364
             recipe_name,  // 1365
             recipe_name,  // 1366
-            servings
+            servings  // 1326
         );
 
         let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;

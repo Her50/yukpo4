@@ -3148,7 +3148,7 @@ async fn list_courier_applications(
     );
 
     let applications = match statuses_filter {
-        Some(statuses) if statuses.len() > 1 => {
+        Some(ref statuses) if statuses.len() > 1 => {
             log::info!(
                 "[list_courier_applications] Filtre multi-status activé: {:?} ({} statuts)",
                 statuses,
