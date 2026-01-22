@@ -276,9 +276,17 @@ const ResultatBesoinScreen: React.FC = () => {
     // Fonction pour filtrer les produits selon les filtres de catégorie
     const filterProducts = (productsList: any[]): any[] => {
         let filtered = [...productsList];
+        
+        console.log('🔍 [ResultatBesoinScreen] filterProducts appelé avec:', {
+            produitsCount: productsList.length,
+            categoryFiltersCount: Object.keys(categoryFilters).length,
+            categoryFilters: categoryFilters,
+            priceFilter
+        });
 
         // Appliquer les filtres de catégorie spécifiques
         if (Object.keys(categoryFilters).length > 0) {
+            const beforeFilter = filtered.length;
             filtered = filtered.filter(product => {
                 // Vérifier chaque filtre
                 for (const [key, value] of Object.entries(categoryFilters)) {
@@ -287,35 +295,74 @@ const ResultatBesoinScreen: React.FC = () => {
                     // Filtres numériques (min/max)
                     if (key.startsWith('min') && product[key.replace('min', '').toLowerCase()]) {
                         if (parseFloat(product[key.replace('min', '').toLowerCase()]) < parseFloat(value)) {
+                            console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu par filtre min ${key}:`, {
+                                productValue: product[key.replace('min', '').toLowerCase()],
+                                filterValue: value
+                            });
                             return false;
                         }
                     }
                     if (key.startsWith('max') && product[key.replace('max', '').toLowerCase()]) {
                         if (parseFloat(product[key.replace('max', '').toLowerCase()]) > parseFloat(value)) {
+                            console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu par filtre max ${key}:`, {
+                                productValue: product[key.replace('max', '').toLowerCase()],
+                                filterValue: value
+                            });
                             return false;
                         }
                     }
 
                     // Filtres de correspondance directe
-                    if (product[key] && product[key] !== value) {
+                    // ✅ CORRIGÉ: Ne pas exclure si la propriété n'existe pas dans le produit
+                    if (product[key] !== undefined && product[key] !== null && product[key] !== value) {
+                        console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu par filtre ${key}:`, {
+                            productValue: product[key],
+                            filterValue: value
+                        });
                         return false;
                     }
                 }
                 return true;
             });
+            
+            if (beforeFilter > 0 && filtered.length === 0) {
+                console.error('❌ [ResultatBesoinScreen] filterProducts - TOUS les produits ont été exclus par les filtres de catégorie!', {
+                    avant: beforeFilter,
+                    apres: filtered.length,
+                    categoryFilters
+                });
+            }
         }
 
         // Appliquer le filtre par prix
         if (priceFilter.min !== null || priceFilter.max !== null) {
+            const beforePriceFilter = filtered.length;
             filtered = filtered.filter(product => {
                 const price = parseFloat(product.prix || product.price);
-                if (isNaN(price)) return false;
+                if (isNaN(price)) {
+                    console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu: prix invalide (${product.prix || product.price})`);
+                    return false;
+                }
 
-                if (priceFilter.min !== null && price < priceFilter.min) return false;
-                if (priceFilter.max !== null && price > priceFilter.max) return false;
+                if (priceFilter.min !== null && price < priceFilter.min) {
+                    console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu: prix ${price} < min ${priceFilter.min}`);
+                    return false;
+                }
+                if (priceFilter.max !== null && price > priceFilter.max) {
+                    console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu: prix ${price} > max ${priceFilter.max}`);
+                    return false;
+                }
 
                 return true;
             });
+            
+            if (beforePriceFilter > 0 && filtered.length === 0) {
+                console.error('❌ [ResultatBesoinScreen] filterProducts - TOUS les produits ont été exclus par le filtre de prix!', {
+                    avant: beforePriceFilter,
+                    apres: filtered.length,
+                    priceFilter
+                });
+            }
         }
 
         // ✅ TRI PRIORITAIRE : Produits en promotion d'abord
@@ -334,6 +381,12 @@ const ResultatBesoinScreen: React.FC = () => {
             const distA = a.distance || Infinity;
             const distB = b.distance || Infinity;
             return distA - distB;
+        });
+
+        console.log('✅ [ResultatBesoinScreen] filterProducts - Résultat final:', {
+            produitsAvant: productsList.length,
+            produitsApres: filtered.length,
+            exclus: productsList.length - filtered.length
         });
 
         return filtered;
@@ -653,6 +706,8 @@ const ResultatBesoinScreen: React.FC = () => {
                             const transformedProduct = {
                                 // ✅ Préserver toutes les propriétés de product_data
                                 ...productData,
+                                // ✅ CRITIQUE: Garder product_data comme structure séparée pour ProductCard
+                                product_data: productData, // ✅ Structure complète de product_data
                                 // ✅ CORRIGÉ 2026-01-21: S'assurer que les images/vidéos sont bien extraites depuis product_data
                                 images: productData.images || [],
                                 videos: productData.videos || [],
@@ -776,15 +831,17 @@ const ResultatBesoinScreen: React.FC = () => {
                             // ✅ CORRIGÉ 2026-01-22: Extraire les images et vidéos du produit/service
                             // ✅ PRIORITÉ: product.images/videos (depuis product_data enrichi par le backend avec URLs CDN depuis table media)
                             // ✅ Le backend ajoute les images depuis la table media dans product_data.images avec URLs CDN complètes
+                            // ✅ CORRIGÉ: Utiliser product.product_data au lieu de productData (qui n'est pas dans ce scope)
+                            const productDataFromProduct = product.product_data || product;
                             const productImages = Array.isArray(product.images) && product.images.length > 0 ? product.images 
-                                : Array.isArray(productData?.images) && productData.images.length > 0 ? productData.images
+                                : Array.isArray(productDataFromProduct?.images) && productDataFromProduct.images.length > 0 ? productDataFromProduct.images
                                 : Array.isArray(service?.images) ? service.images
                                 : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
                                 : Array.isArray(service?.data?.images) ? service.data.images
                                 : [];
                             
                             const productVideos = Array.isArray(product.videos) && product.videos.length > 0 ? product.videos
-                                : Array.isArray(productData?.videos) && productData.videos.length > 0 ? productData.videos
+                                : Array.isArray(productDataFromProduct?.videos) && productDataFromProduct.videos.length > 0 ? productDataFromProduct.videos
                                 : Array.isArray(service?.videos) ? service.videos
                                 : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
                                 : Array.isArray(service?.data?.videos) ? service.data.videos
@@ -797,8 +854,8 @@ const ResultatBesoinScreen: React.FC = () => {
                                     productVideosCount: productVideos.length,
                                     productHasImages: !!product.images,
                                     productHasVideos: !!product.videos,
-                                    productDataHasImages: !!productData?.images,
-                                    productDataHasVideos: !!productData?.videos,
+                                    productDataHasImages: !!productDataFromProduct?.images,
+                                    productDataHasVideos: !!productDataFromProduct?.videos,
                                     firstImageUrl: productImages[0]?.substring?.(0, 80) || productImages[0],
                                     firstVideoUrl: productVideos[0]?.substring?.(0, 80) || productVideos[0],
                                 });
@@ -810,11 +867,17 @@ const ResultatBesoinScreen: React.FC = () => {
                                 ? `${service.id}_${product.product_index}`
                                 : product.id || product.product_id || `${service.id}-${product.nom || product.name || 'unknown'}`;
 
+                            // ✅ CORRIGÉ 2026-01-22: CRITIQUE - ProductCard attend product.product_data
+                            // Il faut garder product_data comme structure séparée ET aplatir les propriétés principales
+                            // ✅ product contient déjà product_data (ajouté dans transformedProduct)
                             extractedProducts.push({
+                                // ✅ Propriétés principales au niveau racine (pour compatibilité)
                                 ...product,
                                 // ✅ CORRIGÉ: S'assurer que l'ID est toujours défini et unique
                                 id: stableProductId,
                                 product_id: stableProductId,
+                                // ✅ CRITIQUE: product_data est déjà dans product (ajouté dans transformedProduct)
+                                // ProductCard fait: const productData = product.product_data || product;
                                 _serviceId: service.id,
                                 _service: service,
                                 _prestataire: prestataires.get(service.user_id),
@@ -1641,8 +1704,41 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ CORRIGÉ 2025-01-02: Mémoriser les listes filtrées avec comparaison profonde pour éviter les recalculs inutiles
     const filteredProducts = useMemo(() => {
         // ✅ Comparer les longueurs et références pour éviter les recalculs inutiles
-        if (products.length === 0) return [];
-        return filterProducts(products);
+        console.log('🔍 [ResultatBesoinScreen] filterProducts - produits avant filtrage:', products.length);
+        console.log('🔍 [ResultatBesoinScreen] filterProducts - état products:', {
+            length: products.length,
+            sample: products.length > 0 ? {
+                id: products[0].id,
+                nom: products[0].nom || products[0].name,
+                _serviceId: products[0]._serviceId
+            } : null
+        });
+        console.log('🔍 [ResultatBesoinScreen] filterProducts - filtres actifs:', {
+            categoryFilters: Object.keys(categoryFilters).length,
+            categoryFiltersKeys: Object.keys(categoryFilters),
+            priceFilter: priceFilter.min !== null || priceFilter.max !== null,
+            priceFilterValues: priceFilter
+        });
+        
+        if (products.length === 0) {
+            console.warn('⚠️ [ResultatBesoinScreen] filterProducts - Aucun produit dans l\'état');
+            return [];
+        }
+        
+        const filtered = filterProducts(products);
+        console.log('✅ [ResultatBesoinScreen] filterProducts - produits après filtrage:', filtered.length);
+        
+        if (filtered.length === 0 && products.length > 0) {
+            console.error('❌ [ResultatBesoinScreen] filterProducts - PROBLÈME: Tous les produits ont été filtrés!', {
+                produitsAvant: products.length,
+                filtres: {
+                    categoryFilters,
+                    priceFilter
+                }
+            });
+        }
+        
+        return filtered;
     }, [products, categoryFilters, priceFilter, sortBy]);
     
     const filteredServices = useMemo(() => {
@@ -1653,6 +1749,11 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // ✅ CORRIGÉ 2026-01-14: Mémoriser la liste combinée avec clés STABLES (sans score qui change)
     const allResults = useMemo(() => {
+        console.log('🔍 [ResultatBesoinScreen] allResults - Construction:', {
+            filteredServicesCount: filteredServices.length,
+            filteredProductsCount: filteredProducts.length
+        });
+        
         const services = filteredServices.map(service => ({ 
             type: 'service' as const, 
             data: service,
@@ -1700,7 +1801,21 @@ const ResultatBesoinScreen: React.FC = () => {
             );
         }
         
-        return [...services, ...products];
+        const allResultsArray = [...services, ...products];
+        console.log('✅ [ResultatBesoinScreen] allResults - Total:', {
+            total: allResultsArray.length,
+            services: services.length,
+            products: products.length
+        });
+        
+        if (allResultsArray.length === 0 && (filteredServices.length > 0 || filteredProducts.length > 0)) {
+            console.error('❌ [ResultatBesoinScreen] allResults - PROBLÈME: allResults est vide alors que filteredServices ou filteredProducts ne le sont pas!', {
+                filteredServicesLength: filteredServices.length,
+                filteredProductsLength: filteredProducts.length
+            });
+        }
+        
+        return allResultsArray;
     }, [filteredServices, filteredProducts]);
 
     // ✅ NOUVEAU 2025-01-01: Charger reviews et stats en batch pour tous les services

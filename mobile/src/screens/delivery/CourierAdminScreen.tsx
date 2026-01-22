@@ -43,8 +43,9 @@ const CourierAdminScreen: React.FC = () => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [applications, setApplications] = useState<CourierApplication[]>([]);
-    // ✅ CORRIGÉ 2026-01-22: Filtrer par défaut sur "submitted" pour voir les candidatures à valider
-    const [filter, setFilter] = useState<'all' | 'submitted' | 'under_review' | 'approved' | 'rejected'>('submitted');
+    // ✅ CORRIGÉ: Par défaut, "all" exclut les drafts (uniquement les soumissions réelles)
+    // Les drafts ne sont visibles que si on filtre explicitement sur "draft"
+    const [filter, setFilter] = useState<'all' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'draft'>('all');
     const [selectedApplication, setSelectedApplication] = useState<CourierApplication | null>(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
@@ -65,13 +66,29 @@ const CourierAdminScreen: React.FC = () => {
         try {
             setLoading(true);
             const statusParam = filter !== 'all' ? `?status=${filter}` : '';
-            const response = await apiGet(`/api/courier/applications${statusParam}`);
+            const endpoint = `/api/courier/applications${statusParam}`;
+            
+            console.log('[CourierAdminScreen] 🔍 Chargement candidatures:', {
+                filter,
+                statusParam,
+                endpoint,
+                userRole: user?.role
+            });
+            
+            const response = await apiGet(endpoint);
             
             // ✅ CORRECTION CRITIQUE: apiGet retourne ApiResponse<T> avec structure { success?, data?, error? }
             // Le backend retourne { applications: [...], total: ... }
             // Donc response.data devrait contenir { applications: [...], total: ... }
             
             console.log('[CourierAdminScreen] 🔍 Réponse API complète:', JSON.stringify(response, null, 2));
+            console.log('[CourierAdminScreen] 🔍 Structure réponse:', {
+                success: response.success,
+                hasData: !!response.data,
+                dataType: typeof response.data,
+                dataKeys: response.data ? Object.keys(response.data) : [],
+                error: response.error
+            });
             
             let applicationsList: CourierApplication[] = [];
             
@@ -195,6 +212,8 @@ const CourierAdminScreen: React.FC = () => {
 
     const getStatusLabel = (status: string) => {
         switch (status) {
+            case 'all':
+                return 'Toutes';
             case 'draft':
                 return 'Brouillon';
             case 'submitted':
@@ -304,7 +323,7 @@ const CourierAdminScreen: React.FC = () => {
                 style={styles.filtersContainer}
                 contentContainerStyle={styles.filtersContent}
             >
-                {(['all', 'submitted', 'under_review', 'approved', 'rejected'] as const).map(
+                {(['all', 'draft', 'submitted', 'under_review', 'approved', 'rejected'] as const).map(
                     (filterOption) => (
                         <TouchableOpacity
                             key={filterOption}

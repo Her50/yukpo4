@@ -1307,9 +1307,11 @@ impl DeliveryService {
         };
 
         log::info!(
-            "[submit_courier_application] Création nouvelle candidature: user_id={}, status={:?}",
+            "[submit_courier_application] Création nouvelle candidature: user_id={}, status={:?}, submitted={}, submitted_at sera {:?}",
             input.user_id,
-            status
+            status,
+            input.submitted,
+            if input.submitted { Some(Utc::now()) } else { None }
         );
 
         let new_app = self
@@ -1330,11 +1332,18 @@ impl DeliveryService {
             .await?;
 
             log::info!(
-                "[submit_courier_application] ✅ Nouvelle candidature créée: id={}, status={:?}, submitted={}, submitted_at={:?}",
+                "[submit_courier_application] ✅ Nouvelle candidature créée: id={}, user_id={}, status={:?}, submitted={}, submitted_at={:?}, created_at={:?}",
                 new_app.id,
+                new_app.user_id,
                 new_app.status,
                 input.submitted,
-                new_app.submitted_at
+                new_app.submitted_at,
+                new_app.created_at
+            );
+            
+            // ✅ DEBUG: Vérifier que la candidature est bien enregistrée en DB
+            log::info!(
+                "[submit_courier_application] 🔍 Vérification DB - La candidature devrait être visible avec le filtre 'all' ou 'draft' (si draft) ou 'submitted' (si submitted)"
             );
 
         Ok(new_app)

@@ -3110,21 +3110,24 @@ async fn list_courier_applications(
                 crate::models::delivery_model::DeliveryApplicationStatus::Rejected,
             ]),
 
-            // ✅ Compat: "submitted" = file d'attente de validation
-            // (submitted + under_review + draft)
+            // ✅ CORRIGÉ: "submitted" = file d'attente de validation
+            // ✅ NE PAS inclure "Draft" car les brouillons ne doivent pas être validés
+            // Seulement les candidatures soumises (Submitted) et en cours de révision (UnderReview)
             "submitted" | "pending" | "to_validate" | "pending_validation" => Some(vec![
                 crate::models::delivery_model::DeliveryApplicationStatus::Submitted,
                 crate::models::delivery_model::DeliveryApplicationStatus::UnderReview,
-                crate::models::delivery_model::DeliveryApplicationStatus::Draft,
+                // ✅ SUPPRIMÉ: Draft - les brouillons ne doivent pas apparaître dans la liste de validation
             ]),
             _ => None,
         });
 
     // Conserver le comportement précédent si on n'a qu'un seul statut
+    // ✅ CORRIGÉ: Si statuses_filter est None (filtre "all" ou pas de filtre), status_filter doit être None
     let status_filter: Option<crate::models::delivery_model::DeliveryApplicationStatus> =
         match &statuses_filter {
             Some(v) if v.len() == 1 => v.first().copied(),
-            _ => None,
+            Some(_) => None, // Multi-statuts -> utiliser list_courier_applications_by_statuses
+            None => None, // Pas de filtre -> retourner toutes les candidatures
         };
 
     let limit = params
@@ -3162,21 +3165,48 @@ async fn list_courier_applications(
             result
         }
         _ => {
-            log::info!(
-                "[list_courier_applications] Filtre single-status: {:?}",
-                status_filter
-            );
-            service
+            // ✅ CORRIGÉ: Log détaillé pour le filtre "all" ou single-status
+            if status_filter.is_none() {
+                log::info!(
+                    "[list_courier_applications] Filtre 'all' activé - récupération de TOUTES les candidatures (sans filtre de statut)"
+                );
+            } else {
+                log::info!(
+                    "[list_courier_applications] Filtre single-status: {:?}",
+                    status_filter
+                );
+            }
+            let result = service
                 .list_courier_applications(status_filter, limit, offset)
-                .await?
+                .await?;
+            log::info!(
+                "[list_courier_applications] Résultat filtre single-status/all: {} candidature(s) trouvée(s)",
+                result.len()
+            );
+            result
         }
     };
 
-    // ✅ LOG: Logger le nombre de candidatures trouvées
+    // ✅ LOG: Logger le nombre de candidatures trouvées avec détails
     log::info!(
-        "[list_courier_applications] {} candidature(s) trouvée(s)",
-        applications.len()
+        "[list_courier_applications] {} candidature(s) trouvée(s) (filtre: {:?})",
+        applications.len(),
+        statuses_filter
     );
+    
+    // ✅ DEBUG: Logger les statuts des candidatures trouvées
+    if !applications.is_empty() {
+        use std::collections::HashMap;
+        let mut status_counts: HashMap<String, i32> = HashMap::new();
+        for app in &applications {
+            let status_str = format!("{:?}", app.status);
+            *status_counts.entry(status_str).or_insert(0) += 1;
+        }
+        log::info!(
+            "[list_courier_applications] Répartition par statut: {:?}",
+            status_counts
+        );
+    }
 
     // Récupérer les informations utilisateur pour chaque candidature
     let mut applications_with_user = Vec::new();

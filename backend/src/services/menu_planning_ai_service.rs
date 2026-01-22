@@ -1275,14 +1275,43 @@ Générer la recette EXACTE et COMPLÈTE du plat spécifique demandé : "{}"
 - Tu NE DOIS JAMAIS générer une recette différente ou similaire
 - Tu NE DOIS JAMAIS inventer un plat si tu ne connais pas ce plat spécifique
 - Tu DOIS générer la recette TRADITIONNELLE et AUTHENTIQUE de ce plat
-- Le champ "recipe_name" dans la réponse DOIT être exactement le nom du plat demandé
+- Le champ "recipe_name" dans la réponse DOIT être exactement le nom du plat demandé : "{}"
 - Si le plat demandé est un plat spécifique (ex: "Ndolé", "Poulet DG", "Sauce arachide"), génère SA recette authentique et traditionnelle
 - Si le plat demandé est générique (ex: "Riz", "Poulet"), génère une recette représentative mais précise adaptée au contexte local
 
+🚨 VALIDATION CRITIQUE DES INGRÉDIENTS (PRIORITÉ ABSOLUE - LIRE TRÈS ATTENTIVEMENT) :
+1. COHÉRENCE OBLIGATOIRE INGRÉDIENTS-PLAT :
+   - Chaque ingrédient généré DOIT être ABSOLUMENT NÉCESSAIRE pour préparer le plat "{}"
+   - INTERDICTION ABSOLUE : Ne JAMAIS inclure des ingrédients qui ne correspondent pas au plat demandé
+   - INTERDICTION ABSOLUE : Ne JAMAIS remplacer les ingrédients typiques du plat par d'autres ingrédients
+   - EXEMPLE INTERDIT : Si le plat est "Ndolé", ne JAMAIS inclure "Tomates" ou "Pommes de terre" (ces ingrédients ne sont PAS dans le Ndolé traditionnel)
+   - EXEMPLE CORRECT : Pour "Ndolé", les ingrédients DOIVENT être : feuilles de ndolé, arachides, viande/poisson, oignons, huile de palme, épices (GINGEMBRE, ail, piment) - UNIQUEMENT ces ingrédients
+
+2. VALIDATION AVANT GÉNÉRATION (CRITIQUE - À FAIRE POUR CHAQUE INGRÉDIENT) :
+   - AVANT d'ajouter un ingrédient à la liste, pose-toi cette question : "Cet ingrédient est-il ABSOLUMENT NÉCESSAIRE et TYPIQUE pour préparer le plat '{}' ?"
+   - Si la réponse est NON ou INCERTAIN, NE PAS inclure cet ingrédient
+   - Utilise tes connaissances sur les recettes traditionnelles et authentiques du plat "{}"
+   - Si tu ne connais pas les ingrédients exacts du plat "{}", utilise uniquement les ingrédients que tu connais avec CERTITUDE pour ce plat spécifique
+
+3. EXEMPLES CONCRETS DE COHÉRENCE (POUR T'AIDER) :
+   - "Ndolé" → DOIT contenir : feuilles de ndolé, arachides, viande/poisson, oignons, huile de palme, gingembre, ail, piment
+   - "Ndolé" → NE DOIT PAS contenir : tomates, pommes de terre, carottes, haricots verts (ces ingrédients ne sont PAS dans le Ndolé)
+   - "Poulet DG" → DOIT contenir : poulet, plantains, légumes (tomates, oignons, poivrons), épices, huile
+   - "Poulet DG" → NE DOIT PAS contenir : arachides, feuilles de ndolé (ces ingrédients ne sont PAS dans le Poulet DG)
+   - "Sauce arachide" → DOIT contenir : arachides, tomates, oignons, viande/poisson, épices, huile
+   - "Sauce arachide" → NE DOIT PAS contenir : feuilles de ndolé, plantains (ces ingrédients ne sont PAS dans la sauce arachide)
+
+4. VALIDATION FINALE OBLIGATOIRE (CRITIQUE - DERNIÈRE ÉTAPE AVANT GÉNÉRATION DU JSON) :
+   - AVANT de générer le JSON, tu DOIS vérifier CHAQUE ingrédient de la liste
+   - Pour CHAQUE ingrédient, pose-toi : "Cet ingrédient correspond-il EXACTEMENT au plat '{}' ?"
+   - Si tu trouves un ingrédient qui ne correspond pas, SUPPRIME-LE immédiatement
+   - INTERDICTION ABSOLUE : Ne JAMAIS retourner un JSON avec des ingrédients qui ne correspondent pas au plat demandé
+
 🌍 CONTEXTE CULINAIRE :
 - Respecter les traditions culinaires locales selon le contexte géographique fourni
-- Utiliser les ingrédients typiques de la région
+- Utiliser UNIQUEMENT les ingrédients typiques et authentiques du plat "{}" dans la région
 - Adapter les techniques de cuisson aux habitudes locales
+- Ne JAMAIS ajouter d'ingrédients "pour enrichir" si ces ingrédients ne sont pas traditionnels pour le plat "{}"
 
 📋 RÉPONSE ATTENDUE (JSON strict) :
 {{
@@ -1320,16 +1349,45 @@ Générer la recette EXACTE et COMPLÈTE du plat spécifique demandé : "{}"
     "tags": ["tag1", "tag2"]
 }}
 
+🚨 VALIDATION FINALE OBLIGATOIRE (CRITIQUE - DERNIÈRE ÉTAPE AVANT GÉNÉRATION DU JSON) :
+- AVANT de générer le JSON, tu DOIS vérifier CHAQUE ingrédient de la liste
+- Pour CHAQUE ingrédient, pose-toi : "Cet ingrédient est-il ABSOLUMENT NÉCESSAIRE et TYPIQUE pour préparer le plat '{}' ?"
+- Si tu trouves un ingrédient qui ne correspond pas au plat "{}", SUPPRIME-LE immédiatement
+- INTERDICTION ABSOLUE : Ne JAMAIS retourner un JSON avec des ingrédients qui ne correspondent pas au plat demandé "{}"
+- Le champ "recipe_name" DOIT être EXACTEMENT "{}" (pas de variation, pas de synonyme)
+- Les instructions DOIVENT être pour préparer EXACTEMENT le plat "{}" (pas un plat similaire ou différent)
+
 IMPORTANT :
-- Si le plat demandé n'est pas dans la liste de suggestions, génère quand même une recette adaptée
-- Adapte les ingrédients à la localité (pays/ville) si fourni
-- Respecte les allergies et restrictions si fournies
-- Fournis des instructions claires et détaillées
-- Inclus des astuces pratiques
+- Si le plat demandé "{}" n'est pas dans la liste de suggestions, génère quand même une recette adaptée MAIS avec les ingrédients EXACTS de ce plat
+- Adapte les ingrédients à la localité (pays/ville) si fourni, MAIS UNIQUEMENT si ces ingrédients sont authentiques pour le plat "{}"
+- Respecte les allergies et restrictions si fournies (remplace les ingrédients allergènes par des alternatives, mais garde la cohérence avec le plat "{}")
+- Fournis des instructions claires et détaillées pour préparer EXACTEMENT le plat "{}"
+- Inclus des astuces pratiques spécifiques au plat "{}"
+- COHÉRENCE ABSOLUE : Chaque ingrédient DOIT être vérifié pour correspondre au plat "{}" avant d'être inclus
 "#,
             profile_context,
             location_context,
-            recipe_name,
+            recipe_name,  // 1271
+            recipe_name,  // 1274
+            recipe_name,  // 1278
+            recipe_name,  // 1284
+            recipe_name,  // 1291
+            recipe_name,  // 1293
+            recipe_name,  // 1294
+            recipe_name,  // 1306
+            recipe_name,  // 1312
+            recipe_name,  // 1314
+            recipe_name,  // 1354
+            recipe_name,  // 1355
+            recipe_name,  // 1356
+            recipe_name,  // 1357
+            recipe_name,  // 1358
+            recipe_name,  // 1361
+            recipe_name,  // 1362
+            recipe_name,  // 1363
+            recipe_name,  // 1364
+            recipe_name,  // 1365
+            recipe_name,  // 1366
             servings
         );
 

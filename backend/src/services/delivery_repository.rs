@@ -1002,7 +1002,7 @@ impl DeliveryRepository {
                     updated_at
                 FROM courier_applications
                 WHERE status = $1::delivery_application_status
-                ORDER BY created_at DESC
+                ORDER BY COALESCE(submitted_at, created_at) DESC
                 LIMIT $2
                 OFFSET $3
                 "#,
@@ -1013,6 +1013,9 @@ impl DeliveryRepository {
             .fetch_all(&self.pool)
             .await?
         } else {
+            // ✅ CORRIGÉ: Par défaut (sans filtre), exclure les drafts
+            // Les drafts ne doivent apparaître que si on filtre explicitement sur "draft"
+            // Cela garantit que les administrateurs ne voient que les soumissions réelles par défaut
             sqlx::query_as(
                 r#"
                 SELECT
@@ -1030,7 +1033,16 @@ impl DeliveryRepository {
                     created_at,
                     updated_at
                 FROM courier_applications
-                ORDER BY created_at DESC
+                WHERE status != 'draft'
+                ORDER BY 
+                    CASE 
+                        WHEN status = 'submitted' THEN 1
+                        WHEN status = 'under_review' THEN 2
+                        WHEN status = 'approved' THEN 3
+                        WHEN status = 'rejected' THEN 4
+                        ELSE 5
+                    END,
+                    COALESCE(submitted_at, created_at) DESC
                 LIMIT $1
                 OFFSET $2
                 "#,
@@ -1117,7 +1129,13 @@ impl DeliveryRepository {
                 updated_at
             FROM courier_applications
             WHERE status IN ({})
-            ORDER BY created_at DESC
+            ORDER BY 
+                CASE 
+                    WHEN status = 'submitted' THEN 1
+                    WHEN status = 'under_review' THEN 2
+                    ELSE 3
+                END,
+                COALESCE(submitted_at, created_at) DESC
             LIMIT ${}
             OFFSET ${}
             "#,
