@@ -54,7 +54,7 @@ pub async fn list_travel_agencies(
     Ok((StatusCode::OK, Json(json!([]))))
 }
 
-/// ✅ Liste des covoiturages (stub pour éviter erreur 405)
+/// ✅ Liste des covoiturages (stub pour éviter erreur 405) - Version protégée
 pub async fn list_covoiturages(
     State(_state): State<Arc<AppState>>,
     Extension(_user): Extension<AuthenticatedUser>,
@@ -64,12 +64,30 @@ pub async fn list_covoiturages(
     Ok((StatusCode::OK, Json(json!([]))))
 }
 
-/// ✅ Liste des taxis (stub pour éviter erreur 405)
+/// ✅ Liste des covoiturages (version publique - pas d'authentification requise)
+pub async fn list_covoiturages_public(
+    State(_state): State<Arc<AppState>>,
+) -> AppResult<impl IntoResponse> {
+    info!("[list_covoiturages_public] Called");
+    // TODO: Implémenter la vraie liste
+    Ok((StatusCode::OK, Json(json!([]))))
+}
+
+/// ✅ Liste des taxis (stub pour éviter erreur 405) - Version protégée
 pub async fn list_taxis(
     State(_state): State<Arc<AppState>>,
     Extension(_user): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     info!("[list_taxis] Called");
+    // TODO: Implémenter la vraie liste
+    Ok((StatusCode::OK, Json(json!([]))))
+}
+
+/// ✅ Liste des taxis (version publique - pas d'authentification requise)
+pub async fn list_taxis_public(
+    State(_state): State<Arc<AppState>>,
+) -> AppResult<impl IntoResponse> {
+    info!("[list_taxis_public] Called");
     // TODO: Implémenter la vraie liste
     Ok((StatusCode::OK, Json(json!([]))))
 }

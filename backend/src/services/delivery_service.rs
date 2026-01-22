@@ -1247,10 +1247,33 @@ impl DeliveryService {
     ) -> AppResult<CourierApplication> {
         // ✅ CORRIGÉ: Log pour diagnostiquer le problème de visibilité
         log::info!(
-            "[submit_courier_application] Soumission candidature coursier: user_id={}, submitted={}",
+            "[submit_courier_application] Soumission candidature coursier: user_id={}, submitted={}, partner_id={:?}",
             input.user_id,
-            input.submitted
+            input.submitted,
+            input.partner_id
         );
+
+        // ✅ NOUVEAU: Valider que le partner_id existe s'il est fourni
+        let validated_partner_id = if let Some(partner_id) = input.partner_id {
+            let partner_exists: Option<i32> = sqlx::query_scalar(
+                "SELECT id FROM delivery_partners WHERE id = $1 AND is_active = true"
+            )
+                .bind(partner_id)
+                .fetch_optional(&self.repository.pool)
+                .await?;
+            
+            if partner_exists.is_none() {
+                log::warn!(
+                    "[submit_courier_application] ⚠️ partner_id {} n'existe pas ou n'est pas actif, utilisation de NULL",
+                    partner_id
+                );
+                None
+            } else {
+                Some(partner_id)
+            }
+        } else {
+            None
+        };
 
         let existing = self
             .repository
@@ -1285,7 +1308,7 @@ impl DeliveryService {
                     Some(input.profile_data),
                     Some(input.documents),
                     if input.submitted { Some(Utc::now()) } else { None },
-                    input.partner_id,
+                    validated_partner_id,
                 )
                 .await?;
 
@@ -1327,7 +1350,7 @@ impl DeliveryService {
                 profile_data: input.profile_data,
                 documents: input.documents,
                 notes: None,
-                partner_id: input.partner_id, // ✅ NOUVEAU 2026-01-04: Partenaire de livraison
+                partner_id: validated_partner_id, // ✅ NOUVEAU 2026-01-04: Partenaire de livraison (validé)
             })
             .await?;
 

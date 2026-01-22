@@ -450,7 +450,7 @@ pub async fn add_product_to_service(
     // Vérifier que l'utilisateur authentifié est bien le propriétaire
     if owner_id != user.id {
         log_error(&format!("[add_product_to_service] User {} n'est pas propriétaire du service {}", user.id, service_id));
-        return Err(AppError::Unauthorized("Vous n'êtes pas le propriétaire de ce service".to_string()));
+        return Err(AppError::Forbidden("Vous n'êtes pas le propriétaire de ce service".to_string()));
     }
     
     // ✅ Coût fixe : 2000 FCFA pour ajouter un produit (cohérent avec creer_service.rs)

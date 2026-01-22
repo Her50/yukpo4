@@ -74,7 +74,7 @@ pub async fn deactivate_product(
     
     if owner_id != user.id {
         log_warn(&format!("[deactivate_product] User {} n'est pas propriétaire du service {}", user.id, service_id));
-        return Err(AppError::Unauthorized("Vous n'êtes pas le propriétaire de ce service".to_string()));
+        return Err(AppError::Forbidden("Vous n'êtes pas le propriétaire de ce service".to_string()));
     }
     
     // Récupérer le produit actuel pour vérifier s'il est déjà désactivé et obtenir le nom
@@ -155,7 +155,7 @@ pub async fn reactivate_product(
         .ok_or_else(|| AppError::NotFound(format!("Service {} introuvable", service_id)))?;
     
     if owner_id != user.id {
-        return Err(AppError::Unauthorized("Vous n'êtes pas le propriétaire de ce service".to_string()));
+        return Err(AppError::Forbidden("Vous n'êtes pas le propriétaire de ce service".to_string()));
     }
     
     // Récupérer le produit actuel

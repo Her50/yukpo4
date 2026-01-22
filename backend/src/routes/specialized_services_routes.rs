@@ -37,12 +37,20 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
     let public_routes = Router::new()
         // ✅ Phase 1: Routes publiques Taxi et Covoiturage (SANS JWT)
         .route(
+            "/api/taxis",
+            get(specialized_services_controller::list_taxis_public),
+        )
+        .route(
             "/api/taxis/search",
             get(specialized_services_controller::search_taxis),
         )
         .route(
             "/api/taxis/{id}",
             get(specialized_services_controller::get_taxi_details),
+        )
+        .route(
+            "/api/covoiturages",
+            get(specialized_services_controller::list_covoiturages_public),
         )
         .route(
             "/api/covoiturages/search",

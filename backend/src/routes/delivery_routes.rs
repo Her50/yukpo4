@@ -532,7 +532,7 @@ async fn save_product_delivery_config(
 
     // ✅ Vérifier que l'utilisateur est propriétaire du service
     if service_owner_id != user.id {
-        return Err(AppError::Unauthorized(
+        return Err(AppError::Forbidden(
             "Vous n'êtes pas le propriétaire de ce service".into(),
         ));
     }
@@ -897,7 +897,7 @@ async fn list_product_delivery_configs(
     let service_owner = service.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
 
     if service_owner.user_id != user.id {
-        return Err(AppError::Unauthorized(
+        return Err(AppError::Forbidden(
             "Vous n'êtes pas le propriétaire de ce service".into(),
         ));
     }
@@ -989,7 +989,7 @@ async fn validate_product(
     let service_owner = service.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
 
     if service_owner.user_id != user.id {
-        return Err(AppError::Unauthorized(
+        return Err(AppError::Forbidden(
             "Vous n'êtes pas le propriétaire de ce service".into(),
         ));
     }
@@ -1165,7 +1165,7 @@ async fn get_product_delivery_config(
     let service_owner = service.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
 
     if service_owner.user_id != user.id {
-        return Err(AppError::Unauthorized(
+        return Err(AppError::Forbidden(
             "Vous n'êtes pas le propriétaire de ce service".into(),
         ));
     }
