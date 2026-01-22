@@ -1259,7 +1259,7 @@ impl DeliveryService {
                 "SELECT id FROM delivery_partners WHERE id = $1 AND is_active = true"
             )
                 .bind(partner_id)
-                .fetch_optional(&self.repository.pool)
+                .fetch_optional(self.repository.pool())
                 .await?;
             
             if partner_exists.is_none() {
