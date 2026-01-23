@@ -15,6 +15,7 @@ use crate::state::AppState;
 struct ExpiredSuggestion {
     delivery_id: Uuid,
     suggested_status: String,
+    #[sqlx(rename = "created_at")]
     _created_at: DateTime<Utc>,
     auto_confirm_after_seconds: Option<i32>,
 }
@@ -23,6 +24,7 @@ struct ExpiredSuggestion {
 struct PendingDelivery {
     id: Uuid,
     status: String,
+    #[sqlx(rename = "updated_at")]
     _updated_at: DateTime<Utc>, // Utilisé dans les requêtes SQL pour filtrer, mais pas dans le code Rust
     creator_id: Option<i32>,
     recipient_user_id: Option<i32>,
