@@ -27,11 +27,10 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
     const now = new Date().toLocaleString('fr-FR');
     const currency = menuData.currency || 'FCFA';
     
-    // Calculer les totaux par jour
+    // ✅ CORRIGÉ 2026-01-23: Calculer les totaux par jour avec la nouvelle structure (petit_dejeuner + repas_du_jour)
     const dailyTotals = menuData.menu.meals.map(meal => {
         const total = (meal.petit_dejeuner?.estimated_cost || 0) +
-                     (meal.dejeuner?.estimated_cost || 0) +
-                     (meal.diner?.estimated_cost || 0);
+                     (meal.repas_du_jour?.estimated_cost || 0);
         return { day: meal.day_name, total };
     });
 
@@ -269,37 +268,41 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
                     <tr>
                         <th>Jour</th>
                         <th>🌅 Petit-déjeuner</th>
-                        <th>☀️ Déjeuner</th>
-                        <th>🌙 Dîner</th>
+                        <th>🍽️ Repas</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${menuData.menu.meals.map((meal, index) => {
                         const dayTotal = (meal.petit_dejeuner?.estimated_cost || 0) +
-                                       (meal.dejeuner?.estimated_cost || 0) +
-                                       (meal.diner?.estimated_cost || 0);
+                                       (meal.repas_du_jour?.estimated_cost || 0);
                         return `
                         <tr>
                             <td class="day-cell">${meal.day_name}</td>
                             <td class="meal-cell">
                                 ${meal.petit_dejeuner ? `
                                 <div class="meal-name">${meal.petit_dejeuner.recipe_name}</div>
+                                ${meal.petit_dejeuner.complements && meal.petit_dejeuner.complements.length > 0 ? `
+                                <div style="font-size: 11px; color: #6B7280; margin-top: 4px;">
+                                    ${meal.petit_dejeuner.complements.join(', ')}
+                                </div>
+                                ` : ''}
                                 <div class="meal-price">${(meal.petit_dejeuner.estimated_cost || 0).toLocaleString('fr-FR')} ${currency}</div>
                                 <div class="meal-servings">👥 ${meal.petit_dejeuner.servings} portion${meal.petit_dejeuner.servings > 1 ? 's' : ''}</div>
                                 ` : '<div style="color: #9CA3AF; font-style: italic;">-</div>'}
                             </td>
                             <td class="meal-cell">
-                                ${meal.dejeuner ? `
-                                <div class="meal-name">${meal.dejeuner.recipe_name}</div>
-                                <div class="meal-price">${(meal.dejeuner.estimated_cost || 0).toLocaleString('fr-FR')} ${currency}</div>
-                                <div class="meal-servings">👥 ${meal.dejeuner.servings} portion${meal.dejeuner.servings > 1 ? 's' : ''}</div>
-                                ` : '<div style="color: #9CA3AF; font-style: italic;">-</div>'}
-                            </td>
-                            <td class="meal-cell">
-                                ${meal.diner ? `
-                                <div class="meal-name">${meal.diner.recipe_name}</div>
-                                <div class="meal-price">${(meal.diner.estimated_cost || 0).toLocaleString('fr-FR')} ${currency}</div>
-                                <div class="meal-servings">👥 ${meal.diner.servings} portion${meal.diner.servings > 1 ? 's' : ''}</div>
+                                ${meal.repas_du_jour ? `
+                                <div class="meal-name">${meal.repas_du_jour.recipe_name}</div>
+                                ${meal.repas_du_jour.complements && meal.repas_du_jour.complements.length > 0 ? `
+                                <div style="font-size: 11px; color: #6B7280; margin-top: 4px;">
+                                    ${meal.repas_du_jour.complements.join(', ')}
+                                </div>
+                                ` : ''}
+                                <div class="meal-price">${(meal.repas_du_jour.estimated_cost || 0).toLocaleString('fr-FR')} ${currency}</div>
+                                <div class="meal-servings">👥 ${meal.repas_du_jour.servings} portion${meal.repas_du_jour.servings > 1 ? 's' : ''}</div>
+                                <div style="font-size: 10px; color: #9CA3AF; margin-top: 4px; font-style: italic;">
+                                    (Midi et soir)
+                                </div>
                                 ` : '<div style="color: #9CA3AF; font-style: italic;">-</div>'}
                             </td>
                         </tr>
@@ -308,9 +311,12 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
                     <!-- Ligne de totaux -->
                     <tr class="total-row">
                         <td class="day-cell">Total</td>
-                        ${dailyTotals.map(day => `
-                        <td class="total-cell">${day.total.toLocaleString('fr-FR')} ${currency}</td>
-                        `).join('')}
+                        <td class="total-cell">
+                            ${menuData.menu.meals.reduce((sum, meal) => sum + (meal.petit_dejeuner?.estimated_cost || 0), 0).toLocaleString('fr-FR')} ${currency}
+                        </td>
+                        <td class="total-cell">
+                            ${menuData.menu.meals.reduce((sum, meal) => sum + (meal.repas_du_jour?.estimated_cost || 0), 0).toLocaleString('fr-FR')} ${currency}
+                        </td>
                     </tr>
                 </tbody>
             </table>
