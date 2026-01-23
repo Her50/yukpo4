@@ -282,8 +282,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         )
         .route(
             "/api/covoiturages",
-            post(specialized_services_controller::create_covoiturage)
-                .get(specialized_services_controller::list_covoiturages), // ✅ Ajout GET
+            post(specialized_services_controller::create_covoiturage), // GET est dans public_routes
         )
         // TODO: Implémenter ces fonctions dans specialized_services_controller
         // .route(
@@ -404,8 +403,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         // )
         .route(
             "/api/taxis",
-            post(specialized_services_controller::create_taxi)
-                .get(specialized_services_controller::list_taxis), // ✅ Ajout GET
+            post(specialized_services_controller::create_taxi), // GET est dans public_routes
         )
         // TODO: Implémenter ces fonctions
         // .route(
