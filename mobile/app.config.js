@@ -17,7 +17,7 @@ module.exports = {
         splash: {
             image: "./assets/splash.png",
             resizeMode: "contain",
-            backgroundColor: "#ffffff"
+            backgroundColor: "#0F172A"
         },
         assetBundlePatterns: [
             "assets/images/**/*",
@@ -50,7 +50,7 @@ module.exports = {
         android: {
             adaptiveIcon: {
                 foregroundImage: "./assets/adaptive-icon.png",
-                backgroundColor: "#ffffff"
+                backgroundColor: "#0F172A"
             },
             package: "com.yukpomnang.mobile",
             // Ajouter googleServicesFile seulement si le fichier existe
