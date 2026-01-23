@@ -1398,7 +1398,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
                 Alert.alert(
                     "Contacter le prestataire",
-                    `Comment souhaitez-vous contacter ${prestataire.nom_complet || prestataire.nom} ?`,
+                    `Comment souhaitez-vous contacter ${prestataire?.nom_complet || prestataire?.nom || prestataire?.name || 'ce prestataire'} ?`,
                     contactOptions.concat([{ text: "Annuler", style: "cancel" }])
                 );
             } else {
@@ -1725,10 +1725,10 @@ const ResultatBesoinScreen: React.FC = () => {
         console.log('🔍 [ResultatBesoinScreen] filterProducts - produits avant filtrage:', products.length);
         console.log('🔍 [ResultatBesoinScreen] filterProducts - état products:', {
             length: products.length,
-            sample: products.length > 0 ? {
-                id: products[0].id,
-                nom: products[0].nom || products[0].name,
-                _serviceId: products[0]._serviceId
+            sample: products.length > 0 && products[0] ? {
+                id: products[0]?.id,
+                nom: products[0]?.nom || products[0]?.name || 'unknown',
+                _serviceId: products[0]?._serviceId
             } : null
         });
         console.log('🔍 [ResultatBesoinScreen] filterProducts - filtres actifs:', {
@@ -1870,15 +1870,25 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // ✅ CORRIGÉ 2026-01-14: Fonction pour rendre ProductCard avec React.memo pour éviter les re-renders
     const renderProductCard = useCallback((product: any) => {
+        // ✅ CORRIGÉ: Vérifier que product existe
+        if (!product) {
+            console.warn('[ResultatBesoinScreen] ⚠️ Product est undefined dans renderProductCard');
+            return null;
+        }
+        
         const service = product._service;
         // ✅ Priorité: prestataire dans le produit > prestataire dans la Map > null
         const prestataireFromProduct = product._prestataire;
         const prestataireFromMap = service?.user_id ? prestatairesRef.current.get(service.user_id) : null;
         const prestataire = prestataireFromProduct || prestataireFromMap || null;
 
+        // ✅ CORRIGÉ: Utiliser des fallbacks sécurisés pour le nom
+        const productName = product.nom || product.name || product.nom_produit || 'default';
+        const serviceId = product._serviceId || service?.id || 'unknown';
+
         return (
             <ProductCard
-                key={`product-${product._serviceId || service?.id}-${product.nom || product.name || 'default'}`}
+                key={`product-${serviceId}-${productName}`}
                 product={product}
                 service={service}
                 prestataire={prestataire}
@@ -1952,11 +1962,25 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // ✅ NOUVEAU 2026-01-14: renderItem mémorisé pour FlatList pour éviter les re-renders
     const renderListItem = useCallback(({ item }: { item: { type: 'service' | 'product'; data: any; key: string } }) => {
+        // ✅ CORRIGÉ: Vérifier que item et item.data existent
+        if (!item || !item.data) {
+            console.warn('[ResultatBesoinScreen] ⚠️ Item ou item.data est undefined:', item);
+            return null;
+        }
+        
         if (item.type === 'service') {
             const service = item.data as Service;
+            if (!service) {
+                console.warn('[ResultatBesoinScreen] ⚠️ Service est undefined');
+                return null;
+            }
             return renderServiceAsProductCard(service);
         } else {
             const product = item.data;
+            if (!product) {
+                console.warn('[ResultatBesoinScreen] ⚠️ Product est undefined');
+                return null;
+            }
             return renderProductCard(product);
         }
     }, [renderServiceAsProductCard, renderProductCard]);
@@ -1979,8 +2003,8 @@ const ResultatBesoinScreen: React.FC = () => {
             ...service,
             prestataire: prestataire ? {
                 id: prestataire.userId,
-                nom: prestataire.name,
-                email: prestataire.email,
+                nom: prestataire.name || prestataire.nom || prestataire.nom_complet || 'Prestataire',
+                email: prestataire.email || '',
                 avatar: prestataire.avatar
             } : service.prestataire,
             // Ajouter des statistiques par défaut si manquantes
