@@ -627,8 +627,9 @@ pub async fn generate_intelligent_shopping_list(
     };
     
     // ✅ CORRIGÉ: Utiliser adults_count et children_count de la requête ou du profil
-    let adults_count = req.adults_count.unwrap_or(profile.adults_count.unwrap_or(family_members));
-    let children_count = req.children_count.unwrap_or(profile.children_count.unwrap_or(0));
+    // profile.adults_count et profile.children_count sont des i32, pas Option<i32>
+    let adults_count = req.adults_count.unwrap_or(profile.adults_count);
+    let children_count = req.children_count.unwrap_or(profile.children_count);
     
     info!(
         "[generate_intelligent_shopping_list] Nombre de personnes: {} (adultes: {}, enfants: {})",
@@ -682,7 +683,7 @@ pub async fn generate_intelligent_shopping_list(
         req.meal_items.len()
     );
 
-    // Générer liste de courses avec IA (avec zone géographique pour unités locales et budget proratisé)
+    // Générer liste de courses avec IA (avec zone géographique pour unités locales, budget proratisé et profil famille détaillé)
     let ai_service = MenuPlanningAIService::new(state.ia.clone());
     let shopping_list = ai_service
         .generate_intelligent_shopping_list(
@@ -692,6 +693,8 @@ pub async fn generate_intelligent_shopping_list(
             user_city.as_deref(),
             budget_monthly,
             period_days,
+            Some(adults_count),
+            Some(children_count),
         )
         .await?;
 
