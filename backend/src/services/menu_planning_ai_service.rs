@@ -1465,11 +1465,13 @@ IMPORTANT :
         user_city: Option<&str>,
         budget_monthly: Option<f64>,
         period_days: Option<i32>, // Nombre de jours pour la période (7 pour hebdomadaire, 30 pour mensuel, etc.)
+        adults_count: Option<i32>, // ✅ NOUVEAU: Nombre d'adultes
+        children_count: Option<i32>, // ✅ NOUVEAU: Nombre d'enfants
     ) -> AppResult<IntelligentShoppingList> {
         use crate::services::menu_planning_ai_prompts::generate_shopping_list_prompt;
         
-        // Construire le prompt pour l'IA avec la zone géographique et le budget proratisé
-        let prompt = generate_shopping_list_prompt(meal_items, family_members, user_country, user_city, budget_monthly, period_days);
+        // Construire le prompt pour l'IA avec la zone géographique, le budget proratisé et le profil famille détaillé
+        let prompt = generate_shopping_list_prompt(meal_items, family_members, user_country, user_city, budget_monthly, period_days, adults_count, children_count);
         
         // Appeler l'IA
         let (_model_name, response, _tokens) = self.app_ia.predict(&prompt).await?;

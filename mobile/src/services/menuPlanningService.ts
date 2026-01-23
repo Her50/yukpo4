@@ -237,13 +237,18 @@ export const menuPlanningService = {
     },
 
     // ✅ NOUVEAU: Générer liste de courses intelligente via IA
-    generateIntelligentShoppingList: async (mealItems: Array<{
-        recipeName: string;
-        times: number;
-        servings: number;
-        day: string;
-        mealType: string;
-    }>, familyMembers: number) => {
+    generateIntelligentShoppingList: async (
+        mealItems: Array<{
+            recipeName: string;
+            times: number;
+            servings: number;
+            day: string;
+            mealType: string;
+        }>, 
+        familyMembers: number,
+        adultsCount?: number,
+        childrenCount?: number
+    ) => {
         const response = await apiPost<{
             success: boolean;
             shopping_list: {
@@ -259,6 +264,8 @@ export const menuPlanningService = {
         }>('/api/menus/ai/generate-shopping-list', {
             meal_items: mealItems,
             family_members: familyMembers,
+            adults_count: adultsCount,
+            children_count: childrenCount,
         });
         return response;
     },

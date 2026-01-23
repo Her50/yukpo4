@@ -589,6 +589,10 @@ pub async fn generate_recipe(
 pub struct GenerateShoppingListRequest {
     pub meal_items: Vec<MealItemForShopping>,
     pub family_members: i32,
+    /// ✅ NOUVEAU: Nombre d'adultes dans la famille
+    pub adults_count: Option<i32>,
+    /// ✅ NOUVEAU: Nombre d'enfants dans la famille
+    pub children_count: Option<i32>,
     /// ✅ NOUVEAU 2026-01-13: GPS actuel de l'utilisateur (format: "lat,lng" ou "lng,lat")
     /// Si fourni, sera utilisé à la place du GPS stocké en base pour déterminer la zone géographique
     pub current_gps: Option<String>,
@@ -615,17 +619,20 @@ pub async fn generate_intelligent_shopping_list(
     }
 
     // ✅ NOUVEAU 2026-01-13: Récupérer nombre de personnes (priorité: requête > profil famille en base)
+    let profile = get_or_create_family_profile(&state, user_id).await?;
     let family_members = if req.family_members > 0 {
         req.family_members
     } else {
-        // Fallback: récupérer depuis le profil famille en base
-        let profile = get_or_create_family_profile(&state, user_id).await?;
         profile.total_members
     };
     
+    // ✅ CORRIGÉ: Utiliser adults_count et children_count de la requête ou du profil
+    let adults_count = req.adults_count.unwrap_or(profile.adults_count.unwrap_or(family_members));
+    let children_count = req.children_count.unwrap_or(profile.children_count.unwrap_or(0));
+    
     info!(
-        "[generate_intelligent_shopping_list] Nombre de personnes: {} (depuis requête: {})",
-        family_members, req.family_members
+        "[generate_intelligent_shopping_list] Nombre de personnes: {} (adultes: {}, enfants: {})",
+        family_members, adults_count, children_count
     );
 
     // ✅ NOUVEAU 2026-01-13: Récupérer contexte localité utilisateur (pays, ville) pour utiliser des unités locales

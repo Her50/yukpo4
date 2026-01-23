@@ -281,6 +281,8 @@ pub fn generate_shopping_list_prompt(
     user_city: Option<&str>,
     budget_monthly: Option<f64>,
     period_days: Option<i32>, // Nombre de jours pour la période (7 pour hebdomadaire, 30 pour mensuel, etc.)
+    adults_count: Option<i32>, // ✅ NOUVEAU: Nombre d'adultes
+    children_count: Option<i32>, // ✅ NOUVEAU: Nombre d'enfants
 ) -> String {
     let meals_summary: String = meal_items.iter()
         .map(|item| {
@@ -321,13 +323,24 @@ pub fn generate_shopping_list_prompt(
         (None, _) => String::new(),
     };
 
+    // ✅ NOUVEAU: Contexte profil famille détaillé
+    let family_context = match (adults_count, children_count) {
+        (Some(adults), Some(children)) if adults > 0 || children > 0 => {
+            format!(
+                "\n👨‍👩‍👧‍👦 PROFIL FAMILLE (CRITIQUE) :\n- Nombre total de personnes : {}\n- Adultes : {}\n- Enfants : {}\n- Les quantités doivent être adaptées selon l'âge (enfants consomment généralement moins qu'adultes)",
+                family_members, adults, children
+            )
+        }
+        _ => format!("\n👨‍👩‍👧‍👦 PROFIL FAMILLE :\n- Nombre total de personnes : {}", family_members),
+    };
+
     format!(r#"
 Tu es l'assistant culinaire intelligent de Yukpo pour la génération de listes de courses.
 
 CONTEXTE UTILISATEUR :
 - Nombre de personnes dans la famille : {family_members}
 - Repas à préparer (avec nombre de fois et portions) :
-{meals_summary}{location_context}{budget_context}
+{meals_summary}{location_context}{budget_context}{family_context}
 
 TON RÔLE (CRITIQUE - LIRE ATTENTIVEMENT) :
 - Tu DOIS générer une liste de courses INTELLIGENTE en regroupant les ingrédients communs
@@ -467,7 +480,9 @@ IMPORTANT:
 "#,
         family_members = family_members,
         meals_summary = meals_summary,
-        location_context = location_context
+        location_context = location_context,
+        budget_context = budget_context,
+        family_context = family_context
     )
 }
 

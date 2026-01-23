@@ -1044,6 +1044,27 @@ export const deliveryApi = {
       return { supermarkets: [], total: 0 };
     }
   },
+  // ✅ NOUVEAU: Lister les coursiers disponibles avec filtres
+  listAvailableCouriers: async (params: {
+    pickup_latitude?: number;
+    pickup_longitude?: number;
+    delivery_latitude?: number;
+    delivery_longitude?: number;
+    max_distance_km?: number;
+    transport_type?: string;
+    specialization?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params.pickup_latitude) queryParams.append('pickup_latitude', params.pickup_latitude.toString());
+    if (params.pickup_longitude) queryParams.append('pickup_longitude', params.pickup_longitude.toString());
+    if (params.delivery_latitude) queryParams.append('delivery_latitude', params.delivery_latitude.toString());
+    if (params.delivery_longitude) queryParams.append('delivery_longitude', params.delivery_longitude.toString());
+    if (params.max_distance_km) queryParams.append('max_distance_km', params.max_distance_km.toString());
+    if (params.transport_type) queryParams.append('transport_type', params.transport_type);
+    if (params.specialization) queryParams.append('specialization', params.specialization);
+    
+    return apiCall(`/api/deliveries/couriers/available?${queryParams.toString()}`);
+  },
   getRecipientUpdates: async (deliveryId: string) => {
     return apiCall(`/api/deliveries/${deliveryId}/recipient/updates`);
   },

@@ -5682,7 +5682,7 @@ pub async fn save_ia_combinations_to_db(
             
             // ✅ NOUVEAU: Essayer de mapper les valeurs non mappées aux dimensions vides
             // en utilisant une correspondance sémantique basée sur les valeurs disponibles dans chaque dimension
-            let mut remaining_unmapped = unmapped_values.clone();
+            let remaining_unmapped = unmapped_values.clone();
             let mut used_unmapped_indices = std::collections::HashSet::new();
             
             for dimension in &dimension_order {

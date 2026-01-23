@@ -26,6 +26,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { deliveryApi, userApi } from '../../services/api';
 import * as Location from 'expo-location';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
+import { PlaceScope } from '../../services/placesService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -75,9 +77,14 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     
     // ✅ NOUVEAU: États pour commande coursier
     const [showOrderModal, setShowOrderModal] = useState(false);
-    const [selectedMarket, setSelectedMarket] = useState<any | null>(null);
-    const [markets, setMarkets] = useState<any[]>([]);
-    const [loadingMarkets, setLoadingMarkets] = useState(false);
+    // ✅ NOUVEAU: État pour le marché sélectionné via Google Places
+    const [selectedMarket, setSelectedMarket] = useState<{
+        name: string;
+        address: string;
+        latitude: number;
+        longitude: number;
+        place_id?: string;
+    } | null>(null);
     const [userBalance, setUserBalance] = useState<number>(0);
     const [loadingBalance, setLoadingBalance] = useState(false);
     const [creatingOrder, setCreatingOrder] = useState(false);
@@ -218,49 +225,47 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     // ✅ NOUVEAU: Calculer le coût total selon nombre de fois et taille famille
     const calculateItemCost = (item: typeof mealItems[0]): number => {
         const baseCost = item.estimatedCost;
-        const familyMultiplier = familyProfile?.total_members || 1;
-        return baseCost * item.times * familyMultiplier;
+        // ✅ CORRIGÉ: Utiliser le profil famille complet pour calculer les quantités
+        // Les quantités doivent tenir compte du nombre d'adultes et d'enfants
+        const familyMembers = familyProfile?.total_members || 1;
+        const adultsCount = familyProfile?.adults_count || familyMembers;
+        const childrenCount = familyProfile?.children_count || 0;
+        
+        // ✅ CORRIGÉ: Calculer le coût en tenant compte des portions (servings) et du nombre de fois (times)
+        // Le coût de base est déjà pour le nombre de portions (servings), on multiplie par le nombre de fois
+        return baseCost * item.times;
     };
-
-    // ✅ NOUVEAU: Charger les marchés disponibles
-    const loadMarkets = async () => {
+    
+    // ✅ NOUVEAU: Mettre à jour le total de la liste de courses éditable
+    const updateShoppingListTotal = useCallback(() => {
+        if (editableShoppingList.length === 0) return;
+        
+        const total = editableShoppingList.reduce((sum, item) => {
+            return sum + (item.actual_price || item.estimated_price || 0);
+        }, 0);
+        
+        setGeneratedShoppingList((prev: any) => ({
+            ...prev,
+            total_estimated_cost: total,
+        }));
+    }, [editableShoppingList]);
+    
+    // ✅ NOUVEAU: Mettre à jour le total de la liste de courses éditable
+    const updateShoppingListTotal = () => {
         if (!generatedShoppingList) return;
         
-        setLoadingMarkets(true);
-        try {
-            let userLat = 4.0511; // Douala par défaut
-            let userLng = 9.7679;
-
-            if (userLocation) {
-                userLat = userLocation.coords.latitude;
-                userLng = userLocation.coords.longitude;
-            } else {
-                try {
-                    const location = await Location.getCurrentPositionAsync({
-                        accuracy: Location.Accuracy.Balanced,
-                    });
-                    userLat = location.coords.latitude;
-                    userLng = location.coords.longitude;
-                } catch (error) {
-                    console.warn('Géolocalisation non disponible');
-                }
-            }
-
-            const result = await deliveryApi.listSupermarkets(userLat, userLng, 10);
-            if (result.supermarkets && result.supermarkets.length > 0) {
-                setMarkets(result.supermarkets);
-            } else {
-                setMarkets([]);
-                Alert.alert('Aucun marché trouvé', 'Aucun marché n\'a été trouvé près de votre position.');
-            }
-        } catch (error) {
-            console.error('[MenuWeekCalendar] Erreur chargement marchés:', error);
-            Alert.alert('Erreur', 'Impossible de charger la liste des marchés.');
-            setMarkets([]);
-        } finally {
-            setLoadingMarkets(false);
-        }
+        const total = editableShoppingList.reduce((sum, item) => {
+            return sum + (item.actual_price || item.estimated_price || 0);
+        }, 0);
+        
+        setGeneratedShoppingList({
+            ...generatedShoppingList,
+            total_estimated_cost: total,
+        });
     };
+
+    // ✅ SUPPRIMÉ: Plus besoin de charger manuellement les coursiers
+    // Le système de matching automatique du backend s'en chargera lors de la création de la livraison
 
     // ✅ NOUVEAU: Vérifier le solde utilisateur
     const checkUserBalance = async () => {
@@ -306,24 +311,23 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
     // ✅ NOUVEAU: Ouvrir le modal de commande
     const handleOpenOrderModal = async () => {
-        if (!generatedShoppingList) {
+        if (!generatedShoppingList && editableShoppingList.length === 0) {
             Alert.alert('Erreur', 'Aucune liste de courses disponible');
             return;
         }
 
         setShowOrderModal(true);
         
-        // Charger les marchés et vérifier le solde en parallèle
-        await Promise.all([
-            loadMarkets(),
-            checkUserBalance(),
-        ]);
+        // ✅ CORRIGÉ: Plus besoin de charger les coursiers manuellement, le backend fera le matching automatique
+        // Vérifier seulement le solde
+        await checkUserBalance();
     };
 
-    // ✅ NOUVEAU: Créer la commande de courses
+    // ✅ CORRIGÉ: Créer la commande de courses en utilisant le système de livraison existant
+    // Le backend fera automatiquement le matching avec les coursiers spécialisés food_shopping
     const handleCreateOrder = async () => {
-        if (!generatedShoppingList || !selectedMarket) {
-            Alert.alert('Erreur', 'Veuillez sélectionner un marché');
+        if (!generatedShoppingList && editableShoppingList.length === 0) {
+            Alert.alert('Erreur', 'Aucune liste de courses disponible');
             return;
         }
 
@@ -372,21 +376,42 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 }
             }
 
-            // Créer la commande shopping
-            const shoppingItems = generatedShoppingList.items.map((item: any) => ({
-                label: item.ingredient_name,
-                quantity: item.quantity,
-                unit: item.unit,
-                estimatedPrice: item.estimated_price,
-                estimatedTotal: item.estimated_price,
-            }));
+            // ✅ CORRIGÉ: Utiliser la liste éditable si disponible, sinon la liste générée
+            const itemsToUse = editableShoppingList.length > 0 ? editableShoppingList : generatedShoppingList.items;
+            
+            // ✅ CORRIGÉ: Utiliser le marché sélectionné par l'utilisateur via Google Places
+            if (!selectedMarket) {
+                Alert.alert('Erreur', 'Veuillez sélectionner un marché');
+                return;
+            }
+            
+            let pickupLat = selectedMarket.latitude;
+            let pickupLng = selectedMarket.longitude;
+            let pickupAddress = selectedMarket.address;
 
-            const orderPayload = {
+            // ✅ CORRIGÉ: Utiliser createDeliveryRequest avec le format standard
+            // Le backend fera automatiquement le matching avec les coursiers spécialisés food_shopping
+            const deliveryPayload = {
+                parcel: {
+                    type: 'shopping',
+                    description: `Liste de courses pour menu de la semaine (${itemsToUse.length} ingrédients)`,
+                    weight_kg: null, // À déterminer par le coursier
+                    photos: [],
+                    constraints: {
+                        shopping_required: true,
+                        shopping_items: itemsToUse.map((item: any) => ({
+                            name: item.ingredient_name,
+                            quantity: item.quantity,
+                            unit: item.unit,
+                            estimated_price: item.actual_price || item.estimated_price || 0,
+                        })),
+                    },
+                },
                 pickup: {
                     label: selectedMarket.name,
-                    latitude: selectedMarket.latitude,
-                    longitude: selectedMarket.longitude,
-                    address: selectedMarket.address,
+                    latitude: pickupLat,
+                    longitude: pickupLng,
+                    address: pickupAddress,
                 },
                 dropoff: {
                     label: 'Domicile',
@@ -394,38 +419,38 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     longitude: dropoffLng,
                     address: dropoffAddress,
                 },
-                items: shoppingItems,
-                budget: fees.total,
-                currency: currency || 'FCFA',
                 metadata: {
-                    order_type: 'menu_shopping',
-                    shopping_list_id: generatedShoppingList.items.map((i: any) => i.ingredient_name).join(', '),
+                    order_type: 'menu_shopping', // ✅ Le backend utilisera cela pour matcher avec food_shopping
+                    shopping_list_id: itemsToUse.map((i: any) => i.ingredient_name).join(', '),
                     family_members: familyProfile?.total_members,
                     estimated_subtotal: fees.shoppingCost,
                     estimated_service_fee: fees.serviceFee,
                     estimated_delivery_fee: fees.deliveryFee,
+                    shopping_items: itemsToUse,
                 },
             };
 
-            const response = await deliveryApi.createOrder(orderPayload);
+            const response = await deliveryApi.createDeliveryRequest(deliveryPayload);
 
-            if (response.success) {
+            if (response.success && response.data?.id) {
+                const deliveryId = response.data.id;
                 Alert.alert(
                     'Commande créée',
-                    'Votre commande de courses a été créée avec succès. Un coursier spécialisé sera assigné.',
+                    'Votre commande de courses a été créée avec succès. Le système recherche automatiquement un coursier spécialisé dans les courses de marché.',
                     [
                         {
                             text: 'OK',
                             onPress: () => {
                                 setShowOrderModal(false);
                                 setShowShoppingListModal(false);
-                                // TODO: Naviguer vers l'écran de suivi de commande
+                                // ✅ Naviguer vers l'écran de suivi de livraison
+                                navigation.navigate('DeliveryTracking' as never, { deliveryId } as never);
                             }
                         }
                     ]
                 );
             } else {
-                throw new Error(response.error || 'Erreur lors de la création de la commande');
+                throw new Error('Erreur lors de la création de la commande');
             }
         } catch (error: any) {
             console.error('[MenuWeekCalendar] Erreur création commande:', error);
@@ -506,6 +531,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     // ✅ NOUVEAU: Générer liste de courses intelligente via IA
     const [generatingShoppingList, setGeneratingShoppingList] = useState(false);
     const [generatedShoppingList, setGeneratedShoppingList] = useState<any>(null);
+    const [editableShoppingList, setEditableShoppingList] = useState<any[]>([]);
     const [showShoppingListModal, setShowShoppingListModal] = useState(false);
 
     const handleGenerateShoppingList = async () => {
@@ -525,13 +551,34 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 mealType: item.mealType,
             }));
 
+            // ✅ CORRIGÉ: Utiliser le profil famille complet (adultes + enfants) pour les quantités
+            const familyMembers = familyProfile?.total_members || 1;
+            const adultsCount = familyProfile?.adults_count || familyMembers;
+            const childrenCount = familyProfile?.children_count || 0;
+            
             const response = await menuPlanningService.generateIntelligentShoppingList(
                 mealItemsForAI,
-                familyProfile?.total_members || 1
+                familyMembers,
+                adultsCount,
+                childrenCount
             );
 
             if (response.success && response.data?.shopping_list) {
-                setGeneratedShoppingList(response.data.shopping_list);
+                const shoppingList = response.data.shopping_list;
+                setGeneratedShoppingList(shoppingList);
+                // ✅ NOUVEAU: Initialiser la liste éditable avec les items générés
+                setEditableShoppingList(shoppingList.items.map((item: any, idx: number) => ({
+                    id: item.id || idx,
+                    ingredient_name: item.ingredient_name,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    estimated_price: item.estimated_price,
+                    actual_price: item.estimated_price, // Prix éditable
+                    category: item.category,
+                    store_section: item.store_section,
+                    associated_meals: item.associated_meals || [],
+                    is_checked: item.is_checked || false,
+                })));
                 setShowShoppingModal(false);
                 setShowShoppingListModal(true);
             } else {
@@ -728,11 +775,20 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     <View style={styles.headerTitleContainer}>
                         <Text style={styles.headerTitle}>Menu de la Semaine</Text>
                         <Text style={styles.headerSubtitle}>
-                            {new Date(menu.week_start).toLocaleDateString('fr-FR', {
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric',
-                            })}
+                            {/* ✅ CORRIGÉ: Afficher la période complète (du X au Y) */}
+                            {(() => {
+                                const weekStart = new Date(menu.week_start);
+                                const weekEnd = new Date(weekStart);
+                                weekEnd.setDate(weekStart.getDate() + 6);
+                                return `Du ${weekStart.toLocaleDateString('fr-FR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                })} au ${weekEnd.toLocaleDateString('fr-FR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric',
+                                })}`;
+                            })()}
                         </Text>
                     </View>
                 </View>
@@ -747,6 +803,15 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     </Text>
                 </View>
                 <View style={styles.headerActionsRight}>
+                    {/* ✅ NOUVEAU: Bouton pour accéder à l'historique */}
+                    <TouchableOpacity
+                        style={styles.historyButton}
+                        onPress={() => {
+                            navigation.navigate('MenuPlanningHub' as never);
+                        }}
+                    >
+                        <SafeIcon name="History" size={18} color="#6B7280" type="lucide" />
+                    </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.exportButton}
                         onPress={handleExportPDF}
@@ -1389,7 +1454,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <Text style={[styles.shoppingTableCell, { flex: 2 }]} numberOfLines={2}>
                                             {item.recipeName}
                                         </Text>
-                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 4 }]}>
+                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 2, paddingHorizontal: 2 }]}>
                                             <TouchableOpacity
                                                 onPress={() => updateItemTimes(item.id, Math.max(1, item.times - 1))}
                                                 style={styles.timesButton}
@@ -1534,7 +1599,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <Text style={[styles.shoppingTableCell, { flex: 2 }]} numberOfLines={2}>
                                             {item.recipeName}
                                         </Text>
-                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 4 }]}>
+                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 2, paddingHorizontal: 2 }]}>
                                             <TouchableOpacity
                                                 onPress={() => updateItemTimes(item.id, Math.max(1, item.times - 1))}
                                                 style={styles.timesButton}
@@ -1620,7 +1685,19 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.shoppingModalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Liste de courses générée</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.modalTitle}>Liste de courses générée</Text>
+                                {/* ✅ NOUVEAU: Afficher la date du marché si disponible */}
+                                {selectedMarket && (
+                                    <Text style={[styles.modalSubtitle, { marginTop: 4, fontSize: 12, color: '#6B7280' }]}>
+                                        📍 Marché : {selectedMarket.name} • {new Date().toLocaleDateString('fr-FR', {
+                                            day: 'numeric',
+                                            month: 'long',
+                                            year: 'numeric',
+                                        })}
+                                    </Text>
+                                )}
+                            </View>
                             <TouchableOpacity onPress={() => setShowShoppingListModal(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
                             </TouchableOpacity>
@@ -1636,7 +1713,53 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <Text style={[styles.shoppingListTableHeaderCell, { flex: 2 }]}>Repas</Text>
                                     </View>
                                     
-                                    {generatedShoppingList.items.map((item: any, index: number) => (
+                                    {editableShoppingList.length > 0 ? editableShoppingList.map((item: any, index: number) => (
+                                        <View key={item.id || index} style={styles.shoppingListTableRow}>
+                                            <View style={[styles.shoppingListTableCell, { flex: 2 }]}>
+                                                <TextInput
+                                                    style={[styles.editableCellInput, { fontWeight: '600' }]}
+                                                    value={item.ingredient_name}
+                                                    onChangeText={(text) => {
+                                                        const updated = [...editableShoppingList];
+                                                        updated[index].ingredient_name = text;
+                                                        setEditableShoppingList(updated);
+                                                    }}
+                                                    placeholder="Ingrédient"
+                                                />
+                                            </View>
+                                            <View style={[styles.shoppingListTableCell, { flex: 1.5, flexDirection: 'row', gap: 4, alignItems: 'center' }]}>
+                                                <TextInput
+                                                    style={[styles.editableCellInput, { flex: 1, minWidth: 50 }]}
+                                                    value={String(item.quantity)}
+                                                    keyboardType="numeric"
+                                                    onChangeText={(text) => {
+                                                        const updated = [...editableShoppingList];
+                                                        updated[index].quantity = parseFloat(text) || 0;
+                                                        setEditableShoppingList(updated);
+                                                        updateShoppingListTotal();
+                                                    }}
+                                                />
+                                                <Text style={{ fontSize: 11, color: '#6B7280' }}>{item.unit}</Text>
+                                            </View>
+                                            <View style={[styles.shoppingListTableCell, { flex: 1.5 }]}>
+                                                <TextInput
+                                                    style={[styles.editableCellInput, { color: modernColors.primary, fontWeight: '700' }]}
+                                                    value={String(item.actual_price || item.estimated_price || 0)}
+                                                    keyboardType="numeric"
+                                                    onChangeText={(text) => {
+                                                        const updated = [...editableShoppingList];
+                                                        updated[index].actual_price = parseFloat(text) || 0;
+                                                        setEditableShoppingList(updated);
+                                                        updateShoppingListTotal();
+                                                    }}
+                                                    placeholder="0"
+                                                />
+                                            </View>
+                                            <Text style={[styles.shoppingListTableCell, { flex: 2, fontSize: 10 }]} numberOfLines={2}>
+                                                {item.associated_meals?.join(', ') || ''}
+                                            </Text>
+                                        </View>
+                                    )) : generatedShoppingList.items.map((item: any, index: number) => (
                                         <View key={index} style={styles.shoppingListTableRow}>
                                             <Text style={[styles.shoppingListTableCell, { flex: 2, fontWeight: '600' }]}>
                                                 {item.ingredient_name}
@@ -1648,10 +1771,33 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 {formatPrice(item.estimated_price)}
                                             </Text>
                                             <Text style={[styles.shoppingListTableCell, { flex: 2, fontSize: 10 }]} numberOfLines={2}>
-                                                {item.associated_meals.join(', ')}
+                                                {item.associated_meals?.join(', ') || ''}
                                             </Text>
                                         </View>
                                     ))}
+                                    
+                                    {/* ✅ NOUVEAU: Bouton pour ajouter un ingrédient */}
+                                    <TouchableOpacity
+                                        style={styles.addIngredientButton}
+                                        onPress={() => {
+                                            const newItem = {
+                                                id: Date.now(),
+                                                ingredient_name: '',
+                                                quantity: 0,
+                                                unit: 'unité',
+                                                estimated_price: 0,
+                                                actual_price: 0,
+                                                category: '',
+                                                store_section: '',
+                                                associated_meals: [],
+                                                is_checked: false,
+                                            };
+                                            setEditableShoppingList([...editableShoppingList, newItem]);
+                                        }}
+                                    >
+                                        <SafeIcon name="plus" size={16} color={modernColors.primary} type="lucide" />
+                                        <Text style={styles.addIngredientButtonText}>Ajouter un ingrédient</Text>
+                                    </TouchableOpacity>
                                 </View>
 
                                 {/* Total */}
@@ -1824,6 +1970,114 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 variant="primary"
                                 style={styles.modalButton}
                                 disabled={!newMealName.trim()}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ✅ NOUVEAU: Modal de commande avec sélection de marché */}
+            <Modal
+                visible={showOrderModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowOrderModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Commander via coursier</Text>
+                            <TouchableOpacity onPress={() => setShowOrderModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            {/* ✅ NOUVEAU: Sélection de marché via Google Places */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>
+                                    Sélectionner un marché <Text style={styles.required}>*</Text>
+                                </Text>
+                                <Text style={[styles.helpText, { marginBottom: 12, fontSize: 12, color: '#6B7280' }]}>
+                                    Le coursier le plus proche de ce marché sera automatiquement assigné, même s'il fait déjà des courses pour un autre utilisateur.
+                                </Text>
+                                <LocationSelector
+                                    value={selectedMarket ? {
+                                        raw: selectedMarket.address,
+                                        place_name: selectedMarket.name,
+                                        coordinates: {
+                                            lat: selectedMarket.latitude,
+                                            lng: selectedMarket.longitude,
+                                        },
+                                        place_id: selectedMarket.place_id,
+                                    } : undefined}
+                                    onSelect={(location: LocationObject) => {
+                                        if (location.coordinates) {
+                                            setSelectedMarket({
+                                                name: location.place_name || location.raw || 'Marché sélectionné',
+                                                address: location.raw || location.place_name || '',
+                                                latitude: location.coordinates.lat,
+                                                longitude: location.coordinates.lng,
+                                                place_id: location.place_id,
+                                            });
+                                        }
+                                    }}
+                                    placeholder="Rechercher un marché..."
+                                    scope={PlaceScope.ESTABLISHMENT}
+                                    filterTypes={['supermarket', 'grocery_or_supermarket', 'store', 'shopping_mall', 'market']}
+                                    allowNew={false}
+                                />
+                            </View>
+
+                            {/* Résumé des frais */}
+                            <View style={styles.feesSummary}>
+                                <Text style={styles.feesTitle}>Résumé des frais</Text>
+                                {(() => {
+                                    const fees = calculateTotalFees();
+                                    return (
+                                        <>
+                                            <View style={styles.feesRow}>
+                                                <Text style={styles.feesLabel}>Coût des courses</Text>
+                                                <Text style={styles.feesValue}>{formatPrice(fees.shoppingCost)}</Text>
+                                            </View>
+                                            <View style={styles.feesRow}>
+                                                <Text style={styles.feesLabel}>Frais de service</Text>
+                                                <Text style={styles.feesValue}>{formatPrice(fees.serviceFee)}</Text>
+                                            </View>
+                                            <View style={styles.feesRow}>
+                                                <Text style={styles.feesLabel}>Frais de livraison</Text>
+                                                <Text style={styles.feesValue}>{formatPrice(fees.deliveryFee)}</Text>
+                                            </View>
+                                            <View style={styles.feesTotalRow}>
+                                                <Text style={styles.feesTotalLabel}>Total</Text>
+                                                <Text style={styles.feesTotalValue}>{formatPrice(fees.total)}</Text>
+                                            </View>
+                                            <View style={styles.feesRow}>
+                                                <Text style={styles.feesLabel}>Solde disponible</Text>
+                                                <Text style={[styles.feesValue, userBalance < fees.total && { color: modernColors.error }]}>
+                                                    {formatPrice(userBalance)}
+                                                </Text>
+                                            </View>
+                                        </>
+                                    );
+                                })()}
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <NativeButton
+                                title="Annuler"
+                                onPress={() => setShowOrderModal(false)}
+                                variant="outline"
+                                style={styles.modalButton}
+                            />
+                            <NativeButton
+                                title={creatingOrder ? 'Création...' : 'Créer la commande'}
+                                onPress={handleCreateOrder}
+                                variant="primary"
+                                style={styles.modalButton}
+                                loading={creatingOrder}
+                                disabled={creatingOrder || !selectedMarket || userBalance < calculateTotalFees().total}
                             />
                         </View>
                     </View>
@@ -2162,26 +2416,30 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     timesButton: {
-        width: 28,
-        height: 28,
-        borderRadius: 6,
+        width: 24,
+        height: 24,
+        borderRadius: 4,
         backgroundColor: '#E5E7EB',
         justifyContent: 'center',
         alignItems: 'center',
+        minWidth: 24,
+        maxWidth: 24,
     },
     timesButtonText: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '700',
         color: '#111827',
     },
     timesInput: {
-        width: 40,
-        height: 28,
+        width: 35,
+        height: 24,
         textAlign: 'center',
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        borderRadius: 6,
         fontSize: 12,
+        paddingVertical: 0,
+        paddingHorizontal: 2,
+        borderRadius: 6,
         fontWeight: '600',
         backgroundColor: '#fff',
     },
@@ -2309,6 +2567,10 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '700',
         color: '#111827',
+    },
+    modalSubtitle: {
+        fontSize: 14,
+        color: '#6B7280',
     },
     modalBody: {
         padding: 16,
@@ -2514,6 +2776,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+    },
+    historyButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
     exportButton: {
         flexDirection: 'row',
@@ -2850,6 +3122,37 @@ const styles = StyleSheet.create({
         paddingTop: 12,
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
+    },
+    feesLabel: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    feesValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    feesTotalLabel: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    feesTotalValue: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    inputGroup: {
+        marginBottom: 20,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    required: {
+        color: modernColors.error,
     },
     feesLabel: {
         fontSize: 14,
