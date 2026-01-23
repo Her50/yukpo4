@@ -110,6 +110,25 @@ const ResultatBesoinScreen: React.FC = () => {
     const hasProcessedInitialResults = useRef(false);
     const initialResultsLength = useRef(initialResults?.length || 0);
     
+    // ✅ NOUVEAU 2026-01-23: Fonction utilitaire pour extraire le nom du produit selon la structure DB
+    // Suit la même logique que la colonne générée product_name dans service_products
+    const getProductName = useCallback((productData: any): string => {
+        if (!productData) return '';
+        
+        // Format structuré: product_data->'nom'->>'valeur'
+        if (productData.nom?.valeur) return String(productData.nom.valeur);
+        // Format simple: product_data->>'nom'
+        if (productData.nom) return String(productData.nom);
+        // Format structuré: product_data->'nom_produit'->>'valeur'
+        if (productData.nom_produit?.valeur) return String(productData.nom_produit.valeur);
+        // Format simple: product_data->>'nom_produit'
+        if (productData.nom_produit) return String(productData.nom_produit);
+        // Fallback: name (format anglais)
+        if (productData.name) return String(productData.name);
+        
+        return '';
+    }, []);
+
     // ✅ CORRIGÉ 2026-01-21: Fonction améliorée pour calculer le score de pertinence au niveau produit
     const calculateProductRelevanceScore = useCallback((product: any, query: string): number => {
         if (!query || !product) return 0;
@@ -121,9 +140,9 @@ const ResultatBesoinScreen: React.FC = () => {
         
         let score = 0;
         
-        // Extraire les textes du produit (avec fallbacks multiples)
+        // ✅ CORRIGÉ: Utiliser la fonction utilitaire pour extraire le nom correctement
         const productData = product.product_data || product;
-        const nomProduit = (productData.nom_produit || productData.nom || productData.name || product.nom_produit || product.nom || product.name || '').toLowerCase();
+        const nomProduit = getProductName(productData).toLowerCase();
         const descriptionProduit = (productData.description_produit || productData.description || product.description_produit || product.description || '').toLowerCase();
         const categorieProduit = (productData.categorie_produit || productData.category || product.categorie_produit || product.category || '').toLowerCase();
         const combinaisonBrute = (productData.combinaison_brute || product.combinaison_brute || '').toLowerCase();
@@ -701,6 +720,9 @@ const ResultatBesoinScreen: React.FC = () => {
                             // ✅ Transformer le format API vers format attendu (product_data contient les données)
                             const productData = productFromAPI.product_data || productFromAPI;
                             
+                            // ✅ CORRIGÉ 2026-01-23: Utiliser la fonction utilitaire pour extraire le nom correctement
+                            const productName = getProductName(productData) || productFromAPI.product_name || '';
+                            
                             // ✅ CORRIGÉ 2026-01-20: Extraire correctement tous les champs du produit
                             // ✅ CORRIGÉ 2026-01-21: S'assurer que les images et vidéos sont bien incluses depuis product_data
                             // ✅ CORRIGÉ 2026-01-23: S'assurer que la description est explicitement extraite
@@ -713,17 +735,17 @@ const ResultatBesoinScreen: React.FC = () => {
                                 images: productData.images || [],
                                 videos: productData.videos || [],
                                 // ✅ Ajouter les propriétés de l'API si elles ne sont pas dans product_data
-                                product_name: productFromAPI.product_name || productData.nom_produit || productData.nom || productData.name,
+                                product_name: productName || productFromAPI.product_name,
                                 product_type: productFromAPI.product_type || productData.type || productData.product_type,
                                 product_price: productFromAPI.product_price || productData.prix_produit || productData.prix || productData.price,
                                 // ✅ Ajouter l'index du produit pour référence
                                 product_index: productFromAPI.product_index,
                                 // ✅ Préserver l'ID si disponible
                                 id: productFromAPI.id || productFromAPI.product_id,
-                                // ✅ S'assurer que nom_produit est disponible (utilisé pour le score de pertinence)
-                                nom_produit: productData.nom_produit || productData.nom || productData.name || productFromAPI.product_name,
-                                nom: productData.nom_produit || productData.nom || productData.name || productFromAPI.product_name,
-                                name: productData.nom_produit || productData.nom || productData.name || productFromAPI.product_name,
+                                // ✅ CORRIGÉ 2026-01-23: Utiliser le nom extrait correctement (même logique que DB)
+                                nom_produit: productName,
+                                nom: productName,
+                                name: productName,
                                 // ✅ CORRIGÉ 2026-01-23: S'assurer que la description est explicitement extraite et disponible
                                 description: productData.description || productData.description_produit || '',
                                 description_produit: productData.description_produit || productData.description || '',
@@ -1882,8 +1904,9 @@ const ResultatBesoinScreen: React.FC = () => {
         const prestataireFromMap = service?.user_id ? prestatairesRef.current.get(service.user_id) : null;
         const prestataire = prestataireFromProduct || prestataireFromMap || null;
 
-        // ✅ CORRIGÉ: Utiliser des fallbacks sécurisés pour le nom
-        const productName = product.nom || product.name || product.nom_produit || 'default';
+        // ✅ CORRIGÉ 2026-01-23: Utiliser la fonction utilitaire pour extraire le nom correctement
+        const productData = product.product_data || product;
+        const productName = getProductName(productData) || product.nom || product.name || product.nom_produit || 'default';
         const serviceId = product._serviceId || service?.id || 'unknown';
 
         return (
