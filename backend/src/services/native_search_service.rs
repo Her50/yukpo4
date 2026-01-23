@@ -1230,7 +1230,12 @@ LIMIT 100
             SELECT 
                     p.service_id,
                 GREATEST(
-                        -- ✅ PRIORITÉ MAXIMALE 2026-01-22: SOUS-CARACTÉRISTIQUES (150-180) - PRIORITÉ ABSOLUE
+                        -- ✅ PRIORITÉ MAXIMALE 2026-01-23: NOM PRODUIT (200-220) - PRIORITÉ ABSOLUE pour recherche exacte
+                        -- ✅ CORRIGÉ 2026-01-23: Le nom du produit doit avoir la priorité la plus haute pour une recherche directe
+                        CASE WHEN LOWER(unaccent(p.product_name)) = LOWER(unaccent($1)) THEN 220.0 ELSE 0.0 END,
+                        CASE WHEN unaccent(p.product_name) ILIKE unaccent($1) || '%' THEN 200.0 ELSE 0.0 END,
+                        CASE WHEN unaccent(p.product_name) ILIKE '%' || unaccent($1) || '%' THEN 180.0 ELSE 0.0 END,
+                        -- ✅ PRIORITÉ TRÈS HAUTE 2026-01-23: SOUS-CARACTÉRISTIQUES (150-170) - PRIORITÉ HAUTE
                         -- Recherche directe dans les valeurs des sous-caractéristiques (exact)
                         CASE WHEN EXISTS (
                             SELECT 1 FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
@@ -1239,7 +1244,7 @@ LIMIT 100
                                 SELECT 1 FROM jsonb_array_elements_text(sc.value) AS val
                                 WHERE LOWER(unaccent(val)) = LOWER(unaccent($1))
                             )
-                        ) THEN 180.0 ELSE 0.0 END,
+                        ) THEN 170.0 ELSE 0.0 END,
                         -- Recherche directe dans les valeurs des sous-caractéristiques (début)
                         CASE WHEN EXISTS (
                             SELECT 1 FROM jsonb_each(p.product_data->'sous_caracteristiques') AS sc
@@ -1261,14 +1266,10 @@ LIMIT 100
                                 OR unaccent(sc.key) ILIKE '%' || unaccent($1) || '%'
                             )
                         ) THEN 150.0 ELSE 0.0 END,
-                        -- ✅ PRIORITÉ HAUTE 2026-01-22: DESCRIPTION PRODUIT (120-150) - PRIORITÉ TRÈS HAUTE
-                        CASE WHEN LOWER(unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', ''))) = LOWER(unaccent($1)) THEN 150.0 ELSE 0.0 END,
+                        -- ✅ PRIORITÉ HAUTE 2026-01-23: DESCRIPTION PRODUIT (120-140) - PRIORITÉ MOYENNE
+                        CASE WHEN LOWER(unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', ''))) = LOWER(unaccent($1)) THEN 140.0 ELSE 0.0 END,
                         CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) ILIKE unaccent($1) || '%' THEN 130.0 ELSE 0.0 END,
                         CASE WHEN unaccent(COALESCE(p.product_data->>'description_produit', p.product_data->>'description', p.product_data->'description'->>'valeur', '')) ILIKE '%' || unaccent($1) || '%' THEN 120.0 ELSE 0.0 END,
-                        -- ✅ PRIORITÉ MOYENNE 2026-01-22: NOM PRODUIT (60-80) - MOINS IMPORTANT
-                        CASE WHEN LOWER(unaccent(p.product_name)) = LOWER(unaccent($1)) THEN 80.0 ELSE 0.0 END,
-                        CASE WHEN unaccent(p.product_name) ILIKE unaccent($1) || '%' THEN 70.0 ELSE 0.0 END,
-                        CASE WHEN unaccent(p.product_name) ILIKE '%' || unaccent($1) || '%' THEN 60.0 ELSE 0.0 END,
                         -- ✅ PRIORITÉ BASSE 2026-01-22: CATÉGORIE PRODUIT (40-60) - MOINS IMPORTANTE
                         CASE WHEN LOWER(unaccent(COALESCE(p.product_data->>'categorie_produit', ''))) = LOWER(unaccent($1)) THEN 60.0 ELSE 0.0 END,
                         CASE WHEN unaccent(COALESCE(p.product_data->>'categorie_produit', '')) ILIKE unaccent($1) || '%' THEN 55.0 ELSE 0.0 END,

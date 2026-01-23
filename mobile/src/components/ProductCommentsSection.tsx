@@ -812,7 +812,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     multiline
                     placeholder={
                         replyTarget
-                            ? `Répondre à ${replyTarget.user_name}...`
+                            ? 'Tapez votre réponse...'
                             : 'Partagez votre expérience...'
                     }
                     placeholderTextColor={modernColors.textSecondary}

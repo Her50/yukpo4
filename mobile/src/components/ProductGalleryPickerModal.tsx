@@ -65,102 +65,142 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
             });
         }
 
-        // ✅ NOUVEAU: Charger médias depuis API /api/media/product par produit
-        const produits = service.data?.produits?.valeur || service.data?.produits || [];
-        if (Array.isArray(produits) && service.id) {
+        // ✅ CORRIGÉ 2026-01-23: Charger médias depuis les données du service (comme ProductCard)
+        // Priorité: 1) Données JSON du service (service.data.produits), 2) API si nécessaire
+        // ✅ NOUVEAU: Vérifier aussi si le service contient directement des produits (depuis API service_products)
+        // Les produits peuvent être dans service.data.produits (ancien système) ou service.products (nouveau système)
+        const produits = 
+            (Array.isArray(service.products) && service.products.length > 0) ? service.products
+            : (service.data?.produits?.valeur || service.data?.produits || []);
+        if (Array.isArray(produits) && produits.length > 0) {
             for (let idx = 0; idx < produits.length; idx++) {
                 const product = produits[idx];
-                const productName = product.nom || `Produit ${idx + 1}`;
+                const productName = product.nom || product.titre || product.name || `Produit ${idx + 1}`;
 
-                try {
-                    // Charger images depuis API
-                    const { apiGet } = await import('../services/api');
-                    const imagesResp = await apiGet(`/api/media/product/${service.id}/${idx}/images`);
+                // ✅ PRIORITÉ 1: Extraire les médias directement depuis le JSON du produit (comme ProductCard)
+                // ✅ CORRIGÉ 2026-01-23: Vérifier product.product_data.images/videos comme ProductCard
+                // Vérifier plusieurs emplacements possibles pour les images (même logique que ProductCard)
+                const productImages = 
+                    (Array.isArray(product.images) && product.images.length > 0) ? product.images
+                    : (Array.isArray(product.product_data?.images) && product.product_data.images.length > 0) ? product.product_data.images
+                    : (Array.isArray(product.data?.images) && product.data.images.length > 0) ? product.data.images
+                    : (Array.isArray(product.Images) && product.Images.length > 0) ? product.Images
+                    : [];
 
-                    // ✅ CORRIGÉ: Vérifier que response.data existe et contient images
-                    if (imagesResp.success && imagesResp.data) {
-                        const images = imagesResp.data.images || imagesResp.data.Images || imagesResp.images || [];
-                        if (Array.isArray(images) && images.length > 0) {
-                            images.forEach((img: string, imgIdx: number) => {
-                                if (img && typeof img === 'string') {
-                                    mediaList.push({
-                                        type: 'image',
-                                        url: img,
-                                        category: 'products',
-                                        description: `${productName} - Image ${imgIdx + 1}`,
-                                        productName: productName,
-                                        productIndex: idx
-                                    });
-                                }
-                            });
-                        }
-                    }
+                // Vérifier plusieurs emplacements possibles pour les vidéos (même logique que ProductCard)
+                const productVideos = 
+                    (Array.isArray(product.videos) && product.videos.length > 0) ? product.videos
+                    : (Array.isArray(product.product_data?.videos) && product.product_data.videos.length > 0) ? product.product_data.videos
+                    : (Array.isArray(product.data?.videos) && product.data.videos.length > 0) ? product.data.videos
+                    : (Array.isArray(product.Videos) && product.Videos.length > 0) ? product.Videos
+                    : [];
 
-                    // Charger vidéos depuis API
-                    const videosResp = await apiGet(`/api/media/product/${service.id}/${idx}/videos`);
-                    // ✅ CORRIGÉ: Vérifier que response.data existe et contient videos
-                    if (videosResp.success && videosResp.data) {
-                        const videos = videosResp.data.videos || videosResp.data.Videos || videosResp.videos || [];
-                        if (Array.isArray(videos) && videos.length > 0) {
-                            videos.forEach((vid: string, vidIdx: number) => {
-                                if (vid && typeof vid === 'string') {
-                                    mediaList.push({
-                                        type: 'video',
-                                        url: vid,
-                                        category: 'products',
-                                        description: `${productName} - Vidéo ${vidIdx + 1}`,
-                                        productName: productName,
-                                        productIndex: idx
-                                    });
-                                }
-                            });
-                        }
-                    }
-                } catch (error) {
-                    console.log(`[ProductGalleryPickerModal] Fallback JSON pour produit ${idx}:`, error);
-                    // ✅ Fallback: Utiliser images/videos depuis JSON si API échoue
-                    if (product.images && Array.isArray(product.images)) {
-                        product.images.forEach((img: string, imgIdx: number) => {
-                            mediaList.push({
-                                type: 'image',
-                                url: img,
-                                category: 'products',
-                                description: `${productName} - Image ${imgIdx + 1}`,
-                                productName: productName,
-                                productIndex: idx
-                            });
+                // Ajouter les images trouvées dans le JSON
+                productImages.forEach((img: any, imgIdx: number) => {
+                    const imgUrl = typeof img === 'string' ? img : (img?.url || img?.path || img?.valeur);
+                    if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim()) {
+                        mediaList.push({
+                            type: 'image',
+                            url: imgUrl,
+                            category: 'products',
+                            description: `${productName} - Image ${imgIdx + 1}`,
+                            productName: productName,
+                            productIndex: idx
                         });
                     }
-                    if (product.videos && Array.isArray(product.videos)) {
-                        product.videos.forEach((vid: string, vidIdx: number) => {
-                            mediaList.push({
-                                type: 'video',
-                                url: vid,
-                                category: 'products',
-                                description: `${productName} - Vidéo ${vidIdx + 1}`,
-                                productName: productName,
-                                productIndex: idx
-                            });
+                });
+
+                // Ajouter les vidéos trouvées dans le JSON
+                productVideos.forEach((vid: any, vidIdx: number) => {
+                    const vidUrl = typeof vid === 'string' ? vid : (vid?.url || vid?.path || vid?.valeur);
+                    if (vidUrl && typeof vidUrl === 'string' && vidUrl.trim()) {
+                        mediaList.push({
+                            type: 'video',
+                            url: vidUrl,
+                            category: 'products',
+                            description: `${productName} - Vidéo ${vidIdx + 1}`,
+                            productName: productName,
+                            productIndex: idx
                         });
+                    }
+                });
+
+                // ✅ PRIORITÉ 2: Si pas de médias dans le JSON, essayer l'API
+                if (productImages.length === 0 && productVideos.length === 0 && service.id) {
+                    try {
+                        const { apiGet } = await import('../services/api');
+                        
+                        // Charger images depuis API
+                        const imagesResp = await apiGet(`/api/media/product/${service.id}/${idx}/images`);
+                        if (imagesResp.success && imagesResp.data) {
+                            const images = imagesResp.data.images || imagesResp.data.Images || imagesResp.images || [];
+                            if (Array.isArray(images) && images.length > 0) {
+                                images.forEach((img: string, imgIdx: number) => {
+                                    if (img && typeof img === 'string') {
+                                        mediaList.push({
+                                            type: 'image',
+                                            url: img,
+                                            category: 'products',
+                                            description: `${productName} - Image ${imgIdx + 1}`,
+                                            productName: productName,
+                                            productIndex: idx
+                                        });
+                                    }
+                                });
+                            }
+                        }
+
+                        // Charger vidéos depuis API
+                        const videosResp = await apiGet(`/api/media/product/${service.id}/${idx}/videos`);
+                        if (videosResp.success && videosResp.data) {
+                            const videos = videosResp.data.videos || videosResp.data.Videos || videosResp.videos || [];
+                            if (Array.isArray(videos) && videos.length > 0) {
+                                videos.forEach((vid: string, vidIdx: number) => {
+                                    if (vid && typeof vid === 'string') {
+                                        mediaList.push({
+                                            type: 'video',
+                                            url: vid,
+                                            category: 'products',
+                                            description: `${productName} - Vidéo ${vidIdx + 1}`,
+                                            productName: productName,
+                                            productIndex: idx
+                                        });
+                                    }
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.log(`[ProductGalleryPickerModal] Erreur API pour produit ${idx}:`, error);
                     }
                 }
 
                 // Images de réalisations (toujours depuis JSON)
-                if (product.imagesRealisations && Array.isArray(product.imagesRealisations)) {
-                    product.imagesRealisations.forEach((img: string, imgIdx: number) => {
-                        mediaList.push({
-                            type: 'image',
-                            url: img,
-                            category: 'realisations',
-                            description: `${productName} - Réalisation ${imgIdx + 1}`,
-                            productName: productName,
-                            productIndex: idx
-                        });
+                const realisations = product.imagesRealisations || product.images_realisations || product.realisations || [];
+                if (Array.isArray(realisations) && realisations.length > 0) {
+                    realisations.forEach((img: any, imgIdx: number) => {
+                        const imgUrl = typeof img === 'string' ? img : (img?.url || img?.path || img?.valeur);
+                        if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim()) {
+                            mediaList.push({
+                                type: 'image',
+                                url: imgUrl,
+                                category: 'realisations',
+                                description: `${productName} - Réalisation ${imgIdx + 1}`,
+                                productName: productName,
+                                productIndex: idx
+                            });
+                        }
                     });
                 }
             }
         }
 
+        console.log(`[ProductGalleryPickerModal] ✅ ${mediaList.length} médias chargés`, {
+            produits: produits.length,
+            images: mediaList.filter(m => m.type === 'image').length,
+            videos: mediaList.filter(m => m.type === 'video').length,
+            branding: mediaList.filter(m => m.category === 'branding').length,
+            products: mediaList.filter(m => m.category === 'products').length,
+        });
         setMedia(mediaList);
     };
 
@@ -269,6 +309,17 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
                         <View style={styles.emptyState}>
                             <SafeIcon name="image" size={64} color="#D1D5DB" />
                             <Text style={styles.emptyText}>Aucun média disponible</Text>
+                            <Text style={styles.emptySubtext}>
+                                {media.length === 0 
+                                    ? 'Aucun média trouvé dans ce service' 
+                                    : `Aucun média correspondant au filtre "${filter}"`}
+                            </Text>
+                            {/* ✅ DEBUG: Afficher les infos de débogage en développement */}
+                            {__DEV__ && (
+                                <Text style={styles.debugText}>
+                                    Total médias: {media.length} | Produits: {service.data?.produits?.valeur?.length || service.data?.produits?.length || 0}
+                                </Text>
+                            )}
                         </View>
                     ) : (
                         filteredMedia.map((item, index) => {
@@ -503,6 +554,21 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#9CA3AF',
         marginTop: 12,
+        fontWeight: '600',
+    },
+    emptySubtext: {
+        fontSize: 13,
+        color: '#9CA3AF',
+        marginTop: 8,
+        textAlign: 'center',
+        paddingHorizontal: 20,
+    },
+    debugText: {
+        fontSize: 11,
+        color: '#6B7280',
+        marginTop: 12,
+        fontFamily: 'monospace',
+        textAlign: 'center',
     },
 });
 

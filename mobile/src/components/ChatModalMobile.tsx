@@ -17,10 +17,13 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { FontAwesome } from '@expo/vector-icons';
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import InAppCallModal from './InAppCallModal';
+import LinkableText from './LinkableText';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
@@ -57,6 +60,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     conversationId: privateConversationId,
     isPrivateConversation = false
 }) => {
+    const navigation = useNavigation();
     const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -744,8 +748,17 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
                                         try {
                                             const phoneNumber = whatsappNumber.replace(/\s+/g, '').replace(/\+/g, '');
+                                            // ✅ CORRIGÉ : Éviter le doublon du nom du prestataire dans le message
+                                            // Si le titre du service contient déjà le nom du prestataire, on ne le répète pas
                                             const serviceName = titreService || 'votre service';
-                                            const message = encodeURIComponent(`Bonjour ${nomPrestataire}, je souhaite discuter de ${serviceName}.`);
+                                            let messageText = `Bonjour ${nomPrestataire}, je souhaite discuter de ${serviceName}.`;
+                                            
+                                            // Vérifier si le nom du prestataire est déjà dans le titre du service
+                                            if (serviceName.toLowerCase().includes(nomPrestataire.toLowerCase())) {
+                                                messageText = `Bonjour, je souhaite discuter de ${serviceName}.`;
+                                            }
+                                            
+                                            const message = encodeURIComponent(messageText);
                                             const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${message}`;
 
                                             const canOpen = await Linking.canOpenURL(whatsappUrl);
@@ -760,9 +773,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         }
                                     }}
                                 >
-                                    {/* Logo WhatsApp officiel */}
+                                    {/* ✅ CORRIGÉ : Logo WhatsApp officiel avec FontAwesome */}
                                     <View style={styles.whatsappIconContainer}>
-                                        <Text style={styles.whatsappIcon}>📱</Text>
+                                        <FontAwesome name="whatsapp" size={16} color="#FFFFFF" />
                                     </View>
                                     <View style={styles.whatsappBadge}>
                                         <Text style={styles.whatsappBadgeText}>WA</Text>
@@ -912,12 +925,27 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
                                         {/* Afficher le texte pour les messages texte ou avec le texte */}
                                         {(message.type === 'text' || (message.content && !message.content.match(/^[📷🎤📎]/))) && (
-                                            <Text style={[
-                                                styles.messageText,
-                                                message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
-                                            ]}>
-                                                {message.content}
-                                            </Text>
+                                            <LinkableText
+                                                text={message.content}
+                                                style={[
+                                                    styles.messageText,
+                                                    message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
+                                                ]}
+                                                onProductLinkPress={(serviceId, productIndex) => {
+                                                    // Navigation vers le produit
+                                                    (navigation as any).navigate('ServiceDetail', { 
+                                                        serviceId, 
+                                                        productIndex 
+                                                    });
+                                                }}
+                                                onReviewLinkPress={(serviceId) => {
+                                                    // Navigation vers les avis du produit
+                                                    (navigation as any).navigate('ServiceDetail', { 
+                                                        serviceId, 
+                                                        showReviews: true 
+                                                    });
+                                                }}
+                                            />
                                         )}
 
                                         <View style={styles.messageFooter}>
@@ -1092,12 +1120,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="file-text" size={22} color={modernColors.primary} />
                         </TouchableOpacity>
 
-                        {/* ✅ Bouton galerie de produits/service */}
+                        {/* ✅ CORRIGÉ : Bouton galerie de produits/service avec icône valide */}
                         <TouchableOpacity
                             style={styles.mediaButton}
                             onPress={() => setShowProductGalleryPicker(true)}
                         >
-                            <SafeIcon name="folder-open" size={22} color="#8B5CF6" />
+                            <SafeIcon name="FolderOpen" size={22} color="#8B5CF6" type="lucide" />
                         </TouchableOpacity>
 
                         {/* ✅ NOUVEAU: Bouton "Me livrer" pour commander une livraison */}
@@ -1159,6 +1187,35 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="truck" size={22} color={modernColors.success} />
                         </TouchableOpacity>
 
+                        {/* ✅ NOUVEAU 2026-01-23: Bouton "Envoyer lien avis" */}
+                        <TouchableOpacity
+                            style={styles.mediaButton}
+                            onPress={async () => {
+                                if (!service?.id) {
+                                    Alert.alert('Erreur', 'Service non disponible');
+                                    return;
+                                }
+
+                                // Générer le lien vers les avis du produit/service
+                                const reviewLink = `yukpo://reviews/${service.id}`;
+                                const productName = getServiceFieldValue(service?.data?.titre_service) || 
+                                                   getServiceFieldValue(service?.data?.nom_produit) || 
+                                                   'ce produit';
+                                
+                                // Pré-remplir le message avec le lien
+                                const messageWithLink = `Bonjour, j'aimerais avoir votre avis sur ${productName}.\n\nLien pour laisser un avis : ${reviewLink}`;
+                                
+                                setNewMessage(messageWithLink);
+                                
+                                // Scroll vers le bas pour montrer le message
+                                setTimeout(() => {
+                                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                                }, 100);
+                            }}
+                        >
+                            <SafeIcon name="star" size={22} color="#F59E0B" />
+                        </TouchableOpacity>
+
                         {/* ✅ NOUVEAU: Bouton "Négocier le prix" */}
                         <TouchableOpacity
                             style={styles.mediaButton}
@@ -1182,10 +1239,17 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             return;
                                         }
 
-                                        // Filtrer les produits qui ont un prix
+                                        // ✅ CORRIGÉ : Filtrer les produits qui ont un prix valide (> 0)
                                         const productsWithPrice = products.filter((product: any) => {
                                             const price = product.price || product.prix || product.prix_unitaire;
-                                            return price && (typeof price === 'number' || !isNaN(parseFloat(price)));
+                                            if (!price) return false;
+                                            
+                                            // Vérifier que le prix est un nombre valide et > 0
+                                            const numericPrice = typeof price === 'number' 
+                                                ? price 
+                                                : parseFloat(price);
+                                            
+                                            return !isNaN(numericPrice) && numericPrice > 0;
                                         });
 
                                         if (productsWithPrice.length === 0) {
@@ -1229,9 +1293,20 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                                 ? product.prix_unitaire
                                                                 : parseFloat(product.price || product.prix || product.prix_unitaire) || 0;
                                                     
+                                                    // ✅ CORRIGÉ : Vérifier que le prix est valide avant de l'afficher
+                                                    if (originalPrice <= 0) {
+                                                        return null; // Ignorer les produits sans prix valide
+                                                    }
+                                                    
                                                     return {
                                                         text: `${product.name || product.titre || `Produit ${index + 1}`} - ${originalPrice.toLocaleString('fr-FR')} FCFA`,
                                                         onPress: () => {
+                                                            // ✅ CORRIGÉ : Vérifier à nouveau le prix avant d'ouvrir le modal
+                                                            if (originalPrice <= 0) {
+                                                                Alert.alert('Erreur', 'Le prix de ce produit n\'est pas valide');
+                                                                return;
+                                                            }
+                                                            
                                                             setSelectedProductForNegotiation({
                                                                 product,
                                                                 productIndex: products.indexOf(product),
@@ -1240,7 +1315,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                             setShowNegotiatePriceModal(true);
                                                         }
                                                     };
-                                                }).concat([{ text: 'Annuler', style: 'cancel' }])
+                                                }).filter((item: any) => item !== null).concat([{ text: 'Annuler', style: 'cancel' }])
                                             );
                                         }
                                     } else {
@@ -1592,10 +1667,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    whatsappIcon: {
-        fontSize: 16,
-        color: '#FFFFFF',
-    },
+    // ✅ SUPPRIMÉ : Style whatsappIcon n'est plus nécessaire car on utilise FontAwesome directement
     whatsappBadge: {
         position: 'absolute',
         bottom: -2,

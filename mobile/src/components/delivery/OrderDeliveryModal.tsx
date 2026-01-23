@@ -21,6 +21,20 @@ import { SavedAddressSelector } from './SavedAddressSelector';
 import { LocationObject } from '../LocationSelector';
 import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 
+interface ProductVariant {
+    valeur?: string;
+    value?: string;
+    prix?: number;
+    price?: number;
+    devise?: string;
+    currency?: string;
+    stock?: number;
+    quantite?: number;
+    image?: string;
+    conditionnement?: string;
+    [key: string]: any;
+}
+
 interface OrderDeliveryModalProps {
     visible: boolean;
     onClose: () => void;
@@ -31,6 +45,9 @@ interface OrderDeliveryModalProps {
     // ✅ NOUVEAU : Pour prix négociés
     conversationId?: number;
     clientUserId?: number;
+    // ✅ NOUVEAU 2026-01-23: Variations de prix du produit
+    productVariants?: ProductVariant[];
+    selectedVariantIndex?: number;
 }
 
 interface Location {
@@ -91,6 +108,8 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     onSuccess,
     conversationId, // ✅ NOUVEAU
     clientUserId, // ✅ NOUVEAU
+    productVariants, // ✅ NOUVEAU 2026-01-23: Variations de prix
+    selectedVariantIndex, // ✅ NOUVEAU 2026-01-23: Index de variation présélectionné
 }) => {
     const [loading, setLoading] = useState(false);
     const [pickupLocation, setPickupLocation] = useState<Location | null>(null);
@@ -98,6 +117,12 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     const [notes, setNotes] = useState('');
     const [userGPS, setUserGPS] = useState<Location | null>(null);
     const [showGPSModal, setShowGPSModal] = useState(false); // ✅ NOUVEAU : Pour ouvrir le modal GPS
+    
+    // ✅ NOUVEAU 2026-01-23: État pour la sélection de variation et quantité
+    const [selectedVariantIdx, setSelectedVariantIdx] = useState<number>(
+        selectedVariantIndex !== undefined ? selectedVariantIndex : (productVariants && productVariants.length > 0 ? 0 : -1)
+    );
+    const [quantity, setQuantity] = useState<number>(1); // ✅ Quantité par défaut à 1
 
     // ✅ Phase 3 - Amélioration 7 : Préférences de livraison
     const [preferredDeliveryDate, setPreferredDeliveryDate] = useState<string>(''); // Format YYYY-MM-DD pour l'API
@@ -162,12 +187,22 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         }
     }, [visible, serviceId, productIndex]);
 
-    // Recalculer les coûts quand les produits sélectionnés ou dropoff changent
+    // ✅ NOUVEAU 2026-01-23: Réinitialiser la quantité et la variation quand le modal s'ouvre
+    useEffect(() => {
+        if (visible) {
+            setQuantity(1); // Quantité par défaut à 1
+            setSelectedVariantIdx(
+                selectedVariantIndex !== undefined ? selectedVariantIndex : (productVariants && productVariants.length > 0 ? 0 : -1)
+            );
+        }
+    }, [visible, selectedVariantIndex, productVariants]);
+
+    // Recalculer les coûts quand les produits sélectionnés, dropoff, variation ou quantité changent
     useEffect(() => {
         if (visible && selectedProducts.length > 0 && dropoffLocation) {
             loadCosts();
         }
-    }, [visible, selectedProducts, dropoffLocation]);
+    }, [visible, selectedProducts, dropoffLocation, selectedVariantIdx, quantity]);
 
     // ✅ NOUVEAU : Fonction helper pour formater l'adresse avec quartier
     const formatAddressWithDistrict = (addr: Location.LocationGeocodedAddress): string => {
@@ -454,6 +489,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     };
 
     // ✅ Phase 7 - Amélioration 23 : Charger les coûts estimés (adapté pour multi-produits)
+    // ✅ CORRIGÉ 2026-01-23: Prendre en compte la variation et la quantité
     // ✅ IMPORTANT : Le coût de livraison est indépendant du nombre de produits
     const loadCosts = async () => {
         // ✅ CORRIGÉ: Vérification stricte de serviceId
@@ -463,14 +499,25 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
         setLoadingCosts(true);
         try {
-            // ✅ Calculer le prix total de tous les produits sélectionnés (indépendant de la livraison)
+            // ✅ CORRIGÉ 2026-01-23: Calculer le prix total en tenant compte de la variation et de la quantité
             let totalProductPrice = 0;
-            selectedProducts.forEach((idx) => {
-                const product = availableProducts.find(p => p.index === idx);
-                if (product) {
-                    totalProductPrice += product.price;
-                }
-            });
+            
+            // Si on a des variations de prix pour le produit principal
+            if (productVariants && productVariants.length > 0 && selectedVariantIdx >= 0 && selectedVariantIdx < productVariants.length) {
+                const selectedVariant = productVariants[selectedVariantIdx];
+                const variantPrice = selectedVariant.prix || selectedVariant.price || 0;
+                // ✅ Multiplier par la quantité
+                totalProductPrice = variantPrice * quantity;
+            } else {
+                // Sinon, utiliser le prix des produits sélectionnés (multi-produits)
+                selectedProducts.forEach((idx) => {
+                    const product = availableProducts.find(p => p.index === idx);
+                    if (product) {
+                        totalProductPrice += product.price;
+                    }
+                });
+            }
+            
             setProductPrice(totalProductPrice);
 
             // ✅ Le coût de livraison est calculé UNE SEULE FOIS, indépendamment du nombre de produits
@@ -654,6 +701,18 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
             return;
         }
 
+        // ✅ NOUVEAU 2026-01-23: Vérifier qu'une variation est sélectionnée si le produit en a
+        if (productVariants && productVariants.length > 0 && selectedVariantIdx < 0) {
+            Alert.alert('Variation requise', 'Veuillez sélectionner une variation de prix pour ce produit');
+            return;
+        }
+
+        // ✅ NOUVEAU 2026-01-23: Vérifier que la quantité est valide
+        if (quantity < 1) {
+            Alert.alert('Quantité invalide', 'La quantité doit être au moins égale à 1');
+            return;
+        }
+
         setLoading(true);
         try {
             // ✅ Phase 8 - Amélioration 26 : Si plusieurs produits, créer plusieurs commandes
@@ -667,6 +726,9 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                             notes: notes || undefined,
                             // ✅ NOUVEAU : Pour prix négociés
                             conversation_id: conversationId,
+                            // ✅ NOUVEAU 2026-01-23: Variation et quantité (pour chaque produit)
+                            variant_index: (productVariants && productVariants.length > 0 && selectedVariantIdx >= 0) ? selectedVariantIdx : undefined,
+                            quantity: quantity,
                         })
                     )
                 );
@@ -704,13 +766,16 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 }
             } else {
                 // Un seul produit : utiliser le flux normal
-                const payload = {
+                const payload: any = {
                     service_id: serviceId,
                     product_index: selectedProducts[0],
                     dropoff: dropoffLocation,
                     notes: notes || undefined,
                     // ✅ NOUVEAU : Pour prix négociés
                     conversation_id: conversationId,
+                    // ✅ NOUVEAU 2026-01-23: Variation et quantité
+                    variant_index: (productVariants && productVariants.length > 0 && selectedVariantIdx >= 0) ? selectedVariantIdx : undefined,
+                    quantity: quantity,
                 };
 
                 const response = await apiPost('/api/delivery/client-order', payload) as ApiResponse<DeliveryOrderResponse>;
@@ -799,6 +864,90 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
                 {/* Content */}
                 <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                    {/* ✅ NOUVEAU 2026-01-23: Sélection de variation de prix si disponible */}
+                    {productVariants && productVariants.length > 0 && (
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <SafeIcon name="package" size={18} color="#9333EA" />
+                                <Text style={styles.sectionTitle}>Variation de prix *</Text>
+                            </View>
+                            <ScrollView 
+                                horizontal 
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.variantsScrollView}
+                                contentContainerStyle={styles.variantsScrollContent}
+                            >
+                                {productVariants.map((variant, idx) => {
+                                    const variantPrice = variant.prix || variant.price || 0;
+                                    const variantValue = variant.valeur || variant.value || variant.conditionnement || `Option ${idx + 1}`;
+                                    const isSelected = selectedVariantIdx === idx;
+                                    
+                                    return (
+                                        <TouchableOpacity
+                                            key={idx}
+                                            onPress={() => setSelectedVariantIdx(idx)}
+                                            style={[
+                                                styles.variantCard,
+                                                isSelected && styles.variantCardSelected
+                                            ]}
+                                        >
+                                            <Text style={[
+                                                styles.variantValue,
+                                                isSelected && styles.variantValueSelected
+                                            ]}>
+                                                {variantValue}
+                                            </Text>
+                                            <Text style={[
+                                                styles.variantPrice,
+                                                isSelected && styles.variantPriceSelected
+                                            ]}>
+                                                {variantPrice.toLocaleString('fr-FR')} FCFA
+                                            </Text>
+                                            {isSelected && (
+                                                <View style={styles.variantCheckmark}>
+                                                    <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+                        </View>
+                    )}
+
+                    {/* ✅ NOUVEAU 2026-01-23: Sélection de quantité */}
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shopping-cart" size={18} color="#10B981" />
+                            <Text style={styles.sectionTitle}>Quantité *</Text>
+                        </View>
+                        <View style={styles.quantityContainer}>
+                            <TouchableOpacity
+                                style={[styles.quantityButton, quantity <= 1 && styles.quantityButtonDisabled]}
+                                onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                                disabled={quantity <= 1}
+                            >
+                                <SafeIcon name="minus" size={18} color={quantity <= 1 ? "#9CA3AF" : modernColors.text} />
+                            </TouchableOpacity>
+                            <TextInput
+                                style={styles.quantityInput}
+                                value={quantity.toString()}
+                                onChangeText={(text) => {
+                                    const num = parseInt(text) || 1;
+                                    setQuantity(Math.max(1, num));
+                                }}
+                                keyboardType="numeric"
+                                selectTextOnFocus
+                            />
+                            <TouchableOpacity
+                                style={styles.quantityButton}
+                                onPress={() => setQuantity(quantity + 1)}
+                            >
+                                <SafeIcon name="plus" size={18} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
                     {/* ✅ Phase 8 - Amélioration 26 : Sélection multi-produits */}
                     {availableProducts.length > 1 && (
                         <View style={styles.section}>
@@ -1154,8 +1303,33 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         <View style={styles.costsSection}>
                             <Text style={styles.costsTitle}>Récapitulatif des coûts</Text>
                             <View style={styles.costsCard}>
-                                {/* ✅ Phase 8 - Amélioration 26 : Détail par produit si plusieurs */}
-                                {selectedProducts.length > 1 ? (
+                                {/* ✅ CORRIGÉ 2026-01-23: Affichage avec variation et quantité */}
+                                {productVariants && productVariants.length > 0 && selectedVariantIdx >= 0 ? (
+                                    /* Affichage avec variation de prix */
+                                    <View style={styles.productsDetail}>
+                                        <View style={styles.costRow}>
+                                            <View style={styles.costLabelContainer}>
+                                                <Text style={styles.costLabel}>
+                                                    {productName} - {productVariants[selectedVariantIdx].valeur || productVariants[selectedVariantIdx].value || productVariants[selectedVariantIdx].conditionnement || 'Variation'}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.costValueContainer}>
+                                                <Text style={styles.costValue}>
+                                                    {(productVariants[selectedVariantIdx].prix || productVariants[selectedVariantIdx].price || 0).toLocaleString('fr-FR')} FCFA
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        {quantity > 1 && (
+                                            <View style={styles.costRow}>
+                                                <Text style={styles.costLabel}>× {quantity}</Text>
+                                                <Text style={styles.costValue}>
+                                                    {((productVariants[selectedVariantIdx].prix || productVariants[selectedVariantIdx].price || 0) * quantity).toLocaleString('fr-FR')} FCFA
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                ) : selectedProducts.length > 1 ? (
+                                    /* ✅ Phase 8 - Amélioration 26 : Détail par produit si plusieurs */
                                     <View style={styles.productsDetail}>
                                         {selectedProducts.map((idx) => {
                                             const product = availableProducts.find(p => p.index === idx);
@@ -1774,6 +1948,88 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '700',
         color: '#065F46',
+    },
+    // ✅ NOUVEAU 2026-01-23: Styles pour sélection de variation
+    variantsScrollView: {
+        marginTop: 12,
+    },
+    variantsScrollContent: {
+        gap: 12,
+        paddingRight: 20,
+    },
+    variantCard: {
+        padding: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        minWidth: 140,
+        position: 'relative',
+    },
+    variantCardSelected: {
+        borderColor: modernColors.primary,
+        backgroundColor: '#EFF6FF',
+    },
+    variantValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    variantValueSelected: {
+        color: modernColors.primary,
+    },
+    variantPrice: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    variantPriceSelected: {
+        color: modernColors.primary,
+    },
+    variantCheckmark: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: modernColors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    // ✅ NOUVEAU 2026-01-23: Styles pour sélection de quantité
+    quantityContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+        marginTop: 12,
+    },
+    quantityButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    quantityButtonDisabled: {
+        opacity: 0.5,
+    },
+    quantityInput: {
+        width: 80,
+        height: 44,
+        textAlign: 'center',
+        fontSize: 18,
+        fontWeight: '600',
+        color: modernColors.text,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        borderRadius: 12,
     },
 });
 

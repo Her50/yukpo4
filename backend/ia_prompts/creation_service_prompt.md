@@ -203,6 +203,43 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 3. **AJOUTER** toutes les caractéristiques standards pour ce type
 4. **CRÉER** des listes de valeurs possibles pour chaque caractéristique
 
+**⚠️ COHÉRENCE CRITIQUE ENTRE `valeur` ET `sous_caracteristiques` (PRIORITÉ ABSOLUE)** :
+
+**RÈGLE ABSOLUE** : Chaque valeur dans le tableau `valeur` (après séparation par le séparateur) DOIT correspondre EXACTEMENT à une valeur présente dans l'une des listes de `sous_caracteristiques`.
+
+**STRUCTURE OBLIGATOIRE** :
+- `valeur` est un tableau de chaînes séparées par le séparateur (ex: `["Toyota,RAV4,2020"]`)
+- Chaque valeur dans la chaîne (après split) DOIT être présente dans au moins une des listes de `sous_caracteristiques`
+- L'ordre des valeurs dans `valeur` DOIT correspondre à l'ordre des dimensions dans `sous_caracteristiques`
+
+**EXEMPLE CORRECT** :
+```json
+"valeur": ["Bijou,Chine,5kg"],
+"sous_caracteristiques": {
+  "marque": ["Bijou", "Autre marque"],
+  "origine": ["Chine", "Local", "Importé"],
+  "conditionnement": ["5kg", "10kg", "25kg"]
+}
+```
+✅ Chaque valeur ("Bijou", "Chine", "5kg") est présente dans les listes correspondantes
+
+**EXEMPLE INCORRECT** :
+```json
+"valeur": ["Bijou,Riz,Importé,Chine,5kg"],
+"sous_caracteristiques": {
+  "marque": ["Bijou"],
+  "origine": ["Chine"],
+  "conditionnement": ["5kg"]
+}
+```
+❌ "Riz" et "Importé" ne sont pas dans les listes de `sous_caracteristiques`
+
+**RÈGLES DE GÉNÉRATION** :
+1. **CRÉER D'ABORD** les `sous_caracteristiques` avec toutes les dimensions et leurs valeurs possibles
+2. **PUIS** générer `valeur` en utilisant UNIQUEMENT des valeurs présentes dans ces listes
+3. **VÉRIFIER** que chaque valeur dans `valeur` existe dans au moins une liste de `sous_caracteristiques`
+4. **AJOUTER** les valeurs manquantes dans `sous_caracteristiques` si nécessaire (ex: si "Importé" est dans `valeur`, l'ajouter à la liste "origine")
+
 **EXEMPLES D'ENRICHISSEMENT** :
 
 **Véhicule** - Demande : "Vente Toyota RAV4 2020"

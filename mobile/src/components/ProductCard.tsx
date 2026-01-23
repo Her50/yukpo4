@@ -30,6 +30,7 @@ import SafeIcon from './SafeIcon';
 import ServiceGalleryModal from './ServiceGalleryModal';
 import OrderDeliveryModal from './delivery/OrderDeliveryModal';
 import { productDeliveryService } from '../services/productDeliveryService';
+import SafeStorage from '../utils/safeStorage';
 
 const { width } = Dimensions.get('window');
 
@@ -278,6 +279,64 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
   const [loadingReactions, setLoadingReactions] = useState(false);
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
+  
+  // ✅ NOUVEAU 2026-01-23: Tracking des produits consultés
+  useEffect(() => {
+    const trackProductView = async () => {
+      try {
+        const serviceId = product.service_id || service?.id;
+        const productIndex = product.product_index || product.index;
+        const productName = productData.nom || productData.nom_produit || productData.name || 'Produit';
+        
+        if (!serviceId) return;
+        
+        const STORAGE_KEY = 'viewed_products_history';
+        const MAX_HISTORY_ITEMS = 100;
+        
+        // Charger l'historique existant
+        const stored = await SafeStorage.getItem(STORAGE_KEY);
+        let history: Array<{
+          serviceId: number;
+          productIndex?: number;
+          productName: string;
+          viewedAt: string;
+        }> = stored ? JSON.parse(stored) : [];
+        
+        // Vérifier si le produit n'est pas déjà dans l'historique (éviter les doublons)
+        const existingIndex = history.findIndex(
+          item => item.serviceId === serviceId && 
+                  (productIndex === undefined || item.productIndex === productIndex)
+        );
+        
+        const newEntry = {
+          serviceId,
+          productIndex,
+          productName,
+          viewedAt: new Date().toISOString(),
+        };
+        
+        if (existingIndex >= 0) {
+          // Mettre à jour la date de consultation
+          history[existingIndex] = newEntry;
+        } else {
+          // Ajouter à l'historique
+          history.unshift(newEntry);
+        }
+        
+        // Limiter à MAX_HISTORY_ITEMS
+        history = history.slice(0, MAX_HISTORY_ITEMS);
+        
+        // Sauvegarder
+        await SafeStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+      } catch (error) {
+        console.error('[ProductCard] Erreur tracking produit consulté:', error);
+      }
+    };
+    
+    // Tracker après un court délai pour éviter de tracker à chaque re-render
+    const timer = setTimeout(trackProductView, 1000);
+    return () => clearTimeout(timer);
+  }, [product.service_id, service?.id, product.product_index, productData.nom]);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [hasDeliveryConfig, setHasDeliveryConfig] = useState<boolean | null>(null); // null = en cours de vérification
 
@@ -575,25 +634,30 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const isPopular = usageCount >= 5;
   const isTrending = usageCount >= 10;
 
-  // ✅ CORRIGÉ 2026-01-14: Extraire les images et vidéos depuis product/service avec fallbacks multiples
+  // ✅ CORRIGÉ 2026-01-23: Extraire les images et vidéos depuis product/service avec fallbacks multiples
   // ✅ CORRIGÉ: Priorité absolue aux médias passés directement par ResultatBesoinScreen (product.images/videos)
   // Structure de stockage des médias dans la base de données:
-  // 1. product.images/videos (passés directement par ResultatBesoinScreen depuis service_products ou media table)
-  // 2. productData.images/videos (product.product_data ou product directement)
-  // 3. service.data->'produits'[index].images/videos (ancien système)
-  // 4. service.data->'images'/'videos' (médias du service)
-  // 5. service.images/videos (médias du service au niveau racine)
+  // 1. product.images/videos (passés directement par ResultatBesoinScreen depuis service_products ou media table) - PRIORITÉ ABSOLUE
+  // 2. product.product_data.images/videos (médias dans product_data)
+  // 3. productData.images/videos (product.product_data || product)
+  // 4. service.data->'produits'[index].images/videos (ancien système)
+  // 5. service.data->'images'/'videos' (médias du service)
+  // 6. service.images/videos (médias du service au niveau racine)
   
-  // ✅ PRIORITÉ 1: product.images/videos (passés directement par ResultatBesoinScreen)
-  // ✅ CORRIGÉ: Vérifier d'abord product.images/videos car ils sont déjà extraits et normalisés par ResultatBesoinScreen
-  const rawImages = Array.isArray(product.images) && product.images.length > 0 ? product.images
-    : Array.isArray(productData.images) && productData.images.length > 0 ? productData.images 
-    : Array.isArray(productData.data?.images) && productData.data.images.length > 0 ? productData.data.images
-    : Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex]
+  // ✅ PRIORITÉ 1: product.images/videos (passés directement par ResultatBesoinScreen) - PRIORITÉ ABSOLUE
+  // ✅ CORRIGÉ 2026-01-23: Vérifier TOUJOURS product.images/videos EN PREMIER car ResultatBesoinScreen les passe là
+  // ✅ CRITIQUE: Ne pas utiliser productData.images si product.images existe, car productData peut être product.product_data
+  // qui peut ne pas contenir les images même si product.images les contient
+  const rawImages = 
+    (Array.isArray(product.images) && product.images.length > 0) ? product.images
+    : (Array.isArray(product.product_data?.images) && product.product_data.images.length > 0) ? product.product_data.images
+    : (Array.isArray(productData.images) && productData.images.length > 0 && productData !== product) ? productData.images 
+    : (Array.isArray(productData.data?.images) && productData.data.images.length > 0) ? productData.data.images
+    : (Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex])
       ? (service.data.produits[productIndex].images || [])
-    : Array.isArray(service?.data?.images?.valeur) && service.data.images.valeur.length > 0 ? service.data.images.valeur
-    : Array.isArray(service?.data?.images) && service.data.images.length > 0 ? service.data.images
-    : Array.isArray(service?.images) && service.images.length > 0 ? service.images
+    : (Array.isArray(service?.data?.images?.valeur) && service.data.images.valeur.length > 0) ? service.data.images.valeur
+    : (Array.isArray(service?.data?.images) && service.data.images.length > 0) ? service.data.images
+    : (Array.isArray(service?.images) && service.images.length > 0) ? service.images
     : [];
   
   // Filtrer et normaliser les images avec la fonction globale
@@ -601,15 +665,20 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     .map((img: any) => normalizeMediaUrl(img, 'image'))
     .filter((img): img is string => img !== null && img !== '');
   
-  // ✅ PRIORITÉ 1: product.videos (passés directement par ResultatBesoinScreen)
-  const rawVideos = Array.isArray(product.videos) && product.videos.length > 0 ? product.videos
-    : Array.isArray(productData.videos) && productData.videos.length > 0 ? productData.videos
-    : Array.isArray(productData.data?.videos) && productData.data.videos.length > 0 ? productData.data.videos
-    : Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex]
+  // ✅ PRIORITÉ 1: product.videos (passés directement par ResultatBesoinScreen) - PRIORITÉ ABSOLUE
+  // ✅ CORRIGÉ 2026-01-23: Vérifier TOUJOURS product.videos EN PREMIER car ResultatBesoinScreen les passe là
+  // ✅ CRITIQUE: Ne pas utiliser productData.videos si product.videos existe, car productData peut être product.product_data
+  // qui peut ne pas contenir les vidéos même si product.videos les contient
+  const rawVideos = 
+    (Array.isArray(product.videos) && product.videos.length > 0) ? product.videos
+    : (Array.isArray(product.product_data?.videos) && product.product_data.videos.length > 0) ? product.product_data.videos
+    : (Array.isArray(productData.videos) && productData.videos.length > 0 && productData !== product) ? productData.videos
+    : (Array.isArray(productData.data?.videos) && productData.data.videos.length > 0) ? productData.data.videos
+    : (Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex])
       ? (service.data.produits[productIndex].videos || [])
-    : Array.isArray(service?.data?.videos?.valeur) && service.data.videos.valeur.length > 0 ? service.data.videos.valeur
-    : Array.isArray(service?.data?.videos) && service.data.videos.length > 0 ? service.data.videos
-    : Array.isArray(service?.videos) && service.videos.length > 0 ? service.videos
+    : (Array.isArray(service?.data?.videos?.valeur) && service.data.videos.valeur.length > 0) ? service.data.videos.valeur
+    : (Array.isArray(service?.data?.videos) && service.data.videos.length > 0) ? service.data.videos
+    : (Array.isArray(service?.videos) && service.videos.length > 0) ? service.videos
     : [];
   
   // Filtrer et normaliser les vidéos avec la fonction globale
@@ -617,25 +686,32 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     .map((vid: any) => normalizeMediaUrl(vid, 'video'))
     .filter((vid): vid is string => vid !== null && vid !== '');
   
-  // ✅ DEBUG 2026-01-14: Logger pour diagnostiquer les problèmes de médias
+  // ✅ DEBUG 2026-01-23: Logger pour diagnostiquer les problèmes de médias depuis la table media
   useEffect(() => {
-    if (rawImages.length > 0 || rawVideos.length > 0 || images.length > 0 || videos.length > 0) {
-      console.log(`[ProductCard] Médias extraits pour service ${serviceId}, produit ${productIndex}:`, {
+    // ✅ AMÉLIORÉ: Toujours logger pour voir pourquoi les médias ne s'affichent pas
+    const hasAnyMedia = rawImages.length > 0 || rawVideos.length > 0 || images.length > 0 || videos.length > 0;
+    if (hasAnyMedia || __DEV__) {
+      console.log(`[ProductCard] 📸 Médias extraits pour service ${serviceId}, produit ${productIndex}:`, {
         rawImagesCount: rawImages.length,
         rawVideosCount: rawVideos.length,
         imagesCount: images.length,
         videosCount: videos.length,
-        productHasImages: !!product.images,
-        productHasVideos: !!product.videos,
-        productDataHasImages: !!productData.images,
-        productDataHasVideos: !!productData.videos,
-        serviceHasImages: !!service?.images,
-        serviceHasVideos: !!service?.videos,
-        firstImage: images[0]?.substring(0, 80),
-        firstVideo: videos[0]?.substring(0, 80),
+        hasMedia: hasAnyMedia,
+        // ✅ NOUVEAU: Vérifier toutes les sources possibles
+        productImages: Array.isArray(product.images) ? product.images.length : (product.images ? 'non-array' : 'absent'),
+        productVideos: Array.isArray(product.videos) ? product.videos.length : (product.videos ? 'non-array' : 'absent'),
+        productDataImages: Array.isArray(productData.images) ? productData.images.length : (productData.images ? 'non-array' : 'absent'),
+        productDataVideos: Array.isArray(productData.videos) ? productData.videos.length : (productData.videos ? 'non-array' : 'absent'),
+        productProductDataImages: Array.isArray(product.product_data?.images) ? product.product_data.images.length : 'absent',
+        productProductDataVideos: Array.isArray(product.product_data?.videos) ? product.product_data.videos.length : 'absent',
+        // ✅ NOUVEAU: Vérifier si les URLs sont des URLs CDN
+        firstImageUrl: images[0]?.substring(0, 100),
+        firstVideoUrl: videos[0]?.substring(0, 100),
+        isFirstImageCDN: images[0]?.startsWith('http://') || images[0]?.startsWith('https://'),
+        isFirstVideoCDN: videos[0]?.startsWith('http://') || videos[0]?.startsWith('https://'),
       });
     }
-  }, [rawImages.length, rawVideos.length, images.length, videos.length, serviceId, productIndex]);
+  }, [rawImages.length, rawVideos.length, images.length, videos.length, serviceId, productIndex, product.images, product.videos, productData.images, productData.videos]);
 
   const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
     ? variants[selectedVariantIndex]
@@ -1032,20 +1108,44 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     service?.shares ??
     0;
 
+  // ✅ CORRIGÉ 2026-01-23: Prioriser les statistiques dynamiques depuis les résultats de recherche
+  // Le backend calcule maintenant reviews_count dynamiquement depuis product_comments
   const reviewsCount =
+    service?.reviews_count ?? // ✅ PRIORITÉ 1: Statistique dynamique depuis backend (calculée depuis product_comments)
+    productData.reviews_count ?? // ✅ PRIORITÉ 2: Depuis product_data enrichi
     productData.reviews ??
-    productData.reviews_count ??
     productData.nb_avis ??
-    service?.reviews_count ??
     0;
 
+  // ✅ NOTE 2026-01-23: favoritesCount n'est pas encore tracké dynamiquement
+  // Les valeurs viennent du JSON statique product_data qui n'est probablement jamais mis à jour
   const favoritesCount =
+    service?.favorites_count ?? // ✅ PRIORITÉ 1: Depuis service enrichi (si disponible)
     productData.favoris ??
     productData.likes ??
     productData.favorites ??
     productData.saves ??
     productData.bookmarks ??
     0;
+
+  // ✅ DEBUG 2026-01-23: Logger les statistiques pour vérifier leur cohérence
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('[ProductCard] 📊 Statistiques extraites:', {
+        serviceId: service?.id,
+        viewsCount,
+        sharesCount,
+        reviewsCount,
+        favoritesCount,
+        usageCount,
+        hasServiceReviewsCount: !!service?.reviews_count,
+        serviceReviewsCount: service?.reviews_count,
+        productDataReviewsCount: productData.reviews_count,
+        productDataReviews: productData.reviews,
+        productDataNbAvis: productData.nb_avis,
+      });
+    }
+  }, [viewsCount, sharesCount, reviewsCount, favoritesCount, usageCount, service?.id, service?.reviews_count, productData.reviews_count]);
 
   const topStatsData = [
     { key: 'views', icon: 'eye', value: viewsCount, tint: '#4f46e5' },
@@ -1244,34 +1344,45 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     loadReactions();
   }, [loadReactions]);
 
-  // ✅ CORRIGÉ 2026-01-14: Scroll automatique horizontal pour les variations de prix
+  // ✅ CORRIGÉ 2026-01-23: Scroll automatique horizontal pour les variations de prix
   // ✅ AMÉLIORÉ: Synchronisation avec l'état réel du scroll et gestion améliorée
   useEffect(() => {
     if (!hasVariant || variants.length <= 1 || isScrollingManually) return;
 
     const cardWidth = 120 + 8; // width + marginRight = 128 (correspond à snapToInterval)
 
-    const autoScrollInterval = setInterval(() => {
-      if (variantsScrollRef.current && !isScrollingManually) {
-        setCurrentVariantIndex((prevIndex) => {
-          const nextIndex = (prevIndex + 1) % variants.length;
-          
-          // Scroll vers la prochaine variation
-          variantsScrollRef.current?.scrollTo({
-            x: nextIndex * cardWidth,
-            y: 0,
-            animated: true,
-          });
-          
-          return nextIndex;
-        });
-      }
-    }, 3000); // ✅ Scroll automatique toutes les 3 secondes
+    let autoScrollInterval: NodeJS.Timeout | null = null;
 
-    return () => clearInterval(autoScrollInterval);
+    // ✅ CORRIGÉ: Démarrer immédiatement mais avec un léger délai pour éviter les conflits
+    const initialDelay = setTimeout(() => {
+      autoScrollInterval = setInterval(() => {
+        if (variantsScrollRef.current && !isScrollingManually) {
+          setCurrentVariantIndex((prevIndex) => {
+            const nextIndex = (prevIndex + 1) % variants.length;
+            
+            // Scroll vers la prochaine variation
+            variantsScrollRef.current?.scrollTo({
+              x: nextIndex * cardWidth,
+              y: 0,
+              animated: true,
+            });
+            
+            return nextIndex;
+          });
+        }
+      }, 3000); // ✅ Scroll automatique toutes les 3 secondes
+    }, 0);
+
+    return () => {
+      clearTimeout(initialDelay);
+      if (autoScrollInterval) {
+        clearInterval(autoScrollInterval);
+      }
+    };
   }, [hasVariant, variants.length, isScrollingManually]);
 
-  // ✅ NOUVEAU 2026-01-14: Scroll automatique horizontal pour les caractéristiques (comme prix_variation)
+  // ✅ CORRIGÉ 2026-01-23: Scroll automatique horizontal pour les caractéristiques
+  // ✅ AMÉLIORÉ: Désynchronisé des variations de prix pour éviter les conflits
   useEffect(() => {
     if (productVector.length <= 1 || isScrollingCharacteristicsManually) return;
 
@@ -1283,24 +1394,35 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     }, 0) / productVector.length;
     const chipWidth = Math.max(60, Math.min(150, (8 * 2) + (avgTextLength * 7) + 4)); // Min 60px, max 150px
 
-    const autoScrollInterval = setInterval(() => {
-      if (characteristicsScrollRef.current && !isScrollingCharacteristicsManually) {
-        setCurrentCharacteristicIndex((prevIndex) => {
-          const nextIndex = (prevIndex + 1) % productVector.length;
-          
-          // Scroll vers la prochaine caractéristique
-          characteristicsScrollRef.current?.scrollTo({
-            x: nextIndex * chipWidth,
-            y: 0,
-            animated: true,
-          });
-          
-          return nextIndex;
-        });
-      }
-    }, 3000); // ✅ Scroll automatique toutes les 3 secondes
+    let autoScrollInterval: NodeJS.Timeout | null = null;
 
-    return () => clearInterval(autoScrollInterval);
+    // ✅ CORRIGÉ: Démarrer après un délai initial différent (1500ms) pour désynchroniser des variations
+    // Cela évite que les deux scrolls se déclenchent en même temps et se bloquent mutuellement
+    const initialDelay = setTimeout(() => {
+      autoScrollInterval = setInterval(() => {
+        if (characteristicsScrollRef.current && !isScrollingCharacteristicsManually) {
+          setCurrentCharacteristicIndex((prevIndex) => {
+            const nextIndex = (prevIndex + 1) % productVector.length;
+            
+            // Scroll vers la prochaine caractéristique
+            characteristicsScrollRef.current?.scrollTo({
+              x: nextIndex * chipWidth,
+              y: 0,
+              animated: true,
+            });
+            
+            return nextIndex;
+          });
+        }
+      }, 3000); // ✅ Scroll automatique toutes les 3 secondes
+    }, 1500); // ✅ DÉSYNCHRONISÉ: Démarrer 1.5s après les variations pour éviter les conflits
+
+    return () => {
+      clearTimeout(initialDelay);
+      if (autoScrollInterval) {
+        clearInterval(autoScrollInterval);
+      }
+    };
   }, [productVector.length, isScrollingCharacteristicsManually, productVector]);
 
   // ✅ NOUVEAU 2026-01-14: Synchroniser currentVariantIndex avec le scroll réel
@@ -1507,28 +1629,48 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
               <View style={styles.productHeaderSection}>
                 <Text style={styles.productName} numberOfLines={2}>
                   {filterBooleanValue(
-                    productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur,
+                    // ✅ CORRIGÉ 2026-01-23: PRIORITÉ ABSOLUE au nom du produit depuis productData
+                    // Ne JAMAIS utiliser le titre du service comme fallback pour éviter confusion
+                    productData.nom || 
+                    productData.nom_produit || 
+                    productData.name || 
+                    productData.product_name ||
+                    product.nom || 
+                    product.nom_produit || 
+                    product.name ||
+                    product.product_name ||
+                    'Produit',
                     'Produit'
                   )}
                 </Text>
                 
                 {/* ✅ OPTIMISÉ 2026-01-14: Description juste sous le titre pour meilleure hiérarchie */}
-                {/* ✅ CORRIGÉ 2026-01-21: Utiliser UNIQUEMENT productData.description pour éviter confusion avec autres produits du service */}
-                {(productData.description || productData.description_produit) && (
+                {/* ✅ CORRIGÉ 2026-01-23: Utiliser UNIQUEMENT productData.description pour éviter confusion avec description du service */}
+                {(productData.description || productData.description_produit || product.description || product.description_produit) && (
                   <Text style={styles.productDescription} numberOfLines={2}>
                     {filterBooleanValue(
-                      productData.description || productData.description_produit,
+                      // ✅ CORRIGÉ 2026-01-23: PRIORITÉ ABSOLUE à la description du produit depuis productData
+                      // Ne JAMAIS utiliser la description du service comme fallback
+                      productData.description || 
+                      productData.description_produit || 
+                      product.description || 
+                      product.description_produit ||
+                      '',
                       ''
                     )}
                   </Text>
                 )}
-                {/* ✅ DEBUG 2026-01-21: Log pour vérifier la description affichée */}
-                {__DEV__ && console.log('[ProductCard] Description affichée pour produit:', {
+                {/* ✅ DEBUG 2026-01-23: Log pour vérifier le nom et la description affichés */}
+                {__DEV__ && console.log('[ProductCard] 📦 Produit affiché:', {
+                  productId: productId,
+                  serviceId: serviceId,
+                  productIndex: productIndex,
                   nom: productData.nom || productData.nom_produit || productData.name,
-                  description: productData.description,
-                  description_produit: productData.description_produit,
+                  description: productData.description || productData.description_produit,
+                  productDataKeys: Object.keys(productData),
                   hasServiceData: !!service?.data,
-                  serviceDescriptionProduit: service?.data?.description_produit?.valeur
+                  serviceTitre: service?.data?.titre_service?.valeur,
+                  serviceDescription: service?.data?.description?.valeur
                 })}
               </View>
 
@@ -1541,11 +1683,15 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     onPress={() => {
                       if (prestataire.user_id) {
                         // ✅ NOUVEAU 2026-01-20: Rediriger vers la boutique du prestataire
+                        // ✅ CORRIGÉ 2026-01-23: Passer le produit et service cliqués pour les inclure dans les résultats
                         navigation.navigate('PrestataireBoutique' as any, { 
                           userId: prestataire.user_id,
                           user_id: prestataire.user_id,
                           prestataireName: prestataire.nom || prestataire.nom_complet || prestataire.name,
                           name: prestataire.nom || prestataire.nom_complet || prestataire.name,
+                          // ✅ NOUVEAU 2026-01-23: Passer le produit et service cliqués
+                          clickedProduct: product,
+                          clickedService: service,
                         });
                       }
                     }}
@@ -1786,8 +1932,26 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
               </View>
 
               {/* ✅ CORRIGÉ 2026-01-14: Commentaires avec hauteur adaptative (non coupés) */}
+              {/* ✅ AMÉLIORÉ 2026-01-23: Section avis/commentaires plus visible et accessible */}
               {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
                 <View style={styles.commentsContainerCompact}>
+                  <TouchableOpacity
+                    style={styles.commentsHeaderButton}
+                    onPress={() => {
+                      // Navigation vers l'écran de détails avec focus sur les avis
+                      navigation.navigate('ServiceDetail' as any, { 
+                        serviceId: commentServiceId,
+                        showReviews: true 
+                      });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.commentsHeaderContent}>
+                      <SafeIcon name="message-circle" size={18} color={modernColors.primary} />
+                      <Text style={styles.commentsHeaderText}>Voir tous les avis et commentaires</Text>
+                      <SafeIcon name="chevron-right" size={16} color={modernColors.primary} />
+                    </View>
+                  </TouchableOpacity>
                   <ProductCommentsSection
                     serviceId={commentServiceId}
                     serviceTitle={serviceTitleForComments}
@@ -1814,6 +1978,9 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
           serviceId={serviceId}
           productIndex={productIndex}
           productName={productData.nom || productData.name || productData.titre || 'Produit'}
+          // ✅ NOUVEAU 2026-01-23: Passer les variations de prix au modal
+          productVariants={hasVariant && variants.length > 0 ? variants : undefined}
+          selectedVariantIndex={selectedVariantIndex !== null ? selectedVariantIndex : undefined}
           onSuccess={(deliveryId) => {
             console.log('[ProductCard] Livraison créée:', deliveryId);
             setShowOrderModal(false);
@@ -2126,10 +2293,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   // ✅ CORRIGÉ 2026-01-14: Container commentaires avec hauteur adaptative (non coupés)
+  // ✅ AMÉLIORÉ 2026-01-23: Ajout d'un header cliquable pour accéder facilement aux avis
   commentsContainerCompact: {
     marginTop: 4,
     minHeight: 40, // Hauteur minimale pour afficher au moins un commentaire
     // ✅ SUPPRIMÉ: maxHeight pour éviter de couper les commentaires
+  },
+  commentsHeaderButton: {
+    backgroundColor: modernColors.primary + '10', // 10% opacity
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: modernColors.primary + '30', // 30% opacity
+  },
+  commentsHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  commentsHeaderText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: modernColors.primary,
   },
   topStatsRow: {
     flexDirection: 'row',

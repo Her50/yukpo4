@@ -253,7 +253,13 @@ pub async fn register_user(
             "[register_user] Email déjà utilisé: {}",
             log_safe_email(&payload.email)
         );
-        return Err(AppError::Conflict("Email déjà utilisé".into()));
+        // ✅ AMÉLIORÉ: Message d'erreur plus informatif pour les partenaires
+        let error_message = if payload.role.as_deref() == Some("partenaire") {
+            "Cet email est déjà utilisé. Veuillez vous connecter avec cet email ou contacter le support pour obtenir le statut partenaire.".to_string()
+        } else {
+            "Cet email est déjà utilisé. Veuillez vous connecter ou utiliser un autre email.".to_string()
+        };
+        return Err(AppError::Conflict(error_message));
     }
     // ✅ SÉCURITÉ: Utiliser un cost plus élevé pour bcrypt (12 au lieu de 10)
     // DEFAULT_COST est 10, on utilise 12 pour plus de sécurité

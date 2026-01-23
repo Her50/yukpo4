@@ -648,7 +648,19 @@ pub async fn rechercher_besoin_direct(
         product_data: serde_json::Value,
     }
 
-    let (service_user_info_map_result, product_info_map_result, media_map_result, service_products_map_result) = tokio::join!(
+    // ✅ NOUVEAU 2026-01-23: Structure pour récupérer les statistiques dynamiques des services
+    #[derive(sqlx::FromRow)]
+    struct ServiceStatsRow {
+        service_id: i32,
+        views_count: Option<i64>,
+        shares_count: Option<i64>,
+        reviews_count: Option<i64>,
+        favorites_count: Option<i64>,
+        rating_count: Option<i64>,
+        average_rating: Option<f64>,
+    }
+
+    let (service_user_info_map_result, product_info_map_result, media_map_result, service_products_map_result, service_stats_map_result) = tokio::join!(
         // BATCH QUERY 1: Récupérer les informations service ET utilisateur
         async {
             sqlx::query_as::<_, ServiceUserInfoRow>(
@@ -863,6 +875,121 @@ pub async fn rechercher_besoin_direct(
                 }
                 products_map
             })
+        },
+        // ✅ NOUVEAU 2026-01-23: BATCH QUERY 5: Calculer les statistiques dynamiques (views_count, shares_count, reviews_count, favorites_count, rating_count, average_rating)
+        async {
+            // ✅ Calculer les statistiques depuis les tables existantes
+            // Note: Si les tables service_views, service_shares, service_favorites n'existent pas encore,
+            // elles retourneront NULL et seront remplacées par 0
+            sqlx::query_as::<_, ServiceStatsRow>(
+                r#"
+                WITH service_stats AS (
+                    SELECT 
+                        s.id as service_id,
+                        -- Vues depuis service_interactions_tracking
+                        COALESCE((
+                            SELECT COUNT(DISTINCT user_id) 
+                            FROM service_interactions_tracking 
+                            WHERE service_id = s.id AND interaction_type = 'view'
+                        ), 0) as views_count,
+                        -- Partages (si table existe, sinon 0)
+                        COALESCE((
+                            SELECT COUNT(*) 
+                            FROM service_shares 
+                            WHERE service_id = s.id
+                        ), 0) as shares_count,
+                        -- Commentaires/Reviews depuis product_comments
+                        COALESCE((
+                            SELECT COUNT(*) 
+                            FROM product_comments 
+                            WHERE service_id = s.id AND is_deleted = false
+                        ), 0) as reviews_count,
+                        -- Favoris (si table existe, sinon 0)
+                        COALESCE((
+                            SELECT COUNT(*) 
+                            FROM service_favorites 
+                            WHERE service_id = s.id
+                        ), 0) as favorites_count,
+                        -- Ratings depuis product_comments
+                        COALESCE((
+                            SELECT COUNT(*) 
+                            FROM product_comments 
+                            WHERE service_id = s.id AND rating IS NOT NULL AND is_deleted = false
+                        ), 0) as rating_count,
+                        -- Note moyenne depuis product_comments
+                        (
+                            SELECT AVG(rating) 
+                            FROM product_comments 
+                            WHERE service_id = s.id AND rating IS NOT NULL AND is_deleted = false
+                        ) as average_rating
+                    FROM services s
+                    WHERE s.id = ANY($1::int[])
+                )
+                SELECT * FROM service_stats
+                "#,
+            )
+            .bind(&service_ids)
+            .fetch_all(pool)
+            .await
+            .map(|rows| {
+                if rows.is_empty() {
+                    // Si aucune ligne (tables n'existent pas), créer des entrées avec 0
+                    service_ids.iter().map(|&id| {
+                        (
+                            id,
+                            (
+                                0, // views_count
+                                0, // shares_count
+                                0, // reviews_count
+                                0, // favorites_count
+                                0, // rating_count
+                                None::<f64>, // average_rating
+                            ),
+                        )
+                    }).collect::<HashMap<i32, (i32, i32, i32, i32, i32, Option<f64>)>>()
+                } else {
+                    rows.into_iter()
+                        .map(|row| {
+                            (
+                                row.service_id,
+                                (
+                                    row.views_count.unwrap_or(0) as i32,
+                                    row.shares_count.unwrap_or(0) as i32,
+                                    row.reviews_count.unwrap_or(0) as i32,
+                                    row.favorites_count.unwrap_or(0) as i32,
+                                    row.rating_count.unwrap_or(0) as i32,
+                                    row.average_rating,
+                                ),
+                            )
+                        })
+                        .collect::<HashMap<i32, (i32, i32, i32, i32, i32, Option<f64>)>>()
+                }
+            })
+            .or_else(|e| {
+                // ✅ Si les tables n'existent pas, retourner des statistiques à 0
+                if e.to_string().contains("does not exist") {
+                    log::warn!("[rechercher_besoin] Tables de statistiques non trouvées, utilisation de valeurs par défaut: {}", e);
+                    // Retourner une HashMap avec des valeurs à 0
+                    Ok(service_ids.iter().map(|&id| {
+                        (
+                            id,
+                            (
+                                0, // views_count
+                                0, // shares_count
+                                0, // reviews_count
+                                0, // favorites_count
+                                0, // rating_count
+                                None::<f64>, // average_rating
+                            ),
+                        )
+                    }).collect::<HashMap<i32, (i32, i32, i32, i32, i32, Option<f64>)>>())
+                } else {
+                    Err(crate::core::types::AppError::Internal(format!(
+                        "Erreur batch query service_stats: {}",
+                        e
+                    )))
+                }
+            })
         }
     );
 
@@ -870,6 +997,7 @@ pub async fn rechercher_besoin_direct(
     let product_info_map = product_info_map_result?;
     let (media_map, product_media_map) = media_map_result?; // ✅ CORRIGÉ 2026-01-22: Séparer médias globaux et médias produits
     let service_products_map = service_products_map_result?; // ✅ NOUVEAU: Produits depuis service_products
+    let service_stats_map = service_stats_map_result?; // ✅ NOUVEAU 2026-01-23: Statistiques dynamiques
 
     // Créer user_info_map pour compatibilité avec le code existant
     let user_info_map: HashMap<i32, (i32, Option<String>, Option<String>)> = service_user_info_map
@@ -904,6 +1032,8 @@ pub async fn rechercher_besoin_direct(
                     None
                 }
             });
+        // ✅ NOUVEAU 2026-01-23: Récupérer les statistiques dynamiques
+        let stats_info = service_stats_map.get(&service_id).cloned();
 
         // ✅ NOUVEAU: Extraire l'adresse et le pays depuis service.data
         let extract_address_from_data = |data: &Value| -> Option<String> {
@@ -1047,6 +1177,25 @@ pub async fn rechercher_besoin_direct(
         }
         if let Some(uc) = usage_count {
             enriched_result["usage_count"] = json!(uc);
+        }
+
+        // ✅ NOUVEAU 2026-01-23: Ajouter les statistiques dynamiques calculées depuis la base de données
+        if let Some((views_count, shares_count, reviews_count, favorites_count, rating_count, average_rating)) = stats_info {
+            enriched_result["views_count"] = json!(views_count);
+            enriched_result["shares_count"] = json!(shares_count);
+            enriched_result["reviews_count"] = json!(reviews_count);
+            enriched_result["favorites_count"] = json!(favorites_count);
+            enriched_result["rating_count"] = json!(rating_count);
+            if let Some(avg_rating) = average_rating {
+                enriched_result["average_rating"] = json!(avg_rating);
+            }
+        } else {
+            // Si pas de statistiques, mettre à 0 pour cohérence
+            enriched_result["views_count"] = json!(0);
+            enriched_result["shares_count"] = json!(0);
+            enriched_result["reviews_count"] = json!(0);
+            enriched_result["favorites_count"] = json!(0);
+            enriched_result["rating_count"] = json!(0);
         }
 
         // Ajouter la distance si disponible

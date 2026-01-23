@@ -91,6 +91,7 @@ const CourierRegistrationScreen: React.FC = () => {
     const [driverLicense, setDriverLicense] = useState<DocumentFile | null>(null);
     const [vehicleRegistration, setVehicleRegistration] = useState<DocumentFile | null>(null);
     const [insuranceDocument, setInsuranceDocument] = useState<DocumentFile | null>(null);
+    const [locationPlan, setLocationPlan] = useState<DocumentFile | null>(null); // ✅ NOUVEAU: Plan de localisation (obligatoire)
 
     // Disponibilités
     const [availabilityDays, setAvailabilityDays] = useState<string[]>([]);
@@ -487,7 +488,7 @@ const CourierRegistrationScreen: React.FC = () => {
         }
     };
 
-    const pickDocument = async (type: 'id' | 'license' | 'registration' | 'insurance' | 'vehicle') => {
+    const pickDocument = async (type: 'id' | 'license' | 'registration' | 'insurance' | 'vehicle' | 'location') => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
                 type: ['image/*', 'application/pdf'],
@@ -519,6 +520,9 @@ const CourierRegistrationScreen: React.FC = () => {
                     case 'vehicle':
                         setVehicleImage(document);
                         break;
+                    case 'location':
+                        setLocationPlan(document);
+                        break;
                 }
             }
         } catch (error) {
@@ -527,7 +531,7 @@ const CourierRegistrationScreen: React.FC = () => {
         }
     };
 
-    const pickImage = async (type: 'id' | 'license' | 'registration' | 'insurance' | 'vehicle') => {
+    const pickImage = async (type: 'id' | 'license' | 'registration' | 'insurance' | 'vehicle' | 'location') => {
         try {
             // ✅ CORRIGÉ 2026-01-14: Demander les permissions correctement
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -570,6 +574,9 @@ const CourierRegistrationScreen: React.FC = () => {
                         break;
                     case 'vehicle':
                         setVehicleImage(document);
+                        break;
+                    case 'location':
+                        setLocationPlan(document);
                         break;
                 }
             }
@@ -640,6 +647,10 @@ const CourierRegistrationScreen: React.FC = () => {
             Alert.alert('Erreur', 'Le permis de conduire est requis');
             return false;
         }
+        if (!locationPlan) {
+            Alert.alert('Erreur', 'Le plan de localisation est obligatoire');
+            return false;
+        }
         if (availabilityDays.length === 0) {
             Alert.alert('Erreur', 'Sélectionnez au moins un jour de disponibilité');
             return false;
@@ -692,6 +703,14 @@ const CourierRegistrationScreen: React.FC = () => {
                     name: vehicleImage.name,
                     data: await convertFileToBase64(vehicleImage),
                     type: vehicleImage.type,
+                };
+            }
+            // ✅ NOUVEAU: Ajouter le plan de localisation (obligatoire)
+            if (locationPlan) {
+                documents.location_plan = {
+                    name: locationPlan.name,
+                    data: await convertFileToBase64(locationPlan),
+                    type: locationPlan.type,
                 };
             }
 
@@ -1375,6 +1394,30 @@ const CourierRegistrationScreen: React.FC = () => {
                             )}
                         </>
                     )}
+                    {/* ✅ NOUVEAU: Plan de localisation (obligatoire) */}
+                    <View style={styles.documentRow}>
+                        <View style={styles.documentInfo}>
+                            <Text style={styles.documentLabel}>Plan de localisation *</Text>
+                            <Text style={styles.helperText}>
+                                Indiquez votre zone d'intervention principale sur une carte
+                            </Text>
+                            {locationPlan && <Text style={styles.documentName}>{locationPlan.name}</Text>}
+                        </View>
+                        <View style={styles.documentButtons}>
+                            <NativeButton
+                                title="📷 Photo"
+                                variant="outline"
+                                size="small"
+                                onPress={() => pickImage('location')}
+                            />
+                            <NativeButton
+                                title="📄 Fichier"
+                                variant="outline"
+                                size="small"
+                                onPress={() => pickDocument('location')}
+                            />
+                        </View>
+                    </View>
                 </NativeCard>
 
                 {/* Disponibilités */}

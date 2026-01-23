@@ -342,6 +342,13 @@ const ProfileScreen: React.FC = () => {
       description: 'Voir mon historique de transactions'
     },
     {
+      title: 'Produits consultés',
+      icon: 'clock', // ✅ NOUVEAU 2026-01-23: Icône pour produits consultés
+      color: '#6366F1',
+      route: 'HistoriqueProduitsConsultes',
+      description: 'Voir les produits que vous avez consultés'
+    },
+    {
       title: 'Paramètres',
       icon: 'settings', // ✅ CORRIGÉ: Icône Lucide pour paramètres
       color: '#757575',

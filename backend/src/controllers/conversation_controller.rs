@@ -561,9 +561,9 @@ pub async fn create_private_conversation(
 
     let pool = &state.pg;
 
-    // Vérifier que l'utilisateur cible existe et est actif
+    // ✅ CORRIGÉ : Vérifier que l'utilisateur cible existe (sans is_active car la colonne n'existe pas)
     let target_user =
-        sqlx::query("SELECT id, nom_complet FROM users WHERE id = $1 AND is_active = TRUE")
+        sqlx::query("SELECT id, nom_complet FROM users WHERE id = $1")
             .bind(payload.target_user_id)
             .fetch_optional(pool)
             .await
@@ -577,7 +577,7 @@ pub async fn create_private_conversation(
 
     if target_user.is_none() {
         return Err(AppError::NotFound(
-            "Utilisateur non trouvé ou inactif".to_string(),
+            "Utilisateur non trouvé".to_string(),
         ));
     }
 

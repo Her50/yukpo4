@@ -703,6 +703,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             
                             // ✅ CORRIGÉ 2026-01-20: Extraire correctement tous les champs du produit
                             // ✅ CORRIGÉ 2026-01-21: S'assurer que les images et vidéos sont bien incluses depuis product_data
+                            // ✅ CORRIGÉ 2026-01-23: S'assurer que la description est explicitement extraite
                             const transformedProduct = {
                                 // ✅ Préserver toutes les propriétés de product_data
                                 ...productData,
@@ -723,6 +724,17 @@ const ResultatBesoinScreen: React.FC = () => {
                                 nom_produit: productData.nom_produit || productData.nom || productData.name || productFromAPI.product_name,
                                 nom: productData.nom_produit || productData.nom || productData.name || productFromAPI.product_name,
                                 name: productData.nom_produit || productData.nom || productData.name || productFromAPI.product_name,
+                                // ✅ CORRIGÉ 2026-01-23: S'assurer que la description est explicitement extraite et disponible
+                                description: productData.description || productData.description_produit || '',
+                                description_produit: productData.description_produit || productData.description || '',
+                                // ✅ NOUVEAU 2026-01-23: Transmettre les statistiques dynamiques du service au produit
+                                _serviceId: service.id,
+                                _service: {
+                                    ...service,
+                                    reviews_count: service.reviews_count, // ✅ Statistique dynamique calculée par le backend
+                                    rating_count: service.rating_count,
+                                    average_rating: service.average_rating,
+                                },
                             };
                             
                             // ✅ DEBUG 2026-01-21: Log détaillé de chaque produit transformé avec description et images
@@ -879,7 +891,13 @@ const ResultatBesoinScreen: React.FC = () => {
                                 // ✅ CRITIQUE: product_data est déjà dans product (ajouté dans transformedProduct)
                                 // ProductCard fait: const productData = product.product_data || product;
                                 _serviceId: service.id,
-                                _service: service,
+                                _service: {
+                                    ...service,
+                                    // ✅ NOUVEAU 2026-01-23: Transmettre les statistiques dynamiques calculées par le backend
+                                    reviews_count: service.reviews_count,
+                                    rating_count: service.rating_count,
+                                    average_rating: service.average_rating,
+                                },
                                 _prestataire: prestataires.get(service.user_id),
                                 _gps: bestGPS,
                                 _gpsSource: productGPS ? 'product' : (serviceGPSFixe ? 'service_fixe' : 'service_realtime'),

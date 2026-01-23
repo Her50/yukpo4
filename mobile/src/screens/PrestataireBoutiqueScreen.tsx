@@ -34,6 +34,9 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
   const routeParams = (route.params as any) || {};
   const prestataireUserId = routeParams.userId || routeParams.user_id;
   const prestataireName = routeParams.prestataireName || routeParams.name || 'Prestataire';
+  // ✅ NOUVEAU 2026-01-23: Produit cliqué pour l'inclure dans les résultats
+  const clickedProduct = routeParams.clickedProduct;
+  const clickedService = routeParams.clickedService;
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -117,21 +120,37 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
             rawResponse: JSON.stringify(productsResponse).substring(0, 200)
           });
           
-          // ✅ CORRIGÉ 2026-01-22: Gérer le cas où l'endpoint retourne directement un tableau
+          // ✅ CORRIGÉ 2026-01-23: Gérer le format de réponse de l'endpoint
+          // L'endpoint /api/services/{serviceId}/products retourne Json<Vec<ProductResponse>>
+          // apiGet wrapper la réponse dans { success: true, data: [...] }
           let productsArray: any[] = [];
-          if (Array.isArray(productsResponse.data)) {
+          
+          // ✅ CAS 1: La réponse est dans le format standard { success: true, data: [...] }
+          if (productsResponse && typeof productsResponse === 'object' && Array.isArray(productsResponse.data)) {
             productsArray = productsResponse.data;
-          } else if (Array.isArray(productsResponse)) {
-            // Si la réponse est directement un tableau (cas où l'endpoint retourne Json<Vec<T>>)
+          } 
+          // ✅ CAS 2: La réponse est directement un tableau (peu probable avec apiGet, mais on gère le cas)
+          else if (Array.isArray(productsResponse)) {
             productsArray = productsResponse;
-          } else if (productsResponse.success && productsResponse.data) {
-            // Si la réponse est dans un wrapper
-            if (Array.isArray(productsResponse.data)) {
-              productsArray = productsResponse.data;
-            } else if (Array.isArray(productsResponse.data.data)) {
+          }
+          // ✅ CAS 3: La réponse est dans un wrapper imbriqué
+          else if (productsResponse?.data && typeof productsResponse.data === 'object') {
+            if (Array.isArray(productsResponse.data.data)) {
               productsArray = productsResponse.data.data;
+            } else if (Array.isArray(productsResponse.data.products)) {
+              productsArray = productsResponse.data.products;
             }
           }
+          
+          console.log(`📦 [PrestataireBoutiqueScreen] Produits extraits pour service ${serviceId}:`, {
+            productsCount: productsArray.length,
+            firstProduct: productsArray[0] ? {
+              id: productsArray[0].id,
+              product_index: productsArray[0].product_index,
+              product_name: productsArray[0].product_name,
+              hasProductData: !!productsArray[0].product_data
+            } : null
+          });
           
           if (productsArray.length > 0) {
             const mappedProducts = productsArray.map((productFromAPI: any) => {
@@ -186,11 +205,60 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       });
 
       const productsArrays = await Promise.all(productPromises);
-      const extractedProducts = productsArrays.flat();
+      let extractedProducts = productsArrays.flat();
+      
+      // ✅ NOUVEAU 2026-01-23: Ajouter le produit cliqué s'il n'est pas déjà dans les résultats
+      if (clickedProduct && clickedService) {
+        const clickedProductId = clickedProduct.id || clickedProduct.product_id || 
+          (clickedProduct._serviceId && clickedProduct.product_index !== undefined 
+            ? `${clickedProduct._serviceId}_${clickedProduct.product_index}` 
+            : null);
+        
+        const isAlreadyIncluded = extractedProducts.some((p: any) => {
+          const pId = p.id || p.product_id || 
+            (p._serviceId && p.product_index !== undefined ? `${p._serviceId}_${p.product_index}` : null);
+          return pId === clickedProductId;
+        });
+        
+        if (!isAlreadyIncluded && clickedProductId) {
+          console.log(`✅ [PrestataireBoutiqueScreen] Ajout du produit cliqué aux résultats:`, {
+            productId: clickedProductId,
+            nom: clickedProduct.nom || clickedProduct.name || clickedProduct.nom_produit
+          });
+          
+          // Transformer le produit cliqué au même format que les autres
+          const productData = clickedProduct.product_data || clickedProduct;
+          const transformedClickedProduct = {
+            ...productData,
+            product_data: productData,
+            id: clickedProductId,
+            product_index: clickedProduct.product_index,
+            product_name: clickedProduct.product_name || productData.nom_produit || productData.nom || productData.name,
+            product_type: clickedProduct.product_type,
+            product_price: clickedProduct.product_price || productData.prix_produit || productData.prix,
+            nom_produit: productData.nom_produit || productData.nom || productData.name || clickedProduct.product_name,
+            nom: productData.nom_produit || productData.nom || productData.name || clickedProduct.product_name,
+            name: productData.nom_produit || productData.nom || productData.name || clickedProduct.product_name,
+            description: productData.description || productData.description_produit || clickedProduct.description,
+            description_produit: productData.description_produit || productData.description || clickedProduct.description_produit,
+            _serviceId: clickedProduct._serviceId || clickedProduct.service_id || clickedService.id,
+            _service: clickedService,
+            _prestataire: prestataireResponse.data,
+            images: clickedProduct.images || productData.images || [],
+            videos: clickedProduct.videos || productData.videos || [],
+          };
+          
+          // Ajouter en premier pour qu'il soit visible en haut
+          extractedProducts = [transformedClickedProduct, ...extractedProducts];
+        } else if (isAlreadyIncluded) {
+          console.log(`ℹ️ [PrestataireBoutiqueScreen] Le produit cliqué est déjà dans les résultats`);
+        }
+      }
       
       console.log(`📊 [PrestataireBoutiqueScreen] Total produits extraits: ${extractedProducts.length}`, {
         servicesProcessed: serviceIds.length,
-        productsPerService: productsArrays.map((arr, idx) => ({ serviceId: serviceIds[idx], count: arr.length }))
+        productsPerService: productsArrays.map((arr, idx) => ({ serviceId: serviceIds[idx], count: arr.length })),
+        clickedProductIncluded: clickedProduct ? 'Oui' : 'Non'
       });
 
       if (extractedProducts.length === 0) {

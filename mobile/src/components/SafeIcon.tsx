@@ -80,6 +80,8 @@ const iconToEmoji: { [key: string]: string } = {
     'image': '🖼️',
     'file': '📄',
     'folder': '📁',
+    'folder-open': '📂',
+    'FolderOpen': '📂',
     'link': '🔗',
 
     // Statuts

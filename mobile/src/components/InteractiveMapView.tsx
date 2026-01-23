@@ -1,6 +1,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     Dimensions,
     StyleSheet,
     Text,
@@ -68,6 +69,8 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
     });
     const [mapReady, setMapReady] = useState(false);
     const [mapError, setMapError] = useState(false);
+    // ✅ NOUVEAU: Animation pour l'indicateur de déplacement
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     // ✅ NOUVEAU: Exposer la méthode animateToRegion via ref
     useImperativeHandle(ref, () => ({
@@ -76,23 +79,65 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
         },
     }), []);
 
-    // ✅ NOUVEAU 2026-01-04: Repositionner automatiquement la carte quand selectedLocation change
+    // ✅ CORRIGÉ 2026-01-23: Repositionner automatiquement la carte avec animation fluide et visible
+    const [isAnimating, setIsAnimating] = useState(false);
+    const previousLocationRef = useRef<{ lat: number; lng: number } | null>(null);
+    
     useEffect(() => {
         if (selectedLocation && selectedLocation.lat != null && selectedLocation.lng != null) {
-            const newRegion: Region = {
+            // Vérifier si c'est un nouveau lieu (pas juste une mise à jour initiale)
+            const isNewLocation = previousLocationRef.current === null || 
+                previousLocationRef.current.lat !== selectedLocation.lat || 
+                previousLocationRef.current.lng !== selectedLocation.lng;
+            
+            if (isNewLocation && mapReady && mapRef.current) {
+                const newRegion: Region = {
+                    latitude: selectedLocation.lat,
+                    longitude: selectedLocation.lng,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                };
+                
+                // ✅ AMÉLIORÉ: Activer l'indicateur d'animation
+                setIsAnimating(true);
+                
+                // ✅ NOUVEAU: Démarrer l'animation de pulse
+                Animated.loop(
+                    Animated.sequence([
+                        Animated.timing(pulseAnim, {
+                            toValue: 1.3,
+                            duration: 500,
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(pulseAnim, {
+                            toValue: 1,
+                            duration: 500,
+                            useNativeDriver: true,
+                        }),
+                    ])
+                ).start();
+                
+                // ✅ AMÉLIORÉ: Animation plus longue et fluide (1000ms au lieu de 500ms)
+                mapRef.current.animateToRegion(newRegion, 1000);
+                
+                // ✅ AMÉLIORÉ: Désactiver l'indicateur après l'animation
+                setTimeout(() => {
+                    setIsAnimating(false);
+                    pulseAnim.stopAnimation();
+                    pulseAnim.setValue(1);
+                }, 1000);
+                
+                // Mettre à jour la référence de la position précédente
+                previousLocationRef.current = { lat: selectedLocation.lat, lng: selectedLocation.lng };
+            }
+            
+            // Mettre à jour mapRegion pour que la carte se repositionne
+            setMapRegion({
                 latitude: selectedLocation.lat,
                 longitude: selectedLocation.lng,
                 latitudeDelta: 0.01,
                 longitudeDelta: 0.01,
-            };
-            
-            // Mettre à jour mapRegion pour que la carte se repositionne
-            setMapRegion(newRegion);
-            
-            // Animer la carte vers le nouveau lieu si la carte est prête
-            if (mapReady && mapRef.current) {
-                mapRef.current.animateToRegion(newRegion, 500);
-            }
+            });
         }
     }, [selectedLocation, mapReady]);
 
@@ -123,8 +168,47 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                 onPolygonSelect(newPoints);
             }
         } else if (onLocationSelect) {
-            // Mode point : remplacer la position
+            // ✅ AMÉLIORÉ: Mode point avec animation visible
+            // Activer l'indicateur d'animation avant de changer la position
+            setIsAnimating(true);
+            
+            // ✅ NOUVEAU: Démarrer l'animation de pulse
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.3,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+            
+            // Appeler onLocationSelect qui déclenchera l'animation via useEffect
             onLocationSelect(newPoint);
+            
+            // ✅ NOUVEAU: Animer immédiatement la carte vers le nouveau point pour feedback instantané
+            if (mapRef.current) {
+                const newRegion: Region = {
+                    latitude: newPoint.lat,
+                    longitude: newPoint.lng,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                };
+                // Animation fluide de 1000ms pour que l'utilisateur voie le déplacement
+                mapRef.current.animateToRegion(newRegion, 1000);
+            }
+            
+            // Désactiver l'indicateur après l'animation
+            setTimeout(() => {
+                setIsAnimating(false);
+                pulseAnim.stopAnimation();
+                pulseAnim.setValue(1);
+            }, 1000);
         }
     };
 
@@ -252,7 +336,7 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                 loadingBackgroundColor={modernColors.background}
                 customMapStyle={mapStyle === 'standard' ? undefined : []}
             >
-                {/* Marqueur de position sélectionnée (pour mode point) */}
+                {/* ✅ AMÉLIORÉ: Marqueur de position sélectionnée avec animation de pulse */}
                 {selectedLocation && zoneType !== 'polygon' && (
                     <Marker
                         coordinate={{
@@ -262,6 +346,8 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                         title="Position sélectionnée"
                         description={`${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`}
                         pinColor={modernColors.primary}
+                        // ✅ NOUVEAU: Animation du marqueur pour feedback visuel
+                        tracksViewChanges={isAnimating}
                     />
                 )}
 
@@ -352,6 +438,26 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                     </TouchableOpacity>
                 )}
             </View>
+
+            {/* ✅ NOUVEAU: Indicateur visuel pendant l'animation de déplacement avec animation pulse */}
+            {isAnimating && (
+                <View style={styles.animationIndicator}>
+                    <Animated.View 
+                        style={[
+                            styles.animationPulse,
+                            {
+                                transform: [{ scale: pulseAnim }],
+                                opacity: pulseAnim.interpolate({
+                                    inputRange: [0.5, 1],
+                                    outputRange: [0.5, 1],
+                                }),
+                            }
+                        ]} 
+                    />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <Text style={styles.animationText}>Déplacement...</Text>
+                </View>
+            )}
 
             {/* Légende des informations */}
             <View style={styles.legend}>
@@ -545,5 +651,38 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#FFFFFF',
         fontWeight: '600',
+    },
+    // ✅ NOUVEAU: Styles pour l'indicateur d'animation
+    animationIndicator: {
+        position: 'absolute',
+        top: '45%',
+        alignSelf: 'center',
+        backgroundColor: 'rgba(99, 102, 241, 0.95)',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 25,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+        elevation: 10,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    animationPulse: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#FFFFFF',
+    },
+    animationText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
 });

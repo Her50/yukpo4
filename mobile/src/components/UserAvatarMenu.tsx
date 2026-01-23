@@ -62,6 +62,13 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         }
     ] : [
         // ✅ MENU UTILISATEUR STANDARD: Pour les non-admins
+        // ✅ AMÉLIORÉ 2026-01-23: Produits consultés en premier pour meilleure visibilité
+        {
+            title: 'Produits consultés',
+            icon: '🕐',
+            route: 'HistoriqueProduitsConsultes',
+            description: 'Voir les produits que vous avez consultés'
+        },
         {
             title: 'Mon historique',
             icon: '📊',

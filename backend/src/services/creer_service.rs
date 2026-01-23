@@ -3001,6 +3001,25 @@ pub async fn creer_service(
                 product_index,
                 service_id
             );
+            
+            // ✅ NOUVEAU 2026-01-23: Vérifier que sous_caracteristiques sont présentes après nettoyage
+            if let Some(sous_caracs) = produit_cleaned_for_creation.get("sous_caracteristiques").and_then(|v| v.as_object()) {
+                let dimensions_count = sous_caracs.len();
+                log::info!(
+                    "[creer_service] ✅ sous_caracteristiques présentes après nettoyage: {} dimensions",
+                    dimensions_count
+                );
+                log::debug!(
+                    "[creer_service] 📋 Dimensions: {:?}",
+                    sous_caracs.keys().collect::<Vec<_>>()
+                );
+            } else {
+                log::warn!(
+                    "[creer_service] ⚠️ sous_caracteristiques ABSENTES après nettoyage pour produit {}",
+                    product_index
+                );
+            }
+            
             log::info!(
                 "[creer_service] 🔍 Produit nettoyé (clés): {:?}",
                 produit_cleaned_for_creation.as_object()
@@ -5523,8 +5542,11 @@ pub async fn save_ia_combinations_to_db(
             
             // Étape 1: Mapper les valeurs qui correspondent exactement à une dimension
             // ✅ CORRECTION: Permettre plusieurs valeurs pour la même dimension si nécessaire
+            // ✅ AMÉLIORÉ: Ajouter correspondance partielle et fuzzy matching
             for value in &product_vector {
                 let normalized_value = value.trim().to_lowercase();
+                
+                // 1. Correspondance exacte (priorité)
                 if let Some(possible_dimensions) = value_to_dimensions.get(&normalized_value) {
                     // Prendre la première dimension non assignée, ou la première disponible
                     if let Some(dimension) = possible_dimensions.iter()
@@ -5533,6 +5555,7 @@ pub async fn save_ia_combinations_to_db(
                     {
                         mapped_values.push((dimension.clone(), value.clone()));
                         assigned_dimensions.insert(dimension.clone());
+                        continue;
                     } else {
                         // ✅ NOUVEAU: Si toutes les dimensions possibles sont déjà assignées,
                         // mais que la valeur correspond à une dimension, on peut quand même l'ajouter
@@ -5541,13 +5564,103 @@ pub async fn save_ia_combinations_to_db(
                             // Vérifier si cette valeur est déjà mappée à cette dimension
                             if !mapped_values.iter().any(|(dim, val)| dim == dimension && val == value) {
                                 mapped_values.push((dimension.clone(), value.clone()));
-                            } else {
-                                unmapped_values.push(value.clone());
+                                continue;
                             }
-                        } else {
-                            unmapped_values.push(value.clone());
                         }
                     }
+                }
+                
+                // 2. ✅ NOUVEAU: Correspondance partielle (fuzzy matching)
+                // Chercher si la valeur est contenue dans une valeur de dimension ou vice versa
+                let mut best_match: Option<(String, String)> = None;
+                let mut best_score = 0.0;
+                
+                for (dimension, values_array) in sous_caracs.iter() {
+                    if let Some(values) = values_array.as_array() {
+                        for value_val in values {
+                            if let Some(value_str) = value_val.as_str() {
+                                let normalized_dim_value = value_str.trim().to_lowercase();
+                                
+                                // Correspondance exacte (déjà géré ci-dessus, mais on vérifie encore)
+                                if normalized_value == normalized_dim_value {
+                                    best_match = Some((dimension.clone(), value.clone()));
+                                    best_score = 1.0;
+                                    break;
+                                }
+                                
+                                // Correspondance partielle : la valeur est contenue dans la valeur de dimension
+                                if normalized_dim_value.contains(&normalized_value) || normalized_value.contains(&normalized_dim_value) {
+                                    let score = if normalized_value == normalized_dim_value {
+                                        1.0
+                                    } else if normalized_dim_value.contains(&normalized_value) {
+                                        normalized_value.len() as f64 / normalized_dim_value.len() as f64
+                                    } else {
+                                        normalized_dim_value.len() as f64 / normalized_value.len() as f64
+                                    };
+                                    
+                                    if score > best_score && score >= 0.5 {
+                                        // Éviter de mapper à une dimension déjà assignée si possible
+                                        if !assigned_dimensions.contains(dimension) {
+                                            best_match = Some((dimension.clone(), value.clone()));
+                                            best_score = score;
+                                        } else if best_match.is_none() {
+                                            // Si aucune meilleure option, utiliser celle-ci
+                                            best_match = Some((dimension.clone(), value.clone()));
+                                            best_score = score;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 3. ✅ NOUVEAU: Mapping intelligent par contexte (mots-clés génériques uniquement)
+                // ✅ CORRIGÉ: Ne pas hardcoder des produits spécifiques, utiliser des patterns génériques
+                if best_match.is_none() {
+                    let value_lower = normalized_value.as_str();
+                    
+                    // Mapping par patterns génériques (unités de mesure, qualificatifs, etc.)
+                    // ✅ CORRIGÉ: Patterns génériques uniquement, pas de produits spécifiques
+                    let generic_patterns: Vec<(&str, &str)> = vec![
+                        // Unités de mesure → conditionnement
+                        ("kg", "conditionnement"),
+                        ("g", "conditionnement"),
+                        ("ml", "conditionnement"),
+                        ("l", "conditionnement"),
+                        ("cl", "conditionnement"),
+                        ("dl", "conditionnement"),
+                        // Qualificatifs de qualité
+                        ("supérieur", "qualité"),
+                        ("standard", "qualité"),
+                        ("premium", "qualité"),
+                        ("excellence", "qualité"),
+                        ("premium", "qualité"),
+                        // Origine/Provenance (patterns génériques)
+                        ("importé", "origine"),
+                        ("import", "origine"),
+                        ("local", "origine"),
+                        ("locale", "origine"),
+                        ("national", "origine"),
+                        ("nationale", "origine"),
+                    ];
+                    
+                    for (pattern, dimension) in generic_patterns {
+                        if value_lower.contains(pattern) {
+                            // Vérifier si cette dimension existe dans sous_caracteristiques
+                            if sous_caracs.contains_key(dimension) {
+                                best_match = Some((dimension.to_string(), value.clone()));
+                                best_score = 0.7; // Score moyen pour correspondance par pattern
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Utiliser le meilleur match trouvé
+                if let Some((dimension, mapped_value)) = best_match {
+                    mapped_values.push((dimension.clone(), mapped_value));
+                    assigned_dimensions.insert(dimension);
                 } else {
                     unmapped_values.push(value.clone());
                 }
@@ -5567,11 +5680,14 @@ pub async fn save_ia_combinations_to_db(
                     .push(value.clone());
             }
             
+            // ✅ NOUVEAU: Essayer de mapper les valeurs non mappées aux dimensions vides
+            // en utilisant une correspondance sémantique basée sur les valeurs disponibles dans chaque dimension
+            let mut remaining_unmapped = unmapped_values.clone();
+            let mut used_unmapped_indices = std::collections::HashSet::new();
+            
             for dimension in &dimension_order {
                 if let Some(values) = dimension_to_values.get(dimension) {
                     // Cette dimension a été assignée - prendre la première valeur
-                    // ✅ CORRECTION: Si plusieurs valeurs correspondent à la même dimension,
-                    // on prend la première qui correspond exactement
                     if let Some(value) = values.first() {
                         final_labels.push(dimension.clone());
                         final_values.push(value.clone());
@@ -5580,16 +5696,54 @@ pub async fn save_ia_combinations_to_db(
                         final_values.push(String::new());
                     }
                 } else {
-                    // Cette dimension n'a pas été assignée, ajouter valeur vide
-                    final_labels.push(dimension.clone());
-                    final_values.push(String::new());
+                    // Cette dimension n'a pas été assignée
+                    // ✅ NOUVEAU: Essayer de trouver une valeur non mappée qui pourrait correspondre
+                    // en vérifiant si une valeur non mappée est similaire aux valeurs disponibles dans cette dimension
+                    let mut found_match = false;
+                    if let Some(dimension_values_array) = sous_caracs.get(dimension).and_then(|v| v.as_array()) {
+                        for (idx, unmapped_value) in remaining_unmapped.iter().enumerate() {
+                            if used_unmapped_indices.contains(&idx) {
+                                continue;
+                            }
+                            
+                            let normalized_unmapped = unmapped_value.trim().to_lowercase();
+                            
+                            // Vérifier si la valeur non mappée est similaire à une valeur de cette dimension
+                            for dim_value in dimension_values_array {
+                                if let Some(dim_value_str) = dim_value.as_str() {
+                                    let normalized_dim = dim_value_str.trim().to_lowercase();
+                                    
+                                    // Correspondance partielle : si la valeur non mappée contient ou est contenue dans une valeur de dimension
+                                    if normalized_unmapped.contains(&normalized_dim) || normalized_dim.contains(&normalized_unmapped) {
+                                        final_labels.push(dimension.clone());
+                                        final_values.push(unmapped_value.clone());
+                                        used_unmapped_indices.insert(idx);
+                                        found_match = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if found_match {
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if !found_match {
+                        // Aucune correspondance trouvée, ajouter valeur vide
+                        final_labels.push(dimension.clone());
+                        final_values.push(String::new());
+                    }
                 }
             }
             
-            // Étape 3: Ajouter les valeurs restantes qui n'ont pas été mappées (valeurs inconnues)
-            for value in &unmapped_values {
-                final_labels.push(format!("caracteristique_{}", final_labels.len()));
-                final_values.push(value.clone());
+            // Étape 3: Ajouter les valeurs restantes qui n'ont toujours pas été mappées (valeurs vraiment inconnues)
+            for (idx, value) in remaining_unmapped.iter().enumerate() {
+                if !used_unmapped_indices.contains(&idx) {
+                    final_labels.push(format!("caracteristique_{}", final_labels.len()));
+                    final_values.push(value.clone());
+                }
             }
             
             // ✅ NOUVEAU: Log détaillé pour identifier les problèmes de mapping
@@ -5619,6 +5773,23 @@ pub async fn save_ia_combinations_to_db(
                 .zip(final_values.iter())
                 .map(|(label, value)| format!("{}:{}", label, if value.is_empty() { "(vide)" } else { value }))
                 .collect();
+            
+            // ✅ NOUVEAU: Vérifier la cohérence entre labels et valeurs
+            let mut alignment_issues: Vec<String> = vec![];
+            for (idx, (label, value)) in final_labels.iter().zip(final_values.iter()).enumerate() {
+                if value.is_empty() && idx < product_vector.len() {
+                    // Il y a une valeur dans product_vector qui n'a pas été mappée à ce label
+                    alignment_issues.push(format!("Label '{}' [{}] est vide alors qu'il y a des valeurs non mappées", label, idx));
+                }
+            }
+            
+            if !alignment_issues.is_empty() {
+                log::warn!(
+                    "[save_ia_combinations_to_db] ⚠️ Problèmes d'alignement détectés: {}",
+                    alignment_issues.join("; ")
+                );
+            }
+            
             log::info!(
                 "[save_ia_combinations_to_db] Mapping intelligent appliqué: {} labels pour {} valeurs. Mapping: [{}]",
                 final_labels.len(),

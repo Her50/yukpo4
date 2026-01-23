@@ -342,16 +342,34 @@ const CourierAdminPage: React.FC = () => {
                                 <div className="border rounded-lg p-4">
                                     <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
                                         <User className="w-5 h-5" />
-                                        Candidat
+                                        Informations candidat
                                     </h4>
-                                    <p className="text-gray-800 font-medium">
-                                        {selectedApplication.user_name}
-                                    </p>
-                                    {selectedApplication.user_email && (
-                                        <p className="text-gray-600 text-sm mt-1">
-                                            {selectedApplication.user_email}
+                                    <div className="space-y-2">
+                                        <p className="text-gray-800 font-medium">
+                                            {selectedApplication.user_name}
                                         </p>
-                                    )}
+                                        {selectedApplication.user_email && (
+                                            <p className="text-gray-600 text-sm flex items-center gap-1">
+                                                <Mail className="w-3 h-3" />
+                                                {selectedApplication.user_email}
+                                            </p>
+                                        )}
+                                        {selectedApplication.profile_data?.personal?.phone && (
+                                            <p className="text-gray-600 text-sm">
+                                                📞 {selectedApplication.profile_data.personal.phone}
+                                            </p>
+                                        )}
+                                        {selectedApplication.profile_data?.personal?.idNumber && (
+                                            <p className="text-gray-600 text-sm">
+                                                🆔 ID: {selectedApplication.profile_data.personal.idNumber}
+                                            </p>
+                                        )}
+                                        {selectedApplication.profile_data?.personal?.dateOfBirth && (
+                                            <p className="text-gray-600 text-sm">
+                                                🎂 Né(e) le: {new Date(selectedApplication.profile_data.personal.dateOfBirth).toLocaleDateString('fr-FR')}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Statut */}
@@ -434,6 +452,63 @@ const CourierAdminPage: React.FC = () => {
                                                     }
                                                 </p>
                                             )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Documents */}
+                                {selectedApplication.documents && (
+                                    <div className="border rounded-lg p-4">
+                                        <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                            <FileText className="w-5 h-5" />
+                                            Documents soumis
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {Object.entries(selectedApplication.documents).map(([key, doc]: [string, any]) => {
+                                                const docLabels: Record<string, string> = {
+                                                    id_document: 'Pièce d\'identité',
+                                                    driver_license: 'Permis de conduire',
+                                                    vehicle_registration: 'Carte grise',
+                                                    insurance: 'Assurance véhicule',
+                                                    vehicle_image: 'Photo du véhicule',
+                                                    location_plan: 'Plan de localisation',
+                                                };
+                                                const label = docLabels[key] || key;
+                                                const hasData = doc?.data || doc?.url;
+                                                
+                                                return (
+                                                    <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                        <div className="flex-1">
+                                                            <p className="font-medium text-gray-800">{label}</p>
+                                                            {doc?.name && (
+                                                                <p className="text-sm text-gray-600">{doc.name}</p>
+                                                            )}
+                                                            {doc?.type && (
+                                                                <p className="text-xs text-gray-500">Type: {doc.type}</p>
+                                                            )}
+                                                        </div>
+                                                        {hasData && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (doc.data) {
+                                                                        // Afficher l'image en base64
+                                                                        const imageUrl = `data:${doc.type || 'image/jpeg'};base64,${doc.data}`;
+                                                                        window.open(imageUrl, '_blank');
+                                                                    } else if (doc.url) {
+                                                                        window.open(doc.url, '_blank');
+                                                                    }
+                                                                }}
+                                                                className="ml-3 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                                                            >
+                                                                Voir
+                                                            </button>
+                                                        )}
+                                                        {!hasData && (
+                                                            <span className="ml-3 text-xs text-red-600">Manquant</span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}

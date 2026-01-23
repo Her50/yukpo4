@@ -396,13 +396,28 @@ const CourierAdminScreen: React.FC = () => {
                         {selectedApplication ? (
                             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={true}>
                                 <NativeCard style={styles.detailCard}>
-                                    <Text style={styles.detailLabel}>Candidat</Text>
+                                    <Text style={styles.detailLabel}>Informations candidat</Text>
                                     <Text style={styles.detailValue}>
                                         {selectedApplication.user_name}
                                     </Text>
                                     {selectedApplication.user_email && (
                                         <Text style={styles.detailValue}>
-                                            {selectedApplication.user_email}
+                                            📧 {selectedApplication.user_email}
+                                        </Text>
+                                    )}
+                                    {selectedApplication.profile_data?.personal?.phone && (
+                                        <Text style={styles.detailValue}>
+                                            📞 {selectedApplication.profile_data.personal.phone}
+                                        </Text>
+                                    )}
+                                    {selectedApplication.profile_data?.personal?.idNumber && (
+                                        <Text style={styles.detailValue}>
+                                            🆔 ID: {selectedApplication.profile_data.personal.idNumber}
+                                        </Text>
+                                    )}
+                                    {selectedApplication.profile_data?.personal?.dateOfBirth && (
+                                        <Text style={styles.detailValue}>
+                                            🎂 Né(e) le: {new Date(selectedApplication.profile_data.personal.dateOfBirth).toLocaleDateString('fr-FR')}
                                         </Text>
                                     )}
                                 </NativeCard>
@@ -474,6 +489,52 @@ const CourierAdminScreen: React.FC = () => {
                                         </View>
                                     )}
                                 </NativeCard>
+
+                                {/* Documents */}
+                                {selectedApplication.documents && (
+                                    <NativeCard style={styles.detailCard}>
+                                        <Text style={styles.detailLabel}>Documents soumis</Text>
+                                        {Object.entries(selectedApplication.documents).map(([key, doc]: [string, any]) => {
+                                            const docLabels: Record<string, string> = {
+                                                id_document: 'Pièce d\'identité',
+                                                driver_license: 'Permis de conduire',
+                                                vehicle_registration: 'Carte grise',
+                                                insurance: 'Assurance véhicule',
+                                                vehicle_image: 'Photo du véhicule',
+                                                location_plan: 'Plan de localisation',
+                                            };
+                                            const label = docLabels[key] || key;
+                                            const hasData = doc?.data || doc?.url;
+                                            
+                                            return (
+                                                <View key={key} style={styles.documentItem}>
+                                                    <View style={styles.documentInfo}>
+                                                        <Text style={styles.documentLabel}>{label}</Text>
+                                                        {doc?.name && (
+                                                            <Text style={styles.documentName}>{doc.name}</Text>
+                                                        )}
+                                                        {doc?.type && (
+                                                            <Text style={styles.documentType}>Type: {doc.type}</Text>
+                                                        )}
+                                                    </View>
+                                                    {hasData ? (
+                                                        <TouchableOpacity
+                                                            style={styles.viewButton}
+                                                            onPress={() => {
+                                                                // TODO: Ouvrir le document dans un viewer
+                                                                Alert.alert('Document', `Document: ${label}`);
+                                                            }}
+                                                        >
+                                                            <Text style={styles.viewButtonText}>Voir</Text>
+                                                        </TouchableOpacity>
+                                                    ) : (
+                                                        <Text style={styles.missingText}>Manquant</Text>
+                                                    )}
+                                                </View>
+                                            );
+                                        })}
+                                    </NativeCard>
+                                )}
 
                                 {selectedApplication.rejection_reason && (
                                     <NativeCard style={styles.detailCard}>
@@ -804,6 +865,49 @@ const styles = StyleSheet.create({
         minHeight: 100,
         textAlignVertical: 'top',
         marginBottom: 16,
+    },
+    documentItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: modernColors.background,
+        borderRadius: 8,
+        marginBottom: 8,
+    },
+    documentInfo: {
+        flex: 1,
+    },
+    documentLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    documentName: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginBottom: 2,
+    },
+    documentType: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+    },
+    viewButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: modernColors.primary,
+        borderRadius: 6,
+    },
+    viewButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.surface,
+    },
+    missingText: {
+        fontSize: 11,
+        color: modernColors.error,
+        fontStyle: 'italic',
     },
 });
 

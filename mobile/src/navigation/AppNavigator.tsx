@@ -79,6 +79,7 @@ import PubliciteDashboardScreen from '../screens/PubliciteDashboardScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
 import PrestataireBoutiqueScreen from '../screens/PrestataireBoutiqueScreen';
+import HistoriqueProduitsConsultesScreen from '../screens/HistoriqueProduitsConsultesScreen';
 import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import AgenceVoyageFormScreen from '../screens/specialized/AgenceVoyageFormScreen';
@@ -229,6 +230,7 @@ const ProductDetailScreenWithSafeArea = withNavigatorSafeArea(ProductDetailScree
 const ServiceDetailSharedScreenWithSafeArea = withNavigatorSafeArea(ServiceDetailSharedScreen);
 const ResultatBesoinScreenWithSafeArea = withNavigatorSafeArea(ResultatBesoinScreen);
 const PrestataireBoutiqueScreenWithSafeArea = withNavigatorSafeArea(PrestataireBoutiqueScreen);
+const HistoriqueProduitsConsultesScreenWithSafeArea = withNavigatorSafeArea(HistoriqueProduitsConsultesScreen);
 const OrderStatusScreenWithSafeArea = withNavigatorSafeArea(OrderStatusScreen);
 const ProviderOrderManagementScreenWithSafeArea = withNavigatorSafeArea(ProviderOrderManagementScreen);
 const CreatePubliciteScreenWithSafeArea = withNavigatorSafeArea(CreatePubliciteScreen);
@@ -1534,6 +1536,16 @@ const SecondaryStack = () => {
         <Stack.Screen
           name="PrestataireBoutique"
           component={PrestataireBoutiqueScreenWithSafeArea}
+          options={{ title: 'Boutique' }}
+        />
+        <Stack.Screen
+          name="HistoriqueProduitsConsultes"
+          component={HistoriqueProduitsConsultesScreenWithSafeArea}
+          options={{ title: 'Produits consultés' }}
+        />
+        <Stack.Screen
+          name="ServiceDetail"
+          component={ServiceDetailScreenWithSafeArea}
           options={{
             ...defaultScreenOptions,
             title: 'Boutique',

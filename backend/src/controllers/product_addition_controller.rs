@@ -75,6 +75,31 @@ pub async fn process_product_creation(
         if product_description_after.is_empty() { "ABSENTE" } else { product_description_after }
     );
     
+    // ✅ NOUVEAU 2026-01-23: Vérifier que sous_caracteristiques sont présentes
+    let has_sous_caracteristiques = product_data_cleaned
+        .get("sous_caracteristiques")
+        .and_then(|v| v.as_object())
+        .is_some();
+    if has_sous_caracteristiques {
+        let sous_caracs = product_data_cleaned
+            .get("sous_caracteristiques")
+            .and_then(|v| v.as_object())
+            .unwrap();
+        let dimensions_count = sous_caracs.len();
+        log::info!(
+            "[process_product_creation] ✅ sous_caracteristiques présentes: {} dimensions",
+            dimensions_count
+        );
+        log::debug!(
+            "[process_product_creation] 📋 Dimensions: {:?}",
+            sous_caracs.keys().collect::<Vec<_>>()
+        );
+    } else {
+        log::warn!(
+            "[process_product_creation] ⚠️ sous_caracteristiques ABSENTES dans product_data"
+        );
+    }
+    
     // ✅ PHASE 1: Écriture UNIQUEMENT dans table products (JSONB supprimé)
     // Calculer le product_index depuis le nombre de produits existants
     use crate::services::products_service::ProductsService;

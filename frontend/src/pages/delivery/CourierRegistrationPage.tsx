@@ -23,6 +23,7 @@ interface CourierApplicationFormData {
     driverLicense: File | null;
     vehicleRegistration: File | null;
     insuranceDocument: File | null;
+    locationPlan: File | null; // ✅ NOUVEAU: Plan de localisation (obligatoire)
 
     // Transport
     vehicleType: 'bike' | 'motorcycle' | 'tricycle' | 'car' | 'pickup' | 'van' | 'truck' | 'walking';
@@ -58,6 +59,7 @@ const CourierRegistrationPage: React.FC = () => {
         driverLicense: null,
         vehicleRegistration: null,
         insuranceDocument: null,
+        locationPlan: null, // ✅ NOUVEAU: Plan de localisation
         vehicleType: 'motorcycle',
         vehicleBrand: '',
         vehicleModel: '',
@@ -114,7 +116,7 @@ const CourierRegistrationPage: React.FC = () => {
         }
     };
 
-    const handleFileUpload = (field: 'idDocument' | 'driverLicense' | 'vehicleRegistration' | 'insuranceDocument', file: File | null) => {
+    const handleFileUpload = (field: 'idDocument' | 'driverLicense' | 'vehicleRegistration' | 'insuranceDocument' | 'locationPlan', file: File | null) => {
         setFormData(prev => ({ ...prev, [field]: file }));
     };
 
@@ -139,6 +141,7 @@ const CourierRegistrationPage: React.FC = () => {
         if (formData.vehicleType !== 'walking' && !formData.driverLicense) {
             newErrors.driverLicense = 'Le permis de conduire est requis';
         }
+        if (!formData.locationPlan) newErrors.locationPlan = 'Le plan de localisation est obligatoire';
         if (formData.availabilityDays.length === 0) {
             newErrors.availabilityDays = 'Sélectionnez au moins un jour de disponibilité';
         }
@@ -204,6 +207,14 @@ const CourierRegistrationPage: React.FC = () => {
                     name: formData.insuranceDocument.name,
                     data: base64,
                     type: formData.insuranceDocument.type,
+                };
+            }
+            if (formData.locationPlan) {
+                const base64 = await convertFileToBase64(formData.locationPlan);
+                documents.location_plan = {
+                    name: formData.locationPlan.name,
+                    data: base64,
+                    type: formData.locationPlan.type,
                 };
             }
 
@@ -633,6 +644,25 @@ const CourierRegistrationPage: React.FC = () => {
                                     <p className="text-xs text-slate-500 mt-1">Carte verte ou attestation d'assurance</p>
                                 </div>
                             )}
+                            {/* ✅ NOUVEAU: Plan de localisation (obligatoire) */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    Plan de localisation (carte/plan de votre zone d'intervention) *
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    onChange={(e) => handleFileUpload('locationPlan', e.target.files?.[0] || null)}
+                                    className={`w-full rounded-md border p-2 ${errors.locationPlan ? 'border-red-500' : 'border-slate-300'}`}
+                                />
+                                {errors.locationPlan && <p className="text-sm text-red-500 mt-1">{errors.locationPlan}</p>}
+                                {formData.locationPlan && (
+                                    <p className="text-sm text-slate-600 mt-1">📄 {formData.locationPlan.name}</p>
+                                )}
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Indiquez votre zone d'intervention principale sur une carte (capture d'écran Google Maps, plan, etc.)
+                                </p>
+                            </div>
                         </div>
                     </section>
 
