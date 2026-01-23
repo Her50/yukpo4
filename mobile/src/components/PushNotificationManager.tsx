@@ -71,7 +71,31 @@ const PushNotificationManager: React.FC = () => {
                         }
                     ]
                 );
-            } 
+            }
+            // ✅ NOUVEAU: Gérer les notifications de livraison disponible (foreground)
+            else if (data?.type === 'delivery_available') {
+                console.log('[PushNotificationManager] 📦 Notification de livraison disponible (foreground):', data.delivery_id);
+                
+                // Afficher une alerte avec options d'accepter ou voir les détails
+                Alert.alert(
+                    notification.request.content.title || '📦 Nouvelle livraison disponible',
+                    notification.request.content.body || '',
+                    [
+                        { text: 'Fermer', style: 'cancel' },
+                        {
+                            text: 'Voir',
+                            onPress: () => {
+                                if (data.delivery_id) {
+                                    (navigation as any).navigate('DeliveryTracking', {
+                                        deliveryId: data.delivery_id,
+                                        showAcceptButton: true,
+                                    });
+                                }
+                            }
+                        }
+                    ]
+                );
+            }
             else {
                 // Autres notifications - afficher une alerte
                 Alert.alert(
@@ -117,6 +141,10 @@ const PushNotificationManager: React.FC = () => {
             // ✅ NOUVEAU: Gérer les notifications de livraison disponible
             else if (data?.type === 'delivery_available') {
                 console.log('[PushNotificationManager] 📦 Notification de livraison disponible:', data.delivery_id);
+                
+                // ✅ NOUVEAU: Jouer un son pour attirer l'attention du coursier
+                // Le son est déjà joué par le système via le canal "delivery_notifications"
+                // mais on peut aussi utiliser le service de son si nécessaire
                 
                 // Naviguer vers l'écran de suivi de livraison
                 if (data.delivery_id) {

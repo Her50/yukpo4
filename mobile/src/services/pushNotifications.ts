@@ -148,6 +148,18 @@ export async function registerForPushNotificationsAsync(userToken: string): Prom
                 showBadge: true,
                 lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
             });
+
+            // ✅ NOUVEAU : Canal pour les notifications de livraison (coursiers)
+            await Notifications.setNotificationChannelAsync('delivery_notifications', {
+                name: 'Livraisons disponibles',
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250, 250, 250],
+                lightColor: '#F59E0B',
+                sound: 'delivery_alert', // Son personnalisé pour les livraisons
+                enableVibrate: true,
+                showBadge: true,
+                lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            });
         }
 
         // Enregistrer le token sur le serveur

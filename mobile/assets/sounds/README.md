@@ -13,6 +13,16 @@ Sonnerie pour les appels entrants (audio/vidéo)
 - Qualité : 128 kbps
 - Taille : < 500 KB
 
+### 2. **delivery_alert.mp3** (Recommandé)
+Son d'alerte pour les notifications de livraison disponibles (coursiers)
+
+**Spécifications recommandées :**
+- Format : MP3
+- Durée : 1-3 secondes (court et percutant)
+- Qualité : 128 kbps
+- Taille : < 500 KB
+- **Guide détaillé** : Voir `DELIVERY_ALERT_INSTRUCTIONS.md`
+
 ## 🎵 Options pour obtenir un son
 
 ### Option 1 : Sons libres de droits
@@ -35,10 +45,18 @@ adb pull /system/media/audio/ringtones/[nom_fichier].ogg
 
 ## 📝 Une fois le fichier obtenu
 
+### Pour call_ringtone.mp3 :
 1. **Renommer** le fichier en `call_ringtone.mp3`
 2. **Placer** dans ce dossier (`mobile/assets/sounds/`)
 3. **Vérifier** que le fichier est bien nommé (sensible à la casse)
 4. **Ajouter** au git : `git add assets/sounds/call_ringtone.mp3`
+
+### Pour delivery_alert.mp3 :
+1. **Renommer** le fichier en `delivery_alert.mp3`
+2. **Placer** dans ce dossier (`mobile/assets/sounds/`)
+3. **Vérifier** que le fichier est bien nommé (sensible à la casse)
+4. **Ajouter** au git : `git add assets/sounds/delivery_alert.mp3`
+5. **Voir** `DELIVERY_ALERT_INSTRUCTIONS.md` pour plus de détails
 
 ## 🔄 Activer dans la configuration
 
@@ -50,7 +68,10 @@ Le fichier `app.json` sera automatiquement mis à jour pour inclure :
   {
     "icon": "./assets/notification-icon.png",
     "color": "#6366F1",
-    "sounds": ["./assets/sounds/call_ringtone.mp3"],
+    "sounds": [
+      "./assets/sounds/call_ringtone.mp3",
+      "./assets/sounds/delivery_alert.mp3"
+    ],
     "androidMode": "default",
     "androidCollapsedTitle": "Yukpomnang"
   }
