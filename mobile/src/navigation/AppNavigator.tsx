@@ -1508,15 +1508,6 @@ const SecondaryStack = () => {
           }}
         />
         <Stack.Screen
-          name="ServiceDetail"
-          component={ServiceDetailSharedScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour détails service
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
           name="ServiceDetailShared"
           component={ServiceDetailSharedScreenWithSafeArea}
           options={{
