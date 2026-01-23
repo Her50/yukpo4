@@ -249,20 +249,6 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             total_estimated_cost: total,
         }));
     }, [editableShoppingList]);
-    
-    // ✅ NOUVEAU: Mettre à jour le total de la liste de courses éditable
-    const updateShoppingListTotal = () => {
-        if (!generatedShoppingList) return;
-        
-        const total = editableShoppingList.reduce((sum, item) => {
-            return sum + (item.actual_price || item.estimated_price || 0);
-        }, 0);
-        
-        setGeneratedShoppingList({
-            ...generatedShoppingList,
-            total_estimated_cost: total,
-        });
-    };
 
     // ✅ SUPPRIMÉ: Plus besoin de charger manuellement les coursiers
     // Le système de matching automatique du backend s'en chargera lors de la création de la livraison
