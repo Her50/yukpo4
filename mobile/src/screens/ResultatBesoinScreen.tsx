@@ -204,7 +204,7 @@ const ResultatBesoinScreen: React.FC = () => {
         }
         
         return score;
-    }, []);
+    }, [getProductName]);
 
     // Déterminer la catégorie dominante des produits
     const dominantCategory = useMemo(() => {
@@ -823,7 +823,9 @@ const ResultatBesoinScreen: React.FC = () => {
                                     if (!isNaN(userLat) && !isNaN(userLon) && !isNaN(productLat) && !isNaN(productLon)) {
                                         // ✅ CORRIGÉ 2026-01-XX: Utiliser calculateDistance au lieu de calculateDistanceFromCoords
                                         distance = calculateDistance(userLat, userLon, productLat, productLon);
-                                        console.log(`✅ [ResultatBesoinScreen] Distance produit calculée: ${distance.toFixed(2)} km (${product.nom || 'produit'})`);
+                                        const productDataForLog = product.product_data || product;
+                                        const productNameForLog = getProductName(productDataForLog) || 'produit';
+                                        console.log(`✅ [ResultatBesoinScreen] Distance produit calculée: ${distance.toFixed(2)} km (${productNameForLog})`);
                                     }
                                 } catch (error) {
                                     console.warn('⚠️ [ResultatBesoinScreen] Erreur calcul distance produit:', error);
@@ -833,7 +835,9 @@ const ResultatBesoinScreen: React.FC = () => {
                             // ✅ FALLBACK: Utiliser la distance du service si disponible et si la distance du produit n'a pas pu être calculée
                             if ((distance === undefined || !Number.isFinite(distance)) && service.distance !== undefined && Number.isFinite(service.distance)) {
                                 distance = service.distance;
-                                console.log(`✅ [ResultatBesoinScreen] Distance service utilisée comme fallback: ${distance.toFixed(2)} km (${product.nom || 'produit'})`);
+                                const productDataForLog = product.product_data || product;
+                                const productNameForLog = getProductName(productDataForLog) || 'produit';
+                                console.log(`✅ [ResultatBesoinScreen] Distance service utilisée comme fallback: ${distance.toFixed(2)} km (${productNameForLog})`);
                             }
 
                             // ✅ NOUVEAU 2026-01-20: Calculer le score de pertinence au niveau produit
@@ -847,7 +851,9 @@ const ResultatBesoinScreen: React.FC = () => {
                                 finalScore += productRelevanceScore;
                                 
                                 // ✅ DEBUG: Log le score calculé pour diagnostiquer
-                                console.log(`🎯 [ResultatBesoinScreen] Score produit calculé pour "${product.nom_produit || product.nom || 'unknown'}":`, {
+                                const productDataForLog = product.product_data || product;
+                                const productNameForLog = getProductName(productDataForLog) || 'unknown';
+                                console.log(`🎯 [ResultatBesoinScreen] Score produit calculé pour "${productNameForLog}":`, {
                                     serviceScore: service.score || 0,
                                     productRelevanceScore,
                                     finalScore,
@@ -883,7 +889,9 @@ const ResultatBesoinScreen: React.FC = () => {
                             
                             // ✅ DEBUG 2026-01-22: Log pour diagnostiquer les images depuis la table media
                             if (__DEV__ && (productImages.length > 0 || productVideos.length > 0)) {
-                                console.log(`[ResultatBesoinScreen] Images/vidéos extraites pour produit ${product.nom || product.name}:`, {
+                                const productDataForLog = product.product_data || product;
+                                const productNameForLog = getProductName(productDataForLog) || 'produit';
+                                console.log(`[ResultatBesoinScreen] Images/vidéos extraites pour produit ${productNameForLog}:`, {
                                     productImagesCount: productImages.length,
                                     productVideosCount: productVideos.length,
                                     productHasImages: !!product.images,
@@ -897,9 +905,11 @@ const ResultatBesoinScreen: React.FC = () => {
 
                             // ✅ CORRIGÉ: Créer un identifiant unique stable pour éviter les doublons
                             // Utiliser service_id-product_index si disponible, sinon id de la table service_products
+                            const productDataForId = product.product_data || product;
+                            const productNameForId = getProductName(productDataForId) || 'unknown';
                             const stableProductId = product.product_index !== undefined 
                                 ? `${service.id}_${product.product_index}`
-                                : product.id || product.product_id || `${service.id}-${product.nom || product.name || 'unknown'}`;
+                                : product.id || product.product_id || `${service.id}-${productNameForId}`;
 
                             // ✅ CORRIGÉ 2026-01-22: CRITIQUE - ProductCard attend product.product_data
                             // Il faut garder product_data comme structure séparée ET aplatir les propriétés principales
@@ -982,13 +992,17 @@ const ResultatBesoinScreen: React.FC = () => {
                         productUniqueId = String(product.id || product.product_id);
                     } else {
                         // Fallback: service_id-nom
+                        const productDataForId = product.product_data || product;
+                        const productNameForId = getProductName(productDataForId) || 'unknown';
                         productUniqueId = serviceId 
-                            ? `${serviceId}-${product.nom || product.name || 'unknown'}`
-                            : `unknown-${product.nom || product.name || 'unknown'}`;
+                            ? `${serviceId}-${productNameForId}`
+                            : `unknown-${productNameForId}`;
                     }
                     
                     if (seenProductIds.has(productUniqueId)) {
-                        console.warn(`⚠️ [ResultatBesoinScreen] Produit dupliqué détecté et ignoré: ${productUniqueId} (${product.nom || product.name})`);
+                        const productDataForLog = product.product_data || product;
+                        const productNameForLog = getProductName(productDataForLog) || 'produit';
+                        console.warn(`⚠️ [ResultatBesoinScreen] Produit dupliqué détecté et ignoré: ${productUniqueId} (${productNameForLog})`);
                         return false;
                     }
                     seenProductIds.add(productUniqueId);
@@ -1807,7 +1821,8 @@ const ResultatBesoinScreen: React.FC = () => {
             const productIndex = product.product_index !== undefined && product.product_index !== null 
                 ? product.product_index 
                 : (typeof product.index === 'number' ? product.index : undefined);
-            const productName = product.nom || product.name || `product-${idx}`;
+            const productDataForName = product.product_data || product;
+            const productName = getProductName(productDataForName) || `product-${idx}`;
             
             // ✅ CORRIGÉ: Utiliser le même format d'ID que ProductCard et la déduplication
             let productUniqueId: string;
@@ -1829,15 +1844,19 @@ const ResultatBesoinScreen: React.FC = () => {
         // ✅ DEBUG 2026-01-20: Log les produits qui seront affichés
         if (products.length > 0) {
             console.log(`🖥️ [ResultatBesoinScreen] Produits qui seront affichés dans l'UI (${products.length} produits):`, 
-                products.map((p: any) => ({
-                    key: p.key,
-                    type: p.type,
-                    id: p.data.id,
-                    product_index: p.data.product_index,
-                    nom_produit: p.data.nom_produit || p.data.nom || p.data.name,
-                    _serviceId: p.data._serviceId,
-                    score: p.data.score
-                }))
+                products.map((p: any) => {
+                    const productDataForLog = p.data?.product_data || p.data;
+                    const productNameForLog = getProductName(productDataForLog) || 'sans nom';
+                    return {
+                        key: p.key,
+                        type: p.type,
+                        id: p.data.id,
+                        product_index: p.data.product_index,
+                        nom_produit: productNameForLog,
+                        _serviceId: p.data._serviceId,
+                        score: p.data.score
+                    };
+                })
             );
         }
         
@@ -1856,7 +1875,7 @@ const ResultatBesoinScreen: React.FC = () => {
         }
         
         return allResultsArray;
-    }, [filteredServices, filteredProducts]);
+    }, [filteredServices, filteredProducts, getProductName]);
 
     // ✅ NOUVEAU 2025-01-01: Charger reviews et stats en batch pour tous les services
     const serviceIdsForBatch = useMemo(() => {
@@ -1906,7 +1925,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
         // ✅ CORRIGÉ 2026-01-23: Utiliser la fonction utilitaire pour extraire le nom correctement
         const productData = product.product_data || product;
-        const productName = getProductName(productData) || product.nom || product.name || product.nom_produit || 'default';
+        const productName = getProductName(productData) || 'Produit sans nom';
         const serviceId = product._serviceId || service?.id || 'unknown';
 
         return (
@@ -1929,7 +1948,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [userLocationMemo]); // ✅ Utiliser userLocationMemo au lieu de location directement
+    }, [userLocationMemo, getProductName]); // ✅ Utiliser userLocationMemo au lieu de location directement
 
     // ✅ NOUVEAU 2026-01-XX: Fonction pour rendre ProductCard pour les services (utiliser le même visuel que les produits)
     // ✅ DÉPLACÉ avant renderListItem pour éviter les problèmes de dépendances
