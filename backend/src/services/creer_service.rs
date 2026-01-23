@@ -5650,7 +5650,7 @@ pub async fn save_ia_combinations_to_db(
                             // Vérifier si cette dimension existe dans sous_caracteristiques
                             if sous_caracs.contains_key(dimension) {
                                 best_match = Some((dimension.to_string(), value.clone()));
-                                best_score = 0.7; // Score moyen pour correspondance par pattern
+                                // Note: Score 0.7 pour correspondance par pattern (non utilisé mais documenté)
                                 break;
                             }
                         }

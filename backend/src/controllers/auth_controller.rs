@@ -254,7 +254,7 @@ pub async fn register_user(
             log_safe_email(&payload.email)
         );
         // ✅ AMÉLIORÉ: Message d'erreur plus informatif pour les partenaires
-        let error_message = if payload.role.as_deref() == Some("partenaire") {
+        let error_message = if user_role == "partenaire" {
             "Cet email est déjà utilisé. Veuillez vous connecter avec cet email ou contacter le support pour obtenir le statut partenaire.".to_string()
         } else {
             "Cet email est déjà utilisé. Veuillez vous connecter ou utiliser un autre email.".to_string()
