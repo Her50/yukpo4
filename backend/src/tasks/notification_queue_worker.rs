@@ -28,17 +28,41 @@ impl NotificationQueueWorker {
     pub async fn start(&self) -> AppResult<()> {
         log::info!("🚀 Notification Queue Worker démarré");
 
+        let mut backoff_ms = 1000u64; // Délai initial de 1 seconde
+        const MAX_BACKOFF_MS: u64 = 30000; // Maximum 30 secondes
+        const BACKOFF_MULTIPLIER: u64 = 2;
+
         loop {
             match self.process_batch().await {
                 Ok(processed) => {
                     if processed > 0 {
                         log::debug!("✅ {} notifications traitées", processed);
                     }
+                    // Succès : réinitialiser le backoff et utiliser l'intervalle normal
+                    backoff_ms = 1000;
                     tokio::time::sleep(tokio::time::Duration::from_millis(POLL_INTERVAL_MS)).await;
                 }
                 Err(e) => {
-                    log::error!("❌ Erreur traitement batch notifications: {:?}", e);
-                    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                    let error_msg = format!("{:?}", e);
+                    let is_rate_limited = error_msg.contains("rate-limited") 
+                        || error_msg.contains("rate limited")
+                        || error_msg.contains("rate_limit");
+
+                    if is_rate_limited {
+                        log::warn!(
+                            "⚠️ Rate limiting détecté, attente de {}ms avant retry",
+                            backoff_ms
+                        );
+                        // En cas de rate limiting, utiliser un délai plus long
+                        tokio::time::sleep(tokio::time::Duration::from_millis(backoff_ms)).await;
+                        // Augmenter le backoff exponentiellement (max 30s)
+                        backoff_ms = (backoff_ms * BACKOFF_MULTIPLIER).min(MAX_BACKOFF_MS);
+                    } else {
+                        log::error!("❌ Erreur traitement batch notifications: {:?}", e);
+                        // Pour les autres erreurs, utiliser un délai plus court
+                        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                        backoff_ms = 1000; // Réinitialiser le backoff pour les erreurs non rate-limited
+                    }
                 }
             }
         }
