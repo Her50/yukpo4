@@ -469,6 +469,13 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         setMealItems(items => items.filter(item => item.id !== id));
     };
 
+    // ✅ NOUVEAU: Supprimer un item de la liste de courses
+    const removeShoppingListItem = (index: number) => {
+        const updated = editableShoppingList.filter((_, i) => i !== index);
+        setEditableShoppingList(updated);
+        updateShoppingListTotal();
+    };
+
     // ✅ NOUVEAU: Ajouter un repas (ouvrir modal)
     const handleAddMeal = () => {
         setNewMealDay('Lundi');
@@ -760,20 +767,17 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     </TouchableOpacity>
                     <View style={styles.headerTitleContainer}>
                         <Text style={styles.headerTitle}>Menu de la Semaine</Text>
-                        <Text style={styles.headerSubtitle}>
-                            {/* ✅ CORRIGÉ: Afficher la période complète (du X au Y) */}
+                        <Text style={styles.headerSubtitle} numberOfLines={1}>
+                            {/* ✅ CORRIGÉ: Format compact de la date */}
                             {(() => {
                                 const weekStart = new Date(menu.week_start);
                                 const weekEnd = new Date(weekStart);
                                 weekEnd.setDate(weekStart.getDate() + 6);
-                                return `Du ${weekStart.toLocaleDateString('fr-FR', {
-                                    day: 'numeric',
-                                    month: 'long',
-                                })} au ${weekEnd.toLocaleDateString('fr-FR', {
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric',
-                                })}`;
+                                const startDay = weekStart.getDate();
+                                const endDay = weekEnd.getDate();
+                                const month = weekStart.toLocaleDateString('fr-FR', { month: 'short' });
+                                const year = weekEnd.getFullYear();
+                                return `${startDay}-${endDay} ${month} ${year}`;
                             })()}
                         </Text>
                     </View>
@@ -783,7 +787,9 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             {/* ✅ NOUVEAU: En-tête avec coût total, sélecteur de vue et export PDF */}
             <View style={styles.headerActions}>
                 <View style={styles.totalCostContainer}>
-                    <Text style={styles.totalCostLabel}>Coût total estimé :</Text>
+                    <Text style={styles.totalCostLabel} numberOfLines={2} ellipsizeMode="tail">
+                        Coût total estimé :
+                    </Text>
                     <Text style={styles.totalCostValue} numberOfLines={1} ellipsizeMode="tail">
                         {formatPrice(calculateTotalCost())}
                     </Text>
@@ -1697,6 +1703,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <Text style={[styles.shoppingListTableHeaderCell, { flex: 1.5 }]}>Quantité</Text>
                                         <Text style={[styles.shoppingListTableHeaderCell, { flex: 1.5 }]}>Prix</Text>
                                         <Text style={[styles.shoppingListTableHeaderCell, { flex: 2 }]}>Repas</Text>
+                                        <Text style={[styles.shoppingListTableHeaderCell, { flex: 0.8, textAlign: 'center' }]}>Action</Text>
                                     </View>
                                     
                                     {editableShoppingList.length > 0 ? editableShoppingList.map((item: any, index: number) => (
@@ -1744,6 +1751,19 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                             <Text style={[styles.shoppingListTableCell, { flex: 2, fontSize: 10 }]} numberOfLines={2}>
                                                 {item.associated_meals?.join(', ') || ''}
                                             </Text>
+                                            <View style={[styles.shoppingListTableCell, { flex: 0.8, alignItems: 'center', justifyContent: 'center' }]}>
+                                                <TouchableOpacity
+                                                    onPress={() => removeShoppingListItem(index)}
+                                                    style={{
+                                                        padding: 8,
+                                                        borderRadius: 6,
+                                                        backgroundColor: '#FEE2E2',
+                                                    }}
+                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                >
+                                                    <SafeIcon name="trash-2" size={18} color={modernColors.error} type="lucide" />
+                                                </TouchableOpacity>
+                                            </View>
                                         </View>
                                     )) : generatedShoppingList.items.map((item: any, index: number) => (
                                         <View key={index} style={styles.shoppingListTableRow}>
@@ -2089,35 +2109,35 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
     },
     header: {
-        padding: 20,
-        paddingTop: 50,
+        padding: 16,
+        paddingTop: 45,
         borderBottomLeftRadius: 24,
         borderBottomRightRadius: 24,
     },
     headerContent: {
-        marginTop: 10,
+        marginTop: 4,
     },
     backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 8,
     },
     headerTitleContainer: {
-        marginTop: 8,
+        marginTop: 2,
     },
     headerTitle: {
-        fontSize: 28,
+        fontSize: 22,
         fontWeight: '900',
         color: '#fff',
     },
     headerSubtitle: {
-        fontSize: 16,
+        fontSize: 13,
         color: 'rgba(255, 255, 255, 0.9)',
-        marginTop: 4,
+        marginTop: 2,
     },
     daysSelector: {
         backgroundColor: '#fff',
@@ -2737,7 +2757,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
+        padding: 12,
+        paddingHorizontal: 16,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
@@ -2745,14 +2766,17 @@ const styles = StyleSheet.create({
     totalCostContainer: {
         flex: 1,
         minWidth: 0, // Permet au flex de fonctionner correctement
+        maxWidth: '100%', // Empêche le débordement
+        flexShrink: 1, // Permet la réduction si nécessaire
     },
     totalCostLabel: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#6B7280',
-        marginBottom: 4,
+        marginBottom: 2,
+        flexShrink: 1, // Permet la réduction si nécessaire
     },
     totalCostValue: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '700',
         color: modernColors.primary,
         flexWrap: 'nowrap',

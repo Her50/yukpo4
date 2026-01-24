@@ -94,9 +94,6 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     // ✅ NOUVEAU 2026-01-23: État pour vérifier si la livraison est disponible
     const [hasDeliveryConfig, setHasDeliveryConfig] = useState<boolean>(false);
     const [deliveryEnabled, setDeliveryEnabled] = useState<boolean>(false);
-    // ✅ NOUVEAU 2026-01-23: État pour vérifier si la livraison est disponible
-    const [hasDeliveryConfig, setHasDeliveryConfig] = useState<boolean>(false);
-    const [deliveryEnabled, setDeliveryEnabled] = useState<boolean>(false);
 
     // ✅ NOUVEAU: États pour le système de réponse/citation
     const [replyingTo, setReplyingTo] = useState<any | null>(null);
@@ -1159,18 +1156,18 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     {/* Boutons d'actions média */}
                     <View style={styles.mediaActionsRow}>
                         <TouchableOpacity style={styles.mediaButton} onPress={pickImage}>
-                            <SafeIcon name="image" size={22} color={modernColors.primary} />
+                            <SafeIcon name="image" size={18} color={modernColors.primary} />
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             style={[styles.mediaButton, isRecording && styles.mediaButtonActive]}
                             onPress={isRecording ? stopAudioRecording : startAudioRecording}
                         >
-                            <SafeIcon name={isRecording ? "stop-circle" : "mic"} size={22} color={isRecording ? "#EF4444" : modernColors.primary} />
+                            <SafeIcon name={isRecording ? "stop-circle" : "mic"} size={18} color={isRecording ? "#EF4444" : modernColors.primary} />
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.mediaButton} onPress={pickDocument}>
-                            <SafeIcon name="file-text" size={22} color={modernColors.primary} />
+                            <SafeIcon name="file-text" size={18} color={modernColors.primary} />
                         </TouchableOpacity>
 
                         {/* ✅ CORRIGÉ : Bouton galerie de produits/service avec icône valide */}
@@ -1178,7 +1175,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             style={styles.mediaButton}
                             onPress={() => setShowProductGalleryPicker(true)}
                         >
-                            <SafeIcon name="FolderOpen" size={22} color="#8B5CF6" type="lucide" />
+                            <SafeIcon name="FolderOpen" size={18} color="#8B5CF6" type="lucide" />
                         </TouchableOpacity>
 
                         {/* ✅ NOUVEAU 2026-01-23: Bouton "Me livrer" avec texte (comme ProductCard) */}
@@ -1255,7 +1252,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             >
                                 <SafeIcon
                                     name="truck"
-                                    size={14}
+                                    size={12}
                                     color={deliveryEnabled ? "#10B981" : "#9CA3AF"}
                                 />
                                 <Text style={[
@@ -1293,7 +1290,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 }, 100);
                             }}
                         >
-                            <SafeIcon name="star" size={22} color="#F59E0B" />
+                            <SafeIcon name="star" size={18} color="#F59E0B" />
                         </TouchableOpacity>
 
                         {/* ✅ NOUVEAU: Bouton "Négocier le prix" */}
@@ -1407,7 +1404,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 }
                             }}
                         >
-                            <SafeIcon name="dollar-sign" size={22} color={modernColors.secondary || '#8B5CF6'} />
+                            <SafeIcon name="dollar-sign" size={18} color={modernColors.secondary || '#8B5CF6'} />
                         </TouchableOpacity>
                     </View>
 
@@ -2077,14 +2074,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         paddingVertical: 8,
         paddingHorizontal: 8,
-        gap: 12,
+        gap: 8,
         borderBottomWidth: 1,
         borderBottomColor: modernColors.border,
     },
     mediaButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: modernColors.surfaceVariant,
         justifyContent: 'center',
         alignItems: 'center',
@@ -2094,14 +2091,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 4,
+        gap: 3,
         paddingVertical: 6,
-        paddingHorizontal: 10,
+        paddingHorizontal: 8,
         backgroundColor: '#10B981',
         borderRadius: 8,
         borderWidth: 1,
         borderColor: '#059669',
-        minWidth: 100,
+        minWidth: 80,
     },
     deliveryButtonDisabled: {
         backgroundColor: '#E5E7EB',
@@ -2109,7 +2106,7 @@ const styles = StyleSheet.create({
     },
     deliveryButtonText: {
         color: '#FFFFFF',
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '600',
     },
     deliveryButtonTextDisabled: {

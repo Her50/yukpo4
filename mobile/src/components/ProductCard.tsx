@@ -1929,36 +1929,9 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 </TouchableOpacity>
               </View>
 
-              {/* ✅ CORRIGÉ 2026-01-14: Commentaires avec hauteur adaptative (non coupés) */}
-              {/* ✅ AMÉLIORÉ 2026-01-23: Section avis/commentaires plus visible et accessible */}
-              {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
-                <View style={styles.commentsContainerCompact}>
-                  <TouchableOpacity
-                    style={styles.commentsHeaderButton}
-                    onPress={() => {
-                      // Navigation vers l'écran de détails avec focus sur les avis
-                      navigation.navigate('ServiceDetail' as any, { 
-                        serviceId: commentServiceId,
-                        showReviews: true 
-                      });
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.commentsHeaderContent}>
-                      <SafeIcon name="message-circle" size={18} color={modernColors.primary} />
-                      <Text style={styles.commentsHeaderText}>Voir tous les avis et commentaires</Text>
-                      <SafeIcon name="chevron-right" size={16} color={modernColors.primary} />
-                    </View>
-                  </TouchableOpacity>
-                  <ProductCommentsSection
-                    serviceId={commentServiceId}
-                    serviceTitle={serviceTitleForComments}
-                    onOpenChat={handleContactUser}
-                    mode="inline"
-                    compact={true}
-                  />
-                </View>
-              )}
+              {/* ✅ CORRIGÉ 2026-01-24: Commentaires uniquement sur la page de détail du service, pas sur les cartes produits */}
+              {/* Les commentaires concernent le service entier, pas un produit spécifique */}
+              {/* Ils seront affichés uniquement sur ServiceDetail pour éviter la confusion */}
             </View>
           </TouchableOpacity>
         </NativeCard>

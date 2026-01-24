@@ -110,17 +110,25 @@ const ResultatBesoinScreen: React.FC = () => {
     const hasProcessedInitialResults = useRef(false);
     const initialResultsLength = useRef(initialResults?.length || 0);
     
-    // ✅ SIMPLIFIÉ 2026-01-23: Fonction utilitaire pour extraire le nom du produit
+    // ✅ CORRIGÉ 2026-01-24: Fonction utilitaire pour extraire le nom du produit avec fallbacks
     // ✅ MIGRATION COMPLÈTE: Tous les produits sont maintenant dans service_products avec product_name (colonne générée)
-    // Le backend retourne TOUJOURS product_name depuis service_products - plus de fallbacks nécessaires
+    // Le backend retourne product_name depuis service_products, mais product_data contient nom_produit
     const getProductName = useCallback((productData: any): string => {
         if (!productData) return 'Produit sans nom';
         
-        // ✅ UNIQUEMENT product_name depuis le backend (colonne générée PostgreSQL)
-        // Le backend garantit que product_name est toujours présent dans service_products
+        // ✅ PRIORITÉ 1: product_name depuis le backend (colonne générée PostgreSQL)
         if (productData.product_name) return String(productData.product_name);
         
-        // ✅ ERREUR: Si product_name n'est pas disponible, c'est une anomalie du backend
+        // ✅ PRIORITÉ 2: nom_produit depuis product_data (format original)
+        if (productData.nom_produit) return String(productData.nom_produit);
+        
+        // ✅ PRIORITÉ 3: Autres variantes possibles
+        if (productData.nom) return String(productData.nom);
+        if (productData.name) return String(productData.name);
+        if (productData.titre) return String(productData.titre);
+        if (productData.title) return String(productData.title);
+        
+        // ✅ ERREUR: Si aucun nom n'est disponible, c'est une anomalie
         console.error('[ResultatBesoinScreen] ❌ ERREUR: product_name manquant (anomalie backend):', productData);
         return 'Produit sans nom';
     }, []);
@@ -153,14 +161,18 @@ const ResultatBesoinScreen: React.FC = () => {
         // Construire un texte complet pour la recherche
         const allProductText = `${nomProduit} ${descriptionProduit} ${categorieProduit} ${combinaisonBrute} ${allCharacteristics}`.toLowerCase();
         
-        // ✅ AMÉLIORÉ: Score pour correspondance exacte de la requête complète dans le nom
+        // ✅ AMÉLIORÉ 2026-01-24: Score pour correspondance exacte de la requête complète dans le nom
+        // ✅ Générique pour tous types de produits (pas seulement "tv")
         if (nomProduit.includes(queryLower)) {
             score += 100; // Bonus très élevé pour correspondance exacte dans le nom
+        } else if (categorieProduit.includes(queryLower)) {
+            score += 80; // Bonus élevé pour correspondance dans la catégorie
         } else if (allProductText.includes(queryLower)) {
             score += 50;
         }
         
-        // ✅ AMÉLIORÉ: Score pondéré pour chaque mot-clé de la requête
+        // ✅ AMÉLIORÉ 2026-01-24: Score pondéré pour chaque mot-clé de la requête
+        // ✅ Générique pour tous types de produits
         queryWords.forEach(word => {
             if (word.length < 2) return; // Ignorer les mots trop courts
             
@@ -171,6 +183,11 @@ const ResultatBesoinScreen: React.FC = () => {
                 score += 40; // Commence par le mot
             } else if (nomProduit.includes(word)) {
                 score += 30; // Contient le mot
+            }
+            
+            // ✅ AMÉLIORÉ: Correspondance dans la catégorie (ex: "Téléviseur" pour "tv")
+            if (categorieProduit.includes(word)) {
+                score += 35; // Bon score pour correspondance de catégorie
             }
             
             // ✅ AMÉLIORÉ: Correspondance dans les sous-caractéristiques (marque, modèle, etc.) - important pour "Samsonite"

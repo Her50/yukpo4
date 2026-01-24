@@ -101,6 +101,31 @@ const formatDate = (iso: string): string => {
     }
 };
 
+// ✅ CORRIGÉ 2026-01-24: Fonction pour nettoyer le contenu du commentaire et supprimer le nom d'utilisateur en doublon
+const cleanCommentContent = (content: string, userName: string): string => {
+    if (!content || !userName) return content;
+    
+    const trimmedContent = content.trim();
+    const userNameLower = userName.toLowerCase().trim();
+    
+    // Vérifier si le contenu commence par le nom de l'utilisateur suivi de ":" ou "@"
+    const patterns = [
+        new RegExp(`^${userNameLower}\\s*[:]\\s*`, 'i'), // "Nom Utilisateur: "
+        new RegExp(`^@${userNameLower}\\s+`, 'i'), // "@Nom Utilisateur "
+        new RegExp(`^${userNameLower}\\s+`, 'i'), // "Nom Utilisateur "
+    ];
+    
+    let cleaned = trimmedContent;
+    for (const pattern of patterns) {
+        if (pattern.test(cleaned)) {
+            cleaned = cleaned.replace(pattern, '').trim();
+            break;
+        }
+    }
+    
+    return cleaned || trimmedContent; // Retourner le contenu original si le nettoyage le vide
+};
+
 const parseMentions = (text: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = [];
     const regex = /@([A-Za-zÀ-ÿ0-9_\-\s]+?)(?=\s|$|[.,!?])/g;
@@ -656,7 +681,9 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     {item.is_deleted ? (
                         <Text style={styles.deletedText}>Ce commentaire a été supprimé</Text>
                     ) : (
-                        <Text style={styles.commentContent}>{parseMentions(item.content)}</Text>
+                        <Text style={styles.commentContent}>
+                            {parseMentions(cleanCommentContent(item.content, item.user_name))}
+                        </Text>
                     )}
 
                     {item.mention_users.length > 0 && (
@@ -1017,7 +1044,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                                 <View key={`preview-${comment.id}`} style={styles.previewComment}>
                                     <Text style={styles.previewAuthor}>{comment.user_name}</Text>
                                     <Text style={styles.previewContent} numberOfLines={compact ? 2 : 3}>
-                                        {comment.content}
+                                        {cleanCommentContent(comment.content, comment.user_name)}
                                     </Text>
                                     <View style={styles.previewMeta}>
                                         <SafeIcon name="clock" size={12} color={modernColors.textSecondary} />
