@@ -159,7 +159,7 @@ export const useUser = () => {
   useEffect(() => {
     if (typeof window !== "undefined") {
       // @ts-ignore
-      window.__YUKPOMNANG_TOGGLE_DEV = () => {
+      window.__YUKPO_TOGGLE_DEV = () => {
         const current = localStorage.getItem('__DEV_FAKE_USER__') === 'true';
         localStorage.setItem('__DEV_FAKE_USER__', current ? 'false' : 'true');
         window.location.reload();

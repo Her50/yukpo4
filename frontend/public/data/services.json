@@ -1,7 +1,7 @@
 [
     {
       "id": 1,
-      "name": "Yukpomnang Immobilier",
+      "name": "Yukpo Immobilier",
       "description": "Publication de biens professionnels avec IA et vérification vocale",
       "category": "immobilier",
       "price": 15000,
@@ -12,7 +12,7 @@
     },
     {
       "id": 2,
-      "name": "Yukpomnang Transport",
+      "name": "Yukpo Transport",
       "description": "Réservation billets + hôtels partenaires automatisée",
       "category": "assistance",
       "price": 20000,
@@ -23,7 +23,7 @@
     },
     {
       "id": 3,
-      "name": "Yukpomnang Écoute Sociale",
+      "name": "Yukpo Écoute Sociale",
       "description": "Analyse de tendances et influenceurs sur réseaux sociaux",
       "category": "communication",
       "price": 12000,

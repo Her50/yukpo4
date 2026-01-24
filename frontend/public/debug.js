@@ -1,7 +1,7 @@
 // Script de debug à exécuter dans la console du navigateur
-// Copier-coller ce code dans la console de https://yukpomnang-app.netlify.app
+// Copier-coller ce code dans la console de https://yukpo-app.netlify.app
 
-console.log('🔍 DIAGNOSTIC YUKPOMNANG - DÉBUT');
+console.log('🔍 DIAGNOSTIC YUKPO - DÉBUT');
 
 // 1. Vérifier la configuration actuelle
 console.log('📍 Configuration détectée:');
@@ -161,4 +161,4 @@ console.log('🎯 Fonctions de debug disponibles:');
 console.log('  debugYukpo.testLogin() - Tester la connexion');
 console.log('  debugYukpo.testUserServices() - Tester les services');
 
-console.log('🔍 DIAGNOSTIC YUKPOMNANG - FIN'); 
+console.log('🔍 DIAGNOSTIC YUKPO - FIN'); 

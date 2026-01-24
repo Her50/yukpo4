@@ -186,7 +186,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
             <div className="footer">
               <div>Merci d'utiliser Yukpo !</div>
-              <div>www.yukpomnang.com</div>
+              <div>www.yukpo.com</div>
             </div>
           </div>
 

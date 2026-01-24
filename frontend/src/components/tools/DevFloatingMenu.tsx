@@ -29,8 +29,8 @@ const DevFloatingMenu: React.FC = () => {
   useEffect(() => {
     if (isLocal) {
       // @ts-ignore
-      window.__YUKPOMNANG_TOGGLE_DEV = () => setOpen((v) => !v);
-      console.log("✅ Dev toggle enregistré: __YUKPOMNANG_TOGGLE_DEV()");
+      window.__YUKPO_TOGGLE_DEV = () => setOpen((v) => !v);
+      console.log("✅ Dev toggle enregistré: __YUKPO_TOGGLE_DEV()");
     }
   }, []);
 

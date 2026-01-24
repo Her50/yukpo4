@@ -37,7 +37,7 @@ const CreationSection: React.FC = () => {
           href={ROUTES.CONTACT}
           className="px-4 py-2 bg-gray-100 border rounded hover:bg-gray-200 transition"
         >
-          contacter l'équipe yukpomnang
+          contacter l'équipe Yukpo
         </a>
       </div>
     </section>

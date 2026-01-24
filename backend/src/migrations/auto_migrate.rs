@@ -7435,6 +7435,12 @@ pub async fn ensure_templates_table(pool: &PgPool) -> Result<(), sqlx::Error> {
 pub async fn run_auto_migrations(pool: &PgPool) {
     info!("🚀 Démarrage des migrations automatiques...");
 
+    // ✅ NOUVEAU 2026-01-24: Vérification de l'extension pgvector
+    match ensure_pgvector_extension(pool).await {
+        Ok(_) => info!("✅ Migration auto: pgvector extension vérifiée"),
+        Err(e) => warn!("⚠️ Erreur vérification pgvector: {} (non bloquant)", e),
+    }
+
     // Migration 0: Table geo_hierarchy (✅ NOUVEAU 2025-11-06)
     match ensure_geo_hierarchy_table(pool).await {
         Ok(_) => info!("✅ Migration auto: geo_hierarchy OK"),
@@ -14250,5 +14256,48 @@ pub async fn ensure_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     .await?;
     
     info!("✅ Table cache_table créée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-01-24: Vérifie que l'extension pgvector est installée
+/// Cette fonction vérifie la disponibilité de pgvector et affiche un message informatif
+pub async fn ensure_pgvector_extension(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de l'extension pgvector...");
+    
+    let pgvector_available: bool = sqlx::query_scalar::<_, bool>(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 
+            FROM pg_extension 
+            WHERE extname = 'vector'
+        )
+        "#
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if pgvector_available {
+        let version: Option<String> = sqlx::query_scalar::<_, Option<String>>(
+            r#"
+            SELECT extversion 
+            FROM pg_extension 
+            WHERE extname = 'vector'
+            "#
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        info!("✅ Extension pgvector installée (version: {})", version.unwrap_or_else(|| "inconnue".to_string()));
+        info!("💡 pgvector est disponible pour les recherches sémantiques et embeddings");
+    } else {
+        warn!("⚠️ Extension pgvector non disponible");
+        warn!("💡 L'application continuera à utiliser TEXT[] pour le matching vectoriel");
+        warn!("📦 Pour installer pgvector:");
+        warn!("   - Ubuntu/Debian: sudo apt-get install postgresql-XX-pgvector");
+        warn!("   - macOS: brew install pgvector");
+        warn!("   - Depuis sources: https://github.com/pgvector/pgvector");
+        warn!("   - Puis redémarrer PostgreSQL et relancer les migrations");
+    }
+    
     Ok(())
 }

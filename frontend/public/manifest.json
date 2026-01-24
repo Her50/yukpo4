@@ -1,7 +1,7 @@
 {
-    "short_name": "Yukpomnang",
-    "name": "Yukpomnang - Service Platform",
-    "description": "La plateforme de services Yukpomnang",
+    "short_name": "Yukpo",
+    "name": "Yukpo - Service Platform",
+    "description": "La plateforme de services Yukpo",
     "icons": [
       {
         "src": "icons/icon-192x192.png",

@@ -13,7 +13,7 @@ interface Props {
 const TestUserProvider = ({ plan, children }: Props) => {
   const user = {
     id: "1",
-    email: "test@yukpomnang.com",
+    email: "test@yukpo.com",
     roles: ["user"] as UserRole[],
     plan,
     exp: Date.now() / 1000 + 3600,

@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = 'yukpomnang-cache-v1';
+const CACHE_NAME = 'yukpo-cache-v1';
 const urlsToCache = [
   '/',
   '/index.html',
