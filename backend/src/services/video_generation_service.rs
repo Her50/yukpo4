@@ -3520,15 +3520,6 @@ async fn append_video_to_service_data(
 
     // ✅ SUPPRIMÉ 2026-01-23: Plus besoin de mettre à jour services.data (ancien système supprimé)
     // Les vidéos sont maintenant uniquement dans service_products.product_data
-            })
-        },
-        10, // 10 tentatives max avec backoff adaptatif pour TLS
-    )
-    .await
-    .map_err(|err| {
-        error!("[VideoGeneration] Erreur mise à jour service (après retries): {err:?}");
-        AppError::from(err)
-    })?;
 
     Ok(())
 }
