@@ -3585,7 +3585,9 @@ async fn append_video_variants_to_service_data(
                 .bind(service_id_clone)
                 .bind(product_index_clone)
                 .execute(&pool_clone)
-                .await
+                .await?;
+                
+                Ok::<_, sqlx::Error>(())
             })
         },
         10, // 10 tentatives max avec backoff adaptatif pour TLS
