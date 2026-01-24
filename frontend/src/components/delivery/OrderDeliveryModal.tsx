@@ -104,9 +104,13 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
         setLoadingProducts(true);
         try {
+            // ✅ CORRIGÉ 2026-01-23: Charger les produits depuis service_products (nouveau système)
+            // Le backend charge les produits depuis service_products et les met dans data.produits.valeur
             const response = await apiGet(`/api/services/${serviceId}`);
             if (response.ok) {
                 const service = await response.json();
+                // ✅ CORRIGÉ: Les produits viennent maintenant de service_products via le backend
+                // Le backend inclut product_name dans product_data depuis service_products
                 const products = service.data?.produits?.valeur || service.data?.produits || [];
 
                 // ✅ Fonction helper pour obtenir le prix réel avec promotions

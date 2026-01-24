@@ -284,9 +284,10 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   useEffect(() => {
     const trackProductView = async () => {
       try {
-        const serviceId = product.service_id || service?.id;
-        const productIndex = product.product_index || product.index;
-        const productName = productData.nom || productData.nom_produit || productData.name || 'Produit';
+        const serviceId = product?.service_id || service?.id;
+        const productIndex = product?.product_index || product?.index;
+        // ✅ CORRIGÉ 2026-01-23: Vérifier que productData existe avant d'accéder à ses propriétés
+        const productName = productData?.nom || productData?.nom_produit || productData?.name || 'Produit';
         
         if (!serviceId) return;
         
@@ -336,20 +337,22 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     // Tracker après un court délai pour éviter de tracker à chaque re-render
     const timer = setTimeout(trackProductView, 1000);
     return () => clearTimeout(timer);
-  }, [product.service_id, service?.id, product.product_index, productData.nom]);
+  }, [product?.service_id, service?.id, product?.product_index, productData?.nom]);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [hasDeliveryConfig, setHasDeliveryConfig] = useState<boolean | null>(null); // null = en cours de vérification
 
   // ✅ PHASE 4: Gérer les produits depuis l'API (type Product) ou JSONB (fallback)
   // Si le produit vient de l'API, utiliser product.product_data pour les données
-  const productData = product.product_data || product;
+  // ✅ CORRIGÉ 2026-01-23: S'assurer que productData n'est jamais undefined
+  const productData = product?.product_data || product || {};
 
   // ✅ CORRIGÉ 2026-01-13: Filtrer les valeurs booléennes et "false" string du productVector
-  const rawProductVector = Array.isArray(productData.product_vector)
+  // ✅ CORRIGÉ 2026-01-23: Vérifier que productData existe avant d'accéder à ses propriétés
+  const rawProductVector = Array.isArray(productData?.product_vector)
     ? productData.product_vector
-    : Array.isArray(productData.characteristic_vector)
+    : Array.isArray(productData?.characteristic_vector)
       ? productData.characteristic_vector
-      : typeof productData.product_vector === 'string'
+      : typeof productData?.product_vector === 'string'
         ? splitWithFallback(productData.product_vector, ',')
         : [];
   
@@ -362,7 +365,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     return true;
   });
 
-  const rawLocationVector = productData.location_vector || productData.locationVector || productData.location?.vector;
+  const rawLocationVector = productData?.location_vector || productData?.locationVector || productData?.location?.vector;
   const locationVector = Array.isArray(rawLocationVector)
     ? rawLocationVector.filter((item: any) => {
         // ✅ CORRIGÉ 2026-01-13: Filtrer aussi les strings "false" et valeurs booléennes
@@ -748,7 +751,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       return String(product.product_id || product.id);
     }
     // Fallback: construire depuis service_id et nom
-    return serviceId ? `${serviceId}-${productData.nom || productData.name || 'unknown'}` : null;
+    // ✅ CORRIGÉ 2026-01-23: Vérifier que productData existe avant d'accéder à ses propriétés
+    return serviceId ? `${serviceId}-${productData?.nom || productData?.name || 'unknown'}` : null;
   })();
 
   // ✅ CORRIGÉ 2026-01-13: Distinction stricte entre produits et prestations
@@ -767,7 +771,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     serviceType === 'service_prestation' ||
     productType === 'prestation_service' ||
     productType === 'service_prestation' ||
-    (serviceType === 'service' && !product.product_data && !productData.nom && !productData.name && !productData.prix && !productData.price);
+    (serviceType === 'service' && !product?.product_data && !productData?.nom && !productData?.name && !productData?.prix && !productData?.price);
   
   // ✅ CORRIGÉ 2026-01-13: C'est un produit si :
   // 1. type_offre === 'produit' (définitif)
@@ -777,8 +781,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     typeOffre === 'produit' || // ✅ Définitif : type_offre = 'produit'
     product.product_data !== undefined || // Produit depuis service_products
     (!isPrestation && (
-      (productData.nom || productData.name || productData.titre) || // A un nom de produit
-      (productData.prix !== undefined || productData.price !== undefined) // A un prix
+      (productData?.nom || productData?.name || productData?.titre) || // A un nom de produit
+      (productData?.prix !== undefined || productData?.price !== undefined) // A un prix
     ));
 
   // ✅ CORRIGÉ 2026-01-20: Vérifier si le produit a une configuration de livraison automatique
@@ -1073,12 +1077,13 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     }
   }, [pays, countryFlag]);
 
-  const commentServiceId = Number(productData._serviceId || product.service_id || service?.id || 0);
+  const commentServiceId = Number(productData?._serviceId || product?.service_id || service?.id || 0);
+  // ✅ CORRIGÉ 2026-01-23: Vérifier que productData existe avant d'accéder à ses propriétés
   const serviceTitleForComments =
-    productData.nom ||
-    productData.name ||
-    productData.titre ||
-    productData.title ||
+    productData?.nom ||
+    productData?.name ||
+    productData?.titre ||
+    productData?.title ||
     service?.data?.titre_service?.valeur ||
     service?.data?.nom ||
     'Produit';
@@ -1175,7 +1180,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
   const handleShare = async () => {
     try {
-      const productName = productData.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
+      // ✅ CORRIGÉ 2026-01-23: Vérifier que productData existe avant d'accéder à ses propriétés
+      const productName = productData?.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
       // ✅ CORRIGÉ 2026-01-21: Utiliser UNIQUEMENT productData.description pour éviter confusion avec autres produits
       const productDesc = productData.description || productData.description_produit || '';
       const price = displayPrice > 0 ? `${displayPrice.toLocaleString()} ${devise}` : '';
@@ -1629,17 +1635,9 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
               <View style={styles.productHeaderSection}>
                 <Text style={styles.productName} numberOfLines={2}>
                   {filterBooleanValue(
-                    // ✅ CORRIGÉ 2026-01-23: PRIORITÉ ABSOLUE au nom du produit depuis productData
-                    // Ne JAMAIS utiliser le titre du service comme fallback pour éviter confusion
-                    productData.nom || 
-                    productData.nom_produit || 
-                    productData.name || 
-                    productData.product_name ||
-                    product.nom || 
-                    product.nom_produit || 
-                    product.name ||
-                    product.product_name ||
-                    'Produit',
+                    // ✅ MIGRATION COMPLÈTE 2026-01-23: Utiliser UNIQUEMENT product_name depuis le backend
+                    // Le backend garantit que product_name est toujours présent dans service_products
+                    productData?.product_name || product?.product_name || 'Produit',
                     'Produit'
                   )}
                 </Text>
@@ -1665,8 +1663,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   productId: productId,
                   serviceId: serviceId,
                   productIndex: productIndex,
-                  nom: productData.nom || productData.nom_produit || productData.name,
-                  description: productData.description || productData.description_produit,
+                  nom: productData?.nom || productData?.nom_produit || productData?.name,
+                  description: productData?.description || productData?.description_produit,
                   productDataKeys: Object.keys(productData),
                   hasServiceData: !!service?.data,
                   serviceTitre: service?.data?.titre_service?.valeur,
@@ -1977,7 +1975,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
           onClose={() => setShowOrderModal(false)}
           serviceId={serviceId}
           productIndex={productIndex}
-          productName={productData.nom || productData.name || productData.titre || 'Produit'}
+          productName={productData?.nom || productData?.name || productData?.titre || 'Produit'}
           // ✅ NOUVEAU 2026-01-23: Passer les variations de prix au modal
           productVariants={hasVariant && variants.length > 0 ? variants : undefined}
           selectedVariantIndex={selectedVariantIndex !== null ? selectedVariantIndex : undefined}
@@ -1993,9 +1991,9 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         <ServiceGalleryModal
           visible={showGallery}
           service={service || {
-            id: String(product.service_id || service?.id),
-            titre: productData.nom || service?.data?.titre_service?.valeur || 'Produit',
-            description: productData.description || service?.data?.description?.valeur || '',
+            id: String(product?.service_id || service?.id),
+            titre: productData?.nom || service?.data?.titre_service?.valeur || 'Produit',
+            description: productData?.description || service?.data?.description?.valeur || '',
             user_id: String(prestataire.user_id || service?.user_id || ''),
             data: service?.data || {},
           }}

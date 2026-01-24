@@ -2009,7 +2009,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         }
                                     }}
                                     placeholder="Rechercher un marché..."
-                                    scope={PlaceScope.ESTABLISHMENT}
+                                    scope={'establishment' as PlaceScope}
                                     filterTypes={['supermarket', 'grocery_or_supermarket', 'store', 'shopping_mall', 'market']}
                                     allowNew={false}
                                 />

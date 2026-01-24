@@ -3385,70 +3385,8 @@ async fn append_video_to_service_data(
     subtitle_url: Option<String>,
     variant_urls: &[(String, String)],
 ) -> AppResult<()> {
-    // ✅ PHASE 1: Sauvegarder dans services.data->'produits'[index].videos (ancien système)
-    if let Some(array) = locate_product_array_mut(service_data) {
-        if let Some(product_value) = array.get_mut(product_index as usize) {
-            if let Value::Object(obj) = product_value {
-                match obj.get_mut("videos") {
-                    Some(Value::Array(existing)) => {
-                        existing.push(Value::String(video_url.clone()));
-                    }
-                    Some(_) => {
-                        obj.insert(
-                            "videos".to_string(),
-                            Value::Array(vec![Value::String(video_url.clone())]),
-                        );
-                    }
-                    None => {
-                        obj.insert(
-                            "videos".to_string(),
-                            Value::Array(vec![Value::String(video_url.clone())]),
-                        );
-                    }
-                }
-
-                if let Some(ref url) = subtitle_url { // ✅ CORRIGÉ: utiliser ref pour éviter le move
-                    let mut current_subtitles = match obj.get_mut("videos_subtitles") {
-                        Some(Value::Array(existing)) => existing.clone(),
-                        Some(_) => Vec::new(),
-                        None => Vec::new(),
-                    };
-
-                    current_subtitles.push(json!({
-                        "url": url,
-                        "created_at": Utc::now(),
-                    }));
-                    obj.insert(
-                        "videos_subtitles".to_string(),
-                        Value::Array(current_subtitles),
-                    );
-                }
-
-                if !variant_urls.is_empty() {
-                    let mut current_variants = match obj.get_mut("videos_variants") {
-                        Some(Value::Array(existing)) => existing.clone(),
-                        Some(_) => Vec::new(),
-                        None => Vec::new(),
-                    };
-
-                    for (format, url) in variant_urls {
-                        current_variants.push(json!({
-                            "format": format,
-                            "url": url,
-                        }));
-                    }
-
-                    obj.insert(
-                        "videos_variants".to_string(),
-                        Value::Array(current_variants),
-                    );
-                }
-            }
-        }
-    }
-
-    // ✅ NOUVEAU 2026-01-13: Sauvegarder aussi dans service_products.product_data->'videos' (nouveau système)
-    // Cela garantit que les vidéos sont retrouvées lors des recherches qui utilisent service_products
+    // ✅ CORRIGÉ 2026-01-23: Sauvegarder UNIQUEMENT dans service_products.product_data->'videos' (nouveau système)
+    // Plus besoin d'écrire dans services.data->'produits' (ancien système supprimé)
     let pool = state.pg.clone();
     let video_url_clone = video_url.clone();
     let subtitle_url_clone = subtitle_url.clone();
@@ -3580,23 +3518,8 @@ async fn append_video_to_service_data(
         // Ne pas faire échouer le processus, la vidéo est quand même sauvegardée dans services.data
     }
 
-    // ✅ PHASE 2: Mettre à jour services.data (ancien système pour compatibilité)
-    let service_data_clone = serde_json::Value::clone(service_data);
-    let service_id_clone = service_id;
-    let pool = state.pg.clone();
-    
-    crate::utils::db_retry::retry_query(
-        &pool,
-        || {
-            let service_data_clone = service_data_clone.clone();
-            let service_id_clone = service_id_clone;
-            let pool_clone = pool.clone();
-            Box::pin(async move {
-                sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
-                    .bind(service_data_clone)
-                    .bind(service_id_clone)
-                    .execute(&pool_clone)
-                    .await
+    // ✅ SUPPRIMÉ 2026-01-23: Plus besoin de mettre à jour services.data (ancien système supprimé)
+    // Les vidéos sont maintenant uniquement dans service_products.product_data
             })
         },
         10, // 10 tentatives max avec backoff adaptatif pour TLS
@@ -3616,56 +3539,62 @@ async fn append_video_variants_to_service_data(
     product_index: i32,
     variant_urls: &[(String, String)],
 ) -> AppResult<()> {
-    let service_row =
-        sqlx::query_as::<_, ServiceDataValueRow>("SELECT data FROM services WHERE id = $1")
-            .bind(service_id)
-            .fetch_optional(&state.pg)
-            .await
-            .map_err(|err| AppError::from(err))?
-            .ok_or_else(|| AppError::NotFound("Service introuvable".to_string()))?;
+    // ✅ CORRIGÉ 2026-01-23: Mettre à jour UNIQUEMENT service_products.product_data au lieu de JSONB
+    let product_row = sqlx::query!(
+        "SELECT product_data FROM service_products WHERE service_id = $1 AND product_index = $2",
+        service_id,
+        product_index
+    )
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|err| AppError::from(err))?;
 
-    let mut data_value = service_row.data;
-    if let Some(array) = locate_product_array_mut(&mut data_value) {
-        if let Some(product_value) = array.get_mut(product_index as usize) {
-            if let Value::Object(obj) = product_value {
-                let mut current_variants = match obj.get_mut("videos_variants") {
-                    Some(Value::Array(existing)) => existing.clone(),
-                    Some(_) => Vec::new(),
-                    None => Vec::new(),
-                };
+    if let Some(row) = product_row {
+        let mut product_data = row.product_data;
+        
+        if let Some(obj) = product_data.as_object_mut() {
+            let mut current_variants = match obj.get_mut("videos_variants") {
+                Some(Value::Array(existing)) => existing.clone(),
+                Some(_) => Vec::new(),
+                None => Vec::new(),
+            };
 
-                for (format, url) in variant_urls {
-                    current_variants.push(json!({
-                        "format": format,
-                        "url": url,
-                    }));
-                }
-
-                obj.insert(
-                    "videos_variants".to_string(),
-                    Value::Array(current_variants),
-                );
+            for (format, url) in variant_urls {
+                current_variants.push(json!({
+                    "format": format,
+                    "url": url,
+                }));
             }
-        }
-    }
 
-    // ✅ CORRIGÉ: Utiliser retry_query pour gérer les erreurs TLS
-    let data_value_clone = data_value.clone();
-    let service_id_clone = service_id;
-    let pool = state.pg.clone();
-    
-    crate::utils::db_retry::retry_query(
-        &pool,
-        || {
-            let data_value_clone = data_value_clone.clone();
-            let service_id_clone = service_id_clone;
-            let pool_clone = pool.clone();
+            obj.insert(
+                "videos_variants".to_string(),
+                Value::Array(current_variants),
+            );
+        }
+
+        // ✅ CORRIGÉ: Utiliser retry_query pour gérer les erreurs TLS
+        let product_data_clone = product_data.clone();
+        let service_id_clone = service_id;
+        let product_index_clone = product_index;
+        let pool = state.pg.clone();
+        
+        crate::utils::db_retry::retry_query(
+            &pool,
+            || {
+                let product_data_clone = product_data_clone.clone();
+                let service_id_clone = service_id_clone;
+                let product_index_clone = product_index_clone;
+                let pool_clone = pool.clone();
             Box::pin(async move {
-                sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
-                    .bind(data_value_clone)
-                    .bind(service_id_clone)
-                    .execute(&pool_clone)
-                    .await
+                // ✅ CORRIGÉ 2026-01-23: Mettre à jour service_products au lieu de services.data
+                sqlx::query(
+                    "UPDATE service_products SET product_data = $1, updated_at = NOW() WHERE service_id = $2 AND product_index = $3"
+                )
+                .bind(product_data_clone)
+                .bind(service_id_clone)
+                .bind(product_index_clone)
+                .execute(&pool_clone)
+                .await
             })
         },
         10, // 10 tentatives max avec backoff adaptatif pour TLS

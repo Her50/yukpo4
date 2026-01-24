@@ -29,7 +29,8 @@ const CourierAdminPage: React.FC = () => {
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [applications, setApplications] = useState<CourierApplication[]>([]);
-    const [filter, setFilter] = useState<'all' | 'submitted' | 'under_review' | 'approved' | 'rejected'>('all');
+    // ✅ CORRIGÉ 2026-01-23: Ajouter le filtre 'draft' comme dans React Native
+    const [filter, setFilter] = useState<'all' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'draft'>('all');
     const [selectedApplication, setSelectedApplication] = useState<CourierApplication | null>(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
@@ -159,6 +160,8 @@ const CourierAdminPage: React.FC = () => {
             case 'submitted':
             case 'under_review':
                 return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+            case 'draft':
+                return 'bg-gray-100 text-gray-800 border-gray-300';
             default:
                 return 'bg-gray-100 text-gray-800 border-gray-300';
         }
@@ -211,8 +214,10 @@ const CourierAdminPage: React.FC = () => {
         }
     };
 
+    // ✅ CORRIGÉ 2026-01-23: Ajouter le filtre 'draft' comme dans React Native
     const filters = [
         { value: 'all', label: 'Tous' },
+        { value: 'draft', label: 'Brouillons' },
         { value: 'submitted', label: 'Soumis' },
         { value: 'under_review', label: 'En examen' },
         { value: 'approved', label: 'Approuvés' },

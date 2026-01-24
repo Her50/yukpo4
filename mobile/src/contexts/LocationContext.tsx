@@ -83,11 +83,18 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       setLocation(currentLocation);
       return currentLocation;
     } catch (error: any) {
-      // ✅ CORRIGÉ: Ne pas logger les timeouts GPS comme des erreurs critiques
-      // Les timeouts GPS sont normaux et ne doivent pas être envoyés au backend comme erreurs
+      // ✅ CORRIGÉ: Ne pas logger les timeouts GPS et erreurs ERR_C comme des erreurs critiques
+      // Les timeouts GPS et erreurs ERR_C (location unavailable) sont normaux et ne doivent pas être envoyés au backend comme erreurs
+      const errorCode = error?.code || error?.message;
+      const isLocationUnavailable = errorCode === 'ERR_C' || error?.message?.includes('location is unavailable') || error?.message?.includes('location services are enabled');
+      
       if (error?.message === 'GPS timeout') {
         console.warn('[LocationContext] ⚠️ GPS timeout (normal si GPS lent ou indisponible)');
         setErrorMsg('La localisation prend du temps. Réessayez plus tard.');
+      } else if (isLocationUnavailable) {
+        // ✅ NOUVEAU 2026-01-23: Ne pas logger les erreurs ERR_C comme des erreurs critiques
+        console.warn('[LocationContext] ⚠️ Localisation indisponible (ERR_C) - Services de localisation non activés');
+        setErrorMsg('Les services de localisation ne sont pas activés. Veuillez les activer dans les paramètres.');
       } else {
         // Seules les vraies erreurs sont loggées comme erreurs
         console.error('[LocationContext] ❌ Erreur récupération localisation:', error);

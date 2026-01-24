@@ -70,68 +70,67 @@ impl ProductStockService {
             }
         }
 
-        // 1. Vérifier depuis services.data JSON
-        let service_data: Option<Value> =
-            sqlx::query_scalar("SELECT data FROM services WHERE id = $1")
-                .bind(service_id)
-                .fetch_optional(&self.pool)
-                .await?;
+        // ✅ CORRIGÉ 2026-01-23: Vérifier depuis service_products.product_data au lieu de JSONB
+        let product_data: Option<Value> = sqlx::query_scalar(
+            r#"
+            SELECT product_data
+            FROM service_products
+            WHERE service_id = $1 AND product_index = $2 AND is_active = true
+            "#
+        )
+        .bind(service_id)
+        .bind(product_index)
+        .fetch_optional(&self.pool)
+        .await?;
 
-        if let Some(data) = service_data {
-            if let Some(produits) = data.get("produits") {
-                // ✅ CORRIGÉ: Structure réelle: produits.valeur[] (array de produits)
-                if let Some(produits_array) = produits.get("valeur").and_then(|v| v.as_array()) {
-                    if let Some(produit) = produits_array.get(product_index as usize) {
-                        // ✅ PRIORITÉ 1: Vérifier stock global du produit (stock direct)
-                        if let Some(stock_val) = produit.get("stock") {
-                            // Gérer différents types: number, string
-                            if let Some(stock) = stock_val.as_i64() {
-                                if stock > 0 {
-                                    return Ok(Some(stock as i32));
-                                }
-                            } else if let Some(stock_str) = stock_val.as_str() {
-                                if let Ok(stock) = stock_str.parse::<i32>() {
-                                    if stock > 0 {
-                                        return Ok(Some(stock));
-                                    }
-                                }
-                            }
-                        }
-
-                        // ✅ PRIORITÉ 2: Vérifier quantite_disponible (alias)
-                        if let Some(qty_val) = produit.get("quantite_disponible") {
-                            if let Some(qty) = qty_val.as_i64() {
-                                if qty > 0 {
-                                    return Ok(Some(qty as i32));
-                                }
-                            } else if let Some(qty_str) = qty_val.as_str() {
-                                if let Ok(qty) = qty_str.parse::<i32>() {
-                                    if qty > 0 {
-                                        return Ok(Some(qty));
-                                    }
-                                }
-                            }
-                        }
-
-                        // ✅ PRIORITÉ 3: Vérifier stock dans variants (somme totale)
-                        if let Some(variants) = produit.get("variants").and_then(|v| v.as_array()) {
-                            let total_stock: i32 = variants
-                                .iter()
-                                .filter_map(|v| {
-                                    v.get("stock")
-                                        .and_then(|s| {
-                                            s.as_i64().or_else(|| {
-                                                s.as_str().and_then(|str| str.parse::<i64>().ok())
-                                            })
-                                        })
-                                        .map(|s| s as i32)
-                                })
-                                .sum();
-                            if total_stock > 0 {
-                                return Ok(Some(total_stock));
-                            }
+        if let Some(produit) = product_data {
+            // ✅ PRIORITÉ 1: Vérifier stock global du produit (stock direct)
+            if let Some(stock_val) = produit.get("stock") {
+                // Gérer différents types: number, string
+                if let Some(stock) = stock_val.as_i64() {
+                    if stock > 0 {
+                        return Ok(Some(stock as i32));
+                    }
+                } else if let Some(stock_str) = stock_val.as_str() {
+                    if let Ok(stock) = stock_str.parse::<i32>() {
+                        if stock > 0 {
+                            return Ok(Some(stock));
                         }
                     }
+                }
+            }
+
+            // ✅ PRIORITÉ 2: Vérifier quantite_disponible (alias)
+            if let Some(qty_val) = produit.get("quantite_disponible") {
+                if let Some(qty) = qty_val.as_i64() {
+                    if qty > 0 {
+                        return Ok(Some(qty as i32));
+                    }
+                } else if let Some(qty_str) = qty_val.as_str() {
+                    if let Ok(qty) = qty_str.parse::<i32>() {
+                        if qty > 0 {
+                            return Ok(Some(qty));
+                        }
+                    }
+                }
+            }
+
+            // ✅ PRIORITÉ 3: Vérifier stock dans variants (somme totale)
+            if let Some(variants) = produit.get("variants").and_then(|v| v.as_array()) {
+                let total_stock: i32 = variants
+                    .iter()
+                    .filter_map(|v| {
+                        v.get("stock")
+                            .and_then(|s| {
+                                s.as_i64().or_else(|| {
+                                    s.as_str().and_then(|str| str.parse::<i64>().ok())
+                                })
+                            })
+                            .map(|s| s as i32)
+                    })
+                    .sum();
+                if total_stock > 0 {
+                    return Ok(Some(total_stock));
                 }
             }
         }
@@ -200,100 +199,102 @@ impl ProductStockService {
             }
         }
 
-        // Récupérer le service data (fallback vers JSONB)
-        let service_data: Option<Value> =
-            sqlx::query_scalar("SELECT data FROM services WHERE id = $1")
-                .bind(service_id)
-                .fetch_optional(&self.pool)
-                .await?;
+        // ✅ CORRIGÉ 2026-01-23: Décrémenter depuis service_products.product_data au lieu de JSONB
+        let mut product_data: Option<Value> = sqlx::query_scalar(
+            r#"
+            SELECT product_data
+            FROM service_products
+            WHERE service_id = $1 AND product_index = $2 AND is_active = true
+            "#
+        )
+        .bind(service_id)
+        .bind(product_index)
+        .fetch_optional(&self.pool)
+        .await?;
 
-        if let Some(mut data) = service_data {
+        if let Some(mut produit) = product_data {
             let mut updated = false;
+            let mut remaining = quantity;
 
-            if let Some(produits) = data.get_mut("produits") {
-                if let Some(produits_array) =
-                    produits.get_mut("valeur").and_then(|v| v.as_array_mut())
-                {
-                    if let Some(produit) = produits_array.get_mut(product_index as usize) {
-                        let mut remaining = quantity;
+            // ✅ PRIORITÉ 1: Décrémenter stock dans variants (si existe)
+            if let Some(variants) = produit.get_mut("variants").and_then(|v| v.as_array_mut()) {
+                for variant in variants.iter_mut() {
+                    if remaining <= 0 {
+                        break;
+                    }
+                    if let Some(stock_val) = variant.get_mut("stock") {
+                        // Gérer number ou string
+                        let current_stock = if let Some(stock) = stock_val.as_i64() {
+                            stock as i32
+                        } else if let Some(stock_str) = stock_val.as_str() {
+                            stock_str.parse::<i32>().unwrap_or(0)
+                        } else {
+                            0
+                        };
 
-                        // ✅ PRIORITÉ 1: Décrémenter stock dans variants (si existe)
-                        if let Some(variants) =
-                            produit.get_mut("variants").and_then(|v| v.as_array_mut())
-                        {
-                            for variant in variants.iter_mut() {
-                                if remaining <= 0 {
-                                    break;
-                                }
-                                if let Some(stock_val) = variant.get_mut("stock") {
-                                    // Gérer number ou string
-                                    let current_stock = if let Some(stock) = stock_val.as_i64() {
-                                        stock as i32
-                                    } else if let Some(stock_str) = stock_val.as_str() {
-                                        stock_str.parse::<i32>().unwrap_or(0)
-                                    } else {
-                                        0
-                                    };
-
-                                    if current_stock > 0 {
-                                        let decrement = remaining.min(current_stock);
-                                        let new_stock = (current_stock - decrement).max(0);
-                                        *stock_val = json!(new_stock);
-                                        remaining -= decrement;
-                                        updated = true;
-                                    }
-                                }
-                            }
-                        }
-
-                        // ✅ PRIORITÉ 2: Décrémenter stock global du produit (si variants épuisés ou inexistants)
-                        if remaining > 0 {
-                            if let Some(stock_val) = produit.get_mut("stock") {
-                                let current_stock = if let Some(stock) = stock_val.as_i64() {
-                                    stock as i32
-                                } else if let Some(stock_str) = stock_val.as_str() {
-                                    stock_str.parse::<i32>().unwrap_or(0)
-                                } else {
-                                    0
-                                };
-
-                                if current_stock > 0 {
-                                    let new_stock = (current_stock - remaining).max(0);
-                                    *stock_val = json!(new_stock);
-                                    updated = true;
-                                }
-                            } else if let Some(qty_val) = produit.get_mut("quantite_disponible") {
-                                // Fallback: utiliser quantite_disponible
-                                let current_qty = if let Some(qty) = qty_val.as_i64() {
-                                    qty as i32
-                                } else if let Some(qty_str) = qty_val.as_str() {
-                                    qty_str.parse::<i32>().unwrap_or(0)
-                                } else {
-                                    0
-                                };
-
-                                if current_qty > 0 {
-                                    let new_qty = (current_qty - remaining).max(0);
-                                    *qty_val = json!(new_qty);
-                                    // Synchroniser aussi avec stock
-                                    if let Some(obj) = produit.as_object_mut() {
-                                        obj.insert("stock".to_string(), json!(new_qty));
-                                    }
-                                    updated = true;
-                                }
-                            }
+                        if current_stock > 0 {
+                            let decrement = remaining.min(current_stock);
+                            let new_stock = (current_stock - decrement).max(0);
+                            *stock_val = json!(new_stock);
+                            remaining -= decrement;
+                            updated = true;
                         }
                     }
                 }
             }
 
+            // ✅ PRIORITÉ 2: Décrémenter stock global du produit (si variants épuisés ou inexistants)
+            if remaining > 0 {
+                if let Some(stock_val) = produit.get_mut("stock") {
+                    let current_stock = if let Some(stock) = stock_val.as_i64() {
+                        stock as i32
+                    } else if let Some(stock_str) = stock_val.as_str() {
+                        stock_str.parse::<i32>().unwrap_or(0)
+                    } else {
+                        0
+                    };
+
+                    if current_stock > 0 {
+                        let new_stock = (current_stock - remaining).max(0);
+                        *stock_val = json!(new_stock);
+                        updated = true;
+                    }
+                } else if let Some(qty_val) = produit.get_mut("quantite_disponible") {
+                    // Fallback: utiliser quantite_disponible
+                    let current_qty = if let Some(qty) = qty_val.as_i64() {
+                        qty as i32
+                    } else if let Some(qty_str) = qty_val.as_str() {
+                        qty_str.parse::<i32>().unwrap_or(0)
+                    } else {
+                        0
+                    };
+
+                    if current_qty > 0 {
+                        let new_qty = (current_qty - remaining).max(0);
+                        *qty_val = json!(new_qty);
+                        // Synchroniser aussi avec stock
+                        if let Some(obj) = produit.as_object_mut() {
+                            obj.insert("stock".to_string(), json!(new_qty));
+                        }
+                        updated = true;
+                    }
+                }
+            }
+
             if updated {
-                // Mettre à jour le service
-                sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
-                    .bind(&data)
-                    .bind(service_id)
-                    .execute(&self.pool)
-                    .await?;
+                // ✅ CORRIGÉ: Mettre à jour service_products au lieu de services.data
+                sqlx::query(
+                    r#"
+                    UPDATE service_products
+                    SET product_data = $1, updated_at = NOW()
+                    WHERE service_id = $2 AND product_index = $3
+                    "#
+                )
+                .bind(&produit)
+                .bind(service_id)
+                .bind(product_index)
+                .execute(&self.pool)
+                .await?;
             } else {
                 // Fallback: Décrémenter depuis autocomplete_combinations
                 sqlx::query(
@@ -310,6 +311,21 @@ impl ProductStockService {
                 .execute(&self.pool)
                 .await?;
             }
+        } else {
+            // Fallback: Décrémenter depuis autocomplete_combinations si produit non trouvé
+            sqlx::query(
+                r#"
+                UPDATE autocomplete_combinations
+                SET stock = GREATEST(0, stock - $1)
+                WHERE service_id = $2
+                    AND stock > 0
+                LIMIT 1
+                "#,
+            )
+            .bind(quantity)
+            .bind(service_id)
+            .execute(&self.pool)
+            .await?;
         }
 
         Ok(())
@@ -367,37 +383,53 @@ impl ProductStockService {
             ));
         }
 
-        // Mettre à jour le stock dans services.data
+        // ✅ CORRIGÉ 2026-01-23: Mettre à jour le stock dans service_products.product_data au lieu de JSONB
         if let Some(qty) = request.quantity_available {
-            // Récupérer le service data
-            let service_data: Option<Value> =
-                sqlx::query_scalar("SELECT data FROM services WHERE id = $1")
-                    .bind(service_id)
-                    .fetch_optional(&self.pool)
-                    .await?;
+            // Récupérer le product_index depuis product_delivery_config
+            let product_index: Option<i32> = sqlx::query_scalar(
+                r#"
+                SELECT product_index
+                FROM product_delivery_config
+                WHERE id = $1
+                "#
+            )
+            .bind(config_id)
+            .fetch_optional(&self.pool)
+            .await?;
 
-            if let Some(mut data) = service_data {
-                if let Some(produits) = data.get_mut("produits") {
-                    if let Some(produits_array) =
-                        produits.get_mut("valeur").and_then(|v| v.as_array_mut())
-                    {
-                        // Mettre à jour le stock du premier produit (ou selon product_index si disponible)
-                        if let Some(produit) = produits_array.get_mut(0) {
-                            if let Some(obj) = produit.as_object_mut() {
-                                obj.insert("stock".to_string(), json!(qty));
-                                obj.insert("quantite_disponible".to_string(), json!(qty));
-                            }
+            if let Some(product_idx) = product_index {
+                // Récupérer le product_data actuel
+                let mut product_data: Option<Value> = sqlx::query_scalar(
+                    r#"
+                    SELECT product_data
+                    FROM service_products
+                    WHERE service_id = $1 AND product_index = $2 AND is_active = true
+                    "#
+                )
+                .bind(service_id)
+                .bind(product_idx)
+                .fetch_optional(&self.pool)
+                .await?;
 
-                            // Mettre à jour dans la base
-                            sqlx::query(
-                                "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2",
-                            )
-                            .bind(&data)
-                            .bind(service_id)
-                            .execute(&self.pool)
-                            .await?;
-                        }
+                if let Some(mut produit) = product_data {
+                    if let Some(obj) = produit.as_object_mut() {
+                        obj.insert("stock".to_string(), json!(qty));
+                        obj.insert("quantite_disponible".to_string(), json!(qty));
                     }
+
+                    // ✅ CORRIGÉ: Mettre à jour service_products au lieu de services.data
+                    sqlx::query(
+                        r#"
+                        UPDATE service_products
+                        SET product_data = $1, updated_at = NOW()
+                        WHERE service_id = $2 AND product_index = $3
+                        "#
+                    )
+                    .bind(&produit)
+                    .bind(service_id)
+                    .bind(product_idx)
+                    .execute(&self.pool)
+                    .await?;
                 }
             }
         }

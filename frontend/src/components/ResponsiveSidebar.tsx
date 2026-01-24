@@ -7,8 +7,13 @@ type SidebarLink = {
   path: string;
 };
 
+// ✅ CORRIGÉ 2026-01-23: Ajouter les mêmes liens admin que React Native
 const links: SidebarLink[] = [
   { label: "Dashboard", path: "/admin/dashboard" },
+  { label: "👥 Gérer les coursiers", path: "/admin/courier-applications" },
+  { label: "🚚 Gérer les partenaires", path: "/admin/delivery-partners" },
+  { label: "👤 Gestion des rôles", path: "/admin/user-roles" },
+  { label: "🔥 Configuration Black Friday", path: "/admin" }, // GlobalPromoManager dans AdminPanel
   { label: "Utilisateurs", path: "/admin/users" },
   { label: "Services", path: "/admin/services" },
   { label: "Statistiques", path: "/admin/stats" },

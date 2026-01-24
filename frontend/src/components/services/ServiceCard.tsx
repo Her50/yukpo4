@@ -378,6 +378,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
 
           {/* Produits avec prix */}
           {(() => {
+            // ✅ CORRIGÉ 2026-01-23: Les produits viennent maintenant de service_products via le backend
+            // Le backend charge les produits depuis service_products et les met dans data.produits.valeur
             const produitsField = service.data?.produits;
             if (produitsField) {
               let produits = [];

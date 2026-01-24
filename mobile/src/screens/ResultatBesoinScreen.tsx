@@ -110,23 +110,19 @@ const ResultatBesoinScreen: React.FC = () => {
     const hasProcessedInitialResults = useRef(false);
     const initialResultsLength = useRef(initialResults?.length || 0);
     
-    // ✅ NOUVEAU 2026-01-23: Fonction utilitaire pour extraire le nom du produit selon la structure DB
-    // Suit la même logique que la colonne générée product_name dans service_products
+    // ✅ SIMPLIFIÉ 2026-01-23: Fonction utilitaire pour extraire le nom du produit
+    // ✅ MIGRATION COMPLÈTE: Tous les produits sont maintenant dans service_products avec product_name (colonne générée)
+    // Le backend retourne TOUJOURS product_name depuis service_products - plus de fallbacks nécessaires
     const getProductName = useCallback((productData: any): string => {
-        if (!productData) return '';
+        if (!productData) return 'Produit sans nom';
         
-        // Format structuré: product_data->'nom'->>'valeur'
-        if (productData.nom?.valeur) return String(productData.nom.valeur);
-        // Format simple: product_data->>'nom'
-        if (productData.nom) return String(productData.nom);
-        // Format structuré: product_data->'nom_produit'->>'valeur'
-        if (productData.nom_produit?.valeur) return String(productData.nom_produit.valeur);
-        // Format simple: product_data->>'nom_produit'
-        if (productData.nom_produit) return String(productData.nom_produit);
-        // Fallback: name (format anglais)
-        if (productData.name) return String(productData.name);
+        // ✅ UNIQUEMENT product_name depuis le backend (colonne générée PostgreSQL)
+        // Le backend garantit que product_name est toujours présent dans service_products
+        if (productData.product_name) return String(productData.product_name);
         
-        return '';
+        // ✅ ERREUR: Si product_name n'est pas disponible, c'est une anomalie du backend
+        console.error('[ResultatBesoinScreen] ❌ ERREUR: product_name manquant (anomalie backend):', productData);
+        return 'Produit sans nom';
     }, []);
 
     // ✅ CORRIGÉ 2026-01-21: Fonction améliorée pour calculer le score de pertinence au niveau produit
@@ -1924,7 +1920,8 @@ const ResultatBesoinScreen: React.FC = () => {
         const prestataire = prestataireFromProduct || prestataireFromMap || null;
 
         // ✅ CORRIGÉ 2026-01-23: Utiliser la fonction utilitaire pour extraire le nom correctement
-        const productData = product.product_data || product;
+        // ✅ CORRIGÉ 2026-01-23: S'assurer que productData n'est jamais undefined
+        const productData = product?.product_data || product || {};
         const productName = getProductName(productData) || 'Produit sans nom';
         const serviceId = product._serviceId || service?.id || 'unknown';
 

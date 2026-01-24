@@ -85,11 +85,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }, [product, productData, serviceId, productIndex]);
 
     const serviceId = service?.id;
-    const productIndex = product.product_index ?? product.index ??
-        (service?.data?.produits?.valeur ?
-            service.data.produits.valeur.findIndex((p: any) => p === productData || p.nom === productData.nom) :
-            undefined);
-    const productName = productData.nom || productData.name || 'Produit';
+    // ✅ CORRIGÉ 2026-01-23: Utiliser uniquement product_index depuis service_products (plus de fallback JSONB)
+    const productIndex = product.product_index ?? product.index ?? undefined;
+    // ✅ CORRIGÉ 2026-01-23: Utiliser product_name depuis le backend (colonne générée PostgreSQL)
+    const productName = productData.product_name || productData.nom || productData.name || 'Produit';
 
     // ✅ Vérifier si c'est un produit (pas une prestation de service)
     // Par défaut, si le type n'est pas défini, on considère que c'est un produit

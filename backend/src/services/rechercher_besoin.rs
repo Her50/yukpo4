@@ -641,11 +641,13 @@ pub async fn rechercher_besoin_direct(
     }
 
     // ✅ NOUVEAU 2026-01-07: Structure pour récupérer les produits depuis service_products
+    // ✅ CORRIGÉ 2026-01-23: Inclure product_name pour simplifier le frontend
     #[derive(sqlx::FromRow)]
     struct ServiceProductRow {
         service_id: i32,
         product_index: i32,
         product_data: serde_json::Value,
+        product_name: String, // ✅ NOUVEAU: Colonne générée depuis product_data
     }
 
     // ✅ NOUVEAU 2026-01-23: Structure pour récupérer les statistiques dynamiques des services
@@ -842,7 +844,8 @@ pub async fn rechercher_besoin_direct(
                 SELECT 
                     service_id,
                     product_index,
-                    product_data
+                    product_data,
+                    product_name
                 FROM service_products
                 WHERE service_id = ANY($1::int[])
                 AND is_active = true
@@ -863,10 +866,12 @@ pub async fn rechercher_besoin_direct(
                 for row in rows {
                     let service_id = row.service_id;
                     let mut product_data = row.product_data;
-                    // ✅ Ajouter product_index et service_id au product_data pour compatibilité
+                    // ✅ Ajouter product_index, service_id et product_name au product_data pour compatibilité
                     if let Some(obj) = product_data.as_object_mut() {
                         obj.insert("product_index".to_string(), json!(row.product_index));
                         obj.insert("service_id".to_string(), json!(service_id));
+                        // ✅ NOUVEAU 2026-01-23: Ajouter product_name pour simplifier le frontend
+                        obj.insert("product_name".to_string(), json!(row.product_name));
                     }
                     products_map
                         .entry(service_id)

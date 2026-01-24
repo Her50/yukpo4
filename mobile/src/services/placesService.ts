@@ -2,7 +2,7 @@ import { getToutesLesVilles, rechercherVilles, getTousLesPays, TOUS_LES_PAYS } f
 import { getFieldOptions } from '../data/productModalities';
 import { apiGet } from './api';
 
-export type PlaceScope = 'city' | 'point' | 'neighborhood' | 'all'; // ✅ AJOUT: Support des quartiers et 'all' pour recherche universelle
+export type PlaceScope = 'city' | 'point' | 'neighborhood' | 'establishment' | 'all'; // ✅ AJOUT: Support des quartiers, établissements et 'all' pour recherche universelle
 
 // ✅ NOUVEAU: Interface pour résultats enrichis avec types Google Places
 export interface PlaceResult {
@@ -33,6 +33,8 @@ class PlacesService {
                 url = `/api/places/autocomplete?query=${params}&type=city`;
             } else if (scope === 'neighborhood') {
                 url = `/api/places/autocomplete?query=${params}&type=neighborhood${cityContext ? `&city=${encodeURIComponent(cityContext)}` : ''}`;
+            } else if (scope === 'establishment') {
+                url = `/api/places/autocomplete?query=${params}&type=establishment${cityContext ? `&city=${encodeURIComponent(cityContext)}` : ''}`;
             } else {
                 url = `/api/places/autocomplete?query=${params}&type=point${cityContext ? `&city=${encodeURIComponent(cityContext)}` : ''}`;
             }
@@ -174,6 +176,19 @@ class PlacesService {
                 results.push({ 
                     description: p,
                     types: ['establishment'] // Type déduit pour points
+                });
+            });
+        } else if (scope === 'establishment') {
+            // ✅ NOUVEAU 2026-01-23: Support pour recherche d'établissements
+            // Utiliser les mêmes points que 'point' mais avec un focus sur les établissements
+            const pointsDepart = getFieldOptions('covoiturage', 'points_depart') || [];
+            const pointsArrivee = getFieldOptions('covoiturage', 'points_arrivee') || [];
+            const points = Array.from(new Set([...pointsDepart, ...pointsArrivee]));
+            const filtered = q ? points.filter(p => p.toLowerCase().includes(q.toLowerCase())) : points;
+            filtered.forEach(p => {
+                results.push({ 
+                    description: p,
+                    types: ['establishment']
                 });
             });
         }

@@ -91,6 +91,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [showNegotiatePriceModal, setShowNegotiatePriceModal] = useState(false);
     const [selectedProductForDelivery, setSelectedProductForDelivery] = useState<{ product: any; productIndex: number } | null>(null);
     const [selectedProductForNegotiation, setSelectedProductForNegotiation] = useState<{ product: any; productIndex: number; originalPrice: number } | null>(null);
+    // ✅ NOUVEAU 2026-01-23: État pour vérifier si la livraison est disponible
+    const [hasDeliveryConfig, setHasDeliveryConfig] = useState<boolean>(false);
+    const [deliveryEnabled, setDeliveryEnabled] = useState<boolean>(false);
+    // ✅ NOUVEAU 2026-01-23: État pour vérifier si la livraison est disponible
+    const [hasDeliveryConfig, setHasDeliveryConfig] = useState<boolean>(false);
+    const [deliveryEnabled, setDeliveryEnabled] = useState<boolean>(false);
 
     // ✅ NOUVEAU: États pour le système de réponse/citation
     const [replyingTo, setReplyingTo] = useState<any | null>(null);
@@ -694,6 +700,53 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         };
     }, [audioSound]);
 
+    // ✅ NOUVEAU 2026-01-23: Vérifier si le service a une configuration de livraison (comme ProductCard)
+    useEffect(() => {
+        const checkDeliveryConfig = async () => {
+            if (!service?.id) {
+                setHasDeliveryConfig(false);
+                setDeliveryEnabled(false);
+                return;
+            }
+
+            try {
+                // Vérifier si au moins un produit a une configuration de livraison
+                const response = await apiGet(`/api/services/${service.id}/products`);
+                if (response.success && Array.isArray(response.data) && response.data.length > 0) {
+                    // Vérifier la configuration pour le premier produit (ou tous les produits)
+                    const productIndex = response.data[0]?.product_index ?? 0;
+                    const configResponse = await apiGet(
+                        `/api/delivery/product-config/${service.id}/${productIndex}`
+                    );
+                    
+                    if (configResponse.success && configResponse.data?.is_configured === true) {
+                        setHasDeliveryConfig(true);
+                        setDeliveryEnabled(true);
+                    } else {
+                        setHasDeliveryConfig(false);
+                        setDeliveryEnabled(false);
+                    }
+                } else {
+                    setHasDeliveryConfig(false);
+                    setDeliveryEnabled(false);
+                }
+            } catch (error: any) {
+                // Ne pas logger les erreurs 404 comme des erreurs critiques
+                if (error?.message?.includes('404') || error?.response?.status === 404) {
+                    console.log('[ChatModalMobile] ℹ️ Config livraison non trouvée (404)');
+                    setHasDeliveryConfig(false);
+                    setDeliveryEnabled(false);
+                } else {
+                    console.error('[ChatModalMobile] ❌ Erreur vérification config livraison:', error);
+                    setHasDeliveryConfig(false);
+                    setDeliveryEnabled(false);
+                }
+            }
+        };
+
+        checkDeliveryConfig();
+    }, [service?.id]);
+
     return (
         <Modal
             visible={visible}
@@ -1128,64 +1181,91 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="FolderOpen" size={22} color="#8B5CF6" type="lucide" />
                         </TouchableOpacity>
 
-                        {/* ✅ NOUVEAU: Bouton "Me livrer" pour commander une livraison */}
-                        <TouchableOpacity
-                            style={styles.mediaButton}
-                            onPress={async () => {
-                                // Charger les produits du service pour permettre la sélection
-                                try {
+                        {/* ✅ NOUVEAU 2026-01-23: Bouton "Me livrer" avec texte (comme ProductCard) */}
+                        {/* ✅ Utilise maintenant l'API /api/services/:id/products au lieu de l'ancien format JSONB */}
+                        {/* ✅ Vérifie la configuration de livraison et prend en compte le prix négocié */}
+                        {service?.id && (
+                            <TouchableOpacity
+                                style={[
+                                    styles.deliveryButton,
+                                    !deliveryEnabled && styles.deliveryButtonDisabled
+                                ]}
+                                onPress={async () => {
                                     if (!service?.id) {
                                         Alert.alert('Erreur', 'Service non disponible');
                                         return;
                                     }
 
-                                    const response = await apiGet(`/api/services/${service.id}`);
-                                    if (response.success && response.data) {
-                                        const serviceData = response.data;
-                                        const products = serviceData.data?.produits?.valeur || 
-                                                       serviceData.produits || 
-                                                       [];
+                                    if (!deliveryEnabled) {
+                                        Alert.alert(
+                                            'Livraison non disponible',
+                                            'La livraison n\'est pas activée pour ce service. Contactez le prestataire pour plus d\'informations.'
+                                        );
+                                        return;
+                                    }
 
-                                        if (products.length === 0) {
-                                            Alert.alert('Aucun produit', 'Ce service n\'a pas de produits disponibles pour la livraison');
-                                            return;
-                                        }
+                                    // ✅ CORRIGÉ: Charger les produits depuis service_products (nouveau système)
+                                    try {
+                                        // ✅ CORRIGÉ: Utiliser l'API service_products au lieu de l'ancien format JSONB
+                                        const response = await apiGet(`/api/services/${service.id}/products`);
+                                        if (response.success && Array.isArray(response.data)) {
+                                            const products = response.data;
 
-                                        // Si un seul produit, ouvrir directement le modal
-                                        if (products.length === 1) {
-                                            setSelectedProductForDelivery({
-                                                product: products[0],
-                                                productIndex: 0
-                                            });
-                                            setShowOrderModal(true);
+                                            if (products.length === 0) {
+                                                Alert.alert('Aucun produit', 'Ce service n\'a pas de produits disponibles pour la livraison');
+                                                return;
+                                            }
+
+                                            // ✅ CORRIGÉ: Utiliser product_name depuis le backend
+                                            // Si un seul produit, ouvrir directement le modal
+                                            if (products.length === 1) {
+                                                const product = products[0];
+                                                setSelectedProductForDelivery({
+                                                    product: product.product_data || product,
+                                                    productIndex: product.product_index || 0
+                                                });
+                                                setShowOrderModal(true);
+                                            } else {
+                                                // Si plusieurs produits, afficher un sélecteur
+                                                Alert.alert(
+                                                    'Sélectionner un produit',
+                                                    'Choisissez le produit à livrer',
+                                                    products.map((product: any) => ({
+                                                        text: product.product_name || product.product_data?.product_name || product.product_data?.nom || `Produit ${product.product_index + 1}`,
+                                                        onPress: () => {
+                                                            setSelectedProductForDelivery({
+                                                                product: product.product_data || product,
+                                                                productIndex: product.product_index || 0
+                                                            });
+                                                            setShowOrderModal(true);
+                                                        }
+                                                    })).concat([{ text: 'Annuler', style: 'cancel' }])
+                                                );
+                                            }
                                         } else {
-                                            // Si plusieurs produits, afficher un sélecteur
-                                            Alert.alert(
-                                                'Sélectionner un produit',
-                                                'Choisissez le produit à livrer',
-                                                products.map((product: any, index: number) => ({
-                                                    text: product.name || product.titre || `Produit ${index + 1}`,
-                                                    onPress: () => {
-                                                        setSelectedProductForDelivery({
-                                                            product,
-                                                            productIndex: index
-                                                        });
-                                                        setShowOrderModal(true);
-                                                    }
-                                                })).concat([{ text: 'Annuler', style: 'cancel' }])
-                                            );
+                                            Alert.alert('Erreur', 'Impossible de charger les produits');
                                         }
-                                    } else {
+                                    } catch (error) {
+                                        console.error('[ChatModalMobile] Erreur chargement produits:', error);
                                         Alert.alert('Erreur', 'Impossible de charger les produits');
                                     }
-                                } catch (error) {
-                                    console.error('[ChatModalMobile] Erreur chargement produits:', error);
-                                    Alert.alert('Erreur', 'Impossible de charger les produits');
-                                }
-                            }}
-                        >
-                            <SafeIcon name="truck" size={22} color={modernColors.success} />
-                        </TouchableOpacity>
+                                }}
+                                disabled={!deliveryEnabled}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon
+                                    name="truck"
+                                    size={14}
+                                    color={deliveryEnabled ? "#10B981" : "#9CA3AF"}
+                                />
+                                <Text style={[
+                                    styles.deliveryButtonText,
+                                    !deliveryEnabled && styles.deliveryButtonTextDisabled
+                                ]}>
+                                    Me livrer
+                                </Text>
+                            </TouchableOpacity>
+                        )}
 
                         {/* ✅ NOUVEAU 2026-01-23: Bouton "Envoyer lien avis" */}
                         <TouchableOpacity
@@ -1434,7 +1514,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 currentQuery={mentionQuery}
             />
 
-            {/* ✅ NOUVEAU: Modal de commande de livraison */}
+            {/* ✅ CORRIGÉ 2026-01-23: Modal de commande de livraison */}
             <OrderDeliveryModal
                 visible={showOrderModal}
                 onClose={() => {
@@ -1443,7 +1523,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 }}
                 serviceId={service?.id}
                 productIndex={selectedProductForDelivery?.productIndex}
-                productName={selectedProductForDelivery?.product?.name || selectedProductForDelivery?.product?.titre}
+                // ✅ CORRIGÉ: Utiliser product_name depuis le backend
+                productName={selectedProductForDelivery?.product?.product_name || 
+                            selectedProductForDelivery?.product?.nom || 
+                            selectedProductForDelivery?.product?.name || 
+                            selectedProductForDelivery?.product?.titre || 
+                            'Produit'}
                 conversationId={effectiveServiceId}
                 clientUserId={user?.id}
                 onSuccess={(deliveryId) => {
@@ -2003,6 +2088,32 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.surfaceVariant,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    // ✅ NOUVEAU 2026-01-23: Style pour le bouton "Me livrer" (comme ProductCard)
+    deliveryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        backgroundColor: '#10B981',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#059669',
+        minWidth: 100,
+    },
+    deliveryButtonDisabled: {
+        backgroundColor: '#E5E7EB',
+        borderColor: '#D1D5DB',
+    },
+    deliveryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    deliveryButtonTextDisabled: {
+        color: '#9CA3AF',
     },
     callButtons: {
         flexDirection: 'row',

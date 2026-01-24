@@ -31,6 +31,16 @@ struct ServiceDataRow {
     data: Value,
 }
 
+// ✅ NOUVEAU 2026-01-23: Structure pour récupérer les produits depuis service_products
+#[derive(FromRow)]
+struct ServiceProductRow {
+    service_id: i32,
+    product_index: i32,
+    product_data: Value,
+    product_name: String,
+    product_price: Option<rust_decimal::Decimal>,
+}
+
 #[derive(FromRow)]
 struct ClientDeliveryPreferencesFullRow {
     id: i32,
@@ -902,28 +912,7 @@ async fn list_product_delivery_configs(
         ));
     }
 
-    // Récupérer le service pour obtenir les noms des produits
-    let service_data: Option<ServiceDataRow> =
-        sqlx::query_as("SELECT data FROM services WHERE id = $1")
-            .bind(service_id)
-            .fetch_optional(&state.pg)
-            .await?;
-
-    let service_data =
-        service_data.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
-
-    // Extraire les produits depuis la structure data
-    let products = service_data
-        .data
-        .get("produits")
-        .and_then(|p| {
-            // Essayer d'abord produits.valeur (structure avec valeur)
-            p.get("valeur")
-                .or_else(|| Some(p))
-        })
-        .cloned()
-        .unwrap_or_else(|| json!([]));
-
+    // ✅ CORRIGÉ 2026-01-23: Récupérer les produits depuis service_products au lieu de JSONB
     // Récupérer toutes les configurations pour ce service
     let configs: Vec<sqlx::postgres::PgRow> = sqlx::query(
         r#"
@@ -938,6 +927,26 @@ async fn list_product_delivery_configs(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération configurations: {}", e)))?;
 
+    // ✅ CORRIGÉ: Récupérer les produits depuis service_products
+    let products: Vec<ServiceProductRow> = sqlx::query_as(
+        r#"
+        SELECT service_id, product_index, product_data, product_name, product_price
+        FROM service_products
+        WHERE service_id = $1 AND is_active = true
+        ORDER BY product_index
+        "#
+    )
+    .bind(service_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération produits: {}", e)))?;
+
+    // Créer un map pour accès rapide par product_index
+    let products_map: std::collections::HashMap<i32, &ServiceProductRow> = products
+        .iter()
+        .map(|p| (p.product_index, p))
+        .collect();
+
     let mut result_products = Vec::new();
     
     for config_row in configs {
@@ -945,18 +954,11 @@ async fn list_product_delivery_configs(
         let is_configured: bool = config_row.get("is_configured");
         let pickup_address: Option<String> = config_row.get("pickup_address");
         
-        // Obtenir le nom du produit depuis service_data
-        let product_name = if let Some(product) = products.get(product_index as usize) {
-            product
-                .get("nom")
-                .or_else(|| product.get("nom_produit"))
-                .and_then(|v| v.as_str())
-                .or_else(|| product.get("nom").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()))
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| format!("Produit {}", product_index))
-        } else {
-            format!("Produit {}", product_index)
-        };
+        // ✅ CORRIGÉ: Obtenir le nom du produit depuis service_products
+        let product_name = products_map
+            .get(&product_index)
+            .map(|p| p.product_name.clone())
+            .unwrap_or_else(|| format!("Produit {}", product_index));
         
         result_products.push(json!({
             "index": product_index,
@@ -1907,57 +1909,44 @@ async fn create_client_order(
                     .fetch_optional(&state.pg)
                     .await?;
 
-            let product_price_cents = if let Some(service_row) = product_data {
-                let service_data: serde_json::Value = service_row.data;
-                // ✅ CORRECTION: Chercher produits dans produits.valeur (format standard) ou produits directement
-                let products_array = service_data
-                    .get("produits")
-                    .and_then(|p| {
-                        // Si produits est un objet avec valeur
-                        if let Some(valeur) = p.get("valeur").and_then(|v| v.as_array()) {
-                            Some(valeur)
-                        } else if let Some(arr) = p.as_array() {
-                            // Si produits est directement un tableau
-                            Some(arr)
-                        } else {
-                            None
-                        }
-                    })
-                    .or_else(|| {
-                        // Fallback: chercher "products" (format anglais)
-                        service_data.get("products").and_then(|v| v.as_array())
-                    });
+            // ✅ CORRIGÉ 2026-01-23: Récupérer le produit depuis service_products au lieu de JSONB
+            let product_price_cents = {
+                let product: Option<ServiceProductRow> = sqlx::query_as(
+                    r#"
+                    SELECT service_id, product_index, product_data, product_name, product_price
+                    FROM service_products
+                    WHERE service_id = $1 AND product_index = $2 AND is_active = true
+                    "#
+                )
+                .bind(payload.service_id)
+                .bind(product_index)
+                .fetch_optional(&state.pg)
+                .await
+                .map_err(|e| {
+                    log::error!("[create_client_order] Erreur récupération produit: {}", e);
+                    AppError::Internal(format!("Erreur récupération produit: {}", e))
+                })?;
 
-                if let Some(products) = products_array {
-                    if let Some(product) = products.get(product_index as usize) {
-                        // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
-                        ProductPriceService::get_real_product_price_cents(
-                            &state.pg,
-                            payload.service_id,
-                            product,
-                            Some(product_index),
-                            payload.conversation_id, // ✅ NOUVEAU : Pour prix négociés
-                            Some(user.id), // ✅ NOUVEAU : client_user_id = user.id dans create_client_order
-                        )
-                        .await
-                        .unwrap_or_else(|_| {
-                            // Fallback : prix de base si erreur
-                            product
-                                .get("price")
-                                .or_else(|| product.get("prix"))
-                                .or_else(|| product.get("prix_produit"))
-                                .and_then(|v| v.as_f64())
-                                .map(|p| (p * 100.0) as i64)
-                                .unwrap_or(0)
-                        })
-                    } else {
-                        0
-                    }
+                if let Some(product_row) = product {
+                    // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
+                    ProductPriceService::get_real_product_price_cents(
+                        &state.pg,
+                        payload.service_id,
+                        &product_row.product_data,
+                        Some(product_index),
+                        payload.conversation_id, // ✅ NOUVEAU : Pour prix négociés
+                        Some(user.id), // ✅ NOUVEAU : client_user_id = user.id dans create_client_order
+                    )
+                    .await
+                    .unwrap_or_else(|_| {
+                        // Fallback : prix de base depuis product_price (colonne générée)
+                        product_row.product_price
+                            .and_then(|p| p.to_i64())
+                            .unwrap_or(0)
+                    })
                 } else {
                     0
                 }
-            } else {
-                0
             };
 
             // Récupérer le coût de livraison depuis le pricing de la livraison
@@ -2558,57 +2547,44 @@ async fn estimate_delivery_costs(
                 .fetch_optional(&state.pg)
                 .await?;
 
-        if let Some(service_row) = product_data {
-            // ✅ CORRECTION: Chercher produits dans produits.valeur (format standard) ou produits directement
-            let products_array = service_row
-                .data
-                .get("produits")
-                .and_then(|p| {
-                    // Si produits est un objet avec valeur
-                    if let Some(valeur) = p.get("valeur").and_then(|v| v.as_array()) {
-                        Some(valeur)
-                    } else if let Some(arr) = p.as_array() {
-                        // Si produits est directement un tableau
-                        Some(arr)
-                    } else {
-                        None
-                    }
-                })
-                .or_else(|| {
-                    // Fallback: chercher "products" (format anglais)
-                    service_row.data.get("products").and_then(|v| v.as_array())
-                });
+        // ✅ CORRIGÉ 2026-01-23: Récupérer le produit depuis service_products au lieu de JSONB
+        {
+            let product: Option<ServiceProductRow> = sqlx::query_as(
+                r#"
+                SELECT service_id, product_index, product_data, product_name, product_price
+                FROM service_products
+                WHERE service_id = $1 AND product_index = $2 AND is_active = true
+                "#
+            )
+            .bind(payload.service_id)
+            .bind(product_index)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                log::error!("[create_delivery_request] Erreur récupération produit: {}", e);
+                AppError::Internal(format!("Erreur récupération produit: {}", e))
+            })?;
 
-            if let Some(products) = products_array {
-                if let Some(product) = products.get(product_index as usize) {
-                    // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
-                    ProductPriceService::get_real_product_price_cents(
-                        &state.pg,
-                        payload.service_id,
-                        product,
-                        Some(product_index),
-                        payload.conversation_id, // ✅ NOUVEAU : Pour prix négociés
-                        payload.client_user_id.or(Some(user.id)), // ✅ NOUVEAU : Pour prix négociés
-                    )
-                    .await
-                    .unwrap_or_else(|_| {
-                        // Fallback : prix de base si erreur
-                        product
-                            .get("price")
-                            .or_else(|| product.get("prix"))
-                            .or_else(|| product.get("prix_produit"))
-                            .and_then(|v| v.as_f64())
-                            .map(|p| (p * 100.0) as i64)
-                            .unwrap_or(0)
-                    })
-                } else {
-                    0
-                }
+            if let Some(product_row) = product {
+                // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
+                ProductPriceService::get_real_product_price_cents(
+                    &state.pg,
+                    payload.service_id,
+                    &product_row.product_data,
+                    Some(product_index),
+                    payload.conversation_id, // ✅ NOUVEAU : Pour prix négociés
+                    payload.client_user_id.or(Some(user.id)), // ✅ NOUVEAU : Pour prix négociés
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    // Fallback : prix de base depuis product_price (colonne générée)
+                    product_row.product_price
+                        .and_then(|p| p.to_i64())
+                        .unwrap_or(0)
+                })
             } else {
                 0
             }
-        } else {
-            0
         }
     } else {
         0
