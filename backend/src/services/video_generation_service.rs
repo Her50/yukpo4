@@ -3576,20 +3576,21 @@ async fn append_video_variants_to_service_data(
                 let service_id_clone = service_id_clone;
                 let product_index_clone = product_index_clone;
                 let pool_clone = pool.clone();
-            Box::pin(async move {
-                // ✅ CORRIGÉ 2026-01-23: Mettre à jour service_products au lieu de services.data
-                sqlx::query(
-                    "UPDATE service_products SET product_data = $1, updated_at = NOW() WHERE service_id = $2 AND product_index = $3"
-                )
-                .bind(product_data_clone)
-                .bind(service_id_clone)
-                .bind(product_index_clone)
-                .execute(&pool_clone)
-                .await?;
                 
-                Ok::<_, sqlx::Error>(())
-            })
-        },
+                Box::pin(async move {
+                    // ✅ CORRIGÉ 2026-01-23: Mettre à jour service_products au lieu de services.data
+                    sqlx::query(
+                        "UPDATE service_products SET product_data = $1, updated_at = NOW() WHERE service_id = $2 AND product_index = $3"
+                    )
+                    .bind(product_data_clone)
+                    .bind(service_id_clone)
+                    .bind(product_index_clone)
+                    .execute(&pool_clone)
+                    .await?;
+                    
+                    Ok::<_, sqlx::Error>(())
+                })
+            },
         10, // 10 tentatives max avec backoff adaptatif pour TLS
     )
     .await
@@ -3597,6 +3598,7 @@ async fn append_video_variants_to_service_data(
         error!("[VideoGeneration] Erreur mise à jour service avec variants (après retries): {err:?}");
         AppError::from(err)
     })?;
+    }
 
     Ok(())
 }
