@@ -20,6 +20,7 @@ struct ServiceDataRow {
     data: Value,
 }
 
+#[allow(dead_code)]
 #[derive(FromRow)]
 struct ServiceDataValueRow {
     data: Value,
@@ -3380,7 +3381,7 @@ async fn append_video_to_service_data(
     state: &Arc<AppState>,
     service_id: i32,
     product_index: i32,
-    service_data: &mut Value,
+    _service_data: &mut Value,
     video_url: String,
     subtitle_url: Option<String>,
     variant_urls: &[(String, String)],
@@ -3887,6 +3888,7 @@ fn locate_product_array(data: &Value) -> Option<&Vec<Value>> {
     None
 }
 
+#[allow(dead_code)]
 fn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {
     match data {
         Value::Array(arr) => Some(arr),

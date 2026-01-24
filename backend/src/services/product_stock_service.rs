@@ -200,7 +200,7 @@ impl ProductStockService {
         }
 
         // ✅ CORRIGÉ 2026-01-23: Décrémenter depuis service_products.product_data au lieu de JSONB
-        let mut product_data: Option<Value> = sqlx::query_scalar(
+        let product_data: Option<Value> = sqlx::query_scalar(
             r#"
             SELECT product_data
             FROM service_products
@@ -399,7 +399,7 @@ impl ProductStockService {
 
             if let Some(product_idx) = product_index {
                 // Récupérer le product_data actuel
-                let mut product_data: Option<Value> = sqlx::query_scalar(
+                let product_data: Option<Value> = sqlx::query_scalar(
                     r#"
                     SELECT product_data
                     FROM service_products

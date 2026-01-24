@@ -28,13 +28,13 @@ struct ServiceUserIdRow {
 
 #[derive(FromRow)]
 struct ServiceDataRow {
-    data: Value,
+    _data: Value,
 }
 
 // ✅ NOUVEAU 2026-01-23: Structure pour récupérer les produits depuis service_products
 #[derive(FromRow)]
 struct ServiceProductRow {
-    service_id: i32,
+    _service_id: i32,
     product_index: i32,
     product_data: Value,
     product_name: String,
@@ -1903,7 +1903,7 @@ async fn create_client_order(
     let (product_price_cents, delivery_cost_cents, billing_mode) =
         if let Some(product_index) = payload.product_index {
             // Récupérer le prix du produit
-            let product_data: Option<ServiceDataRow> =
+            let _product_data: Option<ServiceDataRow> =
                 sqlx::query_as("SELECT data FROM services WHERE id = $1")
                     .bind(payload.service_id)
                     .fetch_optional(&state.pg)
@@ -2541,7 +2541,7 @@ async fn estimate_delivery_costs(
 
     // 1. Récupérer le prix du produit (✅ avec promotions)
     let product_price_cents = if let Some(product_index) = payload.product_index {
-        let product_data: Option<ServiceDataRow> =
+        let _product_data: Option<ServiceDataRow> =
             sqlx::query_as("SELECT data FROM services WHERE id = $1")
                 .bind(payload.service_id)
                 .fetch_optional(&state.pg)
