@@ -150,6 +150,8 @@ COPY --from=builder --chown=appuser:appuser /app/config /app/config
 COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
 COPY --from=builder --chown=appuser:appuser /app/ia_prompts /app/ia_prompts
 COPY --from=builder --chown=appuser:appuser /app/ia_intentions_instructions.md /app/
+# ✅ CRITIQUE : Copier le dossier public pour servir les fichiers .well-known
+COPY --from=builder --chown=appuser:appuser /app/public /app/public
 
 # Copier le script de démarrage
 COPY scripts/start-cloud.sh /app/start-cloud.sh
