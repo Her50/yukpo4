@@ -1,0 +1,12 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.yukpomnang.mobile",
+      "sha256_cert_fingerprints": [
+      "7C:4F:6C:46:D0:59:C9:D1:BC:D0:FE:95:C9:6C:41:ED:19:EC:61:98:1B:5A:81:8E:FA:7F:EF:7C:50:91:7C:1E",
+      "SHA256_FINGERPRINT_RELEASE"
+    ]
+  }
+}]
+

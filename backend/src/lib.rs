@@ -123,6 +123,7 @@ use crate::websocket::websocket_handler::create_websocket_router;
 use axum::{extract::State, routing::get, Json, Router};
 use std::sync::Arc;
 use tower_http::compression::CompressionLayer;
+use tower_http::services::ServeDir;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 // use crate::routes::fournitures_routes;
 async fn healthz() -> &'static str {
@@ -301,6 +302,13 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
 
     let app = Router::new()
         .route("/healthz", get(healthz))
+        // ✅ CRITIQUE : Servir les fichiers .well-known pour Universal Links / App Links
+        .nest_service(
+            "/.well-known",
+            ServeDir::new("public/.well-known")
+                .precompressed_gzip()
+                .precompressed_br(),
+        )
         .merge(auth)
         .merge(users)
         .merge(admin_users) // ✅ NOUVEAU: Routes admin gestion des rôles
