@@ -129,6 +129,29 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 async fn healthz() -> &'static str {
     "OK"
 }
+
+// ✅ Handler explicite pour apple-app-site-association (sans extension)
+async fn serve_apple_association() -> Result<axum::response::Response<axum::body::Body>, axum::http::StatusCode> {
+    use axum::response::Response;
+    use axum::body::Body;
+    use std::fs;
+    
+    match fs::read_to_string("public/.well-known/apple-app-site-association") {
+        Ok(content) => {
+            let response = Response::builder()
+                .status(200)
+                .header("Content-Type", "application/json")
+                .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                .header("Pragma", "no-cache")
+                .header("Expires", "0")
+                .header("Access-Control-Allow-Origin", "*")
+                .body(Body::from(content))
+                .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+            Ok(response)
+        }
+        Err(_) => Err(axum::http::StatusCode::NOT_FOUND)
+    }
+}
 pub fn init_logging() {
     let log_format = std::env::var("LOG_FORMAT").unwrap_or_else(|_| "plain".to_string());
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
@@ -303,8 +326,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let app = Router::new()
         .route("/healthz", get(healthz))
         // ✅ CRITIQUE : Servir les fichiers .well-known pour Universal Links / App Links
-        // Note: L'app s'exécute depuis backend/ (startCommand: cd backend && ./target/release/yukpomnang_backend)
-        // Donc le chemin doit être relatif à backend/
+        // Route explicite pour apple-app-site-association (sans extension, peut poser problème avec ServeDir)
+        .route("/.well-known/apple-app-site-association", get(serve_apple_association))
+        // ServeDir pour les autres fichiers .well-known (assetlinks.json, etc.)
         .nest_service(
             "/.well-known",
             ServeDir::new("public/.well-known")
