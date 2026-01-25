@@ -303,9 +303,10 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let app = Router::new()
         .route("/healthz", get(healthz))
         // ✅ CRITIQUE : Servir les fichiers .well-known pour Universal Links / App Links
+        // Note: Le chemin doit être relatif depuis le répertoire de travail de l'exécutable
         .nest_service(
             "/.well-known",
-            ServeDir::new("public/.well-known")
+            ServeDir::new("backend/public/.well-known")
                 .precompressed_gzip()
                 .precompressed_br(),
         )
