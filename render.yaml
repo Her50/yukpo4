@@ -22,6 +22,8 @@ services:
       export SQLX_OFFLINE=true && \
       echo "✅ SQLX_OFFLINE configuré à true dans buildCommand" && \
       echo "Mode SQLx: OFFLINE (utilisation des métadonnées .sqlx)" && \
+      echo "✅ Vérification du dossier public/.well-known..." && \
+      ls -la public/.well-known/ || echo "⚠️ Dossier public/.well-known non trouvé" && \
       cargo build --release
     startCommand: cd backend && ./target/release/yukpomnang_backend
     envVars:
