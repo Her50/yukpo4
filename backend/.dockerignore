@@ -99,8 +99,9 @@ coverage/
 ############################################
 # Docker files (éviter la récursion)
 ############################################
-Dockerfile*
-!Dockerfile.cloud.optimized
+Dockerfile
+Dockerfile.cloud
+Dockerfile.cloud.blender
 docker-compose*.yml
 .dockerignore
 
