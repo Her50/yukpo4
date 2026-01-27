@@ -107,7 +107,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: Dockerfile.cloud.optimized
+          file: ./backend/Dockerfile.cloud.optimized
           push: ${{ github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == 'true') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -196,7 +196,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: Dockerfile.cloud.optimized
+          file: ./backend/Dockerfile.cloud.optimized
           push: true
           tags: ${{ steps.meta-ecr.outputs.tags }}
           labels: ${{ steps.meta-ecr.outputs.labels }}
