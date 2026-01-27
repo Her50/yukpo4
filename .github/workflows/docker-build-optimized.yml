@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
       - develop
     paths:
       - 'backend/**'
@@ -11,6 +12,7 @@ on:
   pull_request:
     branches:
       - main
+      - master
       - develop
     paths:
       - 'backend/**'
@@ -211,7 +213,7 @@ jobs:
   deploy-to-ecs:
     name: Deploy to AWS ECS
     needs: push-to-aws
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.push_to_aws == 'true')
+    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || (github.event_name == 'workflow_dispatch' && inputs.push_to_aws == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
