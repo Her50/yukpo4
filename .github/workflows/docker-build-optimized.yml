@@ -106,8 +106,8 @@ jobs:
       - name: Build and push Docker image (optimized with cache)
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
-          file: Dockerfile.cloud.optimized
+          context: .
+          file: backend/Dockerfile.cloud.optimized
           push: ${{ github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == 'true') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -195,8 +195,8 @@ jobs:
       - name: Build and push to ECR (from cache)
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
-          file: Dockerfile.cloud.optimized
+          context: .
+          file: backend/Dockerfile.cloud.optimized
           push: true
           tags: ${{ steps.meta-ecr.outputs.tags }}
           labels: ${{ steps.meta-ecr.outputs.labels }}
