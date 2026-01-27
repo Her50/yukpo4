@@ -110,12 +110,18 @@ jobs:
           cp backend/Dockerfile.cloud.optimized backend/Dockerfile.build
           echo "Dockerfile copied to backend/Dockerfile.build"
           ls -la backend/Dockerfile.build
+          # Vérifier que le fichier est bien dans le contexte
+          pwd
+          ls -la backend/ | grep Dockerfile
+          # Vérification supplémentaire : s'assurer que le fichier est accessible
+          test -f backend/Dockerfile.build && echo "✅ Dockerfile.build exists" || echo "❌ Dockerfile.build NOT FOUND"
+          cat backend/Dockerfile.build | head -5
 
       - name: Build and push Docker image (optimized with cache)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: Dockerfile.build
+          file: ./Dockerfile.build
           push: ${{ github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == 'true') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -203,12 +209,14 @@ jobs:
       - name: Prepare Dockerfile for ECR build
         run: |
           cp backend/Dockerfile.cloud.optimized backend/Dockerfile.build
+          ls -la backend/Dockerfile.build
+          test -f backend/Dockerfile.build && echo "✅ Dockerfile.build exists" || echo "❌ Dockerfile.build NOT FOUND"
 
       - name: Build and push to ECR (from cache)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: Dockerfile.build
+          file: ./Dockerfile.build
           push: true
           tags: ${{ steps.meta-ecr.outputs.tags }}
           labels: ${{ steps.meta-ecr.outputs.labels }}
