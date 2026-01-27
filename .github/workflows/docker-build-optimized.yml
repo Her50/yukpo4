@@ -105,9 +105,14 @@ jobs:
 
       - name: Verify Dockerfile exists
         run: |
-          echo "Checking Dockerfile location..."
-          ls -la backend/Dockerfile.cloud.optimized || echo "Dockerfile not found in backend/"
-          find . -name "Dockerfile.cloud.optimized" -type f || echo "Dockerfile not found anywhere"
+          echo "=== Checking Dockerfile location ==="
+          pwd
+          ls -la backend/Dockerfile.cloud.optimized || echo "ERROR: Dockerfile not found in backend/"
+          find . -name "Dockerfile.cloud.optimized" -type f || echo "ERROR: Dockerfile not found anywhere"
+          echo "=== Checking .dockerignore ==="
+          cat backend/.dockerignore | grep -i dockerfile || echo "No Dockerfile entries in .dockerignore"
+          echo "=== Listing backend directory ==="
+          ls -la backend/ | grep -i dockerfile || echo "No Dockerfile files in backend/"
 
       - name: Build and push Docker image (optimized with cache)
         uses: docker/build-push-action@v5
