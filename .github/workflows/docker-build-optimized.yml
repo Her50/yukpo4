@@ -103,6 +103,12 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=optimized
 
+      - name: Verify Dockerfile exists
+        run: |
+          echo "Checking Dockerfile location..."
+          ls -la backend/Dockerfile.cloud.optimized || echo "Dockerfile not found in backend/"
+          find . -name "Dockerfile.cloud.optimized" -type f || echo "Dockerfile not found anywhere"
+
       - name: Build and push Docker image (optimized with cache)
         uses: docker/build-push-action@v5
         with:
