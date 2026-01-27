@@ -113,12 +113,14 @@ jobs:
           cat backend/.dockerignore | grep -i dockerfile || echo "No Dockerfile entries in .dockerignore"
           echo "=== Listing backend directory ==="
           ls -la backend/ | grep -i dockerfile || echo "No Dockerfile files in backend/"
+          echo "=== Copying Dockerfile to root for testing ==="
+          cp backend/Dockerfile.cloud.optimized ./Dockerfile.cloud.optimized.tmp || echo "ERROR: Failed to copy Dockerfile"
 
       - name: Build and push Docker image (optimized with cache)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: Dockerfile.cloud.optimized
+          file: ../Dockerfile.cloud.optimized.tmp
           push: ${{ github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == 'true') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
