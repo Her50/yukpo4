@@ -103,25 +103,17 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=optimized
 
-      - name: Prepare Dockerfile for build
+      - name: Verify Dockerfile exists
         run: |
-          echo "=== Preparing Dockerfile ==="
-          # Copier le Dockerfile dans le contexte avec un nom qui ne sera pas exclu par .dockerignore
-          cp backend/Dockerfile.cloud.optimized backend/Dockerfile.build
-          echo "Dockerfile copied to backend/Dockerfile.build"
-          ls -la backend/Dockerfile.build
-          # Vérifier que le fichier est bien dans le contexte
-          pwd
-          ls -la backend/ | grep Dockerfile
-          # Vérification supplémentaire : s'assurer que le fichier est accessible
-          test -f backend/Dockerfile.build && echo "✅ Dockerfile.build exists" || echo "❌ Dockerfile.build NOT FOUND"
-          cat backend/Dockerfile.build | head -5
+          echo "=== Verifying Dockerfile ==="
+          ls -la backend/Dockerfile.cloud.optimized
+          test -f backend/Dockerfile.cloud.optimized && echo "✅ Dockerfile.cloud.optimized exists" || echo "❌ Dockerfile.cloud.optimized NOT FOUND"
 
       - name: Build and push Docker image (optimized with cache)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: ./Dockerfile.build
+          file: Dockerfile.cloud.optimized
           push: ${{ github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == 'true') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -206,17 +198,16 @@ jobs:
             type=raw,value=optimized
             type=ref,event=branch
 
-      - name: Prepare Dockerfile for ECR build
+      - name: Verify Dockerfile for ECR build
         run: |
-          cp backend/Dockerfile.cloud.optimized backend/Dockerfile.build
-          ls -la backend/Dockerfile.build
-          test -f backend/Dockerfile.build && echo "✅ Dockerfile.build exists" || echo "❌ Dockerfile.build NOT FOUND"
+          ls -la backend/Dockerfile.cloud.optimized
+          test -f backend/Dockerfile.cloud.optimized && echo "✅ Dockerfile.cloud.optimized exists" || echo "❌ Dockerfile.cloud.optimized NOT FOUND"
 
       - name: Build and push to ECR (from cache)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: ./Dockerfile.build
+          file: Dockerfile.cloud.optimized
           push: true
           tags: ${{ steps.meta-ecr.outputs.tags }}
           labels: ${{ steps.meta-ecr.outputs.labels }}
