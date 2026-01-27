@@ -45,7 +45,7 @@ Pour que le push vers AWS ECR fonctionne, configurez ces secrets dans GitHub :
 
 ### Configuration ECR
 - **Account ID** : `846505724644`
-- **Region** : `eu-west-1`
+- **Region** : `us-east-1` (modifié pour correspondre à ECS)
 - **Repository** : `yukpomnang-backend`
 
 ## Tags d'image
@@ -71,8 +71,8 @@ docker pull ghcr.io/<owner>/<repo>/yukpomnang-backend-optimized:latest
 
 ### Pull depuis AWS ECR
 ```bash
-aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin 846505724644.dkr.ecr.eu-west-1.amazonaws.com
-docker pull 846505724644.dkr.ecr.eu-west-1.amazonaws.com/yukpomnang-backend:latest
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 846505724644.dkr.ecr.us-east-1.amazonaws.com
+docker pull 846505724644.dkr.ecr.us-east-1.amazonaws.com/yukpomnang-backend:latest
 ```
 
 ## Monitoring

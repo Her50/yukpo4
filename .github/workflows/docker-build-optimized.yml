@@ -32,10 +32,10 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/yukpomnang-backend-optimized
-  AWS_REGION: eu-west-1
+  AWS_REGION: us-east-1
   AWS_ACCOUNT_ID: 846505724644
   ECR_REPO_NAME: yukpomnang-backend
-  ECR_REPO_URI: 846505724644.dkr.ecr.eu-west-1.amazonaws.com/yukpomnang-backend
+  ECR_REPO_URI: 846505724644.dkr.ecr.us-east-1.amazonaws.com/yukpomnang-backend
 
 jobs:
   build-and-push:
