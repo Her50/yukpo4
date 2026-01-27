@@ -106,16 +106,16 @@ jobs:
       - name: Prepare Dockerfile for build
         run: |
           echo "=== Preparing Dockerfile ==="
-          # Copier le Dockerfile dans un emplacement qui ne sera pas affecté par .dockerignore
-          cp backend/Dockerfile.cloud.optimized ./Dockerfile.build.tmp
-          echo "Dockerfile copied to ./Dockerfile.build.tmp"
-          ls -la ./Dockerfile.build.tmp
+          # Copier le Dockerfile dans le contexte avec un nom qui ne sera pas exclu par .dockerignore
+          cp backend/Dockerfile.cloud.optimized backend/Dockerfile.build
+          echo "Dockerfile copied to backend/Dockerfile.build"
+          ls -la backend/Dockerfile.build
 
       - name: Build and push Docker image (optimized with cache)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: ../Dockerfile.build.tmp
+          file: Dockerfile.build
           push: ${{ github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == 'true') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -200,11 +200,15 @@ jobs:
             type=raw,value=optimized
             type=ref,event=branch
 
+      - name: Prepare Dockerfile for ECR build
+        run: |
+          cp backend/Dockerfile.cloud.optimized backend/Dockerfile.build
+
       - name: Build and push to ECR (from cache)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: Dockerfile.cloud.optimized
+          file: Dockerfile.build
           push: true
           tags: ${{ steps.meta-ecr.outputs.tags }}
           labels: ${{ steps.meta-ecr.outputs.labels }}
