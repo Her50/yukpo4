@@ -325,6 +325,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
 
     let app = Router::new()
         .route("/healthz", get(healthz))
+        .route("/health", get(healthz)) // ✅ Route pour ALB health checks
         // ✅ CRITIQUE : Servir les fichiers .well-known pour Universal Links / App Links
         // Route explicite pour apple-app-site-association (sans extension, peut poser problème avec ServeDir)
         .route("/.well-known/apple-app-site-association", get(serve_apple_association))
