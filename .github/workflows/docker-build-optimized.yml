@@ -103,33 +103,33 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=optimized
 
-      - name: Prepare Dockerfile in context
+      - name: Prepare Dockerfile with root context
         run: |
-          echo "=== Preparing Dockerfile in context ==="
+          echo "=== Preparing Dockerfile for root context ==="
           # S'assurer que le fichier source existe
           if [ ! -f backend/Dockerfile.cloud.optimized ]; then
             echo "❌ ERROR: backend/Dockerfile.cloud.optimized not found!"
             exit 1
           fi
-          # Copier vers Dockerfile.build (autorisé par .dockerignore ligne 107)
-          cp backend/Dockerfile.cloud.optimized backend/Dockerfile.build
-          echo "✅ Dockerfile copied to backend/Dockerfile.build"
-          # Vérifier depuis le contexte
-          cd backend
-          echo "Current directory: $(pwd)"
-          echo "Files in context:"
-          ls -la | head -20
-          echo "Checking Dockerfile.build:"
-          test -f Dockerfile.build && echo "✅ Dockerfile.build exists in context" || echo "❌ Dockerfile.build NOT FOUND in context"
-          # Vérifier avec Docker directement
-          echo "Testing Docker access:"
-          docker buildx inspect --bootstrap || true
-          cd ..
+          # Créer un Dockerfile à la racine qui ajuste les chemins COPY
+          # Le contexte sera la racine, donc on doit préfixer les chemins avec backend/
+          # Mais seulement les COPY qui ne viennent pas de --from=builder
+          sed -E \
+            -e '/^COPY --from=/! s|^COPY (Cargo\.toml Cargo\.lock) |COPY backend/Cargo.toml backend/Cargo.lock |' \
+            -e '/^COPY --from=/! s|^COPY \.sqlx |COPY backend/.sqlx |' \
+            -e '/^COPY --from=/! s|^COPY (src|scripts|ia_prompts|config|migrations|blender) |COPY backend/\1 |' \
+            -e '/^COPY --from=/! s|^COPY ([^/ ]+\.md) |COPY backend/\1 |' \
+            -e '/^COPY --from=/! s|^COPY scripts/([^ ]+) |COPY backend/scripts/\1 |' \
+            backend/Dockerfile.cloud.optimized > Dockerfile.build
+          echo "✅ Dockerfile.build created at root with adjusted paths"
+          ls -la Dockerfile.build
+          echo "First 10 lines:"
+          head -10 Dockerfile.build
 
       - name: Build and push Docker image (optimized with cache)
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
+          context: .
           file: Dockerfile.build
           push: ${{ github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == 'true') }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -221,15 +221,21 @@ jobs:
             echo "❌ ERROR: backend/Dockerfile.cloud.optimized not found!"
             exit 1
           fi
-          cp backend/Dockerfile.cloud.optimized backend/Dockerfile.build
-          cd backend
-          test -f Dockerfile.build && echo "✅ Dockerfile.build exists in context" || echo "❌ Dockerfile.build NOT FOUND in context"
-          cd ..
+          # Créer un Dockerfile à la racine qui ajuste les chemins COPY
+          sed -E \
+            -e '/^COPY --from=/! s|^COPY (Cargo\.toml Cargo\.lock) |COPY backend/Cargo.toml backend/Cargo.lock |' \
+            -e '/^COPY --from=/! s|^COPY \.sqlx |COPY backend/.sqlx |' \
+            -e '/^COPY --from=/! s|^COPY (src|scripts|ia_prompts|config|migrations|blender) |COPY backend/\1 |' \
+            -e '/^COPY --from=/! s|^COPY ([^/ ]+\.md) |COPY backend/\1 |' \
+            -e '/^COPY --from=/! s|^COPY scripts/([^ ]+) |COPY backend/scripts/\1 |' \
+            backend/Dockerfile.cloud.optimized > Dockerfile.build
+          echo "✅ Dockerfile.build created for ECR build"
+          test -f Dockerfile.build && echo "✅ Dockerfile.build exists" || echo "❌ Dockerfile.build NOT FOUND"
 
       - name: Build and push to ECR (from cache)
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
+          context: .
           file: Dockerfile.build
           push: true
           tags: ${{ steps.meta-ecr.outputs.tags }}
