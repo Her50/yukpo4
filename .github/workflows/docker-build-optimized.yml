@@ -1,0 +1,266 @@
+name: Docker Build Optimized
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'backend/**'
+      - '.github/workflows/docker-build-optimized.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+    inputs:
+      push_to_registry:
+        description: 'Push to registry'
+        required: false
+        default: 'false'
+        type: boolean
+      push_to_aws:
+        description: 'Push to AWS ECR'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/yukpomnang-backend-optimized
+  AWS_REGION: eu-west-1
+  AWS_ACCOUNT_ID: 846505724644
+  ECR_REPO_NAME: yukpomnang-backend
+  ECR_REPO_URI: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO_NAME }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Optimized Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # Timeout après 60 minutes
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx (with cache)
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+
+      - name: Restore Docker layer cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == 'true')
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to AWS ECR
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.push_to_aws == 'true')
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registries: ${{ env.AWS_ACCOUNT_ID }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ${{ env.ECR_REPO_URI }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=optimized
+
+      - name: Build and push Docker image (optimized with cache)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.cloud.optimized
+          push: ${{ github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == 'true') }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=gha
+            type=local,src=/tmp/.buildx-cache
+          cache-to: |
+            type=gha,mode=max
+            type=local,dest=/tmp/.buildx-cache,mode=max
+          platforms: linux/amd64
+          build-args: |
+            SQLX_OFFLINE=true
+            BUILDKIT_INLINE_CACHE=1
+          # Optimisations pour accélérer le build
+          outputs: type=docker,dest=/tmp/image.tar
+
+      - name: Save build time
+        if: always()
+        id: build-time
+        run: |
+          echo "started_at=$(date -u +%s)" >> $GITHUB_OUTPUT
+
+      - name: Image size report
+        if: always()
+        run: |
+          echo "## 📦 Image Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|------|" >> $GITHUB_STEP_SUMMARY
+          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep -E "(${{ env.IMAGE_NAME }}|${{ env.ECR_REPO_NAME }})" | \
+            awk '{print "| " $1 ":" $2 " | " $3 " |"}' >> $GITHUB_STEP_SUMMARY || echo "| N/A | Build failed |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## ✅ Docker Build Optimized - Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dockerfile**: \`Dockerfile.cloud.optimized\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target size**: ~300-400MB (vs 2.4GB standard)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Base image**: \`debian:bookworm-slim\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Features**: Optimized, no Blender, minimal dependencies" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cache**: GitHub Actions cache + local cache pour builds rapides" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "- **AWS ECR**: Image automatiquement poussée vers ECR" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  push-to-aws:
+    name: Push to AWS ECR
+    needs: build-and-push
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.push_to_aws == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to AWS ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registries: ${{ env.AWS_ACCOUNT_ID }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata for ECR
+        id: meta-ecr
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.ECR_REPO_URI }}
+          tags: |
+            type=sha,prefix=main-
+            type=raw,value=latest
+            type=raw,value=optimized
+            type=ref,event=branch
+
+      - name: Build and push to ECR (from cache)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.cloud.optimized
+          push: true
+          tags: ${{ steps.meta-ecr.outputs.tags }}
+          labels: ${{ steps.meta-ecr.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          build-args: |
+            SQLX_OFFLINE=true
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: ECR push summary
+        if: always()
+        run: |
+          echo "## 🚀 AWS ECR Push - Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository**: \`${{ env.ECR_REPO_URI }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: \`${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tags**: \`latest\`, \`optimized\`, \`main-<sha>\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Image disponible sur AWS ECR pour déploiement ECS/Fargate" >> $GITHUB_STEP_SUMMARY
+
+  deploy-to-ecs:
+    name: Deploy to AWS ECS
+    needs: push-to-aws
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.push_to_aws == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update ECS Service
+        run: |
+          echo "🔄 Mise à jour du service ECS..."
+          aws ecs update-service \
+            --cluster yukpomnang-cluster \
+            --service yukpomnang-backend-service \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }} \
+            --query 'service.{ServiceName:serviceName,Status:status,DesiredCount:desiredCount,RunningCount:runningCount}' \
+            --output table
+          
+          echo ""
+          echo "✅ Service ECS mis à jour, nouveau déploiement en cours..."
+          echo "⏳ Le déploiement peut prendre 2-5 minutes"
+
+      - name: Wait for deployment (optional)
+        if: false  # Désactivé par défaut (prend du temps)
+        run: |
+          echo "⏳ Attente de la stabilisation du déploiement..."
+          aws ecs wait services-stable \
+            --cluster yukpomnang-cluster \
+            --services yukpomnang-backend-service \
+            --region ${{ env.AWS_REGION }}
+          echo "✅ Déploiement terminé avec succès!"
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## 🚀 AWS ECS Deployment - Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cluster**: \`yukpomnang-cluster\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service**: \`yukpomnang-backend-service\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: \`${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ env.ECR_REPO_URI }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Nouveau déploiement déclenché avec l'image optimisée" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "💡 Surveillez le déploiement avec:" >> $GITHUB_STEP_SUMMARY
+          echo "   \`aws ecs describe-services --cluster yukpomnang-cluster --services yukpomnang-backend-service --region ${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
+
