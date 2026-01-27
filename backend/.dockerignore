@@ -100,6 +100,7 @@ coverage/
 # Docker files (éviter la récursion)
 ############################################
 Dockerfile*
+!Dockerfile.cloud.optimized
 docker-compose*.yml
 .dockerignore
 
