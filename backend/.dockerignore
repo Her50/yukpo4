@@ -102,6 +102,8 @@ coverage/
 Dockerfile
 Dockerfile.cloud
 Dockerfile.cloud.blender
+# Exception : permettre Dockerfile.cloud.optimized pour le build CI
+!Dockerfile.cloud.optimized
 docker-compose*.yml
 .dockerignore
 
