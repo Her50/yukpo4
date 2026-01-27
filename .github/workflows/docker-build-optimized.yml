@@ -103,7 +103,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=optimized
 
-      - name: Verify Dockerfile exists
+      - name: Verify and prepare Dockerfile
         run: |
           echo "=== Checking Dockerfile location ==="
           pwd
@@ -113,14 +113,24 @@ jobs:
           cat backend/.dockerignore | grep -i dockerfile || echo "No Dockerfile entries in .dockerignore"
           echo "=== Listing backend directory ==="
           ls -la backend/ | grep -i dockerfile || echo "No Dockerfile files in backend/"
-          echo "=== Copying Dockerfile to root for testing ==="
-          cp backend/Dockerfile.cloud.optimized ./Dockerfile.cloud.optimized.tmp || echo "ERROR: Failed to copy Dockerfile"
+          echo "=== Ensuring Dockerfile is accessible ==="
+          # Copier le Dockerfile dans le contexte si nécessaire
+          if [ ! -f "backend/Dockerfile.cloud.optimized" ]; then
+            echo "ERROR: Dockerfile.cloud.optimized not found in backend/"
+            exit 1
+          fi
+          # Vérifier que le fichier n'est pas exclu par .dockerignore
+          cd backend && cat .dockerignore | grep -v "^#" | grep -v "^$" | while read pattern; do
+            if echo "Dockerfile.cloud.optimized" | grep -q "^$pattern$" || echo "Dockerfile.cloud.optimized" | grep -q "$pattern"; then
+              echo "WARNING: Dockerfile.cloud.optimized might be excluded by pattern: $pattern"
+            fi
+          done
 
       - name: Build and push Docker image (optimized with cache)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: ../Dockerfile.cloud.optimized.tmp
+          file: Dockerfile.cloud.optimized
           push: ${{ github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == 'true') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
