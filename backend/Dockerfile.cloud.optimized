@@ -1,0 +1,121 @@
+# 🚀 Dockerfile.cloud OPTIMISÉ - Version réduite pour builds rapides
+# Réduction de taille : 2.4GB → ~800MB-1GB
+# Build plus rapide grâce au cache intelligent
+
+############################################
+# Stage 1: Builder - Compilation Rust optimisée
+############################################
+FROM rust:latest AS builder
+
+WORKDIR /app
+
+# ✅ SQLx OFFLINE : Activer le mode offline SQLx dès le début
+ENV SQLX_OFFLINE=true
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld -C target-cpu=native"
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+
+# Installer uniquement les dépendances essentielles pour la compilation
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    libclang-dev \
+    clang \
+    lld \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copier les fichiers de configuration Rust (LAYER CACHE)
+COPY Cargo.toml Cargo.lock ./
+
+# ✅ SQLx OFFLINE : copier le cache SQLx AVANT le code source
+COPY .sqlx ./.sqlx
+
+# Créer une couche de cache pour les dépendances (optimisation build)
+# Cette couche ne sera reconstruite que si Cargo.toml change
+# Utiliser BuildKit cache mount pour accélérer les builds
+RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
+    --mount=type=cache,target=/app/target \
+    mkdir -p src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo build --release --features gpu 2>&1 | head -20 || true && \
+    rm -rf src
+
+# Copier le code source (APRÈS le cache des dépendances)
+# Cette couche change à chaque modification du code
+COPY src ./src
+COPY scripts ./scripts
+COPY ia_prompts ./ia_prompts
+COPY config ./config
+COPY migrations ./migrations
+COPY ia_intentions_instructions.md ./
+
+# Construire l'application avec optimisations maximales
+# Utiliser BuildKit cache mount pour accélérer les builds
+RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
+    --mount=type=cache,target=/app/target \
+    cargo build --release --features gpu \
+    && strip target/release/yukpomnang_backend
+
+############################################
+# Stage 2: Runtime - Image finale OPTIMISÉE
+############################################
+# Utiliser debian:bookworm-slim (plus léger que bookworm standard)
+FROM debian:bookworm-slim
+
+LABEL maintainer="Yukpomnang Team"
+LABEL description="Yukpomnang Backend Cloud - Version Optimisée (sans Blender)"
+LABEL version="2.0.0-optimized"
+
+# Installer uniquement les dépendances runtime essentielles (SANS Blender et X11)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libpq5 \
+    libssl3 \
+    curl \
+    postgresql-client \
+    redis-tools \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Créer utilisateur non-root
+RUN groupadd -r appuser -g 1000 && \
+    useradd -r -g appuser -u 1000 -m -d /home/appuser -s /bin/bash appuser
+
+# Créer les répertoires
+RUN mkdir -p /app/config /app/logs /app/data /app/uploads /app/migrations /app/ia_prompts \
+    && chown -R appuser:appuser /app
+
+# Copier l'exécutable depuis le builder (striped)
+COPY --from=builder --chown=appuser:appuser /app/target/release/yukpomnang_backend /app/yukpomnang_backend
+
+# Copier les fichiers de configuration
+COPY --from=builder --chown=appuser:appuser /app/config /app/config
+COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
+COPY --from=builder --chown=appuser:appuser /app/ia_prompts /app/ia_prompts
+COPY --from=builder --chown=appuser:appuser /app/ia_intentions_instructions.md /app/
+
+# Script de démarrage (simplifié, sans Blender)
+COPY scripts/start-cloud.sh /app/start-cloud.sh
+RUN chmod +x /app/start-cloud.sh
+
+# Variables d'environnement
+ENV RUST_LOG=info
+ENV RUST_BACKTRACE=1
+ENV APP_ENV=production
+ENV PORT=8080
+ENV HOST=0.0.0.0
+
+EXPOSE 8080
+WORKDIR /app
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["/app/start-cloud.sh"]
+CMD ["./yukpomnang_backend"]
+
