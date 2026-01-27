@@ -90,7 +90,8 @@ RUN mkdir -p /app/config /app/logs /app/data /app/uploads /app/migrations /app/i
     && chown -R appuser:appuser /app
 
 # Copier l'exécutable depuis le builder (striped)
-COPY --from=builder --chown=appuser:appuser /app/target/release/yukpomnang_backend /app/yukpomnang_backend
+# NOTE: en CI, le nom binaire peut varier légèrement; on copie donc tout le dossier release
+COPY --from=builder --chown=appuser:appuser /app/target/release/ /app/
 
 # Copier les fichiers de configuration
 COPY --from=builder --chown=appuser:appuser /app/config /app/config
