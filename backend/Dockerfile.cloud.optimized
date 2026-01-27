@@ -54,11 +54,16 @@ COPY ia_intentions_instructions.md ./
 
 # Construire l'application avec optimisations maximales
 # Utiliser BuildKit cache mount pour accélérer les builds
+# IMPORTANT: Copier le binaire dans /app/bin pendant que le cache mount est encore monté
+# Le cache mount ne persiste pas les fichiers dans l'image, donc on doit copier le binaire
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/app/target \
     cargo build --release --features gpu \
-    && strip target/release/yukpomnang_backend
+    && strip target/release/yukpomnang_backend \
+    && mkdir -p /app/bin \
+    && cp target/release/yukpomnang_backend /app/bin/yukpomnang_backend \
+    && chmod +x /app/bin/yukpomnang_backend
 
 ############################################
 # Stage 2: Runtime - Image finale OPTIMISÉE
@@ -89,9 +94,8 @@ RUN groupadd -r appuser -g 1000 && \
 RUN mkdir -p /app/config /app/logs /app/data /app/uploads /app/migrations /app/ia_prompts \
     && chown -R appuser:appuser /app
 
-# Copier l'exécutable depuis le builder (striped)
-# NOTE: en CI, le nom binaire peut varier légèrement; on copie donc tout le dossier release
-COPY --from=builder --chown=appuser:appuser /app/target/release/ /app/
+# Copier l'exécutable depuis le builder (copié dans /app/bin pour persister hors du cache mount)
+COPY --from=builder --chown=appuser:appuser /app/bin/yukpomnang_backend /app/yukpomnang_backend
 
 # Copier les fichiers de configuration
 COPY --from=builder --chown=appuser:appuser /app/config /app/config
