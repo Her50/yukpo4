@@ -137,6 +137,10 @@ Cette commande :
 - Upload automatiquement l'AAB sur Google Play Console
 - Soumet sur la piste configurée (`internal`, `alpha`, `beta`, ou `production`)
 
+> Note: dans ce repo, `eas.json` référence `./google-service-account.json`.
+> - Ne commitez pas ce fichier (gardez-le en local uniquement)
+> - Si vous ne l'avez pas, `eas submit` vous demandera de vous authentifier autrement, ou faites une soumission manuelle via la Play Console.
+
 ### Étape 4 : Tracks de Publication
 
 Google Play propose plusieurs pistes de test :

@@ -89,6 +89,8 @@ const SERVICES_DATA: Service[] = [
     { id: 'bayamselam', title: 'BayamSelam', icon: 'trending-down', gradient: ['#10B981', '#34D399'], description: 'Comparatif prix', comingSoon: false },
     // Immobilier
     { id: 'immo', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], description: 'Biens immobiliers', comingSoon: false },
+    { id: 'hotel', title: 'Hôtel', icon: 'building', gradient: ['#F59E0B', '#FBBF24'], description: 'Hôtels et hébergements', comingSoon: false },
+    { id: 'meuble', title: 'Meublé', icon: 'key', gradient: ['#8B5CF6', '#A78BFA'], description: 'Location meublée', comingSoon: false },
 ];
 
 // Données des catégories (6 catégories)
@@ -98,7 +100,7 @@ const CATEGORIES_DATA: Category[] = [
     { id: 'education', title: 'Éducation', icon: 'book-open', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['orientation_scolaire', 'bourse_livre'] },
     { id: 'emploi', title: 'Emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], serviceIds: ['offres_emploi'] },
     { id: 'vie_quotidienne', title: 'Ma cuisine', icon: 'utensils-crossed', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['menu_planning', 'bayamselam'] },
-    { id: 'immobilier', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], serviceIds: ['immo'] },
+    { id: 'immobilier', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], serviceIds: ['immo', 'hotel', 'meuble'] },
 ];
 
 const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
@@ -240,7 +242,9 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                         {category.title}
                                     </Text>
                                     <Text style={styles.categoryDescription} numberOfLines={1}>
-                                        {serviceCountText}
+                                        {category.id === 'immobilier' 
+                                            ? 'Immobilier, Hôtel, Meublé'
+                                            : serviceCountText}
                                     </Text>
                                 </View>
                             </TouchableOpacity>

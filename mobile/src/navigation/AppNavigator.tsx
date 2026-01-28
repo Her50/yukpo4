@@ -945,6 +945,8 @@ const SecondaryStack = () => {
         <Stack.Screen name="HopitalSearchAdvanced" component={HopitalSearchScreenWithSafeArea} />
         {/* ✅ NOUVEAU: Routes Immobilier */}
         <Stack.Screen name="ImmobilierSearch" component={ImmobilierHomeScreenWithSafeArea} />
+        <Stack.Screen name="HotelSearch" component={ImmobilierHomeScreenWithSafeArea} />
+        <Stack.Screen name="MeubleSearch" component={ImmobilierHomeScreenWithSafeArea} />
         <Stack.Screen name="ImmobilierSearchAdvanced" component={ImmobilierSearchScreenWithSafeArea} />
         <Stack.Screen name="ImmobilierList" component={ImmobilierListScreenWithSafeArea} />
         <Stack.Screen name="ImmobilierDetails" component={ImmobilierDetailsScreenWithSafeArea} />

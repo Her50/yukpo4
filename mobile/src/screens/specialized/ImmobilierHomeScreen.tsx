@@ -1,6 +1,6 @@
 // ✅ Écran Immobilier MODERNE - Refonte complète avec UX de niveau mondial
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -29,10 +29,15 @@ type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'date_desc' | 'supe
 
 const ImmobilierHomeScreen: React.FC = () => {
     const navigation = useNavigation();
+    const route = useRoute();
     const { location } = useLocation();
     
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS
     const detectedCurrency = useCurrencyDetection();
+
+    // ✅ NOUVEAU: Récupérer les paramètres de route pour filtres initiaux (hôtel/meublé)
+    const routeParams = (route.params as any) || {};
+    const initialFilter = routeParams.initialFilter || {};
 
     // États de recherche
     const [searchQuery, setSearchQuery] = useState('');
@@ -51,20 +56,23 @@ const ImmobilierHomeScreen: React.FC = () => {
     const [showSortModal, setShowSortModal] = useState(false);
     const [searchFocused, setSearchFocused] = useState(false);
 
-    // États de filtres
+    // États de filtres - ✅ NOUVEAU: Initialiser avec les filtres de route si présents
     const [filters, setFilters] = useState<PropertySearchFilters>({
         max_distance_km: 50,
+        ...initialFilter, // ✅ Appliquer les filtres initiaux (ex: type_bien: 'hotel' ou 'meuble')
     });
     const [activeFiltersCount, setActiveFiltersCount] = useState(0);
 
     // Types de biens et statuts - ✅ ALIGNÉS avec ImmobilierFormScreen
-    // Valeurs backend : 'maison', 'appartement', 'terrain', 'bureau', 'local_commercial'
+    // Valeurs backend : 'maison', 'appartement', 'terrain', 'bureau', 'local_commercial', 'hotel', 'meuble'
     const typesBiens = [
         { value: 'maison', label: 'Maison' },
         { value: 'appartement', label: 'Appartement' },
         { value: 'terrain', label: 'Terrain' },
         { value: 'bureau', label: 'Bureau' },
         { value: 'local_commercial', label: 'Local commercial' },
+        { value: 'hotel', label: 'Hôtel' },
+        { value: 'meuble', label: 'Meublé / Location meublée' },
     ];
     // Valeurs backend : 'vente', 'location', 'les_deux'
     const statuts = [
@@ -281,7 +289,13 @@ const ImmobilierHomeScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>Immobilier</Text>
+                            <Text style={styles.headerTitle}>
+                                {filters.type_bien === 'hotel' 
+                                    ? 'Hôtels' 
+                                    : filters.type_bien === 'meuble' 
+                                    ? 'Meublés / Locations meublées'
+                                    : 'Immobilier'}
+                            </Text>
                             {totalResults > 0 && (
                                 <Text style={styles.headerSubtitle}>
                                     {totalResults} bien{totalResults > 1 ? 's' : ''} trouvé{totalResults > 1 ? 's' : ''}

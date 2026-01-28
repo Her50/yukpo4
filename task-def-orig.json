@@ -1,0 +1,202 @@
+﻿{
+    "taskDefinitionArn": "arn:aws:ecs:us-east-1:846505724644:task-definition/yukpomnang-backend:2",
+    "containerDefinitions": [
+        {
+            "name": "backend",
+            "image": "846505724644.dkr.ecr.us-east-1.amazonaws.com/yukpomnang-backend:latest",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "containerPort": 3001,
+                    "hostPort": 3001,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "RUST_LOG",
+                    "value": "info"
+                },
+                {
+                    "name": "HOST",
+                    "value": "0.0.0.0"
+                },
+                {
+                    "name": "APP_ENV",
+                    "value": "production"
+                },
+                {
+                    "name": "PORT",
+                    "value": "3001"
+                }
+            ],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "secrets": [
+                {
+                    "name": "DATABASE_URL",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/DATABASE_URL"
+                },
+                {
+                    "name": "REDIS_URL",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/REDIS_URL"
+                },
+                {
+                    "name": "JWT_SECRET",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/JWT_SECRET"
+                },
+                {
+                    "name": "OPENAI_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/OPENAI_API_KEY"
+                },
+                {
+                    "name": "SORA_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/SORA_API_KEY"
+                },
+                {
+                    "name": "LIVEKIT_API_SECRET",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/LIVEKIT_API_SECRET"
+                },
+                {
+                    "name": "S3_SECRET_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/S3_SECRET_KEY"
+                },
+                {
+                    "name": "S3_ACCESS_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/S3_ACCESS_KEY"
+                },
+                {
+                    "name": "MONGODB_URL",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/MONGODB_URL"
+                },
+                {
+                    "name": "SENDGRID_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/SENDGRID_API_KEY"
+                },
+                {
+                    "name": "TWILIO_AUTH_TOKEN",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/TWILIO_AUTH_TOKEN"
+                },
+                {
+                    "name": "AUPHONIC_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/AUPHONIC_API_KEY"
+                },
+                {
+                    "name": "VIDEO_RENDERER_RPC_TOKEN",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/VIDEO_RENDERER_RPC_TOKEN"
+                },
+                {
+                    "name": "EMBEDDING_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/EMBEDDING_API_KEY"
+                },
+                {
+                    "name": "YUKPO_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/YUKPO_API_KEY"
+                },
+                {
+                    "name": "GOOGLE_MAPS_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/GOOGLE_MAPS_API_KEY"
+                },
+                {
+                    "name": "GOOGLE_TRANSLATE_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/GOOGLE_TRANSLATE_API_KEY"
+                },
+                {
+                    "name": "PEXELS_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/PEXELS_API_KEY"
+                },
+                {
+                    "name": "PIXABAY_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/PIXABAY_API_KEY"
+                },
+                {
+                    "name": "UNSPLASH_ACCESS_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/UNSPLASH_ACCESS_KEY"
+                },
+                {
+                    "name": "OPENWEATHERMAP_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/OPENWEATHERMAP_API_KEY"
+                },
+                {
+                    "name": "YOUTUBE_CLIENT_SECRET",
+                    "valueFrom": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/YOUTUBE_CLIENT_SECRET"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/yukpomnang-backend",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "backend"
+                }
+            },
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "curl -f http://localhost:3001/health || exit 1"
+                ],
+                "interval": 30,
+                "timeout": 10,
+                "retries": 3,
+                "startPeriod": 60
+            },
+            "systemControls": []
+        }
+    ],
+    "family": "yukpomnang-backend",
+    "taskRoleArn": "arn:aws:iam::846505724644:role/yukpomnang-ecs-task-role",
+    "executionRoleArn": "arn:aws:iam::846505724644:role/yukpomnang-ecs-execution-role",
+    "networkMode": "awsvpc",
+    "revision": 2,
+    "volumes": [],
+    "status": "ACTIVE",
+    "requiresAttributes": [
+        {
+            "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+        },
+        {
+            "name": "ecs.capability.execution-role-awslogs"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.ecr-auth"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.task-iam-role"
+        },
+        {
+            "name": "ecs.capability.container-health-check"
+        },
+        {
+            "name": "ecs.capability.execution-role-ecr-pull"
+        },
+        {
+            "name": "ecs.capability.secrets.ssm.environment-variables"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+        },
+        {
+            "name": "ecs.capability.task-eni"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
+        }
+    ],
+    "placementConstraints": [],
+    "compatibilities": [
+        "EC2",
+        "FARGATE",
+        "MANAGED_INSTANCES"
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "1024",
+    "memory": "2048",
+    "registeredAt": "2026-01-27T19:58:33.646000+01:00",
+    "registeredBy": "arn:aws:iam::846505724644:user/yukpo_admin"
+}

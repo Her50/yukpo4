@@ -33,13 +33,14 @@ echo  4. 🚀 Lancer le Build EAS Preview
 echo  5. 📋 Voir mes builds
 echo  6. 🧹 Nettoyer et réinstaller
 echo  7. 🛠️  Réparer le fonctionnement local
-echo  8. 📚 Ouvrir la documentation
-echo  9. ❌ Quitter
+echo  8. 🧪 Publier en mode tests (Play link + TestFlight link)
+echo  9. 📚 Ouvrir la documentation
+echo  10. ❌ Quitter
 echo.
 echo ════════════════════════════════════════════════════════════
 echo.
 
-set /p choice="Votre choix (1-9) : "
+set /p choice="Votre choix (1-10) : "
 
 if "%choice%"=="1" goto VERIFY
 if "%choice%"=="2" goto LOGIN
@@ -48,8 +49,9 @@ if "%choice%"=="4" goto BUILD
 if "%choice%"=="5" goto LIST
 if "%choice%"=="6" goto CLEAN
 if "%choice%"=="7" goto REPAIR
-if "%choice%"=="8" goto DOCS
-if "%choice%"=="9" goto EXIT
+if "%choice%"=="8" goto PUBLISH_TESTS
+if "%choice%"=="9" goto DOCS
+if "%choice%"=="10" goto EXIT
 
 echo ❌ Choix invalide
 timeout /t 2 >nul
@@ -233,4 +235,23 @@ echo 👋 Au revoir !
 echo.
 timeout /t 2 >nul
 exit /b 0
+
+:PUBLISH_TESTS
+echo.
+echo 🧪 Publication en mode tests (Play link + TestFlight link)...
+echo ════════════════════════════════════════════════════════════
+echo.
+echo ℹ️  Ce script lance:
+echo    - Android: build AAB + submit (Play Console - testing)
+echo    - iOS: build + submit (TestFlight)
+echo.
+echo ⚠️  Vous devrez être connecté à Expo (eas login).
+echo.
+echo Appuyez sur une touche pour continuer ou Ctrl+C pour annuler...
+pause >nul
+echo.
+powershell -ExecutionPolicy Bypass -File ".\publish-testing-links.ps1"
+echo.
+pause
+goto MENU
 

@@ -195,7 +195,8 @@ Write-Host "`n⚙️  ÉTAPE 10/10 : Configuration Project ID" -ForegroundColor 
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 if (Test-Path "app.config.js") {
     $configContent = Get-Content "app.config.js" -Raw
-    if ($configContent -match "a5407780-d5ad-45fa-8b72-a673d3828b93") {
+    # Project ID EAS défini dans app.config.js (extra.eas.projectId)
+    if ($configContent -match "944bbf0d-5541-4e56-ba75-87ffc4c5e51f") {
         Write-Host "   ✅ Project ID EAS configuré" -ForegroundColor Green
         $allChecks += $true
     }

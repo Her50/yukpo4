@@ -65,7 +65,7 @@ const ImmobilierFormScreen: React.FC = () => {
     const [importingGoogleMedia, setImportingGoogleMedia] = useState(false);
     const [lastImportedPlaceId, setLastImportedPlaceId] = useState<string | null>(null);
 
-    const typesBien = ['maison', 'appartement', 'terrain', 'bureau', 'local_commercial'];
+    const typesBien = ['maison', 'appartement', 'terrain', 'bureau', 'local_commercial', 'hotel', 'meuble'];
     const statuts = ['vente', 'location', 'les_deux'];
     const standings = ['économique', 'moyen', 'haut_de_gamme', 'luxe'];
     const etatsGeneraux = ['neuf', 'bon_etat', 'à_rénover', 'rénové'];
