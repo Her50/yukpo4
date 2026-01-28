@@ -84,6 +84,7 @@ jobs:
           override: true
 
       - name: Cache Rust dependencies
+        id: cache-rust
         uses: actions/cache@v4
         with:
           path: |
@@ -92,18 +93,37 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             ~/.cargo/.package-cache
-          key: ${{ runner.os }}-sqlx-cli-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-sqlx-cli-v0.8.6-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
+            ${{ runner.os }}-sqlx-cli-v0.8.6-
             ${{ runner.os }}-sqlx-cli-
             ${{ runner.os }}-cargo-
 
+      - name: Check cache status
+        run: |
+          if [ "${{ steps.cache-rust.outputs.cache-hit }}" == "true" ]; then
+            echo "✅ Cache Rust restauré avec succès"
+            if command -v sqlx &> /dev/null; then
+              echo "✅ sqlx-cli trouvé dans le cache"
+            else
+              echo "⚠️ Cache restauré mais sqlx-cli non trouvé"
+            fi
+          else
+            echo "ℹ️ Cache Rust non trouvé, installation complète nécessaire"
+          fi
+
       - name: Install sqlx-cli
         run: |
-          if ! command -v sqlx &> /dev/null; then
-            echo "📦 Installation de sqlx-cli..."
-            cargo install sqlx-cli --no-default-features --features postgres
+          if command -v sqlx &> /dev/null; then
+            echo "✅ sqlx-cli trouvé dans le cache"
+            sqlx --version
           else
-            echo "✅ sqlx-cli déjà installé"
+            echo "📦 Installation de sqlx-cli..."
+            echo "⏳ Cela peut prendre 5-10 minutes la première fois..."
+            echo "💡 Les prochains runs utiliseront le cache (~30s)"
+            # Utiliser --locked pour une installation plus rapide et reproductible
+            cargo install sqlx-cli --version 0.8.6 --no-default-features --features postgres --locked
+            echo "✅ sqlx-cli installé avec succès"
             sqlx --version
           fi
 
@@ -131,6 +151,7 @@ jobs:
           echo "- **SSM Parameter**: \`${{ env.SSM_DATABASE_URL_PATH }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Region**: \`${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Fail on Error**: \`false\` (le build continue même si les migrations échouent)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cache**: sqlx-cli et dépendances Python sont mis en cache pour accélérer les prochains runs" >> $GITHUB_STEP_SUMMARY
 
   build-and-push:
     name: Build and Push Optimized Docker Image
