@@ -11,7 +11,8 @@ WORKDIR /app
 
 # ✅ SQLx OFFLINE : Activer le mode offline SQLx dès le début
 ENV SQLX_OFFLINE=true
-ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld -C target-cpu=native"
+# Note: target-cpu=native retiré pour compatibilité AWS Fargate (évite "Illegal instruction")
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 
 # Installer uniquement les dépendances essentielles pour la compilation
