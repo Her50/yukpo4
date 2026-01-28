@@ -128,8 +128,9 @@ RUN groupadd -r appuser -g 1000 && \
     useradd -r -g appuser -u 1000 -m -d /home/appuser -s /bin/bash appuser
 
 # Créer les répertoires nécessaires avec permissions appropriées
-RUN mkdir -p /app/config /app/logs /app/data /app/uploads /app/migrations /app/ia_prompts \
-    && chown -R appuser:appuser /app
+# ✅ IMPORTANT: l'app utilise UPLOAD_STORAGE_PATH par défaut = /var/data/uploads
+RUN mkdir -p /app/config /app/logs /app/data /app/uploads /app/migrations /app/ia_prompts /var/data/uploads \
+    && chown -R appuser:appuser /app /var/data
 
 # Copier l'exécutable depuis le builder (striped pour réduire la taille)
 COPY --from=builder --chown=appuser:appuser /app/target/release/yukpomnang_backend /app/yukpomnang_backend
