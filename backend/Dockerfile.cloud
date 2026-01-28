@@ -77,7 +77,8 @@ RUN cargo build --release --features gpu \
 ############################################
 # Stage 2: Runtime - Image finale optimisée AWS
 ############################################
-FROM debian:bookworm-slim
+# Utiliser debian:trixie-slim pour GLIBC 2.39+ (compatible avec rust:latest)
+FROM debian:trixie-slim
 
 # Métadonnées
 LABEL maintainer="Yukpomnang Team"

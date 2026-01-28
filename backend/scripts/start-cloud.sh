@@ -68,14 +68,21 @@ if [ -n "$REDIS_URL" ]; then
     
     # Vérifier si redis-cli est disponible
     if command -v redis-cli &> /dev/null; then
-        until redis-cli -u "$REDIS_URL" ping 2>/dev/null || [ $RETRY_COUNT -ge $MAX_REDIS_RETRIES ]; do
+        while [ $RETRY_COUNT -lt $MAX_REDIS_RETRIES ]; do
+            # Certains providers (ex: Upstash) peuvent répondre avec un message d'erreur tout en
+            # renvoyant un code de sortie inattendu: on valide explicitement "PONG".
+            REDIS_PING_OUTPUT=$(redis-cli -u "$REDIS_URL" ping 2>/dev/null || true)
+            if [ "$REDIS_PING_OUTPUT" = "PONG" ]; then
+                REDIS_AVAILABLE=true
+                break
+            fi
+
             RETRY_COUNT=$((RETRY_COUNT + 1))
             echo "⏳ En attente de Redis (AWS ElastiCache)... (tentative $RETRY_COUNT/$MAX_REDIS_RETRIES)"
             sleep 2
         done
-        
-        if [ $RETRY_COUNT -lt $MAX_REDIS_RETRIES ]; then
-            REDIS_AVAILABLE=true
+
+        if [ "$REDIS_AVAILABLE" = "true" ]; then
             echo "✅ Redis (AWS ElastiCache) accessible"
         else
             echo "⚠️ WARNING: Redis non accessible après $MAX_REDIS_RETRIES tentatives, l'application continuera sans cache Redis"
@@ -124,7 +131,19 @@ fi
 # Afficher les informations système
 echo "📊 Informations système:"
 echo "   - CPU: $(nproc) cores"
-echo "   - Mémoire: $(free -h | awk '/^Mem:/ {print $2}')"
+if command -v free >/dev/null 2>&1; then
+    echo "   - Mémoire: $(free -h | awk '/^Mem:/ {print $2}')"
+elif [ -r /proc/meminfo ]; then
+    # Fallback minimal (images slim): afficher la mémoire totale en MiB
+    MEM_TOTAL_KB=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null)
+    if [ -n "$MEM_TOTAL_KB" ]; then
+        echo "   - Mémoire: $((MEM_TOTAL_KB / 1024)) MiB"
+    else
+        echo "   - Mémoire: inconnue"
+    fi
+else
+    echo "   - Mémoire: inconnue"
+fi
 echo "   - Port: $PORT"
 echo "   - Host: $HOST"
 echo "   - Environnement: $APP_ENV"
@@ -153,9 +172,13 @@ echo "   JWT_SECRET: ${JWT_SECRET:+présent}${JWT_SECRET:-non défini}"
 # Utiliser exec pour que le processus principal soit le backend
 # Cela permet à AWS ECS de gérer correctement les signaux (SIGTERM, etc.)
 # Capturer les erreurs et les logger avant de quitter
-if ! ./yukpomnang_backend; then
-    EXIT_CODE=$?
+set +e
+./yukpomnang_backend
+EXIT_CODE=$?
+set -e
+
+if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ ERREUR: L'application backend a quitté avec le code $EXIT_CODE"
     echo "   Vérifiez les logs ci-dessus pour plus de détails"
     exit $EXIT_CODE
-fi 
+fi

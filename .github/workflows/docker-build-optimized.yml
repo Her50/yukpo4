@@ -170,7 +170,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Dockerfile**: \`Dockerfile.cloud.optimized\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Target size**: ~300-400MB (vs 2.4GB standard)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Base image**: \`debian:bookworm-slim\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Base image**: \`debian:trixie-slim\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Features**: Optimized, no Blender, minimal dependencies" >> $GITHUB_STEP_SUMMARY
           echo "- **Cache**: GitHub Actions cache + local cache pour builds rapides" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event_name }}" == "push" ] && ( [ "${{ github.ref }}" == "refs/heads/main" ] || [ "${{ github.ref }}" == "refs/heads/master" ] ); then
