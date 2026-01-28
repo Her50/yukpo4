@@ -465,14 +465,25 @@ resource "aws_iam_role_policy" "ecs_secrets" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret"
-      ]
-      Resource = aws_secretsmanager_secret.backend_secrets.arn
-    }]
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = aws_secretsmanager_secret.backend_secrets.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
+        ]
+        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/*"
+      }
+    ]
   })
 }
 
@@ -609,6 +620,30 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "JWT_SECRET"
         valueFrom = "${aws_secretsmanager_secret.backend_secrets.arn}:JWT_SECRET::"
+      },
+      {
+        name      = "ENABLE_AUTO_MIGRATIONS"
+        valueFrom = "${aws_secretsmanager_secret.backend_secrets.arn}:ENABLE_AUTO_MIGRATIONS::"
+      },
+      {
+        name      = "S3_BUCKET"
+        valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/S3_BUCKET"
+      },
+      {
+        name      = "S3_REGION"
+        valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/S3_REGION"
+      },
+      {
+        name      = "S3_ACCESS_KEY"
+        valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/S3_ACCESS_KEY"
+      },
+      {
+        name      = "S3_SECRET_KEY"
+        valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/S3_SECRET_KEY"
+      },
+      {
+        name      = "UPLOAD_BASE_URL"
+        valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/UPLOAD_BASE_URL"
       }
     ]
 
