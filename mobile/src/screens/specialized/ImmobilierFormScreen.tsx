@@ -1,6 +1,7 @@
 // ✅ NOUVEAU: Écran de création/édition de biens immobiliers (accessible à tous les utilisateurs)
 
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as FileSystem from 'expo-file-system';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
@@ -18,6 +19,8 @@ import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
+import { googlePlacesMediaService } from '../../services/googlePlacesMediaService';
+import { uploadFiles } from '../../services/uploadApi';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 import { useCurrencyDetection, getCurrencyFromGPS } from '../../hooks/useCurrencyDetection';
@@ -59,6 +62,8 @@ const ImmobilierFormScreen: React.FC = () => {
     
     // ✅ NOUVEAU: Gestion des médias (images et vidéos)
     const [media, setMedia] = useState<MediaItem[]>([]);
+    const [importingGoogleMedia, setImportingGoogleMedia] = useState(false);
+    const [lastImportedPlaceId, setLastImportedPlaceId] = useState<string | null>(null);
 
     const typesBien = ['maison', 'appartement', 'terrain', 'bureau', 'local_commercial'];
     const statuts = ['vente', 'location', 'les_deux'];
@@ -170,6 +175,66 @@ const ImmobilierFormScreen: React.FC = () => {
     const handleGPSSelect = (coordinates: string) => {
         setSelectedGPS(coordinates);
         setShowGPSModal(false);
+    };
+
+    const importGooglePlacePhotos = async (placeId: string) => {
+        if (!placeId) return;
+        if (placeId === lastImportedPlaceId) return;
+
+        try {
+            setImportingGoogleMedia(true);
+
+            const photoUrls = await googlePlacesMediaService.getPlacePhotoUrls(placeId, { maxPhotos: 10, maxWidth: 1600 });
+            if (photoUrls.length === 0) {
+                setLastImportedPlaceId(placeId);
+                return;
+            }
+
+            const downloadedUris = await Promise.all(
+                photoUrls.map(async (url, idx) => {
+                    const dest = `${FileSystem.cacheDirectory}google_place_${placeId}_${idx}.jpg`;
+                    const result = await FileSystem.downloadAsync(url, dest);
+                    return result.uri;
+                })
+            );
+
+            const uploaded = await uploadFiles(
+                downloadedUris.map((uri, idx) => ({
+                    uri,
+                    type: 'image/jpeg',
+                    name: `google_place_${placeId}_${idx}.jpg`,
+                }))
+            );
+
+            const importedItems: MediaItem[] = uploaded
+                .filter((f) => f?.url)
+                .map((f, idx) => ({
+                    uri: downloadedUris[idx],
+                    type: 'image',
+                    uploaded: true,
+                    uploadUrl: f.url,
+                }));
+
+            if (importedItems.length > 0) {
+                setMedia((prev) => {
+                    const existingUrls = new Set(prev.map((m) => m.uploadUrl).filter(Boolean) as string[]);
+                    const deduped = importedItems.filter((m) => !m.uploadUrl || !existingUrls.has(m.uploadUrl));
+                    return [...prev, ...deduped];
+                });
+
+                Alert.alert(
+                    '📸 Photos Google ajoutées',
+                    `${importedItems.length} photo(s) récupérée(s) depuis Google Places. Vous pouvez les supprimer ou en ajouter d'autres.`
+                );
+            }
+
+            setLastImportedPlaceId(placeId);
+        } catch (error: any) {
+            console.error('[ImmobilierFormScreen] Erreur import photos Google:', error);
+            // Non bloquant: l'utilisateur peut continuer manuellement
+        } finally {
+            setImportingGoogleMedia(false);
+        }
     };
 
     const handleSubmit = async () => {
@@ -377,12 +442,33 @@ const ImmobilierFormScreen: React.FC = () => {
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Adresse complète</Text>
-                        <NativeInput
-                            value={formData.adresse}
-                            onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                            placeholder="Adresse complète du bien"
-                            multiline
+                        <LocationSelector
+                            label=""
+                            value={formData.adresse ? { raw: formData.adresse, place_name: formData.adresse } : ''}
+                            onSelect={(location: LocationObject) => {
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    adresse: location.raw || location.place_name || prev.adresse,
+                                    ville: prev.ville || (location.components?.ville ? { raw: location.components.ville, place_name: location.components.ville } : prev.ville),
+                                    quartier: prev.quartier || (location.components?.quartier ? { raw: location.components.quartier, place_name: location.components.quartier } : prev.quartier),
+                                }));
+
+                                if (location.coordinates?.lat && location.coordinates?.lng) {
+                                    setSelectedGPS(`${location.coordinates.lat},${location.coordinates.lng}`);
+                                }
+
+                                if (location.place_id) {
+                                    importGooglePlacePhotos(location.place_id);
+                                }
+                            }}
+                            placeholder="Rechercher une adresse / un lieu..."
+                            scope="all"
+                            cityContext={formData.ville?.raw || formData.ville?.place_name || ''}
+                            enrichWithBackend={true}
                         />
+                        {importingGoogleMedia && (
+                            <Text style={styles.helperText}>📥 Récupération des photos Google en cours...</Text>
+                        )}
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -513,7 +599,7 @@ const ImmobilierFormScreen: React.FC = () => {
                         <MediaUploader
                             media={media}
                             onMediaChange={setMedia}
-                            maxImages={15}
+                            maxImages={10}
                             maxVideos={3}
                             allowVideos={true}
                             label="Photos et vidéos du bien"
@@ -580,6 +666,11 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#374151',
         marginBottom: 8,
+    },
+    helperText: {
+        marginTop: 6,
+        fontSize: 12,
+        color: '#6B7280',
     },
     chipsContainer: {
         flexDirection: 'row',

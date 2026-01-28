@@ -27,6 +27,7 @@ import * as FileSystem from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 // Code corrigé (remplace @ts-ignore)
 import { modernColors } from '../theme/modernTheme';
+import { googlePlacesMediaService } from '../services/googlePlacesMediaService';
 import BusSeatSelector from './BusSeatSelector';
 import { NativeButton, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
@@ -2250,6 +2251,44 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         } catch (error) {
             console.error('Erreur sélection images:', error);
             Alert.alert('Erreur', 'Impossible de sélectionner les images');
+        }
+    };
+
+    // ✅ NOUVEAU: Importer automatiquement des photos depuis Google Places (hotel / logement meublé / immobilier)
+    const importGooglePlaceImagesAsBase64 = async (placeId: string, maxPhotos: number = 10): Promise<string[]> => {
+        if (!placeId) return [];
+
+        try {
+            const photoUrls = await googlePlacesMediaService.getPlacePhotoUrls(placeId, { maxPhotos, maxWidth: 1600 });
+            if (photoUrls.length === 0) return [];
+
+            const base64Images: string[] = [];
+
+            for (let i = 0; i < photoUrls.length; i++) {
+                try {
+                    const url = photoUrls[i];
+                    const dest = `${FileSystem.cacheDirectory}google_place_${placeId}_${i}.jpg`;
+                    const downloaded = await FileSystem.downloadAsync(url, dest);
+
+                    // ✅ Même pipeline que handlePickImages: resize 1024px + compress 50% + base64
+                    const manipulated = await manipulateAsync(
+                        downloaded.uri,
+                        [{ resize: { width: 1024 } }],
+                        { compress: 0.5, format: SaveFormat.JPEG, base64: true }
+                    );
+
+                    if (manipulated.base64) {
+                        base64Images.push(`data:image/jpeg;base64,${manipulated.base64}`);
+                    }
+                } catch (err) {
+                    console.log('[ProductManager] Import Google photo failed:', err);
+                }
+            }
+
+            return base64Images;
+        } catch (error) {
+            console.log('[ProductManager] importGooglePlaceImagesAsBase64 error:', error);
+            return [];
         }
     };
 
@@ -4873,11 +4912,61 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Adresse complète */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Adresse <Text style={styles.required}>*</Text></Text>
-                            <NativeInput
+                            <LocationSelector
+                                label=""
+                                value={newProduct.adresse ? (typeof newProduct.adresse === 'string'
+                                    ? { raw: newProduct.adresse, place_name: newProduct.adresse }
+                                    : newProduct.adresse) : ''}
+                                onSelect={(loc: any) => {
+                                    setNewProduct((prev: any) => ({
+                                        ...prev,
+                                        adresse: loc.raw || loc.place_name || prev.adresse,
+                                        gpsImmobilier: (loc.coordinates?.lat && loc.coordinates?.lng)
+                                            ? `${loc.coordinates.lat},${loc.coordinates.lng}`
+                                            : prev.gpsImmobilier,
+                                        ville: prev.ville || (loc.components?.ville
+                                            ? { raw: loc.components.ville, place_name: loc.components.ville }
+                                            : prev.ville),
+                                        quartier: prev.quartier || (loc.components?.quartier
+                                            ? { raw: loc.components.quartier, place_name: loc.components.quartier }
+                                            : prev.quartier),
+                                    }));
+
+                                    if (loc.place_id) {
+                                        const runImport = async () => {
+                                            const imgs = await importGooglePlaceImagesAsBase64(loc.place_id, 10);
+                                            if (imgs.length > 0) {
+                                                setNewProduct((prev: any) => ({
+                                                    ...prev,
+                                                    images: [...(prev.images || []), ...imgs],
+                                                }));
+                                                Alert.alert(
+                                                    '📸 Photos Google ajoutées',
+                                                    `${imgs.length} photo(s) récupérée(s) depuis Google Places. Vous pouvez les supprimer ou en ajouter d'autres.`
+                                                );
+                                            }
+                                        };
+
+                                        const existingCount = (newProduct.images || []).length;
+                                        if (existingCount > 0) {
+                                            Alert.alert(
+                                                'Importer les photos Google ?',
+                                                `Vous avez déjà ${existingCount} image(s). Voulez-vous ajouter aussi les photos trouvées sur Google Places ?`,
+                                                [
+                                                    { text: 'Non', style: 'cancel' },
+                                                    { text: 'Oui', onPress: () => runImport() },
+                                                ]
+                                            );
+                                        } else {
+                                            runImport();
+                                        }
+                                    }
+                                }}
+                                scope="all"
+                                cityContext={(newProduct.ville && typeof newProduct.ville === 'object')
+                                    ? (newProduct.ville.raw || newProduct.ville.place_name || '')
+                                    : (newProduct.ville || '')}
                                 placeholder="Ex: Rue des Jardins, Avenue de la Liberté..."
-                                value={newProduct.adresse || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, adresse: text })}
-                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -5371,11 +5460,61 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Adresse */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Adresse précise</Text>
-                            <NativeInput
+                            <LocationSelector
+                                label=""
+                                value={newProduct.adresse ? (typeof newProduct.adresse === 'string'
+                                    ? { raw: newProduct.adresse, place_name: newProduct.adresse }
+                                    : newProduct.adresse) : ''}
+                                onSelect={(loc: any) => {
+                                    setNewProduct((prev: any) => ({
+                                        ...prev,
+                                        adresse: loc.raw || loc.place_name || prev.adresse,
+                                        gpsImmobilier: (loc.coordinates?.lat && loc.coordinates?.lng)
+                                            ? `${loc.coordinates.lat},${loc.coordinates.lng}`
+                                            : prev.gpsImmobilier,
+                                        ville: prev.ville || (loc.components?.ville
+                                            ? { raw: loc.components.ville, place_name: loc.components.ville }
+                                            : prev.ville),
+                                        quartier: prev.quartier || (loc.components?.quartier
+                                            ? { raw: loc.components.quartier, place_name: loc.components.quartier }
+                                            : prev.quartier),
+                                    }));
+
+                                    if (loc.place_id) {
+                                        const runImport = async () => {
+                                            const imgs = await importGooglePlaceImagesAsBase64(loc.place_id, 10);
+                                            if (imgs.length > 0) {
+                                                setNewProduct((prev: any) => ({
+                                                    ...prev,
+                                                    images: [...(prev.images || []), ...imgs],
+                                                }));
+                                                Alert.alert(
+                                                    '📸 Photos Google ajoutées',
+                                                    `${imgs.length} photo(s) récupérée(s) depuis Google Places. Vous pouvez les supprimer ou en ajouter d'autres.`
+                                                );
+                                            }
+                                        };
+
+                                        const existingCount = (newProduct.images || []).length;
+                                        if (existingCount > 0) {
+                                            Alert.alert(
+                                                'Importer les photos Google ?',
+                                                `Vous avez déjà ${existingCount} image(s). Voulez-vous ajouter aussi les photos trouvées sur Google Places ?`,
+                                                [
+                                                    { text: 'Non', style: 'cancel' },
+                                                    { text: 'Oui', onPress: () => runImport() },
+                                                ]
+                                            );
+                                        } else {
+                                            runImport();
+                                        }
+                                    }
+                                }}
+                                scope="all"
+                                cityContext={(newProduct.ville && typeof newProduct.ville === 'object')
+                                    ? (newProduct.ville.raw || newProduct.ville.place_name || '')
+                                    : (newProduct.ville || '')}
                                 placeholder="Ex: Rue 234, Bonapriso"
-                                value={newProduct.adresse || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, adresse: text })}
-                                style={styles.fieldInput}
                             />
                         </View>
 
@@ -7491,12 +7630,63 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Adresse <Text style={styles.required}>*</Text></Text>
-                                <NativeInput
-                                    placeholder="Ex: Avenue Kennedy"
-                                    value={newProduct.adresseHotel || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, adresseHotel: text })}
-                                    style={styles.fieldInput}
+                                <LocationSelector
+                                    label="Adresse *"
+                                    value={newProduct.adresseHotel ? (typeof newProduct.adresseHotel === 'string'
+                                        ? { raw: newProduct.adresseHotel, place_name: newProduct.adresseHotel }
+                                        : newProduct.adresseHotel) : ''}
+                                    onSelect={(loc: any) => {
+                                        // Pré-remplissage adresse + GPS + (optionnel) ville/zone
+                                        setNewProduct((prev: any) => ({
+                                            ...prev,
+                                            adresseHotel: loc.raw || loc.place_name || prev.adresseHotel,
+                                            gpsHotel: (loc.coordinates?.lat && loc.coordinates?.lng)
+                                                ? `${loc.coordinates.lat},${loc.coordinates.lng}`
+                                                : prev.gpsHotel,
+                                            villeHotel: prev.villeHotel || (loc.components?.ville
+                                                ? { raw: loc.components.ville, place_name: loc.components.ville }
+                                                : prev.villeHotel),
+                                            zoneHotel: prev.zoneHotel || (loc.components?.quartier
+                                                ? { raw: loc.components.quartier, place_name: loc.components.quartier }
+                                                : prev.zoneHotel),
+                                        }));
+
+                                        // Import médias Google (photos) si place_id disponible
+                                        if (loc.place_id) {
+                                            const runImport = async () => {
+                                                const imgs = await importGooglePlaceImagesAsBase64(loc.place_id, 10);
+                                                if (imgs.length > 0) {
+                                                    setNewProduct((prev: any) => ({
+                                                        ...prev,
+                                                        images: [...(prev.images || []), ...imgs],
+                                                    }));
+                                                    Alert.alert(
+                                                        '📸 Photos Google ajoutées',
+                                                        `${imgs.length} photo(s) récupérée(s) depuis Google Places. Vous pouvez les supprimer ou en ajouter d'autres.`
+                                                    );
+                                                }
+                                            };
+
+                                            const existingCount = (newProduct.images || []).length;
+                                            if (existingCount > 0) {
+                                                Alert.alert(
+                                                    'Importer les photos Google ?',
+                                                    `Vous avez déjà ${existingCount} image(s). Voulez-vous ajouter aussi les photos trouvées sur Google Places ?`,
+                                                    [
+                                                        { text: 'Non', style: 'cancel' },
+                                                        { text: 'Oui', onPress: () => runImport() },
+                                                    ]
+                                                );
+                                            } else {
+                                                runImport();
+                                            }
+                                        }
+                                    }}
+                                    scope="all"
+                                    cityContext={(newProduct.villeHotel && typeof newProduct.villeHotel === 'object')
+                                        ? (newProduct.villeHotel.raw || newProduct.villeHotel.place_name || '')
+                                        : (newProduct.villeHotel || '')}
+                                    placeholder="Ex: Hôtel Sawa, Avenue Kennedy..."
                                 />
                             </View>
                         </View>
