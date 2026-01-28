@@ -383,16 +383,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CORRIGÉ RACINE 2025-12-12: Désactiver auto_migrations par défaut en production
     // Le problème: Les blocs DO $$ lourds dans auto_migrations causent des crashes PostgreSQL
     // Solution: Les rendre optionnelles via variable d'environnement (désactivées par défaut)
-    let enable_auto_migrations = env::var("ENABLE_AUTO_MIGRATIONS")
-        .unwrap_or_else(|_| "false".to_string())
-        .parse::<bool>()
-        .unwrap_or(false);
+    let enable_auto_migrations_raw = env::var("ENABLE_AUTO_MIGRATIONS")
+        .unwrap_or_else(|_| "false".to_string());
+    
+    // Parser de manière tolérante (trim, lowercase, accepte "true", "1", "yes", etc.)
+    let enable_auto_migrations = {
+        let trimmed = enable_auto_migrations_raw.trim().to_lowercase();
+        trimmed == "true" || trimmed == "1" || trimmed == "yes" || trimmed == "on"
+    };
+    
+    log::info!("🔍 ENABLE_AUTO_MIGRATIONS: raw='{}', parsed={}", enable_auto_migrations_raw, enable_auto_migrations);
     
     if enable_auto_migrations {
         log::info!("🔄 Exécution des migrations automatiques (ENABLE_AUTO_MIGRATIONS=true)...");
         yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
     } else {
-        log::info!("⏭️ Migrations automatiques désactivées (ENABLE_AUTO_MIGRATIONS=false ou non défini) - Pour activer: ENABLE_AUTO_MIGRATIONS=true");
+        log::info!("⏭️ Migrations automatiques désactivées (ENABLE_AUTO_MIGRATIONS={}) - Pour activer: ENABLE_AUTO_MIGRATIONS=true", enable_auto_migrations_raw);
     }
 
     // ✅ NOUVEAU 2025-11-27: Démarrer le monitoring de santé du pool
