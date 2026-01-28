@@ -107,8 +107,16 @@ def is_connection_error(error_output: str) -> bool:
 
 
 def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
-    """Vérifie l'état des migrations via sqlx migrate info avec retry"""
+    """
+    Vérifie l'état des migrations via sqlx migrate info avec retry
+    
+    SQLx utilise la table _sqlx_migrations pour tracker les migrations appliquées :
+    - Compare les checksums des fichiers avec ceux en base
+    - Identifie uniquement les migrations non encore appliquées
+    - Évite ainsi les doublons automatiquement
+    """
     print(f"🔍 Vérification de l'état des migrations... (tentative {retry_count + 1}/{MAX_RETRIES + 1})")
+    print("ℹ️ SQLx vérifie la table _sqlx_migrations pour éviter les doublons")
     
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
@@ -129,10 +137,22 @@ def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
         output = result.stdout.lower()
         has_pending = "pending" in output or "not applied" in output or "not yet applied" in output
         
+        # Compter les migrations appliquées vs en attente
+        lines = result.stdout.split('\n')
+        applied_count = sum(1 for line in lines if 'Applied' in line or 'installed' in line.lower())
+        pending_count = sum(1 for line in lines if 'Pending' in line or 'pending' in line.lower())
+        
+        if applied_count > 0:
+            print(f"✅ {applied_count} migration(s) déjà appliquée(s) (ignorées)")
+        if pending_count > 0:
+            print(f"🔄 {pending_count} migration(s) en attente d'application")
+        
         return {
             "has_pending": has_pending,
             "output": result.stdout,
-            "connection_ok": True
+            "connection_ok": True,
+            "applied_count": applied_count,
+            "pending_count": pending_count
         }
     except subprocess.TimeoutExpired:
         print("⚠️ Timeout lors de la vérification des migrations")
@@ -251,8 +271,17 @@ def main():
     print()
     
     # Vérifier l'état des migrations
+    # SQLx vérifie automatiquement la table _sqlx_migrations pour éviter les doublons
     status = check_migrations_status(database_url)
     print()
+    
+    # Afficher le résumé des migrations
+    if status.get("connection_ok", True):
+        applied = status.get("applied_count", 0)
+        pending = status.get("pending_count", 0)
+        if applied > 0 or pending > 0:
+            print(f"📊 Résumé: {applied} appliquée(s), {pending} en attente")
+            print()
     
     # Vérifier si la connexion fonctionne
     if not status.get("connection_ok", True):

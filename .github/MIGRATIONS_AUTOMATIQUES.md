@@ -42,9 +42,24 @@ Les mêmes secrets que pour le déploiement ECS :
 Le script `scripts/run_migrations_aws.py` :
 
 1. **Récupère DATABASE_URL** depuis AWS SSM Parameter Store
-2. **Vérifie sqlx-cli** et l'installe si nécessaire
+2. **Vérifie sqlx-cli** et l'installe si nécessaire (avec cache)
 3. **Vérifie l'état des migrations** via `sqlx migrate info`
+   - SQLx utilise la table `_sqlx_migrations` pour tracker les migrations appliquées
+   - Compare les checksums des fichiers avec ceux en base
+   - **Évite automatiquement les doublons** - seules les nouvelles migrations sont appliquées
 4. **Applique les migrations manquantes** via `sqlx migrate run`
+   - N'applique que les migrations non encore dans `_sqlx_migrations`
+   - Enregistre chaque migration appliquée dans `_sqlx_migrations` avec son checksum
+
+### Protection contre les doublons
+
+SQLx utilise un système de checksum pour éviter les doublons :
+- Chaque fichier de migration a un checksum SHA256 calculé
+- La table `_sqlx_migrations` stocke le checksum de chaque migration appliquée
+- Si le checksum correspond, la migration est ignorée (déjà appliquée)
+- Si le checksum diffère, SQLx détecte une modification et peut alerter
+
+**Résultat** : Vous pouvez exécuter `sqlx migrate run` plusieurs fois sans risque de doublons !
 
 ### Utilisation manuelle
 
@@ -62,6 +77,33 @@ python3 scripts/run_migrations_aws.py
 Les dépendances sont dans `scripts/requirements.txt` :
 - `boto3` : Pour accéder à AWS SSM
 - `psycopg2-binary` : Pour la connexion PostgreSQL (optionnel, utilisé pour vérifications)
+
+**Cache** : Les dépendances Python sont mises en cache via GitHub Actions pour éviter les réinstallations à chaque push.
+
+## ⚡ Optimisations de Cache
+
+### Cache Rust (sqlx-cli)
+
+Le workflow utilise un cache GitHub Actions pour :
+- `~/.cargo/bin/` : Binaire sqlx-cli installé
+- `~/.cargo/registry/` : Registre Cargo (dépendances)
+- `~/.cargo/git/` : Dépendances Git
+- `~/.cargo/.package-cache/` : Cache des packages
+
+**Résultat** : sqlx-cli n'est installé qu'une seule fois, puis réutilisé depuis le cache.
+
+### Cache Python
+
+Le workflow utilise :
+- Cache pip natif de `setup-python@v5`
+- Cache supplémentaire pour `~/.cache/pip`
+
+**Résultat** : Les packages Python (boto3, psycopg2-binary) sont mis en cache et réutilisés.
+
+### Temps d'exécution
+
+- **Premier run** : ~3-5 minutes (installation de sqlx-cli et dépendances Python)
+- **Runs suivants** : ~30-60 secondes (tout depuis le cache)
 
 ## ✅ Avantages
 

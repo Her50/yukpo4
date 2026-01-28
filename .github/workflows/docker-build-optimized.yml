@@ -62,10 +62,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('scripts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install Python dependencies
         run: |
-          pip install -r scripts/requirements.txt
+          pip install --cache-dir ~/.cache/pip -r scripts/requirements.txt
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -82,9 +91,11 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
+            ~/.cargo/.package-cache
           key: ${{ runner.os }}-sqlx-cli-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-sqlx-cli-
+            ${{ runner.os }}-cargo-
 
       - name: Install sqlx-cli
         run: |
