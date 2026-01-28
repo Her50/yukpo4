@@ -1,0 +1,12 @@
+﻿{
+  "containerOverrides": [
+    {
+      "name": "backend",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "cd /app/backend && sqlx migrate info && sqlx migrate run"
+      ]
+    }
+  ]
+}

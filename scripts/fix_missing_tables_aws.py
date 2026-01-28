@@ -110,6 +110,12 @@ def create_table_from_migration(conn, table_name: str, migration_file: str):
 
 def main():
     """Fonction principale"""
+    import sys
+    import io
+    # Forcer l'encodage UTF-8 pour Windows
+    if sys.platform == 'win32':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    
     print("=" * 80)
     print("🔧 Création des tables manquantes sur AWS RDS")
     print("=" * 80)
