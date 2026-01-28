@@ -19,8 +19,9 @@ SSM_PARAMETER_PATH = os.getenv("SSM_DATABASE_URL_PATH", "/yukpomnang/production/
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 MIGRATIONS_DIR = Path(__file__).parent.parent / "backend" / "migrations"
 FAIL_ON_ERROR = os.getenv("FAIL_ON_MIGRATION_ERROR", "false").lower() == "true"
-MAX_RETRIES = 3
-RETRY_DELAY = 5  # secondes
+MAX_RETRIES = 2  # Réduit de 3 à 2 pour VPC privé (détection plus rapide)
+RETRY_DELAY = 3  # Réduit de 5 à 3 secondes
+CONNECTION_TIMEOUT = 30  # Timeout initial pour détecter rapidement les erreurs VPC (30s au lieu de 120s)
 
 
 def get_database_url_from_ssm() -> str:
@@ -121,6 +122,9 @@ def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
     
+    # Timeout adaptatif : plus court pour la première tentative (détection rapide VPC)
+    timeout = CONNECTION_TIMEOUT if retry_count == 0 else 60
+    
     try:
         result = subprocess.run(
             ["sqlx", "migrate", "info"],
@@ -129,7 +133,7 @@ def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
             capture_output=True,
             text=True,
             check=True,
-            timeout=120  # Augmenté à 2 minutes
+            timeout=timeout
         )
         print(result.stdout)
         
@@ -187,20 +191,29 @@ def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
 
 
 def run_migrations(database_url: str, retry_count: int = 0) -> bool:
-    """Exécute les migrations via sqlx migrate run avec retry"""
+    """
+    Exécute les migrations via sqlx migrate run avec retry
+    
+    SQLx est idempotent : il vérifie la table _sqlx_migrations avant d'appliquer chaque migration.
+    Si une migration a déjà été appliquée (même checksum), elle est automatiquement ignorée.
+    """
     print(f"🚀 Exécution des migrations... (tentative {retry_count + 1}/{MAX_RETRIES + 1})")
     
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
+    
+    # Timeout adaptatif : plus court pour la première tentative (détection rapide VPC)
+    timeout = CONNECTION_TIMEOUT if retry_count == 0 else 300  # 5 minutes pour les retries
     
     try:
         result = subprocess.run(
             ["sqlx", "migrate", "run"],
             env=env,
             cwd=Path(__file__).parent.parent / "backend",
-            check=True,
+            capture_output=True,
             text=True,
-            timeout=600  # 10 minutes max (augmenté pour les grandes migrations)
+            check=True,
+            timeout=timeout
         )
         print("✅ Migrations exécutées avec succès")
         if result.stdout:
