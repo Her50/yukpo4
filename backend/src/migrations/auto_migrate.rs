@@ -8459,6 +8459,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto menu planning tables: {}", e),
     }
 
+    // ✅ NOUVEAU 2026-01-02 : Queue asynchrone pour création de produits
+    match ensure_product_creation_queue(pool).await {
+        Ok(_) => info!("✅ Migration auto: product_creation_queue OK"),
+        Err(e) => error!("❌ Erreur migration auto product_creation_queue: {}", e),
+    }
+
     info!("✅ Migrations automatiques terminées");
 }
 
