@@ -36,10 +36,86 @@ env:
   AWS_ACCOUNT_ID: 846505724644
   ECR_REPO_NAME: yukpomnang-backend
   ECR_REPO_URI: 846505724644.dkr.ecr.us-east-1.amazonaws.com/yukpomnang-backend
+  SSM_DATABASE_URL_PATH: /yukpomnang/production/DATABASE_URL
 
 jobs:
+  run-migrations:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || (github.event_name == 'workflow_dispatch' && inputs.push_to_aws == 'true')
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r scripts/requirements.txt
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-sqlx-cli-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-sqlx-cli-
+
+      - name: Install sqlx-cli
+        run: |
+          if ! command -v sqlx &> /dev/null; then
+            echo "📦 Installation de sqlx-cli..."
+            cargo install sqlx-cli --no-default-features --features postgres
+          else
+            echo "✅ sqlx-cli déjà installé"
+            sqlx --version
+          fi
+
+      - name: Run migrations
+        env:
+          SSM_DATABASE_URL_PATH: ${{ env.SSM_DATABASE_URL_PATH }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          python3 scripts/run_migrations_aws.py
+
+      - name: Migration summary
+        if: always()
+        run: |
+          echo "## 🔄 Database Migrations - Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: Migrations vérifiées et appliquées si nécessaire" >> $GITHUB_STEP_SUMMARY
+          echo "- **SSM Parameter**: \`${{ env.SSM_DATABASE_URL_PATH }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: \`${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
+
   build-and-push:
     name: Build and Push Optimized Docker Image
+    needs: run-migrations
+    if: always() && (needs.run-migrations.result == 'success' || needs.run-migrations.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 60  # Timeout après 60 minutes
     permissions:
