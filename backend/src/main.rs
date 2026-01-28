@@ -355,6 +355,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // 🔄 Exécuter les migrations SQLx standard au démarrage
+    // ✅ CORRIGÉ 2026-01-28: Les migrations SQLx standard sont OBLIGATOIRES pour créer les tables de base
     log::info!("🚀 Application des migrations SQLx standard...");
     match sqlx::migrate!("./migrations").run(&pg_pool).await {
         Ok(_) => {
@@ -362,20 +363,53 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Vérifier si la migration 20251125_fix_idx_services_search_optimized a été appliquée
             check_index_migration(&pg_pool).await;
+
+            // ✅ NOUVEAU 2026-01-28: Vérifier que les tables de base ont été créées
+            let users_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'users'
+                )"
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            let services_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'services'
+                )"
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            if !users_exists || !services_exists {
+                log::error!("❌ ERREUR CRITIQUE: Les tables de base n'ont pas été créées par les migrations SQLx standard");
+                log::error!("❌ users existe: {}, services existe: {}", users_exists, services_exists);
+                log::error!("❌ Les migrations automatiques ne pourront pas s'exécuter correctement");
+            } else {
+                log::info!("✅ Tables de base (users, services) vérifiées après migrations SQLx");
+            }
         }
         Err(e) => {
             let error_str = e.to_string();
             // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
             if error_str.contains("migration 0 was previously applied but has been modified") {
-                log::debug!("ℹ️ Migration 0 modifiée détectée (ignorée) - Si nécessaire, supprimez l'entrée de _sqlx_migrations pour la migration 0");
+                log::warn!("⚠️ Migration 0 modifiée détectée (ignorée) - Si nécessaire, supprimez l'entrée de _sqlx_migrations pour la migration 0");
+                log::info!("ℹ️ Continuation du démarrage malgré l'avertissement de migration modifiée");
             } else {
                 log::error!(
-                    "❌ Erreur lors de l'application des migrations SQLx standard: {}",
+                    "❌ ERREUR CRITIQUE lors de l'application des migrations SQLx standard: {}",
                     e
                 );
+                log::error!("❌ Les migrations SQLx standard sont OBLIGATOIRES pour créer les tables de base (users, services)");
+                log::error!("❌ Les migrations automatiques ne pourront pas s'exécuter correctement sans ces tables");
+                log::warn!("⚠️ Continuation du démarrage, mais certaines fonctionnalités peuvent être indisponibles");
             }
-            // On continue quand même, certaines migrations peuvent déjà être appliquées
-            log::debug!("ℹ️ Continuation du démarrage malgré l'erreur de migration");
         }
     }
 
@@ -395,8 +429,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("🔍 ENABLE_AUTO_MIGRATIONS: raw='{}', parsed={}", enable_auto_migrations_raw, enable_auto_migrations);
     
     if enable_auto_migrations {
-        log::info!("🔄 Exécution des migrations automatiques (ENABLE_AUTO_MIGRATIONS=true)...");
-        yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
+        // ✅ CORRIGÉ 2026-01-28: Vérifier que les tables de base existent AVANT d'exécuter les migrations automatiques
+        log::info!("🔍 Vérification des tables de base avant migrations automatiques...");
+        
+        let users_exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'users'
+            )"
+        )
+        .fetch_one(&pg_pool)
+        .await
+        .unwrap_or(false);
+
+        let services_exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'services'
+            )"
+        )
+        .fetch_one(&pg_pool)
+        .await
+        .unwrap_or(false);
+
+        if !users_exists || !services_exists {
+            log::error!("❌ ERREUR CRITIQUE: Impossible d'exécuter les migrations automatiques");
+            log::error!("❌ Tables de base manquantes: users={}, services={}", users_exists, services_exists);
+            log::error!("❌ Les migrations SQLx standard doivent être appliquées AVANT les migrations automatiques");
+            log::error!("❌ Vérifiez que:");
+            log::error!("   1. Les migrations SQLx standard ont été exécutées avec succès");
+            log::error!("   2. La table _sqlx_migrations existe et contient les migrations appliquées");
+            log::error!("   3. Les fichiers de migration dans backend/migrations/ sont corrects");
+            log::error!("❌ Les migrations automatiques sont ANNULÉES pour éviter des erreurs en cascade");
+        } else {
+            log::info!("✅ Tables de base (users, services) vérifiées - Exécution des migrations automatiques...");
+            yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
+        }
     } else {
         log::info!("⏭️ Migrations automatiques désactivées (ENABLE_AUTO_MIGRATIONS={}) - Pour activer: ENABLE_AUTO_MIGRATIONS=true", enable_auto_migrations_raw);
     }

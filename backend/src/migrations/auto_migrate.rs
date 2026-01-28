@@ -6557,16 +6557,21 @@ pub async fn ensure_delivery_media_table(pool: &PgPool) -> Result<(), sqlx::Erro
 pub async fn ensure_delivery_seed_data(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des seeds livraison (parcel_types alignés avec véhicules)...");
 
-    // ✅ 2025-12-22 : Créer directement les types de colis alignés avec les types de véhicules
-    // Cela évite les problèmes de migration où les anciens types sont supprimés
+    // ✅ CORRIGÉ 2026-01-28: Séparer les commandes SQL pour éviter l'erreur "cannot insert multiple commands into a prepared statement"
+    // Étape 1: Supprimer les anciens types qui ne correspondent pas aux véhicules
     sqlx::query(
         r#"
-        -- Supprimer les anciens types qui ne correspondent pas aux véhicules
         DELETE FROM parcel_types WHERE slug NOT IN (
             'bike', 'motorcycle', 'tricycle', 'car', 'pickup', 'van', 'truck', 'walking'
-        );
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
 
-        -- Insérer les types de colis alignés avec delivery_engine_type
+    // Étape 2: Insérer les types de colis alignés avec delivery_engine_type
+    sqlx::query(
+        r#"
         INSERT INTO parcel_types (slug, display_name, description, max_weight_kg, max_volume_cm3, requires_fragile_handling, requires_isothermal, requires_secure_box, requires_document_protection, metadata)
         VALUES
             ('bike', 'Vélo', 'Livraison par vélo - Idéal pour petits colis légers et distances courtes', 5, 10000, FALSE, FALSE, FALSE, FALSE, '{"vehicle_type": "bike", "speed": "slow", "range_km": 10}'::jsonb),
@@ -6582,7 +6587,7 @@ pub async fn ensure_delivery_seed_data(pool: &PgPool) -> Result<(), sqlx::Error>
             description = EXCLUDED.description,
             max_weight_kg = EXCLUDED.max_weight_kg,
             max_volume_cm3 = EXCLUDED.max_volume_cm3,
-            metadata = EXCLUDED.metadata;
+            metadata = EXCLUDED.metadata
         "#,
     )
     .execute(pool)
@@ -7450,8 +7455,61 @@ pub async fn ensure_templates_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
+/// Vérifie que les tables de base (users, services) existent avant d'exécuter les migrations automatiques
+async fn ensure_base_tables_exist(pool: &PgPool) -> Result<(), sqlx::Error> {
+    // Vérifier que la table users existe
+    let users_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'users'
+        )"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !users_exists {
+        return Err(sqlx::Error::Protocol(format!(
+            "❌ Table 'users' n'existe pas. Les migrations SQLx standard doivent être appliquées en premier. \
+            Vérifiez que les migrations dans backend/migrations/ sont exécutées correctement."
+        )));
+    }
+
+    // Vérifier que la table services existe
+    let services_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'services'
+        )"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !services_exists {
+        return Err(sqlx::Error::Protocol(format!(
+            "❌ Table 'services' n'existe pas. Les migrations SQLx standard doivent être appliquées en premier. \
+            Vérifiez que les migrations dans backend/migrations/ sont exécutées correctement."
+        )));
+    }
+
+    Ok(())
+}
+
 pub async fn run_auto_migrations(pool: &PgPool) {
     info!("🚀 Démarrage des migrations automatiques...");
+
+    // ✅ NOUVEAU 2026-01-28: Vérification que les tables de base existent
+    match ensure_base_tables_exist(pool).await {
+        Ok(_) => info!("✅ Tables de base (users, services) vérifiées"),
+        Err(e) => {
+            error!("❌ ERREUR CRITIQUE: Les tables de base n'existent pas: {}", e);
+            error!("❌ Les migrations automatiques ne peuvent pas continuer sans les tables de base.");
+            error!("❌ Vérifiez que les migrations SQLx standard ont été appliquées correctement.");
+            error!("❌ Les migrations SQLx standard doivent être exécutées AVANT les migrations automatiques.");
+            return; // Arrêter les migrations automatiques si les tables de base n'existent pas
+        }
+    }
 
     // ✅ NOUVEAU 2026-01-24: Vérification de l'extension pgvector
     match ensure_pgvector_extension(pool).await {
