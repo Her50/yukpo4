@@ -22,8 +22,8 @@ pub fn webhook_routes() -> Router<Arc<AppState>> {
         .route("/audio-premium/{provider}", post(audio_premium_webhook))
         // Endpoint de test pour les webhooks
         .route("/test", post(test_webhook))
-        // Endpoint de santé pour vérifier que les webhooks sont opérationnels
-        .route("/health", get(webhook_health))
+        // Endpoint de santé spécifique aux webhooks (évite conflit avec /health global)
+        .route("/webhooks/health", get(webhook_health))
 }
 
 /// Endpoint de santé pour les webhooks
