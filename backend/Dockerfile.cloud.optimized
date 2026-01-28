@@ -68,8 +68,8 @@ RUN --mount=type=cache,target=/root/.cargo/registry \
 ############################################
 # Stage 2: Runtime - Image finale OPTIMISÉE
 ############################################
-# Utiliser debian:bookworm-slim (plus léger que bookworm standard)
-FROM debian:bookworm-slim
+# Utiliser debian:trixie-slim pour GLIBC 2.39+ (compatible avec rust:latest)
+FROM debian:trixie-slim
 
 LABEL maintainer="Yukpomnang Team"
 LABEL description="Yukpomnang Backend Cloud - Version Optimisée (sans Blender)"
