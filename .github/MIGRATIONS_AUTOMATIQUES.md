@@ -100,19 +100,31 @@ Les dépendances sont dans `scripts/requirements.txt` :
 
 Si une migration est déjà appliquée, sqlx l'ignore automatiquement. Le workflow continue normalement.
 
-### Erreur de connexion
+### Erreur de connexion (VPC privé)
 
-Si la connexion à la base de données échoue :
-- Le script affiche une erreur détaillée
-- Le workflow s'arrête avec une erreur
-- Le build Docker ne s'exécute pas
+**Situation courante** : Si la base de données RDS est dans un VPC privé et non accessible depuis GitHub Actions :
+
+- Le script détecte l'erreur de connexion après plusieurs tentatives (3 retries)
+- Le script affiche un message explicatif
+- **Le workflow continue normalement** (ne bloque pas le build)
+- **Les migrations seront exécutées automatiquement au démarrage de l'application ECS**
+
+**Pourquoi ?**
+- GitHub Actions s'exécute sur des runners publics
+- La base de données RDS est dans un VPC privé pour la sécurité
+- L'application ECS a accès à la base via le VPC
+- Les migrations s'exécutent déjà au démarrage de l'app (voir `main.rs`)
+
+**Configuration** :
+- `FAIL_ON_MIGRATION_ERROR=false` (par défaut) : Le build continue même si les migrations échouent
+- `FAIL_ON_MIGRATION_ERROR=true` : Le build s'arrête si les migrations échouent
 
 ### Timeout
 
-Si l'exécution des migrations prend trop de temps (> 5 minutes) :
-- Le script s'arrête avec une erreur de timeout
-- Le workflow s'arrête
-- Vérifiez les migrations qui prennent du temps
+Si l'exécution des migrations prend trop de temps (> 10 minutes) :
+- Le script fait 3 tentatives avec délai exponentiel
+- Si toutes les tentatives échouent, le workflow continue (si `FAIL_ON_MIGRATION_ERROR=false`)
+- Les migrations seront exécutées au démarrage ECS
 
 ## 🔄 Migrations automatiques (auto_migrate.rs)
 

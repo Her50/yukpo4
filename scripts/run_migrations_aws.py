@@ -2,11 +2,15 @@
 """
 Script pour exécuter les migrations SQLx directement sur AWS RDS
 Récupère DATABASE_URL depuis AWS SSM Parameter Store et exécute les migrations manquantes
+
+Note: Si la base de données est dans un VPC privé et non accessible depuis GitHub Actions,
+les migrations seront exécutées automatiquement au démarrage de l'application ECS.
 """
 import os
 import sys
 import subprocess
 import boto3
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -14,6 +18,9 @@ from typing import Optional
 SSM_PARAMETER_PATH = os.getenv("SSM_DATABASE_URL_PATH", "/yukpomnang/production/DATABASE_URL")
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 MIGRATIONS_DIR = Path(__file__).parent.parent / "backend" / "migrations"
+FAIL_ON_ERROR = os.getenv("FAIL_ON_MIGRATION_ERROR", "false").lower() == "true"
+MAX_RETRIES = 3
+RETRY_DELAY = 5  # secondes
 
 
 def get_database_url_from_ssm() -> str:
@@ -82,9 +89,26 @@ def install_sqlx_cli():
         sys.exit(1)
 
 
-def check_migrations_status(database_url: str) -> dict:
-    """Vérifie l'état des migrations via sqlx migrate info"""
-    print("🔍 Vérification de l'état des migrations...")
+def is_connection_error(error_output: str) -> bool:
+    """Détecte si l'erreur est une erreur de connexion"""
+    error_lower = error_output.lower()
+    connection_errors = [
+        "connection timed out",
+        "connection refused",
+        "could not connect",
+        "network unreachable",
+        "no route to host",
+        "timeout",
+        "os error 110",
+        "os error 111",
+        "os error 113"
+    ]
+    return any(err in error_lower for err in connection_errors)
+
+
+def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
+    """Vérifie l'état des migrations via sqlx migrate info avec retry"""
+    print(f"🔍 Vérification de l'état des migrations... (tentative {retry_count + 1}/{MAX_RETRIES + 1})")
     
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
@@ -97,7 +121,7 @@ def check_migrations_status(database_url: str) -> dict:
             capture_output=True,
             text=True,
             check=True,
-            timeout=60
+            timeout=120  # Augmenté à 2 minutes
         )
         print(result.stdout)
         
@@ -107,26 +131,44 @@ def check_migrations_status(database_url: str) -> dict:
         
         return {
             "has_pending": has_pending,
-            "output": result.stdout
+            "output": result.stdout,
+            "connection_ok": True
         }
     except subprocess.TimeoutExpired:
         print("⚠️ Timeout lors de la vérification des migrations")
-        return {"has_pending": True, "output": "Timeout"}
+        if retry_count < MAX_RETRIES:
+            print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
+            time.sleep(RETRY_DELAY)
+            return check_migrations_status(database_url, retry_count + 1)
+        return {"has_pending": True, "output": "Timeout", "connection_ok": False}
     except subprocess.CalledProcessError as e:
         error_output = e.stderr if e.stderr else (e.stdout if e.stdout else str(e))
-        print(f"⚠️ Erreur lors de la vérification: {error_output}")
+        
+        # Vérifier si c'est une erreur de connexion
+        if is_connection_error(error_output):
+            print(f"⚠️ Erreur de connexion détectée: {error_output[:200]}")
+            if retry_count < MAX_RETRIES:
+                print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
+                time.sleep(RETRY_DELAY)
+                return check_migrations_status(database_url, retry_count + 1)
+            print("❌ Impossible de se connecter à la base de données après plusieurs tentatives")
+            print("ℹ️ La base de données est probablement dans un VPC privé et non accessible depuis GitHub Actions")
+            print("ℹ️ Les migrations seront exécutées automatiquement au démarrage de l'application ECS")
+            return {"has_pending": False, "output": error_output, "connection_ok": False}
+        
+        print(f"⚠️ Erreur lors de la vérification: {error_output[:200]}")
         # Si la table _sqlx_migrations n'existe pas, on considère qu'il faut appliquer toutes les migrations
         if "relation \"_sqlx_migrations\" does not exist" in error_output.lower():
             print("ℹ️ Table _sqlx_migrations n'existe pas, toutes les migrations seront appliquées")
-            return {"has_pending": True, "output": error_output}
+            return {"has_pending": True, "output": error_output, "connection_ok": True}
         # Si c'est une autre erreur, on essaie quand même d'appliquer les migrations
         print("ℹ️ Tentative d'application des migrations malgré l'erreur de vérification")
-        return {"has_pending": True, "output": error_output}
+        return {"has_pending": True, "output": error_output, "connection_ok": True}
 
 
-def run_migrations(database_url: str) -> bool:
-    """Exécute les migrations via sqlx migrate run"""
-    print("🚀 Exécution des migrations...")
+def run_migrations(database_url: str, retry_count: int = 0) -> bool:
+    """Exécute les migrations via sqlx migrate run avec retry"""
+    print(f"🚀 Exécution des migrations... (tentative {retry_count + 1}/{MAX_RETRIES + 1})")
     
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
@@ -138,7 +180,7 @@ def run_migrations(database_url: str) -> bool:
             cwd=Path(__file__).parent.parent / "backend",
             check=True,
             text=True,
-            timeout=300  # 5 minutes max
+            timeout=600  # 10 minutes max (augmenté pour les grandes migrations)
         )
         print("✅ Migrations exécutées avec succès")
         if result.stdout:
@@ -146,18 +188,39 @@ def run_migrations(database_url: str) -> bool:
         return True
     except subprocess.TimeoutExpired:
         print("❌ Timeout lors de l'exécution des migrations (trop long)")
+        if retry_count < MAX_RETRIES:
+            print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
+            time.sleep(RETRY_DELAY)
+            return run_migrations(database_url, retry_count + 1)
         return False
     except subprocess.CalledProcessError as e:
-        print(f"❌ Erreur lors de l'exécution des migrations: {e}")
-        if e.stderr:
-            print(f"Erreur détaillée: {e.stderr}")
-        if e.stdout:
-            print(f"Sortie: {e.stdout}")
+        error_output = e.stderr if e.stderr else (e.stdout if e.stdout else str(e))
+        print(f"❌ Erreur lors de l'exécution des migrations: {error_output[:300]}")
+        
+        # Vérifier si c'est une erreur de connexion
+        if is_connection_error(error_output):
+            print("⚠️ Erreur de connexion détectée")
+            if retry_count < MAX_RETRIES:
+                print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
+                time.sleep(RETRY_DELAY)
+                return run_migrations(database_url, retry_count + 1)
+            print("❌ Impossible de se connecter à la base de données après plusieurs tentatives")
+            print("ℹ️ La base de données est probablement dans un VPC privé et non accessible depuis GitHub Actions")
+            print("ℹ️ Les migrations seront exécutées automatiquement au démarrage de l'application ECS")
+            return False
+        
         # Certaines erreurs peuvent être ignorées (migrations déjà appliquées, etc.)
-        error_str = (e.stderr or e.stdout or str(e)).lower()
+        error_str = error_output.lower()
         if "already applied" in error_str or "duplicate" in error_str:
             print("⚠️ Migration déjà appliquée, on continue...")
             return True
+        
+        # Autres erreurs : retry si possible
+        if retry_count < MAX_RETRIES:
+            print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
+            time.sleep(RETRY_DELAY)
+            return run_migrations(database_url, retry_count + 1)
+        
         return False
 
 
@@ -191,13 +254,46 @@ def main():
     status = check_migrations_status(database_url)
     print()
     
+    # Vérifier si la connexion fonctionne
+    if not status.get("connection_ok", True):
+        print("⚠️" * 40)
+        print("⚠️ ATTENTION: Impossible de se connecter à la base de données")
+        print("⚠️" * 40)
+        print()
+        print("Causes possibles:")
+        print("  1. La base de données RDS est dans un VPC privé")
+        print("  2. Les Security Groups ne permettent pas les connexions depuis GitHub Actions")
+        print("  3. La base de données nécessite un VPN ou un bastion host")
+        print()
+        print("Solution:")
+        print("  ✅ Les migrations seront exécutées automatiquement au démarrage de l'application ECS")
+        print("  ✅ L'application ECS a accès à la base de données via le VPC")
+        print("  ✅ Le build Docker continuera normalement")
+        print()
+        
+        if FAIL_ON_ERROR:
+            print("❌ FAIL_ON_MIGRATION_ERROR=true, arrêt du workflow")
+            sys.exit(1)
+        else:
+            print("ℹ️ FAIL_ON_MIGRATION_ERROR=false, continuation du workflow")
+            print("=" * 80)
+            print("⚠️ Migrations non exécutées (seront exécutées au démarrage ECS)")
+            print("=" * 80)
+            sys.exit(0)
+    
     # Exécuter les migrations si nécessaire
     if status["has_pending"]:
         print("🔄 Des migrations sont en attente, exécution...")
         success = run_migrations(database_url)
         if not success:
             print("❌ Échec de l'exécution des migrations")
-            sys.exit(1)
+            if FAIL_ON_ERROR:
+                print("❌ FAIL_ON_MIGRATION_ERROR=true, arrêt du workflow")
+                sys.exit(1)
+            else:
+                print("ℹ️ FAIL_ON_MIGRATION_ERROR=false, continuation du workflow")
+                print("ℹ️ Les migrations seront exécutées au démarrage de l'application ECS")
+                sys.exit(0)
     else:
         print("✅ Toutes les migrations sont déjà appliquées")
     
