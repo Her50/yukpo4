@@ -57,6 +57,33 @@ fi
 
 echo "✅ Base de données AWS RDS accessible"
 
+# 🛠️ S'assurer que la base applicative existe
+# Si DATABASE_URL pointe vers une DB qui n'existe pas encore, l'app crashe (sqlx).
+# On essaie de créer la DB automatiquement en se connectant à la DB "postgres".
+DB_NAME=$(echo "$DATABASE_URL" | sed -n 's#.*/\([^/?]*\).*#\1#p')
+if [ -n "$DB_NAME" ] && [ "$DB_NAME" != "postgres" ]; then
+    echo "🔍 Vérification de l'existence de la base PostgreSQL '$DB_NAME'..."
+    ADMIN_DB_URL=$(echo "$DATABASE_URL" | sed -E 's#/(.*)$#/postgres#')
+    if command -v psql >/dev/null 2>&1; then
+        DB_EXISTS=$(psql "$ADMIN_DB_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" 2>/dev/null | tr -d '[:space:]' || true)
+        if [ "$DB_EXISTS" != "1" ]; then
+            echo "⚠️ Base '$DB_NAME' inexistante, tentative de création..."
+            if psql "$ADMIN_DB_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\"" >/dev/null 2>&1; then
+                echo "✅ Base '$DB_NAME' créée avec succès"
+            else
+                echo "❌ ERREUR: Impossible de créer la base '$DB_NAME' (permissions?)"
+                echo "   Admin URL utilisée: ${ADMIN_DB_URL:0:50}... (tronquée)"
+                exit 1
+            fi
+        else
+            echo "✅ Base '$DB_NAME' existe déjà"
+        fi
+    else
+        echo "⚠️ WARNING: psql non disponible, impossible de vérifier/créer la base '$DB_NAME'"
+        echo "   (postgresql-client doit être installé dans l'image)"
+    fi
+fi
+
 # Vérifier la connectivité Redis (AWS ElastiCache) - optionnel et non-bloquant
 if [ -n "$REDIS_URL" ]; then
     echo "🔍 Vérification de la connectivité Redis (AWS ElastiCache)..."
