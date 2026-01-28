@@ -16,7 +16,21 @@ const PartnerRegisterPage: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    partner_type: '' as 'pharmacie' | 'hopital' | 'laboratoire' | 'agence de voyage' | 'demenagement' | 'livraison' | 'livraison_courses_marche' | 'transport' | 'assureur' | 'supermarche' | 'telecom' | '',
+    partner_type: '' as
+      | 'pharmacie'
+      | 'hopital'
+      | 'laboratoire'
+      | 'agence de voyage'
+      | 'demenagement'
+      | 'livraison'
+      | 'livraison_courses_marche'
+      | 'transport'
+      | 'assureur'
+      | 'supermarche'
+      | 'telecom'
+      | 'hotel'
+      | 'meuble'
+      | '',
     partner_phone: '',
     partner_address: null as LocationObject | null,
     partner_country: '',
@@ -44,6 +58,8 @@ const PartnerRegisterPage: React.FC = () => {
     { value: 'assureur', label: 'Assureur' },
     { value: 'supermarche', label: 'Supermarché' },
     { value: 'telecom', label: 'Télécom' },
+    { value: 'hotel', label: 'Hôtel' },
+    { value: 'meuble', label: 'Meublé / Location meublée' },
   ];
 
   // ✅ Validation du mot de passe avec feedback visuel en temps réel

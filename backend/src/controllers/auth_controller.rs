@@ -194,9 +194,24 @@ pub async fn register_user(
     
     // ✅ RENFORCÉ: Validation stricte du partner_type - OBLIGATOIRE pour un partenaire
     if user_role == "partenaire" {
-        let valid_types = ["livraison", "livraison_courses_marche", "pharmacie", "hopital", "laboratoire", "agence de voyage", 
-                          "demenagement", "transport", "assureur", "supermarche", "telecom",
-                          "etablissementscolaire", "banquesang", "chauffeur"];
+        let valid_types = [
+            "livraison",
+            "livraison_courses_marche",
+            "pharmacie",
+            "hopital",
+            "laboratoire",
+            "agence de voyage",
+            "demenagement",
+            "transport",
+            "assureur",
+            "supermarche",
+            "telecom",
+            "etablissementscolaire",
+            "banquesang",
+            "chauffeur",
+            "hotel",
+            "meuble",
+        ];
         
         // ✅ CORRIGÉ: Ajouter des logs de debug pour identifier le problème
         info!("[register_user] Validation partenaire - partner_type: {:?}, partner_name: {:?}", 

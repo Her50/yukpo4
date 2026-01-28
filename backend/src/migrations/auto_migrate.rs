@@ -5414,7 +5414,9 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
                     'assureur',
                     'supermarche',
                     'telecom',
-                    'chauffeur'
+                    'chauffeur',
+                    'hotel',
+                    'meuble'
                 );
             END IF;
         END
@@ -5555,6 +5557,22 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
                 WHERE enumlabel = 'chauffeur' AND enumtypid = 'delivery_partner_type'::regtype
             ) THEN
                 ALTER TYPE delivery_partner_type ADD VALUE 'chauffeur';
+            END IF;
+            
+            -- ✅ NOUVEAU: Ajouter 'hotel' si n'existe pas (pour hôtels)
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'hotel' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'hotel';
+            END IF;
+            
+            -- ✅ NOUVEAU: Ajouter 'meuble' si n'existe pas (pour locations meublées)
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'meuble' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'meuble';
             END IF;
         END
         $$;

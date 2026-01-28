@@ -79,10 +79,12 @@ const PartnerRegisterScreen: React.FC = () => {
     { value: 'chauffeur', label: 'Chauffeur (Taxi/Covoiturage)' }, // ✅ NOUVEAU: Type partenaire chauffeur
     { value: 'demenagement', label: 'Déménagement' },
     { value: 'etablissementscolaire', label: 'Établissement Scolaire' }, // ✅ NOUVEAU: Type partenaire établissement scolaire
+    { value: 'hotel', label: 'Hôtel' },
     { value: 'hopital', label: 'Hôpital/Clinique' },
     { value: 'laboratoire', label: 'Laboratoire' },
     { value: 'livraison', label: 'Livraison' }, // ✅ NOUVEAU: Type partenaire livraison générale
     { value: 'livraison_courses_marche', label: 'Livraison - Courses au marché' }, // ✅ NOUVEAU: Type partenaire pour courses au marché (coursier spécialisé)
+    { value: 'meuble', label: 'Meublé / Location meublée' },
     { value: 'pharmacie', label: 'Pharmacie' },
     { value: 'supermarche', label: 'Supermarché' },
     { value: 'telecom', label: 'Télécom' },
