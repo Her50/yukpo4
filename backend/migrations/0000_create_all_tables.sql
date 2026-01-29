@@ -499,11 +499,11 @@ CREATE TABLE IF NOT EXISTS service_products (
     product_price NUMERIC GENERATED ALWAYS AS (
         CASE 
             WHEN product_data->'prix'->'valeur'->>'montant' IS NOT NULL 
-            THEN (product_data->'prix'->'valeur'->>'montant')::NUMERIC
+            THEN CAST((product_data->'prix'->'valeur'->>'montant') AS NUMERIC)
             WHEN product_data->'prix'->>'montant' IS NOT NULL 
-            THEN (product_data->'prix'->>'montant')::NUMERIC
+            THEN CAST((product_data->'prix'->>'montant') AS NUMERIC)
             WHEN product_data->>'prix' IS NOT NULL 
-            THEN (product_data->>'prix')::NUMERIC
+            THEN CAST((product_data->>'prix') AS NUMERIC)
             ELSE NULL
         END
     ) STORED,
@@ -730,14 +730,14 @@ SELECT
     (
         SELECT jsonb_object_agg(reaction_type, reaction_count)
         FROM (
-            SELECT reaction_type, COUNT(*)::INT AS reaction_count
+            SELECT reaction_type, CAST(COUNT(*) AS INT) AS reaction_count
             FROM product_comment_reactions
             WHERE comment_id = pc.id
             GROUP BY reaction_type
         ) sub
     ) AS aggregated_reactions,
     (
-        SELECT COUNT(*)::INT
+        SELECT CAST(COUNT(*) AS INT)
         FROM product_comments replies
         WHERE replies.parent_comment_id = pc.id
           AND replies.is_deleted = FALSE
@@ -5426,7 +5426,7 @@ CREATE OR REPLACE FUNCTION set_cache(
 RETURNS VOID AS $$
 BEGIN
     INSERT INTO cache_table (cache_key, cache_value, expires_at, updated_at)
-    VALUES (key, value, NOW() + (ttl_seconds || ' seconds')::INTERVAL, NOW())
+    VALUES (key, value, NOW() + CAST((ttl_seconds || ' seconds') AS INTERVAL), NOW())
     ON CONFLICT (cache_key) 
     DO UPDATE SET
         cache_value = EXCLUDED.cache_value,
