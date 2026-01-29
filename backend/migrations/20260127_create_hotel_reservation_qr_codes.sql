@@ -21,3 +21,4 @@ COMMENT ON TABLE hotel_reservation_qr_codes IS 'QR codes secondaires (titulaire/
 
 
 
+

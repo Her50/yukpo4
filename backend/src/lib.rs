@@ -340,7 +340,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 .precompressed_gzip()
                 .precompressed_br(),
         )
-        .merge(auth)
+        .nest("/api", auth)
         .merge(users)
         .merge(admin_users) // ✅ NOUVEAU: Routes admin gestion des rôles
         .merge(services)

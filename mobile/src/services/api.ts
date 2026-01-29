@@ -388,8 +388,8 @@ const apiCallInternal = async <T>(
     const hasBody = contentLength !== '0' && contentLength !== null;
     const shouldTryParseJson = isJson && (hasBody || response.ok); // Essayer si JSON ou si réponse OK
 
-    // ✅ DEBUG: Log pour /auth/login
-    if (endpoint === '/auth/login') {
+    // ✅ DEBUG: Log pour /api/auth/login
+    if (endpoint === '/api/auth/login') {
       console.log(`[Mobile API] ✅ Status: ${response.status} ${response.statusText}`);
       console.log(`[Mobile API] ✅ Content-Type:`, contentType);
       console.log(`[Mobile API] ✅ Content-Length:`, contentLength);
@@ -643,7 +643,7 @@ export const authApi = {
   // Connexion
   login: async (email: string, password: string) => {
     console.log('[authApi.login] Début de la connexion...');
-    const response = await apiCall<{ token: string; tokens_balance: number }>('/auth/login', {
+    const response = await apiCall<{ token: string; tokens_balance: number }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -711,7 +711,7 @@ export const authApi = {
       payload.partner_country = userData.partner_country;
     }
 
-    const response = await apiCall<{ success?: boolean; token?: string; tokens_balance?: number; message?: string }>('/auth/register', {
+    const response = await apiCall<{ success?: boolean; token?: string; tokens_balance?: number; message?: string }>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
     });

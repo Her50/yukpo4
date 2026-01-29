@@ -1,0 +1,23 @@
+{
+  "containerOverrides": [
+    {
+      "name": "backend",
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://yukpo_admin:SztViedrXvuBDyj16TWaIAs25FfUColh@yukpomnang-db.cxs88i6ig9dp.eu-west-1.rds.amazonaws.com:5432/yukpomnang"
+        },
+        {
+          "name": "SQLX_OFFLINE",
+          "value": "false"
+        }
+      ],
+      "command": [
+        "/bin/bash",
+        "-c",
+        "cd /app && if ! command -v sqlx &> /dev/null; then curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source $HOME/.cargo/env && cargo install sqlx-cli --features postgres --no-default-features; fi && sqlx migrate run --database-url \"$DATABASE_URL\" && echo 'Migrations completed successfully'"
+      ]
+    }
+  ]
+}
+

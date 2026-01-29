@@ -21,6 +21,7 @@ pub fn health_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/health/geographic-matching",
             axum::routing::get(check_geographic_matching),
         )
+        .route("/health/version", axum::routing::get(check_version))
         .route(
             "/health/diagnostic",
             axum::routing::get(check_diagnostic)
@@ -296,6 +297,16 @@ async fn check_geographic_matching(State(_state): State<Arc<AppState>>) -> impl 
         },
         "message": "✅ Service de matching géographique initialisé"
     }))
+}
+
+/// ✅ NOUVEAU: Retourne les informations de version de l'application
+async fn check_version(State(_state): State<Arc<AppState>>) -> impl IntoResponse {
+    use crate::utils::version::VersionInfo;
+    Json(serde_json::to_value(VersionInfo::new()).unwrap_or(json!({
+        "version": "unknown",
+        "app_name": "yukpomnang_backend",
+        "error": "Impossible de récupérer les informations de version"
+    })))
 }
 
 /// Middleware JWT optionnel pour la route de diagnostic

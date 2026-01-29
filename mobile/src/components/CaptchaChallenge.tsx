@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { API_BASE_URL } from '../config/api';
 
 interface Props {
   onSuccess: () => void;
@@ -11,7 +12,7 @@ const CaptchaChallenge: React.FC<Props> = ({ onSuccess }) => {
   const [answer, setAnswer] = useState("");
 
   useEffect(() => {
-    fetch("/api/captcha")
+    fetch(`${API_BASE_URL}/api/captcha`)
       .then((r) => r.json())
       .then((d) => setQuestion(d.question))
       .catch(() => setQuestion("Quelle est la somme de 3 + 4?"));

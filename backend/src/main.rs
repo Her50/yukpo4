@@ -504,6 +504,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::info!("ℹ️ [MIGRATION 0] Migration 0 existe déjà dans _sqlx_migrations, skip de l'application directe");
     }
     
+    // ✅ SOLUTION CAUSE RACINE 2026-01-29: Exécuter la migration consolidée AVANT sqlx::migrate!()
+    // pour garantir qu'elle s'exécute toujours, même si sqlx::migrate!() échoue ou ne s'exécute pas
+    // Cette approche est similaire à Render qui utilisait auto_migrate::run_auto_migrations()
+    // qui appelait directement execute_multiple_sql_commands() indépendamment de sqlx::migrate!()
+    log::warn!("🔄 [MIGRATION CONSOLIDÉE] Application FORCÉE de la migration consolidée AVANT sqlx::migrate!()...");
+    log::info!("💡 Cette approche garantit que la migration consolidée s'exécute toujours, comme sur Render");
+    let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
+    log::info!("🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères", migration_sql.len());
+    use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+    log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands importée, début de l'exécution...");
+    
+    match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
+        Ok(_) => {
+            log::info!("✅ [MIGRATION CONSOLIDÉE] Migration consolidée appliquée avec succès (AVANT sqlx::migrate!())");
+        }
+        Err(e) => {
+            log::error!("❌ [MIGRATION CONSOLIDÉE] Erreur lors de l'application FORCÉE de la migration consolidée: {}", e);
+            log::error!("❌ [MIGRATION CONSOLIDÉE] Type d'erreur: {:?}", e);
+            if let Some(source) = e.source() {
+                log::error!("❌ [MIGRATION CONSOLIDÉE] Source: {}", source);
+            }
+            // Ne pas arrêter l'application, continuer avec sqlx::migrate!()
+        }
+    }
+    
     // ✅ Ensuite, appliquer toutes les migrations SQLx standard (y compris 0000 pour le checksum)
     // SQLx va détecter que la migration 0 est déjà appliquée (tables créées) et va juste
     // mettre à jour le checksum dans _sqlx_migrations si nécessaire
@@ -512,28 +537,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(_) => {
             log::info!("✅ Migrations SQLx standard appliquées avec succès");
             log::info!("🔍 [MIGRATION CONSOLIDÉE] Vérification des tables critiques après migrations SQLx...");
-            
-            // ✅ FORCER l'application de la migration consolidée TOUJOURS au démarrage
-            // pour s'assurer que toutes les tables existent même si les migrations SQLx ont échoué partiellement
-            log::warn!("🔄 [MIGRATION CONSOLIDÉE] Application FORCÉE de la migration consolidée au démarrage...");
-            let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
-            log::info!("🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères", migration_sql.len());
-            use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
-            log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands importée, début de l'exécution...");
-            
-            match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
-                Ok(_) => {
-                    log::info!("✅ [MIGRATION CONSOLIDÉE] Migration consolidée appliquée avec succès (forcée au démarrage)");
-                }
-                Err(e) => {
-                    log::error!("❌ [MIGRATION CONSOLIDÉE] Erreur lors de l'application FORCÉE de la migration consolidée: {}", e);
-                    log::error!("❌ [MIGRATION CONSOLIDÉE] Type d'erreur: {:?}", e);
-                    if let Some(source) = e.source() {
-                        log::error!("❌ [MIGRATION CONSOLIDÉE] Source: {}", source);
-                    }
-                    // Ne pas arrêter l'application, continuer avec la vérification
-                }
-            }
 
             // Vérifier si la migration 20251125_fix_idx_services_search_optimized a été appliquée
             check_index_migration(&pg_pool).await;

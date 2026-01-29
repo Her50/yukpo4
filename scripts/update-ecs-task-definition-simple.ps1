@@ -97,3 +97,4 @@ Write-Host "[SUCCESS] Termine! Revision: ${TASK_FAMILY}:${newRevision}" -Foregro
 Remove-Item $tempFile, $newTaskDefFile -ErrorAction SilentlyContinue
 
 
+

@@ -18,6 +18,7 @@ import {
   View,
 } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
+import { API_BASE_URL } from '../config/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
 import { NativeButton, NativeCard } from './NativeDesign';
@@ -470,7 +471,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 onContactUser={handleContactUser}  // Ô£à NOUVEAU : Contact priv├®
                 onRatingSubmit={async (rating, comment) => {
                   try {
-                    const response = await fetch(`/api/services/${product.service_id || service?.id}/reviews`, {
+                    const response = await fetch(`${API_BASE_URL}/api/services/${product.service_id || service?.id}/reviews`, {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
@@ -499,7 +500,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 }}
                 onReviewHelpful={async (reviewId) => {
                   try {
-                    await fetch(`/api/reviews/${reviewId}/helpful`, {
+                    await fetch(`${API_BASE_URL}/api/reviews/${reviewId}/helpful`, {
                       method: 'POST',
                     });
                   } catch (error) {

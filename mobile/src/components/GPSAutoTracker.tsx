@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useUserContext } from '../context/UserContext';
 import { gpsTrackingService } from '../services/gpsTrackingService';
+import { API_BASE_URL } from '../config/api';
 
 interface GPSAutoTrackerProps {
   autoStart?: boolean;
@@ -99,7 +100,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
 
   const updateBackendGPS = async (latitude: number, longitude: number) => {
     try {
-      const response = await fetch('/api/user/me/gps_location', {
+      const response = await fetch(`${API_BASE_URL}/api/user/me/gps_location`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

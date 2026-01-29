@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Text } from 'react-native';
 import { View } from 'react-native';
 import { TouchableOpacity } from 'react-native';
+import { API_BASE_URL } from '../config/api';
 
 type StatusData = {
   enabled: boolean;
@@ -15,7 +16,7 @@ const SchedulerStatusCard: React.FC = () => {
   const [data, setData] = useState<StatusData | null>(null);
 
   useEffect(() => {
-    fetch("/api/admin/scheduler-status")
+    fetch(`${API_BASE_URL}/api/admin/scheduler-status`)
       .then((res) => res.json())
       .then((d) => setData(d));
   }, []);
@@ -26,7 +27,7 @@ const SchedulerStatusCard: React.FC = () => {
         <Text>Chargement...</Text>
         <TouchableOpacity
           onPress={() =>
-            fetch("/api/admin/run-summary-now", { method: "POST" })
+            fetch(`${API_BASE_URL}/api/admin/run-summary-now`, { method: "POST" })
               .then((res) => res.text())
               .then((msg) => alert(msg))
           }
