@@ -374,7 +374,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await
     .unwrap_or(false);
     
+    // ✅ NOUVEAU 2026-01-29: CORRECTION PRÉVENTIVE - Corriger la migration 0 AVANT que SQLx n'essaie d'appliquer les migrations
     if migrations_table_exists {
+        if let Ok(Some((_, desc, _, _))) = sqlx::query_as::<_, (i64, String, String, bool)>(
+            "SELECT version, description, encode(checksum, 'hex') as checksum_hex, success 
+             FROM _sqlx_migrations 
+             WHERE version = 0"
+        )
+        .fetch_optional(&pg_pool)
+        .await
+        {
+            if desc == "add delivery engine pricing" {
+                log::warn!("⚠️ PROBLÈME DÉTECTÉ: Migration 0 incorrecte détectée AVANT application SQLx");
+                log::warn!("   Description en base: '{}' (devrait être 'create all tables')", desc);
+                log::warn!("🔧 CORRECTION AUTOMATIQUE: Suppression de l'entrée incorrecte de migration 0...");
+                
+                match sqlx::query("DELETE FROM _sqlx_migrations WHERE version = 0")
+                    .execute(&pg_pool)
+                    .await
+                {
+                    Ok(result) => {
+                        if result.rows_affected() > 0 {
+                            log::info!("✅ Migration 0 incorrecte supprimée ({} ligne(s))", result.rows_affected());
+                            log::info!("✅ La migration 0 correcte (create all tables) sera réappliquée par SQLx");
+                        } else {
+                            log::warn!("⚠️ Aucune ligne supprimée (migration 0 n'existe peut-être plus)");
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("❌ Erreur lors de la suppression de la migration 0 incorrecte: {}", e);
+                        log::error!("   La migration de correction 20260129_fix_migration_0_checksum.sql sera appliquée par SQLx");
+                    }
+                }
+            } else if desc != "create all tables" {
+                log::warn!("⚠️ Migration 0 a une description inattendue: '{}' (attendu: 'create all tables')", desc);
+            } else {
+                log::debug!("✅ Migration 0 a la bonne description: '{}'", desc);
+            }
+        }
+        
         let applied_count: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM _sqlx_migrations WHERE success = true",
         )
@@ -506,10 +544,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     {
                         if let Some((version, desc, checksum_hex, success)) = migration_info {
                             log::error!("   Version: {}", version);
-                            log::error!("   Description: {}", desc);
+                            log::error!("   Description (en base): {}", desc);
                             log::error!("   Checksum actuel (en base): {}", checksum_hex);
                             log::error!("   Succès: {}", success);
-                            log::error!("   ⚠️ Le checksum du fichier migrations/0000_create_all_tables.sql a changé depuis l'application");
+                            
+                            // ✅ NOUVEAU 2026-01-29: Vérifier si la description correspond au fichier attendu
+                            if desc != "create all tables" && desc != "add delivery engine pricing" {
+                                log::error!("   ⚠️ ATTENTION: La description ne correspond à aucun fichier 0000 connu");
+                            } else if desc == "add delivery engine pricing" {
+                                log::error!("   ⚠️ PROBLÈME DÉTECTÉ: La migration 0 en base est 'add delivery engine pricing'");
+                                log::error!("   ⚠️ Mais SQLx attend 'create all tables' comme migration 0");
+                                log::error!("   ⚠️ CAUSE: Il y avait deux fichiers commençant par '0000' dans migrations/");
+                                log::error!("   ✅ CORRIGÉ: Le fichier conflictuel 0000_add_delivery_engine_pricing.sql a été supprimé");
+                                log::error!("   ✅ CORRIGÉ: Une migration de correction existe: 20260129_fix_migration_0_checksum.sql");
+                                log::error!("   💡 SOLUTION: La migration de correction sera appliquée automatiquement au prochain démarrage");
+                                log::error!("   💡 Elle supprimera l'entrée incorrecte de migration 0 pour permettre la réapplication correcte");
+                            } else {
+                                log::error!("   ⚠️ Le checksum du fichier migrations/0000_create_all_tables.sql a changé depuis l'application");
+                            }
                         }
                     }
                     
@@ -532,19 +584,65 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         log::error!("   📊 Migrations en base: {} réussies, {} échouées", 
                             successful.len(), failed.len());
                         
+                        if !successful.is_empty() && successful.len() <= 10 {
+                            log::error!("   ✅ Migrations réussies:");
+                            for (version, desc, _) in successful.iter().take(10) {
+                                log::error!("      - Version {}: {}", version, desc);
+                            }
+                        }
+                        
                         if !failed.is_empty() {
                             log::error!("   ⚠️ Migrations échouées:");
                             for (version, desc, _) in failed {
                                 log::error!("      - Version {}: {}", version, desc);
                             }
                         }
+                        
+                        // ✅ NOUVEAU 2026-01-29: Avertissement si seulement 1 migration appliquée
+                        if successful.len() == 1 {
+                            log::error!("   ⚠️ ATTENTION: Seulement 1 migration appliquée - La migration 0 devrait créer toutes les tables de base");
+                            log::error!("   ⚠️ Si les tables (users, services) n'existent pas, la migration 0 n'a pas créé les bonnes tables");
+                        }
                     }
                 }
                 
-                log::error!("🔧 SOLUTION: Pour corriger le checksum de la migration 0:");
-                log::error!("   1. Calculer le nouveau checksum du fichier migrations/0000_create_all_tables.sql");
-                log::error!("   2. Exécuter: UPDATE _sqlx_migrations SET checksum = decode('NOUVEAU_CHECKSUM_HEX', 'hex') WHERE version = 0;");
-                log::error!("   3. Relancer l'application pour appliquer les migrations en attente");
+                // ✅ NOUVEAU 2026-01-29: Solution adaptée selon le problème détecté
+                if migrations_table_exists {
+                    if let Ok(Some((_, desc, _, _))) = sqlx::query_as::<_, (i64, String, String, bool)>(
+                        "SELECT version, description, encode(checksum, 'hex') as checksum_hex, success 
+                         FROM _sqlx_migrations 
+                         WHERE version = 0"
+                    )
+                    .fetch_optional(&pg_pool)
+                    .await
+                    {
+                        if desc == "add delivery engine pricing" {
+                            log::error!("🔧 SOLUTION SPÉCIFIQUE - Migration 0 incorrecte:");
+                            log::error!("   ✅ CORRIGÉ: Le fichier conflictuel a été supprimé");
+                            log::error!("   ✅ CORRIGÉ: Une migration de correction existe: 20260129_fix_migration_0_checksum.sql");
+                            log::error!("   💡 La migration de correction sera appliquée automatiquement");
+                            log::error!("   💡 Elle supprimera l'entrée incorrecte et permettra la réapplication de la migration 0 correcte");
+                            log::error!("   💡 Si la migration de correction n'est pas appliquée automatiquement:");
+                            log::error!("      1. Exécuter manuellement: DELETE FROM _sqlx_migrations WHERE version = 0;");
+                            log::error!("      2. Relancer l'application pour appliquer la bonne migration 0 (create all tables)");
+                        } else {
+                            log::error!("🔧 SOLUTION: Pour corriger le checksum de la migration 0:");
+                            log::error!("   1. Calculer le nouveau checksum du fichier migrations/0000_create_all_tables.sql");
+                            log::error!("   2. Exécuter: UPDATE _sqlx_migrations SET checksum = decode('NOUVEAU_CHECKSUM_HEX', 'hex') WHERE version = 0;");
+                            log::error!("   3. Relancer l'application pour appliquer les migrations en attente");
+                        }
+                    } else {
+                        log::error!("🔧 SOLUTION: Pour corriger le checksum de la migration 0:");
+                        log::error!("   1. Calculer le nouveau checksum du fichier migrations/0000_create_all_tables.sql");
+                        log::error!("   2. Exécuter: UPDATE _sqlx_migrations SET checksum = decode('NOUVEAU_CHECKSUM_HEX', 'hex') WHERE version = 0;");
+                        log::error!("   3. Relancer l'application pour appliquer les migrations en attente");
+                    }
+                } else {
+                    log::error!("🔧 SOLUTION: Pour corriger le checksum de la migration 0:");
+                    log::error!("   1. Calculer le nouveau checksum du fichier migrations/0000_create_all_tables.sql");
+                    log::error!("   2. Exécuter: UPDATE _sqlx_migrations SET checksum = decode('NOUVEAU_CHECKSUM_HEX', 'hex') WHERE version = 0;");
+                    log::error!("   3. Relancer l'application pour appliquer les migrations en attente");
+                }
                 log::warn!("⚠️ Continuation du démarrage, mais les migrations ne seront pas appliquées");
                 log::info!(
                     "ℹ️ Continuation du démarrage malgré l'avertissement de migration modifiée"

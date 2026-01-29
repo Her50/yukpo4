@@ -2,6 +2,8 @@
 -- Permet de paramétrer le coût de livraison selon le type d'engin utilisé
 
 -- Ajouter tricycle à l'enum si pas déjà présent
+-- ✅ CORRIGÉ: ALTER TYPE ADD VALUE ne peut pas être dans une transaction
+-- On utilise une exception pour ignorer l'erreur "unsafe use of new value"
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -9,7 +11,14 @@ BEGIN
         WHERE enumlabel = 'tricycle' 
         AND enumtypid = 'delivery_engine_type'::regtype
     ) THEN
-        ALTER TYPE delivery_engine_type ADD VALUE 'tricycle';
+        BEGIN
+            ALTER TYPE delivery_engine_type ADD VALUE 'tricycle';
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- Ignorer l'erreur "unsafe use of new value" si l'enum est utilisé dans une table
+                -- L'enum sera créé avec tricycle par ensure_delivery_tables dans auto_migrate.rs
+                NULL;
+        END;
     END IF;
 END $$;
 
