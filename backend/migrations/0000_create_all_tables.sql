@@ -3278,10 +3278,10 @@ CREATE INDEX IF NOT EXISTS idx_banques_sang_quartier ON banques_sang(quartier);
 
 -- Index GPS (GIST pour recherche géographique)
 CREATE INDEX IF NOT EXISTS idx_banques_sang_gps ON banques_sang USING GIST(
-    ST_SetSRID(ST_MakePoint(
+    CAST(ST_SetSRID(ST_MakePoint(
         CAST(SPLIT_PART(gps, ',', 2) AS DOUBLE PRECISION),
         CAST(SPLIT_PART(gps, ',', 1) AS DOUBLE PRECISION)
-    ), 4326)::geography
+    ), 4326) AS geography)
 ) WHERE gps IS NOT NULL AND gps != '';
 
 -- Trigger pour updated_at
@@ -3355,7 +3355,7 @@ DECLARE
     v_user_point geography;
 BEGIN
     IF p_user_lat IS NOT NULL AND p_user_lng IS NOT NULL THEN
-        v_user_point := ST_SetSRID(ST_MakePoint(p_user_lng, p_user_lat), 4326)::geography;
+        v_user_point := CAST(ST_SetSRID(ST_MakePoint(p_user_lng, p_user_lat), 4326) AS geography);
     END IF;
 
     RETURN QUERY
@@ -3392,10 +3392,10 @@ BEGIN
                 av.gps IS NULL OR
                 av.gps = '' OR
                 ST_DWithin(
-                    ST_SetSRID(ST_MakePoint(
+                    CAST(ST_SetSRID(ST_MakePoint(
                         CAST(SPLIT_PART(av.gps, ',', 2) AS DOUBLE PRECISION),
                         CAST(SPLIT_PART(av.gps, ',', 1) AS DOUBLE PRECISION)
-                    ), 4326)::geography,
+                    ), 4326) AS geography),
                     v_user_point,
                     p_radius_km * 1000
                 )
@@ -3901,9 +3901,9 @@ BEGIN
         );
     
     SELECT COUNT(*) INTO v_no_show_passengers FROM bus_reservations br
-    JOIN products p ON p.id::text = br.product_id
+    JOIN products p ON CAST(p.id AS TEXT) = br.product_id
     WHERE br.product_id = p_product_id AND br.status = 'confirmed'
-        AND (p.metadata->>'departure_date' || ' ' || p.metadata->>'departure_time')::TIMESTAMP + INTERVAL '15 minutes' < NOW()
+        AND CAST((p.metadata->>'departure_date' || ' ' || p.metadata->>'departure_time') AS TIMESTAMP) + INTERVAL '15 minutes' < NOW()
         AND NOT EXISTS (
             SELECT 1 FROM bus_boarding_status bbs
             WHERE bbs.reservation_id = br.id AND bbs.is_validated = TRUE
@@ -3916,7 +3916,7 @@ BEGIN
         'no_show_passengers', v_no_show_passengers,
         'completion_percentage', CASE 
             WHEN v_total_reservations > 0 THEN 
-                ROUND((v_boarded_passengers::FLOAT / v_total_reservations::FLOAT) * 100, 2)
+                ROUND((CAST(v_boarded_passengers AS FLOAT) / CAST(v_total_reservations AS FLOAT)) * 100, 2)
             ELSE 0
         END,
         'is_complete', (v_boarded_passengers = v_total_reservations AND v_total_reservations > 0)
