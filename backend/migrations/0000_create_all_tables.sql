@@ -798,8 +798,8 @@ LANGUAGE SQL
 AS $$
     SELECT 
         pr.reaction_type,
-        COUNT(*)::BIGINT as count,
-        array_agg(COALESCE(u.nom_complet, u.email) ORDER BY pr.created_at DESC)::TEXT[] as users_sample
+        CAST(COUNT(*) AS BIGINT) as count,
+        CAST(array_agg(COALESCE(u.nom_complet, u.email) ORDER BY pr.created_at DESC) AS TEXT[]) as users_sample
     FROM product_reactions pr
     LEFT JOIN users u ON pr.user_id = u.id
     WHERE pr.service_id = p_service_id
@@ -1001,19 +1001,19 @@ BEGIN
     -- Restaurer les données (sauf id, created_at, et certaines métriques)
     UPDATE publicites
     SET
-        titre = (version_data->>'titre')::VARCHAR,
-        description = (version_data->>'description')::TEXT,
+        titre = CAST((version_data->>'titre') AS VARCHAR),
+        description = CAST((version_data->>'description') AS TEXT),
         produits_indexes = ARRAY(SELECT jsonb_array_elements_text(version_data->'produits_indexes')),
         videos = ARRAY(SELECT jsonb_array_elements_text(version_data->'videos')),
         thumbnails = ARRAY(SELECT jsonb_array_elements_text(version_data->'thumbnails')),
-        duree_jours = (version_data->>'duree_jours')::INTEGER,
-        cout = (version_data->>'cout')::INTEGER,
-        devise_utilisateur = (version_data->>'devise_utilisateur')::VARCHAR,
-        zone_geographique = (version_data->>'zone_geographique')::VARCHAR,
-        rayon_km = (version_data->>'rayon_km')::INTEGER,
-        status = (version_data->>'status')::VARCHAR,
-        date_debut = (version_data->>'date_debut')::TIMESTAMPTZ,
-        date_fin = (version_data->>'date_fin')::TIMESTAMPTZ,
+        duree_jours = CAST((version_data->>'duree_jours') AS INTEGER),
+        cout = CAST((version_data->>'cout') AS INTEGER),
+        devise_utilisateur = CAST((version_data->>'devise_utilisateur') AS VARCHAR),
+        zone_geographique = CAST((version_data->>'zone_geographique') AS VARCHAR),
+        rayon_km = CAST((version_data->>'rayon_km') AS INTEGER),
+        status = CAST((version_data->>'status') AS VARCHAR),
+        date_debut = CAST((version_data->>'date_debut') AS TIMESTAMPTZ),
+        date_fin = CAST((version_data->>'date_fin') AS TIMESTAMPTZ),
         targeting = version_data->'targeting',
         ab_testing = version_data->'ab_testing',
         schedule = version_data->'schedule',
@@ -1171,7 +1171,7 @@ BEGIN
         CASE 
             WHEN pl.auto_deactivate_at <= NOW() THEN 'expired_time'
             ELSE 'stock_zero'
-        END::TEXT;
+        END;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1358,10 +1358,10 @@ BEGIN
     SELECT frequency_config INTO v_frequency_config FROM publicites WHERE id = p_publicite_id;
     IF v_frequency_config IS NULL OR v_frequency_config = '{}'::jsonb THEN RETURN TRUE; END IF;
     IF p_frequency_type = 'daily' THEN
-        v_frequency_limit := COALESCE((v_frequency_config->>'max_per_day')::INTEGER, 999999);
+        v_frequency_limit := COALESCE(CAST((v_frequency_config->>'max_per_day') AS INTEGER), 999999);
         SELECT COUNT(*) INTO v_count FROM publicite_impressions WHERE publicite_id = p_publicite_id AND user_id = p_user_id AND viewed_at >= CURRENT_DATE;
     ELSIF p_frequency_type = 'weekly' THEN
-        v_frequency_limit := COALESCE((v_frequency_config->>'max_per_week')::INTEGER, 999999);
+        v_frequency_limit := COALESCE(CAST((v_frequency_config->>'max_per_week') AS INTEGER), 999999);
         SELECT COUNT(*) INTO v_count FROM publicite_impressions WHERE publicite_id = p_publicite_id AND user_id = p_user_id AND viewed_at >= DATE_TRUNC('week', CURRENT_DATE);
     ELSE RETURN TRUE;
     END IF;
@@ -2155,7 +2155,7 @@ CREATE TABLE IF NOT EXISTS studio_sessions (
     status TEXT NOT NULL DEFAULT 'draft',
     brief JSONB NOT NULL DEFAULT '{}'::jsonb,
     ai_recommendations JSONB NOT NULL DEFAULT '[]'::jsonb,
-    recommended_templates TEXT[] NOT NULL DEFAULT '{}'::text[],
+    recommended_templates TEXT[] NOT NULL DEFAULT CAST('{}' AS text[]),
     timeline_settings JSONB NOT NULL DEFAULT '{}'::jsonb,
     distribution_plan JSONB NOT NULL DEFAULT '[]'::jsonb,
     preview_status TEXT NOT NULL DEFAULT 'idle',
@@ -3403,7 +3403,7 @@ BEGIN
     ),
     product_data AS (
         SELECT 
-            p.id::text AS product_id,
+            CAST(p.id AS TEXT) AS product_id,
             p.name AS product_name,
             p.type AS product_type,
             p.depart AS departure_city,
@@ -3417,11 +3417,11 @@ BEGIN
             p.seat_map,
             p.numero_bus AS bus_number,
             p.user_id AS product_user_id,
-            (av.bus_products_config->'modeles_bus'->0->>'nom_modele')::TEXT AS bus_model_name,
+            CAST((av.bus_products_config->'modeles_bus'->0->>'nom_modele') AS TEXT) AS bus_model_name,
             COALESCE(
-                (SELECT COUNT(*)::INTEGER
+                (SELECT CAST(COUNT(*) AS INTEGER)
                  FROM bus_reservations br
-                 WHERE br.product_id = p.id::text
+                 WHERE br.product_id = CAST(p.id AS TEXT)
                    AND br.status IN ('pending', 'confirmed')
                    AND (br.expires_at IS NULL OR br.expires_at > NOW())),
                 0
@@ -3430,9 +3430,9 @@ BEGIN
                 0,
                 COALESCE(p.total_seats, 0) - 
                 COALESCE(
-                    (SELECT COUNT(*)::INTEGER
+                    (SELECT CAST(COUNT(*) AS INTEGER)
                      FROM bus_reservations br
-                     WHERE br.product_id = p.id::text
+                     WHERE br.product_id = CAST(p.id AS TEXT)
                        AND br.status IN ('pending', 'confirmed')
                        AND (br.expires_at IS NULL OR br.expires_at > NOW())),
                     0
@@ -3542,7 +3542,7 @@ BEGIN
         WHERE bsb.product_id = p_product_id AND bsb.is_active = TRUE;
     EXCEPTION
         WHEN undefined_table THEN
-            v_blocked_seats := ARRAY[]::TEXT[];
+            v_blocked_seats := CAST(ARRAY[] AS TEXT[]);
     END;
     
     -- Mettre à jour le seat_map avec statuts (incluant blocages)
@@ -3581,6 +3581,51 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 -- SYSTÈME COMMISSION ET REVERSEMENT TICKETS BUS 💰
 -- ============================================================================
+
+-- Table pour les paiements de tickets de bus (doit être créée avant les ALTER TABLE)
+CREATE TABLE IF NOT EXISTS bus_ticket_payments (
+    id TEXT PRIMARY KEY DEFAULT CAST(gen_random_uuid() AS TEXT),
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    agency_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- Propriétaire agence
+    product_id TEXT NOT NULL, -- Le ticket de voyage
+    reservation_ids TEXT[] NOT NULL, -- IDs des réservations de ce paiement
+    
+    -- Montants détaillés
+    ticket_price INTEGER NOT NULL, -- Prix unitaire du ticket
+    number_of_tickets INTEGER NOT NULL DEFAULT 1, -- Nombre de tickets
+    subtotal INTEGER NOT NULL, -- ticket_price × number_of_tickets
+    booking_fee INTEGER NOT NULL DEFAULT 500, -- Frais de réservation (500 FCFA fixe)
+    total_amount INTEGER NOT NULL, -- subtotal + booking_fee
+    currency VARCHAR(10) NOT NULL DEFAULT 'XAF',
+    
+    -- Informations voyage
+    bus_number VARCHAR(50),
+    departure_city TEXT NOT NULL,
+    arrival_city TEXT NOT NULL,
+    departure_date VARCHAR(20) NOT NULL,
+    departure_time VARCHAR(10) NOT NULL,
+    company_name TEXT,
+    
+    -- Statut paiement
+    payment_status VARCHAR(20) NOT NULL DEFAULT 'completed' CHECK (payment_status IN ('completed', 'refunded', 'partial_refund')),
+    payment_method JSONB,
+    
+    -- Tracabilité
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    refunded_at TIMESTAMP WITH TIME ZONE,
+    refund_amount INTEGER DEFAULT 0,
+    refund_reason TEXT,
+    
+    CONSTRAINT positive_amounts CHECK (ticket_price > 0 AND subtotal > 0 AND total_amount > 0)
+);
+
+-- Index pour bus_ticket_payments
+CREATE INDEX IF NOT EXISTS idx_bus_ticket_payments_user ON bus_ticket_payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_bus_ticket_payments_agency ON bus_ticket_payments(agency_user_id);
+CREATE INDEX IF NOT EXISTS idx_bus_ticket_payments_date ON bus_ticket_payments(departure_date, departure_time);
+CREATE INDEX IF NOT EXISTS idx_bus_ticket_payments_route ON bus_ticket_payments(departure_city, arrival_city);
+CREATE INDEX IF NOT EXISTS idx_bus_ticket_payments_created ON bus_ticket_payments(created_at DESC);
 
 -- Ajouter colonnes commission et reversement à bus_ticket_payments
 DO $$ 
@@ -3700,7 +3745,7 @@ COMMENT ON FUNCTION process_bus_ticket_payment_with_commission IS 'Calcule la co
 
 -- Table pour le statut d'embarquement des passagers
 CREATE TABLE IF NOT EXISTS bus_boarding_status (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    id TEXT PRIMARY KEY DEFAULT CAST(gen_random_uuid() AS TEXT),
     reservation_id TEXT NOT NULL REFERENCES bus_reservations(id) ON DELETE CASCADE,
     product_id TEXT NOT NULL,
     payment_id TEXT REFERENCES bus_ticket_payments(id) ON DELETE SET NULL,
@@ -3954,7 +3999,7 @@ WHERE br.status = 'confirmed';
 
 -- Table pour les blocages manuels de places
 CREATE TABLE IF NOT EXISTS bus_seat_blocks (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    id TEXT PRIMARY KEY DEFAULT CAST(gen_random_uuid() AS TEXT),
     product_id TEXT NOT NULL,
     seat_id VARCHAR(50) NOT NULL,
     seat_number INTEGER NOT NULL,
@@ -4132,7 +4177,7 @@ CREATE INDEX IF NOT EXISTS idx_user_blood_groups_next_donation ON user_blood_gro
 
 -- Table : Demandes de don de sang
 CREATE TABLE IF NOT EXISTS blood_donation_requests (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    id TEXT PRIMARY KEY DEFAULT CAST(gen_random_uuid() AS TEXT),
     banque_sang_id INTEGER NOT NULL REFERENCES banques_sang(id) ON DELETE CASCADE,
     service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
     requested_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -4164,7 +4209,7 @@ CREATE INDEX IF NOT EXISTS idx_blood_donation_requests_created ON blood_donation
 
 -- Table : Matches donneurs/demandes
 CREATE TABLE IF NOT EXISTS blood_donation_matches (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    id TEXT PRIMARY KEY DEFAULT CAST(gen_random_uuid() AS TEXT),
     request_id TEXT NOT NULL REFERENCES blood_donation_requests(id) ON DELETE CASCADE,
     donor_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     donor_blood_group_id INTEGER NOT NULL REFERENCES user_blood_groups(id) ON DELETE CASCADE,
@@ -4210,15 +4255,15 @@ DECLARE
 BEGIN
     -- Déterminer groupes compatibles
     v_compatible_groups := CASE p_groupe_sanguin_requis
-        WHEN 'O-' THEN ARRAY['O-']::VARCHAR(5)[]
-        WHEN 'O+' THEN ARRAY['O-', 'O+']::VARCHAR(5)[]
-        WHEN 'A-' THEN ARRAY['O-', 'A-']::VARCHAR(5)[]
-        WHEN 'A+' THEN ARRAY['O-', 'O+', 'A-', 'A+']::VARCHAR(5)[]
-        WHEN 'B-' THEN ARRAY['O-', 'B-']::VARCHAR(5)[]
-        WHEN 'B+' THEN ARRAY['O-', 'O+', 'B-', 'B+']::VARCHAR(5)[]
-        WHEN 'AB-' THEN ARRAY['O-', 'A-', 'B-', 'AB-']::VARCHAR(5)[]
-        WHEN 'AB+' THEN ARRAY['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+']::VARCHAR(5)[]
-        ELSE ARRAY[]::VARCHAR(5)[]
+        WHEN 'O-' THEN CAST(ARRAY['O-'] AS VARCHAR(5)[])
+        WHEN 'O+' THEN CAST(ARRAY['O-', 'O+'] AS VARCHAR(5)[])
+        WHEN 'A-' THEN CAST(ARRAY['O-', 'A-'] AS VARCHAR(5)[])
+        WHEN 'A+' THEN CAST(ARRAY['O-', 'O+', 'A-', 'A+'] AS VARCHAR(5)[])
+        WHEN 'B-' THEN CAST(ARRAY['O-', 'B-'] AS VARCHAR(5)[])
+        WHEN 'B+' THEN CAST(ARRAY['O-', 'O+', 'B-', 'B+'] AS VARCHAR(5)[])
+        WHEN 'AB-' THEN CAST(ARRAY['O-', 'A-', 'B-', 'AB-'] AS VARCHAR(5)[])
+        WHEN 'AB+' THEN CAST(ARRAY['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'] AS VARCHAR(5)[])
+        ELSE CAST(ARRAY[] AS VARCHAR(5)[])
     END;
     
     FOR v_donor IN
@@ -4353,7 +4398,7 @@ BEGIN
         v_request_id, p_groupe_sanguin_requis, p_request_lat, p_request_lng, p_max_distance_km, 50
     );
     
-    v_match_count := (v_matches->>'count')::INTEGER;
+    v_match_count := CAST((v_matches->>'count') AS INTEGER);
     
     IF v_match_count > 0 THEN
         FOR v_match IN SELECT * FROM jsonb_array_elements(v_matches->'donors')
@@ -4363,8 +4408,8 @@ BEGIN
                 donor_latitude, donor_longitude, distance_km, relevance_score, match_status
             ) VALUES (
                 v_request_id,
-                (v_match->>'user_id')::INTEGER,
-                (v_match->>'blood_group_id')::INTEGER,
+                CAST((v_match->>'user_id') AS INTEGER),
+                CAST((v_match->>'blood_group_id') AS INTEGER),
                 CAST((v_match->>'donor_latitude') AS DOUBLE PRECISION),
                 CAST((v_match->>'donor_longitude') AS DOUBLE PRECISION),
                 CAST((v_match->>'distance_km') AS DOUBLE PRECISION),
@@ -4490,7 +4535,7 @@ CREATE INDEX IF NOT EXISTS idx_users_blood_group ON users(groupe_sanguin) WHERE 
 
 -- ✅ 2025-11-27 : Table agency_departure_schedules (horaires de départ par agence/ville)
 CREATE TABLE IF NOT EXISTS agency_departure_schedules (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    id TEXT PRIMARY KEY DEFAULT CAST(gen_random_uuid() AS TEXT),
     agency_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     departure_city TEXT NOT NULL,
     arrival_city TEXT NOT NULL,
@@ -4527,14 +4572,14 @@ CREATE INDEX IF NOT EXISTS idx_bus_payments_return_time ON bus_ticket_payments(r
 
 -- ✅ 2025-12-03 : Table videos avec hashtags pour VideoFeed
 CREATE TABLE IF NOT EXISTS videos (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    id TEXT PRIMARY KEY DEFAULT CAST(gen_random_uuid() AS TEXT),
     content_id TEXT NOT NULL UNIQUE,
     service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
     titre TEXT NOT NULL,
     description TEXT,
     video_url TEXT NOT NULL,
     thumbnail TEXT,
-    hashtags TEXT[] DEFAULT ARRAY[]::TEXT[],
+    hashtags TEXT[] DEFAULT CAST(ARRAY[] AS TEXT[]),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     is_sponsored BOOLEAN NOT NULL DEFAULT FALSE,
     studio_session_id TEXT,
@@ -4599,7 +4644,7 @@ BEGIN
     FROM regexp_split_to_table(input_text, '\s+') AS match
     WHERE match ~ '^#[a-zA-Z0-9_]+$';
     
-    RETURN COALESCE(hashtags, ARRAY[]::TEXT[]);
+    RETURN COALESCE(hashtags, CAST(ARRAY[] AS TEXT[]));
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
@@ -4609,7 +4654,7 @@ RETURNS TRIGGER AS $$
 BEGIN
     -- Extraire hashtags depuis titre et description
     NEW.hashtags = array_cat(
-        COALESCE(NEW.hashtags, ARRAY[]::TEXT[]),
+        COALESCE(NEW.hashtags, CAST(ARRAY[] AS TEXT[])),
         extract_hashtags_from_text(COALESCE(NEW.titre, '') || ' ' || COALESCE(NEW.description, ''))
     );
     
@@ -4896,7 +4941,7 @@ CREATE TABLE IF NOT EXISTS plugin_marketplace (
     author VARCHAR(255) NOT NULL,
     description TEXT,
     category VARCHAR(50) NOT NULL CHECK (category IN ('effect', 'transition', 'filter', 'export', 'integration', 'other')),
-    tags TEXT[] DEFAULT ARRAY[]::TEXT[],
+    tags TEXT[] DEFAULT CAST(ARRAY[] AS TEXT[]),
     icon_url TEXT,
     homepage_url TEXT,
     license VARCHAR(100) NOT NULL DEFAULT 'MIT',
