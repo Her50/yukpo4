@@ -12118,6 +12118,16 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 let error_str = e.to_string();
                 let error_lower = error_str.to_lowercase();
 
+                // ✅ NOUVEAU 2026-01-29: Log détaillé de toutes les erreurs pour diagnostic AWS
+                let cmd_preview = if normalized_cmd.len() > 200 {
+                    format!("{}...", &normalized_cmd[..200])
+                } else {
+                    normalized_cmd.clone()
+                };
+                warn!("⚠️ [MIGRATION CONSOLIDÉE] Erreur lors de l'exécution de la commande SQL:");
+                warn!("   Commande (preview): {}", cmd_preview);
+                warn!("   Erreur: {}", error_str);
+
                 // ✅ CORRIGÉ: Ignorer silencieusement les erreurs attendues courantes
                 let is_expected_error =
                     // Colonnes/tables/index/triggers déjà existants

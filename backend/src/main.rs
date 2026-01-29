@@ -450,7 +450,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::info!("📊 Aucune migration appliquée précédemment (première exécution)");
     }
     
-    log::info!("🔍 [DIAGNOSTIC] Avant sqlx::migrate!() - Chemin: ./migrations");
+    log::info!("🔍 [DIAGNOSTIC] Avant application des migrations - Chemin: ./migrations");
     log::info!("🔍 [DIAGNOSTIC] Vérification existence dossier migrations...");
     let migrations_check = Path::new("./migrations").exists();
     log::info!("🔍 [DIAGNOSTIC] Dossier ./migrations existe: {}", migrations_check);
@@ -460,6 +460,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::error!("❌ [DIAGNOSTIC] Contenu /app: {:?}", fs::read_dir("/app").ok().map(|d| d.collect::<Vec<_>>()));
     }
     
+    // ✅ SOLUTION CAUSE RACINE 2026-01-29: Utiliser execute_multiple_sql_commands() pour la migration 0
+    // au lieu de sqlx::migrate!() qui exécute tout dans une transaction unique (timeout dans AWS)
+    // Cette approche était utilisée dans Render et fonctionnait car chaque commande est exécutée individuellement
+    // 
+    // IMPORTANT: On applique d'abord la migration 0 avec execute_multiple_sql_commands(),
+    // puis on laisse sqlx::migrate!() calculer le checksum correct et l'insérer dans _sqlx_migrations
+    // Si la migration 0 existe déjà avec un mauvais checksum, sqlx::migrate!() va échouer,
+    // donc on la supprime d'abord si nécessaire (déjà fait plus haut)
+    log::info!("🔄 [MIGRATION 0] Application de la migration 0 via execute_multiple_sql_commands (comme dans Render)...");
+    let migration_0_sql = include_str!("../migrations/0000_create_all_tables.sql");
+    log::info!("🔍 [MIGRATION 0] Fichier chargé, taille: {} caractères", migration_0_sql.len());
+    use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+    
+    // Vérifier si la migration 0 existe déjà dans _sqlx_migrations
+    let migration_0_exists = if migrations_table_exists {
+        sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS (SELECT 1 FROM _sqlx_migrations WHERE version = 0 AND success = true)"
+        )
+        .fetch_one(&pg_pool)
+        .await
+        .unwrap_or(false)
+    } else {
+        false
+    };
+    
+    if !migration_0_exists {
+        log::info!("🔄 [MIGRATION 0] Migration 0 non trouvée dans _sqlx_migrations, application via execute_multiple_sql_commands...");
+        match execute_multiple_sql_commands(&pg_pool, migration_0_sql).await {
+            Ok(_) => {
+                log::info!("✅ [MIGRATION 0] Migration 0 appliquée avec succès via execute_multiple_sql_commands");
+                log::info!("ℹ️ [MIGRATION 0] SQLx va calculer et insérer le checksum correct lors de sqlx::migrate!()");
+            }
+            Err(e) => {
+                log::error!("❌ [MIGRATION 0] Erreur lors de l'application de la migration 0: {}", e);
+                log::error!("❌ [MIGRATION 0] Type d'erreur: {:?}", e);
+                if let Some(source) = e.source() {
+                    log::error!("❌ [MIGRATION 0] Source: {}", source);
+                }
+            }
+        }
+    } else {
+        log::info!("ℹ️ [MIGRATION 0] Migration 0 existe déjà dans _sqlx_migrations, skip de l'application directe");
+    }
+    
+    // ✅ Ensuite, appliquer toutes les migrations SQLx standard (y compris 0000 pour le checksum)
+    // SQLx va détecter que la migration 0 est déjà appliquée (tables créées) et va juste
+    // mettre à jour le checksum dans _sqlx_migrations si nécessaire
+    log::info!("🔄 [MIGRATIONS SQLX] Application des migrations SQLx standard (incluant vérification checksum migration 0)...");
     match sqlx::migrate!("./migrations").run(&pg_pool).await {
         Ok(_) => {
             log::info!("✅ Migrations SQLx standard appliquées avec succès");
@@ -721,6 +769,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             log::info!("✅ Toutes les tables critiques ont été créées par la migration consolidée");
                         } else {
                             log::error!("❌ {} table(s) toujours manquante(s) après migration consolidée: {:?}", still_missing.len(), still_missing);
+                            // ✅ NOUVEAU 2026-01-29: Vérifier à nouveau toutes les tables critiques après migration
+                            missing_tables = still_missing;
                         }
                     }
                     Err(e) => {
@@ -731,6 +781,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         log::error!("❌ SOLUTION: Vérifier que toutes les migrations dans backend/migrations/ ont été exécutées");
                         log::error!("❌ Vérifier les logs de migration ci-dessus pour identifier l'erreur");
+                        // ✅ NOUVEAU 2026-01-29: Vérifier à nouveau les tables après l'erreur
+                        let mut final_missing = Vec::new();
+                        for (table_name, _) in &critical_tables {
+                            let exists: bool = sqlx::query_scalar(
+                                "SELECT EXISTS (
+                                    SELECT FROM information_schema.tables 
+                                    WHERE table_schema = 'public' 
+                                    AND table_name = $1
+                                )",
+                            )
+                                .bind(table_name)
+                                .fetch_one(&pg_pool)
+                                .await
+                                .unwrap_or(false);
+                            
+                            if !exists {
+                                final_missing.push(*table_name);
+                            }
+                        }
+                        missing_tables = final_missing;
                     }
                 }
                 
@@ -739,11 +809,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let is_production = env::var("ENVIRONMENT").unwrap_or_default() == "production" 
                     || env::var("AWS_EXECUTION_ENV").is_ok();
                 
-                if is_production && missing_tables.len() > 3 {
-                    log::error!("❌ ARRÊT DE L'APPLICATION: Trop de tables critiques manquantes en production");
-                    return Err(format!("Tables critiques manquantes: {}", missing_tables.join(", ")).into());
-                } else {
-                    log::warn!("⚠️ Continuation avec fonctionnalités limitées (mode développement ou tables non critiques)");
+                if !missing_tables.is_empty() {
+                    log::error!("❌ ERREUR CRITIQUE: {} table(s) critique(s) toujours manquante(s) après toutes les tentatives de migration:", missing_tables.len());
+                    for table in &missing_tables {
+                        log::error!("   - {}", table);
+                    }
+                    
+                    if is_production {
+                        log::error!("❌ ARRÊT DE L'APPLICATION: Tables critiques manquantes en production");
+                        log::error!("❌ Les workers et services ne peuvent pas fonctionner sans ces tables");
+                        log::error!("❌ ACTION REQUISE: Exécuter les migrations manuellement ou corriger les erreurs de migration");
+                        return Err(format!("Tables critiques manquantes après migrations: {}", missing_tables.join(", ")).into());
+                    } else {
+                        log::warn!("⚠️ Continuation avec fonctionnalités limitées (mode développement)");
+                    }
                 }
             } else {
                 log::info!("✅ Toutes les tables critiques existent");
@@ -758,6 +837,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // ✅ NOUVEAU 2026-01-29: Logs supplémentaires pour diagnostic
             if let Some(source) = e.source() {
                 log::error!("   Source: {}", source);
+            }
+            
+            // ✅ NOUVEAU 2026-01-29: FORCER l'application de la migration consolidée même si SQLx échoue
+            log::warn!("🔄 [MIGRATION CONSOLIDÉE] SQLx a échoué, tentative d'application de la migration consolidée de secours...");
+            let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
+            log::info!("🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères", migration_sql.len());
+            use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+            
+            match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
+                Ok(_) => {
+                    log::info!("✅ [MIGRATION CONSOLIDÉE] Migration consolidée appliquée avec succès (après échec SQLx)");
+                }
+                Err(migration_err) => {
+                    log::error!("❌ [MIGRATION CONSOLIDÉE] Erreur lors de l'application de la migration consolidée: {}", migration_err);
+                    log::error!("❌ [MIGRATION CONSOLIDÉE] Type d'erreur: {:?}", migration_err);
+                    if let Some(source) = migration_err.source() {
+                        log::error!("❌ [MIGRATION CONSOLIDÉE] Source: {}", source);
+                    }
+                }
             }
             
             // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
@@ -929,7 +1027,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log::error!("   5. Les logs PostgreSQL pour plus de détails");
                 log::error!("🔧 SOLUTION: Exécuter manuellement les migrations:");
                 log::error!("   cd backend && sqlx migrate run");
-                log::warn!("⚠️ Continuation du démarrage, mais certaines fonctionnalités peuvent être indisponibles");
+                
+                // ✅ NOUVEAU 2026-01-29: Vérification finale et arrêt forcé en production
+                let is_production = env::var("ENVIRONMENT").unwrap_or_default() == "production" 
+                    || env::var("AWS_EXECUTION_ENV").is_ok();
+                
+                if !missing_tables.is_empty() {
+                    log::error!("❌ ERREUR CRITIQUE: {} table(s) critique(s) manquante(s) après échec SQLx:", missing_tables.len());
+                    for table in &missing_tables {
+                        log::error!("   - {}", table);
+                    }
+                    
+                    if is_production {
+                        log::error!("❌ ARRÊT DE L'APPLICATION: Tables critiques manquantes en production");
+                        log::error!("❌ Les workers et services ne peuvent pas fonctionner sans ces tables");
+                        log::error!("❌ ACTION REQUISE: Exécuter les migrations manuellement ou corriger les erreurs de migration");
+                        return Err(format!("Tables critiques manquantes après échec SQLx: {}", missing_tables.join(", ")).into());
+                    } else {
+                        log::warn!("⚠️ Continuation avec fonctionnalités limitées (mode développement)");
+                    }
+                } else {
+                    log::warn!("⚠️ Continuation du démarrage, mais certaines fonctionnalités peuvent être indisponibles");
+                }
             }
         }
     }
