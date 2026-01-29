@@ -362,6 +362,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CORRIGÉ 2026-01-28: Les migrations SQLx standard sont OBLIGATOIRES pour créer les tables de base
     log::info!("🚀 Application des migrations SQLx standard...");
     
+    // ✅ NOUVEAU 2026-01-29: Vérifier que le dossier migrations existe
+    // Note: sqlx::migrate!() nécessite un chemin littéral, donc on vérifie juste que le dossier existe
+    let migrations_path = Path::new("./migrations");
+    if let Ok(current_dir) = env::current_dir() {
+        let migrations_dir = current_dir.join("migrations");
+        if migrations_dir.exists() {
+            log::info!("📁 Dossier migrations trouvé: {}", migrations_dir.display());
+        } else {
+            let backend_migrations = current_dir.join("backend").join("migrations");
+            if backend_migrations.exists() {
+                log::info!("📁 Dossier migrations trouvé: {}", backend_migrations.display());
+            } else {
+                log::warn!("⚠️ Dossier migrations non trouvé dans {} ou {}/backend/migrations", 
+                    migrations_dir.display(), current_dir.display());
+            }
+        }
+    }
+    
     // ✅ NOUVEAU 2026-01-29: Vérifier l'état des migrations avant exécution
     let migrations_table_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS (
@@ -502,18 +520,95 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log::info!("✅ Tables de base (users, services) vérifiées après migrations SQLx");
             }
             
-            // ✅ NOUVEAU 2026-01-29: Logger l'état des autres tables critiques
-            log::info!("📊 État des tables critiques: deliveries={}, product_creation_queue={}, publicites={}", 
-                deliveries_exists, product_creation_queue_exists, publicites_exists);
+            // ✅ NOUVEAU 2026-01-29: Vérifier toutes les tables critiques manquantes dans les logs AWS
+            let critical_tables = vec![
+                ("deliveries", deliveries_exists),
+                ("product_creation_queue", product_creation_queue_exists),
+                ("delivery_matching_queue", sqlx::query_scalar(
+                    "SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'delivery_matching_queue'
+                    )"
+                ).fetch_one(&pg_pool).await.unwrap_or(false)),
+                ("global_promo_events", sqlx::query_scalar(
+                    "SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'global_promo_events'
+                    )"
+                ).fetch_one(&pg_pool).await.unwrap_or(false)),
+                ("live_flash_sales", sqlx::query_scalar(
+                    "SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'live_flash_sales'
+                    )"
+                ).fetch_one(&pg_pool).await.unwrap_or(false)),
+                ("product_orders", sqlx::query_scalar(
+                    "SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'product_orders'
+                    )"
+                ).fetch_one(&pg_pool).await.unwrap_or(false)),
+                ("social_publication_jobs", sqlx::query_scalar(
+                    "SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'social_publication_jobs'
+                    )"
+                ).fetch_one(&pg_pool).await.unwrap_or(false)),
+                ("video_generation_jobs", sqlx::query_scalar(
+                    "SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'video_generation_jobs'
+                    )"
+                ).fetch_one(&pg_pool).await.unwrap_or(false)),
+                ("delivery_proximity_suggestions", sqlx::query_scalar(
+                    "SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'delivery_proximity_suggestions'
+                    )"
+                ).fetch_one(&pg_pool).await.unwrap_or(false)),
+                ("publicites", publicites_exists),
+            ];
             
-            if !deliveries_exists {
-                log::warn!("⚠️ Table 'deliveries' manquante - certaines fonctionnalités seront indisponibles");
-            }
-            if !product_creation_queue_exists {
-                log::warn!("⚠️ Table 'product_creation_queue' manquante - le worker de création de produits ne fonctionnera pas");
-            }
-            if !publicites_exists {
-                log::warn!("⚠️ Table 'publicites' manquante - la tâche d'expiration des publicités ne fonctionnera pas");
+            let missing_tables: Vec<&str> = critical_tables.iter()
+                .filter_map(|(name, exists)| if !exists { Some(*name) } else { None })
+                .collect();
+            
+            log::info!("📊 État des tables critiques: deliveries={}, product_creation_queue={}, delivery_matching_queue={}, global_promo_events={}, live_flash_sales={}, product_orders={}, social_publication_jobs={}, video_generation_jobs={}, delivery_proximity_suggestions={}, publicites={}", 
+                deliveries_exists, product_creation_queue_exists, 
+                critical_tables[2].1, critical_tables[3].1, critical_tables[4].1,
+                critical_tables[5].1, critical_tables[6].1, critical_tables[7].1,
+                critical_tables[8].1, publicites_exists);
+            
+            if !missing_tables.is_empty() {
+                log::error!("❌ ERREUR CRITIQUE: {} table(s) critique(s) manquante(s) après les migrations:", missing_tables.len());
+                for table in &missing_tables {
+                    log::error!("   - {}", table);
+                }
+                log::error!("❌ Les workers et services dépendant de ces tables ne fonctionneront pas");
+                log::error!("❌ CAUSE PROBABLE: Les migrations n'ont pas été appliquées correctement");
+                log::error!("❌ SOLUTION: Vérifier que toutes les migrations dans backend/migrations/ ont été exécutées");
+                log::error!("❌ Vérifier les logs de migration ci-dessus pour identifier l'erreur");
+                
+                // ✅ NOUVEAU 2026-01-29: Arrêter l'application si les tables critiques sont manquantes
+                // (sauf en mode développement où on peut continuer avec des fonctionnalités limitées)
+                let is_production = env::var("ENVIRONMENT").unwrap_or_default() == "production" 
+                    || env::var("AWS_EXECUTION_ENV").is_ok();
+                
+                if is_production && missing_tables.len() > 3 {
+                    log::error!("❌ ARRÊT DE L'APPLICATION: Trop de tables critiques manquantes en production");
+                    return Err(format!("Tables critiques manquantes: {}", missing_tables.join(", ")).into());
+                } else {
+                    log::warn!("⚠️ Continuation avec fonctionnalités limitées (mode développement ou tables non critiques)");
+                }
+            } else {
+                log::info!("✅ Toutes les tables critiques existent");
             }
         }
         Err(e) => {

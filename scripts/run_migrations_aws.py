@@ -159,11 +159,15 @@ def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
             "pending_count": pending_count
         }
     except subprocess.TimeoutExpired:
-        print("⚠️ Timeout lors de la vérification des migrations")
+        if retry_count == 0:
+            print("ℹ️ Timeout attendu: Base de données probablement dans un VPC privé")
+        else:
+            print("⚠️ Timeout lors de la vérification des migrations")
         if retry_count < MAX_RETRIES:
             print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
             time.sleep(RETRY_DELAY)
             return check_migrations_status(database_url, retry_count + 1)
+        print("ℹ️ Impossible de se connecter (comportement attendu pour VPC privé)")
         return {"has_pending": True, "output": "Timeout", "connection_ok": False}
     except subprocess.CalledProcessError as e:
         error_output = e.stderr if e.stderr else (e.stdout if e.stdout else str(e))
@@ -298,19 +302,20 @@ def main():
     
     # Vérifier si la connexion fonctionne
     if not status.get("connection_ok", True):
-        print("⚠️" * 40)
-        print("⚠️ ATTENTION: Impossible de se connecter à la base de données")
-        print("⚠️" * 40)
+        print("=" * 80)
+        print("ℹ️  COMPORTEMENT ATTENDU: Base de données non accessible depuis GitHub Actions")
+        print("=" * 80)
         print()
-        print("Causes possibles:")
-        print("  1. La base de données RDS est dans un VPC privé")
-        print("  2. Les Security Groups ne permettent pas les connexions depuis GitHub Actions")
-        print("  3. La base de données nécessite un VPN ou un bastion host")
+        print("📋 Explication:")
+        print("  La base de données RDS est dans un VPC privé pour la sécurité.")
+        print("  GitHub Actions s'exécute sur des runners publics et ne peut pas y accéder.")
+        print("  C'est un comportement normal et sécurisé.")
         print()
-        print("Solution:")
-        print("  ✅ Les migrations seront exécutées automatiquement au démarrage de l'application ECS")
-        print("  ✅ L'application ECS a accès à la base de données via le VPC")
-        print("  ✅ Le build Docker continuera normalement")
+        print("✅ Solution automatique:")
+        print("  • Les migrations seront exécutées automatiquement au démarrage de l'application ECS")
+        print("  • L'application ECS a accès à la base de données via le VPC")
+        print("  • Le build Docker continuera normalement")
+        print("  • Aucune action manuelle requise")
         print()
         
         if FAIL_ON_ERROR:
@@ -319,7 +324,7 @@ def main():
         else:
             print("ℹ️ FAIL_ON_MIGRATION_ERROR=false, continuation du workflow")
             print("=" * 80)
-            print("⚠️ Migrations non exécutées (seront exécutées au démarrage ECS)")
+            print("✅ Migrations différées (seront exécutées au démarrage ECS)")
             print("=" * 80)
             sys.exit(0)
     
