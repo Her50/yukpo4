@@ -3740,6 +3740,39 @@ $$ LANGUAGE plpgsql;
 COMMENT ON FUNCTION process_bus_ticket_payment_with_commission IS 'Calcule la commission Yukpo (5%) et reverse automatiquement le montant à l''agence';
 
 -- ============================================================================
+-- TABLE BUS_RESERVATIONS (doit être créée avant bus_boarding_status)
+-- ============================================================================
+
+-- Table pour les réservations de places de bus
+CREATE TABLE IF NOT EXISTS bus_reservations (
+    id TEXT PRIMARY KEY DEFAULT CAST(gen_random_uuid() AS TEXT),
+    product_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    seat_id VARCHAR(50) NOT NULL,
+    seat_number INTEGER NOT NULL,
+    passenger_name VARCHAR(255),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'expired')),
+    caution_amount INTEGER DEFAULT 500,
+    total_price INTEGER,
+    payment_status VARCHAR(20) DEFAULT 'caution_paid' CHECK (payment_status IN ('caution_paid', 'fully_paid', 'refunded')),
+    ticket_pdf_url TEXT,
+    expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '30 minutes'),
+    confirmed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT unique_product_seat UNIQUE (product_id, seat_id)
+);
+
+-- Index pour bus_reservations
+CREATE INDEX IF NOT EXISTS idx_bus_reservations_user ON bus_reservations(user_id);
+CREATE INDEX IF NOT EXISTS idx_bus_reservations_product ON bus_reservations(product_id);
+CREATE INDEX IF NOT EXISTS idx_bus_reservations_status ON bus_reservations(status);
+CREATE INDEX IF NOT EXISTS idx_bus_reservations_created_at ON bus_reservations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bus_reservations_expires_at ON bus_reservations(expires_at) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_bus_reservations_payment_status ON bus_reservations(payment_status);
+CREATE INDEX IF NOT EXISTS idx_bus_reservations_product_status ON bus_reservations(product_id, status) WHERE status IN ('pending', 'confirmed');
+
+-- ============================================================================
 -- SYSTÈME VALIDATION TICKETS BUS AVEC QR CODE ✅
 -- ============================================================================
 
