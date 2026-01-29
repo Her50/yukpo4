@@ -8,7 +8,8 @@ use axum::{
 use std::sync::Arc;
 
 use crate::controllers::products_controller::{
-    delete_product, duplicate_product, get_product, get_products_by_service, get_products_by_user, update_product,
+    delete_product, duplicate_product, get_product, get_products_by_service, get_products_by_user,
+    update_product,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -29,20 +30,17 @@ pub fn products_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // PATCH /api/services/{service_id}/products/{product_index} - Mettre à jour un produit
         .route(
             "/api/services/{service_id}/products/{product_index}",
-            patch(update_product)
-                .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
+            patch(update_product).layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
         )
         // DELETE /api/services/{service_id}/products/{product_index} - Supprimer un produit
         .route(
             "/api/services/{service_id}/products/{product_index}",
-            delete(delete_product)
-                .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
+            delete(delete_product).layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
         )
         // POST /api/services/{service_id}/products/{product_index}/duplicate - Dupliquer un produit
         .route(
             "/api/services/{service_id}/products/{product_index}/duplicate",
-            post(duplicate_product)
-                .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
+            post(duplicate_product).layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
         )
         // GET /api/products?user_id={user_id} - Récupérer tous les produits d'un utilisateur
         .route(
@@ -52,4 +50,3 @@ pub fn products_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .with_state(state)
 }
-

@@ -1,12 +1,12 @@
 // ✅ NOUVEAU: Service de génération de previews d'effets à la demande
 
 use crate::core::types::{AppError, AppResult};
+use base64::{engine::general_purpose, Engine as _};
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
-use tokio::process::Command;
-use base64::{Engine as _, engine::general_purpose};
 use std::fs;
 use std::path::PathBuf;
+use tokio::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EffectPreviewRequest {
@@ -167,14 +167,18 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m.insert(
         "glitch",
         EffectDefinition {
-            ffmpeg_filter: "curves=all='0/0 0.5/0.58 1/1',hue=s=1.1,eq=contrast=1.2:brightness=0.05".to_string(),
+            ffmpeg_filter:
+                "curves=all='0/0 0.5/0.58 1/1',hue=s=1.1,eq=contrast=1.2:brightness=0.05"
+                    .to_string(),
             description: "Effet glitch avec distorsion des couleurs".to_string(),
         },
     );
     m.insert(
         "glitch effect",
         EffectDefinition {
-            ffmpeg_filter: "curves=all='0/0 0.5/0.58 1/1',hue=s=1.1,eq=contrast=1.2:brightness=0.05".to_string(),
+            ffmpeg_filter:
+                "curves=all='0/0 0.5/0.58 1/1',hue=s=1.1,eq=contrast=1.2:brightness=0.05"
+                    .to_string(),
             description: "Effet glitch avec distorsion des couleurs".to_string(),
         },
     );
@@ -183,14 +187,16 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m.insert(
         "pan",
         EffectDefinition {
-            ffmpeg_filter: "crop=iw*0.8:ih:iw*0.1:0,scale=iw*1.25:ih,setpts=PTS-STARTPTS".to_string(),
+            ffmpeg_filter: "crop=iw*0.8:ih:iw*0.1:0,scale=iw*1.25:ih,setpts=PTS-STARTPTS"
+                .to_string(),
             description: "Mouvement panoramique horizontal pour effet dynamique".to_string(),
         },
     );
     m.insert(
         "panoramic",
         EffectDefinition {
-            ffmpeg_filter: "crop=iw*0.8:ih:iw*0.1:0,scale=iw*1.25:ih,setpts=PTS-STARTPTS".to_string(),
+            ffmpeg_filter: "crop=iw*0.8:ih:iw*0.1:0,scale=iw*1.25:ih,setpts=PTS-STARTPTS"
+                .to_string(),
             description: "Mouvement panoramique horizontal pour effet dynamique".to_string(),
         },
     );
@@ -245,21 +251,27 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m.insert(
         "cinematic",
         EffectDefinition {
-            ffmpeg_filter: "curves=all='0/0 0.5/0.45 1/1',eq=contrast=1.1:saturation=0.85:gamma=1.05".to_string(),
+            ffmpeg_filter:
+                "curves=all='0/0 0.5/0.45 1/1',eq=contrast=1.1:saturation=0.85:gamma=1.05"
+                    .to_string(),
             description: "Effet cinématique avec courbes de couleur et contraste".to_string(),
         },
     );
     m.insert(
         "cinema",
         EffectDefinition {
-            ffmpeg_filter: "curves=all='0/0 0.5/0.45 1/1',eq=contrast=1.1:saturation=0.85:gamma=1.05".to_string(),
+            ffmpeg_filter:
+                "curves=all='0/0 0.5/0.45 1/1',eq=contrast=1.1:saturation=0.85:gamma=1.05"
+                    .to_string(),
             description: "Effet cinématique avec courbes de couleur et contraste".to_string(),
         },
     );
     m.insert(
         "cinéma",
         EffectDefinition {
-            ffmpeg_filter: "curves=all='0/0 0.5/0.45 1/1',eq=contrast=1.1:saturation=0.85:gamma=1.05".to_string(),
+            ffmpeg_filter:
+                "curves=all='0/0 0.5/0.45 1/1',eq=contrast=1.1:saturation=0.85:gamma=1.05"
+                    .to_string(),
             description: "Effet cinématique avec courbes de couleur et contraste".to_string(),
         },
     );
@@ -314,7 +326,8 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m.insert(
         "zoom dynamique",
         EffectDefinition {
-            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75".to_string(),
+            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75"
+                .to_string(),
             description: "Zoom progressif pour créer un effet dynamique".to_string(),
         },
     );
@@ -345,7 +358,8 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m.insert(
         "éclat lumineux",
         EffectDefinition {
-            ffmpeg_filter: "curves=all='0/0 0.5/0.58 1/1',eq=brightness=0.15:saturation=0.2".to_string(),
+            ffmpeg_filter: "curves=all='0/0 0.5/0.58 1/1',eq=brightness=0.15:saturation=0.2"
+                .to_string(),
             description: "Effet lumineux avec saturation augmentée".to_string(),
         },
     );
@@ -354,7 +368,8 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m.insert(
         "zoom rapide",
         EffectDefinition {
-            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),2.0,max(1.001,zoom-0.003))':d=50".to_string(),
+            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),2.0,max(1.001,zoom-0.003))':d=50"
+                .to_string(),
             description: "Zoom rapide pour effet dynamique et percutant".to_string(),
         },
     );
@@ -505,21 +520,24 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m.insert(
         "sepia",
         EffectDefinition {
-            ffmpeg_filter: "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131".to_string(),
+            ffmpeg_filter: "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131"
+                .to_string(),
             description: "Effet sépia pour ambiance vintage et nostalgique".to_string(),
         },
     );
     m.insert(
         "sépia",
         EffectDefinition {
-            ffmpeg_filter: "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131".to_string(),
+            ffmpeg_filter: "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131"
+                .to_string(),
             description: "Effet sépia pour ambiance vintage et nostalgique".to_string(),
         },
     );
     m.insert(
         "ancien",
         EffectDefinition {
-            ffmpeg_filter: "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131".to_string(),
+            ffmpeg_filter: "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131"
+                .to_string(),
             description: "Effet sépia pour ambiance vintage et nostalgique".to_string(),
         },
     );
@@ -656,26 +674,29 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     );
 
     // ✅ NOUVEAU 2026-01-04: Effets populaires TikTok/Reels/CapCut supplémentaires
-    
+
     // Motion Blur (flou de mouvement)
     m.insert(
         "motion blur",
         EffectDefinition {
-            ffmpeg_filter: "minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1".to_string(),
+            ffmpeg_filter: "minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1"
+                .to_string(),
             description: "Flou de mouvement pour effet cinématique".to_string(),
         },
     );
     m.insert(
         "motionblur",
         EffectDefinition {
-            ffmpeg_filter: "minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1".to_string(),
+            ffmpeg_filter: "minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1"
+                .to_string(),
             description: "Flou de mouvement pour effet cinématique".to_string(),
         },
     );
     m.insert(
         "flou de mouvement",
         EffectDefinition {
-            ffmpeg_filter: "minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1".to_string(),
+            ffmpeg_filter: "minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1"
+                .to_string(),
             description: "Flou de mouvement pour effet cinématique".to_string(),
         },
     );
@@ -753,14 +774,16 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m.insert(
         "duotone",
         EffectDefinition {
-            ffmpeg_filter: "curves=all='0/0 0.5/0.5 1/1',eq=contrast=1.2:saturation=0.5".to_string(),
+            ffmpeg_filter: "curves=all='0/0 0.5/0.5 1/1',eq=contrast=1.2:saturation=0.5"
+                .to_string(),
             description: "Effet duotone avec deux couleurs dominantes".to_string(),
         },
     );
     m.insert(
         "duo tone",
         EffectDefinition {
-            ffmpeg_filter: "curves=all='0/0 0.5/0.5 1/1',eq=contrast=1.2:saturation=0.5".to_string(),
+            ffmpeg_filter: "curves=all='0/0 0.5/0.5 1/1',eq=contrast=1.2:saturation=0.5"
+                .to_string(),
             description: "Effet duotone avec deux couleurs dominantes".to_string(),
         },
     );
@@ -939,21 +962,27 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m.insert(
         "zoom blur",
         EffectDefinition {
-            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75,boxblur=2:1".to_string(),
+            ffmpeg_filter:
+                "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75,boxblur=2:1"
+                    .to_string(),
             description: "Flou de zoom pour effet dynamique".to_string(),
         },
     );
     m.insert(
         "zoomblur",
         EffectDefinition {
-            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75,boxblur=2:1".to_string(),
+            ffmpeg_filter:
+                "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75,boxblur=2:1"
+                    .to_string(),
             description: "Flou de zoom pour effet dynamique".to_string(),
         },
     );
     m.insert(
         "flou de zoom",
         EffectDefinition {
-            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75,boxblur=2:1".to_string(),
+            ffmpeg_filter:
+                "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75,boxblur=2:1"
+                    .to_string(),
             description: "Flou de zoom pour effet dynamique".to_string(),
         },
     );
@@ -1095,21 +1124,24 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m.insert(
         "picture in picture",
         EffectDefinition {
-            ffmpeg_filter: "scale=iw/4:ih/4,pad=iw:ih:(iw-ow)/2:(ih-oh)/2:color=black@0".to_string(),
+            ffmpeg_filter: "scale=iw/4:ih/4,pad=iw:ih:(iw-ow)/2:(ih-oh)/2:color=black@0"
+                .to_string(),
             description: "Image dans image pour effet multi-vue".to_string(),
         },
     );
     m.insert(
         "pip",
         EffectDefinition {
-            ffmpeg_filter: "scale=iw/4:ih/4,pad=iw:ih:(iw-ow)/2:(ih-oh)/2:color=black@0".to_string(),
+            ffmpeg_filter: "scale=iw/4:ih/4,pad=iw:ih:(iw-ow)/2:(ih-oh)/2:color=black@0"
+                .to_string(),
             description: "Image dans image pour effet multi-vue".to_string(),
         },
     );
     m.insert(
         "image dans image",
         EffectDefinition {
-            ffmpeg_filter: "scale=iw/4:ih/4,pad=iw:ih:(iw-ow)/2:(ih-oh)/2:color=black@0".to_string(),
+            ffmpeg_filter: "scale=iw/4:ih/4,pad=iw:ih:(iw-ow)/2:(ih-oh)/2:color=black@0"
+                .to_string(),
             description: "Image dans image pour effet multi-vue".to_string(),
         },
     );
@@ -1121,7 +1153,7 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
 /// ✅ NOUVEAU 2026-01-04: Rendu publique pour validation dans app_ia.rs
 pub fn normalize_effect_name(effect_name: &str) -> String {
     let normalized = effect_name.trim().to_lowercase();
-    
+
     // Mapping des noms alternatifs vers les noms canoniques
     let mapping: std::collections::HashMap<&str, &str> = [
         ("accélération", "speed ramp"),
@@ -1250,7 +1282,7 @@ pub fn normalize_effect_name(effect_name: &str) -> String {
     .iter()
     .cloned()
     .collect();
-    
+
     // Vérifier si le nom normalisé existe dans le mapping
     if let Some(canonical_name) = mapping.get(normalized.as_str()) {
         canonical_name.to_string()
@@ -1328,19 +1360,18 @@ pub async fn generate_effect_preview(
 
     // ✅ CORRIGÉ: Récupérer la définition de l'effet avec normalisation
     let normalized_effect_name = request.effect_name.trim().to_lowercase();
-    let effect_def = get_effect_definition(&normalized_effect_name)
-        .ok_or_else(|| {
-            let available_effects: Vec<&str> = get_effect_definitions().keys().copied().collect();
-            error!(
-                "[EffectPreview] Effet '{}' (normalisé: '{}') non trouvé. Effets disponibles: {:?}",
-                request.effect_name, normalized_effect_name, available_effects
-            );
-            AppError::BadRequest(format!(
-                "Effet '{}' non trouvé. Effets disponibles: {}",
-                request.effect_name,
-                available_effects.join(", ")
-            ))
-        })?;
+    let effect_def = get_effect_definition(&normalized_effect_name).ok_or_else(|| {
+        let available_effects: Vec<&str> = get_effect_definitions().keys().copied().collect();
+        error!(
+            "[EffectPreview] Effet '{}' (normalisé: '{}') non trouvé. Effets disponibles: {:?}",
+            request.effect_name, normalized_effect_name, available_effects
+        );
+        AppError::BadRequest(format!(
+            "Effet '{}' non trouvé. Effets disponibles: {}",
+            request.effect_name,
+            available_effects.join(", ")
+        ))
+    })?;
 
     let duration = request.duration.unwrap_or(3.0);
     let quality = request.quality.as_deref().unwrap_or("low");
@@ -1353,7 +1384,10 @@ pub async fn generate_effect_preview(
     };
 
     // ✅ CORRIGÉ 2025-12-28: Gérer les data URIs en créant un fichier temporaire
-    let (input_path, is_temp_file, temp_file_path) = if request.sample_media_url.starts_with("data:") {
+    let (input_path, is_temp_file, temp_file_path) = if request
+        .sample_media_url
+        .starts_with("data:")
+    {
         // Extraire le base64 depuis le data URI
         let base64_data = if let Some(idx) = request.sample_media_url.find(',') {
             &request.sample_media_url[idx + 1..]
@@ -1379,19 +1413,26 @@ pub async fn generate_effect_preview(
         };
 
         // Décoder le base64
-        let decoded_data = general_purpose::STANDARD.decode(base64_data)
+        let decoded_data = general_purpose::STANDARD
+            .decode(base64_data)
             .map_err(|e| AppError::BadRequest(format!("Erreur décodage base64: {}", e)))?;
 
         // Créer un fichier temporaire
         let temp_dir = std::env::temp_dir();
-        let temp_file = temp_dir.join(format!("effect_preview_{}_{}.{}", 
-            normalized_effect_name, 
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
-            extension));
-        
+        let temp_file = temp_dir.join(format!(
+            "effect_preview_{}_{}.{}",
+            normalized_effect_name,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            extension
+        ));
+
         // Écrire les données dans le fichier temporaire
-        fs::write(&temp_file, decoded_data)
-            .map_err(|e| AppError::Internal(format!("Erreur création fichier temporaire: {}", e)))?;
+        fs::write(&temp_file, decoded_data).map_err(|e| {
+            AppError::Internal(format!("Erreur création fichier temporaire: {}", e))
+        })?;
 
         let path_str = temp_file.to_string_lossy().to_string();
         (path_str.clone(), true, Some(temp_file))
@@ -1410,8 +1451,11 @@ pub async fn generate_effect_preview(
     // Générer le nom du fichier de sortie
     let output_path = format!(
         "{}_preview_{}_{}.mp4",
-        normalized_effect_name, 
-        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+        normalized_effect_name,
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
         quality
     );
 
@@ -1424,7 +1468,7 @@ pub async fn generate_effect_preview(
     } else {
         format!("scale=iw-mod(iw\\,2):ih,{}", effect_def.ffmpeg_filter)
     };
-    
+
     let ffmpeg_result = Command::new("ffmpeg")
         .args(&[
             "-i",
@@ -1486,7 +1530,7 @@ pub async fn generate_effect_preview(
                     "[EffectPreview] ❌ Erreur FFmpeg pour effet '{}':\nSTDERR: {}\nSTDOUT: {}\nInput: {}",
                     normalized_effect_name, error, stdout, input_path
                 );
-                
+
                 // ✅ CORRIGÉ: Messages d'erreur plus informatifs
                 let error_msg = if error.contains("No such file or directory") {
                     format!(
@@ -1501,7 +1545,7 @@ pub async fn generate_effect_preview(
                 } else {
                     format!("Erreur génération preview: {}", error)
                 };
-                
+
                 Err(AppError::BadRequest(error_msg))
             }
         }
@@ -1521,9 +1565,15 @@ pub async fn generate_effect_preview(
     if is_temp_file {
         if let Some(temp_path) = temp_file_path {
             if let Err(e) = fs::remove_file(&temp_path) {
-                warn!("[EffectPreview] ⚠️ Impossible de supprimer le fichier temporaire {:?}: {}", temp_path, e);
+                warn!(
+                    "[EffectPreview] ⚠️ Impossible de supprimer le fichier temporaire {:?}: {}",
+                    temp_path, e
+                );
             } else {
-                info!("[EffectPreview] Fichier temporaire supprimé: {:?}", temp_path);
+                info!(
+                    "[EffectPreview] Fichier temporaire supprimé: {:?}",
+                    temp_path
+                );
             }
         }
     }

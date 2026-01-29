@@ -8,7 +8,7 @@ use std::env;
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     dotenvy::dotenv().ok();
-    
+
     let mut database_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL doit être définie dans les variables d'environnement");
 
@@ -26,19 +26,21 @@ async fn main() -> Result<(), sqlx::Error> {
     println!("✅ Connexion établie");
 
     // Lire et exécuter la migration SQL (version finale avec suppression/recréation des contraintes)
-    println!("🔄 Application de la migration SQL (version finale avec suppression/recréation des FK)...");
+    println!(
+        "🔄 Application de la migration SQL (version finale avec suppression/recréation des FK)..."
+    );
     let migration_sql = include_str!("../../migrations/20260115_fix_parcel_types_ids_final.sql");
 
     // ✅ CORRIGÉ: Utiliser execute_multiple_sql_commands pour gérer les blocs DO $$
     // Cette fonction gère correctement les blocs PL/pgSQL avec points-virgules internes
     use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
-    
+
     execute_multiple_sql_commands(&pool, migration_sql).await?;
     println!("✅ Migration SQL appliquée avec succès");
 
     // Vérification finale
     println!("\n🔍 Vérification des IDs après migration...");
-    
+
     #[derive(sqlx::FromRow)]
     struct ParcelType {
         id: i32,
@@ -47,14 +49,14 @@ async fn main() -> Result<(), sqlx::Error> {
     }
 
     let types: Vec<ParcelType> = sqlx::query_as::<_, ParcelType>(
-        "SELECT id, slug, display_name FROM parcel_types ORDER BY id"
+        "SELECT id, slug, display_name FROM parcel_types ORDER BY id",
     )
     .fetch_all(&pool)
     .await?;
 
     println!("\n📦 Types de colis après migration:");
     let mut all_correct = true;
-    
+
     let expected_mapping = vec![
         (1, "bike", "Vélo"),
         (2, "motorcycle", "Moto"),
@@ -67,18 +69,29 @@ async fn main() -> Result<(), sqlx::Error> {
     ];
 
     for parcel_type in &types {
-        let expected = expected_mapping.iter().find(|(_, slug, _)| slug == &parcel_type.slug);
+        let expected = expected_mapping
+            .iter()
+            .find(|(_, slug, _)| slug == &parcel_type.slug);
         match expected {
             Some((expected_id, _, _expected_name)) => {
                 if parcel_type.id == *expected_id {
-                    println!("  ✅ ID {}: {} ({}) - CORRECT", parcel_type.id, parcel_type.display_name, parcel_type.slug);
+                    println!(
+                        "  ✅ ID {}: {} ({}) - CORRECT",
+                        parcel_type.id, parcel_type.display_name, parcel_type.slug
+                    );
                 } else {
-                    println!("  ❌ ID {}: {} ({}) - ATTENDU ID {}", parcel_type.id, parcel_type.display_name, parcel_type.slug, expected_id);
+                    println!(
+                        "  ❌ ID {}: {} ({}) - ATTENDU ID {}",
+                        parcel_type.id, parcel_type.display_name, parcel_type.slug, expected_id
+                    );
                     all_correct = false;
                 }
             }
             None => {
-                println!("  ⚠️ ID {}: {} ({}) - Type non attendu", parcel_type.id, parcel_type.display_name, parcel_type.slug);
+                println!(
+                    "  ⚠️ ID {}: {} ({}) - Type non attendu",
+                    parcel_type.id, parcel_type.display_name, parcel_type.slug
+                );
             }
         }
     }
@@ -91,4 +104,3 @@ async fn main() -> Result<(), sqlx::Error> {
 
     Ok(())
 }
-

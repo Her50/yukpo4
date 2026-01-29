@@ -56,7 +56,7 @@ impl FlashSaleQueueWorker {
                 }
                 Err(e) => {
                     let error_msg = format!("{:?}", e);
-                    let is_rate_limited = error_msg.contains("rate-limited") 
+                    let is_rate_limited = error_msg.contains("rate-limited")
                         || error_msg.contains("rate limited")
                         || error_msg.contains("rate_limit");
 

@@ -62,7 +62,7 @@ impl ProductsService {
                 created_at,
                 updated_at,
                 auto_deactivate_at
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)
@@ -101,7 +101,7 @@ impl ProductsService {
                 auto_deactivate_at
             FROM service_products
             WHERE service_id = $1 AND product_index = $2
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)
@@ -136,7 +136,7 @@ impl ProductsService {
             FROM service_products
             WHERE service_id = $1
             ORDER BY product_index ASC
-            "#
+            "#,
         )
         .bind(service_id)
         .fetch_all(&*self.pool)
@@ -170,7 +170,7 @@ impl ProductsService {
             FROM service_products
             WHERE service_id = $1 AND is_active = TRUE
             ORDER BY product_index ASC
-            "#
+            "#,
         )
         .bind(service_id)
         .fetch_all(&*self.pool)
@@ -211,7 +211,7 @@ impl ProductsService {
                 created_at,
                 updated_at,
                 auto_deactivate_at
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)
@@ -229,16 +229,12 @@ impl ProductsService {
     }
 
     /// Supprime un produit (soft delete en désactivant)
-    pub async fn delete_product(
-        &self,
-        service_id: i32,
-        product_index: i32,
-    ) -> AppResult<()> {
+    pub async fn delete_product(&self, service_id: i32, product_index: i32) -> AppResult<()> {
         sqlx::query(
             r#"
             DELETE FROM service_products
             WHERE service_id = $1 AND product_index = $2
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)
@@ -272,7 +268,7 @@ impl ProductsService {
             FROM service_products
             WHERE service_id = $1
             ORDER BY product_index ASC
-            "#
+            "#,
         )
         .bind(service_id)
         .fetch_all(&mut *tx)
@@ -296,7 +292,7 @@ impl ProductsService {
                     UPDATE service_products
                     SET product_index = $1, updated_at = NOW()
                     WHERE id = $2
-                    "#
+                    "#,
                 )
                 .bind(new_index)
                 .bind(product_id)
@@ -361,7 +357,7 @@ impl ProductsService {
         // Créer une copie du produit avec un nouvel index
         // Cloner product_data et modifier le nom si nécessaire pour indiquer que c'est une copie
         let mut new_product_data = source_product.product_data.clone();
-        
+
         // Ajouter "(Copie)" au nom si c'est un objet avec un champ nom/nom_produit
         if let Some(obj) = new_product_data.as_object_mut() {
             if let Some(nom) = obj.get_mut("nom") {
@@ -392,17 +388,11 @@ impl ProductsService {
     }
 
     /// Récupère les produits et les formate comme l'ancien format JSONB (pour compatibilité)
-    pub async fn get_products_as_jsonb_format(
-        &self,
-        service_id: i32,
-    ) -> AppResult<Value> {
+    pub async fn get_products_as_jsonb_format(&self, service_id: i32) -> AppResult<Value> {
         let products = self.get_products_by_service(service_id).await?;
-        
-        let produits_array: Vec<Value> = products
-            .into_iter()
-            .map(|p| p.product_data)
-            .collect();
-        
+
+        let produits_array: Vec<Value> = products.into_iter().map(|p| p.product_data).collect();
+
         Ok(serde_json::json!({
             "type_donnee": "autocomplete",
             "valeur": produits_array,
@@ -435,10 +425,13 @@ impl ProductsService {
         // Mettre à jour product_data avec les infos de désactivation/réactivation
         if let Some(obj) = current_product.product_data.as_object_mut() {
             obj.insert("is_active".to_string(), serde_json::json!(is_active));
-            
+
             if is_active {
                 // Réactivation: nettoyer les champs de désactivation
-                obj.insert("reactivated_at".to_string(), serde_json::json!(Utc::now().to_rfc3339()));
+                obj.insert(
+                    "reactivated_at".to_string(),
+                    serde_json::json!(Utc::now().to_rfc3339()),
+                );
                 obj.remove("deactivated_at");
                 obj.remove("deactivation_type");
                 obj.remove("deactivation_reason");
@@ -471,7 +464,7 @@ impl ProductsService {
                 created_at,
                 updated_at,
                 auto_deactivate_at
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)
@@ -489,4 +482,3 @@ impl ProductsService {
         Ok(product)
     }
 }
-

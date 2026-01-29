@@ -74,7 +74,10 @@ impl ImageSearchService {
             .fetch_all(&*self.pool)
             .await
             .map_err(|e| {
-                log_error(&format!("[ImageSearch] Erreur recherche par signature: {}", e));
+                log_error(&format!(
+                    "[ImageSearch] Erreur recherche par signature: {}",
+                    e
+                ));
                 AppError::Internal(format!("Erreur recherche par signature: {}", e))
             })?;
 
@@ -84,7 +87,8 @@ impl ImageSearchService {
             let service_id: i32 = row.try_get("service_id").unwrap_or(0);
             let media_path: String = row.try_get("media_path").unwrap_or_default();
             let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(0.0);
-            let service_data: serde_json::Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
+            let service_data: serde_json::Value =
+                row.try_get("service_data").unwrap_or(serde_json::json!({}));
             let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
 
             search_results.push(ImageSearchResult {
@@ -107,7 +111,10 @@ impl ImageSearchService {
 
     /// Rechercher par hash d'image (détection de doublons exacts)
     /// ✅ Utilise uniquement la table service_products (plus la table services via jsonb)
-    pub async fn search_by_image_hash(&self, image_hash: &str) -> AppResult<Vec<ImageSearchResult>> {
+    pub async fn search_by_image_hash(
+        &self,
+        image_hash: &str,
+    ) -> AppResult<Vec<ImageSearchResult>> {
         log_info(&format!("[ImageSearch] Recherche par hash: {}", image_hash));
 
         // ✅ Recherche uniquement dans service_products (plus services via jsonb)
@@ -145,7 +152,8 @@ impl ImageSearchService {
             let service_id: i32 = row.try_get("service_id").unwrap_or(0);
             let media_path: String = row.try_get("media_path").unwrap_or_default();
             let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(1.0);
-            let service_data: serde_json::Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
+            let service_data: serde_json::Value =
+                row.try_get("service_data").unwrap_or(serde_json::json!({}));
             let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
 
             search_results.push(ImageSearchResult {
@@ -158,7 +166,10 @@ impl ImageSearchService {
             });
         }
 
-        log_info(&format!("[ImageSearch] Trouvé {} doublons", search_results.len()));
+        log_info(&format!(
+            "[ImageSearch] Trouvé {} doublons",
+            search_results.len()
+        ));
 
         Ok(search_results)
     }
@@ -207,7 +218,10 @@ impl ImageSearchService {
             .fetch_all(&*self.pool)
             .await
             .map_err(|e| {
-                log_error(&format!("[ImageSearch] Erreur recherche images produits: {}", e));
+                log_error(&format!(
+                    "[ImageSearch] Erreur recherche images produits: {}",
+                    e
+                ));
                 AppError::Internal(format!("Erreur recherche images produits: {}", e))
             })?;
 
@@ -217,7 +231,8 @@ impl ImageSearchService {
             let service_id: i32 = row.try_get("service_id").unwrap_or(0);
             let media_path: String = row.try_get("media_path").unwrap_or_default();
             let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(0.0);
-            let service_data: serde_json::Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
+            let service_data: serde_json::Value =
+                row.try_get("service_data").unwrap_or(serde_json::json!({}));
             let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
 
             search_results.push(ImageSearchResult {
@@ -243,11 +258,11 @@ impl ImageSearchService {
     /// Cette fonction devrait être appelée lors de l'upload d'une image
     #[cfg(feature = "image_search")]
     pub fn generate_image_signature(image_data: &[u8]) -> AppResult<Vec<f32>> {
-        use image::{ImageReader, DynamicImage};
+        use image::{DynamicImage, ImageReader};
         use std::io::Cursor;
-        
+
         log_info("[ImageSearch] Génération de signature vectorielle d'image");
-        
+
         // 1. Charger l'image
         let img = match ImageReader::new(Cursor::new(image_data))
             .with_guessed_format()
@@ -260,16 +275,16 @@ impl ImageSearchService {
                 return Err(AppError::Internal(format!("Erreur décodage image: {}", e)));
             }
         };
-        
+
         // 2. Redimensionner à 16x16 pour extraction de features
         let resized = img.resize_exact(16, 16, image::imageops::FilterType::Lanczos3);
-        
+
         // 3. Convertir en niveaux de gris
         let gray = resized.to_luma8();
-        
+
         // 4. Extraire des features: histogramme de couleurs, gradients, textures
         let mut signature = Vec::with_capacity(192);
-        
+
         // 4.1. Histogramme de luminosité (64 bins)
         let mut histogram = vec![0u32; 64];
         for pixel in gray.pixels() {
@@ -282,7 +297,7 @@ impl ImageSearchService {
         for count in histogram {
             signature.push(count as f32 / total_pixels);
         }
-        
+
         // 4.2. Gradients horizontaux et verticaux (64 features)
         let mut gradients = Vec::new();
         for y in 0..15 {
@@ -290,17 +305,17 @@ impl ImageSearchService {
                 let current = gray.get_pixel(x, y)[0] as f32;
                 let right = gray.get_pixel(x + 1, y)[0] as f32;
                 let bottom = gray.get_pixel(x, y + 1)[0] as f32;
-                
+
                 let grad_x = (right - current) / 255.0;
                 let grad_y = (bottom - current) / 255.0;
-                
+
                 gradients.push(grad_x);
                 gradients.push(grad_y);
             }
         }
         // Prendre les 32 premiers gradients (64 features)
         signature.extend(gradients.into_iter().take(64));
-        
+
         // 4.3. Features de texture (DCT-like features simplifiées) (64 features)
         // Calculer des moyennes par blocs 4x4
         for block_y in 0..4 {
@@ -321,22 +336,22 @@ impl ImageSearchService {
             let last_16: Vec<f32> = signature[signature.len().saturating_sub(16)..].to_vec();
             signature.extend(last_16.iter().take(16.min(192 - signature.len())));
         }
-        
+
         // S'assurer d'avoir exactement 192 dimensions
         signature.truncate(192);
         while signature.len() < 192 {
             signature.push(0.0);
         }
-        
+
         log_info(&format!(
             "[ImageSearch] Signature générée: {} dimensions, moyenne: {:.3}",
             signature.len(),
             signature.iter().sum::<f32>() / signature.len() as f32
         ));
-        
+
         Ok(signature)
     }
-    
+
     /// Version fallback sans feature image_search (retourne signature factice)
     #[cfg(not(feature = "image_search"))]
     pub fn generate_image_signature(_image_data: &[u8]) -> AppResult<Vec<f32>> {
@@ -353,9 +368,9 @@ impl ImageSearchService {
     /// Extraire les métadonnées d'une image
     #[cfg(feature = "image_search")]
     pub fn extract_image_metadata(image_data: &[u8]) -> AppResult<serde_json::Value> {
-        use image::{ImageReader, DynamicImage};
+        use image::{DynamicImage, ImageReader};
         use std::io::Cursor;
-        
+
         // Charger l'image pour extraire les métadonnées
         let img = match ImageReader::new(Cursor::new(image_data))
             .with_guessed_format()
@@ -364,7 +379,10 @@ impl ImageSearchService {
         {
             Ok(img) => img,
             Err(e) => {
-                log_error(&format!("[ImageSearch] Erreur décodage image pour métadonnées: {}", e));
+                log_error(&format!(
+                    "[ImageSearch] Erreur décodage image pour métadonnées: {}",
+                    e
+                ));
                 // Retourner métadonnées basiques en cas d'erreur
                 return Ok(serde_json::json!({
                     "width": 0,
@@ -375,7 +393,7 @@ impl ImageSearchService {
                 }));
             }
         };
-        
+
         let (width, height) = img.dimensions();
         let format_name = match img {
             DynamicImage::ImageLuma8(_) => "luma8",
@@ -389,7 +407,7 @@ impl ImageSearchService {
             DynamicImage::ImageRgb16(_) => "rgb16",
             DynamicImage::ImageRgba16(_) => "rgba16",
         };
-        
+
         Ok(serde_json::json!({
             "width": width,
             "height": height,
@@ -400,7 +418,7 @@ impl ImageSearchService {
             "pixel_count": (width * height) as u64
         }))
     }
-    
+
     /// Version fallback sans feature image_search
     #[cfg(not(feature = "image_search"))]
     pub fn extract_image_metadata(image_data: &[u8]) -> AppResult<serde_json::Value> {
@@ -425,11 +443,14 @@ impl ImageSearchService {
 
         // 1. Générer le hash pour recherche exacte
         let image_hash = Self::calculate_image_hash(image_data);
-        
+
         // 2. Chercher d'abord les doublons exacts
         let exact_matches = self.search_by_image_hash(&image_hash).await?;
         if !exact_matches.is_empty() {
-            log_info(&format!("[ImageSearch] Trouvé {} doublons exacts", exact_matches.len()));
+            log_info(&format!(
+                "[ImageSearch] Trouvé {} doublons exacts",
+                exact_matches.len()
+            ));
             return Ok(exact_matches);
         }
 
@@ -437,7 +458,9 @@ impl ImageSearchService {
         let signature = Self::generate_image_signature(image_data)?;
 
         // 4. Rechercher par similarité
-        let similar_images = self.search_by_image_signature(&signature, similarity_threshold, max_results).await?;
+        let similar_images = self
+            .search_by_image_signature(&signature, similarity_threshold, max_results)
+            .await?;
 
         Ok(similar_images)
     }

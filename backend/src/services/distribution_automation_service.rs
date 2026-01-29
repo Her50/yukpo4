@@ -111,7 +111,7 @@ pub async fn automate_media_distribution(
                 )
             };
             warn!("{}", message);
-            
+
             update_missing_connector(
                 &state,
                 media_id,

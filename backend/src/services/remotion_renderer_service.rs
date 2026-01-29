@@ -66,15 +66,15 @@ impl RemotionRendererService {
         info!("[RemotionRenderer] Compilation du worker Remotion en cours...");
 
         // ✅ AMÉLIORÉ: Vérifier d'abord si npm est disponible avant d'essayer de l'exécuter
-        let npm_check = Command::new("npm")
-            .arg("--version")
-            .output()
-            .await;
+        let npm_check = Command::new("npm").arg("--version").output().await;
 
         match npm_check {
             Ok(output) if output.status.success() => {
                 let npm_version = String::from_utf8_lossy(&output.stdout);
-                info!("[RemotionRenderer] npm détecté (version: {})", npm_version.trim());
+                info!(
+                    "[RemotionRenderer] npm détecté (version: {})",
+                    npm_version.trim()
+                );
             }
             _ => {
                 warn!("[RemotionRenderer] ⚠️ npm non disponible dans l'environnement. Le build automatique ne peut pas être effectué.");
@@ -102,7 +102,8 @@ impl RemotionRendererService {
                 status.code()
             );
             return Err(AppError::Internal(
-                "Échec de build du worker Remotion. Vérifiez les logs npm pour plus de détails.".to_string(),
+                "Échec de build du worker Remotion. Vérifiez les logs npm pour plus de détails."
+                    .to_string(),
             ));
         }
 
@@ -203,19 +204,22 @@ impl RemotionRendererService {
         if !output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
-            
+
             // ✅ AMÉLIORÉ: Détecter les erreurs GPU et suggérer un fallback
-            let is_gpu_error = stderr.contains("GPU") || stderr.contains("gpu") || 
-                              stderr.contains("CUDA") || stderr.contains("cuda") ||
-                              stderr.contains("NVIDIA") || stderr.contains("nvidia");
-            
+            let is_gpu_error = stderr.contains("GPU")
+                || stderr.contains("gpu")
+                || stderr.contains("CUDA")
+                || stderr.contains("cuda")
+                || stderr.contains("NVIDIA")
+                || stderr.contains("nvidia");
+
             if is_gpu_error && self.config.enable_gpu {
                 warn!(
                     "[RemotionRenderer] ⚠️ Erreur GPU détectée pour job={}. Remotion devrait basculer automatiquement sur CPU.",
                     job_id
                 );
             }
-            
+
             error!(
                 "[RemotionRenderer] Échec rendu Remotion job={}: status={:?}\nstdout={}\nstderr={}",
                 job_id,

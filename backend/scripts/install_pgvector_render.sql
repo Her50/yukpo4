@@ -64,3 +64,4 @@ SELECT
             '⚠️ pgvector n''est pas disponible - Utilisation de TEXT[] pour le matching'
     END as status;
 
+

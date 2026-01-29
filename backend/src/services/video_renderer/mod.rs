@@ -137,15 +137,25 @@ impl RpcRenderExecutor {
             .timeout(Duration::from_secs(120))
             .build()
             .expect("Impossible de construire le client HTTP pour le renderer RPC");
-        
+
         // ✅ LOG: Confirmer l'initialisation avec ou sans token
         if token.is_some() {
-            info!("[RpcRenderExecutor] ✅ Initialisé avec authentification token pour {}", endpoint);
+            info!(
+                "[RpcRenderExecutor] ✅ Initialisé avec authentification token pour {}",
+                endpoint
+            );
         } else {
-            info!("[RpcRenderExecutor] ✅ Initialisé sans authentification pour {}", endpoint);
+            info!(
+                "[RpcRenderExecutor] ✅ Initialisé sans authentification pour {}",
+                endpoint
+            );
         }
-        
-        Self { client, endpoint, token }
+
+        Self {
+            client,
+            endpoint,
+            token,
+        }
     }
 }
 
@@ -205,12 +215,12 @@ impl VideoRenderExecutor for RpcRenderExecutor {
 
         let endpoint = format!("{}/render", self.endpoint.trim_end_matches('/'));
         let mut request = self.client.post(&endpoint).json(&payload);
-        
+
         // ✅ NOUVEAU: Ajouter le token d'authentification si disponible
         if let Some(token) = &self.token {
             request = request.header("Authorization", format!("Bearer {}", token));
         }
-        
+
         let send_future = request.send();
 
         let response = match timeout(timeout_duration, send_future).await {
@@ -335,8 +345,8 @@ impl VideoRenderDispatcher {
         let mut fallback: Option<Arc<dyn VideoRenderExecutor>> = None;
 
         if let Some(endpoint) = config.rpc_endpoint.clone() {
-            let rpc_executor =
-                Arc::new(RpcRenderExecutor::new(endpoint, config.rpc_token.clone())) as Arc<dyn VideoRenderExecutor>;
+            let rpc_executor = Arc::new(RpcRenderExecutor::new(endpoint, config.rpc_token.clone()))
+                as Arc<dyn VideoRenderExecutor>;
             primary = Some(rpc_executor);
         }
 

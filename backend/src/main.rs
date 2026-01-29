@@ -109,7 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut last_error = None;
         let mut connected = false;
         let mut pool_opt = None;
-        
+
         // Retry jusqu'à 3 fois avec backoff exponentiel
         for attempt in 1..=3 {
             match PgPoolOptions::new()
@@ -190,10 +190,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        
+
         if !connected {
             let e = last_error.unwrap();
-            log::error!("❌ Impossible de se connecter à PostgreSQL après 3 tentatives: {}", e);
+            log::error!(
+                "❌ Impossible de se connecter à PostgreSQL après 3 tentatives: {}",
+                e
+            );
             log::error!(
                 "   URL utilisée: {}...",
                 db_url.chars().take(30).collect::<String>()
@@ -206,7 +209,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             return Err(Box::new(e) as Box<dyn std::error::Error>);
         }
-        
+
         pool_opt.unwrap()
     };
 
@@ -240,7 +243,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Box::pin(async move {
                 // ✅ CRITIQUE: Configuration tolérante - on essaie de configurer mais on n'échoue JAMAIS
                 // Même si la configuration échoue, la connexion est valide et sera ajoutée au pool
-                
+
                 // ✅ Configuration 1: statement_timeout (optionnel - si échoue, on continue)
                 if let Err(e) = sqlx::query("SET statement_timeout = 0")
                     .execute(&mut *conn)
@@ -256,12 +259,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         );
                     }
                 }
-                
+
                 // ✅ Configuration 2: idle_in_transaction_session_timeout (optionnel)
                 let _ = sqlx::query("SET idle_in_transaction_session_timeout = '1800s'")
                     .execute(&mut *conn)
                     .await;
-                
+
                 // ✅ CRITIQUE: Toujours retourner Ok() pour que la connexion soit ajoutée au pool
                 Ok(())
             })
@@ -370,7 +373,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
                     AND table_name = 'users'
-                )"
+                )",
             )
             .fetch_one(&pg_pool)
             .await
@@ -381,7 +384,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
                     AND table_name = 'services'
-                )"
+                )",
             )
             .fetch_one(&pg_pool)
             .await
@@ -389,8 +392,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if !users_exists || !services_exists {
                 log::error!("❌ ERREUR CRITIQUE: Les tables de base n'ont pas été créées par les migrations SQLx standard");
-                log::error!("❌ users existe: {}, services existe: {}", users_exists, services_exists);
-                log::error!("❌ Les migrations automatiques ne pourront pas s'exécuter correctement");
+                log::error!(
+                    "❌ users existe: {}, services existe: {}",
+                    users_exists,
+                    services_exists
+                );
+                log::error!(
+                    "❌ Les migrations automatiques ne pourront pas s'exécuter correctement"
+                );
             } else {
                 log::info!("✅ Tables de base (users, services) vérifiées après migrations SQLx");
             }
@@ -400,7 +409,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
             if error_str.contains("migration 0 was previously applied but has been modified") {
                 log::warn!("⚠️ Migration 0 modifiée détectée (ignorée) - Si nécessaire, supprimez l'entrée de _sqlx_migrations pour la migration 0");
-                log::info!("ℹ️ Continuation du démarrage malgré l'avertissement de migration modifiée");
+                log::info!(
+                    "ℹ️ Continuation du démarrage malgré l'avertissement de migration modifiée"
+                );
             } else {
                 log::error!(
                     "❌ ERREUR CRITIQUE lors de l'application des migrations SQLx standard: {}",
@@ -417,27 +428,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CORRIGÉ RACINE 2025-12-12: Désactiver auto_migrations par défaut en production
     // Le problème: Les blocs DO $$ lourds dans auto_migrations causent des crashes PostgreSQL
     // Solution: Les rendre optionnelles via variable d'environnement (désactivées par défaut)
-    let enable_auto_migrations_raw = env::var("ENABLE_AUTO_MIGRATIONS")
-        .unwrap_or_else(|_| "false".to_string());
-    
+    let enable_auto_migrations_raw =
+        env::var("ENABLE_AUTO_MIGRATIONS").unwrap_or_else(|_| "false".to_string());
+
     // Parser de manière tolérante (trim, lowercase, accepte "true", "1", "yes", etc.)
     let enable_auto_migrations = {
         let trimmed = enable_auto_migrations_raw.trim().to_lowercase();
         trimmed == "true" || trimmed == "1" || trimmed == "yes" || trimmed == "on"
     };
-    
-    log::info!("🔍 ENABLE_AUTO_MIGRATIONS: raw='{}', parsed={}", enable_auto_migrations_raw, enable_auto_migrations);
-    
+
+    log::info!(
+        "🔍 ENABLE_AUTO_MIGRATIONS: raw='{}', parsed={}",
+        enable_auto_migrations_raw,
+        enable_auto_migrations
+    );
+
     if enable_auto_migrations {
         // ✅ CORRIGÉ 2026-01-28: Vérifier que les tables de base existent AVANT d'exécuter les migrations automatiques
         log::info!("🔍 Vérification des tables de base avant migrations automatiques...");
-        
+
         let users_exists: bool = sqlx::query_scalar(
             "SELECT EXISTS (
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
                 AND table_name = 'users'
-            )"
+            )",
         )
         .fetch_one(&pg_pool)
         .await
@@ -448,7 +463,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
                 AND table_name = 'services'
-            )"
+            )",
         )
         .fetch_one(&pg_pool)
         .await
@@ -456,13 +471,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if !users_exists || !services_exists {
             log::error!("❌ ERREUR CRITIQUE: Impossible d'exécuter les migrations automatiques");
-            log::error!("❌ Tables de base manquantes: users={}, services={}", users_exists, services_exists);
+            log::error!(
+                "❌ Tables de base manquantes: users={}, services={}",
+                users_exists,
+                services_exists
+            );
             log::error!("❌ Les migrations SQLx standard doivent être appliquées AVANT les migrations automatiques");
             log::error!("❌ Vérifiez que:");
             log::error!("   1. Les migrations SQLx standard ont été exécutées avec succès");
-            log::error!("   2. La table _sqlx_migrations existe et contient les migrations appliquées");
+            log::error!(
+                "   2. La table _sqlx_migrations existe et contient les migrations appliquées"
+            );
             log::error!("   3. Les fichiers de migration dans backend/migrations/ sont corrects");
-            log::error!("❌ Les migrations automatiques sont ANNULÉES pour éviter des erreurs en cascade");
+            log::error!(
+                "❌ Les migrations automatiques sont ANNULÉES pour éviter des erreurs en cascade"
+            );
         } else {
             log::info!("✅ Tables de base (users, services) vérifiées - Exécution des migrations automatiques...");
             yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
@@ -591,20 +614,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (redis_client, redis_available_for_ws) = match RedisClient::open(redis_url.clone()) {
         Ok(client) => {
             // ✅ CORRIGÉ: Utiliser le helper Redis avec retry pour tester la connexion
-            use yukpomnang_backend::utils::redis_helper;
             use tokio::time::{timeout, Duration};
+            use yukpomnang_backend::utils::redis_helper;
 
             // ✅ CORRIGÉ: Ajouter un timeout de 10 secondes pour éviter que l'application bloque indéfiniment
             // get_redis_connection a maintenant un timeout de 3s par tentative (3 tentatives = max 9s)
             // Ce timeout de 10s est une sécurité supplémentaire
             let (is_available, error_detail) = match timeout(
                 Duration::from_secs(10),
-                redis_helper::check_redis_health_with_error(&client)
-            ).await {
+                redis_helper::check_redis_health_with_error(&client),
+            )
+            .await
+            {
                 Ok(result) => result,
                 Err(_) => {
                     log::warn!("⚠️ Redis: Timeout de connexion (10s) - Redis non accessible");
-                    (false, Some("Connection timeout after 10 seconds".to_string()))
+                    (
+                        false,
+                        Some("Connection timeout after 10 seconds".to_string()),
+                    )
                 }
             };
             match is_available {
@@ -695,17 +723,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ 2025-12-30: Créer les index MongoDB pour optimiser les requêtes /api/services/{id}/stats et /api/services/{id}/reviews
     // ✅ NOUVEAU 2026-01-02: Optimisation critique add_product_to_service_jsonb_v2
-    match yukpomnang_backend::migrations::auto_migrate::ensure_add_product_optimization(&app_state.pg).await {
+    match yukpomnang_backend::migrations::auto_migrate::ensure_add_product_optimization(
+        &app_state.pg,
+    )
+    .await
+    {
         Ok(_) => {
             log::info!("✅ Optimisation add_product_to_service_jsonb_v2 appliquée");
         }
         Err(e) => {
-            log::warn!("⚠️ Erreur optimisation add_product_to_service_jsonb_v2: {}", e);
+            log::warn!(
+                "⚠️ Erreur optimisation add_product_to_service_jsonb_v2: {}",
+                e
+            );
         }
     }
 
     // ✅ NOUVEAU 2026-01-02: Création de la queue asynchrone pour création de produits
-    match yukpomnang_backend::migrations::auto_migrate::ensure_product_creation_queue(&app_state.pg).await {
+    match yukpomnang_backend::migrations::auto_migrate::ensure_product_creation_queue(&app_state.pg)
+        .await
+    {
         Ok(_) => {
             log::info!("✅ Table product_creation_queue créée/appliquée");
         }
@@ -723,8 +760,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log::warn!("⚠️ Erreur création cache_table: {}", e);
         }
     }
-    
-    match yukpomnang_backend::migrations::auto_migrate::ensure_mongodb_indexes(app_state.mongo_history.clone()).await {
+
+    match yukpomnang_backend::migrations::auto_migrate::ensure_mongodb_indexes(
+        app_state.mongo_history.clone(),
+    )
+    .await
+    {
         Ok(_) => log::info!("✅ Index MongoDB créés avec succès"),
         Err(e) => log::warn!("⚠️ Erreur création index MongoDB (non bloquant): {}", e),
     }
@@ -790,7 +831,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ NOUVEAU 2026-01-02: Démarrer le worker de la queue de création de produits
     use yukpomnang_backend::services::product_creation_queue::ProductCreationQueueService;
-    let queue_service = Arc::new(ProductCreationQueueService::new(Arc::new(app_state.pg.clone())));
+    let queue_service = Arc::new(ProductCreationQueueService::new(Arc::new(
+        app_state.pg.clone(),
+    )));
     queue_service.clone().start_worker();
     log::info!("✅ Worker de création de produits démarré");
 
@@ -803,7 +846,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ NOUVEAU : Démarrer la tâche de répétition des notifications de livraison
     let app_state_notifications = app_state.clone();
     tokio::spawn(async move {
-        tasks::delivery_notification_repeat::start_delivery_notification_repeat_task(app_state_notifications).await;
+        tasks::delivery_notification_repeat::start_delivery_notification_repeat_task(
+            app_state_notifications,
+        )
+        .await;
     });
 
     // ✅ NOUVEAU: Worker de traitement des réservations Flash Sales
@@ -939,7 +985,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             pool_long_ops_search_cache,
             pool_clone_search_cache,
             refresh_lock_search, // ✅ Passer le mutex global pour sérialiser
-        ).await;
+        )
+        .await;
     });
 
     // ✅ CORRIGÉ RACINE 2025-12-11: Refresh automatique de la vue matérialisée Black Friday
@@ -993,7 +1040,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         SELECT 1 FROM pg_indexes 
                         WHERE tablename = 'global_promo_catalog_cache' 
                         AND indexname = 'idx_global_promo_catalog_cache_entry_id'
-                    )"
+                    )",
                 )
                 .fetch_one(&*pool_clone_blackfriday)
                 .await
@@ -1004,10 +1051,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 } else {
                     let start_time = std::time::Instant::now();
                     // ✅ CORRIGÉ RACINE: Utiliser pool séparé pour REFRESH (opération longue)
-                    if let Err(e) =
-                        sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY global_promo_catalog_cache")
-                            .execute(&*pool_for_refresh)
-                            .await
+                    if let Err(e) = sqlx::query(
+                        "REFRESH MATERIALIZED VIEW CONCURRENTLY global_promo_catalog_cache",
+                    )
+                    .execute(&*pool_for_refresh)
+                    .await
                     {
                         let error_str = e.to_string().to_lowercase();
                         // ✅ CORRECTION: Ignorer silencieusement les erreurs attendues

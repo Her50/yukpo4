@@ -1,13 +1,13 @@
 // ✅ Phase 10 - Routes de santé et vérification des services
 // Vérifie automatiquement le support Google Maps Distance Matrix API
 
-use axum::{extract::State, response::IntoResponse, Json, Router};
 use axum::extract::Extension;
+use axum::{extract::State, response::IntoResponse, Json, Router};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use crate::state::AppState;
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::state::AppState;
 
 pub fn health_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
@@ -183,26 +183,29 @@ async fn check_cache_status(State(state): State<Arc<AppState>>) -> impl IntoResp
 async fn check_redis_direct(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     use crate::utils::redis_helper;
     use std::time::Instant;
-    
+
     // ✅ CORRIGÉ: Gestion d'erreur robuste à chaque étape pour éviter les panics
     // Les panics peuvent causer des 404 dans certains environnements (AWS/Render)
     let start_time = Instant::now();
-    
+
     // Test 1: PING Redis avec gestion d'erreur robuste
-    let (ping_ok, ping_error) = redis_helper::check_redis_health_with_error(&state.redis_client).await;
+    let (ping_ok, ping_error) =
+        redis_helper::check_redis_health_with_error(&state.redis_client).await;
     let connection_time_ms = start_time.elapsed().as_millis() as u64;
-    
+
     // Test 2: Test d'écriture/lecture avec gestion d'erreur gracieuse
     let test_key = "health:redis:direct:test";
     let test_value = format!("test_{}", chrono::Utc::now().timestamp());
-    
+
     let write_ok = redis_helper::set_with_retry(
         &state.redis_client,
         test_key,
         &test_value,
         Some(10), // TTL 10 secondes
-    ).await.is_ok();
-    
+    )
+    .await
+    .is_ok();
+
     let read_ok = if write_ok {
         match redis_helper::get_with_retry(&state.redis_client, test_key).await {
             Ok(Some(value)) => value == test_value,
@@ -211,10 +214,10 @@ async fn check_redis_direct(State(state): State<Arc<AppState>>) -> impl IntoResp
     } else {
         false
     };
-    
+
     // Test 3: Nettoyage (ignore les erreurs)
     let _ = redis_helper::delete_with_retry(&state.redis_client, test_key).await;
-    
+
     // Test 4: Test du pool Redis si disponible avec gestion d'erreur
     let pool_ok = if let Some(ref pool) = state.redis_pool {
         match pool.get().await {
@@ -225,12 +228,15 @@ async fn check_redis_direct(State(state): State<Arc<AppState>>) -> impl IntoResp
                     Ok(_) => true,
                     Err(_) => {
                         // Si get échoue, essayer de set/get pour vérifier la connexion
-                        match conn.set::<_, _, String>("__health_check_pool__", "ok").await {
+                        match conn
+                            .set::<_, _, String>("__health_check_pool__", "ok")
+                            .await
+                        {
                             Ok(_) => {
                                 let _ = conn.del::<_, i32>("__health_check_pool__").await;
                                 true
                             }
-                    Err(_) => false,
+                            Err(_) => false,
                         }
                     }
                 }
@@ -240,7 +246,7 @@ async fn check_redis_direct(State(state): State<Arc<AppState>>) -> impl IntoResp
     } else {
         false
     };
-    
+
     let status = if ping_ok && write_ok && read_ok {
         "operational"
     } else if ping_ok {
@@ -248,15 +254,20 @@ async fn check_redis_direct(State(state): State<Arc<AppState>>) -> impl IntoResp
     } else {
         "unavailable"
     };
-    
+
     let message = if ping_ok && write_ok && read_ok {
         format!("✅ Redis opérationnel ({} ms)", connection_time_ms)
     } else if ping_ok {
         "⚠️ Redis répond au PING mais opérations en échec".to_string()
     } else {
-        format!("❌ Redis non accessible: {}", ping_error.clone().unwrap_or_else(|| "Erreur inconnue".to_string()))
+        format!(
+            "❌ Redis non accessible: {}",
+            ping_error
+                .clone()
+                .unwrap_or_else(|| "Erreur inconnue".to_string())
+        )
     };
-    
+
     // ✅ CORRIGÉ: Toujours retourner une réponse valide (pas de 404)
     Json(json!({
         "status": status,
@@ -296,13 +307,13 @@ async fn optional_jwt_auth(
 ) -> axum::response::Response {
     use crate::utils::jwt_manager::decode_jwt;
     use std::env;
-    
+
     // Essayer d'extraire le JWT
     let auth_header = req
         .headers()
         .get("Authorization")
         .and_then(|v| v.to_str().ok());
-    
+
     if let Some(auth_header) = auth_header {
         if let Some(token) = auth_header.strip_prefix("Bearer ") {
             // Essayer de décoder le JWT
@@ -319,7 +330,7 @@ async fn optional_jwt_auth(
             }
         }
     }
-    
+
     // Si pas de JWT ou JWT invalide, continuer sans utilisateur
     req.extensions_mut().insert(None::<AuthenticatedUser>);
     next.run(req).await
@@ -332,23 +343,22 @@ async fn check_diagnostic(
 ) -> impl IntoResponse {
     use crate::utils::redis_helper;
     use std::time::Instant;
-    
+
     let start_time = Instant::now();
-    
+
     // ========== PARTIE 1: Vérification Redis ==========
-    let (redis_ping_ok, redis_error) = redis_helper::check_redis_health_with_error(&state.redis_client).await;
-    
+    let (redis_ping_ok, redis_error) =
+        redis_helper::check_redis_health_with_error(&state.redis_client).await;
+
     // Test d'écriture/lecture Redis
     let test_key = "health:diagnostic:test";
     let test_value = format!("diagnostic_{}", chrono::Utc::now().timestamp());
-    
-    let redis_write_ok = redis_helper::set_with_retry(
-        &state.redis_client,
-        test_key,
-        &test_value,
-        Some(10),
-    ).await.is_ok();
-    
+
+    let redis_write_ok =
+        redis_helper::set_with_retry(&state.redis_client, test_key, &test_value, Some(10))
+            .await
+            .is_ok();
+
     let redis_read_ok = if redis_write_ok {
         match redis_helper::get_with_retry(&state.redis_client, test_key).await {
             Ok(Some(value)) => value == test_value,
@@ -357,9 +367,9 @@ async fn check_diagnostic(
     } else {
         false
     };
-    
+
     let _ = redis_helper::delete_with_retry(&state.redis_client, test_key).await;
-    
+
     let redis_status = if redis_ping_ok && redis_write_ok && redis_read_ok {
         "operational"
     } else if redis_ping_ok {
@@ -367,13 +377,13 @@ async fn check_diagnostic(
     } else {
         "unavailable"
     };
-    
+
     // ========== PARTIE 2: Vérification compte utilisateur ==========
     let mut account_status: Value = json!({
         "authenticated": false,
         "message": "Token JWT non fourni ou invalide (fournissez un header Authorization: Bearer <token> pour vérifier votre compte)"
     });
-    
+
     if let Some(authenticated_user) = user_opt {
         match check_user_account_status(&state, authenticated_user.id).await {
             Ok(status) => {
@@ -403,9 +413,9 @@ async fn check_diagnostic(
             }
         }
     }
-    
+
     let total_time_ms = start_time.elapsed().as_millis() as u64;
-    
+
     Json(json!({
         "timestamp": chrono::Utc::now().to_rfc3339(),
         "diagnostic_time_ms": total_time_ms,
@@ -459,20 +469,18 @@ async fn check_user_account_status(
     struct UserRow {
         tokens_balance: i64,
     }
-    
-    let user = sqlx::query_as::<_, UserRow>(
-        "SELECT tokens_balance FROM users WHERE id = $1"
-    )
-    .bind(user_id)
-    .fetch_optional(&state.pg)
-    .await?;
-    
+
+    let user = sqlx::query_as::<_, UserRow>("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_optional(&state.pg)
+        .await?;
+
     let (user_exists, tokens_balance) = if let Some(u) = user {
         (true, u.tokens_balance)
     } else {
         (false, 0)
     };
-    
+
     // Compter les services
     #[derive(sqlx::FromRow)]
     struct ServiceCountRow {
@@ -480,7 +488,7 @@ async fn check_user_account_status(
         active: i64,
         inactive: i64,
     }
-    
+
     let counts = sqlx::query_as::<_, ServiceCountRow>(
         r#"
         SELECT 
@@ -489,12 +497,12 @@ async fn check_user_account_status(
             COUNT(*) FILTER (WHERE is_active = FALSE)::bigint as inactive
         FROM services
         WHERE user_id = $1
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_one(&state.pg)
     .await?;
-    
+
     Ok(UserAccountStatus {
         user_exists,
         account_active: user_exists && counts.active > 0, // Compte actif si au moins un service actif

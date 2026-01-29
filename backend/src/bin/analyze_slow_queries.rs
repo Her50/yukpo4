@@ -7,27 +7,27 @@ use sqlx::PgPool;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db".to_string());
-    
+
     println!("🔍 Analyse des plans d'exécution des requêtes lentes...\n");
-    
+
     let pool = PgPool::connect(&database_url).await?;
-    
+
     // Requête 1: GROUP BY status sur video_generation_jobs
     println!("📊 1. Analyse: GROUP BY status sur video_generation_jobs");
     let explain_result: Vec<(String,)> = sqlx::query_as(
         "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) 
          SELECT status, COUNT(*)::bigint AS count 
          FROM video_generation_jobs 
-         GROUP BY status"
+         GROUP BY status",
     )
     .fetch_all(&pool)
     .await?;
-    
+
     println!("Plan d'exécution:");
     for row in explain_result {
         println!("{}", row.0);
     }
-    
+
     // Requête 2: COUNT avec updated_at
     println!("\n📊 2. Analyse: COUNT avec updated_at sur video_generation_jobs");
     let explain_result: Vec<(String,)> = sqlx::query_as(
@@ -35,16 +35,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
          SELECT COUNT(*)::bigint AS count 
          FROM video_generation_jobs 
          WHERE status = 'completed' 
-         AND updated_at >= NOW() - INTERVAL '24 hours'"
+         AND updated_at >= NOW() - INTERVAL '24 hours'",
     )
     .fetch_all(&pool)
     .await?;
-    
+
     println!("Plan d'exécution:");
     for row in explain_result {
         println!("{}", row.0);
     }
-    
+
     // Requête 3: Recherche principale
     println!("\n📊 3. Analyse: Requête de recherche principale");
     let explain_result: Vec<(String,)> = sqlx::query_as(
@@ -78,13 +78,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .fetch_all(&pool)
     .await?;
-    
+
     println!("Plan d'exécution:");
     for row in explain_result {
         println!("{}", row.0);
     }
-    
+
     println!("\n✨ Analyse terminée!");
     Ok(())
 }
-

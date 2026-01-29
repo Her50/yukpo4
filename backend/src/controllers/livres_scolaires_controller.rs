@@ -431,7 +431,10 @@ pub async fn analyze_book_image(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<AnalyzeBookImageRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[analyze_book_image] User ID: {}, Image URI fournie", user_id);
+    info!(
+        "[analyze_book_image] User ID: {}, Image URI fournie",
+        user_id
+    );
 
     // Créer un prompt IA pour analyser l'image et extraire les caractéristiques du livre
     let prompt = format!(
@@ -495,13 +498,16 @@ RÉPONSE ATTENDUE (JSON strict) :
         // Si c'est une URL, on pourrait télécharger l'image, mais pour l'instant on utilise juste l'URI
         request.image_uri.clone()
     };
-    
+
     let images = vec![image_base64];
-    let (model_name, response, tokens) = state.ia.predict_multimodal(&prompt, Some(images)).await
+    let (model_name, response, tokens) = state
+        .ia
+        .predict_multimodal(&prompt, Some(images))
+        .await
         .map_err(|e| {
-            error!("[analyze_book_image] Erreur IA multimodale: {}", e);
-            AppError::Internal("Erreur analyse IA multimodale".to_string())
-        })?;
+        error!("[analyze_book_image] Erreur IA multimodale: {}", e);
+        AppError::Internal("Erreur analyse IA multimodale".to_string())
+    })?;
 
     info!(
         "[analyze_book_image] Analyse effectuée avec {} (tokens: {})",

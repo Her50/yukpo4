@@ -13,17 +13,12 @@ use axum::middleware;
 
 pub fn flash_promo_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ Route publique (sans auth) pour les utilisateurs
-    let public_routes = Router::new().route(
-        "/api/flash-promos/active",
-        get(get_active_flash_promos),
-    );
+    let public_routes =
+        Router::new().route("/api/flash-promos/active", get(get_active_flash_promos));
 
     // Routes protégées (avec auth) pour les prestataires
     let protected_routes = Router::new()
-        .route(
-            "/api/flash-promos",
-            post(create_flash_promo),
-        )
+        .route("/api/flash-promos", post(create_flash_promo))
         .route(
             "/api/flash-promos/service/{service_id}",
             get(list_flash_promos),
@@ -39,4 +34,3 @@ pub fn flash_promo_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(protected_routes)
         .with_state(state)
 }
-

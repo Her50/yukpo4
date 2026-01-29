@@ -2,10 +2,10 @@
 // Validation complète des données produit avant insertion
 
 use crate::core::types::{AppError, AppResult};
+use md5;
 use serde_json::Value;
 use sqlx::Row;
 use std::collections::HashSet;
-use md5;
 
 /// Constantes de validation
 mod validation_constants {
@@ -147,9 +147,8 @@ fn validate_product_price(data: &Value, result: &mut ProductValidationResult) {
             if price_num < 0.0 {
                 result.add_error("Le prix ne peut pas être négatif".to_string());
             } else if price_num == 0.0 {
-                result.add_warning(
-                    "Le prix est à zéro, vérifiez que c'est intentionnel".to_string(),
-                );
+                result
+                    .add_warning("Le prix est à zéro, vérifiez que c'est intentionnel".to_string());
             } else if price_num > 1_000_000_000.0 {
                 result.add_error("Le prix est trop élevé (maximum 1 milliard)".to_string());
             }
@@ -157,9 +156,8 @@ fn validate_product_price(data: &Value, result: &mut ProductValidationResult) {
             // ✅ CORRECTION 2025-12-14 : Rendre le prix optionnel pour certains types de produits
             // (échanges, dons, services gratuits, etc.)
             // On accepte l'absence de prix mais on log un avertissement
-            result.add_warning(
-                "Aucun prix spécifié. Le produit sera affiché sans prix.".to_string(),
-            );
+            result
+                .add_warning("Aucun prix spécifié. Le produit sera affiché sans prix.".to_string());
         }
     }
 }

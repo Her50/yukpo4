@@ -288,7 +288,8 @@ pub async fn estimate_video_cost(
     }
 
     // ✅ PHASE 3: Récupérer le produit depuis la table service_products
-    let product = state.products_service
+    let product = state
+        .products_service
         .get_product(service_id, product_index)
         .await?
         .ok_or_else(|| {
@@ -665,7 +666,7 @@ pub async fn generate_product_video(
     }
 
     let primary_product = product.product_data;
-    
+
     // ✅ CORRIGÉ: Récupérer service_data depuis svc.data pour ensure_product_in_lifecycle
     let service_data = svc.data.clone();
 
@@ -1014,12 +1015,12 @@ pub async fn generate_product_video(
             err
         ))
     })?;
-    
+
     info!(
         "[VideoGeneration] ✅ {} média(x) collecté(s) pour la génération (service_id={}, product_index={})",
         media_sources.len(), service_id, product_index
     );
-    
+
     // ✅ NOUVEAU: Logs détaillés pour chaque média collecté
     for (idx, source) in media_sources.iter().enumerate() {
         let path_str = source.path.to_string_lossy();
@@ -1169,7 +1170,7 @@ pub async fn generate_product_video(
     let session_id = Uuid::new_v4();
     let temp_root = storage_root.join("tmp");
     let session_dir = temp_root.join(format!("video_session_{}", session_id));
-    
+
     info!(
         "[VideoGeneration] 📁 Création dossier session: {:?}",
         session_dir
@@ -1184,7 +1185,7 @@ pub async fn generate_product_video(
             err
         ))
     })?;
-    
+
     info!(
         "[VideoGeneration] ✅ Dossier session créé: {:?}",
         session_dir
@@ -1353,7 +1354,7 @@ pub async fn generate_product_video(
             media_sources.len(),
             slide_name
         );
-        
+
         // ✅ VALIDATION PRÉVENTIVE: Vérifier que le fichier source existe
         if !media.path.exists() && !media.path.to_string_lossy().starts_with("http") {
             let error_msg = format!(
@@ -1363,7 +1364,7 @@ pub async fn generate_product_video(
             error!("[VideoGeneration] ❌ {}", error_msg);
             return Err(AppError::Internal(error_msg));
         }
-        
+
         run_ffmpeg(&session_dir, args.clone()).await.map_err(|err| {
             error!(
                 "[VideoGeneration] ❌ Erreur FFmpeg pour slide {}: {}",
@@ -1632,7 +1633,7 @@ pub async fn generate_product_video(
             }
         })
         .collect();
-    
+
     info!(
         "[VideoGeneration] 📊 {} média(x) converti(s) en TimelineMediaItem pour la timeline immersive",
         available_media.len()
@@ -1770,7 +1771,8 @@ pub async fn generate_product_video(
                         Some(format!("job={}", response.job_id)),
                     ));
                     if let Some(job_id) = job_id {
-                        let _ = try_store_progress(&state, job_id, "running", &progress_steps).await;
+                        let _ =
+                            try_store_progress(&state, job_id, "running", &progress_steps).await;
                     }
                     renderer_response = Some(response);
                 }
@@ -2005,7 +2007,7 @@ pub async fn generate_product_video(
     }
 
     let mastered_audio_path = if let Some(service) = state.audio_mastering.clone() {
-            let mastering_dir = session_dir.join("mastering");
+        let mastering_dir = session_dir.join("mastering");
         match service
             .master_audio(&mixed_audio_path, &mastering_dir, job_id)
             .await
@@ -2027,9 +2029,7 @@ pub async fn generate_product_video(
                 None
             }
             Err(err) => {
-                warn!(
-                    "[VideoGeneration] Mastering premium indisponible, fallback local: {err}"
-                );
+                warn!("[VideoGeneration] Mastering premium indisponible, fallback local: {err}");
                 None
             }
         }
@@ -2058,15 +2058,15 @@ pub async fn generate_product_video(
         return Err(AppError::Internal(error_msg));
     }
 
-        // ✅ VALIDATION CRITIQUE: Vérifier que l'audio existe avant muxage
-        if !final_audio_source.exists() {
-            let error_msg = format!(
-                "Fichier audio introuvable avant muxage. Chemin: {:?}",
-                final_audio_source
-            );
-            error!("[VideoGeneration] ❌ {}", error_msg);
-            return Err(AppError::Internal(error_msg));
-        }
+    // ✅ VALIDATION CRITIQUE: Vérifier que l'audio existe avant muxage
+    if !final_audio_source.exists() {
+        let error_msg = format!(
+            "Fichier audio introuvable avant muxage. Chemin: {:?}",
+            final_audio_source
+        );
+        error!("[VideoGeneration] ❌ {}", error_msg);
+        return Err(AppError::Internal(error_msg));
+    }
 
     info!(
         "[VideoGeneration] Muxage vidéo+audio: video={:?}, audio={:?}, output={:?}",
@@ -2510,12 +2510,16 @@ pub async fn generate_product_video(
         AppError::from(err)
     })?;
 
-    info!("[VideoGeneration] ✅ Média enregistré avec ID: {}", inserted.id);
+    info!(
+        "[VideoGeneration] ✅ Média enregistré avec ID: {}",
+        inserted.id
+    );
 
     let distribution_targets = payload.distribute_channels.clone().unwrap_or_default();
 
     // ✅ CORRIGÉ: Rendre schedule_distribution_targets non-bloquant pour éviter les timeouts
-    let schedule_result = schedule_distribution_targets(&state, inserted.id, service_id, &distribution_targets).await;
+    let schedule_result =
+        schedule_distribution_targets(&state, inserted.id, service_id, &distribution_targets).await;
     if let Err(err) = schedule_result {
         warn!(
             "[VideoGeneration] ⚠️ Impossible de planifier les cibles de distribution: {}. La vidéo est créée mais la distribution sera planifiée plus tard.",
@@ -2647,7 +2651,7 @@ pub async fn generate_product_video(
             "[VideoGeneration] ✅ Finalisation du job {} - Statut: completed, media_id: {}",
             job_id, inserted.id
         );
-        
+
         // ✅ AMÉLIORÉ: Gestion d'erreur robuste pour la finalisation du job
         match try_store_progress(&state, job_id, "completed", &result.progress_steps).await {
             Ok(_) => {
@@ -2720,9 +2724,10 @@ async fn gather_media_sources(
 
             info!(
                 "[VideoGeneration] 📊 {} média(x) sélectionné(s) trouvé(s) en base (service_id={})",
-                rows.len(), service_id
+                rows.len(),
+                service_id
             );
-            
+
             for row in rows {
                 let ai_description = row.ai_description.clone();
                 if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
@@ -2744,7 +2749,7 @@ async fn gather_media_sources(
                     );
                 }
             }
-            
+
             info!(
                 "[VideoGeneration] 📦 Total médias collectés après sélection manuelle: {}",
                 collected.len()
@@ -2759,7 +2764,7 @@ async fn gather_media_sources(
             "[VideoGeneration] 🔍 Recherche médias produit - service_id={}, product_index={}",
             service_id, product_index
         );
-        
+
         // ✅ NOUVEAU: D'abord chercher les médias spécifiques au produit
         let rows: Vec<MediaRow> = sqlx::query_as(
             "SELECT id, path, type, ai_description, product_index, media_type
@@ -2783,7 +2788,7 @@ async fn gather_media_sources(
             "[VideoGeneration] 📊 {} média(x) trouvé(s) en base pour le produit spécifique (service_id={}, product_index={})",
             rows.len(), service_id, product_index
         );
-        
+
         // ✅ NOUVEAU: Si aucun média spécifique au produit, fallback vers médias généraux du service
         let mut final_rows = rows;
         if final_rows.is_empty() {
@@ -2806,7 +2811,7 @@ async fn gather_media_sources(
                 error!("[VideoGeneration] Erreur récupération médias généraux service: {err:?}");
                 AppError::from(err)
             })?;
-            
+
             info!(
                 "[VideoGeneration] 📊 {} média(x) généraux trouvé(s) en fallback pour le service (service_id={})",
                 fallback_rows.len(), service_id
@@ -2835,7 +2840,7 @@ async fn gather_media_sources(
                 );
             }
         }
-        
+
         info!(
             "[VideoGeneration] 📦 Total médias collectés après galerie produit: {}",
             collected.len()
@@ -2892,7 +2897,7 @@ async fn gather_media_sources(
                 );
             }
         }
-        
+
         info!(
             "[VideoGeneration] 📦 Total médias collectés après médiathèque service: {}",
             collected.len()
@@ -2942,7 +2947,7 @@ async fn gather_media_sources(
                 );
             }
         }
-        
+
         info!(
             "[VideoGeneration] 📦 Total médias collectés après assets publicité: {}",
             collected.len()
@@ -2953,7 +2958,7 @@ async fn gather_media_sources(
         "[VideoGeneration] ✅ Récupération médias terminée: {} média(x) collecté(s) au total (service_id={}, product_index={})",
         collected.len(), service_id, product_index
     );
-    
+
     collected.truncate(18);
     Ok(collected)
 }
@@ -2965,7 +2970,7 @@ async fn gather_media_sources(
 /// 3. Chemins locaux absolus → convertis en {API_BASE_URL}/api/media/files/{path_relatif}
 fn media_source_to_url(media_source: &MediaSource) -> Option<String> {
     let path_str = media_source.path.to_string_lossy();
-    
+
     // ✅ CAS 1: Si c'est déjà une URL HTTP/HTTPS (S3/CDN), la retourner telle quelle
     // Les médias sauvegardés avec MediaStorageService ont leur storage_path CDN dans la DB
     if path_str.starts_with("http://") || path_str.starts_with("https://") {
@@ -2975,14 +2980,14 @@ fn media_source_to_url(media_source: &MediaSource) -> Option<String> {
         );
         return Some(path_str.to_string());
     }
-    
+
     // ✅ CAS 2 & 3: Chemins locaux (relatifs ou absolus) → convertir en URL API
-    
+
     // Construire l'URL depuis le path local
-    let api_base_url = std::env::var("API_BASE_URL")
-        .unwrap_or_else(|_| std::env::var("UPLOAD_BASE_URL")
-            .unwrap_or_else(|_| "http://localhost:3000".to_string()));
-    
+    let api_base_url = std::env::var("API_BASE_URL").unwrap_or_else(|_| {
+        std::env::var("UPLOAD_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string())
+    });
+
     // Extraire le chemin relatif depuis le path
     let storage_root = upload_storage_root();
     let relative_path = if let Ok(stripped) = media_source.path.strip_prefix(&storage_root) {
@@ -2993,20 +2998,25 @@ fn media_source_to_url(media_source: &MediaSource) -> Option<String> {
         // Si le path ne commence pas par storage_root ou "uploads", utiliser le path tel quel
         &media_source.path
     };
-    
+
     // Nettoyer le chemin (enlever les backslashes, normaliser)
-    let clean_path = relative_path.to_string_lossy()
+    let clean_path = relative_path
+        .to_string_lossy()
         .replace('\\', "/")
         .trim_start_matches('/')
         .to_string();
-    
-    let media_url = format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path);
-    
+
+    let media_url = format!(
+        "{}/api/media/files/{}",
+        api_base_url.trim_end_matches('/'),
+        clean_path
+    );
+
     info!(
         "[media_source_to_url] ✅ URL construite: media_id={:?}, path_db={:?}, url={}",
         media_source.id, path_str, media_url
     );
-    
+
     Some(media_url)
 }
 
@@ -3026,7 +3036,7 @@ fn row_to_media_source(id: i32, path: &str, ai_description: Option<String>) -> O
             ai_description,
         });
     }
-    
+
     // Pour les chemins locaux, construire le chemin absolu
     let absolute = {
         let p = PathBuf::from(path);
@@ -3065,7 +3075,9 @@ fn row_to_media_source(id: i32, path: &str, ai_description: Option<String>) -> O
         }
         debug!(
             "[VideoGeneration] ✅ Média valide: media_id={}, path={:?}, size={} bytes",
-            id, absolute, metadata.len()
+            id,
+            absolute,
+            metadata.len()
         );
     }
 
@@ -3392,7 +3404,7 @@ async fn append_video_to_service_data(
     let video_url_clone = video_url.clone();
     let subtitle_url_clone = subtitle_url.clone();
     let variant_urls_clone: Vec<(String, String)> = variant_urls.iter().cloned().collect();
-    
+
     // Mettre à jour service_products.product_data->'videos' en utilisant jsonb_set
     let update_service_products_result = crate::utils::db_retry::retry_query(
         &pool,
@@ -3510,7 +3522,7 @@ async fn append_video_to_service_data(
         10, // 10 tentatives max avec backoff adaptatif pour TLS
     )
     .await;
-    
+
     if let Err(err) = update_service_products_result {
         warn!(
             "[VideoGeneration] ⚠️ Erreur mise à jour service_products (après retries): {}. La vidéo est sauvegardée dans services.data mais pas dans service_products.product_data.",
@@ -3543,7 +3555,7 @@ async fn append_video_variants_to_service_data(
 
     if let Some(row) = product_row {
         let mut product_data = row.product_data;
-        
+
         if let Some(obj) = product_data.as_object_mut() {
             let mut current_variants = match obj.get_mut("videos_variants") {
                 Some(Value::Array(existing)) => existing.clone(),
@@ -3569,7 +3581,7 @@ async fn append_video_variants_to_service_data(
         let service_id_clone = service_id;
         let product_index_clone = product_index;
         let pool = state.pg.clone();
-        
+
         crate::utils::db_retry::retry_query(
             &pool,
             || {
@@ -3636,21 +3648,25 @@ async fn run_ffmpeg(working_dir: &Path, args: Vec<String>) -> AppResult<()> {
         }
 
         // ✅ CORRIGÉ 2026-01-12: Amélioration de la détection d'erreurs FFmpeg
-        let error_summary = if stderr.contains("No such file") || stderr.contains("No such file or directory") {
-            "Fichier source introuvable"
-        } else if stderr.contains("Invalid") || stderr.contains("Invalid argument") || stderr.contains("was expected to have exactly") {
-            "Paramètres FFmpeg invalides (syntaxe de filtre incorrecte)"
-        } else if stderr.contains("Permission denied") {
-            "Permission refusée pour accéder au fichier"
-        } else if stderr.contains("codec") || stderr.contains("Codec") {
-            "Codec non supporté"
-        } else if stderr.contains("filter") || stderr.contains("filtergraph") {
-            "Erreur de filtre vidéo (syntaxe incorrecte)"
-        } else if stderr.contains("timeout") || stderr.contains("Timeout") {
-            "Timeout lors de la génération"
-        } else {
-            "Erreur inconnue FFmpeg"
-        };
+        let error_summary =
+            if stderr.contains("No such file") || stderr.contains("No such file or directory") {
+                "Fichier source introuvable"
+            } else if stderr.contains("Invalid")
+                || stderr.contains("Invalid argument")
+                || stderr.contains("was expected to have exactly")
+            {
+                "Paramètres FFmpeg invalides (syntaxe de filtre incorrecte)"
+            } else if stderr.contains("Permission denied") {
+                "Permission refusée pour accéder au fichier"
+            } else if stderr.contains("codec") || stderr.contains("Codec") {
+                "Codec non supporté"
+            } else if stderr.contains("filter") || stderr.contains("filtergraph") {
+                "Erreur de filtre vidéo (syntaxe incorrecte)"
+            } else if stderr.contains("timeout") || stderr.contains("Timeout") {
+                "Timeout lors de la génération"
+            } else {
+                "Erreur inconnue FFmpeg"
+            };
 
         return Err(AppError::Internal(format!(
             "La génération de la vidéo a échoué (FFmpeg): {}. Code de sortie: {}. Vérifiez les logs pour plus de détails.",
@@ -4204,7 +4220,10 @@ async fn generate_additional_variant(
     // Stocker la variante dans le système de stockage
     let storage_key = format!(
         "services/{}/products/{}/videos/variant_{}_{}.mp4",
-        service_id, product_index, format_label, Uuid::new_v4()
+        service_id,
+        product_index,
+        format_label,
+        Uuid::new_v4()
     );
 
     let stored_variant = state
@@ -4216,10 +4235,7 @@ async fn generate_additional_variant(
                 "[VideoGeneration] ❌ Impossible de stocker la variante '{}': {err:?}",
                 format_label
             );
-            AppError::Internal(format!(
-                "Impossible de stocker la variante vidéo: {}",
-                err
-            ))
+            AppError::Internal(format!("Impossible de stocker la variante vidéo: {}", err))
         })?;
 
     // Nettoyer le fichier temporaire
@@ -4251,7 +4267,10 @@ async fn generate_additional_variant(
     .bind(service_id)
     .bind(&stored_variant.storage_path)
     .bind(file_size as i64)
-    .bind(format!("Variante vidéo {} ({}x{})", format_label, target_width, target_height))
+    .bind(format!(
+        "Variante vidéo {} ({}x{})",
+        format_label, target_width, target_height
+    ))
     .bind(&vec![
         "video".to_string(),
         "variant".to_string(),
@@ -4469,11 +4488,11 @@ fn sanitize_drawtext_text(text: &str) -> String {
     // ✅ CORRECTION 2026-01-13: Échappement correct pour FFmpeg drawtext avec guillemets simples
     // Dans FFmpeg, avec des guillemets simples text='...', les apostrophes doivent être DOUBLÉES
     // Exemple: l'hiver → l''hiver (pas l\'hiver)
-    text.replace('\'', "''")     // Doubler les apostrophes (règle FFmpeg pour guillemets simples)
-        .replace('\\', "\\\\")   // Échapper les backslashes
-        .replace(':', "\\:")     // Échapper les deux-points (séparateur de paramètres FFmpeg)
-        .replace('\n', "\\n")    // Échapper les retours à la ligne
-        .replace('\r', "")       // Supprimer les retours chariot
+    text.replace('\'', "''") // Doubler les apostrophes (règle FFmpeg pour guillemets simples)
+        .replace('\\', "\\\\") // Échapper les backslashes
+        .replace(':', "\\:") // Échapper les deux-points (séparateur de paramètres FFmpeg)
+        .replace('\n', "\\n") // Échapper les retours à la ligne
+        .replace('\r', "") // Supprimer les retours chariot
 }
 
 fn derive_product_identifier(product: &Value, service_id: i32, product_index: i32) -> String {

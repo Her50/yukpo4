@@ -117,3 +117,4 @@ Si l'erreur "Illegal instruction" persiste après cette correction :
 
 **Confiance** : 🟢 **Très élevée** - Cette correction devrait résoudre le problème "Illegal instruction".
 
+

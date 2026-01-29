@@ -1,26 +1,25 @@
 // Script pour appliquer la migration des colonnes partner_status et partner_type à la table users
-use std::env;
 use sqlx::PgPool;
+use std::env;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
-    
-    let db_url = env::var("DATABASE_URL")
-        .map_err(|e| format!("DATABASE_URL manquante: {}", e))?;
-    
+
+    let db_url = env::var("DATABASE_URL").map_err(|e| format!("DATABASE_URL manquante: {}", e))?;
+
     // Ajouter sslmode=require pour Render PostgreSQL
     let mut db_url = db_url;
     if !db_url.contains("sslmode=") {
         let separator = if db_url.contains('?') { "&" } else { "?" };
         db_url.push_str(&format!("{}sslmode=require", separator));
     }
-    
+
     println!("🔌 Connexion à la base de données...");
     let pool = PgPool::connect(&db_url).await?;
-    
+
     println!("📦 Application de la migration partner_status et partner_type pour users...");
-    
+
     // Exécuter les migrations une par une
     let steps = vec![
         (
@@ -62,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "CREATE INDEX IF NOT EXISTS idx_users_partner_status ON users(partner_status) WHERE partner_status IS NOT NULL;",
         ),
     ];
-    
+
     for (step_name, sql) in steps {
         println!("🔄 Exécution: {}...", step_name);
         match sqlx::query(sql).execute(&pool).await {
@@ -72,9 +71,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => {
                 let error_msg = e.to_string();
                 // Ignorer les erreurs "already exists" qui sont normales
-                if error_msg.contains("already exists") 
+                if error_msg.contains("already exists")
                     || error_msg.contains("duplicate")
-                    || error_msg.contains("does not exist") {
+                    || error_msg.contains("does not exist")
+                {
                     println!("ℹ️  {} - Déjà appliqué", step_name);
                 } else {
                     eprintln!("❌ Erreur lors de {}:", step_name);
@@ -84,9 +84,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     println!("✅ Migration terminée!");
-    
+
     Ok(())
 }
-

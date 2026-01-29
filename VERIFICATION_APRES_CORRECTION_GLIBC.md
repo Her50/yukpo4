@@ -146,3 +146,4 @@ Si l'erreur GLIBC persiste après cette correction :
 
 **Confiance** : 🟡 **Moyenne** - Les nouvelles tâches démarrent, mais il faut vérifier les logs pour confirmer que l'erreur GLIBC est résolue.
 
+

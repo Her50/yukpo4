@@ -96,25 +96,33 @@ pub async fn chat_ai(
     let system_prompt = if let Some(context) = &payload.context {
         // ✅ NOUVEAU: Détecter le type de contexte et adapter le prompt
         let context_str = serde_json::to_string(context).unwrap_or_default();
-        let context_value: serde_json::Value = serde_json::from_str(&context_str).unwrap_or(serde_json::json!({}));
-        
+        let context_value: serde_json::Value =
+            serde_json::from_str(&context_str).unwrap_or(serde_json::json!({}));
+
         // Si le contexte contient "category": "pharmacie", utiliser un prompt spécialisé
-        if context_value.get("category")
+        if context_value
+            .get("category")
             .and_then(|c| c.as_str())
             .map(|c| c == "pharmacie")
             .unwrap_or(false)
         {
-            let medications = context_value.get("medications")
+            let medications = context_value
+                .get("medications")
                 .and_then(|m| m.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
                 .unwrap_or_default();
-            
+
             let location_info = if let Some(loc) = context_value.get("location") {
                 format!("Localisation: {:?}", loc)
             } else {
                 String::new()
             };
-            
+
             format!(
                 "Tu es un assistant IA spécialisé en pharmacie et médicaments pour Yukpo.\n\
                 Tu dois répondre de manière précise, professionnelle et sécurisée en français.\n\
@@ -139,7 +147,7 @@ pub async fn chat_ai(
     } else {
         "Tu es Yukpo, un assistant intelligent spécialisé dans les services locaux. Réponds de manière utile et concise en français.".to_string()
     };
-    
+
     let user_message = if let Some(context) = payload.context {
         // ✅ SÉCURITÉ: Sanitiser aussi le contexte si présent
         let context_str = serde_json::to_string(&context).unwrap_or_default();

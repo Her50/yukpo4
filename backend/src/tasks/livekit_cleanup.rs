@@ -80,12 +80,21 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
 
                     // ✅ CORRIGÉ: Logger seulement un résumé en info, détails en debug
                     if !diagnostic.server_reachable || !diagnostic.authentication_working {
-                        log::info!("ℹ️ LiveKit non accessible (service optionnel) - Serveur: {}, Auth: {}", 
-                            if diagnostic.server_reachable { "✅" } else { "❌" },
-                            if diagnostic.authentication_working { "✅" } else { "❌" }
+                        log::info!(
+                            "ℹ️ LiveKit non accessible (service optionnel) - Serveur: {}, Auth: {}",
+                            if diagnostic.server_reachable {
+                                "✅"
+                            } else {
+                                "❌"
+                            },
+                            if diagnostic.authentication_working {
+                                "✅"
+                            } else {
+                                "❌"
+                            }
                         );
                     }
-                    
+
                     // Détails complets en debug seulement
                     log::debug!("📊 Résultat du diagnostic LiveKit:");
                     log::debug!(

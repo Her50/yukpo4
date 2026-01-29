@@ -76,8 +76,10 @@ pub async fn get_redis_connection(
         // Timeout de 3 secondes par tentative (3 tentatives * 3s = max 9s)
         match timeout(
             TokioDuration::from_secs(3),
-            client.get_multiplexed_async_connection()
-        ).await {
+            client.get_multiplexed_async_connection(),
+        )
+        .await
+        {
             Ok(Ok(conn)) => {
                 if attempt > 1 {
                     log::info!(
@@ -121,9 +123,12 @@ pub async fn get_redis_connection(
             }
             Err(_) => {
                 // Timeout de la tentative de connexion
-                let timeout_msg = format!("Connection timeout (3s) - tentative {}/{}", attempt, max_retries);
+                let timeout_msg = format!(
+                    "Connection timeout (3s) - tentative {}/{}",
+                    attempt, max_retries
+                );
                 last_error = Some(timeout_msg.clone());
-                
+
                 if attempt < max_retries {
                     // Pas besoin d'attendre après un timeout, on retry immédiatement avec délai réduit
                     if log::log_enabled!(log::Level::Debug) {

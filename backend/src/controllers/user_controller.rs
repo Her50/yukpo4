@@ -31,8 +31,8 @@ pub async fn change_password(
     State(state): State<Arc<AppState>>,
     Json(req): Json<ChangePasswordRequest>,
 ) -> AppResult<Json<ChangePasswordResponse>> {
-    use bcrypt::verify;
     use crate::utils::validation::validate_password_strength;
+    use bcrypt::verify;
 
     info!("Appel change_password pour user_id={}", user.id);
 
@@ -45,30 +45,33 @@ pub async fn change_password(
         password_hash: String,
     }
 
-    let current_hash = sqlx::query_as::<_, PasswordHashRow>(
-        "SELECT password_hash FROM users WHERE id = $1"
-    )
-    .bind(user.id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[change_password] Erreur récupération hash: {e:?}");
-        AppError::Internal("Erreur récupération utilisateur".into())
-    })?;
+    let current_hash =
+        sqlx::query_as::<_, PasswordHashRow>("SELECT password_hash FROM users WHERE id = $1")
+            .bind(user.id)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[change_password] Erreur récupération hash: {e:?}");
+                AppError::Internal("Erreur récupération utilisateur".into())
+            })?;
 
     // Vérifier le mot de passe actuel
     if !verify(&req.current_password, &current_hash.password_hash)? {
-        error!("[change_password] Mot de passe actuel incorrect pour user_id={}", user.id);
-        return Err(AppError::Unauthorized("Mot de passe actuel incorrect".into()));
+        error!(
+            "[change_password] Mot de passe actuel incorrect pour user_id={}",
+            user.id
+        );
+        return Err(AppError::Unauthorized(
+            "Mot de passe actuel incorrect".into(),
+        ));
     }
 
     // Hasher le nouveau mot de passe
     const BCRYPT_COST: u32 = 12;
-    let new_password_hash = bcrypt::hash(&req.new_password, BCRYPT_COST)
-        .map_err(|e| {
-            error!("[change_password] Erreur hachage nouveau mot de passe: {e:?}");
-            AppError::Internal("Erreur lors du hachage du mot de passe".into())
-        })?;
+    let new_password_hash = bcrypt::hash(&req.new_password, BCRYPT_COST).map_err(|e| {
+        error!("[change_password] Erreur hachage nouveau mot de passe: {e:?}");
+        AppError::Internal("Erreur lors du hachage du mot de passe".into())
+    })?;
 
     // Mettre à jour le mot de passe
     sqlx::query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2")
@@ -81,7 +84,10 @@ pub async fn change_password(
             AppError::Internal("Erreur mise à jour mot de passe".into())
         })?;
 
-    info!("[change_password] ✅ Mot de passe mis à jour pour user_id={}", user.id);
+    info!(
+        "[change_password] ✅ Mot de passe mis à jour pour user_id={}",
+        user.id
+    );
 
     Ok(Json(ChangePasswordResponse {
         success: true,
@@ -101,7 +107,7 @@ pub async fn get_user_profile(
                preferred_lang, created_at, updated_at, gps, gps_consent,
                nom, prenom, nom_complet, photo_profil, avatar_url
         FROM users WHERE id = $1
-        "#
+        "#,
     )
     .bind(user.id)
     .fetch_one(&state.pg)
@@ -178,16 +184,14 @@ pub async fn get_user_balance(
     struct BalanceRow {
         tokens_balance: i64,
     }
-    let balance = sqlx::query_as::<_, BalanceRow>(
-        "SELECT tokens_balance FROM users WHERE id = $1"
-    )
-    .bind(user.id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[get_user_balance] Erreur: {e:?}");
-        AppError::Internal("Erreur récupération solde".into())
-    })?;
+    let balance = sqlx::query_as::<_, BalanceRow>("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user.id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[get_user_balance] Erreur: {e:?}");
+            AppError::Internal("Erreur récupération solde".into())
+        })?;
     Ok(Json(UserBalanceResponse {
         tokens_balance: balance.tokens_balance,
     }))
@@ -305,7 +309,7 @@ pub async fn update_gps_location(
                preferred_lang, created_at, updated_at, gps, gps_consent,
                nom, prenom, nom_complet, photo_profil, avatar_url
         FROM users WHERE id = $1
-        "#
+        "#,
     )
     .bind(user.id)
     .fetch_one(&state.pg)
@@ -363,7 +367,7 @@ pub async fn get_user_by_id(
                preferred_lang, created_at, updated_at, gps, gps_consent,
                nom, prenom, nom_complet, photo_profil, avatar_url
         FROM users WHERE id = $1
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_one(&state.pg)

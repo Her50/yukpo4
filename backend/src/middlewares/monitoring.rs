@@ -45,7 +45,9 @@ pub async fn monitoring(req: Request<Body>, next: Next) -> Response {
     }
 
     // Log warning seulement pour requêtes vraiment lentes (2s-5s)
-    if elapsed_ms >= SLOW_REQUEST_THRESHOLD_MS as u128 && elapsed_ms < VERY_SLOW_REQUEST_THRESHOLD_MS as u128 {
+    if elapsed_ms >= SLOW_REQUEST_THRESHOLD_MS as u128
+        && elapsed_ms < VERY_SLOW_REQUEST_THRESHOLD_MS as u128
+    {
         warn!(
             "🐌 [SlowRequest] {} {} -> {} ({} ms) - Requête lente détectée",
             method,
@@ -59,13 +61,13 @@ pub async fn monitoring(req: Request<Body>, next: Next) -> Response {
     // ✅ AUGMENTÉ: Seuil augmenté à 10s pour les endpoints avec images (upload + traitement IA)
     if elapsed_ms >= VERY_SLOW_REQUEST_THRESHOLD_MS as u128 {
         // Vérifier si c'est un endpoint avec images pour ajuster le message
-        let is_image_endpoint = path.contains("/ia/creation-service") 
-            || path.contains("/services/create") 
+        let is_image_endpoint = path.contains("/ia/creation-service")
+            || path.contains("/services/create")
             || path.contains("/products");
-        
+
         // ✅ CORRIGÉ 2025-12-28: Recherche directe peut prendre jusqu'à 15s (requêtes SQL complexes)
         let is_search_endpoint = path.contains("/search/direct") || path.contains("/search/");
-        
+
         if is_image_endpoint && elapsed_ms < 15000 {
             // Pour les endpoints avec images, 7-15s est acceptable (traitement IA + upload)
             log::warn!(

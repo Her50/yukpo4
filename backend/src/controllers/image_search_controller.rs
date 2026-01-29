@@ -4,12 +4,12 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use base64::{Engine as _, engine::general_purpose};
+use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::services::image_search_service::ImageSearchResult;
 use crate::services::hybrid_image_search_service::HybridImageSearchService;
+use crate::services::image_search_service::ImageSearchResult;
 use crate::state::AppState;
 use crate::utils::log::{log_error, log_info};
 
@@ -60,7 +60,8 @@ pub async fn search_by_image(
 
     // Extraire le base64 pur (sans préfixe data:image/...)
     let image_base64 = if request.image_base64.contains("base64,") {
-        request.image_base64
+        request
+            .image_base64
             .split("base64,")
             .nth(1)
             .unwrap_or(&request.image_base64)
@@ -73,7 +74,10 @@ pub async fn search_by_image(
     let image_data = match general_purpose::STANDARD.decode(&image_base64) {
         Ok(data) => data,
         Err(e) => {
-            log_error(&format!("[ImageSearchController] Erreur décodage base64: {}", e));
+            log_error(&format!(
+                "[ImageSearchController] Erreur décodage base64: {}",
+                e
+            ));
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ImageSearchResponse {
@@ -87,14 +91,17 @@ pub async fn search_by_image(
         }
     };
 
-    log_info(&format!("[ImageSearchController] Image décodée: {} octets", image_data.len()));
+    log_info(&format!(
+        "[ImageSearchController] Image décodée: {} octets",
+        image_data.len()
+    ));
 
     // ✅ NOUVEAU: Utiliser HybridImageSearchService au lieu de ImageSearchService
     let search_service = HybridImageSearchService::new(state.pg.clone());
-    
+
     // Récupérer user_id depuis le token si disponible (sinon utiliser 0 pour recherche anonyme)
     let user_id = 0; // TODO: Extraire depuis le token JWT si authentifié
-    
+
     // Recherche selon le type
     let results = match request.search_type.as_str() {
         "hash" => {
@@ -106,8 +113,10 @@ pub async fn search_by_image(
         }
         "signature" | _ => {
             // ✅ Recherche hybride avec analyse IA (défaut)
-            log_info("[ImageSearchController] Utilisation de HybridImageSearchService avec analyse IA");
-            
+            log_info(
+                "[ImageSearchController] Utilisation de HybridImageSearchService avec analyse IA",
+            );
+
             match search_service
                 .search_by_image(
                     &state.ia,
@@ -143,14 +152,17 @@ pub async fn search_by_image(
                         .collect();
                     Ok(converted_results)
                 }
-                Err(e) => Err(e)
+                Err(e) => Err(e),
             }
         }
     };
 
     match results {
         Ok(results) => {
-            log_info(&format!("[ImageSearchController] Trouvé {} résultats", results.len()));
+            log_info(&format!(
+                "[ImageSearchController] Trouvé {} résultats",
+                results.len()
+            ));
             (
                 StatusCode::OK,
                 Json(ImageSearchResponse {
@@ -163,7 +175,10 @@ pub async fn search_by_image(
                 .into_response()
         }
         Err(e) => {
-            log_error(&format!("[ImageSearchController] Erreur recherche: {:?}", e));
+            log_error(&format!(
+                "[ImageSearchController] Erreur recherche: {:?}",
+                e
+            ));
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ImageSearchResponse {
@@ -186,7 +201,8 @@ pub async fn search_product_images(
     log_info("[ImageSearchController] Recherche dans images de produits");
 
     let image_base64 = if request.image_base64.contains("base64,") {
-        request.image_base64
+        request
+            .image_base64
             .split("base64,")
             .nth(1)
             .unwrap_or(&request.image_base64)
@@ -198,7 +214,10 @@ pub async fn search_product_images(
     let image_data = match general_purpose::STANDARD.decode(&image_base64) {
         Ok(data) => data,
         Err(e) => {
-            log_error(&format!("[ImageSearchController] Erreur décodage base64: {}", e));
+            log_error(&format!(
+                "[ImageSearchController] Erreur décodage base64: {}",
+                e
+            ));
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ImageSearchResponse {
@@ -217,7 +236,10 @@ pub async fn search_product_images(
     let signature = match ImageSearchService::generate_image_signature(&image_data) {
         Ok(sig) => sig,
         Err(e) => {
-            log_error(&format!("[ImageSearchController] Erreur génération signature: {:?}", e));
+            log_error(&format!(
+                "[ImageSearchController] Erreur génération signature: {:?}",
+                e
+            ));
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ImageSearchResponse {
@@ -232,11 +254,18 @@ pub async fn search_product_images(
     };
 
     match search_service
-        .search_product_images(&signature, request.similarity_threshold, request.max_results)
+        .search_product_images(
+            &signature,
+            request.similarity_threshold,
+            request.max_results,
+        )
         .await
     {
         Ok(results) => {
-            log_info(&format!("[ImageSearchController] Trouvé {} produits", results.len()));
+            log_info(&format!(
+                "[ImageSearchController] Trouvé {} produits",
+                results.len()
+            ));
             (
                 StatusCode::OK,
                 Json(ImageSearchResponse {
@@ -249,7 +278,10 @@ pub async fn search_product_images(
                 .into_response()
         }
         Err(e) => {
-            log_error(&format!("[ImageSearchController] Erreur recherche: {:?}", e));
+            log_error(&format!(
+                "[ImageSearchController] Erreur recherche: {:?}",
+                e
+            ));
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ImageSearchResponse {
@@ -263,4 +295,3 @@ pub async fn search_product_images(
         }
     }
 }
-

@@ -17,7 +17,7 @@ use std::sync::Arc;
 pub struct CreateFlashPromoRequest {
     pub service_id: i32,
     pub product_indexes: Vec<i32>, // ✅ NOUVEAU: Liste des index de produits (peut être vide pour tous)
-    pub discount_type: String,      // "percentage" | "fixed" | "free"
+    pub discount_type: String,     // "percentage" | "fixed" | "free"
     pub discount_value: Option<f64>, // Pourcentage ou montant fixe
     pub title: String,
     pub description: Option<String>,
@@ -26,7 +26,7 @@ pub struct CreateFlashPromoRequest {
     pub conditions: Option<String>,
     pub availability: Option<String>, // ✅ NOUVEAU: "online" | "live" | "both" (défaut: "online")
     pub live_session_id: Option<uuid::Uuid>, // ✅ NOUVEAU: ID de session live si availability inclut "live"
-    pub stock_cap: Option<i32>, // ✅ NOUVEAU: Limite de stock pour la promotion
+    pub stock_cap: Option<i32>,              // ✅ NOUVEAU: Limite de stock pour la promotion
 }
 
 #[derive(Debug, Serialize, FromRow)]
@@ -41,9 +41,9 @@ pub struct FlashPromoResponse {
     pub starts_at: chrono::DateTime<Utc>,
     pub ends_at: chrono::DateTime<Utc>,
     pub conditions: Option<String>,
-    pub availability: String, // ✅ NOUVEAU: online, live, both
+    pub availability: String,            // ✅ NOUVEAU: online, live, both
     pub live_session_id: Option<String>, // ✅ NOUVEAU: Session live optionnelle
-    pub stock_cap: Option<i32>, // ✅ NOUVEAU: Limite de stock
+    pub stock_cap: Option<i32>,          // ✅ NOUVEAU: Limite de stock
     pub is_active: bool,
     pub created_at: chrono::DateTime<Utc>,
 }
@@ -77,16 +77,15 @@ pub async fn create_flash_promo(
     );
 
     // Vérifier que l'utilisateur est propriétaire du service
-    let service_owner: Option<ServiceOwnerRow> = sqlx::query_as(
-        "SELECT user_id, data FROM services WHERE id = $1",
-    )
-    .bind(payload.service_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        error!("[FlashPromo] Erreur vérification service: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let service_owner: Option<ServiceOwnerRow> =
+        sqlx::query_as("SELECT user_id, data FROM services WHERE id = $1")
+            .bind(payload.service_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| {
+                error!("[FlashPromo] Erreur vérification service: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
     let service_owner = match service_owner {
         Some(owner) => owner,
@@ -183,13 +182,16 @@ pub async fn create_flash_promo(
 
     // ✅ NOUVEAU: Si availability inclut "live", vérifier que live_session_id est fourni
     if (availability == "live" || availability == "both") && payload.live_session_id.is_none() {
-        warn!("[FlashPromo] live_session_id requis pour availability={}", availability);
+        warn!(
+            "[FlashPromo] live_session_id requis pour availability={}",
+            availability
+        );
         // Ne pas bloquer, mais avertir - l'utilisateur peut ajouter la session plus tard
     }
 
     // Créer le flash promotionnel dans le champ promotion du service
     let mut service_data = service_owner.data.clone();
-    
+
     // Initialiser le champ promotion s'il n'existe pas
     if !service_data.get("promotion").is_some() {
         service_data["promotion"] = json!({
@@ -227,17 +229,15 @@ pub async fn create_flash_promo(
     }
 
     // Mettre à jour le service
-    sqlx::query(
-        "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2",
-    )
-    .bind(&service_data)
-    .bind(payload.service_id)
-    .execute(pool)
-    .await
-    .map_err(|e| {
-        error!("[FlashPromo] Erreur mise à jour service: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
+        .bind(&service_data)
+        .bind(payload.service_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            error!("[FlashPromo] Erreur mise à jour service: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     info!("[FlashPromo] Flash promo créé avec succès (GRATUIT)");
 
@@ -257,16 +257,15 @@ pub async fn list_flash_promos(
     let pool = &state.pg;
 
     // Vérifier que l'utilisateur est propriétaire du service
-    let service_owner: Option<ServiceOwnerRow> = sqlx::query_as(
-        "SELECT user_id, data FROM services WHERE id = $1",
-    )
-    .bind(service_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        error!("[FlashPromo] Erreur vérification service: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let service_owner: Option<ServiceOwnerRow> =
+        sqlx::query_as("SELECT user_id, data FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| {
+                error!("[FlashPromo] Erreur vérification service: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
     let service_owner = match service_owner {
         Some(owner) => owner,
@@ -303,16 +302,15 @@ pub async fn delete_flash_promo(
     let pool = &state.pg;
 
     // Vérifier que l'utilisateur est propriétaire du service
-    let service_owner: Option<ServiceOwnerRow> = sqlx::query_as(
-        "SELECT user_id, data FROM services WHERE id = $1",
-    )
-    .bind(service_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        error!("[FlashPromo] Erreur vérification service: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let service_owner: Option<ServiceOwnerRow> =
+        sqlx::query_as("SELECT user_id, data FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| {
+                error!("[FlashPromo] Erreur vérification service: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
     let mut service_data = match service_owner {
         Some(owner) => {
@@ -341,17 +339,15 @@ pub async fn delete_flash_promo(
     }
 
     // Mettre à jour le service
-    sqlx::query(
-        "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2",
-    )
-    .bind(&service_data)
-    .bind(service_id)
-    .execute(pool)
-    .await
-    .map_err(|e| {
-        error!("[FlashPromo] Erreur mise à jour service: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
+        .bind(&service_data)
+        .bind(service_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            error!("[FlashPromo] Erreur mise à jour service: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     info!("[FlashPromo] Flash promo {} supprimé", promo_id);
 
@@ -381,7 +377,10 @@ pub async fn get_active_flash_promos(
         .and_then(|s| s.parse::<i64>().ok())
         .unwrap_or(0);
 
-    info!("[FlashPromo] Récupération flash promos actifs (limit={}, offset={})", limit, offset);
+    info!(
+        "[FlashPromo] Récupération flash promos actifs (limit={}, offset={})",
+        limit, offset
+    );
 
     // ✅ OPTIMISÉ: Pagination pour éviter de charger tous les services en mémoire
     let services_rows = sqlx::query_as::<_, (i32, i32, Value)>(
@@ -393,7 +392,7 @@ pub async fn get_active_flash_promos(
         AND is_active = TRUE
         ORDER BY id
         LIMIT $1 OFFSET $2
-        "#
+        "#,
     )
     .bind(limit)
     .bind(offset)
@@ -442,137 +441,132 @@ pub async fn get_active_flash_promos(
             .unwrap_or_else(Vec::new);
 
         for promo in flash_promos {
-                // Vérifier si la promo est active
-                let is_active = promo
-                    .get("is_active")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+            // Vérifier si la promo est active
+            let is_active = promo
+                .get("is_active")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
 
-                if !is_active {
-                    continue;
-                }
+            if !is_active {
+                continue;
+            }
 
-                // Vérifier les dates
-                let starts_at_str = promo
-                    .get("starts_at")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let ends_at_str = promo
-                    .get("ends_at")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+            // Vérifier les dates
+            let starts_at_str = promo
+                .get("starts_at")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let ends_at_str = promo.get("ends_at").and_then(|v| v.as_str()).unwrap_or("");
 
-                let starts_at = chrono::DateTime::parse_from_rfc3339(starts_at_str)
-                    .ok()
-                    .map(|dt| dt.with_timezone(&Utc));
-                let ends_at = chrono::DateTime::parse_from_rfc3339(ends_at_str)
-                    .ok()
-                    .map(|dt| dt.with_timezone(&Utc));
+            let starts_at = chrono::DateTime::parse_from_rfc3339(starts_at_str)
+                .ok()
+                .map(|dt| dt.with_timezone(&Utc));
+            let ends_at = chrono::DateTime::parse_from_rfc3339(ends_at_str)
+                .ok()
+                .map(|dt| dt.with_timezone(&Utc));
 
-                let is_currently_active = match (starts_at, ends_at) {
-                    (Some(start), Some(end)) => now >= start && now <= end,
-                    _ => false,
-                };
+            let is_currently_active = match (starts_at, ends_at) {
+                (Some(start), Some(end)) => now >= start && now <= end,
+                _ => false,
+            };
 
-                if is_currently_active {
-                    // Enrichir avec les infos du service
-                    let mut enriched_promo = promo.clone();
-                    enriched_promo["service_id"] = json!(service.id);
-                    enriched_promo["service_owner_id"] = json!(service.user_id);
+            if is_currently_active {
+                // Enrichir avec les infos du service
+                let mut enriched_promo = promo.clone();
+                enriched_promo["service_id"] = json!(service.id);
+                enriched_promo["service_owner_id"] = json!(service.user_id);
 
-                    // Récupérer les produits concernés
-                    let product_indexes_value = promo
-                        .get("product_indexes")
-                        .cloned()
-                        .unwrap_or_else(|| Value::Array(Vec::new()));
-                    
-                    let product_indexes_array = product_indexes_value
-                        .as_array()
-                        .cloned()
-                        .unwrap_or_else(Vec::new);
+                // Récupérer les produits concernés
+                let product_indexes_value = promo
+                    .get("product_indexes")
+                    .cloned()
+                    .unwrap_or_else(|| Value::Array(Vec::new()));
 
-                    let produits_value = service
-                        .data
-                        .get("produits")
-                        .and_then(|p| p.get("valeur"))
-                        .cloned()
-                        .unwrap_or_else(|| Value::Array(Vec::new()));
-                    
-                    let produits_array = produits_value
-                        .as_array()
-                        .cloned()
-                        .unwrap_or_else(Vec::new);
+                let product_indexes_array = product_indexes_value
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_else(Vec::new);
 
-                    // ✅ NOUVEAU: Service d'enrichissement pour la livraison
-                    let enrichment_service = ProductEnrichmentService::new(pool.clone());
-                    
-                    // Cloner product_indexes_array pour pouvoir l'utiliser après la boucle
-                    let product_indexes_array_clone = product_indexes_array.clone();
-                    
-                    let mut promo_products: Vec<Value> = Vec::new();
-                    for index_value in product_indexes_array {
-                        if let Some(index) = index_value.as_i64() {
-                            let idx = index as usize;
-                            if idx < produits_array.len() {
-                                let mut product = produits_array[idx].clone();
-                                // ✅ NOUVEAU: Ajouter les infos nécessaires pour l'achat direct
-                                if let Some(product_obj) = product.as_object_mut() {
-                                    product_obj.insert("_service_id".to_string(), json!(service.id));
-                                    product_obj.insert("_product_index".to_string(), json!(idx));
-                                    product_obj.insert("_service_title".to_string(), json!(service.title));
-                                    
-                                    // ✅ NOUVEAU: Enrichir avec la configuration de livraison
-                                    if let Err(e) = enrichment_service
-                                        .enrich_product(service.id, idx as i32, &mut product)
-                                        .await
-                                    {
-                                        warn!(
+                let produits_value = service
+                    .data
+                    .get("produits")
+                    .and_then(|p| p.get("valeur"))
+                    .cloned()
+                    .unwrap_or_else(|| Value::Array(Vec::new()));
+
+                let produits_array = produits_value.as_array().cloned().unwrap_or_else(Vec::new);
+
+                // ✅ NOUVEAU: Service d'enrichissement pour la livraison
+                let enrichment_service = ProductEnrichmentService::new(pool.clone());
+
+                // Cloner product_indexes_array pour pouvoir l'utiliser après la boucle
+                let product_indexes_array_clone = product_indexes_array.clone();
+
+                let mut promo_products: Vec<Value> = Vec::new();
+                for index_value in product_indexes_array {
+                    if let Some(index) = index_value.as_i64() {
+                        let idx = index as usize;
+                        if idx < produits_array.len() {
+                            let mut product = produits_array[idx].clone();
+                            // ✅ NOUVEAU: Ajouter les infos nécessaires pour l'achat direct
+                            if let Some(product_obj) = product.as_object_mut() {
+                                product_obj.insert("_service_id".to_string(), json!(service.id));
+                                product_obj.insert("_product_index".to_string(), json!(idx));
+                                product_obj
+                                    .insert("_service_title".to_string(), json!(service.title));
+
+                                // ✅ NOUVEAU: Enrichir avec la configuration de livraison
+                                if let Err(e) = enrichment_service
+                                    .enrich_product(service.id, idx as i32, &mut product)
+                                    .await
+                                {
+                                    warn!(
                                             "[FlashPromo] Erreur enrichissement livraison pour service {} produit {}: {:?}",
                                             service.id, idx, e
                                         );
-                                        // Continuer même en cas d'erreur
-                                    }
+                                    // Continuer même en cas d'erreur
                                 }
-                                promo_products.push(product);
                             }
+                            promo_products.push(product);
                         }
                     }
-
-                    // ✅ NOUVEAU: Déterminer le titre intelligent
-                    // Si un seul produit : utiliser son nom, sinon le titre du service
-                    let display_title = if promo_products.len() == 1 {
-                        // Un seul produit : utiliser son nom
-                        promo_products[0]
-                            .get("nom_produit")
-                            .and_then(|v| v.as_str())
-                            .or_else(|| {
-                                promo_products[0]
-                                    .get("nom_produit")
-                                    .and_then(|v| v.get("valeur"))
-                                    .and_then(|v| v.as_str())
-                            })
-                            .or_else(|| promo_products[0].get("nom").and_then(|v| v.as_str()))
-                            .unwrap_or("Produit en promotion")
-                            .to_string()
-                    } else {
-                        // Plusieurs produits : utiliser le titre du service
-                        service.title.clone()
-                    };
-
-                    enriched_promo["display_title"] = json!(display_title);
-                    enriched_promo["service_title"] = json!(service.title);
-                    enriched_promo["products"] = json!(promo_products);
-                    enriched_promo["product_count"] = json!(promo_products.len());
-                    
-                    // ✅ NOUVEAU: Ajouter les informations nécessaires pour l'achat direct
-                    // Les produits sont déjà dans "products" avec toutes leurs infos
-                    // Ajouter aussi les index pour référence rapide
-                    enriched_promo["product_indexes"] = json!(product_indexes_array_clone);
-                    
-                    active_promos.push(enriched_promo);
                 }
+
+                // ✅ NOUVEAU: Déterminer le titre intelligent
+                // Si un seul produit : utiliser son nom, sinon le titre du service
+                let display_title = if promo_products.len() == 1 {
+                    // Un seul produit : utiliser son nom
+                    promo_products[0]
+                        .get("nom_produit")
+                        .and_then(|v| v.as_str())
+                        .or_else(|| {
+                            promo_products[0]
+                                .get("nom_produit")
+                                .and_then(|v| v.get("valeur"))
+                                .and_then(|v| v.as_str())
+                        })
+                        .or_else(|| promo_products[0].get("nom").and_then(|v| v.as_str()))
+                        .unwrap_or("Produit en promotion")
+                        .to_string()
+                } else {
+                    // Plusieurs produits : utiliser le titre du service
+                    service.title.clone()
+                };
+
+                enriched_promo["display_title"] = json!(display_title);
+                enriched_promo["service_title"] = json!(service.title);
+                enriched_promo["products"] = json!(promo_products);
+                enriched_promo["product_count"] = json!(promo_products.len());
+
+                // ✅ NOUVEAU: Ajouter les informations nécessaires pour l'achat direct
+                // Les produits sont déjà dans "products" avec toutes leurs infos
+                // Ajouter aussi les index pour référence rapide
+                enriched_promo["product_indexes"] = json!(product_indexes_array_clone);
+
+                active_promos.push(enriched_promo);
             }
         }
+    }
 
     // Trier par date de fin (les plus urgentes en premier)
     active_promos.sort_by(|a, b| {
@@ -593,7 +587,12 @@ pub async fn get_active_flash_promos(
         }
     });
 
-    info!("[FlashPromo] {} flash promos actifs trouvés (limit={}, offset={})", active_promos.len(), limit, offset);
+    info!(
+        "[FlashPromo] {} flash promos actifs trouvés (limit={}, offset={})",
+        active_promos.len(),
+        limit,
+        offset
+    );
 
     Ok(Json(json!({
         "success": true,
@@ -606,4 +605,3 @@ pub async fn get_active_flash_promos(
         }
     })))
 }
-

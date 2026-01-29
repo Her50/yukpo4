@@ -7,7 +7,7 @@ use std::env;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
-    
+
     let database_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL doit être définie dans les variables d'environnement");
 
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 3. Afficher les types après migration
     println!("✅ Migration appliquée avec succès!");
     println!("\n📦 Types de colis disponibles:");
-    
+
     #[derive(sqlx::FromRow)]
     struct ParcelType {
         id: i32,
@@ -64,16 +64,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         display_name: String,
     }
 
-    let types: Vec<ParcelType> = sqlx::query_as(
-        "SELECT id, slug, display_name FROM parcel_types ORDER BY id"
-    )
-    .fetch_all(&pool)
-    .await?;
+    let types: Vec<ParcelType> =
+        sqlx::query_as("SELECT id, slug, display_name FROM parcel_types ORDER BY id")
+            .fetch_all(&pool)
+            .await?;
 
     for parcel_type in types {
-        println!("  ID {}: {} ({})", parcel_type.id, parcel_type.display_name, parcel_type.slug);
+        println!(
+            "  ID {}: {} ({})",
+            parcel_type.id, parcel_type.display_name, parcel_type.slug
+        );
     }
 
     Ok(())
 }
-

@@ -58,14 +58,14 @@ pub async fn search_by_autocomplete_vector(
     // ✅ CORRIGÉ 2025-12-18: Retry avec gestion d'erreur TLS pour requêtes autocomplete
     let mut query_result = Err(AppError::Internal("Initial attempt".to_string()));
     let max_retries = 3;
-    
+
     for attempt in 1..=max_retries {
         query_result = if let Some((lat, lng)) = user_location {
-        // ✅ OPTIMISÉ 2025-12-20: Recherche AVEC GPS utilisant index GIN tsvector (ultra-rapide)
-        // Construire la requête tsquery depuis le vecteur de recherche
-        let search_query = combination_vector.join(" | "); // Format tsquery: "mot1 | mot2 | mot3"
-        
-        sqlx::query(
+            // ✅ OPTIMISÉ 2025-12-20: Recherche AVEC GPS utilisant index GIN tsvector (ultra-rapide)
+            // Construire la requête tsquery depuis le vecteur de recherche
+            let search_query = combination_vector.join(" | "); // Format tsquery: "mot1 | mot2 | mot3"
+
+            sqlx::query(
             r#"
             SELECT DISTINCT ON (s.id)
                 s.id as service_id,
@@ -164,15 +164,15 @@ pub async fn search_by_autocomplete_vector(
         .fetch_all(pool)
         .await
         .map_err(Into::into)
-    } else {
-        // ✅ OPTIMISÉ 2025-12-20: Recherche SANS GPS utilisant index GIN tsvector (ultra-rapide)
-        // Le problème: LIKE '%...%' avec sous-requêtes corrélées = très lent (15 secondes)
-        // Solution: Utiliser tsvector @@ tsquery avec index GIN = instantané (< 100ms)
-        
-        // Construire la requête tsquery depuis le vecteur de recherche
-        let search_query = combination_vector.join(" | "); // Format tsquery: "mot1 | mot2 | mot3"
-        
-        sqlx::query(
+        } else {
+            // ✅ OPTIMISÉ 2025-12-20: Recherche SANS GPS utilisant index GIN tsvector (ultra-rapide)
+            // Le problème: LIKE '%...%' avec sous-requêtes corrélées = très lent (15 secondes)
+            // Solution: Utiliser tsvector @@ tsquery avec index GIN = instantané (< 100ms)
+
+            // Construire la requête tsquery depuis le vecteur de recherche
+            let search_query = combination_vector.join(" | "); // Format tsquery: "mot1 | mot2 | mot3"
+
+            sqlx::query(
             r#"
             SELECT DISTINCT ON (s.id)
                 s.id as service_id,
@@ -253,7 +253,7 @@ pub async fn search_by_autocomplete_vector(
         .await
         .map_err(Into::into)
         };
-        
+
         match &query_result {
             Ok(_) => break, // Succès, sortir de la boucle
             Err(e) => {
@@ -263,7 +263,7 @@ pub async fn search_by_autocomplete_vector(
                     || error_msg.contains("Connection reset")
                     || error_msg.contains("peer closed")
                     || error_msg.contains("communicating with database");
-                
+
                 if is_tls_error && attempt < max_retries {
                     let delay_ms = 100 * attempt; // Backoff: 100ms, 200ms, 300ms
                     log::warn!(
@@ -289,7 +289,7 @@ pub async fn search_by_autocomplete_vector(
             }
         }
     }
-    
+
     let rows = match query_result {
         Ok(rows) => rows,
         Err(e) => {

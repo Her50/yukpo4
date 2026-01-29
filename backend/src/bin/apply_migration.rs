@@ -9,11 +9,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     yukpomnang_backend::init_logging();
 
-    let mut db_url = env::var("DATABASE_URL")
-        .map_err(|e| {
-            eprintln!("❌ DATABASE_URL manquante: {}", e);
-            Box::new(e) as Box<dyn std::error::Error>
-        })?;
+    let mut db_url = env::var("DATABASE_URL").map_err(|e| {
+        eprintln!("❌ DATABASE_URL manquante: {}", e);
+        Box::new(e) as Box<dyn std::error::Error>
+    })?;
 
     // Ajouter sslmode=require si nécessaire
     if !db_url.contains("sslmode=") {
@@ -41,4 +40,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 }
-

@@ -19,22 +19,34 @@ use std::sync::Arc;
 /// ✅ AMÉLIORATION: Gère aussi les JSON tronqués en les complétant
 fn clean_json_response(response: &str) -> String {
     let mut cleaned = response.trim().to_string();
-    
+
     // Enlever les markdown code blocks au début
     if cleaned.starts_with("```json") {
-        cleaned = cleaned.strip_prefix("```json").unwrap_or(&cleaned).trim().to_string();
+        cleaned = cleaned
+            .strip_prefix("```json")
+            .unwrap_or(&cleaned)
+            .trim()
+            .to_string();
     } else if cleaned.starts_with("```") {
-        cleaned = cleaned.strip_prefix("```").unwrap_or(&cleaned).trim().to_string();
+        cleaned = cleaned
+            .strip_prefix("```")
+            .unwrap_or(&cleaned)
+            .trim()
+            .to_string();
     }
-    
+
     // Enlever les markdown code blocks à la fin
     if cleaned.ends_with("```") {
-        cleaned = cleaned.strip_suffix("```").unwrap_or(&cleaned).trim().to_string();
+        cleaned = cleaned
+            .strip_suffix("```")
+            .unwrap_or(&cleaned)
+            .trim()
+            .to_string();
     }
-    
+
     // ✅ NOUVEAU: Compléter le JSON si tronqué
     cleaned = complete_truncated_json(&cleaned);
-    
+
     // Enlever les sauts de ligne en début/fin
     cleaned.trim().to_string()
 }
@@ -43,18 +55,18 @@ fn clean_json_response(response: &str) -> String {
 /// Gère les cas où le JSON est coupé au milieu d'une chaîne, d'un objet ou d'un array
 fn complete_truncated_json(json_str: &str) -> String {
     let mut result = json_str.trim().to_string();
-    
+
     // Vérifier si le JSON est valide d'abord
     if serde_json::from_str::<serde_json::Value>(&result).is_ok() {
         return result; // JSON déjà valide, pas besoin de compléter
     }
-    
+
     // ✅ AMÉLIORATION: Si le JSON se termine par des caractères incomplets, les enlever
     // Enlever les caractères de fin incomplets (virgules, deux-points, etc.)
     while result.ends_with(',') || result.ends_with(':') || result.ends_with(' ') {
         result.pop();
     }
-    
+
     // Compter les accolades et crochets ouverts/fermés correctement
     let mut open_braces: i32 = 0;
     let mut close_braces: i32 = 0;
@@ -62,14 +74,14 @@ fn complete_truncated_json(json_str: &str) -> String {
     let mut close_brackets: i32 = 0;
     let mut in_string = false;
     let mut escape_next = false;
-    
+
     // Parcourir pour compter correctement (en tenant compte des strings)
     for ch in result.chars() {
         if escape_next {
             escape_next = false;
             continue;
         }
-        
+
         match ch {
             '"' => in_string = !in_string,
             '\\' if in_string => escape_next = true,
@@ -80,18 +92,18 @@ fn complete_truncated_json(json_str: &str) -> String {
             _ => {}
         }
     }
-    
+
     // Calculer les structures à fermer
     let braces_to_close = open_braces.saturating_sub(close_braces);
     let brackets_to_close = open_brackets.saturating_sub(close_brackets);
-    
+
     // Si on est dans une string à la fin, fermer la string
     if in_string {
         // Trouver la dernière quote ouverte et fermer la string
         let mut _last_quote_pos = 0;
         let mut in_str = false;
         let mut esc = false;
-        
+
         for (i, ch) in result.char_indices() {
             if esc {
                 esc = false;
@@ -108,19 +120,19 @@ fn complete_truncated_json(json_str: &str) -> String {
                 }
             }
         }
-        
+
         // Si on est toujours dans une string à la fin, fermer la string
         if in_str {
             result.push('"');
         }
     }
-    
+
     // ✅ AMÉLIORÉ: Retirer la dernière virgule si présente (pour éviter erreur de syntaxe)
     let trimmed = result.trim_end();
     if trimmed.ends_with(',') {
         result = trimmed.trim_end_matches(',').trim().to_string();
     }
-    
+
     // ✅ AMÉLIORÉ: Fermer les structures ouvertes dans l'ordre inverse (d'abord les tableaux, puis les objets)
     // Fermer d'abord les tableaux ouverts
     for _ in 0..brackets_to_close {
@@ -130,19 +142,19 @@ fn complete_truncated_json(json_str: &str) -> String {
     for _ in 0..braces_to_close {
         result.push('}');
     }
-    
+
     // ✅ NOUVEAU: Vérifier à nouveau si le JSON est maintenant valide
     // Si toujours invalide, essayer une approche plus agressive
     if serde_json::from_str::<serde_json::Value>(&result).is_err() {
         // Si le JSON est toujours invalide, essayer de trouver où il se termine vraiment
         // et compléter depuis là
         log::warn!("[MenuPlanningAIService] JSON toujours invalide après complétion, tentative de réparation avancée");
-        
+
         // Trouver la dernière structure complète et fermer depuis là
         let mut last_valid_pos = 0;
         let mut test_str = String::new();
         let chars: Vec<char> = result.chars().collect();
-        
+
         for i in (0..chars.len()).rev() {
             test_str.insert(0, chars[i]);
             if serde_json::from_str::<serde_json::Value>(&test_str).is_ok() {
@@ -150,7 +162,7 @@ fn complete_truncated_json(json_str: &str) -> String {
                 break;
             }
         }
-        
+
         if last_valid_pos > 0 && last_valid_pos < result.len() {
             // Prendre seulement la partie valide et compléter
             result = result[..=last_valid_pos].to_string();
@@ -161,7 +173,7 @@ fn complete_truncated_json(json_str: &str) -> String {
             let mut ca: i32 = 0;
             let mut in_s = false;
             let mut esc = false;
-            
+
             for ch in result.chars() {
                 if esc {
                     esc = false;
@@ -177,12 +189,12 @@ fn complete_truncated_json(json_str: &str) -> String {
                     _ => {}
                 }
             }
-            
+
             // Retirer dernière virgule si présente
             if result.trim_end().ends_with(',') {
                 result = result.trim_end().trim_end_matches(',').trim().to_string();
             }
-            
+
             // Fermer les structures
             for _ in 0..(oa.saturating_sub(ca)) {
                 result.push(']');
@@ -192,7 +204,7 @@ fn complete_truncated_json(json_str: &str) -> String {
             }
         }
     }
-    
+
     result
 }
 
@@ -362,11 +374,14 @@ impl MenuPlanningAIService {
                 "[MenuPlanningAIService] Menu incomplet: {} jours au lieu de 7. Complétion automatique...",
                 menu.meals.len()
             );
-            
+
             // Compléter avec des jours manquants
-            let day_names = vec!["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-            let existing_days: std::collections::HashSet<i32> = menu.meals.iter().map(|m| m.day).collect();
-            
+            let day_names = vec![
+                "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche",
+            ];
+            let existing_days: std::collections::HashSet<i32> =
+                menu.meals.iter().map(|m| m.day).collect();
+
             for day in 1..=7 {
                 if !existing_days.contains(&day) {
                     menu.meals.push(DailyMeal {
@@ -396,7 +411,7 @@ impl MenuPlanningAIService {
                     });
                 }
             }
-            
+
             // Trier les repas par jour
             menu.meals.sort_by_key(|m| m.day);
         }
@@ -419,7 +434,7 @@ impl MenuPlanningAIService {
                     complements: vec![],
                 });
             }
-            
+
             // ✅ CRITIQUE: Vérifier que repas_du_jour est présent
             if meal.repas_du_jour.is_none() {
                 log::warn!(
@@ -476,7 +491,7 @@ impl MenuPlanningAIService {
                 total_cost += gouter.estimated_cost.unwrap_or(0.0);
             }
         }
-        
+
         // Mettre à jour le coût total estimé
         menu.total_estimated_cost = Some(total_cost);
 
@@ -490,14 +505,8 @@ impl MenuPlanningAIService {
         week_start: &str,
     ) -> AppResult<WeeklyMenu> {
         // Utiliser la version intelligente avec contextes vides
-        self.generate_weekly_menu_intelligent(
-            profile,
-            week_start,
-            None,
-            None,
-            &[],
-        )
-        .await
+        self.generate_weekly_menu_intelligent(profile, week_start, None, None, &[])
+            .await
     }
 
     /// ✅ NOUVEAU: Construit le prompt intelligent avec contextes dynamiques
@@ -520,7 +529,7 @@ impl MenuPlanningAIService {
         } else {
             profile.dietary_restrictions.join(", ")
         };
-        
+
         // ✅ CONTEXTE 1: Localité culinaire (utiliser les préférences du profil si disponibles)
         let cuisine_str = if !profile.cuisine_styles.is_empty() {
             profile.cuisine_styles.join(", ")
@@ -528,12 +537,12 @@ impl MenuPlanningAIService {
             // Si aucune préférence, l'IA déterminera automatiquement basé sur le pays/ville
             String::new()
         };
-        
+
         let budget_str = profile
             .budget_monthly
             .map(|b| format!("{:.2} FCFA", b))
             .unwrap_or_else(|| "Non spécifié".to_string());
-        
+
         // ✅ AMÉLIORÉ 2026-01-13: Calculer le budget hebdomadaire proratisé (budget_mensuel / 30 jours * 7 jours)
         // Plus précis que l'approximation 4.33 semaines, et cohérent avec le calcul pour la liste de courses
         let weekly_budget_str = profile
@@ -675,7 +684,7 @@ impl MenuPlanningAIService {
         } else {
             "\n\n🔄 VARIATION TEMPORELLE :\n- Aucun menu précédent, liberté totale dans le choix des plats\n- Sois créatif et varié dans tes propositions".to_string()
         };
-        
+
         // ✅ NOUVEAU: Ajouter un timestamp pour forcer la variation même sans historique
         let timestamp_variation = format!(
             "\n\n⏰ CONTEXTE TEMPOREL :\n\
@@ -957,10 +966,9 @@ Tu es l'assistant culinaire intelligent de Yukpo pour la planification de menus.
             profile.total_members,        // 888
             profile.total_members         // 894
         );
-        
+
         prompt
     }
-
 
     /// ✅ NOUVEAU: Nom du mois en français
     fn get_month_name_fr(month: u32) -> &'static str {
@@ -1040,7 +1048,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         // ✅ CORRECTION 2: Nettoyer la réponse JSON (enlever markdown code blocks)
         let cleaned_response = clean_json_response(&response);
-        
+
         // Parser la réponse
         let result: serde_json::Value = serde_json::from_str(&cleaned_response).unwrap_or_default();
         let suggestions: Vec<RecipeSuggestion> = result
@@ -1095,9 +1103,9 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         // ✅ CORRECTION 2: Nettoyer la réponse JSON (enlever markdown code blocks)
         let cleaned_response = clean_json_response(&response);
-        
-        let result: serde_json::Value =
-            serde_json::from_str(&cleaned_response).unwrap_or_else(|_| json!({ "ingredients": [] }));
+
+        let result: serde_json::Value = serde_json::from_str(&cleaned_response)
+            .unwrap_or_else(|_| json!({ "ingredients": [] }));
 
         Ok(result)
     }
@@ -1126,9 +1134,7 @@ RÉPONSE ATTENDUE (JSON strict) :
                 });
                 format!(
                     "{}: Petit-déj: {:?}, Repas du jour: {:?}",
-                    m.day_name,
-                    petit_dej,
-                    repas_jour
+                    m.day_name, petit_dej, repas_jour
                 )
             })
             .collect::<Vec<_>>()
@@ -1171,7 +1177,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         // ✅ CORRECTION 2: Nettoyer la réponse JSON (enlever markdown code blocks)
         let cleaned_response = clean_json_response(&response);
-        
+
         let analysis: NutritionAnalysis =
             serde_json::from_str(&cleaned_response).unwrap_or_else(|_| NutritionAnalysis {
                 total_calories: 0.0,
@@ -1202,23 +1208,23 @@ RÉPONSE ATTENDUE (JSON strict) :
         servings: Option<i32>,
     ) -> AppResult<serde_json::Value> {
         let servings = servings.unwrap_or(4);
-        
+
         // Construire le contexte du profil si disponible
         let profile_context = if let Some(p) = profile {
-            let allergies_str = if p.allergies.is_empty() { 
-                "Aucune".to_string() 
-            } else { 
-                p.allergies.join(", ") 
+            let allergies_str = if p.allergies.is_empty() {
+                "Aucune".to_string()
+            } else {
+                p.allergies.join(", ")
             };
-            let restrictions_str = if p.dietary_restrictions.is_empty() { 
-                "Aucune".to_string() 
-            } else { 
-                p.dietary_restrictions.join(", ") 
+            let restrictions_str = if p.dietary_restrictions.is_empty() {
+                "Aucune".to_string()
+            } else {
+                p.dietary_restrictions.join(", ")
             };
-            let cuisine_styles_str = if p.cuisine_styles.is_empty() { 
-                "cuisine locale".to_string() 
-            } else { 
-                p.cuisine_styles.join(", ") 
+            let cuisine_styles_str = if p.cuisine_styles.is_empty() {
+                "cuisine locale".to_string()
+            } else {
+                p.cuisine_styles.join(", ")
             };
             format!(
                 "\n👥 CONTEXTE FAMILLE :\n\
@@ -1367,28 +1373,28 @@ IMPORTANT :
 "#,
             profile_context,
             location_context,
-            recipe_name,  // 1271
-            recipe_name,  // 1274
-            recipe_name,  // 1278
-            recipe_name,  // 1284
-            recipe_name,  // 1291
-            recipe_name,  // 1293
-            recipe_name,  // 1294
-            recipe_name,  // 1306
-            recipe_name,  // 1312
-            recipe_name,  // 1314
-            recipe_name,  // 1354
-            recipe_name,  // 1355
-            recipe_name,  // 1356
-            recipe_name,  // 1357
-            recipe_name,  // 1358
-            recipe_name,  // 1361
-            recipe_name,  // 1362
-            recipe_name,  // 1363
-            recipe_name,  // 1364
-            recipe_name,  // 1365
-            recipe_name,  // 1366
-            servings  // 1326
+            recipe_name, // 1271
+            recipe_name, // 1274
+            recipe_name, // 1278
+            recipe_name, // 1284
+            recipe_name, // 1291
+            recipe_name, // 1293
+            recipe_name, // 1294
+            recipe_name, // 1306
+            recipe_name, // 1312
+            recipe_name, // 1314
+            recipe_name, // 1354
+            recipe_name, // 1355
+            recipe_name, // 1356
+            recipe_name, // 1357
+            recipe_name, // 1358
+            recipe_name, // 1361
+            recipe_name, // 1362
+            recipe_name, // 1363
+            recipe_name, // 1364
+            recipe_name, // 1365
+            recipe_name, // 1366
+            servings     // 1326
         );
 
         let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
@@ -1400,20 +1406,24 @@ IMPORTANT :
 
         // Nettoyer la réponse JSON
         let cleaned_response = clean_json_response(&response);
-        
+
         let recipe: serde_json::Value =
-            serde_json::from_str(&cleaned_response).unwrap_or_else(|_| json!({
-                "recipe_name": recipe_name,
-                "description": "Recette en cours de génération",
-                "error": "Impossible de générer la recette"
-            }));
+            serde_json::from_str(&cleaned_response).unwrap_or_else(|_| {
+                json!({
+                    "recipe_name": recipe_name,
+                    "description": "Recette en cours de génération",
+                    "error": "Impossible de générer la recette"
+                })
+            });
 
         Ok(recipe)
     }
 
     /// Crée un menu de fallback en cas d'erreur
     fn create_fallback_menu(&self, profile: &FamilyProfile, week_start: &str) -> WeeklyMenu {
-        let day_names = vec!["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+        let day_names = vec![
+            "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche",
+        ];
         let meals: Vec<DailyMeal> = (1..=7)
             .zip(day_names.iter())
             .map(|(day, day_name)| {
@@ -1440,11 +1450,11 @@ IMPORTANT :
                     }),
                     gouter: None,
                     dejeuner: None, // ✅ DÉPRÉCIÉ
-                    diner: None, // ✅ DÉPRÉCIÉ
+                    diner: None,    // ✅ DÉPRÉCIÉ
                 }
             })
             .collect();
-        
+
         WeeklyMenu {
             week_start: week_start.to_string(),
             meals,
@@ -1469,39 +1479,58 @@ IMPORTANT :
         children_count: Option<i32>, // ✅ NOUVEAU: Nombre d'enfants
     ) -> AppResult<IntelligentShoppingList> {
         use crate::services::menu_planning_ai_prompts::generate_shopping_list_prompt;
-        
+
         // Construire le prompt pour l'IA avec la zone géographique, le budget proratisé et le profil famille détaillé
-        let prompt = generate_shopping_list_prompt(meal_items, family_members, user_country, user_city, budget_monthly, period_days, adults_count, children_count);
-        
+        let prompt = generate_shopping_list_prompt(
+            meal_items,
+            family_members,
+            user_country,
+            user_city,
+            budget_monthly,
+            period_days,
+            adults_count,
+            children_count,
+        );
+
         // Appeler l'IA
         let (_model_name, response, _tokens) = self.app_ia.predict(&prompt).await?;
-        
+
         // Parser la réponse JSON
         let cleaned_response = clean_json_response(&response);
-        let parsed: serde_json::Value = serde_json::from_str(&cleaned_response)
-            .map_err(|e| {
-                log::error!("[generate_intelligent_shopping_list] Erreur parsing JSON: {}", e);
-                log::error!("[generate_intelligent_shopping_list] Réponse IA: {}", cleaned_response);
-                AppError::Internal("Erreur parsing réponse IA".to_string())
-            })?;
-        
+        let parsed: serde_json::Value = serde_json::from_str(&cleaned_response).map_err(|e| {
+            log::error!(
+                "[generate_intelligent_shopping_list] Erreur parsing JSON: {}",
+                e
+            );
+            log::error!(
+                "[generate_intelligent_shopping_list] Réponse IA: {}",
+                cleaned_response
+            );
+            AppError::Internal("Erreur parsing réponse IA".to_string())
+        })?;
+
         // Extraire les items de la liste
-        let items = parsed.get("items")
+        let items = parsed
+            .get("items")
             .and_then(|v| v.as_array())
-            .ok_or_else(|| AppError::Internal("Format réponse IA invalide: items manquant".to_string()))?;
-        
-        let shopping_items: Vec<ShoppingListItem> = items.iter()
+            .ok_or_else(|| {
+                AppError::Internal("Format réponse IA invalide: items manquant".to_string())
+            })?;
+
+        let shopping_items: Vec<ShoppingListItem> = items
+            .iter()
             .filter_map(|item| {
                 let ingredient_name = item.get("ingredient_name")?.as_str()?.to_string();
                 let quantity = item.get("quantity")?.as_f64()?;
                 let unit = item.get("unit")?.as_str()?.to_string();
                 let estimated_price = item.get("estimated_price")?.as_f64()?;
-                let associated_meals = item.get("associated_meals")?
+                let associated_meals = item
+                    .get("associated_meals")?
                     .as_array()?
                     .iter()
                     .filter_map(|m| m.as_str().map(|s| s.to_string()))
                     .collect();
-                
+
                 Some(ShoppingListItem {
                     ingredient_name,
                     quantity,
@@ -1511,11 +1540,9 @@ IMPORTANT :
                 })
             })
             .collect();
-        
-        let total_estimated_cost = shopping_items.iter()
-            .map(|item| item.estimated_price)
-            .sum();
-        
+
+        let total_estimated_cost = shopping_items.iter().map(|item| item.estimated_price).sum();
+
         Ok(IntelligentShoppingList {
             items: shopping_items,
             total_estimated_cost,

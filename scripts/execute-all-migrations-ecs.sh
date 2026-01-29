@@ -84,3 +84,4 @@ echo "📝 Note: Les migrations automatiques (auto_migrate.rs) seront exécutée
 echo "   au prochain redémarrage de l'application si ENABLE_AUTO_MIGRATIONS=true"
 echo ""
 
+

@@ -297,7 +297,7 @@ pub async fn ensure_video_generation_jobs_table(pool: &PgPool) -> Result<(), sql
     )
     .execute(pool)
     .await?;
-    
+
     // ✅ 2025-12-22: Index optimisé pour GROUP BY status et requêtes avec updated_at
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_status_updated_at 
@@ -2927,9 +2927,11 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
         .execute(pool)
         .await?;
 
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_services_active_id ON services(id) WHERE is_active = TRUE")
-        .execute(pool)
-        .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_services_active_id ON services(id) WHERE is_active = TRUE",
+    )
+    .execute(pool)
+    .await?;
 
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_services_user_id ON services(user_id) WHERE is_active = TRUE")
         .execute(pool)
@@ -3183,14 +3185,15 @@ pub async fn ensure_vector_matching_optimization(pool: &PgPool) -> Result<(), sq
 }
 
 /// ✅ 2025-12-30: Optimisation recherche image avec matching vectoriel normalisé
-pub async fn ensure_image_search_vector_matching_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn ensure_image_search_vector_matching_optimization(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration image search vector matching optimization...");
-    let migration_sql = include_str!("../../migrations/20251230_optimize_image_search_vector_matching.sql");
-    
-    sqlx::query(migration_sql)
-        .execute(pool)
-        .await?;
-    
+    let migration_sql =
+        include_str!("../../migrations/20251230_optimize_image_search_vector_matching.sql");
+
+    sqlx::query(migration_sql).execute(pool).await?;
+
     info!("✅ Migration image search vector matching optimization appliquée");
     Ok(())
 }
@@ -3198,12 +3201,11 @@ pub async fn ensure_image_search_vector_matching_optimization(pool: &PgPool) -> 
 /// ✅ 2026-01-14: Correction erreur to_tsvector avec langue dynamique
 pub async fn ensure_fix_image_search_to_tsvector_error(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration fix image search to_tsvector error...");
-    let migration_sql = include_str!("../../migrations/20260114_fix_image_search_to_tsvector_error.sql");
-    
-    sqlx::query(migration_sql)
-        .execute(pool)
-        .await?;
-    
+    let migration_sql =
+        include_str!("../../migrations/20260114_fix_image_search_to_tsvector_error.sql");
+
+    sqlx::query(migration_sql).execute(pool).await?;
+
     info!("✅ Migration fix image search to_tsvector error appliquée");
     Ok(())
 }
@@ -3211,12 +3213,11 @@ pub async fn ensure_fix_image_search_to_tsvector_error(pool: &PgPool) -> Result<
 /// ✅ 2026-01-15: Correction recherche image - Gestion images non analysées
 pub async fn ensure_fix_image_search_empty_results(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration fix image search empty results...");
-    let migration_sql = include_str!("../../migrations/20260115_fix_image_search_empty_results.sql");
-    
-    sqlx::query(migration_sql)
-        .execute(pool)
-        .await?;
-    
+    let migration_sql =
+        include_str!("../../migrations/20260115_fix_image_search_empty_results.sql");
+
+    sqlx::query(migration_sql).execute(pool).await?;
+
     info!("✅ Migration fix image search empty results appliquée");
     Ok(())
 }
@@ -3225,13 +3226,11 @@ pub async fn ensure_fix_image_search_empty_results(pool: &PgPool) -> Result<(), 
 pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration audio search cache optimization...");
     let migration_sql = include_str!("../../migrations/20251230_optimize_audio_search_cache.sql");
-    
-    sqlx::query(migration_sql)
-        .execute(pool)
-        .await?;
-    
+
+    sqlx::query(migration_sql).execute(pool).await?;
+
     info!("✅ Migration audio search cache optimization appliquée");
-    
+
     // ✅ CORRIGÉ 2025-12-31: Fix de la fonction run_audio_cache_cleanup avec gestion NULL
     // Corrige l'erreur UnexpectedNullError en gérant les valeurs NULL
     info!("🔧 Correction de la fonction run_audio_cache_cleanup avec gestion NULL...");
@@ -3288,20 +3287,21 @@ pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(),
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Fonction run_audio_cache_cleanup corrigée avec gestion NULL");
     Ok(())
 }
 
 /// ✅ 2025-12-30: Optimisation finale performance recherche (< 2s)
-pub async fn ensure_search_performance_final_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn ensure_search_performance_final_optimization(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration search performance final optimization...");
-    let migration_sql = include_str!("../../migrations/20251230_optimize_search_performance_final.sql");
-    
-    sqlx::query(migration_sql)
-        .execute(pool)
-        .await?;
-    
+    let migration_sql =
+        include_str!("../../migrations/20251230_optimize_search_performance_final.sql");
+
+    sqlx::query(migration_sql).execute(pool).await?;
+
     info!("✅ Migration search performance final optimization appliquée");
     Ok(())
 }
@@ -6373,15 +6373,15 @@ pub async fn ensure_delivery_round_trip_columns(pool: &PgPool) -> Result<(), sql
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_return_delivery_id ON deliveries(return_delivery_id) WHERE return_delivery_id IS NOT NULL")
         .execute(pool)
         .await?;
-    
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_is_round_trip ON deliveries(is_round_trip) WHERE is_round_trip = TRUE")
         .execute(pool)
         .await?;
-    
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_return_pickup_location ON deliveries USING GIST(return_pickup_location) WHERE return_pickup_location IS NOT NULL")
         .execute(pool)
         .await?;
-    
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_return_dropoff_location ON deliveries USING GIST(return_dropoff_location) WHERE return_dropoff_location IS NOT NULL")
         .execute(pool)
         .await?;
@@ -6404,7 +6404,7 @@ pub async fn ensure_delivery_round_trip_columns(pool: &PgPool) -> Result<(), sql
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
@@ -6416,7 +6416,7 @@ pub async fn ensure_delivery_round_trip_columns(pool: &PgPool) -> Result<(), sql
             BEFORE INSERT OR UPDATE ON deliveries
             FOR EACH ROW
             EXECUTE FUNCTION check_round_trip_consistency()
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
@@ -6466,44 +6466,46 @@ pub async fn ensure_delivery_media_table(pool: &PgPool) -> Result<(), sqlx::Erro
             -- Métadonnées additionnelles
             metadata JSONB DEFAULT '{}'::jsonb
         )
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
 
     // Index pour améliorer les performances
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_delivery_id ON delivery_media(delivery_id)")
-        .execute(pool)
-        .await?;
-    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_media_delivery_id ON delivery_media(delivery_id)",
+    )
+    .execute(pool)
+    .await?;
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_parcel_id ON delivery_media(parcel_id) WHERE parcel_id IS NOT NULL")
         .execute(pool)
         .await?;
-    
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_type ON delivery_media(type)")
         .execute(pool)
         .await?;
-    
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_is_parcel_photo ON delivery_media(is_parcel_photo) WHERE is_parcel_photo = TRUE")
         .execute(pool)
         .await?;
-    
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_is_proof ON delivery_media(is_proof_media, proof_type) WHERE is_proof_media = TRUE")
         .execute(pool)
         .await?;
-    
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_display_order ON delivery_media(delivery_id, display_order)")
         .execute(pool)
         .await?;
-    
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_uploaded_at ON delivery_media(uploaded_at DESC)")
         .execute(pool)
         .await?;
-    
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_delivery_type ON delivery_media(delivery_id, type)")
         .execute(pool)
         .await?;
-    
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_delivery_media_delivery_proof ON delivery_media(delivery_id, is_proof_media, proof_type)")
         .execute(pool)
         .await?;
@@ -6513,7 +6515,7 @@ pub async fn ensure_delivery_media_table(pool: &PgPool) -> Result<(), sqlx::Erro
         r#"
         CREATE INDEX IF NOT EXISTS idx_delivery_media_ai_description_fulltext
             ON delivery_media USING GIN (to_tsvector('french', COALESCE(ai_description, '')))
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
@@ -6533,7 +6535,7 @@ pub async fn ensure_delivery_media_table(pool: &PgPool) -> Result<(), sqlx::Erro
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
@@ -6545,7 +6547,7 @@ pub async fn ensure_delivery_media_table(pool: &PgPool) -> Result<(), sqlx::Erro
             BEFORE UPDATE ON delivery_media
             FOR EACH ROW
             EXECUTE FUNCTION update_delivery_media_updated_at()
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
@@ -7463,7 +7465,7 @@ async fn ensure_base_tables_exist(pool: &PgPool) -> Result<(), sqlx::Error> {
             SELECT FROM information_schema.tables 
             WHERE table_schema = 'public' 
             AND table_name = 'users'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
@@ -7481,7 +7483,7 @@ async fn ensure_base_tables_exist(pool: &PgPool) -> Result<(), sqlx::Error> {
             SELECT FROM information_schema.tables 
             WHERE table_schema = 'public' 
             AND table_name = 'services'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
@@ -7503,8 +7505,13 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_base_tables_exist(pool).await {
         Ok(_) => info!("✅ Tables de base (users, services) vérifiées"),
         Err(e) => {
-            error!("❌ ERREUR CRITIQUE: Les tables de base n'existent pas: {}", e);
-            error!("❌ Les migrations automatiques ne peuvent pas continuer sans les tables de base.");
+            error!(
+                "❌ ERREUR CRITIQUE: Les tables de base n'existent pas: {}",
+                e
+            );
+            error!(
+                "❌ Les migrations automatiques ne peuvent pas continuer sans les tables de base."
+            );
             error!("❌ Vérifiez que les migrations SQLx standard ont été appliquées correctement.");
             error!("❌ Les migrations SQLx standard doivent être exécutées AVANT les migrations automatiques.");
             return; // Arrêter les migrations automatiques si les tables de base n'existent pas
@@ -7711,7 +7718,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ NOUVEAU 2025-01-31: Colonnes aller-retour pour deliveries
     match ensure_delivery_round_trip_columns(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_round_trip_columns OK"),
-        Err(e) => error!("❌ Erreur migration auto delivery_round_trip_columns: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto delivery_round_trip_columns: {}",
+            e
+        ),
     }
 
     // ✅ NOUVEAU 2025-01-31: Table delivery_media pour optimiser le stockage des médias
@@ -7741,13 +7751,19 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ NOUVEAU 2025-12-12 : Optimisation index delivery_matching_queue
     match ensure_delivery_matching_queue_index(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_matching_queue index OK"),
-        Err(e) => error!("❌ Erreur migration auto delivery_matching_queue index: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto delivery_matching_queue index: {}",
+            e
+        ),
     }
 
     // ✅ NOUVEAU 2025-12-16 : Optimisation performances création produits
     match ensure_optimize_product_creation_performance(pool).await {
         Ok(_) => info!("✅ Migration auto: optimize_product_creation_performance OK"),
-        Err(e) => error!("❌ Erreur migration auto optimize_product_creation_performance: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto optimize_product_creation_performance: {}",
+            e
+        ),
     }
 
     // ✅ NOUVEAU 2025-12-30 : Correction erreurs TLS lors de l'ajout de produit
@@ -7759,19 +7775,28 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ NOUVEAU 2025-12-31 : Correction définitive performance création produit
     match ensure_fix_product_creation_issues(pool).await {
         Ok(_) => info!("✅ Migration auto: fix_product_creation_issues OK"),
-        Err(e) => error!("❌ Erreur migration auto fix_product_creation_issues: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto fix_product_creation_issues: {}",
+            e
+        ),
     }
 
     // ✅ NOUVEAU 2025-12-31 : Optimisation performance création produit v2
     match ensure_fix_product_creation_performance_v2(pool).await {
         Ok(_) => info!("✅ Migration auto: fix_product_creation_performance_v2 OK"),
-        Err(e) => error!("❌ Erreur migration auto fix_product_creation_performance_v2: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto fix_product_creation_performance_v2: {}",
+            e
+        ),
     }
 
     // ✅ NOUVEAU 2025-12-31 : Correction timeout création produit
     match ensure_fix_product_creation_timeout(pool).await {
         Ok(_) => info!("✅ Migration auto: fix_product_creation_timeout OK"),
-        Err(e) => error!("❌ Erreur migration auto fix_product_creation_timeout: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto fix_product_creation_timeout: {}",
+            e
+        ),
     }
 
     // ✅ NOUVEAU 2025-12-21 : Optimisation des endpoints lents
@@ -7789,7 +7814,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ 2025-12-21 : Aligner parcel_types avec les types de véhicules des coursiers
     match ensure_align_parcel_types_with_vehicle_types(pool).await {
         Ok(_) => info!("✅ Migration auto: align_parcel_types_with_vehicle_types OK"),
-        Err(e) => error!("❌ Erreur migration auto align_parcel_types_with_vehicle_types: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto align_parcel_types_with_vehicle_types: {}",
+            e
+        ),
     }
 
     // ✅ 2026-01-15 : Corriger les IDs de parcel_types pour garantir la cohérence avec le frontend
@@ -7801,7 +7829,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ 2025-12-21 : Optimisation des UPDATE services
     match ensure_optimize_services_update_performance(pool).await {
         Ok(_) => info!("✅ Migration auto: optimize_services_update_performance OK"),
-        Err(e) => error!("❌ Erreur migration auto optimize_services_update_performance: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto optimize_services_update_performance: {}",
+            e
+        ),
     }
 
     // ✅ NOUVEAU : Table delivery_engine_pricing pour calcul coût par type d'engin
@@ -7852,49 +7883,73 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ 2025-12-21 : Amélioration hybrid_image_search avec fallback vers services.data->produits
     match ensure_hybrid_image_search_fallback(pool).await {
         Ok(_) => info!("✅ Migration auto: hybrid_image_search_fallback OK"),
-        Err(e) => error!("❌ Erreur migration auto hybrid_image_search_fallback: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto hybrid_image_search_fallback: {}",
+            e
+        ),
     }
-    
+
     // ✅ 2025-12-23 : Amélioration pertinence hybrid_image_search (scoring optimisé)
     match ensure_hybrid_image_search_relevance(pool).await {
         Ok(_) => info!("✅ Migration auto: hybrid_image_search_relevance OK"),
-        Err(e) => error!("❌ Erreur migration auto hybrid_image_search_relevance: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto hybrid_image_search_relevance: {}",
+            e
+        ),
     }
-    
+
     // ✅ 2025-12-24 : Amélioration langue dynamique et pertinence hybrid_image_search
     match ensure_hybrid_image_search_language_and_relevance(pool).await {
         Ok(_) => info!("✅ Migration auto: hybrid_image_search_language_and_relevance OK"),
-        Err(e) => error!("❌ Erreur migration auto hybrid_image_search_language_and_relevance: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto hybrid_image_search_language_and_relevance: {}",
+            e
+        ),
     }
-    
+
     // ✅ 2025-12-24 : Correction pertinence et performance recherche par image (seuil strict 150.0)
     match ensure_hybrid_image_search_relevance_and_performance(pool).await {
         Ok(_) => info!("✅ Migration auto: hybrid_image_search_relevance_and_performance OK"),
-        Err(e) => error!("❌ Erreur migration auto hybrid_image_search_relevance_and_performance: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto hybrid_image_search_relevance_and_performance: {}",
+            e
+        ),
     }
 
     // ✅ 2025-12-27 : Adaptation recherche par image pour produits génériques (sans marque/couleur)
     match ensure_hybrid_image_search_generic_products(pool).await {
         Ok(_) => info!("✅ Migration auto: hybrid_image_search_generic_products OK"),
-        Err(e) => error!("❌ Erreur migration auto hybrid_image_search_generic_products: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto hybrid_image_search_generic_products: {}",
+            e
+        ),
     }
 
     // ✅ 2025-12-24 : Optimisation critique des requêtes lentes (pharmacies, deliveries, delivery_matching_queue, find_nearby_couriers)
     match ensure_optimize_slow_queries_critical(pool).await {
         Ok(_) => info!("✅ Migration auto: optimize_slow_queries_critical OK"),
-        Err(e) => error!("❌ Erreur migration auto optimize_slow_queries_critical: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto optimize_slow_queries_critical: {}",
+            e
+        ),
     }
 
     // ✅ 2026-01-11 : Optimisation additionnelle des requêtes deliveries (get_delivery_summary, find_nearby_couriers, UPDATE matching_queue)
     match ensure_optimize_delivery_queries_additional(pool).await {
         Ok(_) => info!("✅ Migration auto: optimize_delivery_queries_additional OK"),
-        Err(e) => error!("❌ Erreur migration auto optimize_delivery_queries_additional: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto optimize_delivery_queries_additional: {}",
+            e
+        ),
     }
 
     // ✅ 2026-01-14 : Optimisation des performances de recherche (publicites, delivery_matching_queue, delivery_parcels)
     match ensure_optimize_search_performance(pool).await {
         Ok(_) => info!("✅ Migration auto: optimize_search_performance OK"),
-        Err(e) => error!("❌ Erreur migration auto optimize_search_performance: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto optimize_search_performance: {}",
+            e
+        ),
     }
 
     // ✅ 2025-11-25 : Fonctions de recherche avec planification (pharmacie/hôpital)
@@ -8384,19 +8439,28 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ 2025-12-30: Optimisation matching vectoriel avec similarité
     match ensure_vector_matching_optimization(pool).await {
         Ok(_) => info!("✅ Migration auto: vector matching optimization OK"),
-        Err(e) => error!("❌ Erreur migration auto vector matching optimization: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto vector matching optimization: {}",
+            e
+        ),
     }
 
     // ✅ 2025-12-30: Optimisation recherche image avec matching vectoriel
     match ensure_image_search_vector_matching_optimization(pool).await {
         Ok(_) => info!("✅ Migration auto: image search vector matching optimization OK"),
-        Err(e) => error!("❌ Erreur migration auto image search vector matching: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto image search vector matching: {}",
+            e
+        ),
     }
 
     // ✅ 2026-01-14: Correction erreur to_tsvector avec langue dynamique
     match ensure_fix_image_search_to_tsvector_error(pool).await {
         Ok(_) => info!("✅ Migration auto: fix image search to_tsvector error OK"),
-        Err(e) => error!("❌ Erreur migration auto fix image search to_tsvector: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto fix image search to_tsvector: {}",
+            e
+        ),
     }
 
     // ✅ 2025-12-30: Optimisation recherche audio avec cache
@@ -9870,20 +9934,20 @@ pub async fn ensure_token_consumption_and_purchase_history_tables(
 /// NOTE: La table products (UUID) pour tickets de bus est préservée et non modifiée
 pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table service_products...");
-    
+
     // Vérifier si la table existe
     let table_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'service_products')"
     )
     .fetch_one(pool)
     .await?;
-    
+
     if table_exists {
         info!("✅ Table service_products déjà présente");
-        
+
         // ✅ CORRIGÉ: Créer les index même si la table existe déjà (au cas où ils manqueraient)
         info!("🔍 Vérification des index service_products...");
-        
+
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_service_id ON service_products(service_id)")
             .execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_active ON service_products(is_active) WHERE is_active = true")
@@ -9898,11 +9962,11 @@ pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Er
             .execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_created_at ON service_products(created_at DESC)")
             .execute(pool).await?;
-        
+
         info!("✅ Index service_products vérifiés/créés");
     } else {
         warn!("⚠️ Table service_products manquante, création en cours...");
-        
+
         // Créer la table service_products
         sqlx::query(
             r#"
@@ -9954,7 +10018,7 @@ pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Er
         )
         .execute(pool)
         .await?;
-        
+
         // Créer les index
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_service_id ON service_products(service_id)")
             .execute(pool).await?;
@@ -9970,7 +10034,7 @@ pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Er
             .execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_products_created_at ON service_products(created_at DESC)")
             .execute(pool).await?;
-        
+
         // Créer le trigger pour updated_at
         sqlx::query(
             r#"
@@ -9981,25 +10045,25 @@ pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Er
                 RETURN NEW;
             END;
             $$ LANGUAGE plpgsql
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
+
         sqlx::query(
             r#"
             CREATE TRIGGER trg_service_products_updated_at
                 BEFORE UPDATE ON service_products
                 FOR EACH ROW
                 EXECUTE FUNCTION update_service_products_updated_at()
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
+
         info!("✅ Table service_products créée avec succès !");
     }
-    
+
     Ok(())
 }
 
@@ -11441,7 +11505,8 @@ pub async fn ensure_hybrid_image_search(pool: &PgPool) -> Result<(), sqlx::Error
 /// Migration: 20251221_add_fallback_to_hybrid_image_search.sql
 pub async fn ensure_hybrid_image_search_fallback(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration hybrid_image_search_fallback...");
-    let migration_sql = include_str!("../../migrations/20251221_add_fallback_to_hybrid_image_search.sql");
+    let migration_sql =
+        include_str!("../../migrations/20251221_add_fallback_to_hybrid_image_search.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_fallback appliquée");
     Ok(())
@@ -11451,7 +11516,8 @@ pub async fn ensure_hybrid_image_search_fallback(pool: &PgPool) -> Result<(), sq
 /// Migration: 20251223_improve_hybrid_image_search_relevance.sql
 pub async fn ensure_hybrid_image_search_relevance(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration hybrid_image_search_relevance...");
-    let migration_sql = include_str!("../../migrations/20251223_improve_hybrid_image_search_relevance.sql");
+    let migration_sql =
+        include_str!("../../migrations/20251223_improve_hybrid_image_search_relevance.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_relevance appliquée");
     Ok(())
@@ -11459,9 +11525,13 @@ pub async fn ensure_hybrid_image_search_relevance(pool: &PgPool) -> Result<(), s
 
 /// ✅ 2025-12-24 : Améliore hybrid_image_search avec langue dynamique et scoring priorisant ILIKE
 /// Migration: 20251224_improve_hybrid_image_search_language_and_relevance.sql
-pub async fn ensure_hybrid_image_search_language_and_relevance(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn ensure_hybrid_image_search_language_and_relevance(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration hybrid_image_search_language_and_relevance...");
-    let migration_sql = include_str!("../../migrations/20251224_improve_hybrid_image_search_language_and_relevance.sql");
+    let migration_sql = include_str!(
+        "../../migrations/20251224_improve_hybrid_image_search_language_and_relevance.sql"
+    );
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_language_and_relevance appliquée");
     Ok(())
@@ -11469,9 +11539,12 @@ pub async fn ensure_hybrid_image_search_language_and_relevance(pool: &PgPool) ->
 
 /// ✅ 2025-12-24 : Correction pertinence et performance recherche par image (seuil strict 150.0, scoring plus strict)
 /// Migration: 20251224_fix_image_search_relevance_and_performance.sql
-pub async fn ensure_hybrid_image_search_relevance_and_performance(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn ensure_hybrid_image_search_relevance_and_performance(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration hybrid_image_search_relevance_and_performance...");
-    let migration_sql = include_str!("../../migrations/20251224_fix_image_search_relevance_and_performance.sql");
+    let migration_sql =
+        include_str!("../../migrations/20251224_fix_image_search_relevance_and_performance.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_relevance_and_performance appliquée");
     Ok(())
@@ -11483,7 +11556,8 @@ pub async fn ensure_hybrid_image_search_relevance_and_performance(pool: &PgPool)
 /// Solution: 1 tag suffit (au lieu de 2), marque/couleur optionnels, priorité à search_query_semantic
 pub async fn ensure_hybrid_image_search_generic_products(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration hybrid_image_search_generic_products...");
-    let migration_sql = include_str!("../../migrations/20251227_fix_image_search_strict_matching.sql");
+    let migration_sql =
+        include_str!("../../migrations/20251227_fix_image_search_strict_matching.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_generic_products appliquée");
     Ok(())
@@ -11494,7 +11568,8 @@ pub async fn ensure_hybrid_image_search_generic_products(pool: &PgPool) -> Resul
 /// Problèmes corrigés: pharmacies JOIN (1.68s), delivery_matching_queue (1.37s), deliveries SELECT (1.4-2.3s), find_nearby_couriers (2.1s)
 pub async fn ensure_optimize_slow_queries_critical(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration optimize_slow_queries_critical...");
-    let migration_sql = include_str!("../../migrations/20251224_optimize_slow_queries_critical.sql");
+    let migration_sql =
+        include_str!("../../migrations/20251224_optimize_slow_queries_critical.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration optimize_slow_queries_critical appliquée");
     Ok(())
@@ -11505,7 +11580,8 @@ pub async fn ensure_optimize_slow_queries_critical(pool: &PgPool) -> Result<(), 
 /// Problèmes corrigés: get_delivery_summary (1.1-1.5s), find_nearby_couriers (1.14s), UPDATE delivery_matching_queue (1.09s)
 pub async fn ensure_optimize_delivery_queries_additional(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration optimize_delivery_queries_additional...");
-    let migration_sql = include_str!("../../migrations/20260111_optimize_delivery_queries_additional.sql");
+    let migration_sql =
+        include_str!("../../migrations/20260111_optimize_delivery_queries_additional.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration optimize_delivery_queries_additional appliquée");
     Ok(())
@@ -13045,9 +13121,7 @@ pub async fn ensure_search_services_gps_final_optimization(
 /// ✅ 2025-01-01 : Alignement de search_services_gps_final avec keyword_search_with_gps
 /// Utilise la même logique de recherche (autocomplete, produits, unaccent, similarity)
 /// Migration: 20250101_ALIGN_SEARCH_GPS_FINAL_WITH_KEYWORD_SEARCH.sql
-pub async fn ensure_search_services_gps_final_alignment(
-    pool: &PgPool,
-) -> Result<(), sqlx::Error> {
+pub async fn ensure_search_services_gps_final_alignment(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application de l'alignement de search_services_gps_final avec keyword_search_with_gps...");
 
     // Lire le contenu de la migration SQL
@@ -13064,14 +13138,13 @@ pub async fn ensure_search_services_gps_final_alignment(
 /// ✅ 2025-01-01 : Optimisation de hybrid_image_search avec unaccent() et similarity()
 /// Aligne la recherche par image avec keyword_search_with_gps (gère accents, erreurs de saisie, troncature)
 /// Migration: 20250101_OPTIMIZE_HYBRID_IMAGE_SEARCH_WITH_UNACCENT_SIMILARITY.sql
-pub async fn ensure_hybrid_image_search_optimization(
-    pool: &PgPool,
-) -> Result<(), sqlx::Error> {
+pub async fn ensure_hybrid_image_search_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application de l'optimisation de hybrid_image_search avec unaccent() et similarity()...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql =
-        include_str!("../../migrations/20250101_OPTIMIZE_HYBRID_IMAGE_SEARCH_WITH_UNACCENT_SIMILARITY.sql");
+    let migration_sql = include_str!(
+        "../../migrations/20250101_OPTIMIZE_HYBRID_IMAGE_SEARCH_WITH_UNACCENT_SIMILARITY.sql"
+    );
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
@@ -13733,7 +13806,8 @@ pub async fn ensure_delivery_matching_queue_index(pool: &PgPool) -> Result<(), s
     info!("🔍 Vérification/création index optimisé delivery_matching_queue...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251212_optimize_delivery_matching_queue_index.sql");
+    let migration_sql =
+        include_str!("../../migrations/20251212_optimize_delivery_matching_queue_index.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
@@ -13748,11 +13822,14 @@ pub async fn ensure_delivery_matching_queue_index(pool: &PgPool) -> Result<(), s
 /// - Requête get_services_for_prestataire (1+ seconde -> <100ms)
 /// - Refresh vue matérialisée (10.8s -> <2s)
 /// - Utilise autocomplete_characteristics au lieu de extract_all_product_text()
-pub async fn ensure_optimize_product_creation_performance(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn ensure_optimize_product_creation_performance(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration optimize_product_creation_performance...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251216_optimize_product_creation_performance.sql");
+    let migration_sql =
+        include_str!("../../migrations/20251216_optimize_product_creation_performance.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
@@ -13809,7 +13886,8 @@ pub async fn ensure_fix_product_creation_performance_v2(pool: &PgPool) -> Result
     info!("🔍 Application migration fix_product_creation_performance_v2...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251231_fix_product_creation_performance_v2.sql");
+    let migration_sql =
+        include_str!("../../migrations/20251231_fix_product_creation_performance_v2.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
@@ -13872,11 +13950,14 @@ pub async fn ensure_optimize_delivery_indexes(pool: &PgPool) -> Result<(), sqlx:
 /// ✅ 2025-12-21 : Aligner parcel_types avec les types de véhicules des coursiers
 /// Migration: 20251221_align_parcel_types_with_vehicle_types.sql
 /// Problème: La liste des modes de livraison est vide car parcel_types ne correspond pas aux types de véhicules
-pub async fn ensure_align_parcel_types_with_vehicle_types(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn ensure_align_parcel_types_with_vehicle_types(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration align_parcel_types_with_vehicle_types...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251221_align_parcel_types_with_vehicle_types.sql");
+    let migration_sql =
+        include_str!("../../migrations/20251221_align_parcel_types_with_vehicle_types.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
@@ -13909,7 +13990,8 @@ pub async fn ensure_optimize_services_update_performance(pool: &PgPool) -> Resul
     info!("🔍 Application migration optimize_services_update_performance...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251221_optimize_services_update_performance.sql");
+    let migration_sql =
+        include_str!("../../migrations/20251221_optimize_services_update_performance.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
@@ -13922,7 +14004,7 @@ pub async fn ensure_optimize_services_update_performance(pool: &PgPool) -> Resul
 /// Index critiques pour /api/services/{id}/stats et /api/services/{id}/reviews
 pub async fn ensure_mongodb_indexes(mongo_history: Arc<MongoHistoryService>) -> Result<(), String> {
     info!("🔍 Création des index MongoDB pour optimiser les requêtes...");
-    
+
     match mongo_history.ensure_indexes().await {
         Ok(_) => {
             info!("✅ Index MongoDB créés avec succès");
@@ -13939,25 +14021,25 @@ pub async fn ensure_mongodb_indexes(mongo_history: Arc<MongoHistoryService>) -> 
 /// Évite les timeouts même sans médias en optimisant l'UPDATE JSONB
 pub async fn ensure_add_product_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de l'optimisation add_product_to_service_jsonb_v2...");
-    
+
     // Vérifier si la fonction existe déjà avec la version optimisée
     let function_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(
             SELECT 1 FROM pg_proc 
             WHERE proname = 'add_product_to_service_jsonb_v2'
             AND prosrc LIKE '%Lire les données AVANT le verrou%'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
-    
+
     if function_exists {
         info!("✅ Fonction add_product_to_service_jsonb_v2 déjà optimisée");
         return Ok(());
     }
-    
+
     info!("🔄 Application de l'optimisation add_product_to_service_jsonb_v2...");
-    
+
     // Appliquer la migration optimisée
     sqlx::query(
         r#"
@@ -14046,34 +14128,34 @@ pub async fn ensure_add_product_optimization(pool: &PgPool) -> Result<(), sqlx::
     )
     .execute(pool)
     .await?;
-    
+
     // Créer les index si nécessaire
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_services_id_for_updates 
          ON services(id) 
-         WHERE is_active = true"
+         WHERE is_active = true",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_services_produits_valeur_gin 
          ON services USING GIN ((data->'produits'->'valeur'))
-         WHERE data->'produits'->'valeur' IS NOT NULL"
+         WHERE data->'produits'->'valeur' IS NOT NULL",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_services_data_produits_partial
          ON services USING GIN (data)
          WHERE is_active = true 
          AND data->'produits'->'valeur' IS NOT NULL
-         AND jsonb_array_length(data->'produits'->'valeur') > 0"
+         AND jsonb_array_length(data->'produits'->'valeur') > 0",
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Optimisation add_product_to_service_jsonb_v2 appliquée avec succès");
     Ok(())
 }
@@ -14081,25 +14163,25 @@ pub async fn ensure_add_product_optimization(pool: &PgPool) -> Result<(), sqlx::
 /// ✅ NOUVEAU 2026-01-02: Création de la queue asynchrone pour création de produits
 pub async fn ensure_product_creation_queue(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table product_creation_queue...");
-    
+
     // Vérifier si la table existe déjà
     let table_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(
             SELECT 1 FROM information_schema.tables 
             WHERE table_schema = 'public' 
             AND table_name = 'product_creation_queue'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
-    
+
     if table_exists {
         info!("✅ Table product_creation_queue existe déjà");
         return Ok(());
     }
-    
+
     info!("🔄 Création de la table product_creation_queue...");
-    
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS product_creation_queue (
@@ -14119,36 +14201,36 @@ pub async fn ensure_product_creation_queue(pool: &PgPool) -> Result<(), sqlx::Er
             completed_at TIMESTAMP WITH TIME ZONE,
             updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
         )
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     // Créer les index
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_queue_status_priority 
          ON product_creation_queue(status, priority, created_at) 
-         WHERE status IN ('pending', 'processing')"
+         WHERE status IN ('pending', 'processing')",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_queue_created_at 
          ON product_creation_queue(created_at) 
-         WHERE status IN ('completed', 'failed')"
+         WHERE status IN ('completed', 'failed')",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_queue_service_id 
          ON product_creation_queue(service_id) 
-         WHERE status = 'pending'"
+         WHERE status = 'pending'",
     )
     .execute(pool)
     .await?;
-    
+
     // Créer la fonction de nettoyage
     sqlx::query(
         r#"
@@ -14165,11 +14247,11 @@ pub async fn ensure_product_creation_queue(pool: &PgPool) -> Result<(), sqlx::Er
             RETURN deleted_count;
         END;
         $$ LANGUAGE plpgsql
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Table product_creation_queue créée avec succès");
     Ok(())
 }
@@ -14177,25 +14259,25 @@ pub async fn ensure_product_creation_queue(pool: &PgPool) -> Result<(), sqlx::Er
 /// ✅ NOUVEAU 2026-01-02: Création de la table de cache PostgreSQL
 pub async fn ensure_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table cache_table...");
-    
+
     // Vérifier si la table existe déjà
     let table_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(
             SELECT 1 FROM information_schema.tables 
             WHERE table_schema = 'public' 
             AND table_name = 'cache_table'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
-    
+
     if table_exists {
         info!("✅ Table cache_table existe déjà");
         return Ok(());
     }
-    
+
     info!("🔄 Création de la table cache_table...");
-    
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS cache_table (
@@ -14207,27 +14289,27 @@ pub async fn ensure_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             access_count INTEGER NOT NULL DEFAULT 0,
             last_accessed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
         )
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     // Créer les index
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_cache_expires_at 
          ON cache_table(expires_at) 
-         WHERE expires_at < NOW()"
+         WHERE expires_at < NOW()",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_cache_key_pattern 
-         ON cache_table(cache_key text_pattern_ops)"
+         ON cache_table(cache_key text_pattern_ops)",
     )
     .execute(pool)
     .await?;
-    
+
     // Créer les fonctions de cache
     sqlx::query(
         r#"
@@ -14243,11 +14325,11 @@ pub async fn ensure_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             RETURN deleted_count;
         END;
         $$ LANGUAGE plpgsql
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         r#"
         CREATE OR REPLACE FUNCTION get_cache(key VARCHAR(255))
@@ -14270,11 +14352,11 @@ pub async fn ensure_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             RETURN result;
         END;
         $$ LANGUAGE plpgsql
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         r#"
         CREATE OR REPLACE FUNCTION set_cache(
@@ -14294,11 +14376,11 @@ pub async fn ensure_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
                 access_count = 0;
         END;
         $$ LANGUAGE plpgsql
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         r#"
         CREATE OR REPLACE FUNCTION delete_cache(key VARCHAR(255))
@@ -14313,11 +14395,11 @@ pub async fn ensure_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             RETURN deleted_count > 0;
         END;
         $$ LANGUAGE plpgsql
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         r#"
         CREATE OR REPLACE FUNCTION delete_cache_pattern(pattern VARCHAR(255))
@@ -14332,11 +14414,11 @@ pub async fn ensure_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             RETURN deleted_count;
         END;
         $$ LANGUAGE plpgsql
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Table cache_table créée avec succès");
     Ok(())
 }
@@ -14345,7 +14427,7 @@ pub async fn ensure_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
 /// Cette fonction vérifie la disponibilité de pgvector et affiche un message informatif
 pub async fn ensure_pgvector_extension(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de l'extension pgvector...");
-    
+
     let pgvector_available: bool = sqlx::query_scalar::<_, bool>(
         r#"
         SELECT EXISTS (
@@ -14353,23 +14435,26 @@ pub async fn ensure_pgvector_extension(pool: &PgPool) -> Result<(), sqlx::Error>
             FROM pg_extension 
             WHERE extname = 'vector'
         )
-        "#
+        "#,
     )
     .fetch_one(pool)
     .await?;
-    
+
     if pgvector_available {
         let version: Option<String> = sqlx::query_scalar::<_, Option<String>>(
             r#"
             SELECT extversion 
             FROM pg_extension 
             WHERE extname = 'vector'
-            "#
+            "#,
         )
         .fetch_one(pool)
         .await?;
-        
-        info!("✅ Extension pgvector installée (version: {})", version.unwrap_or_else(|| "inconnue".to_string()));
+
+        info!(
+            "✅ Extension pgvector installée (version: {})",
+            version.unwrap_or_else(|| "inconnue".to_string())
+        );
         info!("💡 pgvector est disponible pour les recherches sémantiques et embeddings");
     } else {
         warn!("⚠️ Extension pgvector non disponible");
@@ -14380,6 +14465,6 @@ pub async fn ensure_pgvector_extension(pool: &PgPool) -> Result<(), sqlx::Error>
         warn!("   - Depuis sources: https://github.com/pgvector/pgvector");
         warn!("   - Puis redémarrer PostgreSQL et relancer les migrations");
     }
-    
+
     Ok(())
 }

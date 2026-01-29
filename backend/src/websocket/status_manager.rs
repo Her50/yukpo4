@@ -103,7 +103,7 @@ impl StatusManager {
         // ✅ OPTIMISÉ: Supprimer complètement les utilisateurs inactifs depuis plus de 30 minutes
         let long_timeout = chrono::Duration::minutes(30);
         let mut to_remove: Vec<i32> = Vec::new();
-        
+
         for (user_id, status) in users.iter() {
             let inactive_duration = now.signed_duration_since(status.last_seen);
             if status.is_online && inactive_duration > timeout {
@@ -114,7 +114,7 @@ impl StatusManager {
                 to_remove.push(*user_id);
             }
         }
-        
+
         // Supprimer les utilisateurs très inactifs
         for user_id in to_remove {
             users.remove(&user_id);

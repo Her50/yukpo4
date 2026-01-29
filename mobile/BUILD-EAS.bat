@@ -241,16 +241,37 @@ echo.
 echo 🧪 Publication en mode tests (Play link + TestFlight link)...
 echo ════════════════════════════════════════════════════════════
 echo.
-echo ℹ️  Ce script lance:
-echo    - Android: build AAB + submit (Play Console - testing)
-echo    - iOS: build + submit (TestFlight)
+echo Choisissez une option:
 echo.
-echo ⚠️  Vous devrez être connecté à Expo (eas login).
+echo  1. Mode interactif (recommandé - guide étape par étape)
+echo  2. Mode automatique (build + submit direct)
+echo  3. Retour au menu
 echo.
-echo Appuyez sur une touche pour continuer ou Ctrl+C pour annuler...
-pause >nul
-echo.
-powershell -ExecutionPolicy Bypass -File ".\publish-testing-links.ps1"
+set /p publish_choice="Votre choix (1-3) : "
+
+if "%publish_choice%"=="1" (
+    echo.
+    echo 🚀 Lancement du mode interactif...
+    echo.
+    powershell -ExecutionPolicy Bypass -File ".\publish-testing-interactif.ps1"
+) else if "%publish_choice%"=="2" (
+    echo.
+    echo ⚠️  Mode automatique - Assurez-vous d'avoir:
+    echo    - App créée dans Play Console ET App Store Connect
+    echo    - google-service-account.json pour Android (optionnel)
+    echo    - Connecté à Expo (eas login)
+    echo.
+    echo Appuyez sur une touche pour continuer ou Ctrl+C pour annuler...
+    pause >nul
+    echo.
+    powershell -ExecutionPolicy Bypass -File ".\publish-testing-links.ps1"
+) else if "%publish_choice%"=="3" (
+    goto MENU
+) else (
+    echo ❌ Choix invalide
+    timeout /t 2 >nul
+    goto PUBLISH_TESTS
+)
 echo.
 pause
 goto MENU

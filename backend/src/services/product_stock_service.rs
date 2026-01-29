@@ -44,7 +44,7 @@ impl ProductStockService {
             SELECT id
             FROM product_delivery_config
             WHERE service_id = $1 AND product_index = $2
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)
@@ -57,7 +57,7 @@ impl ProductStockService {
                 SELECT SUM(quantity_available)
                 FROM product_stock_locations
                 WHERE product_delivery_config_id = $1 AND is_available = TRUE
-                "#
+                "#,
             )
             .bind(config_id_val)
             .fetch_optional(&self.pool)
@@ -76,7 +76,7 @@ impl ProductStockService {
             SELECT product_data
             FROM service_products
             WHERE service_id = $1 AND product_index = $2 AND is_active = true
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)
@@ -122,9 +122,8 @@ impl ProductStockService {
                     .filter_map(|v| {
                         v.get("stock")
                             .and_then(|s| {
-                                s.as_i64().or_else(|| {
-                                    s.as_str().and_then(|str| str.parse::<i64>().ok())
-                                })
+                                s.as_i64()
+                                    .or_else(|| s.as_str().and_then(|str| str.parse::<i64>().ok()))
                             })
                             .map(|s| s as i32)
                     })
@@ -166,7 +165,7 @@ impl ProductStockService {
             SELECT id
             FROM product_delivery_config
             WHERE service_id = $1 AND product_index = $2
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)
@@ -186,7 +185,7 @@ impl ProductStockService {
                     AND quantity_available >= $1
                 ORDER BY quantity_available DESC
                 LIMIT 1
-                "#
+                "#,
             )
             .bind(quantity)
             .bind(config_id_val)
@@ -205,7 +204,7 @@ impl ProductStockService {
             SELECT product_data
             FROM service_products
             WHERE service_id = $1 AND product_index = $2 AND is_active = true
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)
@@ -288,7 +287,7 @@ impl ProductStockService {
                     UPDATE service_products
                     SET product_data = $1, updated_at = NOW()
                     WHERE service_id = $2 AND product_index = $3
-                    "#
+                    "#,
                 )
                 .bind(&produit)
                 .bind(service_id)
@@ -391,7 +390,7 @@ impl ProductStockService {
                 SELECT product_index
                 FROM product_delivery_config
                 WHERE id = $1
-                "#
+                "#,
             )
             .bind(config_id)
             .fetch_optional(&self.pool)
@@ -404,7 +403,7 @@ impl ProductStockService {
                     SELECT product_data
                     FROM service_products
                     WHERE service_id = $1 AND product_index = $2 AND is_active = true
-                    "#
+                    "#,
                 )
                 .bind(service_id)
                 .bind(product_idx)
@@ -423,7 +422,7 @@ impl ProductStockService {
                         UPDATE service_products
                         SET product_data = $1, updated_at = NOW()
                         WHERE service_id = $2 AND product_index = $3
-                        "#
+                        "#,
                     )
                     .bind(&produit)
                     .bind(service_id)

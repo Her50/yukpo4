@@ -24,6 +24,7 @@ use crate::routes::echange_routes;
 #[cfg(feature = "image_search")]
 use crate::routes::image_search_routes::image_search_routes;
 use crate::routes::{
+    admin_user_routes::admin_user_routes,
     advanced_analytics_routes::advanced_analytics_routes, // ✅ NOUVEAU: Routes analytics avancés
     advanced_timeline_routes::advanced_timeline_routes, // ✅ NOUVEAU Phase 2: Routes timelines multi-pistes avancées
     // Routes déjà dans router_yukpo mais ajoutées ici pour être explicite
@@ -50,10 +51,10 @@ use crate::routes::{
     diagnostic_routes::diagnostic_routes,
     embedding_routes::embedding_routes,
     export_routes::export_routes, // ✅ NOUVEAU Phase 2.3: Routes pour jobs d'export vidéo
-    feature_flags_routes::feature_flags_routes, // ✅ NOUVEAU: Routes pour feature flags
     extended_audio_routes::extended_audio_routes, // ✅ NOUVEAU Phase 2.2: Routes bibliothèque audio étendue
+    feature_flags_routes::feature_flags_routes,   // ✅ NOUVEAU: Routes pour feature flags
     flash_promo_routes::flash_promo_routes, // ✅ NOUVEAU: Routes pour flash promotionnels de produits (gratuit)
-    generative_routes::generative_routes, // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA
+    generative_routes::generative_routes,   // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA
     global_promo_routes::global_promo_routes,
     health_routes::health_routes,
     // health_structure_routes::health_structure_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
@@ -78,11 +79,11 @@ use crate::routes::{
     plugin_routes::plugin_routes, // ✅ NOUVEAU Phase 2: Routes gestion des plugins
     popular_products_routes::popular_products_routes,
     prestataire_routes::prestataire_routes,
+    product_comments_routes::product_comments_routes, // ✅ NOUVEAU: Routes pour commentaires de produits
     product_lifecycle_routes::product_lifecycle_routes,
+    product_reactions_routes::product_reactions_routes,
     products_management::products_management_routes, // ✅ Routes pour gestion des produits (DELETE, PATCH, PUT)
     products_routes::products_routes, // ✅ PHASE 3: Routes pour gestion produits via table service_products
-    product_reactions_routes::product_reactions_routes,
-    product_comments_routes::product_comments_routes, // ✅ NOUVEAU: Routes pour commentaires de produits
     provider_analytics_routes::provider_analytics_routes,
     publicite_ab_testing_routes::publicite_ab_testing_routes, // ✅ NOUVEAU: Routes A/B testing avancé
     publicite_ai_routes::publicite_ai_routes, // ✅ NOUVEAU: Routes IA pour suggestions publicitaires
@@ -107,7 +108,6 @@ use crate::routes::{
     token_stats_routes::token_stats_routes,
     upload_routes::upload_routes, // ✅ NOUVEAU: Routes upload préalable
     user_routes::user_routes,
-    admin_user_routes::admin_user_routes,
     // vehicle_model_routes::vehicle_model_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     video_hls_routes::video_hls_routes,
     video_ml_routes::video_ml_routes, // ✅ NOUVEAU: Routes ML pour recommandations et hashtags
@@ -131,11 +131,12 @@ async fn healthz() -> &'static str {
 }
 
 // ✅ Handler explicite pour apple-app-site-association (sans extension)
-async fn serve_apple_association() -> Result<axum::response::Response<axum::body::Body>, axum::http::StatusCode> {
-    use axum::response::Response;
+async fn serve_apple_association(
+) -> Result<axum::response::Response<axum::body::Body>, axum::http::StatusCode> {
     use axum::body::Body;
+    use axum::response::Response;
     use std::fs;
-    
+
     match fs::read_to_string("public/.well-known/apple-app-site-association") {
         Ok(content) => {
             let response = Response::builder()
@@ -149,7 +150,7 @@ async fn serve_apple_association() -> Result<axum::response::Response<axum::body
                 .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
             Ok(response)
         }
-        Err(_) => Err(axum::http::StatusCode::NOT_FOUND)
+        Err(_) => Err(axum::http::StatusCode::NOT_FOUND),
     }
 }
 pub fn init_logging() {
@@ -298,8 +299,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let recommendations = recommendation_routes(); // Ne prend pas state
     let token_stats = token_stats_routes(); // Ne prend pas state
                                             // Routes déjà dans router_yukpo mais ajoutées ici pour être explicite
-    // let ai_chat = ai_chat_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
-    // let appliance_models = appliance_model_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
+                                            // let ai_chat = ai_chat_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
+                                            // let appliance_models = appliance_model_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     let diagnostics = diagnostic_routes(state.clone());
     // let health_structure = health_structure_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     // let nearby_services = nearby_services_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
@@ -328,7 +329,10 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/health", get(healthz)) // ✅ Route pour ALB health checks
         // ✅ CRITIQUE : Servir les fichiers .well-known pour Universal Links / App Links
         // Route explicite pour apple-app-site-association (sans extension, peut poser problème avec ServeDir)
-        .route("/.well-known/apple-app-site-association", get(serve_apple_association))
+        .route(
+            "/.well-known/apple-app-site-association",
+            get(serve_apple_association),
+        )
         // ServeDir pour les autres fichiers .well-known (assetlinks.json, etc.)
         .nest_service(
             "/.well-known",

@@ -6,29 +6,27 @@ use std::env;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL doit être défini dans .env");
-    
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL doit être défini dans .env");
+
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
         .await?;
-    
+
     let admin_email = "admin@yukpo.dev";
     let admin_name = "Super Admin";
     // Hash pour le mot de passe: Hernandez87
     let password_hash = "$2b$12$yi.th1fxm9Xrz6A.PjP9wuWyDrueHMZZBReIH7i7X.efPhGNV1Pii";
-    
+
     println!("Vérification si l'utilisateur admin existe déjà...");
-    
+
     // Vérifier si l'utilisateur existe
-    let user_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)"
-    )
-    .bind(admin_email)
-    .fetch_one(&pool)
-    .await?;
-    
+    let user_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)")
+            .bind(admin_email)
+            .fetch_one(&pool)
+            .await?;
+
     if user_exists {
         println!("✅ L'utilisateur admin existe déjà. Mise à jour...");
         sqlx::query(
@@ -40,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 nom_complet = $2,
                 updated_at = NOW()
             WHERE email = $3
-            "#
+            "#,
         )
         .bind(password_hash)
         .bind(admin_name)
@@ -69,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             VALUES (
                 $1, $2, 'admin', $3, 1000000, 1.0, 1.0, 0.0, 'fr', false, NOW(), NOW()
             )
-            "#
+            "#,
         )
         .bind(admin_email)
         .bind(password_hash)
@@ -78,7 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
         println!("✅ Utilisateur admin créé avec succès!");
     }
-    
+
     // Afficher l'utilisateur créé
     #[derive(sqlx::FromRow)]
     struct UserInfo {
@@ -89,27 +87,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tokens_balance: i64,
         created_at: chrono::DateTime<chrono::Utc>,
     }
-    
+
     let user = sqlx::query_as::<_, UserInfo>(
         "SELECT id, email, role, nom_complet, tokens_balance, created_at 
          FROM users 
-         WHERE email = $1"
+         WHERE email = $1",
     )
     .bind(admin_email)
     .fetch_one(&pool)
     .await?;
-    
+
     println!("\n=== Informations de l'utilisateur admin ===");
     println!("ID: {}", user.id);
     println!("Email: {}", user.email);
     println!("Role: {}", user.role);
-    println!("Nom complet: {}", user.nom_complet.as_deref().unwrap_or("N/A"));
+    println!(
+        "Nom complet: {}",
+        user.nom_complet.as_deref().unwrap_or("N/A")
+    );
     println!("Tokens: {}", user.tokens_balance);
     println!("Créé le: {}", user.created_at);
     println!("\n=== Identifiants de connexion ===");
     println!("Email: {}", admin_email);
     println!("Mot de passe: Hernandez87");
-    
+
     Ok(())
 }
-

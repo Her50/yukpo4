@@ -62,7 +62,7 @@ pub async fn autocomplete_places(
             "Garoua, Cameroun".to_string(),
             "Maroua, Cameroun".to_string(),
         ];
-        
+
         let default_results: Vec<PlaceResult> = default_suggestions
             .iter()
             .map(|desc| PlaceResult {
@@ -180,22 +180,22 @@ pub async fn autocomplete_places(
                     let enriched_results: Vec<PlaceResult> = predictions
                         .iter()
                         .filter_map(|pred| {
-                            let description = pred.get("description")
+                            let description = pred
+                                .get("description")
                                 .and_then(|d| d.as_str())
                                 .map(|s| s.to_string())?;
-                            
-                            let place_id = pred.get("place_id")
+
+                            let place_id = pred
+                                .get("place_id")
                                 .and_then(|p| p.as_str())
                                 .map(|s| s.to_string());
-                            
-                            let types = pred.get("types")
-                                .and_then(|t| t.as_array())
-                                .map(|arr| {
-                                    arr.iter()
-                                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                        .collect::<Vec<String>>()
-                                });
-                            
+
+                            let types = pred.get("types").and_then(|t| t.as_array()).map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                    .collect::<Vec<String>>()
+                            });
+
                             Some(PlaceResult {
                                 description,
                                 place_id,
@@ -204,7 +204,7 @@ pub async fn autocomplete_places(
                         })
                         .take(20) // Limiter à 20 résultats
                         .collect();
-                    
+
                     // ✅ Compatibilité: format simple (string) pour l'ancien code
                     let simple_results: Vec<String> = enriched_results
                         .iter()

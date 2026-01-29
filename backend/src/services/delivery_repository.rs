@@ -11,12 +11,12 @@ use crate::{
     },
 };
 use chrono::{DateTime, Utc};
+use redis;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::BigDecimal;
 use sqlx::{postgres::PgQueryResult, FromRow, PgPool, Postgres, QueryBuilder};
-use uuid::Uuid;
-use redis; // ✅ NOUVEAU: Pour cache Redis
+use uuid::Uuid; // ✅ NOUVEAU: Pour cache Redis
 
 // Structs pour les requêtes migrées
 #[derive(FromRow)]
@@ -397,7 +397,7 @@ impl WalletEventDirection {
 
 impl DeliveryRepository {
     pub fn new(pool: PgPool) -> Self {
-        Self { 
+        Self {
             pool,
             redis_client: None,
         }
@@ -405,10 +405,7 @@ impl DeliveryRepository {
 
     /// ✅ NOUVEAU: Constructeur avec support Redis pour cache
     pub fn with_redis(pool: PgPool, redis_client: Option<redis::Client>) -> Self {
-        Self { 
-            pool,
-            redis_client,
-        }
+        Self { pool, redis_client }
     }
 
     pub fn pool(&self) -> &PgPool {
@@ -554,12 +551,11 @@ impl DeliveryRepository {
 
     /// Trouve un type de colis par slug
     pub async fn find_parcel_type_by_slug(&self, slug: &str) -> AppResult<Option<i32>> {
-        let type_id: Option<i32> = sqlx::query_scalar(
-            "SELECT id FROM parcel_types WHERE slug = $1"
-        )
-        .bind(slug)
-        .fetch_optional(&self.pool)
-        .await?;
+        let type_id: Option<i32> =
+            sqlx::query_scalar("SELECT id FROM parcel_types WHERE slug = $1")
+                .bind(slug)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(type_id)
     }
@@ -572,11 +568,10 @@ impl DeliveryRepository {
         }
 
         // Sinon, prendre le premier type disponible
-        let type_id: Option<i32> = sqlx::query_scalar(
-            "SELECT id FROM parcel_types ORDER BY id LIMIT 1"
-        )
-        .fetch_optional(&self.pool)
-        .await?;
+        let type_id: Option<i32> =
+            sqlx::query_scalar("SELECT id FROM parcel_types ORDER BY id LIMIT 1")
+                .fetch_optional(&self.pool)
+                .await?;
 
         type_id.ok_or_else(|| {
             crate::core::types::AppError::BadRequest(
@@ -587,12 +582,11 @@ impl DeliveryRepository {
 
     /// Vérifie si un type de colis existe
     pub async fn validate_parcel_type_exists(&self, type_id: i32) -> AppResult<()> {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM parcel_types WHERE id = $1)"
-        )
-        .bind(type_id)
-        .fetch_one(&self.pool)
-        .await?;
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM parcel_types WHERE id = $1)")
+                .bind(type_id)
+                .fetch_one(&self.pool)
+                .await?;
 
         if !exists {
             // Récupérer la liste des types disponibles pour un message d'erreur plus utile
@@ -602,12 +596,11 @@ impl DeliveryRepository {
                 display_name: String,
             }
 
-            let available_types: Vec<ParcelTypeInfo> = sqlx::query_as(
-                "SELECT id, display_name FROM parcel_types ORDER BY id"
-            )
-            .fetch_all(&self.pool)
-            .await
-            .unwrap_or_default();
+            let available_types: Vec<ParcelTypeInfo> =
+                sqlx::query_as("SELECT id, display_name FROM parcel_types ORDER BY id")
+                    .fetch_all(&self.pool)
+                    .await
+                    .unwrap_or_default();
 
             let types_list = if available_types.is_empty() {
                 "Aucun type de colis disponible. Veuillez exécuter les migrations.".to_string()
@@ -622,12 +615,10 @@ impl DeliveryRepository {
                 )
             };
 
-            return Err(crate::core::types::AppError::BadRequest(
-                format!(
-                    "Le type de colis avec l'ID {} n'existe pas. {}",
-                    type_id, types_list
-                )
-            ));
+            return Err(crate::core::types::AppError::BadRequest(format!(
+                "Le type de colis avec l'ID {} n'existe pas. {}",
+                type_id, types_list
+            )));
         }
 
         Ok(())
@@ -1106,9 +1097,7 @@ impl DeliveryRepository {
         }
 
         // Construire la requête avec des placeholders dynamiques
-        let placeholders: Vec<String> = (1..=statuses.len())
-            .map(|i| format!("${}", i))
-            .collect();
+        let placeholders: Vec<String> = (1..=statuses.len()).map(|i| format!("${}", i)).collect();
         let placeholders_str = placeholders.join(", ");
 
         let query_str = format!(
@@ -1393,13 +1382,12 @@ impl DeliveryRepository {
         &self,
         payload: NewDeliveryRequest,
     ) -> AppResult<DeliverySummary> {
-        let mut tx = self.pool.begin().await
-            .map_err(|e| {
-                log::error!("[DeliveryRepository] Erreur début transaction: {:?}", e);
-                crate::core::types::AppError::Internal(
-                    "Erreur de connexion à la base de données".into(),
-                )
-            })?;
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            log::error!("[DeliveryRepository] Erreur début transaction: {:?}", e);
+            crate::core::types::AppError::Internal(
+                "Erreur de connexion à la base de données".into(),
+            )
+        })?;
 
         let parcel_row: DeliveryParcelRow = sqlx::query_as(
             r#"
@@ -1444,9 +1432,7 @@ impl DeliveryRepository {
                     );
                 }
             }
-            crate::core::types::AppError::Internal(
-                "Erreur lors de la création du colis".into(),
-            )
+            crate::core::types::AppError::Internal("Erreur lors de la création du colis".into())
         })?;
 
         let parcel = DeliveryParcel {
@@ -1623,14 +1609,16 @@ impl DeliveryRepository {
         .execute(&mut *tx)
         .await
         .map_err(|e| {
-            log::error!("[DeliveryRepository] Erreur insertion status event: {:?}", e);
+            log::error!(
+                "[DeliveryRepository] Erreur insertion status event: {:?}",
+                e
+            );
             crate::core::types::AppError::Internal(
                 "Erreur lors de l'enregistrement de l'événement de statut".into(),
             )
         })?;
 
-        tx.commit().await
-        .map_err(|e| {
+        tx.commit().await.map_err(|e| {
             log::error!("[DeliveryRepository] Erreur commit transaction: {:?}", e);
             crate::core::types::AppError::Internal(
                 "Erreur lors de la finalisation de la création de la livraison".into(),
@@ -2153,7 +2141,7 @@ impl DeliveryRepository {
     }
 
     /// Récupère le résumé d'une livraison
-    /// 
+    ///
     /// ⚠️ PERFORMANCE: Cette requête peut prendre ~1s à cause des nombreuses transformations ST_Y/ST_X
     /// sur les colonnes géométriques (pickup_location, dropoff_location, store_location, etc.).
     /// ✅ OPTIMISÉ: Utilise les colonnes calculées (pickup_lat, pickup_lng, etc.) au lieu de ST_Y/ST_X
@@ -2166,10 +2154,17 @@ impl DeliveryRepository {
         let cache_key = format!("delivery:summary:{}", delivery_id);
         if let Some(redis) = &self.redis_client {
             if let Ok(mut conn) = redis.get_multiplexed_async_connection().await {
-                match redis::cmd("GET").arg(&cache_key).query_async::<Option<String>>(&mut conn).await {
+                match redis::cmd("GET")
+                    .arg(&cache_key)
+                    .query_async::<Option<String>>(&mut conn)
+                    .await
+                {
                     Ok(Some(cached_json)) => {
                         if let Ok(cached) = serde_json::from_str::<DeliverySummary>(&cached_json) {
-                            log::debug!("[DeliveryRepository] Cache hit pour delivery {}", delivery_id);
+                            log::debug!(
+                                "[DeliveryRepository] Cache hit pour delivery {}",
+                                delivery_id
+                            );
                             return Ok(Some(cached));
                         }
                     }
@@ -2177,7 +2172,10 @@ impl DeliveryRepository {
                         // Pas dans le cache, continuer
                     }
                     Err(e) => {
-                        log::debug!("[DeliveryRepository] Erreur cache Redis (continuation normale): {}", e);
+                        log::debug!(
+                            "[DeliveryRepository] Erreur cache Redis (continuation normale): {}",
+                            e
+                        );
                     }
                 }
             }
@@ -2299,17 +2297,18 @@ impl DeliveryRepository {
 
             // ✅ Récupérer la livraison retour si elle existe
             // Note: Utilisation de Box::pin pour éviter la récursion infinie dans async fn
-            let return_delivery: Option<Box<DeliverySummary>> = if let Some(return_delivery_id) = row.return_delivery_id {
-                // Utiliser Box::pin pour l'appel récursif
-                let future = Box::pin(self.get_delivery_summary(return_delivery_id));
-                if let Ok(Some(ret)) = future.await {
-                    Some(Box::new(ret))
+            let return_delivery: Option<Box<DeliverySummary>> =
+                if let Some(return_delivery_id) = row.return_delivery_id {
+                    // Utiliser Box::pin pour l'appel récursif
+                    let future = Box::pin(self.get_delivery_summary(return_delivery_id));
+                    if let Ok(Some(ret)) = future.await {
+                        Some(Box::new(ret))
+                    } else {
+                        None
+                    }
                 } else {
                     None
-                }
-            } else {
-                None
-            };
+                };
 
             let summary = DeliverySummary {
                 id: row.id,
@@ -3365,7 +3364,8 @@ impl DeliveryRepository {
             .into_iter()
             .map(|row| {
                 // ✅ NOUVEAU: Extraire les spécialisations
-                let specializations: Vec<String> = row.specializations
+                let specializations: Vec<String> = row
+                    .specializations
                     .as_ref()
                     .and_then(|v| v.as_array())
                     .map(|arr| {
@@ -3374,7 +3374,7 @@ impl DeliveryRepository {
                             .collect()
                     })
                     .unwrap_or_default();
-                
+
                 // Récupérer les données depuis courier_availability_snapshots pour les champs manquants
                 CourierMatchingCandidate {
                     courier_id: row.courier_id,
@@ -4176,11 +4176,7 @@ impl DeliveryRepository {
     }
 
     /// Supprimer (soft delete) une adresse sauvegardée
-    pub async fn delete_saved_address(
-        &self,
-        user_id: i32,
-        address_id: i32,
-    ) -> AppResult<()> {
+    pub async fn delete_saved_address(&self, user_id: i32, address_id: i32) -> AppResult<()> {
         let result = sqlx::query(
             "UPDATE user_saved_addresses SET is_active = FALSE, updated_at = NOW() WHERE id = $1 AND user_id = $2"
         )
@@ -4226,7 +4222,7 @@ impl DeliveryRepository {
                 .bind(address_id)
                 .execute(&self.pool)
                 .await?;
-                
+
                 sqlx::query(
                     "UPDATE user_saved_addresses SET is_default_pickup = TRUE, updated_at = NOW() WHERE id = $1 AND user_id = $2"
                 )
@@ -4243,7 +4239,7 @@ impl DeliveryRepository {
                 .bind(address_id)
                 .execute(&self.pool)
                 .await?;
-                
+
                 sqlx::query(
                     "UPDATE user_saved_addresses SET is_default_dropoff = TRUE, updated_at = NOW() WHERE id = $1 AND user_id = $2"
                 )
@@ -4253,7 +4249,9 @@ impl DeliveryRepository {
                 .await?;
             }
             _ => {
-                return Err(AppError::BadRequest("address_type doit être 'pickup' ou 'dropoff'".to_string()));
+                return Err(AppError::BadRequest(
+                    "address_type doit être 'pickup' ou 'dropoff'".to_string(),
+                ));
             }
         }
 
@@ -4275,12 +4273,10 @@ impl DeliveryRepository {
         _user_id: i32,
         address_id: i32,
     ) -> AppResult<()> {
-        sqlx::query(
-            "SELECT increment_user_saved_address_usage($1)"
-        )
-        .bind(address_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("SELECT increment_user_saved_address_usage($1)")
+            .bind(address_id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
@@ -4317,7 +4313,7 @@ impl DeliveryRepository {
     ) -> AppResult<Vec<DeliverySummary>> {
         // Statuts considérés comme "actifs" (pas terminés)
         use crate::models::delivery_model::DeliveryStatus;
-        
+
         let active_statuses: Vec<DeliveryStatus> = vec![
             DeliveryStatus::Accepted,
             DeliveryStatus::EnRoutePickup,

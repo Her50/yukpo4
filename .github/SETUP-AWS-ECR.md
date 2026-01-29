@@ -149,3 +149,4 @@ aws cloudtrail lookup-events \
   --region eu-west-1
 ```
 
+

@@ -15,8 +15,8 @@ use log::info;
 use serde::Deserialize;
 use std::sync::Arc;
 use std::time::Duration; // ✅ NOUVEAU 2025-12-14: Pour set_with_ttl
-// ✅ NOUVEAU 2025-11-04: Suggestions CLIENT avec priorité + GPS
-// use crate::services::autocomplete_client_service;  // ❌ Remplacé par autocomplete_search_service
+                         // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT avec priorité + GPS
+                         // use crate::services::autocomplete_client_service;  // ❌ Remplacé par autocomplete_search_service
 
 #[derive(Debug, Deserialize)]
 pub struct AutocompleteSuggestionsQuery {
@@ -465,9 +465,13 @@ pub async fn search_product_suggestions(
         request.user_lat.unwrap_or(0.0),
         request.user_lng.unwrap_or(0.0)
     );
-    
+
     // Vérifier le cache (TTL: 5 minutes pour autocomplete)
-    if let Ok(cached) = state.cache_service.get::<serde_json::Value>(&cache_key).await {
+    if let Ok(cached) = state
+        .cache_service
+        .get::<serde_json::Value>(&cache_key)
+        .await
+    {
         if let Some(cached_data) = cached {
             info!("✅ Suggestions autocomplete depuis cache");
             return Ok(Json(serde_json::json!({
@@ -495,9 +499,11 @@ pub async fn search_product_suggestions(
 
     // ✅ UTILISER LE SERVICE AVANCÉ (priorité chosen_location + GPS)
     // ✅ CORRIGÉ 2025-12-18: Retry avec backoff exponentiel pour gérer les erreurs TLS
-    let mut suggestions_result = Err(crate::core::types::AppError::Internal("Initial attempt".to_string()));
+    let mut suggestions_result = Err(crate::core::types::AppError::Internal(
+        "Initial attempt".to_string(),
+    ));
     let max_retries = 3;
-    
+
     for attempt in 1..=max_retries {
         suggestions_result = autocomplete_search_service::search_by_autocomplete_vector(
             pool,
@@ -506,7 +512,7 @@ pub async fn search_product_suggestions(
             limit,
         )
         .await;
-        
+
         match &suggestions_result {
             Ok(_) => break, // Succès, sortir de la boucle
             Err(e) => {
@@ -530,7 +536,11 @@ pub async fn search_product_suggestions(
                         tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
                         continue;
                     } else {
-                        log::error!("❌ Erreur DB après {} tentatives: {}", max_retries, error_msg);
+                        log::error!(
+                            "❌ Erreur DB après {} tentatives: {}",
+                            max_retries,
+                            error_msg
+                        );
                     }
                 } else {
                     // Erreur non-TLS, ne pas retry
@@ -539,18 +549,22 @@ pub async fn search_product_suggestions(
             }
         }
     }
-    
+
     match suggestions_result {
         Ok(suggestions) => {
             info!(
                 "✅ {} suggestions avec priorité chosen_location + GPS",
                 suggestions.len()
             );
-            
+
             // ✅ OPTIMISÉ 2025-01-14: Mettre en cache les résultats (TTL: 5 minutes)
-            let suggestions_json = serde_json::to_value(&suggestions).unwrap_or(serde_json::json!([]));
-            let _ = state.cache_service.set_with_ttl(&cache_key, &suggestions_json, Duration::from_secs(300)).await; // 5 min TTL
-            
+            let suggestions_json =
+                serde_json::to_value(&suggestions).unwrap_or(serde_json::json!([]));
+            let _ = state
+                .cache_service
+                .set_with_ttl(&cache_key, &suggestions_json, Duration::from_secs(300))
+                .await; // 5 min TTL
+
             Ok(Json(serde_json::json!({
                 "success": true,
                 "data": suggestions,
@@ -560,10 +574,7 @@ pub async fn search_product_suggestions(
         Err(e) => {
             let error_msg = format!("Erreur recherche autocomplete: {}", e);
             eprintln!("❌ Erreur suggestions CLIENT: {}", error_msg);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                error_msg,
-            ))
+            Err((StatusCode::INTERNAL_SERVER_ERROR, error_msg))
         }
     }
 }

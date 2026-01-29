@@ -86,12 +86,10 @@ impl MassiveLoadHandler {
                 let mut cache = cache_clone.write().await;
                 let now = Instant::now();
                 let max_entries = 1000; // ✅ Limite de 1000 entrées max
-                
+
                 // Nettoyer les entrées expirées
-                cache.retain(|_, cached| {
-                    now.duration_since(cached.timestamp) < cached.ttl
-                });
-                
+                cache.retain(|_, cached| now.duration_since(cached.timestamp) < cached.ttl);
+
                 // Si le cache dépasse la limite, supprimer les plus anciennes
                 if cache.len() > max_entries {
                     let mut entries: Vec<(String, Instant)> = cache
@@ -108,7 +106,11 @@ impl MassiveLoadHandler {
                     for key in keys_to_remove {
                         cache.remove(&key);
                     }
-                    log::info!("🧹 Cache nettoyé: {} entrées supprimées (limite: {})", to_remove, max_entries);
+                    log::info!(
+                        "🧹 Cache nettoyé: {} entrées supprimées (limite: {})",
+                        to_remove,
+                        max_entries
+                    );
                 }
             }
         });

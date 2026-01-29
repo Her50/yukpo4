@@ -38,7 +38,7 @@ async fn run_cleanup(pool: &PgPool) -> Result<(), sqlx::Error> {
     let result = sqlx::query(
         r#"
         SELECT * FROM run_audio_cache_cleanup()
-        "#
+        "#,
     )
     .fetch_one(pool)
     .await?;
@@ -59,4 +59,3 @@ async fn run_cleanup(pool: &PgPool) -> Result<(), sqlx::Error> {
 
     Ok(())
 }
-

@@ -1,14 +1,13 @@
-use crate::core::types::AppResult;
-use crate::utils::log::{log_error, log_info};
 use crate::config::search_config::SearchConfig;
-use crate::services::scheduling_search_service::SchedulingSearchService;
+use crate::core::types::AppResult;
 use crate::services::creer_service::detect_lang;
 use crate::services::orchestration_ia::extract_keywords_from_text;
+use crate::services::scheduling_search_service::SchedulingSearchService;
+use crate::utils::log::{log_error, log_info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
-
 
 /// Résultat de recherche avec score détaillé
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,7 +58,9 @@ impl NativeSearchService {
     pub fn with_cache_and_geographic_matching(
         pool: PgPool,
         _cache_service: Option<Arc<crate::services::cache_service::CacheService>>,
-        _geographic_matching: Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
+        _geographic_matching: Option<
+            Arc<crate::services::geographic_matching_service::GeographicMatchingService>,
+        >,
         _search_metrics: Option<Arc<crate::services::search_metrics::SearchMetricsService>>,
         _scalability_service: Option<Arc<crate::services::scalability_service::ScalabilityService>>,
     ) -> Self {
@@ -81,18 +82,20 @@ impl NativeSearchService {
         category_filter: Option<&str>,
         location_filter: Option<&str>,
         user_id: Option<i32>,
-        gps_zone: Option<&str>,  // Nouveau paramètre GPS
-        search_radius_km: Option<i32>,  // Nouveau paramètre rayon
+        gps_zone: Option<&str>,        // Nouveau paramètre GPS
+        search_radius_km: Option<i32>, // Nouveau paramètre rayon
     ) -> AppResult<Vec<SearchResult>> {
         let start_time = std::time::Instant::now();
-        log_info(&format!("[NativeSearch] Début recherche: '{}' (GPS: {:?}, Rayon: {:?}km, User: {:?})", 
-            search_query, gps_zone, search_radius_km, user_id));
+        log_info(&format!(
+            "[NativeSearch] Début recherche: '{}' (GPS: {:?}, Rayon: {:?}km, User: {:?})",
+            search_query, gps_zone, search_radius_km, user_id
+        ));
 
         // ✅ AMÉLIORÉ 2025-12-24: Combiner user.preferred_lang avec détection automatique
         let user_preferred_lang: Option<String> = if let Some(uid) = user_id {
             // Récupérer preferred_lang depuis la base de données
             match sqlx::query_scalar::<_, Option<String>>(
-                "SELECT preferred_lang FROM users WHERE id = $1"
+                "SELECT preferred_lang FROM users WHERE id = $1",
             )
             .bind(uid)
             .fetch_optional(&self.pool)
@@ -106,18 +109,16 @@ impl NativeSearchService {
         } else {
             None
         };
-        
+
         // Détecter la langue de la requête
         let detected_lang = detect_lang(search_query);
-        
+
         // Combiner: préférence utilisateur > détection automatique > fallback "simple"
-        let final_lang = user_preferred_lang
-            .as_deref()
-            .unwrap_or(&detected_lang);
-        
+        let final_lang = user_preferred_lang.as_deref().unwrap_or(&detected_lang);
+
         let pg_lang = self.map_language_to_postgres(final_lang);
         log_info(&format!(
-            "[NativeSearch] Langue: user_pref={:?}, detected={}, final={} -> PostgreSQL: '{}'", 
+            "[NativeSearch] Langue: user_pref={:?}, detected={}, final={} -> PostgreSQL: '{}'",
             user_preferred_lang, detected_lang, final_lang, pg_lang
         ));
 
@@ -128,84 +129,118 @@ impl NativeSearchService {
         } else {
             keywords.join(" ")
         };
-        log_info(&format!("[NativeSearch] Mots-clés extraits: '{}' -> '{}'", search_query, query_with_keywords));
-        
+        log_info(&format!(
+            "[NativeSearch] Mots-clés extraits: '{}' -> '{}'",
+            search_query, query_with_keywords
+        ));
+
         // Normaliser la requête (variantes accents, gestion mots tronqués)
         let (normalized_query, has_wildcards) = self.normalize_query_advanced(&query_with_keywords);
-        log_info(&format!("[NativeSearch] Requête normalisée: '{}' -> '{}' (wildcards: {})", 
-            query_with_keywords, normalized_query, has_wildcards));
-        
+        log_info(&format!(
+            "[NativeSearch] Requête normalisée: '{}' -> '{}' (wildcards: {})",
+            query_with_keywords, normalized_query, has_wildcards
+        ));
+
         // ✅ CORRIGÉ 2026-01-22: Utiliser la requête originale (sans variantes) pour la recherche SQL
         // PostgreSQL unaccent() gère déjà les accents, pas besoin de variantes dans la requête SQL
         // Les variantes sont utiles pour le matching vectoriel mais pas pour ILIKE/unaccent()
         let query_for_sql = query_with_keywords.trim().to_lowercase();
-        
+
         // ✅ OPTIMISÉ 2025-01-01: Utiliser keyword_search_with_gps en PRIORITÉ (fonction la plus pertinente)
         // - keyword_search_with_gps: 4.46s → 3 résultats (PERTINENTE, optimisée à ~0.3s) - PRIORITÉ
         // - fulltext_search_with_gps: 12.4ms → 0 résultats (fallback si pas assez de résultats)
         // - trigram_search_with_gps: 788ms → 0 résultats (fallback si toujours pas assez)
-        // 
+        //
         // Stratégie: Appeler keyword_search_with_gps en premier, puis fallback si nécessaire
-        let mut fulltext_results = self.keyword_search_with_gps(
-            &query_for_sql, 
-            category_filter, 
-            location_filter,
-            gps_zone,
-            search_radius_km
-        ).await?;
-        
-        log_info(&format!("[NativeSearch] keyword_search_with_gps: {} résultats trouvés", fulltext_results.len()));
-        
-        // ✅ FALLBACK 1: fulltext_search_with_gps si aucun résultat
-        if fulltext_results.is_empty() {
-            log_info(&format!("[NativeSearch] Fallback fulltext_search_with_gps (0 résultats trouvés)"));
-            let fulltext_fallback_results = self.fulltext_search_with_gps_and_lang(
-                &query_for_sql, 
-                category_filter, 
+        let mut fulltext_results = self
+            .keyword_search_with_gps(
+                &query_for_sql,
+                category_filter,
                 location_filter,
                 gps_zone,
                 search_radius_km,
-                &pg_lang,
-                has_wildcards
-            ).await?;
-            
+            )
+            .await?;
+
+        log_info(&format!(
+            "[NativeSearch] keyword_search_with_gps: {} résultats trouvés",
+            fulltext_results.len()
+        ));
+
+        // ✅ FALLBACK 1: fulltext_search_with_gps si aucun résultat
+        if fulltext_results.is_empty() {
+            log_info(&format!(
+                "[NativeSearch] Fallback fulltext_search_with_gps (0 résultats trouvés)"
+            ));
+            let fulltext_fallback_results = self
+                .fulltext_search_with_gps_and_lang(
+                    &query_for_sql,
+                    category_filter,
+                    location_filter,
+                    gps_zone,
+                    search_radius_km,
+                    &pg_lang,
+                    has_wildcards,
+                )
+                .await?;
+
             // Fusionner les résultats en évitant les doublons
             for result in fulltext_fallback_results {
-                if !fulltext_results.iter().any(|r| r.service_id == result.service_id) {
+                if !fulltext_results
+                    .iter()
+                    .any(|r| r.service_id == result.service_id)
+                {
                     fulltext_results.push(result);
                 }
             }
-            log_info(&format!("[NativeSearch] Après fallback fulltext: {} résultats totaux", fulltext_results.len()));
+            log_info(&format!(
+                "[NativeSearch] Après fallback fulltext: {} résultats totaux",
+                fulltext_results.len()
+            ));
         }
-        
+
         // ✅ FALLBACK 2: trigram_search_with_gps si toujours aucun résultat
         if fulltext_results.is_empty() {
-            log_info(&format!("[NativeSearch] Fallback trigram_search_with_gps (0 résultats trouvés)"));
-            let trigram_results = self.trigram_search_with_gps(
-                &query_for_sql, 
-                category_filter, 
-                location_filter,
-                gps_zone,
-                search_radius_km
-            ).await?;
-            
+            log_info(&format!(
+                "[NativeSearch] Fallback trigram_search_with_gps (0 résultats trouvés)"
+            ));
+            let trigram_results = self
+                .trigram_search_with_gps(
+                    &query_for_sql,
+                    category_filter,
+                    location_filter,
+                    gps_zone,
+                    search_radius_km,
+                )
+                .await?;
+
             // Fusionner les résultats en évitant les doublons
             for result in trigram_results {
-                if !fulltext_results.iter().any(|r| r.service_id == result.service_id) {
+                if !fulltext_results
+                    .iter()
+                    .any(|r| r.service_id == result.service_id)
+                {
                     fulltext_results.push(result);
                 }
             }
-            log_info(&format!("[NativeSearch] Après fallback trigram: {} résultats totaux", fulltext_results.len()));
+            log_info(&format!(
+                "[NativeSearch] Après fallback trigram: {} résultats totaux",
+                fulltext_results.len()
+            ));
         }
 
         // Trier les résultats en combinant score et distance
         // Priorité: score de pertinence (DESC), puis distance (ASC si disponible)
         fulltext_results.sort_by(|a, b| {
             // Comparer d'abord par score (score le plus élevé en premier)
-            let score_cmp = b.total_score.partial_cmp(&a.total_score).unwrap_or(std::cmp::Ordering::Equal);
-            
+            let score_cmp = b
+                .total_score
+                .partial_cmp(&a.total_score)
+                .unwrap_or(std::cmp::Ordering::Equal);
+
             // Si les scores sont égaux ou très proches (différence < 0.1), utiliser la distance
-            if score_cmp == std::cmp::Ordering::Equal || (a.total_score - b.total_score).abs() < 0.1 {
+            if score_cmp == std::cmp::Ordering::Equal || (a.total_score - b.total_score).abs() < 0.1
+            {
                 // Comparer par distance (distance la plus courte en premier)
                 let dist_a = a.distance_km.unwrap_or(f64::MAX);
                 let dist_b = b.distance_km.unwrap_or(f64::MAX);
@@ -218,7 +253,9 @@ impl NativeSearchService {
         let duration = start_time.elapsed();
         log_info(&format!(
             "[NativeSearch] Recherche terminée en {:?}: {} résultats (avec filtrage GPS: {})",
-            duration, fulltext_results.len(), gps_zone.is_some()
+            duration,
+            fulltext_results.len(),
+            gps_zone.is_some()
         ));
 
         Ok(fulltext_results)
@@ -234,7 +271,16 @@ impl NativeSearchService {
     ) -> AppResult<Vec<SearchResult>> {
         // Appeler la nouvelle méthode avec GPS désactivé, langue par défaut, et pas de wildcards
         let (normalized, has_wildcards) = self.normalize_query_advanced(query);
-        self.fulltext_search_with_gps(&normalized, category_filter, location_filter, None, None, "french", has_wildcards).await
+        self.fulltext_search_with_gps(
+            &normalized,
+            category_filter,
+            location_filter,
+            None,
+            None,
+            "french",
+            has_wildcards,
+        )
+        .await
     }
 
     /// ✅ NOUVEAU 2025-12-24: Recherche full-text avec langue détectée
@@ -249,7 +295,16 @@ impl NativeSearchService {
         has_wildcards: bool,
     ) -> AppResult<Vec<SearchResult>> {
         // ✅ CORRIGÉ 2025-12-24: Passer la langue détectée et les wildcards à la méthode de recherche
-        self.fulltext_search_with_gps(query, category_filter, location_filter, gps_zone, search_radius_km, pg_lang, has_wildcards).await
+        self.fulltext_search_with_gps(
+            query,
+            category_filter,
+            location_filter,
+            gps_zone,
+            search_radius_km,
+            pg_lang,
+            has_wildcards,
+        )
+        .await
     }
 
     /// Recherche full-text intelligente avec filtrage GPS et planifications
@@ -266,11 +321,14 @@ impl NativeSearchService {
         // Analyser l'intention de recherche pour détecter les planifications
         let scheduling_service = SchedulingSearchService::new(self.pool.clone());
         let intent = scheduling_service.analyze_search_intent(query);
-        
+
         // Si recherche avec planification, utiliser la fonction spécialisée
         if intent.should_use_scheduling_search() {
-            log_info(&format!("[NativeSearch] Recherche avec planification détectée: {:?}", intent));
-            
+            log_info(&format!(
+                "[NativeSearch] Recherche avec planification détectée: {:?}",
+                intent
+            ));
+
             // Convertir gps_zone en coordonnées si nécessaire
             let (user_lat, user_lng) = if let Some(zone) = gps_zone {
                 // Extraire lat/lng de la zone GPS (format: "lat,lng")
@@ -282,15 +340,18 @@ impl NativeSearchService {
             } else {
                 (None, None)
             };
-            
-            let scheduling_results = scheduling_service.search_with_scheduling(
-                query,
-                None, // Utilise NOW()
-                user_lat,
-                user_lng,
-                search_radius_km.map(|r| r as f64),
-            ).await.map_err(|e| format!("Erreur recherche planifications: {}", e))?;
-            
+
+            let scheduling_results = scheduling_service
+                .search_with_scheduling(
+                    query,
+                    None, // Utilise NOW()
+                    user_lat,
+                    user_lng,
+                    search_radius_km.map(|r| r as f64),
+                )
+                .await
+                .map_err(|e| format!("Erreur recherche planifications: {}", e))?;
+
             // Convertir en SearchResult
             let results: Vec<SearchResult> = scheduling_results
                 .into_iter()
@@ -305,22 +366,22 @@ impl NativeSearchService {
                     distance_km: None,
                     gps_coords: None,
                     search_method: "scheduling_search".to_string(),
-                    matched_fields: vec![
-                        "planification".to_string(),
-                        "disponibilité".to_string()
-                    ],
+                    matched_fields: vec!["planification".to_string(), "disponibilité".to_string()],
                 })
                 .collect();
-            
-            log_info(&format!("[NativeSearch] {} résultats avec planifications trouvés", results.len()));
+
+            log_info(&format!(
+                "[NativeSearch] {} résultats avec planifications trouvés",
+                results.len()
+            ));
             return Ok(results);
         }
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
         if let Some(gps_zone) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
-            
+
             log_info(&format!("[NativeSearch] Utilisation de search_services_gps_final avec GPS: {} et rayon: {}km", gps_zone, radius));
-            
+
             // Appeler notre fonction PostgreSQL optimisée
             let sql = r#"
                 SELECT 
@@ -333,7 +394,7 @@ impl NativeSearchService {
                     gps_source
                 FROM search_services_gps_final($1, $2, $3, $4)
             "#;
-            
+
             let results = sqlx::query(sql)
                 .bind(query)
                 .bind(gps_zone)
@@ -341,27 +402,37 @@ impl NativeSearchService {
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
-                    log_error(&format!("[NativeSearch] Erreur recherche GPS optimisée: {}", e));
-                    crate::core::types::AppError::Internal(format!("Erreur recherche GPS optimisée: {}", e))
+                    log_error(&format!(
+                        "[NativeSearch] Erreur recherche GPS optimisée: {}",
+                        e
+                    ));
+                    crate::core::types::AppError::Internal(format!(
+                        "Erreur recherche GPS optimisée: {}",
+                        e
+                    ))
                 })?;
 
             // ✅ CORRIGÉ CRITIQUE 2025-12-20: Éliminer N+1 queries - batch query pour récupérer tous les services en UNE requête
-            let service_ids: Vec<i32> = results.iter().map(|row| row.get::<i32, _>("service_id")).collect();
-            
-            let services_data_map: std::collections::HashMap<i32, Value> = if !service_ids.is_empty() {
-                sqlx::query("SELECT id, data FROM services WHERE id = ANY($1)")
-                    .bind(&service_ids)
-                    .fetch_all(&self.pool)
-                    .await
-                    .map(|rows| {
-                        rows.into_iter()
-                            .map(|row| (row.get::<i32, _>("id"), row.get::<Value, _>("data")))
-                            .collect()
-                    })
-                    .unwrap_or_default()
-            } else {
-                std::collections::HashMap::new()
-            };
+            let service_ids: Vec<i32> = results
+                .iter()
+                .map(|row| row.get::<i32, _>("service_id"))
+                .collect();
+
+            let services_data_map: std::collections::HashMap<i32, Value> =
+                if !service_ids.is_empty() {
+                    sqlx::query("SELECT id, data FROM services WHERE id = ANY($1)")
+                        .bind(&service_ids)
+                        .fetch_all(&self.pool)
+                        .await
+                        .map(|rows| {
+                            rows.into_iter()
+                                .map(|row| (row.get::<i32, _>("id"), row.get::<Value, _>("data")))
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                } else {
+                    std::collections::HashMap::new()
+                };
 
             let mut search_results = Vec::new();
             for row in results {
@@ -372,9 +443,10 @@ impl NativeSearchService {
                 let distance_km: Option<f64> = row.get("distance_km");
                 let relevance_score: f32 = row.get("relevance_score");
                 let _gps_source: Option<String> = row.get("gps_source");
-                
+
                 // ✅ Récupérer depuis le map batch (pas de requête par service)
-                let service_data = services_data_map.get(&service_id)
+                let service_data = services_data_map
+                    .get(&service_id)
                     .cloned()
                     .unwrap_or_else(|| serde_json::json!({}));
 
@@ -400,11 +472,14 @@ impl NativeSearchService {
                     matched_fields: vec!["gps".to_string()],
                 });
             }
-            
-            log_info(&format!("[NativeSearch] Recherche GPS optimisée: {} résultats trouvés", search_results.len()));
+
+            log_info(&format!(
+                "[NativeSearch] Recherche GPS optimisée: {} résultats trouvés",
+                search_results.len()
+            ));
             return Ok(search_results);
         }
-        
+
         // ✅ OPTIMISÉ 2025-12-23: Requête ULTRA-OPTIMISÉE pour performance instantanée (< 100ms)
         // ✅ AMÉLIORÉ 2025-12-24: Support multi-langue (détection automatique)
         // Problèmes identifiés dans les logs:
@@ -412,14 +487,14 @@ impl NativeSearchService {
         // 2. plainto_tsquery peut ne pas matcher les mots avec accents (AJOUT fallback ILIKE)
         // 3. Pool de connexions saturé (requête optimisée pour libérer connexions plus vite)
         // 4. Langue codée en dur 'french' (✅ CORRIGÉ 2025-12-24 - utilise langue détectée)
-        // 
+        //
         // Stratégie:
         // 1. Pré-calculer les données autocomplete dans une CTE (évite LEFT JOIN LATERAL)
         // 2. Ajouter fallback ILIKE pour correspondances exactes (gère les accents)
         // 3. Utiliser les index GIN tsvector créés dans les migrations
         // 4. Scoring amélioré avec bonus pour matches exacts et usage_count
         // 5. Détection automatique de langue pour to_tsvector/plainto_tsquery
-        // 
+        //
         // ✅ AMÉLIORÉ 2026-01-13: Matching vectoriel avec test vectoriel unique (équivalent %in% en R)
         // Utiliser extract_keywords_from_text pour filtrer les stop words de manière générique
         let keywords = extract_keywords_from_text(query);
@@ -427,17 +502,18 @@ impl NativeSearchService {
             .iter()
             .map(|w| self.normalize_word_for_vector_matching(w))
             .collect();
-        
+
         log_info(&format!(
             "[NativeSearch] Mots-clés extraits (après filtrage stop words): {:?} -> normalisés: {:?}", 
             keywords, search_keywords_normalized
         ));
-        
+
         // ✅ OPTIMISÉ 2025-12-30: Requête ULTRA-SIMPLIFIÉE pour performance < 2s
         // Réduit de 5 CTE à 2 CTE, utilise calculate_best_vector_match_score (une seule passe)
         let sql = if !search_keywords_normalized.is_empty() {
             // Requête optimisée avec matching vectoriel simplifié
-            format!(r#"
+            format!(
+                r#"
 WITH autocomplete_matches AS (
     -- ✅ ÉTAPE 1: Filtrage rapide + calcul score en UNE SEULE PASSE (évite CROSS JOIN)
     SELECT 
@@ -510,8 +586,10 @@ WHERE ($3::text IS NULL OR s.category = $3 OR s.data->'category'->>'valeur' = $3
 ORDER BY ac.final_score DESC
 LIMIT 100
             "#,
-                pg_lang, pg_lang,  // ts_rank pour titre et description
-                pg_lang, pg_lang   // ts_rank pour titre et description
+                pg_lang,
+                pg_lang, // ts_rank pour titre et description
+                pg_lang,
+                pg_lang // ts_rank pour titre et description
             )
         } else {
             // Fallback vers l'ancienne méthode si pas de mots-clés valides
@@ -522,32 +600,39 @@ LIMIT 100
             } else {
                 String::new()
             };
-            
+
             let word_like_score = if !word_like_pattern.is_empty() {
-                format!("CASE WHEN ac.valeur ILIKE '{}' THEN 50.0 ELSE 0.0 END", word_like_pattern)
+                format!(
+                    "CASE WHEN ac.valeur ILIKE '{}' THEN 50.0 ELSE 0.0 END",
+                    word_like_pattern
+                )
             } else {
                 "0.0".to_string()
             };
-            
+
             let word_like_condition_sql = if !word_like_pattern.is_empty() {
                 format!("OR ac.valeur ILIKE '{}'", word_like_pattern)
             } else {
                 String::new()
             };
-            
+
             let wildcard_like_score = if has_wildcards {
-                format!("CASE WHEN ac.valeur LIKE '{}' THEN 50.0 ELSE 0.0 END", query.replace('*', "%"))
+                format!(
+                    "CASE WHEN ac.valeur LIKE '{}' THEN 50.0 ELSE 0.0 END",
+                    query.replace('*', "%")
+                )
             } else {
                 "0.0".to_string()
             };
-            
+
             let wildcard_like_condition = if has_wildcards {
                 format!("OR ac.valeur LIKE '{}'", query.replace('*', "%"))
             } else {
                 String::new()
             };
-            
-            format!(r#"
+
+            format!(
+                r#"
 WITH autocomplete_matches AS (
     -- ✅ ÉTAPE 1: Pré-calculer les matches autocomplete avec scoring (évite LEFT JOIN LATERAL)
     SELECT 
@@ -733,50 +818,57 @@ FROM (
 ) ranked
 ORDER BY ranked.fulltext_score DESC
 LIMIT 100
-        "#, 
-            word_like_score,          // ligne 451: word LIKE score (recherche par mots individuels)
-            wildcard_like_score,      // ligne 452: wildcard LIKE score
-            pg_lang, pg_lang,         // ligne 455: ts_rank to_tsvector + plainto_tsquery (2)
-            pg_lang,                  // ligne 456: plainto_tsquery seulement (1)
-            pg_lang,                  // ligne 457: plainto_tsquery seulement (1)
-            word_like_condition_sql,  // ligne 470: word LIKE condition (recherche par mots individuels)
-            wildcard_like_condition,  // ligne 471: wildcard LIKE condition
-            pg_lang, pg_lang,         // ligne 474: to_tsvector + plainto_tsquery (2)
-            pg_lang,                  // ligne 475: plainto_tsquery seulement (1)
-            pg_lang,                  // ligne 476: plainto_tsquery seulement (1)
-            pg_lang, pg_lang,         // ligne 503: titre_service (2)
-            pg_lang, pg_lang,         // ligne 504: description (2)
-            pg_lang, pg_lang,         // ligne 529: nom_produit (2)
-            pg_lang, pg_lang,         // ligne 564: titre_service ts_rank (2)
-            pg_lang, pg_lang          // ligne 565: description ts_rank (2)
-        )
+        "#,
+                word_like_score, // ligne 451: word LIKE score (recherche par mots individuels)
+                wildcard_like_score, // ligne 452: wildcard LIKE score
+                pg_lang,
+                pg_lang, // ligne 455: ts_rank to_tsvector + plainto_tsquery (2)
+                pg_lang, // ligne 456: plainto_tsquery seulement (1)
+                pg_lang, // ligne 457: plainto_tsquery seulement (1)
+                word_like_condition_sql, // ligne 470: word LIKE condition (recherche par mots individuels)
+                wildcard_like_condition, // ligne 471: wildcard LIKE condition
+                pg_lang,
+                pg_lang, // ligne 474: to_tsvector + plainto_tsquery (2)
+                pg_lang, // ligne 475: plainto_tsquery seulement (1)
+                pg_lang, // ligne 476: plainto_tsquery seulement (1)
+                pg_lang,
+                pg_lang, // ligne 503: titre_service (2)
+                pg_lang,
+                pg_lang, // ligne 504: description (2)
+                pg_lang,
+                pg_lang, // ligne 529: nom_produit (2)
+                pg_lang,
+                pg_lang, // ligne 564: titre_service ts_rank (2)
+                pg_lang,
+                pg_lang // ligne 565: description ts_rank (2)
+            )
         };
 
         // ✅ OPTIMISÉ 2025-12-19: Requête avec retry pour gérer les problèmes de connexion DB
         let mut results = Vec::new();
         let max_retries = 3;
-        
+
         for attempt in 1..=max_retries {
             let query_result = if !search_keywords_normalized.is_empty() {
                 // ✅ NOUVEAU 2025-12-30: Requête optimisée avec matching vectoriel
                 // Passer tableau de mots-clés normalisés comme premier paramètre
                 sqlx::query(&sql)
-                    .bind(&search_keywords_normalized[..])  // $1: tableau de mots-clés normalisés
-                    .bind(query)                            // $2: requête originale pour fallback
-                    .bind(category_filter)                  // $3: filtre catégorie
-                    .bind(location_filter)                  // $4: filtre localisation
+                    .bind(&search_keywords_normalized[..]) // $1: tableau de mots-clés normalisés
+                    .bind(query) // $2: requête originale pour fallback
+                    .bind(category_filter) // $3: filtre catégorie
+                    .bind(location_filter) // $4: filtre localisation
                     .fetch_all(&self.pool)
                     .await
             } else {
                 // Requête de fallback : paramètres classiques
                 sqlx::query(&sql)
-                    .bind(query)                            // $1: requête
-                    .bind(category_filter)                   // $2: filtre catégorie
-                    .bind(location_filter)                   // $3: filtre localisation
+                    .bind(query) // $1: requête
+                    .bind(category_filter) // $2: filtre catégorie
+                    .bind(location_filter) // $3: filtre localisation
                     .fetch_all(&self.pool)
                     .await
             };
-            
+
             match query_result {
                 Ok(rows) => {
                     results = rows;
@@ -789,7 +881,7 @@ LIMIT 100
                         || error_msg.contains("Connection reset")
                         || error_msg.contains("peer closed")
                         || error_msg.contains("communicating with database");
-                    
+
                     if is_tls_error && attempt < max_retries {
                         let delay_ms = 100 * attempt;
                         log::warn!(
@@ -803,7 +895,10 @@ LIMIT 100
                         continue;
                     } else {
                         log_error(&format!("[NativeSearch] Erreur recherche full-text: {}", e));
-                        return Err(crate::core::types::AppError::Internal(format!("Erreur recherche full-text: {}", e)));
+                        return Err(crate::core::types::AppError::Internal(format!(
+                            "Erreur recherche full-text: {}",
+                            e
+                        )));
                     }
                 }
             }
@@ -848,7 +943,8 @@ LIMIT 100
         location_filter: Option<&str>,
     ) -> AppResult<Vec<SearchResult>> {
         // Appeler la nouvelle méthode avec GPS désactivé
-        self.trigram_search_with_gps(query, category_filter, location_filter, None, None).await
+        self.trigram_search_with_gps(query, category_filter, location_filter, None, None)
+            .await
     }
 
     /// Recherche trigram avec filtrage GPS
@@ -864,9 +960,12 @@ LIMIT 100
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
         if let Some(gps_zone) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
-            
-            log_info(&format!("[NativeSearch] Trigram avec GPS optimisé: {} et rayon: {}km", gps_zone, radius));
-            
+
+            log_info(&format!(
+                "[NativeSearch] Trigram avec GPS optimisé: {} et rayon: {}km",
+                gps_zone, radius
+            ));
+
             // ✅ CORRIGÉ 2025-12-18: Requête optimisée avec JOIN pour éviter N+1
             let sql = r#"
                 SELECT 
@@ -881,11 +980,11 @@ LIMIT 100
                 FROM search_services_gps_final($1, $2, $3, $4) gps_result
                 LEFT JOIN services s ON s.id = gps_result.service_id
             "#;
-            
+
             // ✅ CORRIGÉ 2025-12-18: Retry avec gestion d'erreur TLS
             let mut results = None;
             let max_retries = 3;
-            
+
             for attempt in 1..=max_retries {
                 match sqlx::query(sql)
                     .bind(query)
@@ -906,7 +1005,7 @@ LIMIT 100
                             || error_msg.contains("Connection reset")
                             || error_msg.contains("peer closed")
                             || error_msg.contains("communicating with database");
-                        
+
                         if is_tls_error && attempt < max_retries {
                             let delay_ms = 100 * attempt; // Backoff: 100ms, 200ms, 300ms
                             log::warn!(
@@ -919,7 +1018,10 @@ LIMIT 100
                             tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
                             continue;
                         } else {
-                            log_error(&format!("[NativeSearch] Erreur trigram GPS optimisé: {}", e));
+                            log_error(&format!(
+                                "[NativeSearch] Erreur trigram GPS optimisé: {}",
+                                e
+                            ));
                             return Err(crate::core::types::AppError::Internal(format!(
                                 "Erreur trigram GPS optimisé: {}",
                                 e
@@ -942,7 +1044,7 @@ LIMIT 100
                 let distance_km: Option<f64> = row.get("distance_km");
                 let relevance_score: f32 = row.get("relevance_score");
                 let _gps_source: Option<String> = row.get("gps_source");
-                
+
                 // ✅ CORRIGÉ 2025-12-18: Données du service récupérées directement dans la requête (pas de N+1)
                 let service_data: Value = row.get("service_data");
 
@@ -968,10 +1070,10 @@ LIMIT 100
                     matched_fields: vec!["trigram".to_string(), "gps".to_string()],
                 });
             }
-            
+
             return Ok(search_results);
         }
-        
+
         // Fallback vers l'ancienne méthode si pas de GPS
         let sql = r#"
             SELECT DISTINCT
@@ -1047,7 +1149,8 @@ LIMIT 100
         location_filter: Option<&str>,
     ) -> AppResult<Vec<SearchResult>> {
         // Appeler la nouvelle méthode avec GPS désactivé
-        self.keyword_search_with_gps(query, category_filter, location_filter, None, None).await
+        self.keyword_search_with_gps(query, category_filter, location_filter, None, None)
+            .await
     }
 
     /// Recherche par mots clés individuels avec filtrage GPS
@@ -1062,9 +1165,12 @@ LIMIT 100
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
         if let Some(gps_zone) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
-            
-            log_info(&format!("[NativeSearch] Mots-clés avec GPS optimisé: {} et rayon: {}km", gps_zone, radius));
-            
+
+            log_info(&format!(
+                "[NativeSearch] Mots-clés avec GPS optimisé: {} et rayon: {}km",
+                gps_zone, radius
+            ));
+
             // Appeler notre fonction PostgreSQL optimisée
             let sql = r#"
                 SELECT 
@@ -1077,7 +1183,7 @@ LIMIT 100
                     gps_source
                 FROM search_services_gps_final($1, $2, $3, $4)
             "#;
-            
+
             let results = sqlx::query(sql)
                 .bind(query)
                 .bind(gps_zone)
@@ -1085,27 +1191,37 @@ LIMIT 100
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
-                    log_error(&format!("[NativeSearch] Erreur mots-clés GPS optimisé: {}", e));
-                    crate::core::types::AppError::Internal(format!("Erreur mots-clés GPS optimisé: {}", e))
+                    log_error(&format!(
+                        "[NativeSearch] Erreur mots-clés GPS optimisé: {}",
+                        e
+                    ));
+                    crate::core::types::AppError::Internal(format!(
+                        "Erreur mots-clés GPS optimisé: {}",
+                        e
+                    ))
                 })?;
 
             // ✅ CORRIGÉ CRITIQUE 2025-12-20: Éliminer N+1 queries - batch query pour récupérer tous les services en UNE requête
-            let service_ids: Vec<i32> = results.iter().map(|row| row.get::<i32, _>("service_id")).collect();
-            
-            let services_data_map: std::collections::HashMap<i32, Value> = if !service_ids.is_empty() {
-                sqlx::query("SELECT id, data FROM services WHERE id = ANY($1)")
-                    .bind(&service_ids)
-                    .fetch_all(&self.pool)
-                    .await
-                    .map(|rows| {
-                        rows.into_iter()
-                            .map(|row| (row.get::<i32, _>("id"), row.get::<Value, _>("data")))
-                            .collect()
-                    })
-                    .unwrap_or_default()
-            } else {
-                std::collections::HashMap::new()
-            };
+            let service_ids: Vec<i32> = results
+                .iter()
+                .map(|row| row.get::<i32, _>("service_id"))
+                .collect();
+
+            let services_data_map: std::collections::HashMap<i32, Value> =
+                if !service_ids.is_empty() {
+                    sqlx::query("SELECT id, data FROM services WHERE id = ANY($1)")
+                        .bind(&service_ids)
+                        .fetch_all(&self.pool)
+                        .await
+                        .map(|rows| {
+                            rows.into_iter()
+                                .map(|row| (row.get::<i32, _>("id"), row.get::<Value, _>("data")))
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                } else {
+                    std::collections::HashMap::new()
+                };
 
             let mut search_results = Vec::new();
             for row in results {
@@ -1116,9 +1232,10 @@ LIMIT 100
                 let distance_km: Option<f64> = row.get("distance_km");
                 let relevance_score: f32 = row.get("relevance_score");
                 let _gps_source: Option<String> = row.get("gps_source");
-                
+
                 // ✅ Récupérer depuis le map batch (pas de requête par service)
-                let service_data = services_data_map.get(&service_id)
+                let service_data = services_data_map
+                    .get(&service_id)
                     .cloned()
                     .unwrap_or_else(|| serde_json::json!({}));
 
@@ -1144,10 +1261,10 @@ LIMIT 100
                     matched_fields: vec!["keywords".to_string(), "gps".to_string()],
                 });
             }
-            
+
             return Ok(search_results);
         }
-        
+
         // ✅ OPTIMISÉ 2025-12-17: Utiliser tsvector avec index GIN au lieu de ILIKE (947ms → ~300ms)
         // Le problème: ILIKE '%...%' ne peut pas utiliser d'index et scanne toute la table
         // Solution: Utiliser to_tsvector + plainto_tsquery avec index GIN (créé dans migration 20251217)
@@ -1412,14 +1529,17 @@ LIMIT 100
         let mut results = None;
         let max_retries = 3;
         let query_timeout = std::time::Duration::from_secs(12); // Timeout de 12s pour éviter dépassement TLS
-        
+
         for attempt in 1..=max_retries {
-            match tokio::time::timeout(query_timeout, sqlx::query(sql)
-                .bind(query)
-                .bind(category_filter)
-                .bind(location_filter)
-                .fetch_all(&self.pool))
-                .await
+            match tokio::time::timeout(
+                query_timeout,
+                sqlx::query(sql)
+                    .bind(query)
+                    .bind(category_filter)
+                    .bind(location_filter)
+                    .fetch_all(&self.pool),
+            )
+            .await
             {
                 Ok(Ok(rows)) => {
                     results = Some(rows);
@@ -1432,7 +1552,7 @@ LIMIT 100
                         || error_msg.contains("Connection reset")
                         || error_msg.contains("peer closed")
                         || error_msg.contains("communicating with database");
-                    
+
                     if is_tls_error && attempt < max_retries {
                         let delay_ms = 200 * attempt; // Backoff: 200ms, 400ms, 600ms
                         log::warn!(
@@ -1445,29 +1565,49 @@ LIMIT 100
                         tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
                         continue;
                     } else {
-                        log_error(&format!("[NativeSearch] Erreur recherche par mots clés: {}", e));
+                        log_error(&format!(
+                            "[NativeSearch] Erreur recherche par mots clés: {}",
+                            e
+                        ));
                         if attempt == max_retries {
-                            return Err(crate::core::types::AppError::Internal(format!("Erreur recherche par mots clés après {} tentatives: {}", max_retries, e)));
+                            return Err(crate::core::types::AppError::Internal(format!(
+                                "Erreur recherche par mots clés après {} tentatives: {}",
+                                max_retries, e
+                            )));
                         }
                     }
                 }
                 Err(_) => {
                     // Timeout
-                    log_error(&format!("[NativeSearch] Timeout recherche par mots clés ({}s dépassé)", query_timeout.as_secs()));
+                    log_error(&format!(
+                        "[NativeSearch] Timeout recherche par mots clés ({}s dépassé)",
+                        query_timeout.as_secs()
+                    ));
                     if attempt < max_retries {
                         let delay_ms = 200 * attempt;
-                        log::warn!("[NativeSearch] Retry après timeout (tentative {}/{}) dans {}ms", attempt, max_retries, delay_ms);
+                        log::warn!(
+                            "[NativeSearch] Retry après timeout (tentative {}/{}) dans {}ms",
+                            attempt,
+                            max_retries,
+                            delay_ms
+                        );
                         tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
                         continue;
                     } else {
-                        return Err(crate::core::types::AppError::Internal(format!("Timeout recherche par mots clés après {} tentatives ({}s)", max_retries, query_timeout.as_secs())));
+                        return Err(crate::core::types::AppError::Internal(format!(
+                            "Timeout recherche par mots clés après {} tentatives ({}s)",
+                            max_retries,
+                            query_timeout.as_secs()
+                        )));
                     }
                 }
             }
         }
-        
+
         let results = results.ok_or_else(|| {
-            crate::core::types::AppError::Internal("Échec recherche par mots clés après retries".to_string())
+            crate::core::types::AppError::Internal(
+                "Échec recherche par mots clés après retries".to_string(),
+            )
         })?;
 
         // ✅ CORRIGÉ: Stocker la longueur avant de déplacer results dans la boucle
@@ -1483,21 +1623,21 @@ LIMIT 100
         let is_very_short_word = query_words.len() == 1 && query_words[0].len() <= 4;
         let min_relevance_score = if is_single_word_search {
             if is_very_short_word {
-                15.0  // ✅ Seuil élevé pour mots très courts (3-4 caractères) pour éviter résultats peu pertinents
+                15.0 // ✅ Seuil élevé pour mots très courts (3-4 caractères) pour éviter résultats peu pertinents
             } else {
-                3.0   // ✅ Seuil réduit pour recherches à un seul mot long (permet correspondances partielles)
+                3.0 // ✅ Seuil réduit pour recherches à un seul mot long (permet correspondances partielles)
             }
         } else {
-            8.0  // ✅ Seuil normal pour recherches à plusieurs mots (meilleure pertinence)
+            8.0 // ✅ Seuil normal pour recherches à plusieurs mots (meilleure pertinence)
         };
-        
+
         log_info(&format!(
             "[NativeSearch] Seuil de pertinence adaptatif: {} (recherche {} mot(s), mot court: {})",
             min_relevance_score,
             query_words.len(),
             is_very_short_word
         ));
-        
+
         for row in results {
             let service_id: i32 = row.get("id");
             let data: Value = row.get("data");
@@ -1507,7 +1647,7 @@ LIMIT 100
             let _category: Option<String> = row.get("category");
             // Gérer le cas où keyword_score peut être NULL
             let keyword_score: f32 = row.try_get("keyword_score").unwrap_or(0.0);
-            
+
             // Filtrer les résultats avec score trop faible (correspondances non pertinentes)
             if keyword_score < min_relevance_score {
                 log::debug!(
@@ -1523,7 +1663,9 @@ LIMIT 100
             // On extrait le GPS du service et on peut calculer la distance si on a un GPS de référence
             let (distance_km, gps_coords) = if let Some(service_gps_str) = &_gps {
                 // Extraire les coordonnées GPS du service
-                let service_gps_parsed = if let Some((lat_str, lng_str)) = service_gps_str.split_once(',') {
+                let service_gps_parsed = if let Some((lat_str, lng_str)) =
+                    service_gps_str.split_once(',')
+                {
                     if let (Ok(lat), Ok(lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
                         Some((lat, lng))
                     } else {
@@ -1536,11 +1678,16 @@ LIMIT 100
                 // Si on a un GPS utilisateur (même si pas passé explicitement), calculer la distance
                 let calculated_distance = if let Some(gps_zone) = gps_zone {
                     if let Some((user_lat_str, user_lng_str)) = gps_zone.split_once(',') {
-                        if let (Ok(user_lat), Ok(user_lng)) = (user_lat_str.parse::<f64>(), user_lng_str.parse::<f64>()) {
+                        if let (Ok(user_lat), Ok(user_lng)) =
+                            (user_lat_str.parse::<f64>(), user_lng_str.parse::<f64>())
+                        {
                             if let Some((service_lat, service_lng)) = service_gps_parsed {
                                 // Calculer distance avec formule Haversine
                                 let distance = crate::services::gps_matching::calculate_distance_km(
-                                    user_lat, user_lng, service_lat, service_lng
+                                    user_lat,
+                                    user_lng,
+                                    service_lat,
+                                    service_lng,
                                 );
                                 Some(distance)
                             } else {
@@ -1564,7 +1711,7 @@ LIMIT 100
                             "lng": lng,
                             "source": "service"
                         })
-                    })
+                    }),
                 )
             } else {
                 // Essayer d'extraire GPS depuis data->gps_fixe
@@ -1576,13 +1723,17 @@ LIMIT 100
 
                 if let Some(gps_str) = gps_from_data {
                     if let Some((lat_str, lng_str)) = gps_str.split_once(',') {
-                        if let (Ok(lat), Ok(lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                        if let (Ok(lat), Ok(lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>())
+                        {
                             // Calculer distance si GPS utilisateur disponible
                             let calculated_distance = if let Some(gps_zone) = gps_zone {
-                                if let Some((user_lat_str, user_lng_str)) = gps_zone.split_once(',') {
-                                    if let (Ok(user_lat), Ok(user_lng)) = (user_lat_str.parse::<f64>(), user_lng_str.parse::<f64>()) {
+                                if let Some((user_lat_str, user_lng_str)) = gps_zone.split_once(',')
+                                {
+                                    if let (Ok(user_lat), Ok(user_lng)) =
+                                        (user_lat_str.parse::<f64>(), user_lng_str.parse::<f64>())
+                                    {
                                         Some(crate::services::gps_matching::calculate_distance_km(
-                                            user_lat, user_lng, lat, lng
+                                            user_lat, user_lng, lat, lng,
                                         ))
                                     } else {
                                         None
@@ -1600,7 +1751,7 @@ LIMIT 100
                                     "lat": lat,
                                     "lng": lng,
                                     "source": "data"
-                                }))
+                                })),
                             )
                         } else {
                             (None, None)
@@ -1627,7 +1778,7 @@ LIMIT 100
                 matched_fields: vec!["keywords".to_string()],
             });
         }
-        
+
         log_info(&format!(
             "[NativeSearch] Recherche par mots-clés terminée: {} résultats pertinents (score >= {}) sur {} résultats bruts",
             search_results.len(),
@@ -1642,7 +1793,7 @@ LIMIT 100
     fn calculate_recency_score(&self, created_at: chrono::DateTime<chrono::Utc>) -> f32 {
         let now = chrono::Utc::now();
         let days_old = now.signed_duration_since(created_at).num_days();
-        
+
         if days_old <= self.config.recency_days {
             self.config.recency_boost
         } else {
@@ -1660,7 +1811,8 @@ LIMIT 100
             "ara" | "ar" => "arabic",
             "ful" | "ff" => "simple", // Fula n'a pas de config spécifique, utiliser simple
             _ => "simple", // Langue inconnue ou non supportée -> utiliser 'simple' (langue neutre)
-        }.to_string()
+        }
+        .to_string()
     }
 
     /// ✅ AMÉLIORÉ 2025-12-24: Normalisation avancée avec gestion mots tronqués
@@ -1671,10 +1823,10 @@ LIMIT 100
             .to_lowercase()
             .trim()
             .replace(|c: char| !c.is_alphanumeric() && c != ' ' && c != '*', " ");
-        
+
         // ✅ AMÉLIORÉ 2025-12-24: Détecter les wildcards * (générique, pas spécifique à un mot)
         let has_wildcards = normalized.contains('*');
-        
+
         // Traiter les mots tronqués (ex: "gate*" -> "gate")
         let words: Vec<String> = normalized
             .split_whitespace()
@@ -1689,7 +1841,7 @@ LIMIT 100
                 }
             })
             .collect();
-        
+
         (words.join(" "), has_wildcards)
     }
 
@@ -1716,7 +1868,7 @@ LIMIT 100
     /// Créer des variantes de mots avec et sans accents
     fn create_word_variants(&self, word: &str) -> Vec<String> {
         let mut variants = vec![word.to_string()];
-        
+
         // Variantes sans accents
         let without_accents = word
             .chars()
@@ -1731,11 +1883,11 @@ LIMIT 100
                 _ => c,
             })
             .collect::<String>();
-        
+
         if without_accents != word {
             variants.push(without_accents);
         }
-        
+
         // Variantes avec accents (pour les mots sans accents)
         if !word.chars().any(|c| "àâäéèêëîïôöùûüÿç".contains(c)) {
             let with_accents = word
@@ -1746,19 +1898,19 @@ LIMIT 100
                 .replace("u", "uùûü")
                 .replace("y", "yÿ")
                 .replace("c", "cç");
-            
+
             // Ajouter seulement si le mot original n'a pas d'accents
             if with_accents != word {
                 variants.push(with_accents);
             }
         }
-        
+
         variants
     }
 
     /// Recherche par catégorie spécifique
     pub async fn search_by_category(&self, category: &str) -> AppResult<Vec<SearchResult>> {
-                       let sql = r#"
+        let sql = r#"
                    SELECT 
                        s.id,
                        s.data,
@@ -1780,8 +1932,14 @@ LIMIT 100
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
-                log_error(&format!("[NativeSearch] Erreur recherche par catégorie: {}", e));
-                crate::core::types::AppError::Internal(format!("Erreur recherche par catégorie: {}", e))
+                log_error(&format!(
+                    "[NativeSearch] Erreur recherche par catégorie: {}",
+                    e
+                ));
+                crate::core::types::AppError::Internal(format!(
+                    "Erreur recherche par catégorie: {}",
+                    e
+                ))
             })?;
 
         let mut search_results = Vec::new();
@@ -1792,9 +1950,9 @@ LIMIT 100
             let _user_id: i32 = row.get("user_id");
             let _gps: Option<String> = row.get("gps");
             let _category: Option<String> = row.get("category");
-            
+
             let recency_score = self.calculate_recency_score(created_at);
-            
+
             search_results.push(SearchResult {
                 service_id,
                 data,
@@ -1815,10 +1973,10 @@ LIMIT 100
 
     /// Recherche géospatiale intelligente avec calcul de distance
     pub async fn search_by_location(
-        &self, 
+        &self,
         location: &str,
         user_lat: Option<f64>,
-        user_lng: Option<f64>
+        user_lng: Option<f64>,
     ) -> AppResult<Vec<SearchResult>> {
         let sql = if let (Some(_lat), Some(_lng)) = (user_lat, user_lng) {
             // Recherche avec calcul de distance géographique
@@ -1909,12 +2067,13 @@ LIMIT 100
                 .fetch_all(&self.pool)
                 .await
         } else {
-            sqlx::query(sql)
-                .bind(location)
-                .fetch_all(&self.pool)
-                .await
-        }.map_err(|e| {
-            log_error(&format!("[NativeSearch] Erreur recherche géospatiale: {}", e));
+            sqlx::query(sql).bind(location).fetch_all(&self.pool).await
+        }
+        .map_err(|e| {
+            log_error(&format!(
+                "[NativeSearch] Erreur recherche géospatiale: {}",
+                e
+            ));
             crate::core::types::AppError::Internal(format!("Erreur recherche géospatiale: {}", e))
         })?;
 
@@ -1927,9 +2086,9 @@ LIMIT 100
             let _gps: Option<String> = row.get("gps");
             let _category: Option<String> = row.get("category");
             let location_score: f32 = row.get("location_score");
-            
+
             let recency_score = self.calculate_recency_score(created_at);
-            
+
             search_results.push(SearchResult {
                 service_id,
                 data,
@@ -1969,4 +2128,4 @@ impl SearchResult {
             }
         })
     }
-} 
+}

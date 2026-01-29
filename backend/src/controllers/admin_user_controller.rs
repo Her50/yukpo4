@@ -60,7 +60,10 @@ pub async fn list_users(
         })?;
 
     if user_role != "admin" {
-        warn!("[list_users] Tentative d'accès non autorisée par user_id={}", user.id);
+        warn!(
+            "[list_users] Tentative d'accès non autorisée par user_id={}",
+            user.id
+        );
         return Err(AppError::Forbidden(
             "Accès réservé aux administrateurs".into(),
         ));
@@ -123,11 +126,7 @@ pub async fn list_users(
                 .fetch_one(&state.pg)
                 .await
         }
-        _ => {
-            sqlx::query_scalar(count_sql)
-                .fetch_one(&state.pg)
-                .await
-        }
+        _ => sqlx::query_scalar(count_sql).fetch_one(&state.pg).await,
     }
     .map_err(|e| {
         error!("[list_users] Erreur comptage: {e:?}");
@@ -178,7 +177,12 @@ pub async fn list_users(
 
     let total_pages = (total as f64 / limit as f64).ceil() as u32;
 
-    info!("[list_users] ✅ Récupération de {} utilisateurs (page {}/{})", users.len(), page, total_pages);
+    info!(
+        "[list_users] ✅ Récupération de {} utilisateurs (page {}/{})",
+        users.len(),
+        page,
+        total_pages
+    );
 
     Ok(Json(ListUsersResponse {
         users,
@@ -219,7 +223,10 @@ pub async fn update_user_role(
         })?;
 
     if user_role != "admin" {
-        warn!("[update_user_role] Tentative d'accès non autorisée par user_id={}", user.id);
+        warn!(
+            "[update_user_role] Tentative d'accès non autorisée par user_id={}",
+            user.id
+        );
         return Err(AppError::Forbidden(
             "Accès réservé aux administrateurs".into(),
         ));
@@ -270,7 +277,10 @@ pub async fn update_user_role(
         AppError::Internal("Erreur récupération utilisateur".into())
     })?;
 
-    info!("[update_user_role] ✅ Rôle mis à jour: user_id={}, nouveau_role={}", user_id, request.role);
+    info!(
+        "[update_user_role] ✅ Rôle mis à jour: user_id={}, nouveau_role={}",
+        user_id, request.role
+    );
 
     Ok(Json(UpdateUserRoleResponse {
         success: true,

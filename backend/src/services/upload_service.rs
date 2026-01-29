@@ -40,7 +40,7 @@ pub async fn store_uploaded_file(
     } else {
         20_000_000 // 20 MB pour les autres fichiers
     };
-    
+
     if bytes.len() > max_file_size {
         return Err(AppError::BadRequest(format!(
             "Fichier trop volumineux: {} bytes (max: {} bytes pour type {})",
@@ -78,7 +78,10 @@ pub async fn store_uploaded_file(
 
     // ✅ NOUVEAU: Upload vers S3/Wasabi via MediaStorageService
     let storage_key = format!("temp/{}/{}", user_id, unique_name);
-    let final_path = match media_storage.store_bytes(bytes, &storage_key, content_type).await {
+    let final_path = match media_storage
+        .store_bytes(bytes, &storage_key, content_type)
+        .await
+    {
         Ok(location) => {
             info!(
                 "[upload_service] ✅ Fichier uploadé vers S3: {} ({} bytes, type: {})",
@@ -86,9 +89,11 @@ pub async fn store_uploaded_file(
                 bytes.len(),
                 media_type
             );
-            
+
             // ✅ Vérifier que l'URL retournée est bien une URL CDN complète
-            if location.public_url.starts_with("http://") || location.public_url.starts_with("https://") {
+            if location.public_url.starts_with("http://")
+                || location.public_url.starts_with("https://")
+            {
                 info!(
                     "[upload_service] ✅ URL CDN valide retournée: {}",
                     location.public_url
@@ -102,7 +107,7 @@ pub async fn store_uploaded_file(
                     "[upload_service] ⚠️ Vérifiez que UPLOAD_BASE_URL ou PUBLIC_BASE_URL est configuré avec une URL complète (ex: https://cdn.yukpomnang.com)"
                 );
             }
-            
+
             // Utiliser l'URL publique S3/Wasabi
             location.public_url
         }
@@ -115,7 +120,7 @@ pub async fn store_uploaded_file(
             let mut file = File::create(&file_path).await?;
             file.write_all(bytes).await?;
             file.sync_all().await?;
-            
+
             let relative_path = format!("uploads/temp/{}/{}", user_id, unique_name);
             format!(
                 "/api/media/temp/{}",
@@ -159,7 +164,15 @@ pub async fn handle_multipart_upload(
             continue;
         }
 
-        let result = store_uploaded_file(pool, user_id, &field_name, &filename, &bytes, media_storage.clone()).await;
+        let result = store_uploaded_file(
+            pool,
+            user_id,
+            &field_name,
+            &filename,
+            &bytes,
+            media_storage.clone(),
+        )
+        .await;
         match result {
             Ok(file_response) => uploaded_files.push(file_response),
             Err(e) => {

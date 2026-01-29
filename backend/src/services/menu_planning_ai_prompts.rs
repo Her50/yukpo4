@@ -284,7 +284,8 @@ pub fn generate_shopping_list_prompt(
     adults_count: Option<i32>, // ✅ NOUVEAU: Nombre d'adultes
     children_count: Option<i32>, // ✅ NOUVEAU: Nombre d'enfants
 ) -> String {
-    let meals_summary: String = meal_items.iter()
+    let meals_summary: String = meal_items
+        .iter()
         .map(|item| {
             format!(
                 "- {} ({} fois, {} portions, {} - {})",
@@ -295,9 +296,18 @@ pub fn generate_shopping_list_prompt(
         .join("\n");
 
     let location_context = match (user_country, user_city) {
-        (Some(country), Some(city)) => format!("\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n- Pays : {}\n- Ville : {}", country, city),
-        (Some(country), None) => format!("\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n- Pays : {}", country),
-        (None, Some(city)) => format!("\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n- Ville : {}", city),
+        (Some(country), Some(city)) => format!(
+            "\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n- Pays : {}\n- Ville : {}",
+            country, city
+        ),
+        (Some(country), None) => format!(
+            "\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n- Pays : {}",
+            country
+        ),
+        (None, Some(city)) => format!(
+            "\n🌍 CONTEXTE GÉOGRAPHIQUE (CRITIQUE) :\n- Ville : {}",
+            city
+        ),
         (None, None) => String::new(),
     };
 
@@ -331,10 +341,14 @@ pub fn generate_shopping_list_prompt(
                 family_members, adults, children
             )
         }
-        _ => format!("\n👨‍👩‍👧‍👦 PROFIL FAMILLE :\n- Nombre total de personnes : {}", family_members),
+        _ => format!(
+            "\n👨‍👩‍👧‍👦 PROFIL FAMILLE :\n- Nombre total de personnes : {}",
+            family_members
+        ),
     };
 
-    format!(r#"
+    format!(
+        r#"
 Tu es l'assistant culinaire intelligent de Yukpo pour la génération de listes de courses.
 
 CONTEXTE UTILISATEUR :
@@ -485,4 +499,3 @@ IMPORTANT:
         family_context = family_context
     )
 }
-

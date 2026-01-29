@@ -20,3 +20,4 @@ CREATE INDEX IF NOT EXISTS idx_hotel_reservation_qr_codes_qr_code
 COMMENT ON TABLE hotel_reservation_qr_codes IS 'QR codes secondaires (titulaire/ invités) pour réservations hôtels/meublés';
 
 
+

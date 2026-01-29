@@ -85,7 +85,7 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
                                     if diagnostic.authentication_working { "✅" } else { "❌" }
                                 );
                             }
-                            
+
                             // Détails complets en debug seulement
                             log::debug!("📊 Résultat du diagnostic LiveKit:");
                             log::debug!(

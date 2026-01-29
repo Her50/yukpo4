@@ -1,3 +1,4 @@
+pub mod admin_user_controller;
 pub mod assistance_controller;
 pub mod async_upload_controller; // ✅ NOUVEAU 2025-01-27: Contrôleur pour upload asynchrone
 pub mod audio_library_controller;
@@ -14,7 +15,6 @@ pub mod stock_media_controller; // ✅ NOUVEAU Phase 2: Controller pour Stock Me
 pub mod token_pack_controller;
 pub mod upload_controller; // ✅ NOUVEAU: Contrôleur pour upload préalable de fichiers
 pub mod user_controller;
-pub mod admin_user_controller;
 // pub mod fournitures_controller;
 pub mod advanced_timeline_controller; // ✅ NOUVEAU Phase 2: Contrôleur pour timelines multi-pistes avancées
 pub mod agency_schedule_controller; // ✅ 2025-11-27: Contrôleur pour gestion horaires de départ par agence/ville
@@ -73,9 +73,9 @@ pub mod popular_products_controller; // ✅ NOUVEAU 2025-11-04: Contrôleur pour
 pub mod product_addition_controller; // ✅ NOUVEAU 2025-11-01: Contrôleur pour ajout incrémental de produits
 pub mod product_comments_controller; // ✅ NOUVEAU 2025-11-08: Contrôleur pour fil de commentaires produits
 pub mod product_lifecycle_controller;
-pub mod products_controller; // ✅ PHASE 3: Controller pour gestion produits via table service_products // ✅ Contrôleur de gestion du cycle de vie des produits
 pub mod product_reactions_controller; // ✅ NOUVEAU 2025-11-04: Contrôleur pour réactions/émotions sur les produits
 pub mod product_video_controller; // ✅ Contrôleur génération vidéo produit instantanée
+pub mod products_controller; // ✅ PHASE 3: Controller pour gestion produits via table service_products // ✅ Contrôleur de gestion du cycle de vie des produits
 pub mod prometheus_metrics_controller; // ✅ Phase 3: Endpoint Prometheus centralisé
 pub mod publicite_controller; // ✅ NOUVEAU: Contrôleur pour système de publicité payante
 pub mod push_controller; // ✅ Contrôleur de push notifications

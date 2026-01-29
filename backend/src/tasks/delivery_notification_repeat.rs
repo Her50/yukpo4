@@ -21,20 +21,28 @@ pub async fn start_delivery_notification_repeat_task(state: Arc<AppState>) {
         match repeat_pending_delivery_notifications(&state).await {
             Ok(count) => {
                 if count > 0 {
-                    info!("✅ [DeliveryNotifications] {} notification(s) répétée(s)", count);
+                    info!(
+                        "✅ [DeliveryNotifications] {} notification(s) répétée(s)",
+                        count
+                    );
                 }
             }
             Err(e) => {
-                error!("❌ [DeliveryNotifications] Erreur lors de la répétition: {:?}", e);
+                error!(
+                    "❌ [DeliveryNotifications] Erreur lors de la répétition: {:?}",
+                    e
+                );
             }
         }
     }
 }
 
 /// Répéter les notifications pour les livraisons en attente d'acceptation
-async fn repeat_pending_delivery_notifications(state: &Arc<AppState>) -> Result<usize, Box<dyn std::error::Error>> {
+async fn repeat_pending_delivery_notifications(
+    state: &Arc<AppState>,
+) -> Result<usize, Box<dyn std::error::Error>> {
     let service = state.delivery_service.clone();
-    
+
     // Récupérer les livraisons en attente d'acceptation avec notifications actives
     // ✅ Utiliser sqlx::query avec extraction manuelle car query_as ne fonctionne pas bien avec JSONB
     let rows = sqlx::query(
@@ -49,11 +57,11 @@ async fn repeat_pending_delivery_notifications(state: &Arc<AppState>) -> Result<
         AND NOW() - (metadata->>'notification_sent_at')::timestamp < INTERVAL '5 minutes'
         ORDER BY requested_at DESC
         LIMIT 50
-        "#
+        "#,
     )
     .fetch_all(&state.pg)
     .await?;
-    
+
     let pending_deliveries: Vec<(Uuid, serde_json::Value)> = rows
         .into_iter()
         .filter_map(|row| {
@@ -65,9 +73,9 @@ async fn repeat_pending_delivery_notifications(state: &Arc<AppState>) -> Result<
             }
         })
         .collect();
-    
+
     let mut repeated_count = 0;
-    
+
     for (delivery_id, metadata) in pending_deliveries {
         // Récupérer les user_ids notifiés
         let notified_user_ids: Vec<i32> = metadata
@@ -79,25 +87,30 @@ async fn repeat_pending_delivery_notifications(state: &Arc<AppState>) -> Result<
                     .collect()
             })
             .unwrap_or_default();
-        
+
         if notified_user_ids.is_empty() {
             continue;
         }
-        
+
         // Récupérer le résumé de la livraison
         let summary = match service.get_delivery_summary(delivery_id).await {
             Ok(s) => s,
             Err(e) => {
-                warn!("[DeliveryNotifications] Erreur récupération livraison {}: {:?}", delivery_id, e);
+                warn!(
+                    "[DeliveryNotifications] Erreur récupération livraison {}: {:?}",
+                    delivery_id, e
+                );
                 continue;
             }
         };
-        
+
         // Vérifier que la livraison est toujours en attente
-        if summary.status != crate::models::delivery_model::DeliveryStatus::AwaitingCourierConfirmation {
+        if summary.status
+            != crate::models::delivery_model::DeliveryStatus::AwaitingCourierConfirmation
+        {
             continue;
         }
-        
+
         // Répéter la notification pour chaque coursier notifié
         for user_id in &notified_user_ids {
             let notification_title = "📦 Course disponible".to_string();
@@ -105,14 +118,14 @@ async fn repeat_pending_delivery_notifications(state: &Arc<AppState>) -> Result<
                 "Course #{}. Appuyez pour accepter.",
                 delivery_id.to_string()[..8].to_uppercase()
             );
-            
+
             let notification_data = json!({
                 "type": "delivery_available",
                 "delivery_id": delivery_id.to_string(),
                 "is_repeat": true,
                 "repeat_count": metadata.get("notification_repeat_count").and_then(|v| v.as_u64()).unwrap_or(0) + 1,
             });
-            
+
             let _ = push_notification_service::send_persistent_delivery_notification(
                 &state.pg,
                 *user_id,
@@ -121,28 +134,26 @@ async fn repeat_pending_delivery_notifications(state: &Arc<AppState>) -> Result<
                 Some(notification_data),
             )
             .await;
-            
+
             repeated_count += 1;
         }
-        
+
         // Mettre à jour le compteur de répétitions dans les métadonnées
         let mut updated_metadata = metadata.clone();
         let repeat_count = updated_metadata
             .get("notification_repeat_count")
             .and_then(|v| v.as_u64())
-            .unwrap_or(0) + 1;
+            .unwrap_or(0)
+            + 1;
         updated_metadata["notification_repeat_count"] = json!(repeat_count);
         updated_metadata["last_notification_repeat_at"] = json!(chrono::Utc::now().to_rfc3339());
-        
-        sqlx::query(
-            "UPDATE deliveries SET metadata = $1, updated_at = NOW() WHERE id = $2"
-        )
-        .bind(&updated_metadata)
-        .bind(delivery_id)
-        .execute(&state.pg)
-        .await?;
+
+        sqlx::query("UPDATE deliveries SET metadata = $1, updated_at = NOW() WHERE id = $2")
+            .bind(&updated_metadata)
+            .bind(delivery_id)
+            .execute(&state.pg)
+            .await?;
     }
-    
+
     Ok(repeated_count)
 }
-

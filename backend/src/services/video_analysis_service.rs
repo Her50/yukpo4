@@ -139,7 +139,7 @@ async fn detect_scenes_with_ia(
             .timeout(std::time::Duration::from_secs(5))
             .build()
             .map_err(|e| AppError::Internal(format!("Erreur création client HTTP: {}", e)))?;
-        
+
         let response = client.head(video_url).send().await;
         match response {
             Ok(resp) if resp.status().is_success() => {
@@ -147,17 +147,22 @@ async fn detect_scenes_with_ia(
             }
             Ok(resp) => {
                 let status = resp.status();
-                warn!("[VideoAnalysis] URL non accessible (status {}): {}", status, video_url);
+                warn!(
+                    "[VideoAnalysis] URL non accessible (status {}): {}",
+                    status, video_url
+                );
                 return Err(AppError::Internal(format!(
-                    "Vidéo non accessible (HTTP {}): {}", 
-                    status, 
-                    video_url
+                    "Vidéo non accessible (HTTP {}): {}",
+                    status, video_url
                 )));
             }
             Err(e) => {
-                warn!("[VideoAnalysis] Erreur vérification URL {}: {}", video_url, e);
+                warn!(
+                    "[VideoAnalysis] Erreur vérification URL {}: {}",
+                    video_url, e
+                );
                 return Err(AppError::Internal(format!(
-                    "Impossible d'accéder à la vidéo: {}", 
+                    "Impossible d'accéder à la vidéo: {}",
                     e
                 )));
             }
@@ -187,7 +192,7 @@ async fn detect_scenes_with_ia(
     if !duration_output.status.success() {
         let stderr = String::from_utf8_lossy(&duration_output.stderr);
         let error_msg = format!(
-            "ffprobe a échoué (code {}): {}. URL: {}", 
+            "ffprobe a échoué (code {}): {}. URL: {}",
             duration_output.status.code().unwrap_or(-1),
             stderr.trim(),
             video_url
@@ -212,8 +217,11 @@ async fn detect_scenes_with_ia(
         warn!("[VideoAnalysis] {}", error_msg);
         return Err(AppError::Internal(error_msg));
     }
-    
-    info!("[VideoAnalysis] Durée vidéo déterminée: {} secondes", total_duration);
+
+    info!(
+        "[VideoAnalysis] Durée vidéo déterminée: {} secondes",
+        total_duration
+    );
 
     // Construire le prompt IA pour analyse intelligente
     let prompt = format!(

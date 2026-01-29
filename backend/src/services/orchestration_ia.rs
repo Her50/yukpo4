@@ -1774,8 +1774,8 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
         "du",
         "de",
         "d'",
-        "au",   // ✅ AJOUTÉ 2026-01-13: Contraction française (ex: "Sac au dos" -> "Sac dos")
-        "aux",  // ✅ AJOUTÉ 2026-01-13: Contraction française plurielle
+        "au",  // ✅ AJOUTÉ 2026-01-13: Contraction française (ex: "Sac au dos" -> "Sac dos")
+        "aux", // ✅ AJOUTÉ 2026-01-13: Contraction française plurielle
         "ce",
         "cette",
         "ces",
@@ -1930,7 +1930,7 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
         // ✅ CORRIGÉ 2026-01-22: Permettre TOUS les mots de 2+ caractères (générique)
         // La recherche SQL peut matcher des mots courts comme "tv", "pc", "hd", etc.
         let is_long_enough = clean_word.len() >= 2;
-        
+
         // Ignorer les mots trop courts ou déjà vus
         if !is_long_enough || seen_words.contains(&clean_word) {
             continue;

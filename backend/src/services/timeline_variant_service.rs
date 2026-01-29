@@ -128,10 +128,10 @@ pub async fn generate_timeline_variants(
             let base_request = request.base_request.clone();
             let variant_styles_list = variant_styles_list.clone();
             let style_name = style_name.clone();
-            
+
             async move {
                 let variant_start = std::time::Instant::now();
-                
+
                 // Trouver les caractéristiques du style
                 let style_chars = variant_styles_list
                     .iter()
@@ -156,7 +156,9 @@ pub async fn generate_timeline_variants(
                 // Adapter les effets selon l'intensité
                 if variant_request.style.effects.is_empty() {
                     variant_request.style.effects = match style_chars.1.effect_intensity {
-                        i if i > 0.7 => vec!["zoom".to_string(), "glow".to_string(), "neon".to_string()],
+                        i if i > 0.7 => {
+                            vec!["zoom".to_string(), "glow".to_string(), "neon".to_string()]
+                        }
                         i if i > 0.4 => vec!["zoom".to_string(), "fade".to_string()],
                         _ => vec!["fade".to_string()],
                     };
@@ -164,11 +166,12 @@ pub async fn generate_timeline_variants(
 
                 // Adapter les transitions selon le style
                 if variant_request.style.transitions.is_empty() {
-                    variant_request.style.transitions = match style_chars.1.transition_style.as_str() {
-                        "dynamic" => vec!["slide".to_string(), "zoom".to_string()],
-                        "dramatic" => vec!["fade".to_string(), "cube".to_string()],
-                        _ => vec!["fade".to_string(), "slide".to_string()],
-                    };
+                    variant_request.style.transitions =
+                        match style_chars.1.transition_style.as_str() {
+                            "dynamic" => vec!["slide".to_string(), "zoom".to_string()],
+                            "dramatic" => vec!["fade".to_string(), "cube".to_string()],
+                            _ => vec!["fade".to_string(), "slide".to_string()],
+                        };
                 }
 
                 // Adapter la durée des scènes selon le pacing
@@ -186,8 +189,9 @@ pub async fn generate_timeline_variants(
                 let timeout_duration = std::time::Duration::from_secs(10);
                 let timeline_result = tokio::time::timeout(
                     timeout_duration,
-                    app_ia.generate_video_timeline(&variant_request)
-                ).await;
+                    app_ia.generate_video_timeline(&variant_request),
+                )
+                .await;
 
                 match timeline_result {
                     Ok(Ok(timeline)) => {
@@ -209,7 +213,10 @@ pub async fn generate_timeline_variants(
                             "[TimelineVariant] ❌ Erreur génération variante '{}': {}",
                             style_name, e
                         );
-                        Err(format!("Erreur génération variante '{}': {}", style_name, e))
+                        Err(format!(
+                            "Erreur génération variante '{}': {}",
+                            style_name, e
+                        ))
                     }
                     Err(_) => {
                         error!(
@@ -225,10 +232,10 @@ pub async fn generate_timeline_variants(
 
     // ✅ Attendre toutes les variantes en parallèle avec join_all
     let results = future::join_all(variant_futures).await;
-    
+
     let mut variants = Vec::new();
     let mut errors = Vec::new();
-    
+
     for (index, result) in results.into_iter().enumerate() {
         match result {
             Ok(variant) => {
@@ -239,7 +246,7 @@ pub async fn generate_timeline_variants(
             }
         }
     }
-    
+
     if !errors.is_empty() {
         warn!(
             "[TimelineVariant] ⚠️ {} erreur(s) lors de la génération: {:?}",

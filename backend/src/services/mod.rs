@@ -26,7 +26,6 @@ pub mod blood_stock_monitor; // ✅ NOUVEAU: Service monitoring automatique stoc
 pub mod book_exchange_ai_service; // ✅ NOUVEAU: Service IA bourse du livre
 pub mod broll_service;
 pub mod cache_service; // ✅ Phase 10 - Service de cache générique centralisé
-pub mod service_data_cache; // ✅ NOUVEAU 2026-01-02: Cache pour données de service volumineuses
 pub mod captions_service; // ✅ NOUVEAU: Service de génération automatique de sous-titres
 pub mod chat_support_ai;
 pub mod color_grading_service; // ✅ NOUVEAU: Service de color grading automatique
@@ -114,8 +113,8 @@ pub mod local_ai_ultra_fast;
 pub mod massive_load_handler;
 pub mod matching_pipeline;
 pub mod media_storage_service;
-pub mod menu_planning_ai_service; // ✅ 2025-01-27: Service IA planification menus
 pub mod menu_planning_ai_prompts; // ✅ NOUVEAU: Prompts spécialisés pour IA planification menus
+pub mod menu_planning_ai_service; // ✅ 2025-01-27: Service IA planification menus
 pub mod mobile_money_service; // ✅ Phase 10 - Service Mobile Money (MTN/Orange Money)
 pub mod mongo_history_service;
 pub mod moving_ai_service; // ✅ Service IA déménagement (calcul volume, estimation coût, optimisation)
@@ -141,9 +140,8 @@ pub mod pipeline_health_service;
 pub mod plugin_service; // ✅ NOUVEAU Phase 2: Service de gestion des plugins
 pub mod popular_products_service;
 pub mod prestataire_service;
-pub mod products_service; // ✅ NOUVEAU 2026-01-03: Service pour table products séparée
-pub mod preview_generation_service;
 pub mod preview_cache_service; // ✅ NOUVEAU 2026-01-04: Cache pour previews // ✅ NOUVEAU: Service de génération de preview rapide
+pub mod preview_generation_service;
 pub mod preview_monitoring;
 pub mod product_availability_service; // ✅ NOUVEAU : Vérification disponibilité produits
 pub mod product_creation_queue; // ✅ NOUVEAU 2026-01-02: Queue asynchrone pour création de produits
@@ -151,6 +149,7 @@ pub mod product_enrichment_service; // ✅ NOUVEAU : Enrichissement produits ave
 pub mod product_price_service; // ✅ NOUVEAU : Service pour calculer les prix réels avec promotions
 pub mod product_stock_service; // ✅ NOUVEAU : Gestion stock en temps réel
 pub mod product_validation_service;
+pub mod products_service; // ✅ NOUVEAU 2026-01-03: Service pour table products séparée
 pub mod programme_service;
 pub mod prompt_optimizer_pro;
 pub mod provider_analytics_service; // ✅ NOUVEAU : Analytics prestataire
@@ -179,6 +178,7 @@ pub mod security_service;
 pub mod semantic_cache;
 pub mod semantic_cache_pro;
 pub mod semantic_exclusion;
+pub mod service_data_cache; // ✅ NOUVEAU 2026-01-02: Cache pour données de service volumineuses
 pub mod service_history_service;
 pub mod service_lifecycle_manager;
 pub mod sharing_service;

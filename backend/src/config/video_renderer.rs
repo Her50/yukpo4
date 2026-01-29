@@ -1,7 +1,7 @@
+use log;
 use std::env;
 use std::path::PathBuf;
 use std::time::Duration;
-use log;
 
 #[derive(Debug, Clone)]
 pub struct VideoRendererConfig {
@@ -34,7 +34,7 @@ impl VideoRendererConfig {
             .ok()
             .map(|s| s.trim().to_string()) // ✅ CORRIGÉ: Supprimer les espaces
             .filter(|value| !value.is_empty());
-        
+
         // ✅ NOUVEAU: Récupérer le token RPC si configuré
         let rpc_token = env::var("VIDEO_RENDERER_RPC_TOKEN")
             .ok()
@@ -69,7 +69,7 @@ impl VideoRendererConfig {
             .map(|v| v.to_lowercase())
             .filter(|v| v == "production" || v == "prod")
             .is_some();
-        
+
         let auto_build = env::var("VIDEO_RENDERER_AUTO_BUILD")
             .ok()
             .and_then(|raw| raw.parse::<bool>().ok())

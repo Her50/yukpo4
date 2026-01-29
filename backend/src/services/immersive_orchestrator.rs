@@ -177,23 +177,19 @@ impl ImmersiveOrchestrator {
         let mut broll_sources: HashMap<String, usize> = HashMap::new();
         let mut broll_iter = request.broll_assets.iter();
         let mut broll_used = 0usize;
-        
+
         // ✅ NOUVEAU: Itérateur pour les médias produits disponibles
         let mut media_iter = request.available_media.iter().cycle();
         let mut media_used = 0usize;
-        
+
         info!(
             "[ImmersiveOrchestrator] 📊 Médias disponibles pour timeline: {} média(x)",
             request.available_media.len()
         );
 
         // Intro scene
-        let mut intro_scene = create_intro_scene(
-            &request,
-            per_scene_frames,
-            request.style.clone(),
-        );
-        
+        let mut intro_scene = create_intro_scene(&request, per_scene_frames, request.style.clone());
+
         // ✅ NOUVEAU: Assigner un média à la scène intro si disponible
         if let Some(media) = media_iter.next() {
             if media.media_type == "video" {
@@ -209,7 +205,7 @@ impl ImmersiveOrchestrator {
                 media.id, media.media_type, media.url
             );
         }
-        
+
         scenes.push(intro_scene);
         increment_template(&mut template_breakdown, "IntroPulse");
 
@@ -308,7 +304,7 @@ impl ImmersiveOrchestrator {
 
         // CTA scene
         let mut cta_scene = create_cta_scene(&request, per_scene_frames);
-        
+
         // ✅ NOUVEAU: Assigner un média à la scène CTA si disponible
         if let Some(media) = media_iter.next() {
             if media.media_type == "video" {
@@ -324,7 +320,7 @@ impl ImmersiveOrchestrator {
                 media.id, media.media_type, media.url
             );
         }
-        
+
         scenes.push(cta_scene);
         increment_template(&mut template_breakdown, "GlowCTA");
 
@@ -404,7 +400,7 @@ impl ImmersiveOrchestrator {
 
         // ✅ CORRIGÉ: Cloner scenes avant de le passer à ImmersiveTimeline pour éviter l'erreur de borrow
         let scenes_clone = scenes.clone();
-        
+
         let timeline = ImmersiveTimeline {
             fps,
             width: 1080,
@@ -427,16 +423,17 @@ impl ImmersiveOrchestrator {
             "[ImmersiveOrchestrator] ✅ Timeline générée: scenes={}, médias_produits={}, broll={}",
             analytics.total_scenes, media_used, analytics.broll_clips_used
         );
-        
+
         // ✅ NOUVEAU: Validation - vérifier que toutes les scènes ont au moins un média
-        let scenes_with_media = scenes_clone.iter()
+        let scenes_with_media = scenes_clone
+            .iter()
             .filter(|scene| {
-                scene.assets.video_url.is_some() 
-                    || scene.assets.background_url.is_some() 
+                scene.assets.video_url.is_some()
+                    || scene.assets.background_url.is_some()
                     || scene.assets.product_image_url.is_some()
             })
             .count();
-        
+
         if scenes_with_media < scenes_clone.len() {
             let missing_count = scenes_clone.len() - scenes_with_media;
             // ✅ CORRIGÉ: Logger en debug au lieu de warn si moins de 50% des scènes ont des médias

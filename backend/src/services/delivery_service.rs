@@ -63,7 +63,11 @@ pub fn haversine_distance(pos1: (f64, f64), pos2: (f64, f64)) -> f64 {
 
 /// ✅ NOUVEAU: Vérifie si un point est proche d'un autre point (même point de pickup)
 /// Distance maximale pour considérer comme "même point" : 100 mètres
-pub fn is_same_pickup_point(pickup1: &GeoPoint, pickup2: &GeoPoint, max_distance_meters: f64) -> bool {
+pub fn is_same_pickup_point(
+    pickup1: &GeoPoint,
+    pickup2: &GeoPoint,
+    max_distance_meters: f64,
+) -> bool {
     let distance = haversine_distance(
         (pickup1.latitude, pickup1.longitude),
         (pickup2.latitude, pickup2.longitude),
@@ -85,24 +89,25 @@ pub fn is_on_route(
         (new_pickup.latitude, new_pickup.longitude),
         (existing_pickup.latitude, existing_pickup.longitude),
     );
-    
+
     // Vérifier si le nouveau pickup est proche du dropoff existant
     let distance_to_dropoff = haversine_distance(
         (new_pickup.latitude, new_pickup.longitude),
         (existing_dropoff.latitude, existing_dropoff.longitude),
     );
-    
+
     // Vérifier si le nouveau pickup est sur le chemin entre pickup et dropoff
     // (approximation : si la distance totale est proche de la somme des distances)
     let route_distance = haversine_distance(
         (existing_pickup.latitude, existing_pickup.longitude),
         (existing_dropoff.latitude, existing_dropoff.longitude),
     );
-    
+
     // Si le nouveau pickup est proche du pickup ou du dropoff, ou sur le chemin
     distance_to_pickup <= max_distance_meters
         || distance_to_dropoff <= max_distance_meters
-        || (distance_to_pickup + distance_to_dropoff) <= (route_distance + max_distance_meters * 2.0)
+        || (distance_to_pickup + distance_to_dropoff)
+            <= (route_distance + max_distance_meters * 2.0)
 }
 
 /// ✅ NOUVEAU: Vérifie si une nouvelle course est compatible avec les courses existantes d'un coursier
@@ -115,17 +120,13 @@ pub fn is_delivery_compatible(
 ) -> bool {
     const SAME_PICKUP_DISTANCE: f64 = 100.0; // 100 mètres pour même point
     const ON_ROUTE_DISTANCE: f64 = 500.0; // 500 mètres pour être sur la route
-    
+
     for existing in existing_deliveries {
         // Vérifier si même point de pickup
-        if is_same_pickup_point(
-            &new_delivery.pickup,
-            &existing.pickup,
-            SAME_PICKUP_DISTANCE,
-        ) {
+        if is_same_pickup_point(&new_delivery.pickup, &existing.pickup, SAME_PICKUP_DISTANCE) {
             return true;
         }
-        
+
         // Vérifier si le nouveau pickup est sur la trajectoire
         if is_on_route(
             &new_delivery.pickup,
@@ -136,7 +137,7 @@ pub fn is_delivery_compatible(
             return true;
         }
     }
-    
+
     false
 }
 
@@ -1256,12 +1257,12 @@ impl DeliveryService {
         // ✅ NOUVEAU: Valider que le partner_id existe s'il est fourni
         let validated_partner_id = if let Some(partner_id) = input.partner_id {
             let partner_exists: Option<i32> = sqlx::query_scalar(
-                "SELECT id FROM delivery_partners WHERE id = $1 AND is_active = true"
+                "SELECT id FROM delivery_partners WHERE id = $1 AND is_active = true",
             )
-                .bind(partner_id)
-                .fetch_optional(self.repository.pool())
-                .await?;
-            
+            .bind(partner_id)
+            .fetch_optional(self.repository.pool())
+            .await?;
+
             if partner_exists.is_none() {
                 log::warn!(
                     "[submit_courier_application] ⚠️ partner_id {} n'existe pas ou n'est pas actif, utilisation de NULL",
@@ -1307,7 +1308,11 @@ impl DeliveryService {
                     status,
                     Some(input.profile_data),
                     Some(input.documents),
-                    if input.submitted { Some(Utc::now()) } else { None },
+                    if input.submitted {
+                        Some(Utc::now())
+                    } else {
+                        None
+                    },
                     validated_partner_id,
                 )
                 .await?;
@@ -1354,7 +1359,7 @@ impl DeliveryService {
             })
             .await?;
 
-            log::info!(
+        log::info!(
                 "[submit_courier_application] ✅ Nouvelle candidature créée: id={}, user_id={}, status={:?}, submitted={}, submitted_at={:?}, created_at={:?}",
                 new_app.id,
                 new_app.user_id,
@@ -1363,9 +1368,9 @@ impl DeliveryService {
                 new_app.submitted_at,
                 new_app.created_at
             );
-            
-            // ✅ DEBUG: Vérifier que la candidature est bien enregistrée en DB
-            log::info!(
+
+        // ✅ DEBUG: Vérifier que la candidature est bien enregistrée en DB
+        log::info!(
                 "[submit_courier_application] 🔍 Vérification DB - La candidature devrait être visible avec le filtre 'all' ou 'draft' (si draft) ou 'submitted' (si submitted)"
             );
 
@@ -1510,7 +1515,7 @@ impl DeliveryService {
             })
         };
 
-            // Si on n'a toujours pas de type_id valide (cas où il était 0), utiliser le type par défaut (motorcycle)
+        // Si on n'a toujours pas de type_id valide (cas où il était 0), utiliser le type par défaut (motorcycle)
         let final_type_id = if final_type_id == 0 {
             self.repository.find_default_parcel_type_id().await?
         } else {
@@ -1540,7 +1545,7 @@ impl DeliveryService {
         // Créer un nouveau parcel avec le type_id final
         let mut final_parcel = parcel;
         final_parcel.type_id = Some(final_type_id);
-        
+
         // ✅ Extraire type_id avant le move
         let parcel_type_id = final_parcel.type_id;
 
@@ -1589,7 +1594,7 @@ impl DeliveryService {
             });
             request.metadata = merge_json(request.metadata, extras_overlay);
         }
-        
+
         // ✅ Ajouter parcel_type_id dans les métadonnées pour le matching
         if let Some(type_id) = parcel_type_id {
             request.metadata["parcel_type_id"] = json!(type_id);
@@ -1603,24 +1608,26 @@ impl DeliveryService {
         // ✅ NOUVEAU 2025-01-31 : Gérer le matching selon le mode de planification
         if summary.recipient.is_some() {
             // ✅ Par défaut : matching instantané si planification (permet de contacter le coursier à l'avance)
-            let matching_mode = summary.metadata
+            let matching_mode = summary
+                .metadata
                 .get("matching_mode")
                 .and_then(|v| v.as_str())
                 .unwrap_or("immediate");
-            
-            let scheduled_delivery_at_utc: Option<chrono::DateTime<chrono::Utc>> = summary.metadata
+
+            let scheduled_delivery_at_utc: Option<chrono::DateTime<chrono::Utc>> = summary
+                .metadata
                 .get("scheduled_delivery_at_utc")
                 .and_then(|v| v.as_str())
                 .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
                 .map(|dt| dt.with_timezone(&chrono::Utc));
-            
+
             // Si mode "scheduled", vérifier si on doit retarder le matching
             if matching_mode == "scheduled" {
                 if let Some(scheduled_at) = scheduled_delivery_at_utc {
                     // Retarder le matching jusqu'à 15 minutes avant la date planifiée
                     let match_at = scheduled_at - chrono::Duration::minutes(15);
                     let now = chrono::Utc::now();
-                    
+
                     if match_at > now {
                         // Retarder le matching jusqu'à 15 minutes avant la date planifiée
                         log::info!(
@@ -1629,7 +1636,7 @@ impl DeliveryService {
                             scheduled_at,
                             match_at
                         );
-                        
+
                         // Retarder le matching jusqu'à 15 minutes avant la date planifiée
                         log::info!(
                             "[DeliveryMatching] ✅ Livraison {} planifiée pour {}, matching retardé jusqu'à {}",
@@ -1637,11 +1644,11 @@ impl DeliveryService {
                             scheduled_at,
                             match_at
                         );
-                        
+
                         // Mettre à jour les métadonnées avec le next_attempt_at pour que enqueue_delivery_matching le prenne en compte
                         let mut updated_metadata = summary.metadata.clone();
                         updated_metadata["matching_next_attempt_at"] = json!(match_at.to_rfc3339());
-                        
+
                         // Créer une nouvelle copie du summary avec les métadonnées mises à jour
                         // Note: On ne peut pas modifier summary directement, donc on devra utiliser enqueue_delivery_matching
                         // qui prendra en compte le next_attempt_at depuis les métadonnées
@@ -1653,7 +1660,7 @@ impl DeliveryService {
                     }
                 }
             }
-            
+
             // Matching immédiat ou planifié qui est arrivé à échéance
             if let Err(err) = self.enqueue_delivery_matching(&summary).await {
                 log::error!(
@@ -1667,7 +1674,7 @@ impl DeliveryService {
                     summary.id
                 );
             }
-            
+
             // Si matching_mode == "immediate" et livraison planifiée, mettre un statut spécial
             if matching_mode == "immediate" && scheduled_delivery_at_utc.is_some() {
                 // La livraison sera assignée immédiatement mais le coursier devra déclencher manuellement au moment planifié
@@ -3910,25 +3917,28 @@ impl DeliveryService {
         }
 
         // ✅ NOUVEAU 2025-01-31 : Vérifier si livraison planifiée dans métadonnées
-        let scheduled_delivery_at_utc: Option<chrono::DateTime<chrono::Utc>> = summary.metadata
+        let scheduled_delivery_at_utc: Option<chrono::DateTime<chrono::Utc>> = summary
+            .metadata
             .get("scheduled_delivery_at_utc")
             .and_then(|v| v.as_str())
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&chrono::Utc));
-        
-        let matching_mode = summary.metadata
+
+        let matching_mode = summary
+            .metadata
             .get("matching_mode")
             .and_then(|v| v.as_str())
             .unwrap_or("immediate");
-        
+
         // Si mode "scheduled", utiliser scheduled_delivery_at au lieu de scheduled_pickup_at
-        let scheduled_pickup_at = if matching_mode == "scheduled" && scheduled_delivery_at_utc.is_some() {
-            // Pour matching planifié, utiliser la date planifiée moins 15 minutes
-            scheduled_delivery_at_utc.map(|dt| dt - chrono::Duration::minutes(15))
-        } else {
-            Some(acceptable_slot.pickup_slot.start)
-        };
-        
+        let scheduled_pickup_at =
+            if matching_mode == "scheduled" && scheduled_delivery_at_utc.is_some() {
+                // Pour matching planifié, utiliser la date planifiée moins 15 minutes
+                scheduled_delivery_at_utc.map(|dt| dt - chrono::Duration::minutes(15))
+            } else {
+                Some(acceptable_slot.pickup_slot.start)
+            };
+
         let should_delay_matching = scheduled_pickup_at
             .map(|ts| ts > Utc::now() + Duration::minutes(2))
             .unwrap_or(false);
@@ -4108,14 +4118,14 @@ impl DeliveryService {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
             .unwrap_or_else(|| "motorcycle".to_string()); // ✅ Par défaut: moto
-        
+
         let preferred_vehicle_type_backend = summary
             .metadata
             .get("preferred_vehicle_type_backend")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
             .unwrap_or_else(|| preferred_vehicle_type.clone());
-        
+
         // ✅ Déterminer le type de véhicule requis selon la nature du colis
         // Récupérer le type_id depuis delivery_parcels
         let parcel_type_id: Option<i32> = {
@@ -4125,13 +4135,15 @@ impl DeliveryService {
             .bind(summary.id)
             .fetch_optional(self.repository.pool())
             .await;
-            
-            result.ok().flatten().flatten()
-                .or_else(|| {
-                    summary.metadata.get("parcel_type_id").and_then(|v| v.as_i64().map(|id| id as i32))
-                })
+
+            result.ok().flatten().flatten().or_else(|| {
+                summary
+                    .metadata
+                    .get("parcel_type_id")
+                    .and_then(|v| v.as_i64().map(|id| id as i32))
+            })
         };
-        
+
         // ✅ OPTIMISÉ 2026-01-14: Remplacer sous-requête par JOIN pour meilleure performance
         // Avant: 436-765ms avec sous-requête corrélée
         // Après: <50ms avec JOIN + index
@@ -4141,36 +4153,39 @@ impl DeliveryService {
             FROM delivery_parcels dp
             INNER JOIN deliveries d ON d.parcel_id = dp.id
             WHERE d.id = $1
-            "#
+            "#,
         )
         .bind(summary.id)
         .fetch_optional(self.repository.pool())
         .await
         .ok()
         .flatten();
-        
+
         let is_moving = parcel_constraints
             .as_ref()
             .and_then(|c| c.get("is_moving").and_then(|v| v.as_bool()))
             .unwrap_or(false)
             || parcel_constraints
-            .as_ref()
-            .map(|c| c.get("number_of_boxes").is_some())
-            .unwrap_or(false);
-        
+                .as_ref()
+                .map(|c| c.get("number_of_boxes").is_some())
+                .unwrap_or(false);
+
         let is_cake = parcel_constraints
             .as_ref()
             .map(|c| c.get("cake_size").is_some())
             .unwrap_or(false)
             || parcel_constraints
-            .as_ref()
-            .map(|c| c.get("cake_layers").is_some())
-            .unwrap_or(false);
-        
+                .as_ref()
+                .map(|c| c.get("cake_layers").is_some())
+                .unwrap_or(false);
+
         // Logique intelligente : adapter le véhicule selon la nature du colis
         let required_vehicle_type = if is_moving {
             // Déménagement : nécessite camion ou camionnette
-            if preferred_vehicle_type_backend == "truck" || preferred_vehicle_type_backend == "van" || preferred_vehicle_type_backend == "pickup" {
+            if preferred_vehicle_type_backend == "truck"
+                || preferred_vehicle_type_backend == "van"
+                || preferred_vehicle_type_backend == "pickup"
+            {
                 Some(preferred_vehicle_type_backend.clone())
             } else {
                 Some("truck".to_string()) // Forcer camion pour déménagement
@@ -4265,12 +4280,16 @@ impl DeliveryService {
         // ✅ NOUVEAU: Filtrer les candidats en vérifiant la compatibilité avec leurs courses actives
         // Un coursier peut accepter plusieurs courses si elles sont compatibles (même pickup ou sur trajectoire)
         let mut filtered_candidates = Vec::new();
-        
+
         for candidate in candidates {
             // Si le coursier a déjà des courses actives, vérifier la compatibilité
             if candidate.active_deliveries > 0 {
                 // Récupérer les courses actives du coursier
-                let active_deliveries = match self.repository.get_courier_active_deliveries(candidate.courier_id).await {
+                let active_deliveries = match self
+                    .repository
+                    .get_courier_active_deliveries(candidate.courier_id)
+                    .await
+                {
                     Ok(deliveries) => deliveries,
                     Err(_) => {
                         // En cas d'erreur, on continue quand même (ne pas bloquer le matching)
@@ -4281,7 +4300,7 @@ impl DeliveryService {
                         vec![]
                     }
                 };
-                
+
                 // Si le coursier a des courses actives, vérifier la compatibilité
                 if !active_deliveries.is_empty() {
                     let courier_id = candidate.courier_id;
@@ -4410,7 +4429,7 @@ impl DeliveryService {
                 (candidate, score)
             })
             .collect();
-        
+
         // Trier par score décroissant
         scored_candidates.sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap_or(CmpOrdering::Equal));
 
@@ -4426,10 +4445,12 @@ impl DeliveryService {
             .collect();
 
         // ✅ NOUVEAU : Notifier tous les coursiers sélectionnés au lieu d'assigner automatiquement
-        self.notify_available_couriers(summary, &top_candidates).await?;
+        self.notify_available_couriers(summary, &top_candidates)
+            .await?;
 
         // ✅ NOUVEAU : Mettre à jour le statut de matching à "Searching" (en attente d'acceptation)
-        let notified_courier_ids: Vec<Uuid> = top_candidates.iter().map(|(c, _)| c.courier_id).collect();
+        let notified_courier_ids: Vec<Uuid> =
+            top_candidates.iter().map(|(c, _)| c.courier_id).collect();
         let queue_metadata = json!({
             "notified_couriers": notified_courier_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>(),
             "notified_count": notified_courier_ids.len(),
@@ -4473,35 +4494,38 @@ impl DeliveryService {
         candidates: &[(CourierMatchingCandidate, f64)],
     ) -> AppResult<()> {
         use crate::services::push_notification_service;
-        
+
         let mut notified_courier_ids = Vec::new();
         let mut notified_user_ids = Vec::new();
-        
+
         // Détecter si c'est un relais
-        let is_relay = summary.metadata.get("is_relay").and_then(|v| v.as_bool()).unwrap_or(false);
+        let is_relay = summary
+            .metadata
+            .get("is_relay")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         let relay_info = summary.metadata.get("relay_info").cloned();
         let courier_difficulty = summary.metadata.get("courier_difficulty").cloned();
-        
+
         for (candidate, score) in candidates {
             // Récupérer l'user_id du coursier
-            let courier_user_id: Option<i32> = sqlx::query_scalar(
-                "SELECT user_id FROM couriers WHERE id = $1"
-            )
-            .bind(candidate.courier_id)
-            .fetch_optional(self.repository.pool())
-            .await?
-            .flatten();
-            
+            let courier_user_id: Option<i32> =
+                sqlx::query_scalar("SELECT user_id FROM couriers WHERE id = $1")
+                    .bind(candidate.courier_id)
+                    .fetch_optional(self.repository.pool())
+                    .await?
+                    .flatten();
+
             if let Some(user_id) = courier_user_id {
                 notified_courier_ids.push(candidate.courier_id);
                 notified_user_ids.push(user_id);
-                
+
                 let notification_title = if is_relay {
                     "🔄 Relais de livraison disponible".to_string()
                 } else {
                     "📦 Nouvelle livraison disponible".to_string()
                 };
-                
+
                 let notification_message = if is_relay {
                     format!(
                         "Course de relais disponible #{}. Distance: {:.1} km. Appuyez pour accepter.",
@@ -4515,7 +4539,7 @@ impl DeliveryService {
                         candidate.distance_meters.unwrap_or(0.0) / 1000.0
                     )
                 };
-                
+
                 // ✅ Construire les métadonnées avec toutes les informations nécessaires
                 let mut notification_data = json!({
                     "type": "delivery_available",
@@ -4537,7 +4561,7 @@ impl DeliveryService {
                     "matching_score": score,
                     "can_accept": true, // ✅ Flag pour indiquer que le coursier peut accepter
                 });
-                
+
                 // ✅ Ajouter les informations de relais si applicable
                 if is_relay {
                     notification_data["is_relay"] = json!(true);
@@ -4548,7 +4572,7 @@ impl DeliveryService {
                         notification_data["original_difficulty"] = difficulty.clone();
                     }
                 }
-                
+
                 // ✅ Ajouter les informations du destinataire (recommandations)
                 if let Some(recipient) = &summary.recipient {
                     notification_data["recipient"] = json!({
@@ -4558,9 +4582,13 @@ impl DeliveryService {
                         "instructions": recipient.notes.clone(),
                     });
                 }
-                
+
                 // ✅ Ajouter les informations d'aller-retour si applicable
-                if let Some(is_round_trip) = summary.metadata.get("is_round_trip").and_then(|v| v.as_bool()) {
+                if let Some(is_round_trip) = summary
+                    .metadata
+                    .get("is_round_trip")
+                    .and_then(|v| v.as_bool())
+                {
                     if is_round_trip {
                         notification_data["is_round_trip"] = json!(true);
                         if let Some(return_pickup) = summary.metadata.get("return_pickup") {
@@ -4571,7 +4599,7 @@ impl DeliveryService {
                         }
                     }
                 }
-                
+
                 // ✅ NOUVEAU : Envoyer notification persistante avec son
                 let _ = push_notification_service::send_persistent_delivery_notification(
                     self.repository.pool(),
@@ -4583,28 +4611,29 @@ impl DeliveryService {
                 .await;
             }
         }
-        
+
         // ✅ Sauvegarder la liste des coursiers notifiés dans les métadonnées
         let mut metadata = summary.metadata.clone();
-        metadata["notified_couriers"] = json!(notified_courier_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>());
+        metadata["notified_couriers"] = json!(notified_courier_ids
+            .iter()
+            .map(|id| id.to_string())
+            .collect::<Vec<_>>());
         metadata["notified_user_ids"] = json!(notified_user_ids);
         metadata["notification_sent_at"] = json!(Utc::now().to_rfc3339());
         metadata["notification_repeat_interval_seconds"] = json!(30); // Répéter toutes les 30 secondes
-        
-        sqlx::query(
-            "UPDATE deliveries SET metadata = $1, updated_at = NOW() WHERE id = $2"
-        )
-        .bind(&metadata)
-        .bind(summary.id)
-        .execute(self.repository.pool())
-        .await?;
-        
+
+        sqlx::query("UPDATE deliveries SET metadata = $1, updated_at = NOW() WHERE id = $2")
+            .bind(&metadata)
+            .bind(summary.id)
+            .execute(self.repository.pool())
+            .await?;
+
         log::info!(
             "[DeliveryService] ✅ {} coursiers notifiés pour la livraison {}",
             notified_courier_ids.len(),
             summary.id
         );
-        
+
         Ok(())
     }
 
@@ -4612,12 +4641,13 @@ impl DeliveryService {
     /// Appelée quand un coursier accepte la course ou quand la livraison est annulée
     pub async fn stop_delivery_notifications(&self, delivery_id: Uuid) -> AppResult<()> {
         use crate::services::push_notification_service;
-        
+
         // Récupérer les métadonnées de la livraison
         let summary = self.get_delivery_summary(delivery_id).await?;
-        
+
         // Récupérer la liste des coursiers notifiés
-        let notified_user_ids: Vec<i32> = summary.metadata
+        let notified_user_ids: Vec<i32> = summary
+            .metadata
             .get("notified_user_ids")
             .and_then(|v| v.as_array())
             .map(|arr| {
@@ -4626,7 +4656,7 @@ impl DeliveryService {
                     .collect()
             })
             .unwrap_or_default();
-        
+
         if notified_user_ids.is_empty() {
             log::debug!(
                 "[DeliveryService] Aucun coursier notifié pour la livraison {}",
@@ -4634,13 +4664,13 @@ impl DeliveryService {
             );
             return Ok(());
         }
-        
+
         // ✅ Envoyer une notification d'annulation à tous les coursiers notifiés
         let cancellation_message = format!(
             "La course #{} a été prise par un autre coursier.",
             delivery_id.to_string()[..8].to_uppercase()
         );
-        
+
         for user_id in &notified_user_ids {
             let _ = push_notification_service::send_push_notification(
                 self.repository.pool(),
@@ -4656,26 +4686,24 @@ impl DeliveryService {
             )
             .await;
         }
-        
+
         // ✅ Mettre à jour les métadonnées pour indiquer que les notifications sont arrêtées
         let mut metadata = summary.metadata.clone();
         metadata["notifications_stopped"] = json!(true);
         metadata["notifications_stopped_at"] = json!(Utc::now().to_rfc3339());
-        
-        sqlx::query(
-            "UPDATE deliveries SET metadata = $1, updated_at = NOW() WHERE id = $2"
-        )
-        .bind(&metadata)
-        .bind(delivery_id)
-        .execute(self.repository.pool())
-        .await?;
-        
+
+        sqlx::query("UPDATE deliveries SET metadata = $1, updated_at = NOW() WHERE id = $2")
+            .bind(&metadata)
+            .bind(delivery_id)
+            .execute(self.repository.pool())
+            .await?;
+
         log::info!(
             "[DeliveryService] ✅ Notifications arrêtées pour la livraison {} ({} coursiers notifiés)",
             delivery_id,
             notified_user_ids.len()
         );
-        
+
         Ok(())
     }
 

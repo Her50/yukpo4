@@ -109,7 +109,7 @@ impl BrollService {
             3. Configurez les endpoints IA pour la génération (runway_endpoint, pika_endpoint, sora_endpoint)\n\
             4. Vérifiez la connectivité Redis pour le cache"
         );
-        
+
         Err(AppError::Internal(format!(
             "Impossible de récupérer un b-roll pour ce segment (catégorie: '{}'). \
             Vérifiez la configuration des sources b-roll (local, stock, IA) et les logs pour plus de détails.",

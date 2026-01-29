@@ -5,10 +5,10 @@
 use crate::core::types::{AppError, AppResult};
 use crate::utils::log::{log_error, log_info, log_warn};
 use base64::{engine::general_purpose, Engine as _};
+use md5;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::env;
-use md5;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TranscriptionResult {
@@ -34,7 +34,10 @@ impl AudioTranscriptionService {
         };
 
         let audio_bytes = general_purpose::STANDARD.decode(audio_data).map_err(|e| {
-            log_error(&format!("[AudioTranscription] Erreur décodage base64: {}", e));
+            log_error(&format!(
+                "[AudioTranscription] Erreur décodage base64: {}",
+                e
+            ));
             AppError::Internal(format!("Erreur décodage audio: {}", e))
         })?;
 
@@ -43,20 +46,21 @@ impl AudioTranscriptionService {
         log_info(&format!("[AudioTranscription] Hash audio: {}", audio_hash));
 
         // Vérifier le cache
-        let cached_result = sqlx::query_as::<_, (String, Option<String>, Option<f32>, Option<f32>)>(
-            r#"
+        let cached_result =
+            sqlx::query_as::<_, (String, Option<String>, Option<f32>, Option<f32>)>(
+                r#"
             SELECT transcribed_text, language, confidence, duration
             FROM audio_transcription_cache
             WHERE audio_hash = $1
             "#,
-        )
-        .bind(&audio_hash)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| {
-            log_error(&format!("[AudioTranscription] Erreur cache: {}", e));
-            AppError::Internal(format!("Erreur cache: {}", e))
-        })?;
+            )
+            .bind(&audio_hash)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| {
+                log_error(&format!("[AudioTranscription] Erreur cache: {}", e));
+                AppError::Internal(format!("Erreur cache: {}", e))
+            })?;
 
         if let Some((cached_text, cached_lang, cached_conf, cached_dur)) = cached_result {
             log_info("[AudioTranscription] ✅ Transcription trouvée dans le cache");
@@ -74,13 +78,12 @@ impl AudioTranscriptionService {
             .await;
 
             // Appliquer corrections via fonction PostgreSQL
-            let corrected_text = sqlx::query_scalar::<_, String>(
-                "SELECT correct_transcription_errors($1)"
-            )
-            .bind(&cached_text)
-            .fetch_one(pool)
-            .await
-            .unwrap_or(cached_text);
+            let corrected_text =
+                sqlx::query_scalar::<_, String>("SELECT correct_transcription_errors($1)")
+                    .bind(&cached_text)
+                    .fetch_one(pool)
+                    .await
+                    .unwrap_or(cached_text);
 
             return Ok(TranscriptionResult {
                 text: corrected_text,
@@ -114,13 +117,12 @@ impl AudioTranscriptionService {
         .await;
 
         // Appliquer corrections
-        let corrected_text = sqlx::query_scalar::<_, String>(
-            "SELECT correct_transcription_errors($1)"
-        )
-        .bind(&result.text)
-        .fetch_one(pool)
-        .await
-        .unwrap_or(result.text);
+        let corrected_text =
+            sqlx::query_scalar::<_, String>("SELECT correct_transcription_errors($1)")
+                .bind(&result.text)
+                .fetch_one(pool)
+                .await
+                .unwrap_or(result.text);
 
         Ok(TranscriptionResult {
             text: corrected_text,

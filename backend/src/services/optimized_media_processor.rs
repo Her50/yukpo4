@@ -462,7 +462,11 @@ impl OptimizedMediaProcessor {
 
         // ✅ NOUVEAU: Upload vers S3/Wasabi via MediaStorageService
         let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
-        match self.media_storage.store_bytes(&decoded_bytes, &storage_key, content_type).await {
+        match self
+            .media_storage
+            .store_bytes(&decoded_bytes, &storage_key, content_type)
+            .await
+        {
             Ok(location) => {
                 log::debug!(
                     "[OptimizedMediaProcessor] ✅ Fichier uploadé vers S3: {}",

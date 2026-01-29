@@ -32,7 +32,7 @@ pub struct QuickPreviewResponse {
 pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> VideoTimeline {
     let fps = immersive.fps;
     let mut current_time = 0.0;
-    
+
     let scenes: Vec<TimelineScene> = immersive
         .scenes
         .iter()
@@ -100,12 +100,12 @@ pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> Vid
             }
         })
         .collect();
-    
+
     let total_duration = scenes
         .iter()
         .map(|s| s.start_time + s.duration)
         .fold(0.0, f64::max);
-    
+
     VideoTimeline {
         total_duration,
         scenes,
@@ -114,31 +114,32 @@ pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> Vid
 
 /// ✅ NOUVEAU: Résout un media_id en media_url depuis la base de données
 async fn resolve_media_url(pool: &PgPool, media_id: i32) -> AppResult<Option<String>> {
-    let row = sqlx::query!(
-        "SELECT path FROM media WHERE id = $1",
-        media_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        error!("[QuickPreview] Erreur DB pour media_id {}: {}", media_id, e);
-        AppError::Internal(format!("Erreur récupération média {}: {}", media_id, e))
-    })?;
+    let row = sqlx::query!("SELECT path FROM media WHERE id = $1", media_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            error!("[QuickPreview] Erreur DB pour media_id {}: {}", media_id, e);
+            AppError::Internal(format!("Erreur récupération média {}: {}", media_id, e))
+        })?;
 
     if let Some(row) = row {
         let path = row.path;
         // Construire l'URL complète
-        let api_base_url = env::var("API_BASE_URL")
-            .unwrap_or_else(|_| env::var("UPLOAD_BASE_URL")
-                .unwrap_or_else(|_| "http://localhost:3000".to_string()));
-        
+        let api_base_url = env::var("API_BASE_URL").unwrap_or_else(|_| {
+            env::var("UPLOAD_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string())
+        });
+
         let clean_path = path.trim_start_matches('/');
         let media_url = if path.starts_with("http://") || path.starts_with("https://") {
             path
         } else {
-            format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path)
+            format!(
+                "{}/api/media/files/{}",
+                api_base_url.trim_end_matches('/'),
+                clean_path
+            )
         };
-        
+
         Ok(Some(media_url))
     } else {
         warn!("[QuickPreview] Media ID {} non trouvé dans la DB", media_id);
@@ -158,7 +159,7 @@ async fn enrich_timeline_with_media_urls(
     let pool = pool.unwrap();
 
     let mut enriched_scenes = Vec::new();
-    
+
     for scene in timeline.scenes {
         // Si la scène a déjà un media_url, on la garde telle quelle
         if scene.media_url.is_some() {
@@ -173,7 +174,10 @@ async fn enrich_timeline_with_media_urls(
                 Ok(media_id) => {
                     match resolve_media_url(pool, media_id).await {
                         Ok(Some(media_url)) => {
-                            info!("[QuickPreview] ✅ Résolu media_id {} -> {}", media_id, media_url);
+                            info!(
+                                "[QuickPreview] ✅ Résolu media_id {} -> {}",
+                                media_id, media_url
+                            );
                             enriched_scenes.push(TimelineScene {
                                 media_url: Some(media_url),
                                 ..scene
@@ -193,14 +197,20 @@ async fn enrich_timeline_with_media_urls(
                             enriched_scenes.push(scene);
                         }
                         Err(e) => {
-                            error!("[QuickPreview] ❌ Erreur résolution media_id {}: {:?}", media_id, e);
+                            error!(
+                                "[QuickPreview] ❌ Erreur résolution media_id {}: {:?}",
+                                media_id, e
+                            );
                             // On garde la scène mais sans media_url (sera filtrée plus tard)
                             enriched_scenes.push(scene);
                         }
                     }
                 }
                 Err(_) => {
-                    warn!("[QuickPreview] ⚠️ Media ID invalide (non numérique): '{}', scène ignorée", media_id_str);
+                    warn!(
+                        "[QuickPreview] ⚠️ Media ID invalide (non numérique): '{}', scène ignorée",
+                        media_id_str
+                    );
                     // On garde la scène mais sans media_url (sera filtrée plus tard)
                     enriched_scenes.push(scene);
                 }
@@ -232,14 +242,14 @@ pub async fn generate_quick_preview(
         use crate::services::preview_cache_service::{
             generate_preview_cache_key, get_cached_preview,
         };
-        
+
         let quality = request.quality.as_deref().unwrap_or("low");
         let max_duration = request.max_duration.unwrap_or(10.0);
-        
+
         // Convertir la timeline en JSON pour générer la clé de cache
         let timeline_json = serde_json::to_value(&request.timeline).unwrap_or_default();
         let cache_key = generate_preview_cache_key(&timeline_json, quality, Some(max_duration));
-        
+
         // Vérifier le cache
         if let Ok(Some(cached)) = get_cached_preview(pool_ref, &cache_key).await {
             let cache_time = start_time.elapsed().as_millis() as u64;
@@ -247,7 +257,7 @@ pub async fn generate_quick_preview(
                 "[QuickPreview] ✅ Cache hit - Preview récupéré en {}ms (accès #{})",
                 cache_time, cached.access_count
             );
-            
+
             return Ok(QuickPreviewResponse {
                 success: true,
                 preview_url: cached.preview_url,
@@ -257,7 +267,7 @@ pub async fn generate_quick_preview(
                 thumbnail_url: cached.thumbnail_url,
             });
         }
-        
+
         info!(
             "[QuickPreview] Cache miss - Génération preview ({} scènes, qualité: {})",
             request.timeline.scenes.len(),
@@ -279,7 +289,7 @@ pub async fn generate_quick_preview(
     // ✅ CORRIGÉ: Cloner la timeline avant de la déplacer
     let timeline_clone = request.timeline.clone();
     let enriched_timeline = enrich_timeline_with_media_urls(request.timeline, pool).await?;
-    
+
     let quality = request.quality.as_deref().unwrap_or("low");
     let max_duration = request.max_duration.unwrap_or(10.0);
 
@@ -287,7 +297,9 @@ pub async fn generate_quick_preview(
     let scenes_with_media: Vec<_> = enriched_timeline
         .scenes
         .iter()
-        .filter(|scene| scene.media_url.is_some() && !scene.media_url.as_ref().unwrap().trim().is_empty())
+        .filter(|scene| {
+            scene.media_url.is_some() && !scene.media_url.as_ref().unwrap().trim().is_empty()
+        })
         .collect();
 
     if scenes_with_media.is_empty() {
@@ -334,7 +346,7 @@ pub async fn generate_quick_preview(
         .iter()
         .filter(|scene| scene.media_url.is_some())
         .count();
-    
+
     if media_count == 0 {
         let scene_details: Vec<String> = preview_scenes
             .iter()
@@ -342,22 +354,18 @@ pub async fn generate_quick_preview(
             .map(|(idx, scene)| {
                 format!(
                     "Scène {}: start_time={:.2}s, duration={:.2}s, media_url={:?}, effects={:?}",
-                    idx,
-                    scene.start_time,
-                    scene.duration,
-                    scene.media_url,
-                    scene.effects
+                    idx, scene.start_time, scene.duration, scene.media_url, scene.effects
                 )
             })
             .collect();
-        
+
         error!(
             "[QuickPreview] ❌ Aucun média trouvé dans la timeline. Scènes: {}, Médias trouvés: {}. Détails: {}",
             preview_scenes.len(),
             media_count,
             scene_details.join(" | ")
         );
-        
+
         return Err(AppError::Internal(
             format!(
                 "Aucun média trouvé dans la timeline pour générer le preview. Scènes: {}, Médias trouvés: {}. Veuillez vous assurer que chaque scène a un media_url défini (URL d'image ou vidéo).",
@@ -366,7 +374,7 @@ pub async fn generate_quick_preview(
             ),
         ));
     }
-    
+
     // ✅ NOUVEAU: Créer un mapping média URL -> index d'input FFmpeg
     let unique_media_urls: Vec<String> = preview_scenes
         .iter()
@@ -375,13 +383,14 @@ pub async fn generate_quick_preview(
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
         .collect();
-    
+
     // Créer un HashMap pour mapper chaque URL à son index d'input
-    let mut media_to_input_index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut media_to_input_index: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
     for (idx, url) in unique_media_urls.iter().enumerate() {
         media_to_input_index.insert(url.clone(), idx);
     }
-    
+
     info!(
         "[QuickPreview] {} médias uniques détectés pour {} scènes",
         unique_media_urls.len(),
@@ -407,11 +416,13 @@ pub async fn generate_quick_preview(
 
     for (idx, scene) in preview_scenes.iter().enumerate() {
         // Déterminer quel input utiliser pour cette scène
-        let input_index = scene.media_url.as_ref()
+        let input_index = scene
+            .media_url
+            .as_ref()
             .and_then(|url| media_to_input_index.get(url))
             .copied()
             .unwrap_or(0); // Fallback sur le premier input si pas de média
-        
+
         // Pour chaque scène, on applique les effets et transitions
         let mut scene_filters: Vec<String> = Vec::new();
 
@@ -438,11 +449,17 @@ pub async fn generate_quick_preview(
         }
 
         // Scale pour qualité réduite + garantir largeur paire
-        let scale_filter = format!("scale=iw-mod(iw\\,2):ih:force_original_aspect_ratio=decrease,scale={}", scale);
+        let scale_filter = format!(
+            "scale=iw-mod(iw\\,2):ih:force_original_aspect_ratio=decrease,scale={}",
+            scale
+        );
         scene_filters.push(scale_filter);
 
         let filter_chain = if scene_filters.is_empty() {
-            format!("scale=iw-mod(iw\\,2):ih:force_original_aspect_ratio=decrease,scale={}", scale)
+            format!(
+                "scale=iw-mod(iw\\,2):ih:force_original_aspect_ratio=decrease,scale={}",
+                scale
+            )
         } else {
             scene_filters.join(",")
         };
@@ -485,13 +502,13 @@ pub async fn generate_quick_preview(
     // ✅ REFACTORISÉ: Construire les arguments FFmpeg avec plusieurs inputs
     let max_duration_str = max_duration.to_string();
     let mut ffmpeg_args = Vec::new();
-    
+
     // Ajouter tous les inputs (-i pour chaque média unique)
     for media_url in &unique_media_urls {
         ffmpeg_args.push("-i".to_string());
         ffmpeg_args.push(media_url.clone());
     }
-    
+
     // Ajouter le filtre complexe et les autres paramètres
     ffmpeg_args.extend(vec![
         "-filter_complex".to_string(),
@@ -556,26 +573,26 @@ pub async fn generate_quick_preview(
                     processing_time_ms: processing_time,
                     thumbnail_url: Some(thumbnail_path.clone()),
                 };
-                
+
                 // ✅ NOUVEAU 2026-01-04: Mettre en cache le résultat
                 if let Some(pool_ref) = pool {
                     use crate::services::preview_cache_service::{
-                        generate_preview_cache_key, cache_preview, get_preview_ttl,
-                        CachedPreview,
+                        cache_preview, generate_preview_cache_key, get_preview_ttl, CachedPreview,
                     };
-                    use std::time::{SystemTime, UNIX_EPOCH};
                     use std::fs;
-                    
+                    use std::time::{SystemTime, UNIX_EPOCH};
+
                     // ✅ CORRIGÉ: Utiliser la timeline clonée au lieu de request.timeline (déjà déplacée)
                     let timeline_json = serde_json::to_value(&timeline_clone).unwrap_or_default();
-                    let cache_key = generate_preview_cache_key(&timeline_json, quality, Some(max_duration));
+                    let cache_key =
+                        generate_preview_cache_key(&timeline_json, quality, Some(max_duration));
                     let ttl = get_preview_ttl(quality);
-                    
+
                     // Obtenir la taille du fichier si possible
                     let file_size = fs::metadata(&output_path)
                         .ok()
                         .and_then(|m| m.len().try_into().ok());
-                    
+
                     let cached = CachedPreview {
                         preview_url: output_path,
                         preview_duration,
@@ -588,7 +605,7 @@ pub async fn generate_quick_preview(
                         access_count: 0,
                         file_size,
                     };
-                    
+
                     if let Err(e) = cache_preview(pool_ref, &cache_key, &cached, ttl).await {
                         warn!(
                             "[QuickPreview] ⚠️ Erreur mise en cache: {} (continuer quand même)",
@@ -601,7 +618,7 @@ pub async fn generate_quick_preview(
                         );
                     }
                 }
-                
+
                 Ok(response)
             } else {
                 let error = String::from_utf8_lossy(&output.stderr);

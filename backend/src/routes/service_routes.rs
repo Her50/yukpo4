@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use crate::controllers::service_controller::{
     creer_service, filter_services, get_last_service_for_user, get_my_services,
-    get_related_services, get_services_by_user_id, get_services_list, get_services_recent, get_shared_service, insert_user,
-    reactivate_service,
+    get_related_services, get_services_by_user_id, get_services_list, get_services_recent,
+    get_shared_service, insert_user, reactivate_service,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::middlewares::request_size_limit::request_size_limit;
@@ -23,7 +23,7 @@ pub fn service_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ NOUVEAU 2026-01-20: Endpoint public pour récupérer les services d'un utilisateur (boutique prestataire)
         .route("/services/user/{user_id}", get(get_services_by_user_id))
         .with_state(state.clone());
-    
+
     // ✅ Routes protégées (avec authentification JWT)
     let protected_routes = Router::new()
         // ✅ NOUVEAUX endpoints pour liste et services récents
@@ -51,7 +51,7 @@ pub fn service_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/services/insert_user", post(insert_user))
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state.clone());
-    
+
     // ✅ Fusionner les routes publiques et protégées
     public_routes.merge(protected_routes)
 }

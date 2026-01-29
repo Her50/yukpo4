@@ -835,7 +835,7 @@ pub async fn ai_academic_search(
     use crate::services::orientation_scolaire_ai_service::OrientationScolaireAIService;
 
     let _ai_service = OrientationScolaireAIService::new(state.ia.clone());
-    
+
     // ✅ CHARGER LE PROMPT SPÉCIFIQUE pour recherche académique depuis le fichier markdown
     use crate::services::ia::prompt_loader::load_prompt_section_with_vars;
     use std::collections::HashMap;
@@ -848,7 +848,10 @@ pub async fn ai_academic_search(
             serde_json::to_string(context).unwrap_or_default(),
         );
     } else {
-        variables.insert("context".to_string(), "Aucun contexte additionnel".to_string());
+        variables.insert(
+            "context".to_string(),
+            "Aucun contexte additionnel".to_string(),
+        );
     }
 
     // Charger le prompt depuis le fichier markdown
@@ -877,7 +880,7 @@ Réponds de manière précise et détaillée. Adapte tes réponses au système �
 
     // ✅ APPEL IA RÉEL via app_ia.predict() - Système d'orchestration IA complet
     let (model_name, response, tokens_consumed) = state.ia.predict(&prompt).await?;
-    
+
     log::info!(
         "[ai_academic_search] ✅ Réponse générée avec {} (tokens: {})",
         model_name,

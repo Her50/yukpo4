@@ -100,7 +100,9 @@ impl ProductCreationQueueService {
                 service_id: row.try_get("service_id")?,
                 user_id: row.try_get("user_id")?,
                 product_data: row.try_get("product_data")?,
-                images_to_process: row.try_get::<Vec<String>, _>("images_to_process").unwrap_or_default(),
+                images_to_process: row
+                    .try_get::<Vec<String>, _>("images_to_process")
+                    .unwrap_or_default(),
                 status: row.try_get("status")?,
                 priority: row.try_get("priority")?,
                 attempt_count: row.try_get("attempt_count")?,
@@ -147,7 +149,9 @@ impl ProductCreationQueueService {
                     service_id: row.try_get("service_id")?,
                     user_id: row.try_get("user_id")?,
                     product_data: row.try_get("product_data")?,
-                    images_to_process: row.try_get::<Vec<String>, _>("images_to_process").unwrap_or_default(),
+                    images_to_process: row
+                        .try_get::<Vec<String>, _>("images_to_process")
+                        .unwrap_or_default(),
                     status: row.try_get("status")?,
                     priority: row.try_get("priority")?,
                     attempt_count: row.try_get("attempt_count")?,
@@ -184,11 +188,7 @@ impl ProductCreationQueueService {
     }
 
     /// Marque un job comme complété
-    async fn mark_completed(
-        &self,
-        job_id: i64,
-        result_data: Value,
-    ) -> AppResult<()> {
+    async fn mark_completed(&self, job_id: i64, result_data: Value) -> AppResult<()> {
         sqlx::query(
             r#"
             UPDATE product_creation_queue
@@ -299,10 +299,7 @@ impl ProductCreationQueueService {
                 // Récupérer les jobs en attente
                 match self.fetch_pending_jobs(10).await {
                     Ok(jobs) if !jobs.is_empty() => {
-                        log::info!(
-                            "[ProductCreationQueue] 📦 {} job(s) en attente",
-                            jobs.len()
-                        );
+                        log::info!("[ProductCreationQueue] 📦 {} job(s) en attente", jobs.len());
 
                         // Traiter les jobs en parallèle (max 3 à la fois)
                         let mut handles = Vec::new();
@@ -324,10 +321,7 @@ impl ProductCreationQueueService {
                         sleep(Duration::from_secs(5)).await;
                     }
                     Err(e) => {
-                        log::error!(
-                            "[ProductCreationQueue] ❌ Erreur récupération jobs: {}",
-                            e
-                        );
+                        log::error!("[ProductCreationQueue] ❌ Erreur récupération jobs: {}", e);
                         sleep(Duration::from_secs(10)).await;
                     }
                 }
@@ -335,4 +329,3 @@ impl ProductCreationQueueService {
         });
     }
 }
-

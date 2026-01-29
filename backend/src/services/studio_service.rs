@@ -15,9 +15,13 @@ use crate::{
             ImmersiveTimeline,
         },
         media_storage_service::MediaStorageService,
-        preview_generation_service::{convert_immersive_to_video_timeline, generate_quick_preview, QuickPreviewRequest},
+        preview_generation_service::{
+            convert_immersive_to_video_timeline, generate_quick_preview, QuickPreviewRequest,
+        },
         preview_monitoring::PreviewMonitoring,
-        video_renderer::{RenderError, RenderExecutionMode, RenderJobRequest, VideoRenderDispatcher},
+        video_renderer::{
+            RenderError, RenderExecutionMode, RenderJobRequest, VideoRenderDispatcher,
+        },
     },
 };
 
@@ -203,7 +207,7 @@ impl StudioService {
             user_id,
             payload.service_id
         );
-        
+
         log::debug!(
             "[StudioService] create_session - Payload: brief: {:?}, metadata: {:?}, timeline_settings: {:?}, distribution_plan: {:?}",
             payload.brief,
@@ -211,7 +215,7 @@ impl StudioService {
             payload.timeline_settings,
             payload.distribution_plan
         );
-        
+
         let record = sqlx::query_as::<_, StudioSessionRecord>(
             r#"
             INSERT INTO studio_sessions (
@@ -439,47 +443,57 @@ impl StudioService {
         // ✅ NOUVEAU: Validation que chaque clip a au moins un média
         for (idx, clip) in clips.iter().enumerate() {
             if clip.duration_seconds <= 0 {
-                return Err(AppError::BadRequest(
-                    format!("La durée du clip {} doit être positive.", idx + 1)
-                ));
+                return Err(AppError::BadRequest(format!(
+                    "La durée du clip {} doit être positive.",
+                    idx + 1
+                )));
             }
-            
+
             // ✅ VALIDATION: Vérifier que le clip a au moins un média dans son payload
             let has_media = if let Some(payload_obj) = clip.payload.as_object() {
                 // Vérifier dans assets
-                let assets_has_media = payload_obj.get("assets")
+                let assets_has_media = payload_obj
+                    .get("assets")
                     .and_then(|a| a.as_object())
                     .map(|a| {
-                        a.get("videoUrl").or_else(|| a.get("video_url"))
-                            .or_else(|| a.get("backgroundUrl")).or_else(|| a.get("background_url"))
-                            .or_else(|| a.get("productImageUrl")).or_else(|| a.get("product_image_url"))
+                        a.get("videoUrl")
+                            .or_else(|| a.get("video_url"))
+                            .or_else(|| a.get("backgroundUrl"))
+                            .or_else(|| a.get("background_url"))
+                            .or_else(|| a.get("productImageUrl"))
+                            .or_else(|| a.get("product_image_url"))
                             .and_then(|v| v.as_str())
                             .map(|s| !s.trim().is_empty())
                             .unwrap_or(false)
                     })
                     .unwrap_or(false);
-                
+
                 // Vérifier directement dans le payload (format alternatif)
-                let direct_has_media = payload_obj.get("video_url").or_else(|| payload_obj.get("videoUrl"))
-                    .or_else(|| payload_obj.get("background_url")).or_else(|| payload_obj.get("backgroundUrl"))
-                    .or_else(|| payload_obj.get("product_image_url")).or_else(|| payload_obj.get("productImageUrl"))
-                    .or_else(|| payload_obj.get("image_url")).or_else(|| payload_obj.get("imageUrl"))
+                let direct_has_media = payload_obj
+                    .get("video_url")
+                    .or_else(|| payload_obj.get("videoUrl"))
+                    .or_else(|| payload_obj.get("background_url"))
+                    .or_else(|| payload_obj.get("backgroundUrl"))
+                    .or_else(|| payload_obj.get("product_image_url"))
+                    .or_else(|| payload_obj.get("productImageUrl"))
+                    .or_else(|| payload_obj.get("image_url"))
+                    .or_else(|| payload_obj.get("imageUrl"))
                     .and_then(|v| v.as_str())
                     .map(|s| !s.trim().is_empty())
                     .unwrap_or(false);
-                
+
                 assets_has_media || direct_has_media
             } else {
                 // Si le payload n'est pas un objet, essayer de parser comme ImmersiveScene
                 if let Ok(scene) = serde_json::from_value::<ImmersiveScene>(clip.payload.clone()) {
-                    scene.assets.video_url.is_some() 
-                        || scene.assets.background_url.is_some() 
+                    scene.assets.video_url.is_some()
+                        || scene.assets.background_url.is_some()
                         || scene.assets.product_image_url.is_some()
                 } else {
                     false
                 }
             };
-            
+
             if !has_media {
                 // ✅ CORRIGÉ: Logger en debug au lieu de warn (c'est normal si les médias ne sont pas encore disponibles)
                 log::debug!(
@@ -595,7 +609,13 @@ impl StudioService {
 
         // ✅ CORRECTION RACINE: Charger les assets dynamiques pour enrichir les scènes sans médias
         let session_assets = self.load_assets(session_id).await.unwrap_or_default();
-        let timeline_model = build_preview_timeline(&session.timeline, &session_assets, &self.pool, &session.session).await?;
+        let timeline_model = build_preview_timeline(
+            &session.timeline,
+            &session_assets,
+            &self.pool,
+            &session.session,
+        )
+        .await?;
         let request = RenderJobRequest {
             job_id: None,
             timeline: Arc::new(timeline_model.clone()),
@@ -692,7 +712,7 @@ impl StudioService {
         user_id: i32,
     ) -> AppResult<PreviewResponse> {
         let preview_start = Instant::now();
-        
+
         // ✅ CORRIGÉ: Gérer gracieusement l'absence du renderer avec message détaillé
         let renderer = match self.video_renderer.clone() {
             Some(r) => r,
@@ -712,7 +732,8 @@ impl StudioService {
         if session.timeline.is_empty() {
             log::warn!(
                 "[StudioService] ⚠️ Timeline vide pour session {} - user_id: {}",
-                session_id, user_id
+                session_id,
+                user_id
             );
             return Err(AppError::BadRequest(
                 "Impossible de générer un aperçu sans timeline. Veuillez d'abord sauvegarder une timeline avec des clips en utilisant POST /api/studio/sessions/{session_id}/timeline.".into(),
@@ -735,8 +756,10 @@ impl StudioService {
 
         // ✅ CORRECTION RACINE: Charger les assets dynamiques pour enrichir les scènes sans médias
         let session_assets = self.load_assets(session_id).await.unwrap_or_default();
-        let timeline_model = build_preview_timeline(&short_clips, &session_assets, &self.pool, &session.session).await?;
-        
+        let timeline_model =
+            build_preview_timeline(&short_clips, &session_assets, &self.pool, &session.session)
+                .await?;
+
         // ✅ OPTIMISATION RACINE: Pour les previews courtes, utiliser quick preview en priorité (plus rapide)
         // Quick preview est optimisé pour les previews courtes (< 5s) et est généralement plus rapide que Remotion
         let video_timeline = convert_immersive_to_video_timeline(&timeline_model);
@@ -745,31 +768,36 @@ impl StudioService {
             quality: Some("low".to_string()),
             max_duration: Some(5.0), // Max 5 secondes pour preview court
         };
-        
+
         // ✅ Fonction helper pour convertir QuickPreviewResponse en RenderJobResponse
-        let convert_quick_to_render = |quick_result: crate::services::preview_generation_service::QuickPreviewResponse, label: &str| {
-            let preview_path = std::path::PathBuf::from(&quick_result.preview_url);
-            crate::services::video_renderer::RenderJobResponse {
-                job_id: Uuid::new_v4().to_string(),
-                mode: crate::services::video_renderer::RenderExecutionMode::Offline,
-                master_video: preview_path.clone(),
-                timeline_json: preview_path.clone(),
-                output_dir: preview_path.parent().unwrap_or(&std::path::PathBuf::from(".")).to_path_buf(),
-                warnings: vec![format!(
-                    "Preview généré avec quick preview ({}) - qualité: {}",
-                    label, quick_result.quality
-                )],
-                storage_key: None,
-                storage_path: quick_result.thumbnail_url,
-                public_url: Some(quick_result.preview_url),
-                content_length: None,
-                timeline_storage_key: None,
-                timeline_storage_path: None,
-                timeline_public_url: None,
-                timeline_content_length: None,
-            }
-        };
-        
+        let convert_quick_to_render =
+            |quick_result: crate::services::preview_generation_service::QuickPreviewResponse,
+             label: &str| {
+                let preview_path = std::path::PathBuf::from(&quick_result.preview_url);
+                crate::services::video_renderer::RenderJobResponse {
+                    job_id: Uuid::new_v4().to_string(),
+                    mode: crate::services::video_renderer::RenderExecutionMode::Offline,
+                    master_video: preview_path.clone(),
+                    timeline_json: preview_path.clone(),
+                    output_dir: preview_path
+                        .parent()
+                        .unwrap_or(&std::path::PathBuf::from("."))
+                        .to_path_buf(),
+                    warnings: vec![format!(
+                        "Preview généré avec quick preview ({}) - qualité: {}",
+                        label, quick_result.quality
+                    )],
+                    storage_key: None,
+                    storage_path: quick_result.thumbnail_url,
+                    public_url: Some(quick_result.preview_url),
+                    content_length: None,
+                    timeline_storage_key: None,
+                    timeline_storage_path: None,
+                    timeline_public_url: None,
+                    timeline_content_length: None,
+                }
+            };
+
         // ✅ Essayer quick preview d'abord (plus rapide pour previews courtes)
         let result = match generate_quick_preview(quick_preview_request, Some(&self.pool)).await {
             Ok(quick_result) => {
@@ -971,7 +999,7 @@ impl StudioService {
 /// ✅ AMÉLIORÉ: Construit une timeline avec fallback vers assets dynamiques si les clips n'ont pas de médias
 /// ✅ CORRECTION RACINE: Charge automatiquement les médias depuis la DB si les scènes n'en ont pas
 async fn build_preview_timeline(
-    clips: &[StudioTimelineClipRecord], 
+    clips: &[StudioTimelineClipRecord],
     session_assets: &[StudioDynamicAssetRecord],
     pool: &PgPool,
     session: &StudioSessionRecord,
@@ -988,20 +1016,22 @@ async fn build_preview_timeline(
                     "[build_preview_timeline] ⚠️ Parsing ImmersiveScene échoué pour clip {}: {}. Tentative d'extraction partielle des assets.",
                     clip.id, parse_err
                 );
-                
+
                 let template = clip
                     .lane
                     .as_deref()
                     .and_then(map_template_name)
                     .unwrap_or(ImmersiveTemplate::ProductShowcase);
-                
+
                 // ✅ NOUVEAU: Extraire les assets depuis le payload même si le parsing complet échoue
                 let mut assets = ImmersiveSceneAssets::default();
-                
+
                 if let Some(payload_obj) = clip.payload.as_object() {
                     // Chercher les assets dans le payload
                     if let Some(assets_value) = payload_obj.get("assets") {
-                        if let Ok(extracted_assets) = serde_json::from_value::<ImmersiveSceneAssets>(assets_value.clone()) {
+                        if let Ok(extracted_assets) =
+                            serde_json::from_value::<ImmersiveSceneAssets>(assets_value.clone())
+                        {
                             assets = extracted_assets;
                             info!(
                                 "[build_preview_timeline] ✅ Assets extraits depuis payload pour clip {}",
@@ -1010,25 +1040,31 @@ async fn build_preview_timeline(
                         } else {
                             // Essayer d'extraire les champs individuellement
                             if let Some(assets_obj) = assets_value.as_object() {
-                                assets.video_url = assets_obj.get("videoUrl")
+                                assets.video_url = assets_obj
+                                    .get("videoUrl")
                                     .or_else(|| assets_obj.get("video_url"))
                                     .and_then(|v| v.as_str())
                                     .map(|s| s.to_string())
                                     .filter(|s| !s.trim().is_empty());
-                                
-                                assets.background_url = assets_obj.get("backgroundUrl")
+
+                                assets.background_url = assets_obj
+                                    .get("backgroundUrl")
                                     .or_else(|| assets_obj.get("background_url"))
                                     .and_then(|v| v.as_str())
                                     .map(|s| s.to_string())
                                     .filter(|s| !s.trim().is_empty());
-                                
-                                assets.product_image_url = assets_obj.get("productImageUrl")
+
+                                assets.product_image_url = assets_obj
+                                    .get("productImageUrl")
                                     .or_else(|| assets_obj.get("product_image_url"))
                                     .and_then(|v| v.as_str())
                                     .map(|s| s.to_string())
                                     .filter(|s| !s.trim().is_empty());
-                                
-                                if assets.video_url.is_some() || assets.background_url.is_some() || assets.product_image_url.is_some() {
+
+                                if assets.video_url.is_some()
+                                    || assets.background_url.is_some()
+                                    || assets.product_image_url.is_some()
+                                {
                                     info!(
                                         "[build_preview_timeline] ✅ Médias extraits partiellement depuis payload pour clip {}",
                                         clip.id
@@ -1042,44 +1078,55 @@ async fn build_preview_timeline(
                             }
                         }
                     }
-                    
+
                     // ✅ NOUVEAU: Chercher aussi directement dans le payload (format alternatif)
-                    if assets.video_url.is_none() && assets.background_url.is_none() && assets.product_image_url.is_none() {
-                        assets.video_url = payload_obj.get("video_url")
+                    if assets.video_url.is_none()
+                        && assets.background_url.is_none()
+                        && assets.product_image_url.is_none()
+                    {
+                        assets.video_url = payload_obj
+                            .get("video_url")
                             .or_else(|| payload_obj.get("videoUrl"))
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string())
                             .filter(|s| !s.trim().is_empty());
-                        
-                        assets.background_url = payload_obj.get("background_url")
+
+                        assets.background_url = payload_obj
+                            .get("background_url")
                             .or_else(|| payload_obj.get("backgroundUrl"))
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string())
                             .filter(|s| !s.trim().is_empty());
-                        
-                        assets.product_image_url = payload_obj.get("product_image_url")
+
+                        assets.product_image_url = payload_obj
+                            .get("product_image_url")
                             .or_else(|| payload_obj.get("productImageUrl"))
                             .or_else(|| payload_obj.get("image_url"))
                             .or_else(|| payload_obj.get("imageUrl"))
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string())
                             .filter(|s| !s.trim().is_empty());
-                        
+
                         // ✅ CORRECTION RACINE: Extraire media_url du payload (format utilisé par la génération IA)
-                        if assets.video_url.is_none() && assets.background_url.is_none() && assets.product_image_url.is_none() {
-                            if let Some(media_url_str) = payload_obj.get("media_url")
+                        if assets.video_url.is_none()
+                            && assets.background_url.is_none()
+                            && assets.product_image_url.is_none()
+                        {
+                            if let Some(media_url_str) = payload_obj
+                                .get("media_url")
                                 .or_else(|| payload_obj.get("mediaUrl"))
                                 .and_then(|v| v.as_str())
-                                .filter(|s| !s.trim().is_empty()) {
+                                .filter(|s| !s.trim().is_empty())
+                            {
                                 let media_url = media_url_str.to_string();
-                                
+
                                 // Déterminer si c'est une vidéo ou une image selon l'URL
-                                let is_video = media_url.contains(".mp4") 
-                                    || media_url.contains(".mov") 
-                                    || media_url.contains(".webm") 
+                                let is_video = media_url.contains(".mp4")
+                                    || media_url.contains(".mov")
+                                    || media_url.contains(".webm")
                                     || media_url.contains("video")
                                     || media_url.contains("/video/");
-                                
+
                                 if is_video {
                                     assets.video_url = Some(media_url);
                                     info!(
@@ -1098,7 +1145,7 @@ async fn build_preview_timeline(
                         }
                     }
                 }
-                
+
                 ImmersiveScene {
                     id: format!("clip-{}", clip.id),
                     template,
@@ -1111,9 +1158,10 @@ async fn build_preview_timeline(
         };
 
         // ✅ CORRECTION RACINE: Si la scène n'a pas de médias, essayer d'extraire depuis le payload
-        if scene.assets.video_url.is_none() 
-            && scene.assets.background_url.is_none() 
-            && scene.assets.product_image_url.is_none() {
+        if scene.assets.video_url.is_none()
+            && scene.assets.background_url.is_none()
+            && scene.assets.product_image_url.is_none()
+        {
             if let Some(payload_obj) = clip.payload.as_object() {
                 // Debug: log le payload pour voir ce qu'il contient
                 log::debug!(
@@ -1121,17 +1169,18 @@ async fn build_preview_timeline(
                     scene.id,
                     payload_obj.keys().collect::<Vec<_>>()
                 );
-                
+
                 // ✅ CORRECTION RACINE: Chercher dans assets.videoUrl, assets.backgroundUrl, etc.
                 let mut found_media = false;
-                
+
                 // 1. Chercher dans assets.videoUrl
-                if let Some(assets_obj) = payload_obj.get("assets")
-                    .and_then(|v| v.as_object()) {
-                    if let Some(video_url_str) = assets_obj.get("videoUrl")
+                if let Some(assets_obj) = payload_obj.get("assets").and_then(|v| v.as_object()) {
+                    if let Some(video_url_str) = assets_obj
+                        .get("videoUrl")
                         .or_else(|| assets_obj.get("video_url"))
                         .and_then(|v| v.as_str())
-                        .filter(|s| !s.trim().is_empty()) {
+                        .filter(|s| !s.trim().is_empty())
+                    {
                         scene.assets.video_url = Some(video_url_str.to_string());
                         info!(
                             "[build_preview_timeline] ✅ videoUrl extrait depuis assets.videoUrl pour scène {}: {}",
@@ -1139,13 +1188,15 @@ async fn build_preview_timeline(
                         );
                         found_media = true;
                     }
-                    
+
                     // 2. Chercher dans assets.backgroundUrl
                     if scene.assets.background_url.is_none() {
-                        if let Some(bg_url_str) = assets_obj.get("backgroundUrl")
+                        if let Some(bg_url_str) = assets_obj
+                            .get("backgroundUrl")
                             .or_else(|| assets_obj.get("background_url"))
                             .and_then(|v| v.as_str())
-                            .filter(|s| !s.trim().is_empty()) {
+                            .filter(|s| !s.trim().is_empty())
+                        {
                             scene.assets.background_url = Some(bg_url_str.to_string());
                             info!(
                                 "[build_preview_timeline] ✅ backgroundUrl extrait depuis assets.backgroundUrl pour scène {}: {}",
@@ -1154,13 +1205,15 @@ async fn build_preview_timeline(
                             found_media = true;
                         }
                     }
-                    
+
                     // 3. Chercher dans assets.productImageUrl
                     if scene.assets.product_image_url.is_none() {
-                        if let Some(img_url_str) = assets_obj.get("productImageUrl")
+                        if let Some(img_url_str) = assets_obj
+                            .get("productImageUrl")
                             .or_else(|| assets_obj.get("product_image_url"))
                             .and_then(|v| v.as_str())
-                            .filter(|s| !s.trim().is_empty()) {
+                            .filter(|s| !s.trim().is_empty())
+                        {
                             scene.assets.product_image_url = Some(img_url_str.to_string());
                             info!(
                                 "[build_preview_timeline] ✅ productImageUrl extrait depuis assets.productImageUrl pour scène {}: {}",
@@ -1170,22 +1223,24 @@ async fn build_preview_timeline(
                         }
                     }
                 }
-                
+
                 // 4. Fallback: chercher media_url/mediaUrl au niveau racine
                 if !found_media {
-                    if let Some(media_url_str) = payload_obj.get("media_url")
+                    if let Some(media_url_str) = payload_obj
+                        .get("media_url")
                         .or_else(|| payload_obj.get("mediaUrl"))
                         .and_then(|v| v.as_str())
-                        .filter(|s| !s.trim().is_empty()) {
+                        .filter(|s| !s.trim().is_empty())
+                    {
                         let media_url = media_url_str.to_string();
-                        
+
                         // Déterminer si c'est une vidéo ou une image selon l'URL
-                        let is_video = media_url.contains(".mp4") 
-                            || media_url.contains(".mov") 
-                            || media_url.contains(".webm") 
+                        let is_video = media_url.contains(".mp4")
+                            || media_url.contains(".mov")
+                            || media_url.contains(".webm")
                             || media_url.contains("video")
                             || media_url.contains("/video/");
-                        
+
                         if is_video {
                             scene.assets.video_url = Some(media_url.clone());
                             info!(
@@ -1202,7 +1257,7 @@ async fn build_preview_timeline(
                         found_media = true;
                     }
                 }
-                
+
                 if !found_media {
                     // ✅ CORRIGÉ: Logger en debug au lieu de warn (normal si médias en cours de génération)
                     log::debug!(
@@ -1212,30 +1267,36 @@ async fn build_preview_timeline(
                     );
                     // ✅ NOUVEAU 2026-01-04: Essayer d'extraire depuis d'autres champs du payload
                     // Chercher dans videoUrl, backgroundUrl, productImageUrl au niveau racine
-                    if let Some(video_url) = payload_obj.get("videoUrl")
+                    if let Some(video_url) = payload_obj
+                        .get("videoUrl")
                         .or_else(|| payload_obj.get("video_url"))
                         .and_then(|v| v.as_str())
-                        .filter(|s| !s.trim().is_empty()) {
+                        .filter(|s| !s.trim().is_empty())
+                    {
                         scene.assets.video_url = Some(video_url.to_string());
                         info!(
                             "[build_preview_timeline] ✅ videoUrl extrait depuis payload racine pour scène {}: {}",
                             scene.id, video_url
                         );
                         let _ = found_media;
-                    } else if let Some(bg_url) = payload_obj.get("backgroundUrl")
+                    } else if let Some(bg_url) = payload_obj
+                        .get("backgroundUrl")
                         .or_else(|| payload_obj.get("background_url"))
                         .and_then(|v| v.as_str())
-                        .filter(|s| !s.trim().is_empty()) {
+                        .filter(|s| !s.trim().is_empty())
+                    {
                         scene.assets.background_url = Some(bg_url.to_string());
                         info!(
                             "[build_preview_timeline] ✅ backgroundUrl extrait depuis payload racine pour scène {}: {}",
                             scene.id, bg_url
                         );
                         let _ = found_media;
-                    } else if let Some(img_url) = payload_obj.get("productImageUrl")
+                    } else if let Some(img_url) = payload_obj
+                        .get("productImageUrl")
                         .or_else(|| payload_obj.get("product_image_url"))
                         .and_then(|v| v.as_str())
-                        .filter(|s| !s.trim().is_empty()) {
+                        .filter(|s| !s.trim().is_empty())
+                    {
                         scene.assets.product_image_url = Some(img_url.to_string());
                         info!(
                             "[build_preview_timeline] ✅ productImageUrl extrait depuis payload racine pour scène {}: {}",
@@ -1254,10 +1315,11 @@ async fn build_preview_timeline(
         }
 
         // ✅ CORRECTION RACINE: Enrichir avec les assets dynamiques si la scène n'a toujours pas de médias
-        if scene.assets.video_url.is_none() 
-            && scene.assets.background_url.is_none() 
-            && scene.assets.product_image_url.is_none() 
-            && !session_assets.is_empty() {
+        if scene.assets.video_url.is_none()
+            && scene.assets.background_url.is_none()
+            && scene.assets.product_image_url.is_none()
+            && !session_assets.is_empty()
+        {
             if let Some(asset) = session_assets.get(asset_index) {
                 // Utiliser public_url ou storage_key selon disponibilité
                 if let Some(url) = asset.public_url.as_ref() {
@@ -1271,10 +1333,15 @@ async fn build_preview_timeline(
                     }
                 } else if let Some(storage_key) = asset.storage_key.as_ref() {
                     // Construire l'URL depuis storage_key
-                    let api_base_url = std::env::var("API_BASE_URL")
-                        .unwrap_or_else(|_| std::env::var("UPLOAD_BASE_URL")
-                            .unwrap_or_else(|_| "http://localhost:3000".to_string()));
-                    let media_url = format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), storage_key.trim_start_matches('/'));
+                    let api_base_url = std::env::var("API_BASE_URL").unwrap_or_else(|_| {
+                        std::env::var("UPLOAD_BASE_URL")
+                            .unwrap_or_else(|_| "http://localhost:3000".to_string())
+                    });
+                    let media_url = format!(
+                        "{}/api/media/files/{}",
+                        api_base_url.trim_end_matches('/'),
+                        storage_key.trim_start_matches('/')
+                    );
                     scene.assets.background_url = Some(media_url);
                     info!(
                         "[build_preview_timeline] ✅ Asset dynamique {} (storage_key) utilisé comme fallback pour scène {}",
@@ -1299,15 +1366,17 @@ async fn build_preview_timeline(
         let mut scenes_updated = 0;
         for scene in &mut scenes {
             // Si la scène n'a pas de médias, essayer de charger depuis la DB
-            if scene.assets.video_url.is_none() 
-                && scene.assets.background_url.is_none() 
-                && scene.assets.product_image_url.is_none() {
-                
+            if scene.assets.video_url.is_none()
+                && scene.assets.background_url.is_none()
+                && scene.assets.product_image_url.is_none()
+            {
                 // Extraire product_index depuis le payload de la scène si disponible
-                let product_index: Option<i32> = clips.iter()
+                let product_index: Option<i32> = clips
+                    .iter()
                     .find(|clip| clip.id.to_string() == scene.id.trim_start_matches("clip-"))
                     .and_then(|clip| {
-                        clip.payload.get("product_index")
+                        clip.payload
+                            .get("product_index")
                             .or_else(|| clip.payload.get("productIndex"))
                             .and_then(|v| v.as_i64())
                             .map(|idx| idx as i32)
@@ -1340,15 +1409,22 @@ async fn build_preview_timeline(
                 if let Ok(media_list) = media_result {
                     if !media_list.is_empty() {
                         // Construire l'URL de base pour les médias
-                        let api_base_url = std::env::var("API_BASE_URL")
-                            .unwrap_or_else(|_| std::env::var("UPLOAD_BASE_URL")
-                                .unwrap_or_else(|_| "http://localhost:3000".to_string()));
-                        
+                        let api_base_url = std::env::var("API_BASE_URL").unwrap_or_else(|_| {
+                            std::env::var("UPLOAD_BASE_URL")
+                                .unwrap_or_else(|_| "http://localhost:3000".to_string())
+                        });
+
                         for (media_path, media_type) in media_list {
-                            let media_url = if media_path.starts_with("http://") || media_path.starts_with("https://") {
+                            let media_url = if media_path.starts_with("http://")
+                                || media_path.starts_with("https://")
+                            {
                                 media_path
                             } else {
-                                format!("{}/api/media/{}", api_base_url.trim_end_matches('/'), media_path.trim_start_matches('/'))
+                                format!(
+                                    "{}/api/media/{}",
+                                    api_base_url.trim_end_matches('/'),
+                                    media_path.trim_start_matches('/')
+                                )
                             };
 
                             if media_type == "video" && scene.assets.video_url.is_none() {
@@ -1379,7 +1455,7 @@ async fn build_preview_timeline(
                 }
             }
         }
-        
+
         if scenes_updated > 0 {
             info!(
                 "[build_preview_timeline] ✅ {} scène(s) enrichie(s) avec médias chargés automatiquement depuis la DB",
@@ -1389,14 +1465,15 @@ async fn build_preview_timeline(
     }
 
     // ✅ NOUVEAU: Validation finale - vérifier qu'au moins une scène a un média
-    let scenes_with_media: Vec<_> = scenes.iter()
+    let scenes_with_media: Vec<_> = scenes
+        .iter()
         .filter(|scene| {
-            scene.assets.video_url.is_some() 
-                || scene.assets.background_url.is_some() 
+            scene.assets.video_url.is_some()
+                || scene.assets.background_url.is_some()
                 || scene.assets.product_image_url.is_some()
         })
         .collect();
-    
+
     if scenes_with_media.is_empty() {
         let scene_details: Vec<String> = scenes.iter()
             .enumerate()
@@ -1411,17 +1488,18 @@ async fn build_preview_timeline(
                 )
             })
             .collect();
-        
+
         error!(
             "[build_preview_timeline] ❌ Aucune scène n'a de média valide. Détails: {}",
             scene_details.join(" | ")
         );
-        
+
         // ✅ AMÉLIORÉ: Message d'erreur plus clair avec instructions et suggestions
-        let service_id_hint = session.service_id
+        let service_id_hint = session
+            .service_id
             .map(|sid| format!(" Pour le service {}, ", sid))
             .unwrap_or_default();
-        
+
         let error_message = if scenes.len() == 1 {
             format!(
                 "Aucun média n'a été ajouté à votre vidéo.{}vérifiez que:\n1. Le service a des produits avec des médias (images/vidéos)\n2. Les médias ont été uploadés via /api/prestataire/upload/{}\n3. Les médias sont accessibles dans la médiathèque produit\n\nScène actuelle: {}\n\n💡 Astuce: Utilisez l'API /api/media/product/{{service_id}}/{{product_index}}/images pour vérifier les médias disponibles.",
@@ -1436,10 +1514,10 @@ async fn build_preview_timeline(
                 service_id_hint
             )
         };
-        
+
         return Err(AppError::BadRequest(error_message));
     }
-    
+
     info!(
         "[build_preview_timeline] ✅ Timeline construite: {} scènes totales, {} scènes avec médias",
         scenes.len(),
@@ -1488,20 +1566,19 @@ impl StudioService {
                 ImmersiveTemplate::GlowCTA => "GlowCTA",
             }
         }
-        
+
         let fps = timeline.fps;
         let mut clips = Vec::new();
-        
+
         for (idx, scene) in timeline.scenes.iter().enumerate() {
             let duration_seconds = (scene.duration_in_frames as f64 / fps as f64).ceil() as i32;
-            
+
             // Sérialiser la scène en JSON pour le payload
-            let payload = serde_json::to_value(scene).map_err(|e| {
-                AppError::Internal(format!("Erreur sérialisation scène: {}", e))
-            })?;
-            
+            let payload = serde_json::to_value(scene)
+                .map_err(|e| AppError::Internal(format!("Erreur sérialisation scène: {}", e)))?;
+
             let lane = Some(template_name(&scene.template).to_string());
-            
+
             clips.push(TimelineClipPayload {
                 position: idx as i32,
                 lane,
@@ -1509,7 +1586,7 @@ impl StudioService {
                 payload,
             });
         }
-        
+
         Ok(clips)
     }
 

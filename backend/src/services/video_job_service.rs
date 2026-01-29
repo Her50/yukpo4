@@ -7,7 +7,10 @@ use serde_json::Value;
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
-use crate::{core::types::{AppError, AppResult}, services::video_generation_service::ProgressStep};
+use crate::{
+    core::types::{AppError, AppResult},
+    services::video_generation_service::ProgressStep,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobProgressStep {
@@ -108,10 +111,7 @@ impl VideoGenerationJobService {
             )));
         }
 
-        info!(
-            "[VideoJobService] ✅ Job {} marqué comme 'running'",
-            job_id
-        );
+        info!("[VideoJobService] ✅ Job {} marqué comme 'running'", job_id);
         Ok(())
     }
 
@@ -167,7 +167,9 @@ impl VideoGenerationJobService {
         } else {
             info!(
                 "[VideoJobService] ✅ Progression mise à jour pour job {}: status={}, steps={}",
-                job_id, status, steps.len()
+                job_id,
+                status,
+                steps.len()
             );
         }
 
@@ -233,10 +235,7 @@ impl VideoGenerationJobService {
                                 job_id
                             )));
                         } else {
-                            return Err(AppError::NotFound(format!(
-                                "Job {} introuvable",
-                                job_id
-                            )));
+                            return Err(AppError::NotFound(format!("Job {} introuvable", job_id)));
                         }
                     }
 
@@ -249,7 +248,7 @@ impl VideoGenerationJobService {
                 Err(err) => {
                     last_error = Some(err);
                     let error_str = last_error.as_ref().unwrap().to_string();
-                    
+
                     // Vérifier si c'est une erreur récupérable (connexion, timeout)
                     let is_recoverable = error_str.contains("connection")
                         || error_str.contains("timeout")
@@ -262,7 +261,10 @@ impl VideoGenerationJobService {
                             job_id, attempt, error_str
                         );
                         // Attendre avant de réessayer (backoff exponentiel)
-                        tokio::time::sleep(tokio::time::Duration::from_millis(100 * attempt as u64)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_millis(
+                            100 * attempt as u64,
+                        ))
+                        .await;
                         continue;
                     } else {
                         error!(
@@ -284,7 +286,9 @@ impl VideoGenerationJobService {
         Err(AppError::Internal(format!(
             "Impossible de marquer le job {} comme terminé: {}",
             job_id,
-            last_error.map(|e| e.to_string()).unwrap_or_else(|| "Erreur inconnue".to_string())
+            last_error
+                .map(|e| e.to_string())
+                .unwrap_or_else(|| "Erreur inconnue".to_string())
         )))
     }
 
@@ -348,10 +352,7 @@ impl VideoGenerationJobService {
                                 job_id
                             )));
                         } else {
-                            return Err(AppError::NotFound(format!(
-                                "Job {} introuvable",
-                                job_id
-                            )));
+                            return Err(AppError::NotFound(format!("Job {} introuvable", job_id)));
                         }
                     }
 
@@ -364,7 +365,7 @@ impl VideoGenerationJobService {
                 Err(err) => {
                     last_error = Some(err);
                     let error_str = last_error.as_ref().unwrap().to_string();
-                    
+
                     // Vérifier si c'est une erreur récupérable (connexion, timeout)
                     let is_recoverable = error_str.contains("connection")
                         || error_str.contains("timeout")
@@ -377,7 +378,10 @@ impl VideoGenerationJobService {
                             job_id, attempt, error_str
                         );
                         // Attendre avant de réessayer (backoff exponentiel)
-                        tokio::time::sleep(tokio::time::Duration::from_millis(100 * attempt as u64)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_millis(
+                            100 * attempt as u64,
+                        ))
+                        .await;
                         continue;
                     } else {
                         error!(
@@ -399,7 +403,9 @@ impl VideoGenerationJobService {
         Err(AppError::Internal(format!(
             "Impossible de marquer le job {} comme échoué: {}",
             job_id,
-            last_error.map(|e| e.to_string()).unwrap_or_else(|| "Erreur inconnue".to_string())
+            last_error
+                .map(|e| e.to_string())
+                .unwrap_or_else(|| "Erreur inconnue".to_string())
         )))
     }
 
@@ -493,14 +499,18 @@ pub async fn try_store_progress(
     status: &str,
     steps: &[ProgressStep],
 ) -> Result<(), crate::core::types::AppError> {
-    state.video_jobs.store_progress(job_id, status, steps).await.map_err(|err| {
-        warn!(
-            "[VideoJobs] ❌ Impossible de mettre à jour la progression du job {}: {}",
-            job_id, err
-        );
-        crate::core::types::AppError::Internal(format!(
-            "Impossible de mettre à jour la progression du job {}: {}",
-            job_id, err
-        ))
-    })
+    state
+        .video_jobs
+        .store_progress(job_id, status, steps)
+        .await
+        .map_err(|err| {
+            warn!(
+                "[VideoJobs] ❌ Impossible de mettre à jour la progression du job {}: {}",
+                job_id, err
+            );
+            crate::core::types::AppError::Internal(format!(
+                "Impossible de mettre à jour la progression du job {}: {}",
+                job_id, err
+            ))
+        })
 }

@@ -183,7 +183,7 @@ impl OffresEmploiService {
 
         // ✅ CORRECTION: Requête SQL qui récupère TOUTES les offres actives créées
         // Utiliser une requête SQLx simple mais complète avec filtres optionnels
-        
+
         // ✅ Ajouter les filtres dynamiques si présents
         let mut where_conditions = vec![];
 

@@ -4,8 +4,7 @@ use std::env;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Récupérer l'URL de la base de données depuis les variables d'environnement
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL doit être défini");
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL doit être défini");
 
     println!("🔍 Connexion à la base de données...");
     let pool = PgPoolOptions::new()
@@ -17,7 +16,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n📊 Application de la migration d'optimisation...\n");
 
     // Lire le contenu de la migration
-    let migration_sql = include_str!("../../migrations/20260111_optimize_delivery_queries_additional.sql");
+    let migration_sql =
+        include_str!("../../migrations/20260111_optimize_delivery_queries_additional.sql");
 
     // Exécuter toutes les commandes SQL
     match sqlx::query(migration_sql).execute(&pool).await {
@@ -40,4 +40,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n✅ Migration d'optimisation appliquée !");
     Ok(())
 }
-

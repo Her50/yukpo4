@@ -150,3 +150,4 @@ echo "  - S3_ACCESS_KEY (depuis SSM Parameter Store)"
 echo "  - S3_SECRET_KEY (depuis SSM Parameter Store)"
 echo "  - UPLOAD_BASE_URL (depuis SSM Parameter Store)"
 
+

@@ -100,3 +100,4 @@ Voir `.github/SETUP-AWS-ECR.md` pour les instructions détaillées.
 - `.github/SETUP-AWS-ECR.md` : Guide de configuration AWS
 - `backend/Dockerfile.cloud.optimized` : Dockerfile optimisé avec cache
 
+

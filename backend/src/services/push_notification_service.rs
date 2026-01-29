@@ -290,7 +290,7 @@ pub async fn send_persistent_delivery_notification(
             priority: Some("high".to_string()),
             // ✅ Configuration pour notifications persistantes
             channel_id: Some("delivery_notifications".to_string()), // Canal Android dédié
-            category_id: Some("delivery_available".to_string()), // Catégorie iOS
+            category_id: Some("delivery_available".to_string()),    // Catégorie iOS
             time_to_live: Some(300), // 5 minutes de TTL pour permettre la répétition
             mutable_content: Some(true), // iOS: notification modifiable
         };

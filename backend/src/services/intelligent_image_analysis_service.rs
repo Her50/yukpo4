@@ -41,64 +41,93 @@ impl IntelligentImageAnalysisService {
         };
 
         let category_instruction = match category {
-            Some("vetement") => r#"
+            Some("vetement") => {
+                r#"
 TYPE: Vêtement
-EXTRAIRE: type exact (veste/t-shirt/pantalon/chemise/pull/robe), marque visible, couleur(s), taille si visible, style (sport/casual/formel), matière apparente, état, motifs/logos distinctifs"#,
+EXTRAIRE: type exact (veste/t-shirt/pantalon/chemise/pull/robe), marque visible, couleur(s), taille si visible, style (sport/casual/formel), matière apparente, état, motifs/logos distinctifs"#
+            }
 
-            Some("chaussure") => r#"
+            Some("chaussure") => {
+                r#"
 TYPE: Chaussure
-EXTRAIRE: type (baskets/sandales/bottes/mocassins), marque, couleur(s), pointure si visible, style, matière, état, semelle visible"#,
+EXTRAIRE: type (baskets/sandales/bottes/mocassins), marque, couleur(s), pointure si visible, style, matière, état, semelle visible"#
+            }
 
-            Some("automobile") => r#"
+            Some("automobile") => {
+                r#"
 TYPE: Véhicule
-EXTRAIRE: marque, modèle, couleur carrosserie, année approximative, type (berline/SUV/pick-up/moto), état apparent, immatriculation si lisible, options visibles (jantes/spoiler)"#,
+EXTRAIRE: marque, modèle, couleur carrosserie, année approximative, type (berline/SUV/pick-up/moto), état apparent, immatriculation si lisible, options visibles (jantes/spoiler)"#
+            }
 
-            Some("immobilier_batiment") | Some("immobilier_terrain") => r#"
+            Some("immobilier_batiment") | Some("immobilier_terrain") => {
+                r#"
 TYPE: Immobilier
-EXTRAIRE: type (appartement/villa/studio/terrain), architecture, nombre de pièces estimé, état (neuf/rénové/ancien), environnement (urbain/rural), éléments distinctifs"#,
+EXTRAIRE: type (appartement/villa/studio/terrain), architecture, nombre de pièces estimé, état (neuf/rénové/ancien), environnement (urbain/rural), éléments distinctifs"#
+            }
 
-            Some("electromenager") => r#"
+            Some("electromenager") => {
+                r#"
 TYPE: Électroménager
-EXTRAIRE: type appareil (frigo/cuisinière/micro-ondes/machine), marque, modèle, couleur, état, capacité visible, options/fonctionnalités visibles"#,
+EXTRAIRE: type appareil (frigo/cuisinière/micro-ondes/machine), marque, modèle, couleur, état, capacité visible, options/fonctionnalités visibles"#
+            }
 
-            Some("mobilier") => r#"
+            Some("mobilier") => {
+                r#"
 TYPE: Mobilier
-EXTRAIRE: type (canapé/table/chaise/lit/armoire), style (moderne/classique/rustique), matière, couleur, dimensions approximatives, état, nombre de places si applicable"#,
+EXTRAIRE: type (canapé/table/chaise/lit/armoire), style (moderne/classique/rustique), matière, couleur, dimensions approximatives, état, nombre de places si applicable"#
+            }
 
-            Some("aliments") => r#"
+            Some("aliments") => {
+                r#"
 TYPE: Produit Alimentaire
-EXTRAIRE: type produit, marque, conditionnement, poids/volume visible, fraîcheur apparente, origine si indiquée, labels qualité visibles"#,
+EXTRAIRE: type produit, marque, conditionnement, poids/volume visible, fraîcheur apparente, origine si indiquée, labels qualité visibles"#
+            }
 
-            Some("pharmacie") => r#"
+            Some("pharmacie") => {
+                r#"
 TYPE: Produit Pharmaceutique
-EXTRAIRE: type (médicament/équipement), nom du produit, marque/laboratoire, conditionnement, dosage si visible, date péremption si visible"#,
+EXTRAIRE: type (médicament/équipement), nom du produit, marque/laboratoire, conditionnement, dosage si visible, date péremption si visible"#
+            }
 
-            Some("bijoux") => r#"
+            Some("bijoux") => {
+                r#"
 TYPE: Bijou
-EXTRAIRE: type (bague/collier/bracelet/boucles), matière (or/argent/acier), couleur, style, pierres précieuses visibles, état, design distinctif"#,
+EXTRAIRE: type (bague/collier/bracelet/boucles), matière (or/argent/acier), couleur, style, pierres précieuses visibles, état, design distinctif"#
+            }
 
-            Some("cosmetique_parfum") => r#"
+            Some("cosmetique_parfum") => {
+                r#"
 TYPE: Cosmétique/Parfum
-EXTRAIRE: type (parfum/crème/huile), marque, volume, packaging, gamme de produit, usage indiqué (peau/cheveux)"#,
+EXTRAIRE: type (parfum/crème/huile), marque, volume, packaging, gamme de produit, usage indiqué (peau/cheveux)"#
+            }
 
-            Some("coiffure_beaute") => r#"
+            Some("coiffure_beaute") => {
+                r#"
 TYPE: Produit Capillaire
-EXTRAIRE: type (mèches/perruque/tissage/extension), longueur approximative, couleur, texture (lisse/bouclé/crépu), marque, origine, conditionnement"#,
+EXTRAIRE: type (mèches/perruque/tissage/extension), longueur approximative, couleur, texture (lisse/bouclé/crépu), marque, origine, conditionnement"#
+            }
 
-            Some("hopital_clinique") => r#"
+            Some("hopital_clinique") => {
+                r#"
 TYPE: Établissement Médical
-EXTRAIRE: type (clinique/hôpital/centre), spécialités visibles (panneaux/enseignes), taille estimée, équipements visibles, environnement"#,
+EXTRAIRE: type (clinique/hôpital/centre), spécialités visibles (panneaux/enseignes), taille estimée, équipements visibles, environnement"#
+            }
 
-            Some("quincaillerie") => r#"
+            Some("quincaillerie") => {
+                r#"
 TYPE: Quincaillerie/Matériaux
-EXTRAIRE: type produit (outil/matériau/électrique/plomberie), marque, référence visible, dimensions/calibre, matière, état, conditionnement"#,
+EXTRAIRE: type produit (outil/matériau/électrique/plomberie), marque, référence visible, dimensions/calibre, matière, état, conditionnement"#
+            }
 
-            None | Some("autre") | Some(_) => r#"
+            None | Some("autre") | Some(_) => {
+                r#"
 TYPE: Produit Général
-EXTRAIRE: catégorie principale, type produit, marque, couleur(s), caractéristiques distinctives, état, usage apparent"#,
+EXTRAIRE: catégorie principale, type produit, marque, couleur(s), caractéristiques distinctives, état, usage apparent"#
+            }
         };
 
-        format!(r#"Tu es un expert en identification de produits pour le marché africain (CEMAC).
+        format!(
+            r#"Tu es un expert en identification de produits pour le marché africain (CEMAC).
 
 {}
 
@@ -145,7 +174,11 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
         log_info(&format!(
             "[ImageAnalysis] Analyse image - Catégorie: {:?}, Mode: {}",
             category,
-            if is_search_mode { "Recherche" } else { "Catalogage" }
+            if is_search_mode {
+                "Recherche"
+            } else {
+                "Catalogage"
+            }
         ));
 
         // Construire le prompt adapté
@@ -195,17 +228,14 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
                 Ok((analysis, cost)) => {
                     log_info(&format!(
                         "[ImageAnalysis] ✅ Succès avec {} - Coût: ${:.4} ({} tokens)",
-                        model.name,
-                        cost.cost_usd,
-                        cost.total_tokens
+                        model.name, cost.cost_usd, cost.total_tokens
                     ));
                     return Ok((analysis, cost));
                 }
                 Err(e) => {
                     log_warn(&format!(
                         "[ImageAnalysis] ❌ Échec {} : {:?} - Essai modèle suivant",
-                        model.name,
-                        e
+                        model.name, e
                     ));
                     continue;
                 }
@@ -254,10 +284,7 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
         };
 
         let duration = start_time.elapsed();
-        log_info(&format!(
-            "[ImageAnalysis] Réponse reçue en {:?}",
-            duration
-        ));
+        log_info(&format!("[ImageAnalysis] Réponse reçue en {:?}", duration));
 
         // Parser la réponse JSON
         let analysis = Self::parse_ai_response(&response_text)?;
@@ -308,9 +335,10 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
             return Err(AppError::Internal(format!("OpenAI Error: {}", error_text)));
         }
 
-        let response_json: Value = response.json().await.map_err(|e| {
-            AppError::Internal(format!("Erreur parsing réponse: {}", e))
-        })?;
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur parsing réponse: {}", e)))?;
 
         let content = response_json["choices"][0]["message"]["content"]
             .as_str()
@@ -324,9 +352,7 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
             completion_tokens: response_json["usage"]["completion_tokens"]
                 .as_u64()
                 .unwrap_or(0) as u32,
-            total_tokens: response_json["usage"]["total_tokens"]
-                .as_u64()
-                .unwrap_or(0) as u32,
+            total_tokens: response_json["usage"]["total_tokens"].as_u64().unwrap_or(0) as u32,
         };
 
         Ok((content, usage))
@@ -358,9 +384,10 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
             .await
             .map_err(|e| AppError::Internal(format!("Erreur Claude: {}", e)))?;
 
-        let response_json: Value = response.json().await.map_err(|e| {
-            AppError::Internal(format!("Erreur parsing: {}", e))
-        })?;
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur parsing: {}", e)))?;
 
         let content = response_json["content"][0]["text"]
             .as_str()
@@ -368,15 +395,11 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
             .to_string();
 
         let usage = TokensUsage {
-            prompt_tokens: response_json["usage"]["input_tokens"]
-                .as_u64()
-                .unwrap_or(0) as u32,
+            prompt_tokens: response_json["usage"]["input_tokens"].as_u64().unwrap_or(0) as u32,
             completion_tokens: response_json["usage"]["output_tokens"]
                 .as_u64()
                 .unwrap_or(0) as u32,
-            total_tokens: (response_json["usage"]["input_tokens"]
-                .as_u64()
-                .unwrap_or(0)
+            total_tokens: (response_json["usage"]["input_tokens"].as_u64().unwrap_or(0)
                 + response_json["usage"]["output_tokens"]
                     .as_u64()
                     .unwrap_or(0)) as u32,
@@ -397,9 +420,9 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
         );
 
         // Adapter le format pour Gemini
-        let content = messages[0]["content"].as_array().ok_or_else(|| {
-            AppError::Internal("Format messages invalide".to_string())
-        })?;
+        let content = messages[0]["content"]
+            .as_array()
+            .ok_or_else(|| AppError::Internal("Format messages invalide".to_string()))?;
 
         let text_part = content
             .iter()
@@ -436,9 +459,10 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
             .await
             .map_err(|e| AppError::Internal(format!("Erreur Gemini: {}", e)))?;
 
-        let response_json: Value = response.json().await.map_err(|e| {
-            AppError::Internal(format!("Erreur parsing: {}", e))
-        })?;
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur parsing: {}", e)))?;
 
         let content = response_json["candidates"][0]["content"]["parts"][0]["text"]
             .as_str()
@@ -478,10 +502,7 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
         })?;
 
         // Extraire les champs
-        let description = parsed["description"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+        let description = parsed["description"].as_str().unwrap_or("").to_string();
 
         let tags: Vec<String> = parsed["tags"]
             .as_array()
@@ -540,19 +561,16 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
     }
 
     /// Calculer le coût pour l'utilisateur (×10 du coût IA)
-    pub fn calculate_user_cost(
-        ai_cost: &AICost,
-        user_currency: &str,
-    ) -> i64 {
+    pub fn calculate_user_cost(ai_cost: &AICost, user_currency: &str) -> i64 {
         // Coût utilisateur = Coût IA × 10
         let user_cost_usd = ai_cost.cost_usd * 10.0;
 
         // Conversion en devise locale
         let exchange_rate = match user_currency {
-            "XAF" | "FCFA" => 600.0,  // 1 USD = 600 XAF
-            "EUR" => 0.92,             // 1 USD = 0.92 EUR
-            "USD" => 100.0,            // Centimes
-            _ => 600.0,                // Défaut FCFA
+            "XAF" | "FCFA" => 600.0, // 1 USD = 600 XAF
+            "EUR" => 0.92,           // 1 USD = 0.92 EUR
+            "USD" => 100.0,          // Centimes
+            _ => 600.0,              // Défaut FCFA
         };
 
         let cost_in_currency = (user_cost_usd * exchange_rate) as i64;
@@ -605,4 +623,3 @@ mod tests {
         ));
     }
 }
-

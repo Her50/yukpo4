@@ -6,6 +6,7 @@ pub mod archived_service_cleaner;
 pub mod audio_cache_cleanup; // ✅ NOUVEAU 2025-12-30: Nettoyage automatique du cache audio
 pub mod delivery_archive_worker; // ✅ Phase 2 : Archivage automatique des livraisons
 pub mod delivery_matching_worker;
+pub mod delivery_notification_repeat; // ✅ NOUVEAU : Répétition des notifications de livraison
 pub mod delivery_sla_monitor;
 pub mod delivery_timeout_monitor; // ✅ NOUVEAU : Monitor des timeouts de validation d'étapes
 pub mod flash_sale_queue_worker; // ✅ NOUVEAU: Worker de traitement des réservations Flash Sales
@@ -19,7 +20,6 @@ pub mod matching_emploi_notifications; // ✅ NOUVEAU 2025-01-28: Notifications 
 pub mod notification_queue_worker; // ✅ NOUVEAU: Worker de traitement des notifications par batch
 pub mod order_timeout_monitor; // ✅ NOUVEAU : Monitor des timeouts de validation de commandes
 pub mod pipeline_health_worker;
-pub mod delivery_notification_repeat; // ✅ NOUVEAU : Répétition des notifications de livraison
 pub mod product_deactivation; // ✅ Tâche de désactivation automatique des produits
 pub mod publicite_expiration;
 pub mod reactivate_service;

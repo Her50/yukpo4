@@ -44,7 +44,7 @@ where
                     || error_str.contains("unexpected_eof")  // ✅ NOUVEAU: Erreur TLS spécifique
                     || error_str.contains("Unexpected EOF")  // ✅ NOUVEAU: Variante de l'erreur TLS
                     || error_str.contains("closed without sending TLS close_notify")  // ✅ NOUVEAU: Erreur TLS complète
-                    || error_str.contains("without sending TLS close_notify");  // ✅ NOUVEAU 2025-12-27: Variante de l'erreur TLS
+                    || error_str.contains("without sending TLS close_notify"); // ✅ NOUVEAU 2025-12-27: Variante de l'erreur TLS
 
                 if is_retryable && attempt < max_retries {
                     // ✅ NOUVEAU 2025-11-27: Backoff plus long pour les crashes PostgreSQL
@@ -54,13 +54,13 @@ where
                     // ✅ CORRIGÉ 2025-12-27: Backoff adaptatif selon le type d'erreur
                     // Détection améliorée des erreurs TLS (toutes les variantes)
                     // ✅ CORRIGÉ 2026-01-01: Inclure "error communicating with database" comme erreur TLS
-                    let is_tls_error = error_str.contains("TLS") 
-                        || error_str.contains("close_notify") 
+                    let is_tls_error = error_str.contains("TLS")
+                        || error_str.contains("close_notify")
                         || error_str.contains("unexpected_eof")
                         || error_str.contains("Unexpected EOF")
                         || error_str.contains("peer closed connection")
-                        || error_str.contains("error communicating with database");  // ✅ NOUVEAU: Erreur TLS fréquente sur Render
-                    
+                        || error_str.contains("error communicating with database"); // ✅ NOUVEAU: Erreur TLS fréquente sur Render
+
                     let backoff_ms: u64 = if is_crash_error {
                         // Backoff plus long pour les crashes (500ms, 1000ms, 2000ms, 4000ms, 5000ms max)
                         500 * (1u64 << (attempt - 1)).min(5000)

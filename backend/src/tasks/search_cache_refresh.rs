@@ -78,7 +78,8 @@ async fn refresh_materialized_view(pool: &Arc<PgPool>) -> AppResult<()> {
 
     loop {
         // ✅ OPTIMISÉ: Ajouter un timeout sur la requête de refresh
-        let query_future = sqlx::query("SELECT refresh_services_search_optimized()").execute(&**pool);
+        let query_future =
+            sqlx::query("SELECT refresh_services_search_optimized()").execute(&**pool);
 
         match tokio::time::timeout(Duration::from_secs(REFRESH_TIMEOUT_SECS), query_future).await {
             Ok(Ok(_)) => {

@@ -37,7 +37,7 @@ pub async fn create_session(
         payload.service_id,
         payload.brief
     );
-    
+
     match state.studio_service.create_session(user.id, payload).await {
         Ok(session) => {
             log::info!(
@@ -136,20 +136,22 @@ pub async fn trigger_short_preview(
 ) -> AppResult<Json<PreviewResponse>> {
     log::info!(
         "[StudioController] ✅ Route trigger_short_preview appelée - user_id={}, session_id={}",
-        user.id, session_id
+        user.id,
+        session_id
     );
-    
+
     // ✅ AMÉLIORÉ: Vérifier la disponibilité du renderer avant de continuer
     if !state.studio_service.is_renderer_available() {
         log::warn!(
             "[StudioController] ⚠️ Renderer vidéo indisponible - user_id={}, session_id={}",
-            user.id, session_id
+            user.id,
+            session_id
         );
         return Err(crate::core::types::AppError::BadRequest(
             "Le service de prévisualisation vidéo n'est pas configuré. Vérifiez que VIDEO_RENDERER_PROJECT_ROOT existe et que VIDEO_RENDERER_ENABLED=true, ou configurez VIDEO_RENDERER_RPC_URL pour utiliser un renderer distant.".into()
         ));
     }
-    
+
     let preview = state
         .studio_service
         .trigger_short_preview(session_id, user.id)

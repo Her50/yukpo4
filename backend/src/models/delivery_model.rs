@@ -548,10 +548,10 @@ pub struct ProductDeliveryConfigInput {
 
     // ✅ Phase 9 - Amélioration 32 : Référence vers un lieu de stock (backward compatible)
     pub storage_location_id: Option<i32>,
-    
+
     // ✅ NOUVEAU 2026-01-04: Array de lieux de stock
     pub storage_location_ids: Option<Vec<i32>>,
-    
+
     // ✅ NOUVEAU 2026-01-04: Quantités par lieu de stock (JSON object: { storage_location_id: quantity })
     pub storage_location_quantities: Option<Value>,
 
@@ -811,9 +811,9 @@ pub enum DeliveryPartnerType {
     AgenceDeVoyage,
     Demenagement,
     Transport,
-    Assureur, // ✅ NOUVEAU 2026-01-04: Type partenaire assureur
+    Assureur,    // ✅ NOUVEAU 2026-01-04: Type partenaire assureur
     Supermarche, // ✅ NOUVEAU 2026-01-04: Type partenaire supermarché
-    Telecom, // ✅ NOUVEAU 2026-01-04: Type partenaire télécom
+    Telecom,     // ✅ NOUVEAU 2026-01-04: Type partenaire télécom
 }
 
 /// ✅ NOUVEAU 2026-01-04: Modèle pour les partenaires de livraison

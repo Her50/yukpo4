@@ -143,7 +143,7 @@ impl AppState {
             Arc::new(mongo.clone()),
             "yukpo_history".to_string(),
         ));
-        
+
         // ✅ NOUVEAU 2025-12-30: Créer les index MongoDB pour optimiser les requêtes stats/reviews
         // ✅ 2025-12-30: Les index MongoDB seront créés dans main.rs après l'initialisation complète
         // (on ne peut pas utiliser await dans une fonction non-async)
@@ -159,7 +159,7 @@ impl AppState {
             crate::services::delivery_repository::DeliveryRepository::with_redis(
                 pg.clone(),
                 Some(redis_client.clone()),
-            )
+            ),
         );
         let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(
             64,
@@ -285,7 +285,7 @@ impl AppState {
                 Ok(service) => {
                     log::info!("[AppState] ✅ Remotion renderer local initialisé");
                     Some(Arc::new(service))
-                },
+                }
                 Err(err) => {
                     log::warn!("[AppState] ⚠️ Remotion renderer local inactif: {err:?}");
                     None
@@ -305,7 +305,14 @@ impl AppState {
             log::warn!("[AppState] ⚠️ VideoRenderDispatcher non disponible - Le service de prévisualisation vidéo sera indisponible");
             if let Some(cfg) = renderer_config.as_ref() {
                 log::warn!("[AppState]   - RPC endpoint: {:?}", cfg.rpc_endpoint);
-                log::warn!("[AppState]   - Remotion local: {}", if remotion_renderer.is_some() { "disponible" } else { "indisponible" });
+                log::warn!(
+                    "[AppState]   - Remotion local: {}",
+                    if remotion_renderer.is_some() {
+                        "disponible"
+                    } else {
+                        "indisponible"
+                    }
+                );
             }
         }
 
@@ -525,7 +532,9 @@ impl AppState {
             )),
             spotify_service,
             youtube_audio_service,
-            products_service: Arc::new(crate::services::products_service::ProductsService::new(Arc::new(pg_clone))),
+            products_service: Arc::new(crate::services::products_service::ProductsService::new(
+                Arc::new(pg_clone),
+            )),
         }
     }
 
@@ -576,7 +585,7 @@ impl AppState {
             crate::services::delivery_repository::DeliveryRepository::with_redis(
                 pg.clone(),
                 Some(redis_client.clone()),
-            )
+            ),
         );
 
         // ✅ Initialiser cache_service avant son utilisation
@@ -786,7 +795,9 @@ impl AppState {
             )),
             spotify_service: None, // Pas de Spotify pour les tests
             youtube_audio_service: Some(Arc::new(YouTubeAudioService::new(None))),
-            products_service: Arc::new(crate::services::products_service::ProductsService::new(Arc::new(pg_clone))),
+            products_service: Arc::new(crate::services::products_service::ProductsService::new(
+                Arc::new(pg_clone),
+            )),
         }
     }
 }

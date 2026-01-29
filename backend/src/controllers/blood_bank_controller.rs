@@ -323,7 +323,7 @@ pub async fn search_blood_banks(
     Query(params): Query<SearchBloodBanksQuery>,
 ) -> AppResult<impl IntoResponse> {
     let query = params.query.as_deref().unwrap_or("");
-    
+
     // ✅ CORRIGÉ: Convertir lat/lng en gps_zone si nécessaire
     let user_gps = if params.gps_zone.is_some() {
         params.gps_zone
@@ -332,7 +332,7 @@ pub async fn search_blood_banks(
     } else {
         None
     };
-    
+
     let radius = params.radius_km.unwrap_or(50);
     let groupe_sanguin = params.groupe_sanguin;
     let urgence = params.urgence.unwrap_or(false);

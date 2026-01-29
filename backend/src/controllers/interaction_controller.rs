@@ -325,7 +325,7 @@ pub async fn get_service_stats(
                 }
             }
             Ok(stats)
-        },
+        }
         Err(e) => {
             log::error!(
                 "[InteractionController] ❌ Erreur récupération stats pour service {}: {}",
@@ -366,19 +366,19 @@ pub async fn get_services_reviews_batch_endpoint(
         .get("service_ids")
         .or_else(|| params.get("ids"))
         .unwrap_or(&default_empty);
-    
+
     if service_ids_str.is_empty() {
         return Json(json!({
             "error": "service_ids parameter is required"
         }));
     }
-    
+
     // Parser les service_ids (format: "58,157,200")
     let service_ids: Result<Vec<i32>, _> = service_ids_str
         .split(',')
         .map(|s| s.trim().parse::<i32>())
         .collect();
-    
+
     let service_ids = match service_ids {
         Ok(ids) if !ids.is_empty() => ids,
         _ => {
@@ -387,21 +387,21 @@ pub async fn get_services_reviews_batch_endpoint(
             }));
         }
     };
-    
+
     // Limiter à 50 services par requête pour éviter les surcharges
     let service_ids: Vec<i32> = service_ids.into_iter().take(50).collect();
-    
+
     log::info!(
         "[InteractionController] 📊 Récupération batch reviews pour {} services",
         service_ids.len()
     );
-    
+
     // Récupérer la limite optionnelle
     let limit = params
         .get("limit")
         .and_then(|s| s.parse::<i64>().ok())
         .unwrap_or(20);
-    
+
     match get_services_reviews_batch(
         state.mongo_history.clone(),
         service_ids.clone(),
@@ -438,19 +438,19 @@ pub async fn get_services_stats_batch_endpoint(
         .get("service_ids")
         .or_else(|| params.get("ids"))
         .unwrap_or(&default_empty);
-    
+
     if service_ids_str.is_empty() {
         return Json(json!({
             "error": "service_ids parameter is required"
         }));
     }
-    
+
     // Parser les service_ids (format: "58,157,200")
     let service_ids: Result<Vec<i32>, _> = service_ids_str
         .split(',')
         .map(|s| s.trim().parse::<i32>())
         .collect();
-    
+
     let service_ids = match service_ids {
         Ok(ids) if !ids.is_empty() => ids,
         _ => {
@@ -459,24 +459,24 @@ pub async fn get_services_stats_batch_endpoint(
             }));
         }
     };
-    
+
     // Limiter à 50 services par requête pour éviter les surcharges
     let service_ids: Vec<i32> = service_ids.into_iter().take(50).collect();
-    
+
     log::info!(
         "[InteractionController] 📊 Récupération batch stats pour {} services",
         service_ids.len()
     );
-    
+
     // ✅ OPTIMISÉ 2025-01-01: Vérifier le cache Redis en premier pour chaque service
     let cache_keys: Vec<String> = service_ids
         .iter()
         .map(|id| format!("service_stats:{}", id))
         .collect();
-    
+
     let mut cached_stats_map = serde_json::Map::new();
     let mut uncached_service_ids = Vec::new();
-    
+
     if let Some(redis_pool) = &state.redis_pool {
         if let Ok(mut conn) = redis_pool.get().await {
             for (idx, cache_key) in cache_keys.iter().enumerate() {
@@ -486,10 +486,7 @@ pub async fn get_services_stats_batch_endpoint(
                     .await
                 {
                     if let Ok(stats_value) = serde_json::from_str::<Value>(&cached_stats) {
-                        cached_stats_map.insert(
-                            service_ids[idx].to_string(),
-                            stats_value
-                        );
+                        cached_stats_map.insert(service_ids[idx].to_string(), stats_value);
                         continue;
                     }
                 }
@@ -499,16 +496,13 @@ pub async fn get_services_stats_batch_endpoint(
     } else {
         uncached_service_ids = service_ids.clone();
     }
-    
+
     // Récupérer les stats non cachées depuis MongoDB
     let mut all_stats_map = cached_stats_map;
-    
+
     if !uncached_service_ids.is_empty() {
-        match get_services_stats_batch(
-            state.mongo_history.clone(),
-            uncached_service_ids.clone(),
-        )
-        .await
+        match get_services_stats_batch(state.mongo_history.clone(), uncached_service_ids.clone())
+            .await
         {
             Ok(stats_map) => {
                 if let Some(stats_obj) = stats_map.as_object() {
@@ -533,7 +527,7 @@ pub async fn get_services_stats_batch_endpoint(
                         }
                     }
                 }
-            },
+            }
             Err(e) => {
                 log::error!(
                     "[InteractionController] ❌ Erreur récupération batch stats: {}",
@@ -551,13 +545,13 @@ pub async fn get_services_stats_batch_endpoint(
                             "likes": 0,
                             "average_rating": 0.0,
                             "total_ratings": 0
-                        })
+                        }),
                     );
                 }
             }
         }
     }
-    
+
     // S'assurer que tous les service_ids ont une entrée
     for service_id in service_ids {
         if !all_stats_map.contains_key(&service_id.to_string()) {
@@ -571,11 +565,11 @@ pub async fn get_services_stats_batch_endpoint(
                     "likes": 0,
                     "average_rating": 0.0,
                     "total_ratings": 0
-                })
+                }),
             );
         }
     }
-    
+
     Json(serde_json::Value::Object(all_stats_map))
 }
 

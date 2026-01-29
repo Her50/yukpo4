@@ -1324,7 +1324,8 @@ pub async fn search_properties(
         query_builder.push(")");
     }
     if let Some(prix_min) = query.prix_min {
-        let prix_min_decimal = rust_decimal::Decimal::from_f64_retain(prix_min).unwrap_or(rust_decimal::Decimal::ZERO);
+        let prix_min_decimal =
+            rust_decimal::Decimal::from_f64_retain(prix_min).unwrap_or(rust_decimal::Decimal::ZERO);
         query_builder.push(" AND ((COALESCE((p.product_data->>'prix_vente')::numeric, (s.data->'prix_vente'->>'valeur')::numeric, 0) >= ");
         query_builder.push_bind(prix_min_decimal);
         query_builder.push(" OR COALESCE((p.product_data->>'prix_location_mensuel')::numeric, (s.data->'prix_location_mensuel'->>'valeur')::numeric, 0) >= ");
@@ -1332,7 +1333,8 @@ pub async fn search_properties(
         query_builder.push("))");
     }
     if let Some(prix_max) = query.prix_max {
-        let prix_max_decimal = rust_decimal::Decimal::from_f64_retain(prix_max).unwrap_or(rust_decimal::Decimal::ZERO);
+        let prix_max_decimal =
+            rust_decimal::Decimal::from_f64_retain(prix_max).unwrap_or(rust_decimal::Decimal::ZERO);
         query_builder.push(" AND ((COALESCE((p.product_data->>'prix_vente')::numeric, (s.data->'prix_vente'->>'valeur')::numeric, 999999999) <= ");
         query_builder.push_bind(prix_max_decimal);
         query_builder.push(" OR COALESCE((p.product_data->>'prix_location_mensuel')::numeric, (s.data->'prix_location_mensuel'->>'valeur')::numeric, 999999999) <= ");
@@ -1340,12 +1342,14 @@ pub async fn search_properties(
         query_builder.push("))");
     }
     if let Some(superficie_min) = query.superficie_min {
-        let superficie_min_decimal = rust_decimal::Decimal::from_f64_retain(superficie_min).unwrap_or(rust_decimal::Decimal::ZERO);
+        let superficie_min_decimal = rust_decimal::Decimal::from_f64_retain(superficie_min)
+            .unwrap_or(rust_decimal::Decimal::ZERO);
         query_builder.push(" AND COALESCE((p.product_data->>'superficie_m2')::numeric, (s.data->'superficie_m2'->>'valeur')::numeric, 0) >= ");
         query_builder.push_bind(superficie_min_decimal);
     }
     if let Some(superficie_max) = query.superficie_max {
-        let superficie_max_decimal = rust_decimal::Decimal::from_f64_retain(superficie_max).unwrap_or(rust_decimal::Decimal::ZERO);
+        let superficie_max_decimal = rust_decimal::Decimal::from_f64_retain(superficie_max)
+            .unwrap_or(rust_decimal::Decimal::ZERO);
         query_builder.push(" AND COALESCE((p.product_data->>'superficie_m2')::numeric, (s.data->'superficie_m2'->>'valeur')::numeric, 999999) <= ");
         query_builder.push_bind(superficie_max_decimal);
     }
@@ -1395,10 +1399,18 @@ pub async fn search_properties(
     let mut properties_json = Vec::new();
     for row in properties {
         // Extraire photos depuis JSONB
-        let photos_value: Option<serde_json::Value> = row.try_get::<Option<serde_json::Value>, _>("photos").ok().flatten();
+        let photos_value: Option<serde_json::Value> = row
+            .try_get::<Option<serde_json::Value>, _>("photos")
+            .ok()
+            .flatten();
         let photos_array: Option<Vec<String>> = photos_value.and_then(|v| {
             if v.is_array() {
-                Some(v.as_array()?.iter().filter_map(|item| item.as_str().map(|s| s.to_string())).collect())
+                Some(
+                    v.as_array()?
+                        .iter()
+                        .filter_map(|item| item.as_str().map(|s| s.to_string()))
+                        .collect(),
+                )
             } else {
                 None
             }
@@ -1548,9 +1560,15 @@ pub async fn create_property(
 
     // Convertir les prix en Decimal
     use rust_decimal::Decimal;
-    let prix_vente = payload.prix_vente.map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
-    let prix_location = payload.prix_location_mensuel.map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
-    let superficie = payload.superficie_m2.map(|s| Decimal::from_f64_retain(s).unwrap_or_default());
+    let prix_vente = payload
+        .prix_vente
+        .map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
+    let prix_location = payload
+        .prix_location_mensuel
+        .map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
+    let superficie = payload
+        .superficie_m2
+        .map(|s| Decimal::from_f64_retain(s).unwrap_or_default());
 
     // Insérer le bien immobilier
     let property_id = sqlx::query_scalar::<_, i32>(
@@ -1590,7 +1608,10 @@ pub async fn create_property(
         AppError::Internal(format!("Erreur création bien: {}", e))
     })?;
 
-    info!("[create_property] Bien immobilier créé avec id={}", property_id);
+    info!(
+        "[create_property] Bien immobilier créé avec id={}",
+        property_id
+    );
 
     Ok((
         StatusCode::CREATED,
@@ -4127,7 +4148,7 @@ pub async fn autocomplete_examination_types(
             WHERE examen ILIKE $1
         )
         LIMIT $2
-        "#
+        "#,
     )
     .bind(&search_pattern)
     .bind(limit)
@@ -4242,9 +4263,9 @@ pub async fn analyze_examination_image(
 
     // ✅ CORRIGÉ: Utiliser le service IA pour analyser directement l'image avec vision IA
     use crate::services::lab_ai_service::LabAIService;
-    
+
     let lab_ai_service = LabAIService::new(state.ia.clone());
-    
+
     // Extraire le base64 de l'image (support des deux formats: image_uri ou image_base64)
     let image_base64 = if !request.image_base64.is_empty() {
         request.image_base64.clone()
@@ -4298,10 +4319,14 @@ pub async fn search_pathology_laboratory(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<SearchPathologyRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[search_pathology_laboratory] user_id={}, query={}", user_id, request.query);
+    info!(
+        "[search_pathology_laboratory] user_id={}, query={}",
+        user_id, request.query
+    );
 
     // Créer un prompt IA pour la recherche de pathologie
-    let symptoms_str = request.symptoms
+    let symptoms_str = request
+        .symptoms
         .as_ref()
         .map(|s| s.join(", "))
         .unwrap_or_else(|| "Non spécifiés".to_string());
@@ -4343,11 +4368,10 @@ RÉPONSE ATTENDUE (JSON strict) :
         request.query, symptoms_str
     );
 
-    let (model_name, response, tokens) = state.ia.predict(&prompt).await
-        .map_err(|e| {
-            error!("[search_pathology_laboratory] Erreur IA: {}", e);
-            AppError::Internal("Erreur recherche IA".to_string())
-        })?;
+    let (model_name, response, tokens) = state.ia.predict(&prompt).await.map_err(|e| {
+        error!("[search_pathology_laboratory] Erreur IA: {}", e);
+        AppError::Internal("Erreur recherche IA".to_string())
+    })?;
 
     info!(
         "[search_pathology_laboratory] Réponse IA avec {} (tokens: {})",
@@ -4355,19 +4379,20 @@ RÉPONSE ATTENDUE (JSON strict) :
     );
 
     // Parser la réponse JSON
-    let pathologies: Vec<serde_json::Value> = match serde_json::from_str::<serde_json::Value>(&response) {
-        Ok(v) => {
-            if let Some(paths) = v.get("pathologies").and_then(|p| p.as_array()) {
-                paths.clone()
-            } else {
+    let pathologies: Vec<serde_json::Value> =
+        match serde_json::from_str::<serde_json::Value>(&response) {
+            Ok(v) => {
+                if let Some(paths) = v.get("pathologies").and_then(|p| p.as_array()) {
+                    paths.clone()
+                } else {
+                    vec![]
+                }
+            }
+            Err(e) => {
+                log::warn!("[search_pathology_laboratory] Erreur parsing: {}", e);
                 vec![]
             }
-        }
-        Err(e) => {
-            log::warn!("[search_pathology_laboratory] Erreur parsing: {}", e);
-            vec![]
-        }
-    };
+        };
 
     Ok((
         StatusCode::OK,
@@ -4392,9 +4417,13 @@ pub async fn search_pathology_hospital(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<SearchPathologyHospitalRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[search_pathology_hospital] user_id={}, query={}", user_id, request.query);
+    info!(
+        "[search_pathology_hospital] user_id={}, query={}",
+        user_id, request.query
+    );
 
-    let symptoms_str = request.symptoms
+    let symptoms_str = request
+        .symptoms
         .as_ref()
         .map(|s| s.join(", "))
         .unwrap_or_else(|| "Non spécifiés".to_string());
@@ -4438,11 +4467,10 @@ RÉPONSE ATTENDUE (JSON strict) :
         request.query, symptoms_str
     );
 
-    let (model_name, response, tokens) = state.ia.predict(&prompt).await
-        .map_err(|e| {
-            error!("[search_pathology_hospital] Erreur IA: {}", e);
-            AppError::Internal("Erreur recherche IA".to_string())
-        })?;
+    let (model_name, response, tokens) = state.ia.predict(&prompt).await.map_err(|e| {
+        error!("[search_pathology_hospital] Erreur IA: {}", e);
+        AppError::Internal("Erreur recherche IA".to_string())
+    })?;
 
     info!(
         "[search_pathology_hospital] Réponse IA avec {} (tokens: {})",
@@ -4450,19 +4478,20 @@ RÉPONSE ATTENDUE (JSON strict) :
     );
 
     // Parser et enrichir avec suggestions d'hôpitaux si GPS fourni
-    let pathologies: Vec<serde_json::Value> = match serde_json::from_str::<serde_json::Value>(&response) {
-        Ok(v) => {
-            if let Some(paths) = v.get("pathologies").and_then(|p| p.as_array()) {
-                paths.clone()
-            } else {
+    let pathologies: Vec<serde_json::Value> =
+        match serde_json::from_str::<serde_json::Value>(&response) {
+            Ok(v) => {
+                if let Some(paths) = v.get("pathologies").and_then(|p| p.as_array()) {
+                    paths.clone()
+                } else {
+                    vec![]
+                }
+            }
+            Err(e) => {
+                log::warn!("[search_pathology_hospital] Erreur parsing: {}", e);
                 vec![]
             }
-        }
-        Err(e) => {
-            log::warn!("[search_pathology_hospital] Erreur parsing: {}", e);
-            vec![]
-        }
-    };
+        };
 
     // TODO: Enrichir avec suggestions d'hôpitaux proches si lat/lng fournis
 

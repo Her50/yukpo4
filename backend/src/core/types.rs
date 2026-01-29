@@ -62,10 +62,24 @@ impl IntoResponse for AppError {
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg.clone()),
             AppError::Conflict(msg) => (StatusCode::CONFLICT, "CONFLICT", msg.clone()),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", msg.clone()),
-            AppError::TooManyRequests(msg) => (StatusCode::TOO_MANY_REQUESTS, "TOO_MANY_REQUESTS", msg.clone()),
-            AppError::Database(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR", msg.clone()),
-            AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", msg.clone()),
-            AppError::NotImplemented(msg) => (StatusCode::NOT_IMPLEMENTED, "NOT_IMPLEMENTED", msg.clone()),
+            AppError::TooManyRequests(msg) => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "TOO_MANY_REQUESTS",
+                msg.clone(),
+            ),
+            AppError::Database(msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "DATABASE_ERROR",
+                msg.clone(),
+            ),
+            AppError::Internal(msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
+                msg.clone(),
+            ),
+            AppError::NotImplemented(msg) => {
+                (StatusCode::NOT_IMPLEMENTED, "NOT_IMPLEMENTED", msg.clone())
+            }
         };
 
         // ✅ CORRIGÉ: Format d'erreur structuré avec code et message clair (sans préfixe enum)

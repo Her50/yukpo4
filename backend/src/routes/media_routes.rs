@@ -16,7 +16,8 @@ use crate::controllers::{
         list_effects, list_templates, serve_example_video, upload_media,
     },
     product_video_controller::{
-        estimate_video_cost_for_product, generate_video_for_product, get_video_generation_job_status,
+        estimate_video_cost_for_product, generate_video_for_product,
+        get_video_generation_job_status,
     },
 };
 use crate::middlewares::jwt::jwt_auth;

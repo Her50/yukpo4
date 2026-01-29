@@ -9,10 +9,10 @@ fn main() {
         eprintln!("Example: cargo run --bin hash_password_helper Hernandez87");
         std::process::exit(1);
     }
-    
+
     let password = &args[1];
     let cost = 12u32; // Utiliser cost 12 pour plus de sécurité
-    
+
     match hash(password, cost) {
         Ok(hash) => println!("{}", hash),
         Err(e) => {
@@ -21,4 +21,3 @@ fn main() {
         }
     }
 }
-

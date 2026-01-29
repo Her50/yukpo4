@@ -8,10 +8,10 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::geocoding_service::GeocodingService;
 use crate::services::menu_planning_ai_service::{
     FamilyProfile, MealItemForShopping, MenuPlanningAIService, WeeklyMenu,
 };
-use crate::services::geocoding_service::GeocodingService;
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Query, State},
@@ -79,12 +79,16 @@ pub async fn generate_weekly_menu(
     // Priorité: GPS fourni dans la requête > GPS stocké en base
     let (user_country, user_city) = if let Some(current_gps) = &req.current_gps {
         // Utiliser le GPS fourni dynamiquement par l'application mobile
-        get_location_context_from_gps(&state, current_gps).await.unwrap_or((None, None))
+        get_location_context_from_gps(&state, current_gps)
+            .await
+            .unwrap_or((None, None))
     } else {
         // Utiliser le GPS stocké en base (fallback)
-        get_user_location_context(&state, user_id).await.unwrap_or((None, None))
+        get_user_location_context(&state, user_id)
+            .await
+            .unwrap_or((None, None))
     };
-    
+
     info!(
         "[generate_weekly_menu] Contexte géographique: pays={:?}, ville={:?}",
         user_country, user_city
@@ -396,18 +400,26 @@ pub async fn update_family_profile(
     // ✅ IMPLÉMENTÉ: Utiliser UPSERT pour créer ou mettre à jour le profil
     // Récupérer le profil existant pour préserver les valeurs non modifiées
     let existing_profile = get_or_create_family_profile(&state, user_id).await?;
-    
+
     // Utiliser les nouvelles valeurs si fournies, sinon garder les existantes
     let total_members = req.total_members.unwrap_or(existing_profile.total_members);
-    let children_count = req.children_count.unwrap_or(existing_profile.children_count);
+    let children_count = req
+        .children_count
+        .unwrap_or(existing_profile.children_count);
     let adults_count = req.adults_count.unwrap_or(existing_profile.adults_count);
     let preferences = req.preferences.unwrap_or(existing_profile.preferences);
     let allergies = req.allergies.unwrap_or(existing_profile.allergies);
-    let dietary_restrictions = req.dietary_restrictions.unwrap_or(existing_profile.dietary_restrictions);
+    let dietary_restrictions = req
+        .dietary_restrictions
+        .unwrap_or(existing_profile.dietary_restrictions);
     let budget_monthly = req.budget_monthly.or(existing_profile.budget_monthly);
-    let cuisine_styles = req.cuisine_styles.unwrap_or(existing_profile.cuisine_styles);
+    let cuisine_styles = req
+        .cuisine_styles
+        .unwrap_or(existing_profile.cuisine_styles);
     let cooking_level = req.cooking_level.or(existing_profile.cooking_level);
-    let time_available_hours = req.time_available_hours.or(existing_profile.time_available_hours);
+    let time_available_hours = req
+        .time_available_hours
+        .or(existing_profile.time_available_hours);
 
     sqlx::query(
         r#"
@@ -450,7 +462,9 @@ pub async fn update_family_profile(
     .bind(budget_monthly.map(|b| rust_decimal::Decimal::from_f64_retain(b).unwrap_or_default()))
     .bind(&cuisine_styles)
     .bind(cooking_level.as_deref())
-    .bind(time_available_hours.map(|t| rust_decimal::Decimal::from_f64_retain(t).unwrap_or_default()))
+    .bind(
+        time_available_hours.map(|t| rust_decimal::Decimal::from_f64_retain(t).unwrap_or_default()),
+    )
     .execute(&state.pg)
     .await
     .map_err(|e| {
@@ -478,16 +492,15 @@ async fn get_user_location_context(
     user_id: i32,
 ) -> AppResult<(Option<String>, Option<String>)> {
     // Récupérer GPS utilisateur
-    let user_gps: Option<String> = sqlx::query_scalar(
-        "SELECT gps FROM users WHERE id = $1 AND gps IS NOT NULL AND gps != ''"
-    )
-    .bind(user_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[get_user_location_context] Erreur récupération GPS: {}", e);
-        AppError::Internal(format!("Erreur récupération GPS: {}", e))
-    })?;
+    let user_gps: Option<String> =
+        sqlx::query_scalar("SELECT gps FROM users WHERE id = $1 AND gps IS NOT NULL AND gps != ''")
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[get_user_location_context] Erreur récupération GPS: {}", e);
+                AppError::Internal(format!("Erreur récupération GPS: {}", e))
+            })?;
 
     if let Some(gps_str) = user_gps {
         return get_location_context_from_gps(state, &gps_str).await;
@@ -505,7 +518,10 @@ async fn get_location_context_from_gps(
     // Parser coordonnées GPS (format: "lat,lng" ou "lng,lat")
     // Le format stocké en base est généralement "lng,lat" (longitude, latitude)
     if let Some((coord1_str, coord2_str)) = gps_str.split_once(',') {
-        if let (Ok(coord1), Ok(coord2)) = (coord1_str.trim().parse::<f64>(), coord2_str.trim().parse::<f64>()) {
+        if let (Ok(coord1), Ok(coord2)) = (
+            coord1_str.trim().parse::<f64>(),
+            coord2_str.trim().parse::<f64>(),
+        ) {
             // Déterminer si c'est "lat,lng" ou "lng,lat" selon les valeurs
             // Longitude: -180 à 180, Latitude: -90 à 90
             let (lat, lng) = if coord1.abs() <= 90.0 && coord2.abs() <= 180.0 {
@@ -530,7 +546,10 @@ async fn get_location_context_from_gps(
                     return Ok((result.country, result.city));
                 }
                 Err(e) => {
-                    warn!("[get_location_context_from_gps] Erreur géocodage inverse: {}", e);
+                    warn!(
+                        "[get_location_context_from_gps] Erreur géocodage inverse: {}",
+                        e
+                    );
                 }
             }
         }
@@ -561,7 +580,9 @@ pub async fn generate_recipe(
     let profile = get_or_create_family_profile(&state, user_id).await.ok();
 
     // Récupérer contexte localité utilisateur
-    let (user_country, user_city) = get_user_location_context(&state, user_id).await.unwrap_or((None, None));
+    let (user_country, user_city) = get_user_location_context(&state, user_id)
+        .await
+        .unwrap_or((None, None));
 
     // Générer recette avec IA
     let ai_service = MenuPlanningAIService::new(state.ia.clone());
@@ -625,12 +646,12 @@ pub async fn generate_intelligent_shopping_list(
     } else {
         profile.total_members
     };
-    
+
     // ✅ CORRIGÉ: Utiliser adults_count et children_count de la requête ou du profil
     // profile.adults_count et profile.children_count sont des i32, pas Option<i32>
     let adults_count = req.adults_count.unwrap_or(profile.adults_count);
     let children_count = req.children_count.unwrap_or(profile.children_count);
-    
+
     info!(
         "[generate_intelligent_shopping_list] Nombre de personnes: {} (adultes: {}, enfants: {})",
         family_members, adults_count, children_count
@@ -639,12 +660,16 @@ pub async fn generate_intelligent_shopping_list(
     // ✅ NOUVEAU 2026-01-13: Récupérer contexte localité utilisateur (pays, ville) pour utiliser des unités locales
     let (user_country, user_city) = if let Some(current_gps) = &req.current_gps {
         // Utiliser le GPS fourni dynamiquement par l'application mobile
-        get_location_context_from_gps(&state, current_gps).await.unwrap_or((None, None))
+        get_location_context_from_gps(&state, current_gps)
+            .await
+            .unwrap_or((None, None))
     } else {
         // Utiliser le GPS stocké en base (fallback)
-        get_user_location_context(&state, user_id).await.unwrap_or((None, None))
+        get_user_location_context(&state, user_id)
+            .await
+            .unwrap_or((None, None))
     };
-    
+
     info!(
         "[generate_intelligent_shopping_list] Contexte géographique: pays={:?}, ville={:?}",
         user_country, user_city
@@ -653,7 +678,7 @@ pub async fn generate_intelligent_shopping_list(
     // ✅ NOUVEAU 2026-01-13: Récupérer le budget mensuel depuis le profil famille pour proratisation
     let profile = get_or_create_family_profile(&state, user_id).await?;
     let budget_monthly = profile.budget_monthly;
-    
+
     // ✅ NOUVEAU 2026-01-13: Calculer la période en jours (par défaut 7 jours pour menu hebdomadaire)
     // La période peut être déterminée par la plage de dates des repas ou par défaut 7 jours
     let period_days = if let Some(period) = req.period_days {
@@ -663,7 +688,7 @@ pub async fn generate_intelligent_shopping_list(
         // Sinon, utiliser 7 jours par défaut (menu hebdomadaire)
         Some(7)
     };
-    
+
     if let Some(budget) = budget_monthly {
         if let Some(days) = period_days {
             let budget_prorated = (budget / 30.0) * (days as f64);
@@ -673,11 +698,9 @@ pub async fn generate_intelligent_shopping_list(
             );
         }
     } else {
-        info!(
-            "[generate_intelligent_shopping_list] Budget non spécifié dans le profil famille"
-        );
+        info!("[generate_intelligent_shopping_list] Budget non spécifié dans le profil famille");
     }
-    
+
     info!(
         "[generate_intelligent_shopping_list] Repas à traiter: {} repas avec quantités (times, servings)",
         req.meal_items.len()
@@ -727,7 +750,7 @@ async fn get_previous_menus(
             AND status = 'active'
         ORDER BY week_start DESC
         LIMIT $2
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(limit)
@@ -744,7 +767,10 @@ async fn get_previous_menus(
         .into_iter()
         .map(|row| {
             WeeklyMenu {
-                week_start: row.get::<chrono::NaiveDate, _>("week_start").format("%Y-%m-%d").to_string(),
+                week_start: row
+                    .get::<chrono::NaiveDate, _>("week_start")
+                    .format("%Y-%m-%d")
+                    .to_string(),
                 meals: vec![], // TODO: Charger depuis planned_meals
                 total_estimated_cost: row
                     .try_get::<Option<rust_decimal::Decimal>, _>("total_budget")
@@ -823,7 +849,7 @@ pub async fn get_menu_history(
         WHERE user_id = $1
         ORDER BY created_at DESC
         LIMIT $2
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(limit)
@@ -836,24 +862,30 @@ pub async fn get_menu_history(
 
     let menus: Vec<MenuHistoryItem> = menu_rows
         .into_iter()
-        .map(|row| {
-            MenuHistoryItem {
-                id: row.get("id"),
-                week_start: row.get::<chrono::NaiveDate, _>("week_start").format("%Y-%m-%d").to_string(),
-                week_end: row.get::<chrono::NaiveDate, _>("week_end").format("%Y-%m-%d").to_string(),
-                status: row.get("status"),
-                total_budget: row
-                    .try_get::<Option<rust_decimal::Decimal>, _>("total_budget")
-                    .ok()
-                    .flatten()
-                    .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
-                actual_cost: row
-                    .try_get::<Option<rust_decimal::Decimal>, _>("actual_cost")
-                    .ok()
-                    .flatten()
-                    .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
-                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
-            }
+        .map(|row| MenuHistoryItem {
+            id: row.get("id"),
+            week_start: row
+                .get::<chrono::NaiveDate, _>("week_start")
+                .format("%Y-%m-%d")
+                .to_string(),
+            week_end: row
+                .get::<chrono::NaiveDate, _>("week_end")
+                .format("%Y-%m-%d")
+                .to_string(),
+            status: row.get("status"),
+            total_budget: row
+                .try_get::<Option<rust_decimal::Decimal>, _>("total_budget")
+                .ok()
+                .flatten()
+                .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+            actual_cost: row
+                .try_get::<Option<rust_decimal::Decimal>, _>("actual_cost")
+                .ok()
+                .flatten()
+                .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+            created_at: row
+                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                .to_rfc3339(),
         })
         .collect();
 
@@ -873,7 +905,7 @@ pub async fn get_menu_history(
         GROUP BY sl.id, sl.week_start, sl.status, sl.total_estimated_cost, sl.created_at
         ORDER BY sl.created_at DESC
         LIMIT $2
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(limit)
@@ -886,19 +918,22 @@ pub async fn get_menu_history(
 
     let shopping_lists: Vec<ShoppingListHistoryItem> = shopping_list_rows
         .into_iter()
-        .map(|row| {
-            ShoppingListHistoryItem {
-                id: row.get("id"),
-                week_start: row.get::<chrono::NaiveDate, _>("week_start").format("%Y-%m-%d").to_string(),
-                status: row.get("status"),
-                total_estimated_cost: row
-                    .try_get::<Option<rust_decimal::Decimal>, _>("total_estimated_cost")
-                    .ok()
-                    .flatten()
-                    .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
-                items_count: row.get("items_count"),
-                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
-            }
+        .map(|row| ShoppingListHistoryItem {
+            id: row.get("id"),
+            week_start: row
+                .get::<chrono::NaiveDate, _>("week_start")
+                .format("%Y-%m-%d")
+                .to_string(),
+            status: row.get("status"),
+            total_estimated_cost: row
+                .try_get::<Option<rust_decimal::Decimal>, _>("total_estimated_cost")
+                .ok()
+                .flatten()
+                .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+            items_count: row.get("items_count"),
+            created_at: row
+                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                .to_rfc3339(),
         })
         .collect();
 

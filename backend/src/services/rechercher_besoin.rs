@@ -417,17 +417,16 @@ pub async fn rechercher_besoin_direct(
     // ✅ CORRIGÉ 2026-01-13: Normaliser le texte de recherche pour la clé de cache
     // (lowercase, trim) pour éviter des clés différentes pour "Chaussures Nike" vs "chaussures nike"
     let normalized_query = primary_keyword.to_lowercase().trim().to_string();
-    let normalized_gps = gps_zone.map(|g| g.trim().to_lowercase()).unwrap_or_default();
+    let normalized_gps = gps_zone
+        .map(|g| g.trim().to_lowercase())
+        .unwrap_or_default();
 
     // Générer la clé de cache pour cette recherche (avec texte normalisé)
     let cache_key = GlobalCacheService::generate_key(
         "search",
         &[
             ("query", &normalized_query as &dyn std::fmt::Display),
-            (
-                "gps_zone",
-                &normalized_gps as &dyn std::fmt::Display,
-            ),
+            ("gps_zone", &normalized_gps as &dyn std::fmt::Display),
             (
                 "radius",
                 &search_radius_km.unwrap_or(0) as &dyn std::fmt::Display,
@@ -517,8 +516,8 @@ pub async fn rechercher_besoin_direct(
     let native_results = match native_search
         .intelligent_search(
             &primary_keyword,
-            None,      // Pas de filtre de catégorie
-            None,      // Pas de filtre de localisation textuelle
+            None, // Pas de filtre de catégorie
+            None, // Pas de filtre de localisation textuelle
             user_id,
             gps_zone,         // Passer la zone GPS (gps_fixe/gps_courant)
             search_radius_km, // Passer le rayon de recherche
@@ -662,7 +661,13 @@ pub async fn rechercher_besoin_direct(
         average_rating: Option<f64>,
     }
 
-    let (service_user_info_map_result, product_info_map_result, media_map_result, service_products_map_result, service_stats_map_result) = tokio::join!(
+    let (
+        service_user_info_map_result,
+        product_info_map_result,
+        media_map_result,
+        service_products_map_result,
+        service_stats_map_result,
+    ) = tokio::join!(
         // BATCH QUERY 1: Récupérer les informations service ET utilisateur
         async {
             sqlx::query_as::<_, ServiceUserInfoRow>(
@@ -801,14 +806,15 @@ pub async fn rechercher_besoin_direct(
                 // ✅ CORRIGÉ 2026-01-22: Structure pour stocker médias par service ET par product_index
                 // Structure: HashMap<service_id, HashMap<product_index, (images, videos)>>
                 let mut media_map: HashMap<i32, (Vec<String>, Vec<String>)> = HashMap::new();
-                let mut product_media_map: HashMap<(i32, i32), (Vec<String>, Vec<String>)> = HashMap::new();
-                
+                let mut product_media_map: HashMap<(i32, i32), (Vec<String>, Vec<String>)> =
+                    HashMap::new();
+
                 for row in rows {
                     let service_id = row.get::<i32, _>("service_id");
                     let product_index: Option<i32> = row.try_get("product_index").ok().flatten();
                     let media_type = row.get::<String, _>("type");
                     let path = row.get::<String, _>("path");
-                    
+
                     // ✅ CORRIGÉ 2026-01-22: Si product_index est NULL, ajouter aux médias globaux du service
                     // Sinon, ajouter aux médias du produit spécifique
                     if let Some(prod_idx) = product_index {
@@ -832,7 +838,7 @@ pub async fn rechercher_besoin_direct(
                         }
                     }
                 }
-                
+
                 // ✅ CORRIGÉ 2026-01-22: Retourner les deux maps pour enrichissement
                 (media_map, product_media_map)
             })
@@ -1185,7 +1191,15 @@ pub async fn rechercher_besoin_direct(
         }
 
         // ✅ NOUVEAU 2026-01-23: Ajouter les statistiques dynamiques calculées depuis la base de données
-        if let Some((views_count, shares_count, reviews_count, favorites_count, rating_count, average_rating)) = stats_info {
+        if let Some((
+            views_count,
+            shares_count,
+            reviews_count,
+            favorites_count,
+            rating_count,
+            average_rating,
+        )) = stats_info
+        {
             enriched_result["views_count"] = json!(views_count);
             enriched_result["shares_count"] = json!(shares_count);
             enriched_result["reviews_count"] = json!(reviews_count);
@@ -1211,29 +1225,35 @@ pub async fn rechercher_besoin_direct(
         // ✅ NOUVEAU: Ajouter les images et vidéos si disponibles (avec transformation CDN)
         if let Some((images, videos)) = media_info {
             // ✅ OPTIMISÉ: Transformer les chemins en URLs CDN
-            let images_cdn: Vec<String> = images.iter().map(|img| {
-                if let Some(ref storage) = media_storage {
-                    if !img.starts_with("http://") && !img.starts_with("https://") {
-                        storage.build_public_url(img)
+            let images_cdn: Vec<String> = images
+                .iter()
+                .map(|img| {
+                    if let Some(ref storage) = media_storage {
+                        if !img.starts_with("http://") && !img.starts_with("https://") {
+                            storage.build_public_url(img)
+                        } else {
+                            img.clone()
+                        }
                     } else {
                         img.clone()
                     }
-                } else {
-                    img.clone()
-                }
-            }).collect();
-            let videos_cdn: Vec<String> = videos.iter().map(|vid| {
-                if let Some(ref storage) = media_storage {
-                    if !vid.starts_with("http://") && !vid.starts_with("https://") {
-                        storage.build_public_url(vid)
+                })
+                .collect();
+            let videos_cdn: Vec<String> = videos
+                .iter()
+                .map(|vid| {
+                    if let Some(ref storage) = media_storage {
+                        if !vid.starts_with("http://") && !vid.starts_with("https://") {
+                            storage.build_public_url(vid)
+                        } else {
+                            vid.clone()
+                        }
                     } else {
                         vid.clone()
                     }
-                } else {
-                    vid.clone()
-                }
-            }).collect();
-            
+                })
+                .collect();
+
             if !images_cdn.is_empty() {
                 enriched_result["images"] = json!(images_cdn);
             }
@@ -1251,41 +1271,53 @@ pub async fn rechercher_besoin_direct(
                 let mut enriched_products: Vec<Value> = Vec::new();
                 for product in service_products_list.iter() {
                     let mut enriched_product = product.clone();
-                    
+
                     // Récupérer product_index depuis le produit
                     let product_index = product
                         .as_object()
                         .and_then(|obj| obj.get("product_index"))
                         .and_then(|v| v.as_i64().map(|i| i as i32));
-                    
+
                     // ✅ CORRIGÉ 2026-01-22: Ajouter les images/vidéos depuis product_media_map si disponibles
                     if let Some(prod_idx) = product_index {
-                        if let Some((product_images, product_videos)) = product_media_map.get(&(service_id, prod_idx)) {
+                        if let Some((product_images, product_videos)) =
+                            product_media_map.get(&(service_id, prod_idx))
+                        {
                             // Transformer les chemins en URLs CDN
-                            let images_cdn: Vec<String> = product_images.iter().map(|img| {
-                                if let Some(ref storage) = media_storage {
-                                    if !img.starts_with("http://") && !img.starts_with("https://") {
-                                        storage.build_public_url(img)
+                            let images_cdn: Vec<String> = product_images
+                                .iter()
+                                .map(|img| {
+                                    if let Some(ref storage) = media_storage {
+                                        if !img.starts_with("http://")
+                                            && !img.starts_with("https://")
+                                        {
+                                            storage.build_public_url(img)
+                                        } else {
+                                            img.clone()
+                                        }
                                     } else {
                                         img.clone()
                                     }
-                                } else {
-                                    img.clone()
-                                }
-                            }).collect();
-                            
-                            let videos_cdn: Vec<String> = product_videos.iter().map(|vid| {
-                                if let Some(ref storage) = media_storage {
-                                    if !vid.starts_with("http://") && !vid.starts_with("https://") {
-                                        storage.build_public_url(vid)
+                                })
+                                .collect();
+
+                            let videos_cdn: Vec<String> = product_videos
+                                .iter()
+                                .map(|vid| {
+                                    if let Some(ref storage) = media_storage {
+                                        if !vid.starts_with("http://")
+                                            && !vid.starts_with("https://")
+                                        {
+                                            storage.build_public_url(vid)
+                                        } else {
+                                            vid.clone()
+                                        }
                                     } else {
                                         vid.clone()
                                     }
-                                } else {
-                                    vid.clone()
-                                }
-                            }).collect();
-                            
+                                })
+                                .collect();
+
                             // ✅ CORRIGÉ 2026-01-22: Fusionner avec les images/vidéos existantes dans product_data
                             if let Some(obj) = enriched_product.as_object_mut() {
                                 // Fusionner les images
@@ -1298,18 +1330,18 @@ pub async fn rechercher_besoin_direct(
                                             .collect()
                                     })
                                     .unwrap_or_default();
-                                
+
                                 let mut merged_images = existing_images;
                                 for img in images_cdn {
                                     if !merged_images.contains(&img) {
                                         merged_images.push(img);
                                     }
                                 }
-                                
+
                                 if !merged_images.is_empty() {
                                     obj.insert("images".to_string(), json!(merged_images));
                                 }
-                                
+
                                 // Fusionner les vidéos
                                 let existing_videos: Vec<String> = obj
                                     .get("videos")
@@ -1320,27 +1352,27 @@ pub async fn rechercher_besoin_direct(
                                             .collect()
                                     })
                                     .unwrap_or_default();
-                                
+
                                 let mut merged_videos = existing_videos;
                                 for vid in videos_cdn {
                                     if !merged_videos.contains(&vid) {
                                         merged_videos.push(vid);
                                     }
                                 }
-                                
+
                                 if !merged_videos.is_empty() {
                                     obj.insert("videos".to_string(), json!(merged_videos));
                                 }
                             }
                         }
                     }
-                    
+
                     enriched_products.push(enriched_product);
                 }
-                
+
                 // Convertir les produits enrichis en format compatible
                 let produits_from_table: Vec<Value> = enriched_products;
-                
+
                 // Récupérer data ou le créer
                 let data_value = enriched_result.get_mut("data").cloned();
                 let mut data_obj = if let Some(d) = data_value {
@@ -1352,16 +1384,19 @@ pub async fn rechercher_besoin_direct(
                 } else {
                     serde_json::Map::new()
                 };
-                
+
                 // ✅ REMPLACER complètement produits par ceux de service_products (pas de fusion avec ancien système)
-                data_obj.insert("produits".to_string(), json!({
-                    "type_donnee": "array",
-                    "valeur": produits_from_table
-                }));
-                
+                data_obj.insert(
+                    "produits".to_string(),
+                    json!({
+                        "type_donnee": "array",
+                        "valeur": produits_from_table
+                    }),
+                );
+
                 // Mettre à jour enriched_result avec le data modifié
                 enriched_result["data"] = json!(data_obj);
-                
+
                 // ✅ CORRIGÉ 2026-01-07: Extraire les images/vidéos et variations depuis les produits service_products
                 // Le ProductCard cherche dans product.images, product.videos, product.variants, product.has_variant
                 // Prendre le premier produit pour les images/vidéos/variations
@@ -1378,16 +1413,18 @@ pub async fn rechercher_besoin_direct(
                                     .collect();
                                 if !images_vec.is_empty() {
                                     // Fusionner avec les images existantes
-                                    let existing_images: Vec<serde_json::Value> =
-                                        enriched_result["images"]
-                                            .as_array()
-                                            .map(|arr| arr.iter().cloned().collect())
-                                            .unwrap_or_else(Vec::new);
+                                    let existing_images: Vec<serde_json::Value> = enriched_result
+                                        ["images"]
+                                        .as_array()
+                                        .map(|arr| arr.iter().cloned().collect())
+                                        .unwrap_or_else(Vec::new);
                                     let mut merged = existing_images;
                                     for img in images_vec {
                                         // ✅ OPTIMISÉ: Transformer le chemin en URL CDN si media_storage disponible
                                         let img_url = if let Some(ref storage) = media_storage {
-                                            if !img.starts_with("http://") && !img.starts_with("https://") {
+                                            if !img.starts_with("http://")
+                                                && !img.starts_with("https://")
+                                            {
                                                 storage.build_public_url(&img)
                                             } else {
                                                 img.clone()
@@ -1415,16 +1452,18 @@ pub async fn rechercher_besoin_direct(
                                     .collect();
                                 if !videos_vec.is_empty() {
                                     // Fusionner avec les vidéos existantes
-                                    let existing_videos: Vec<serde_json::Value> =
-                                        enriched_result["videos"]
-                                            .as_array()
-                                            .map(|arr| arr.iter().cloned().collect())
-                                            .unwrap_or_else(Vec::new);
+                                    let existing_videos: Vec<serde_json::Value> = enriched_result
+                                        ["videos"]
+                                        .as_array()
+                                        .map(|arr| arr.iter().cloned().collect())
+                                        .unwrap_or_else(Vec::new);
                                     let mut merged = existing_videos;
                                     for vid in videos_vec {
                                         // ✅ OPTIMISÉ: Transformer le chemin en URL CDN si media_storage disponible
                                         let vid_url = if let Some(ref storage) = media_storage {
-                                            if !vid.starts_with("http://") && !vid.starts_with("https://") {
+                                            if !vid.starts_with("http://")
+                                                && !vid.starts_with("https://")
+                                            {
                                                 storage.build_public_url(&vid)
                                             } else {
                                                 vid.clone()
@@ -1457,8 +1496,7 @@ pub async fn rechercher_besoin_direct(
                                 {
                                     enriched_result["variant_dimension"] =
                                         variant_dimension.clone();
-                                } else if let Some(variant_dimension) =
-                                    product_obj.get("dimension")
+                                } else if let Some(variant_dimension) = product_obj.get("dimension")
                                 {
                                     enriched_result["variant_dimension"] =
                                         variant_dimension.clone();
@@ -1469,8 +1507,7 @@ pub async fn rechercher_besoin_direct(
                         // 2. Si variants manquant, chercher dans variations (format alternatif)
                         if !has_variants {
                             if let Some(variations) = product_obj.get("variations") {
-                                if variations.is_array()
-                                    && variations.as_array().unwrap().len() > 0
+                                if variations.is_array() && variations.as_array().unwrap().len() > 0
                                 {
                                     enriched_result["has_variant"] = json!(true);
                                     enriched_result["variants"] = variations.clone();
@@ -1506,8 +1543,7 @@ pub async fn rechercher_besoin_direct(
                                         if !variants.is_empty() {
                                             enriched_result["has_variant"] = json!(true);
                                             enriched_result["variants"] = json!(variants);
-                                            if let Some(dimension) =
-                                                variation_prix.get("dimension")
+                                            if let Some(dimension) = variation_prix.get("dimension")
                                             {
                                                 enriched_result["variant_dimension"] =
                                                     dimension.clone();
@@ -1661,7 +1697,7 @@ async fn search_services_direct_fallback(
     all_keywords: &[String],
 ) -> Result<Vec<serde_json::Value>, crate::core::types::AppError> {
     use crate::utils::log::log_info;
-    
+
     log_info(&format!(
         "[FALLBACK_SQL] Recherche fallback optimisée avec {} mots-clés: {:?}",
         all_keywords.len(),
@@ -1671,14 +1707,14 @@ async fn search_services_direct_fallback(
     // ✅ OPTIMISÉ: Utiliser la même approche que autocomplete (autocomplete_characteristics.full_vector)
     // C'est 10-20x plus rapide que chercher dans services.data->'produits' car full_vector est indexé avec GIN
     let search_terms: Vec<String> = all_keywords.iter().map(|k| k.to_lowercase()).collect();
-    
+
     // ✅ OPTIMISÉ 2025-12-20: Requête utilisant index GIN tsvector (ultra-rapide)
     // Le problème: LIKE '%...%' avec unnest + EXISTS = très lent (plusieurs secondes)
     // Solution: Utiliser tsvector @@ tsquery avec index GIN = instantané (< 100ms)
-    
+
     // Construire la requête tsquery depuis les mots-clés
     let search_query = all_keywords.join(" | "); // Format tsquery: "mot1 | mot2 | mot3"
-    
+
     let query = r#"
         SELECT DISTINCT ON (s.id)
             s.id,
@@ -1733,8 +1769,11 @@ async fn search_services_direct_fallback(
             log_info(&format!("[FALLBACK_SQL] Erreur requête: {}", e));
             crate::core::types::AppError::Internal(format!("Erreur recherche SQL directe: {}", e))
         })?;
-    
-    log_info(&format!("[FALLBACK_SQL] ✅ {} services trouvés via autocomplete_characteristics", services.len()));
+
+    log_info(&format!(
+        "[FALLBACK_SQL] ✅ {} services trouvés via autocomplete_characteristics",
+        services.len()
+    ));
 
     let mut results = Vec::new();
     for row in services {
@@ -1745,7 +1784,7 @@ async fn search_services_direct_fallback(
         let _is_active: bool = row.get::<bool, _>("is_active");
         let created_at: chrono::DateTime<chrono::Utc> =
             row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
-        
+
         // ✅ OPTIMISÉ: Utiliser le score de pertinence calculé par SQL (comme autocomplete)
         let relevance_score: f64 = row.get::<f64, _>("relevance_score");
 
@@ -1754,7 +1793,7 @@ async fn search_services_direct_fallback(
             .signed_duration_since(created_at)
             .num_days();
         let recency_bonus = if days_old <= 7 { 0.1 } else { 0.0 };
-        
+
         let final_score = relevance_score + recency_bonus;
 
         let result = serde_json::json!({

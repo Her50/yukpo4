@@ -37,11 +37,11 @@ pub async fn get_products_by_service(
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<Vec<ProductResponse>>> {
     let products_service = &state.products_service;
-    
+
     let products = products_service
         .get_active_products_by_service(service_id)
         .await?;
-    
+
     let response: Vec<ProductResponse> = products
         .into_iter()
         .map(|p| ProductResponse {
@@ -58,7 +58,7 @@ pub async fn get_products_by_service(
             auto_deactivate_at: p.auto_deactivate_at,
         })
         .collect();
-    
+
     Ok(Json(response))
 }
 
@@ -69,7 +69,7 @@ pub async fn get_product(
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<ProductResponse>> {
     let products_service = &state.products_service;
-    
+
     let product = products_service
         .get_product(service_id, product_index)
         .await?
@@ -79,7 +79,7 @@ pub async fn get_product(
                 service_id, product_index
             ))
         })?;
-    
+
     let response = ProductResponse {
         id: product.id,
         service_id: product.service_id,
@@ -93,7 +93,7 @@ pub async fn get_product(
         updated_at: product.updated_at,
         auto_deactivate_at: product.auto_deactivate_at,
     };
-    
+
     Ok(Json(response))
 }
 
@@ -112,27 +112,25 @@ pub async fn update_product(
     Json(payload): Json<UpdateProductRequest>,
 ) -> AppResult<Json<ProductResponse>> {
     // Vérifier que l'utilisateur est propriétaire du service
-    let owner: Option<i32> = sqlx::query_scalar!(
-        "SELECT user_id FROM services WHERE id = $1",
-        service_id
-    )
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
-    
+    let owner: Option<i32> =
+        sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
+
     if owner != Some(user.id) {
         return Err(AppError::Unauthorized(
             "Vous n'êtes pas propriétaire de ce service".to_string(),
         ));
     }
-    
+
     let products_service = &state.products_service;
-    
+
     // ✅ PHASE 5: Mise à jour uniquement dans la table service_products (plus d'écriture JSONB)
     let product = products_service
         .update_product(service_id, product_index, &payload.product_data)
         .await?;
-    
+
     let response = ProductResponse {
         id: product.id,
         service_id: product.service_id,
@@ -146,7 +144,7 @@ pub async fn update_product(
         updated_at: product.updated_at,
         auto_deactivate_at: product.auto_deactivate_at,
     };
-    
+
     Ok(Json(response))
 }
 
@@ -158,30 +156,28 @@ pub async fn delete_product(
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est propriétaire du service
-    let owner: Option<i32> = sqlx::query_scalar!(
-        "SELECT user_id FROM services WHERE id = $1",
-        service_id
-    )
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
-    
+    let owner: Option<i32> =
+        sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
+
     if owner != Some(user.id) {
         return Err(AppError::Unauthorized(
             "Vous n'êtes pas propriétaire de ce service".to_string(),
         ));
     }
-    
+
     let products_service = &state.products_service;
-    
+
     // ✅ PHASE 5: Suppression uniquement dans la table service_products (plus d'écriture JSONB)
     products_service
         .delete_product(service_id, product_index)
         .await?;
-    
+
     // Réindexer les produits restants
     products_service.reindex_products(service_id).await?;
-    
+
     Ok(Json(json!({
         "message": "Produit supprimé avec succès",
         "service_id": service_id,
@@ -208,7 +204,7 @@ pub async fn get_products_by_user(
             "Vous ne pouvez récupérer que vos propres produits".to_string(),
         ));
     }
-    
+
     // Récupérer tous les produits de l'utilisateur via ses services
     let products = sqlx::query_as::<_, crate::services::products_service::Product>(
         r#"
@@ -241,7 +237,7 @@ pub async fn get_products_by_user(
             e
         ))
     })?;
-    
+
     // ✅ CORRIGÉ À LA RACINE: Valider que tous les produits ont un product_index valide
     let response: Vec<ProductResponse> = products
         .into_iter()
@@ -268,7 +264,7 @@ pub async fn get_products_by_user(
             }
         })
         .collect();
-    
+
     Ok(Json(response))
 }
 
@@ -280,27 +276,25 @@ pub async fn duplicate_product(
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<Json<ProductResponse>> {
     // Vérifier que l'utilisateur est propriétaire du service
-    let owner: Option<i32> = sqlx::query_scalar!(
-        "SELECT user_id FROM services WHERE id = $1",
-        service_id
-    )
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
-    
+    let owner: Option<i32> =
+        sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
+
     if owner != Some(user.id) {
         return Err(AppError::Unauthorized(
             "Vous n'êtes pas propriétaire de ce service".to_string(),
         ));
     }
-    
+
     let products_service = &state.products_service;
-    
+
     // Dupliquer le produit
     let new_product = products_service
         .duplicate_product(service_id, product_index)
         .await?;
-    
+
     let response = ProductResponse {
         id: new_product.id,
         service_id: new_product.service_id,
@@ -314,7 +308,6 @@ pub async fn duplicate_product(
         updated_at: new_product.updated_at,
         auto_deactivate_at: new_product.auto_deactivate_at,
     };
-    
+
     Ok(Json(response))
 }
-

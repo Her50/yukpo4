@@ -1,6 +1,6 @@
 use axum::{
     extract::{Extension, Path, Query, State},
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use http::StatusCode;
@@ -19,47 +19,44 @@ pub fn product_comments_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // GET /api/services/{id}/comments - Récupérer les commentaires d'un service
         .route(
             "/api/services/{id}/comments",
-            get(get_product_comments_handler)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    crate::middlewares::jwt::jwt_auth,
-                )),
+            get(get_product_comments_handler).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                crate::middlewares::jwt::jwt_auth,
+            )),
         )
         // POST /api/services/{id}/comments - Créer un commentaire
         .route(
             "/api/services/{id}/comments",
-            post(create_product_comment_handler)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    crate::middlewares::jwt::jwt_auth,
-                )),
+            post(create_product_comment_handler).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                crate::middlewares::jwt::jwt_auth,
+            )),
         )
         // PUT /api/comments/{id} - Mettre à jour un commentaire
         .route(
             "/api/comments/{id}",
-            put(update_product_comment_handler)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    crate::middlewares::jwt::jwt_auth,
-                )),
+            put(update_product_comment_handler).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                crate::middlewares::jwt::jwt_auth,
+            )),
         )
         // DELETE /api/comments/{id} - Supprimer un commentaire
         .route(
             "/api/comments/{id}",
-            delete(delete_product_comment_handler)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    crate::middlewares::jwt::jwt_auth,
-                )),
+            delete(delete_product_comment_handler).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                crate::middlewares::jwt::jwt_auth,
+            )),
         )
         // POST /api/comments/{id}/reactions - Toggle réaction sur un commentaire
         .route(
             "/api/comments/{id}/reactions",
-            post(toggle_product_comment_reaction_handler)
-                .layer(axum::middleware::from_fn_with_state(
+            post(toggle_product_comment_reaction_handler).layer(
+                axum::middleware::from_fn_with_state(
                     state.clone(),
                     crate::middlewares::jwt::jwt_auth,
-                )),
+                ),
+            ),
         )
         .with_state(state)
 }
@@ -108,4 +105,3 @@ async fn toggle_product_comment_reaction_handler(
 ) -> Result<Json<Value>, StatusCode> {
     toggle_product_comment_reaction(Path(comment_id), State(state), maybe_user, Json(payload)).await
 }
-

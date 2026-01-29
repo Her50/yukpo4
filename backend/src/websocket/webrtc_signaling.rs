@@ -31,7 +31,7 @@ impl WebRTCSignalingManager {
             connections: Arc::new(RwLock::new(HashMap::new())),
             peers: Arc::new(RwLock::new(HashMap::new())),
         };
-        
+
         // ✅ NOUVEAU: Nettoyage périodique des connexions inactives
         let connections_clone = manager.connections.clone();
         let peers_clone = manager.peers.clone();
@@ -43,7 +43,7 @@ impl WebRTCSignalingManager {
                 let mut peers = peers_clone.write().await;
                 let now = chrono::Utc::now();
                 let timeout = chrono::Duration::minutes(10); // 10 minutes d'inactivité
-                
+
                 // Nettoyer les connexions inactives
                 let mut to_remove = Vec::new();
                 for (user_id, peer) in peers.iter() {
@@ -51,7 +51,7 @@ impl WebRTCSignalingManager {
                         to_remove.push(user_id.clone());
                     }
                 }
-                
+
                 for user_id in to_remove {
                     connections.remove(&user_id);
                     if let Some(peer) = peers.get_mut(&user_id) {
@@ -61,7 +61,7 @@ impl WebRTCSignalingManager {
                 }
             }
         });
-        
+
         manager
     }
 

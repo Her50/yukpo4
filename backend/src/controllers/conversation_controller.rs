@@ -562,23 +562,20 @@ pub async fn create_private_conversation(
     let pool = &state.pg;
 
     // ✅ CORRIGÉ : Vérifier que l'utilisateur cible existe (sans is_active car la colonne n'existe pas)
-    let target_user =
-        sqlx::query("SELECT id, nom_complet FROM users WHERE id = $1")
-            .bind(payload.target_user_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| {
-                error!(
-                    "[create_private_conversation] Error checking target user: {:?}",
-                    e
-                );
-                AppError::Internal("Database error".to_string())
-            })?;
+    let target_user = sqlx::query("SELECT id, nom_complet FROM users WHERE id = $1")
+        .bind(payload.target_user_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            error!(
+                "[create_private_conversation] Error checking target user: {:?}",
+                e
+            );
+            AppError::Internal("Database error".to_string())
+        })?;
 
     if target_user.is_none() {
-        return Err(AppError::NotFound(
-            "Utilisateur non trouvé".to_string(),
-        ));
+        return Err(AppError::NotFound("Utilisateur non trouvé".to_string()));
     }
 
     let target_user_name = target_user

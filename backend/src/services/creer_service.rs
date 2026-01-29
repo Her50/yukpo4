@@ -171,8 +171,21 @@ pub async fn process_single_image_for_product(
     let stored = if is_url(image_data) {
         tokio::time::timeout(
             timeout_duration,
-            download_and_save_image(storage_root.as_path(), service_id, image_data, "images", media_storage.clone())
-        ).await.map_err(|_| AppError::Internal(format!("Timeout téléchargement image (>{})", timeout_duration.as_secs())))?
+            download_and_save_image(
+                storage_root.as_path(),
+                service_id,
+                image_data,
+                "images",
+                media_storage.clone(),
+            ),
+        )
+        .await
+        .map_err(|_| {
+            AppError::Internal(format!(
+                "Timeout téléchargement image (>{})",
+                timeout_duration.as_secs()
+            ))
+        })?
     } else if is_probable_base64(image_data) {
         tokio::time::timeout(
             timeout_duration,
@@ -183,8 +196,15 @@ pub async fn process_single_image_for_product(
                 image_data,
                 "jpg",
                 media_storage,
-            )
-        ).await.map_err(|_| AppError::Internal(format!("Timeout sauvegarde image base64 (>{})", timeout_duration.as_secs())))?
+            ),
+        )
+        .await
+        .map_err(|_| {
+            AppError::Internal(format!(
+                "Timeout sauvegarde image base64 (>{})",
+                timeout_duration.as_secs()
+            ))
+        })?
     } else {
         log::warn!(
             "[process_single_image_for_product] Image ignorée (format non supporté) pour produit {}",
@@ -239,7 +259,7 @@ pub async fn process_single_image_for_product(
                             // Sinon, on évite l'assignation pour ne pas déclencher `unused_assignments`.
                             #[cfg(feature = "image_search")]
                             {
-                            image_bytes = compressed;
+                                image_bytes = compressed;
                             }
                         }
                     } else {
@@ -431,7 +451,10 @@ pub async fn persist_base64_media(
         // ✅ CORRIGÉ: Upload S3 synchrone pour garantir storage_path CDN dans DB
         let final_path = if media_storage.is_remote() {
             let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
-            match media_storage.store_file(&disk_path, &storage_key, content_type.as_deref()).await {
+            match media_storage
+                .store_file(&disk_path, &storage_key, content_type.as_deref())
+                .await
+            {
                 Ok(location) => {
                     log::info!(
                         "[persist_base64_media] ✅ Upload S3 réussi pour fichier volumineux: {}",
@@ -469,7 +492,10 @@ pub async fn persist_base64_media(
         // ✅ OPTIMISÉ 2025-12-30: Upload directement depuis les bytes vers S3 (pas d'écriture locale inutile)
         let final_path = if media_storage.is_remote() {
             let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
-            match media_storage.store_bytes(&decoded, &storage_key, content_type.as_deref()).await {
+            match media_storage
+                .store_bytes(&decoded, &storage_key, content_type.as_deref())
+                .await
+            {
                 Ok(location) => {
                     log::info!(
                         "[persist_base64_media] ✅ Upload S3 direct depuis mémoire réussi: {}",
@@ -484,7 +510,10 @@ pub async fn persist_base64_media(
                     );
                     // Fallback: sauvegarder localement si S3 échoue
                     if let Err(disk_err) = fs::write(&disk_path, &decoded).await {
-                        log::error!("[persist_base64_media] ❌ Erreur fallback local: {}", disk_err);
+                        log::error!(
+                            "[persist_base64_media] ❌ Erreur fallback local: {}",
+                            disk_err
+                        );
                     }
                     relative_path_str // Fallback local si S3 échoue
                 }
@@ -618,7 +647,10 @@ pub async fn download_and_save_image(
     // ✅ CORRIGÉ 2025-12-27: Upload S3 synchrone pour garantir storage_path CDN dans DB
     let final_path = if media_storage.is_remote() {
         let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
-        match media_storage.store_file(&disk_path, &storage_key, content_type.as_deref()).await {
+        match media_storage
+            .store_file(&disk_path, &storage_key, content_type.as_deref())
+            .await
+        {
             Ok(location) => {
                 log::info!(
                     "[download_and_save_image] ✅ Upload S3 réussi: {}",
@@ -1652,7 +1684,7 @@ pub async fn creer_service(
     user_id: i32,
     data: &serde_json::Value,
     media_storage: Arc<MediaStorageService>, // ✅ NOUVEAU: MediaStorageService pour upload S3/Wasabi
-    _redis_client: &redis::Client, // Ajout de Redis pour le caching (désactivé)
+    _redis_client: &redis::Client,           // Ajout de Redis pour le caching (désactivé)
     _scalability_service: Option<
         std::sync::Arc<crate::services::scalability_service::ScalabilityService>,
     >, // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour contrôle du parallélisme
@@ -1697,21 +1729,19 @@ pub async fn creer_service(
 
     // ✅ NOUVEAU 2025-01-27 : Validation stricte des produits si présents
     // ✅ CORRIGÉ: Chercher les produits dans le format normalisé (objet avec .valeur) OU tableau direct
-    let produits_array_for_validation = data_obj
-        .get("produits")
-        .and_then(|v| {
-            // Si c'est un tableau direct
-            if let Some(arr) = v.as_array() {
-                Some(arr)
-            }
-            // Si c'est un objet avec .valeur (format normalisé par valider_service_json)
-            else if let Some(obj) = v.as_object() {
-                obj.get("valeur").and_then(|v| v.as_array())
-            } else {
-                None
-            }
-        });
-    
+    let produits_array_for_validation = data_obj.get("produits").and_then(|v| {
+        // Si c'est un tableau direct
+        if let Some(arr) = v.as_array() {
+            Some(arr)
+        }
+        // Si c'est un objet avec .valeur (format normalisé par valider_service_json)
+        else if let Some(obj) = v.as_object() {
+            obj.get("valeur").and_then(|v| v.as_array())
+        } else {
+            None
+        }
+    });
+
     if let Some(produits_array) = produits_array_for_validation {
         log::info!(
             "[creer_service] 🔍 Validation stricte de {} produits",
@@ -1744,8 +1774,15 @@ pub async fn creer_service(
     } else {
         log::info!(
             "[creer_service] 🔍 Aucun produit trouvé pour validation stricte (format: {})",
-            data_obj.get("produits")
-                .map(|v| if v.is_array() { "array" } else if v.is_object() { "object" } else { "other" })
+            data_obj
+                .get("produits")
+                .map(|v| if v.is_array() {
+                    "array"
+                } else if v.is_object() {
+                    "object"
+                } else {
+                    "other"
+                })
                 .unwrap_or("none")
         );
     }
@@ -2093,10 +2130,12 @@ pub async fn creer_service(
     // Extrait les codes d'erreur PostgreSQL et fournit des messages plus précis
     fn analyze_sql_error(e: &sqlx::Error) -> String {
         if let sqlx::Error::Database(db_err) = e {
-            let code = db_err.code().and_then(|c| c.to_string().parse::<u32>().ok());
+            let code = db_err
+                .code()
+                .and_then(|c| c.to_string().parse::<u32>().ok());
             let message = db_err.message();
             let constraint = db_err.constraint();
-            
+
             match code {
                 Some(23502) => {
                     // NOT NULL violation - extraire le nom de colonne depuis le message si possible
@@ -2117,37 +2156,46 @@ pub async fn creer_service(
                         "unknown".to_string()
                     };
                     format!("Erreur de validation : le champ '{}' est obligatoire mais n'a pas été fourni.", column_hint)
-                },
+                }
                 Some(23503) => {
                     // Foreign key violation
                     let constraint_name = constraint.unwrap_or("foreign_key");
-                    format!("Erreur de référence : référence invalide ({})", constraint_name)
-                },
+                    format!(
+                        "Erreur de référence : référence invalide ({})",
+                        constraint_name
+                    )
+                }
                 Some(23505) => {
                     // Unique constraint violation
                     let constraint_name = constraint.unwrap_or("unique_constraint");
-                    format!("Erreur de doublon : cette valeur existe déjà ({})", constraint_name)
-                },
+                    format!(
+                        "Erreur de doublon : cette valeur existe déjà ({})",
+                        constraint_name
+                    )
+                }
                 Some(23514) => {
                     // Check constraint violation
                     format!("Erreur de validation : la valeur fournie ne respecte pas les contraintes de validation.")
-                },
+                }
                 Some(22001) => {
                     // String data right truncated
                     format!("Erreur de taille : les données fournies sont trop longues pour être stockées.")
-                },
+                }
                 Some(22007) => {
                     // Invalid datetime format
                     format!("Erreur de format : le format de date/heure est invalide.")
-                },
+                }
                 Some(22023) => {
                     // Invalid parameter value
                     format!("Erreur de paramètre : une valeur de paramètre est invalide.")
-                },
+                }
                 _ => {
                     // Autres erreurs SQL
                     if let Some(constraint_name) = constraint {
-                        format!("Erreur SQL (code {:?}, contrainte {}): {}", code, constraint_name, message)
+                        format!(
+                            "Erreur SQL (code {:?}, contrainte {}): {}",
+                            code, constraint_name, message
+                        )
                     } else {
                         format!("Erreur SQL (code {:?}): {}", code, message)
                     }
@@ -2296,7 +2344,9 @@ pub async fn creer_service(
                 // ✅ AMÉLIORATION 2025-01-27 : Rollback automatique de la transaction
                 // Le débit est dans la transaction, donc le rollback annule automatiquement le débit
                 let _ = tx.rollback().await;
-                log::error!("[creer_service] ❌ Transaction rollback - débit annulé automatiquement");
+                log::error!(
+                    "[creer_service] ❌ Transaction rollback - débit annulé automatiquement"
+                );
 
                 // ✅ AMÉLIORATION : Retourner un message d'erreur plus précis selon le type d'erreur
                 return Err(AppError::Internal(error_message));
@@ -2305,7 +2355,7 @@ pub async fn creer_service(
 
         // ✅ CRITIQUE 2026-01-12: Récupérer l'ID directement depuis la colonne "id" (plus sûr que l'alias)
         let service_id: i32 = row.get::<i32, _>("id");
-        
+
         log::info!(
             "[creer_service] 🔍 Service_id récupéré directement depuis colonne 'id': {}",
             service_id
@@ -2313,19 +2363,20 @@ pub async fn creer_service(
 
         // ✅ CRITIQUE 2026-01-12: Vérifier que le service_id récupéré correspond bien au service créé
         // en vérifiant qu'il existe dans la transaction et en récupérant ses détails
-        let service_details = sqlx::query(
-            "SELECT id, user_id, created_at FROM services WHERE id = $1"
-        )
-        .bind(service_id)
-        .fetch_optional(&mut *tx)
-        .await;
+        let service_details =
+            sqlx::query("SELECT id, user_id, created_at FROM services WHERE id = $1")
+                .bind(service_id)
+                .fetch_optional(&mut *tx)
+                .await;
 
         match service_details {
             Ok(Some(service_row)) => {
                 let actual_id: i32 = service_row.get::<i32, _>("id");
                 let service_user_id: i32 = service_row.get::<i32, _>("user_id");
-                let service_created_at = service_row.try_get::<chrono::NaiveDateTime, _>("created_at").ok();
-                
+                let service_created_at = service_row
+                    .try_get::<chrono::NaiveDateTime, _>("created_at")
+                    .ok();
+
                 // ✅ Vérifier que l'ID correspond
                 if actual_id != service_id {
                     log::error!(
@@ -2336,11 +2387,10 @@ pub async fn creer_service(
                     let _ = tx.rollback().await;
                     return Err(AppError::Internal(format!(
                         "Incohérence service_id: utilisé={}, DB={}",
-                        service_id,
-                        actual_id
+                        service_id, actual_id
                     )));
                 }
-                
+
                 // ✅ Vérifier que le service appartient au bon utilisateur
                 if service_user_id != user_id {
                     log::error!(
@@ -2352,19 +2402,17 @@ pub async fn creer_service(
                     let _ = tx.rollback().await;
                     return Err(AppError::Internal(format!(
                         "Service {} appartient à user {} mais on attend user {}",
-                        service_id,
-                        service_user_id,
-                        user_id
+                        service_id, service_user_id, user_id
                     )));
                 }
-                
+
                 log::info!(
                     "[creer_service] ✅ Service créé et vérifié dans transaction - service_id: {}, user_id: {}, created_at: {:?}",
                     service_id,
                     service_user_id,
                     service_created_at
                 );
-            },
+            }
             Ok(None) => {
                 log::error!(
                     "[creer_service] ❌ CRITIQUE: Service {} n'existe PAS dans la transaction après création!",
@@ -2375,7 +2423,7 @@ pub async fn creer_service(
                     "Service {} créé mais non visible dans la transaction",
                     service_id
                 )));
-            },
+            }
             Err(e) => {
                 log::error!(
                     "[creer_service] ❌ Erreur vérification service {} dans transaction: {}",
@@ -2397,9 +2445,7 @@ pub async fn creer_service(
     let max_retries = 5;
     let mut last_error = None;
     let (mut tx, _verified_balance, _new_balance, service_id) = 'retry_loop: loop {
-        log::info!(
-            "[creer_service] 🔄 Tentative création service (retry loop)..."
-        );
+        log::info!("[creer_service] 🔄 Tentative création service (retry loop)...");
         for attempt in 1..=max_retries {
             match execute_critical_transaction(
                 pool,
@@ -2420,7 +2466,7 @@ pub async fn creer_service(
                         result.2
                     );
                     break 'retry_loop result;
-                },
+                }
                 Err(e) => {
                     let error_str = e.to_string();
                     let is_retryable = error_str.contains("peer closed connection")
@@ -2526,8 +2572,10 @@ pub async fn creer_service(
                         logo_str,
                         "png",
                         media_storage.clone(),
-                    )
-                ).await {
+                    ),
+                )
+                .await
+                {
                     Ok(Ok(stored)) => {
                         let file_path = stored.path;
                         #[cfg(feature = "image_search")]
@@ -2591,7 +2639,10 @@ pub async fn creer_service(
                         // ✅ Ne pas faire échouer la création du service si logo échoue
                     }
                     Err(_) => {
-                        log::error!("[creer_service] ❌ Timeout sauvegarde logo (>{})", timeout_duration.as_secs());
+                        log::error!(
+                            "[creer_service] ❌ Timeout sauvegarde logo (>{})",
+                            timeout_duration.as_secs()
+                        );
                         // ✅ Ne pas faire échouer la création du service si timeout logo
                     }
                 }
@@ -2918,23 +2969,22 @@ pub async fn creer_service(
         produits_array_opt.is_some(),
         service_id
     );
-    
+
     // ✅ CRITIQUE 2026-01-12: Vérifier que le service existe toujours dans la transaction
     // avant de créer les produits (pour éviter l'erreur FK)
-    let service_check = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM services WHERE id = $1)"
-    )
-    .bind(service_id)
-    .fetch_one(&mut *tx)
-    .await;
-    
+    let service_check =
+        sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM services WHERE id = $1)")
+            .bind(service_id)
+            .fetch_one(&mut *tx)
+            .await;
+
     match service_check {
         Ok(true) => {
             log::info!(
                 "[creer_service] ✅ Service {} confirmé dans transaction avant création produits",
                 service_id
             );
-        },
+        }
         Ok(false) => {
             log::error!(
                 "[creer_service] ❌ CRITIQUE: Service {} n'existe PAS dans la transaction avant création produits!",
@@ -2942,10 +2992,11 @@ pub async fn creer_service(
             );
             // Rollback et retourner une erreur
             let _ = tx.rollback().await;
-            return Err(crate::core::types::AppError::Internal(
-                format!("Service {} n'existe pas dans la transaction", service_id)
-            ));
-        },
+            return Err(crate::core::types::AppError::Internal(format!(
+                "Service {} n'existe pas dans la transaction",
+                service_id
+            )));
+        }
         Err(e) => {
             log::error!(
                 "[creer_service] ❌ Erreur vérification service {} dans transaction: {}",
@@ -2953,9 +3004,10 @@ pub async fn creer_service(
                 e
             );
             let _ = tx.rollback().await;
-            return Err(crate::core::types::AppError::Internal(
-                format!("Erreur vérification service: {}", e)
-            ));
+            return Err(crate::core::types::AppError::Internal(format!(
+                "Erreur vérification service: {}",
+                e
+            )));
         }
     }
     if let Some(produits_array) = produits_array_opt {
@@ -3001,9 +3053,12 @@ pub async fn creer_service(
                 product_index,
                 service_id
             );
-            
+
             // ✅ NOUVEAU 2026-01-23: Vérifier que sous_caracteristiques sont présentes après nettoyage
-            if let Some(sous_caracs) = produit_cleaned_for_creation.get("sous_caracteristiques").and_then(|v| v.as_object()) {
+            if let Some(sous_caracs) = produit_cleaned_for_creation
+                .get("sous_caracteristiques")
+                .and_then(|v| v.as_object())
+            {
                 let dimensions_count = sous_caracs.len();
                 log::info!(
                     "[creer_service] ✅ sous_caracteristiques présentes après nettoyage: {} dimensions",
@@ -3019,10 +3074,11 @@ pub async fn creer_service(
                     product_index
                 );
             }
-            
+
             log::info!(
                 "[creer_service] 🔍 Produit nettoyé (clés): {:?}",
-                produit_cleaned_for_creation.as_object()
+                produit_cleaned_for_creation
+                    .as_object()
                     .map(|o| o.keys().collect::<Vec<_>>())
                     .unwrap_or_default()
             );
@@ -3040,18 +3096,16 @@ pub async fn creer_service(
             // ✅ CRITIQUE 2026-01-12: Vérifier que le service existe dans la transaction AVANT de créer le produit
             // Cela évite l'erreur FK en s'assurant que le service est bien visible dans la transaction
             // ✅ DOUBLE VÉRIFICATION: Récupérer aussi l'ID réel du service depuis la transaction
-            let service_check = sqlx::query(
-                "SELECT id, user_id FROM services WHERE id = $1"
-            )
-            .bind(service_id)
-            .fetch_optional(&mut *tx)
-            .await;
+            let service_check = sqlx::query("SELECT id, user_id FROM services WHERE id = $1")
+                .bind(service_id)
+                .fetch_optional(&mut *tx)
+                .await;
 
             match service_check {
                 Ok(Some(service_row)) => {
                     let actual_service_id: i32 = service_row.get::<i32, _>("id");
                     let service_user_id: i32 = service_row.get::<i32, _>("user_id");
-                    
+
                     // ✅ Vérifier que le service_id utilisé correspond bien au service trouvé
                     if actual_service_id != service_id {
                         log::error!(
@@ -3062,7 +3116,7 @@ pub async fn creer_service(
                         saved_image_paths_by_product.push(Vec::new());
                         continue;
                     }
-                    
+
                     // ✅ Vérifier que le service appartient bien au bon utilisateur
                     if service_user_id != user_id {
                         log::error!(
@@ -3074,7 +3128,7 @@ pub async fn creer_service(
                         saved_image_paths_by_product.push(Vec::new());
                         continue;
                     }
-                    
+
                     log::info!(
                         "[creer_service] ✅ Service {} vérifié dans transaction (user_id: {}, service_id: {}), création produit {}...",
                         service_id,
@@ -3082,7 +3136,7 @@ pub async fn creer_service(
                         actual_service_id,
                         product_index
                     );
-                },
+                }
                 Ok(None) => {
                     log::error!(
                         "[creer_service] ❌ Service {} n'existe PAS dans la transaction avant création produit {}",
@@ -3091,7 +3145,7 @@ pub async fn creer_service(
                     );
                     saved_image_paths_by_product.push(Vec::new());
                     continue;
-                },
+                }
                 Err(e) => {
                     log::error!(
                         "[creer_service] ❌ Erreur vérification existence service {} dans transaction: {}",
@@ -3105,8 +3159,9 @@ pub async fn creer_service(
 
             // ✅ CORRIGÉ 2026-01-12: Créer le produit directement dans la transaction tx
             // pour éviter l'erreur FK (service_id non visible dans connexion séparée)
-            let product_record = match sqlx::query_as::<_, crate::services::products_service::Product>(
-                r#"
+            let product_record =
+                match sqlx::query_as::<_, crate::services::products_service::Product>(
+                    r#"
                 INSERT INTO service_products (service_id, product_index, product_data)
                 VALUES ($1, $2, $3)
                 ON CONFLICT (service_id, product_index) 
@@ -3125,36 +3180,36 @@ pub async fn creer_service(
                     created_at,
                     updated_at,
                     auto_deactivate_at
-                "#
-            )
-            .bind(service_id)
-            .bind(product_index as i32)
-            .bind(&produit_cleaned_for_creation)
-            .fetch_one(&mut *tx)
-            .await
-            {
-                Ok(product) => {
-                    log::info!(
+                "#,
+                )
+                .bind(service_id)
+                .bind(product_index as i32)
+                .bind(&produit_cleaned_for_creation)
+                .fetch_one(&mut *tx)
+                .await
+                {
+                    Ok(product) => {
+                        log::info!(
                         "[creer_service] ✅ Produit {} créé dans service_products (id: {}, is_active: {}) AVANT création médias",
                         product_index,
                         product.id,
                         product.is_active
                     );
-                    log::info!(
+                        log::info!(
                         "[creer_service] ✅ Produit créé - product_name: {}, product_type: {}, product_price: {:?}",
                         product.product_name,
                         product.product_type,
                         product.product_price
                     );
-                    product
-                }
-                Err(e) => {
-                    log::error!(
+                        product
+                    }
+                    Err(e) => {
+                        log::error!(
                         "[creer_service] ❌ Erreur création produit {} dans service_products: {}",
                         product_index,
                         e
                     );
-                    log::error!(
+                        log::error!(
                         "[creer_service] ❌ Détails erreur - service_id: {}, product_index: {}, produit_data keys: {:?}",
                         service_id,
                         product_index,
@@ -3162,12 +3217,12 @@ pub async fn creer_service(
                             .map(|o| o.keys().collect::<Vec<_>>())
                             .unwrap_or_default()
                     );
-                    // ⚠️ CRITIQUE: Si la création du produit échoue, on ne peut pas créer les médias
-                    // On continue quand même pour ne pas bloquer les autres produits
-                    saved_image_paths_by_product.push(Vec::new());
-                    continue;
-                }
-            };
+                        // ⚠️ CRITIQUE: Si la création du produit échoue, on ne peut pas créer les médias
+                        // On continue quand même pour ne pas bloquer les autres produits
+                        saved_image_paths_by_product.push(Vec::new());
+                        continue;
+                    }
+                };
 
             // ✅ Utiliser le vrai product_id de service_products
             let product_id = product_record.id.to_string();
@@ -3370,8 +3425,10 @@ pub async fn creer_service(
                     let timeout_duration = std::time::Duration::from_secs(60);
                     match tokio::time::timeout(
                         timeout_duration,
-                        processor.process_media_batch(service_id, Some(product_index), media_items)
-                    ).await {
+                        processor.process_media_batch(service_id, Some(product_index), media_items),
+                    )
+                    .await
+                    {
                         Ok(Ok(processed)) => {
                             // Insérer dans la transaction par batch
                             for (image_index, media) in processed.iter().enumerate() {
@@ -4067,8 +4124,14 @@ pub async fn creer_service(
         for (idx, audio_data) in audio_strings.iter().enumerate() {
             // ✅ AMÉLIORATION: Gérer URLs et base64
             let stored = if is_url(audio_data) {
-                download_and_save_image(storage_root.as_path(), service_id, audio_data, "audio", media_storage.clone())
-                    .await
+                download_and_save_image(
+                    storage_root.as_path(),
+                    service_id,
+                    audio_data,
+                    "audio",
+                    media_storage.clone(),
+                )
+                .await
             } else if is_probable_base64(audio_data) {
                 persist_base64_media(
                     storage_root.as_path(),
@@ -4161,8 +4224,14 @@ pub async fn creer_service(
         for (idx, video_data) in video_strings.iter().enumerate() {
             // ✅ AMÉLIORATION: Gérer URLs et base64
             let stored = if is_url(video_data) {
-                download_and_save_image(storage_root.as_path(), service_id, video_data, "videos", media_storage.clone())
-                    .await
+                download_and_save_image(
+                    storage_root.as_path(),
+                    service_id,
+                    video_data,
+                    "videos",
+                    media_storage.clone(),
+                )
+                .await
             } else if is_probable_base64(video_data) {
                 persist_base64_media(
                     storage_root.as_path(),
@@ -4256,8 +4325,14 @@ pub async fn creer_service(
         for (idx, doc_data) in doc_strings.iter().enumerate() {
             // ✅ AMÉLIORATION: Gérer URLs et base64
             let stored = if is_url(doc_data) {
-                download_and_save_image(storage_root.as_path(), service_id, doc_data, "documents", media_storage.clone())
-                    .await
+                download_and_save_image(
+                    storage_root.as_path(),
+                    service_id,
+                    doc_data,
+                    "documents",
+                    media_storage.clone(),
+                )
+                .await
             } else if is_probable_base64(doc_data) {
                 persist_base64_media(
                     storage_root.as_path(),
@@ -5173,43 +5248,45 @@ pub async fn creer_service(
     // ✅ PHASE 1: Écriture UNIQUEMENT dans table products (JSONB supprimé)
     // Créer les produits dans la table products séparée pour améliorer les performances
     // ✅ SUPPRIMÉ: Plus besoin de créer ProductsService ici car les produits sont déjà créés dans la boucle précédente
-    
+
     // Utiliser data_processed si disponible (contient les produits avant nettoyage)
     let data_for_products = if data_processed.get("produits").is_some() {
         data_processed.clone()
     } else {
         data_obj.clone()
     };
-    
+
     // Extraire le tableau de produits
     let _produits_array = if let Some(produits_value) = data_for_products.get("produits") {
         // Si produits est directement un array
         if produits_value.is_array() {
             produits_value.as_array().cloned()
-        } 
+        }
         // Si produits est un objet avec "valeur" contenant l'array
         else if let Some(produits_obj) = produits_value.as_object() {
-            produits_obj.get("valeur").and_then(|v| v.as_array().cloned())
+            produits_obj
+                .get("valeur")
+                .and_then(|v| v.as_array().cloned())
         } else {
             None
         }
     } else {
         None
     };
-    
+
     // ✅ SUPPRIMER les produits de data_obj avant insertion dans services
     // Les produits seront uniquement dans la table products
     if let Some(data_map) = data_obj.as_object_mut() {
         data_map.remove("produits");
         log::info!("[creer_service] ✅ Produits supprimés de data_obj (seront uniquement dans table products)");
     }
-    
+
     // ✅ CORRIGÉ 2026-01-04: Les produits sont maintenant créés dans service_products
     // AVANT la création des médias (dans la boucle précédente)
     // Cette section est maintenant obsolète car la création se fait plus tôt
     // On garde cette section vide pour compatibilité, mais elle ne fait plus rien
     // car les produits sont déjà créés avec leurs médias dans la boucle précédente
-    
+
     // ✅ DIAGNOSTIC: Vérifier que tous les produits ont bien été créés
     use crate::services::products_service::ProductsService;
     let products_service = ProductsService::new(std::sync::Arc::new(pool.clone()));
@@ -5236,7 +5313,7 @@ pub async fn creer_service(
             count
         })
         .unwrap_or(0);
-    
+
     log::info!(
         "[creer_service] ✅ Tous les produits ont été créés dans service_products avec leurs médias ({} produits vérifiés)",
         products_count
@@ -5290,9 +5367,10 @@ pub async fn creer_service(
     // Si l'indexation échoue, on log l'erreur mais on ne fait pas échouer la requête (le service est déjà créé)
     let indexation_result = tokio::time::timeout(
         std::time::Duration::from_secs(5),
-        save_autocomplete_combination(pool, service_id, data_for_products)
-    ).await;
-    
+        save_autocomplete_combination(pool, service_id, data_for_products),
+    )
+    .await;
+
     match indexation_result {
         Ok(Ok(_)) => {
             log::info!("[CREER_SERVICE] ✅ Produit réel sauvegardé (autocomplete_characteristics + autocomplete_combinations)");
@@ -5512,300 +5590,335 @@ pub async fn save_ia_combinations_to_db(
 
         // ✅ CORRECTION DÉFINITIVE: Mapping intelligent des valeurs aux labels
         // Au lieu de créer des labels génériques, mapper chaque valeur à sa dimension correcte
-        let (mut product_labels, mut mapped_product_vector): (Vec<String>, Vec<String>) = 
-        if let Some(sous_caracs) = produits_field
-            .get("sous_caracteristiques")
-            .and_then(|v| v.as_object())
-        {
-            // Construire un index inversé : valeur -> liste des dimensions possibles
-            let mut value_to_dimensions: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
-            let dimension_order: Vec<String> = sous_caracs.keys().map(|k| k.to_string()).collect();
-            
-            for (dimension, values_array) in sous_caracs.iter() {
-                if let Some(values) = values_array.as_array() {
-                    for value_val in values {
-                        if let Some(value_str) = value_val.as_str() {
-                            let normalized_value = value_str.trim().to_lowercase();
-                            value_to_dimensions
-                                .entry(normalized_value)
-                                .or_insert_with(Vec::new)
-                                .push(dimension.clone());
-                        }
-                    }
-                }
-            }
-            
-            // Track quelles dimensions ont déjà été assignées et quelles valeurs ont été mappées
-            let mut assigned_dimensions: std::collections::HashSet<String> = std::collections::HashSet::new();
-            let mut mapped_values: Vec<(String, String)> = vec![]; // (dimension, value)
-            let mut unmapped_values: Vec<String> = vec![]; // Valeurs qui n'ont pas pu être mappées
-            
-            // Étape 1: Mapper les valeurs qui correspondent exactement à une dimension
-            // ✅ CORRECTION: Permettre plusieurs valeurs pour la même dimension si nécessaire
-            // ✅ AMÉLIORÉ: Ajouter correspondance partielle et fuzzy matching
-            for value in &product_vector {
-                let normalized_value = value.trim().to_lowercase();
-                
-                // 1. Correspondance exacte (priorité)
-                if let Some(possible_dimensions) = value_to_dimensions.get(&normalized_value) {
-                    // Prendre la première dimension non assignée, ou la première disponible
-                    if let Some(dimension) = possible_dimensions.iter()
-                        .find(|d| !assigned_dimensions.contains(*d))
-                        .or_else(|| possible_dimensions.first())
-                    {
-                        mapped_values.push((dimension.clone(), value.clone()));
-                        assigned_dimensions.insert(dimension.clone());
-                        continue;
-                    } else {
-                        // ✅ NOUVEAU: Si toutes les dimensions possibles sont déjà assignées,
-                        // mais que la valeur correspond à une dimension, on peut quand même l'ajouter
-                        // en créant une entrée supplémentaire pour cette dimension
-                        if let Some(dimension) = possible_dimensions.first() {
-                            // Vérifier si cette valeur est déjà mappée à cette dimension
-                            if !mapped_values.iter().any(|(dim, val)| dim == dimension && val == value) {
-                                mapped_values.push((dimension.clone(), value.clone()));
-                                continue;
-                            }
-                        }
-                    }
-                }
-                
-                // 2. ✅ NOUVEAU: Correspondance partielle (fuzzy matching)
-                // Chercher si la valeur est contenue dans une valeur de dimension ou vice versa
-                let mut best_match: Option<(String, String)> = None;
-                let mut best_score = 0.0;
-                
+        let (mut product_labels, mut mapped_product_vector): (Vec<String>, Vec<String>) =
+            if let Some(sous_caracs) = produits_field
+                .get("sous_caracteristiques")
+                .and_then(|v| v.as_object())
+            {
+                // Construire un index inversé : valeur -> liste des dimensions possibles
+                let mut value_to_dimensions: std::collections::HashMap<String, Vec<String>> =
+                    std::collections::HashMap::new();
+                let dimension_order: Vec<String> =
+                    sous_caracs.keys().map(|k| k.to_string()).collect();
+
                 for (dimension, values_array) in sous_caracs.iter() {
                     if let Some(values) = values_array.as_array() {
                         for value_val in values {
                             if let Some(value_str) = value_val.as_str() {
-                                let normalized_dim_value = value_str.trim().to_lowercase();
-                                
-                                // Correspondance exacte (déjà géré ci-dessus, mais on vérifie encore)
-                                if normalized_value == normalized_dim_value {
-                                    best_match = Some((dimension.clone(), value.clone()));
-                                    best_score = 1.0;
-                                    break;
+                                let normalized_value = value_str.trim().to_lowercase();
+                                value_to_dimensions
+                                    .entry(normalized_value)
+                                    .or_insert_with(Vec::new)
+                                    .push(dimension.clone());
+                            }
+                        }
+                    }
+                }
+
+                // Track quelles dimensions ont déjà été assignées et quelles valeurs ont été mappées
+                let mut assigned_dimensions: std::collections::HashSet<String> =
+                    std::collections::HashSet::new();
+                let mut mapped_values: Vec<(String, String)> = vec![]; // (dimension, value)
+                let mut unmapped_values: Vec<String> = vec![]; // Valeurs qui n'ont pas pu être mappées
+
+                // Étape 1: Mapper les valeurs qui correspondent exactement à une dimension
+                // ✅ CORRECTION: Permettre plusieurs valeurs pour la même dimension si nécessaire
+                // ✅ AMÉLIORÉ: Ajouter correspondance partielle et fuzzy matching
+                for value in &product_vector {
+                    let normalized_value = value.trim().to_lowercase();
+
+                    // 1. Correspondance exacte (priorité)
+                    if let Some(possible_dimensions) = value_to_dimensions.get(&normalized_value) {
+                        // Prendre la première dimension non assignée, ou la première disponible
+                        if let Some(dimension) = possible_dimensions
+                            .iter()
+                            .find(|d| !assigned_dimensions.contains(*d))
+                            .or_else(|| possible_dimensions.first())
+                        {
+                            mapped_values.push((dimension.clone(), value.clone()));
+                            assigned_dimensions.insert(dimension.clone());
+                            continue;
+                        } else {
+                            // ✅ NOUVEAU: Si toutes les dimensions possibles sont déjà assignées,
+                            // mais que la valeur correspond à une dimension, on peut quand même l'ajouter
+                            // en créant une entrée supplémentaire pour cette dimension
+                            if let Some(dimension) = possible_dimensions.first() {
+                                // Vérifier si cette valeur est déjà mappée à cette dimension
+                                if !mapped_values
+                                    .iter()
+                                    .any(|(dim, val)| dim == dimension && val == value)
+                                {
+                                    mapped_values.push((dimension.clone(), value.clone()));
+                                    continue;
                                 }
-                                
-                                // Correspondance partielle : la valeur est contenue dans la valeur de dimension
-                                if normalized_dim_value.contains(&normalized_value) || normalized_value.contains(&normalized_dim_value) {
-                                    let score = if normalized_value == normalized_dim_value {
-                                        1.0
-                                    } else if normalized_dim_value.contains(&normalized_value) {
-                                        normalized_value.len() as f64 / normalized_dim_value.len() as f64
-                                    } else {
-                                        normalized_dim_value.len() as f64 / normalized_value.len() as f64
-                                    };
-                                    
-                                    if score > best_score && score >= 0.5 {
-                                        // Éviter de mapper à une dimension déjà assignée si possible
-                                        if !assigned_dimensions.contains(dimension) {
-                                            best_match = Some((dimension.clone(), value.clone()));
-                                            best_score = score;
-                                        } else if best_match.is_none() {
-                                            // Si aucune meilleure option, utiliser celle-ci
-                                            best_match = Some((dimension.clone(), value.clone()));
-                                            best_score = score;
+                            }
+                        }
+                    }
+
+                    // 2. ✅ NOUVEAU: Correspondance partielle (fuzzy matching)
+                    // Chercher si la valeur est contenue dans une valeur de dimension ou vice versa
+                    let mut best_match: Option<(String, String)> = None;
+                    let mut best_score = 0.0;
+
+                    for (dimension, values_array) in sous_caracs.iter() {
+                        if let Some(values) = values_array.as_array() {
+                            for value_val in values {
+                                if let Some(value_str) = value_val.as_str() {
+                                    let normalized_dim_value = value_str.trim().to_lowercase();
+
+                                    // Correspondance exacte (déjà géré ci-dessus, mais on vérifie encore)
+                                    if normalized_value == normalized_dim_value {
+                                        best_match = Some((dimension.clone(), value.clone()));
+                                        best_score = 1.0;
+                                        break;
+                                    }
+
+                                    // Correspondance partielle : la valeur est contenue dans la valeur de dimension
+                                    if normalized_dim_value.contains(&normalized_value)
+                                        || normalized_value.contains(&normalized_dim_value)
+                                    {
+                                        let score = if normalized_value == normalized_dim_value {
+                                            1.0
+                                        } else if normalized_dim_value.contains(&normalized_value) {
+                                            normalized_value.len() as f64
+                                                / normalized_dim_value.len() as f64
+                                        } else {
+                                            normalized_dim_value.len() as f64
+                                                / normalized_value.len() as f64
+                                        };
+
+                                        if score > best_score && score >= 0.5 {
+                                            // Éviter de mapper à une dimension déjà assignée si possible
+                                            if !assigned_dimensions.contains(dimension) {
+                                                best_match =
+                                                    Some((dimension.clone(), value.clone()));
+                                                best_score = score;
+                                            } else if best_match.is_none() {
+                                                // Si aucune meilleure option, utiliser celle-ci
+                                                best_match =
+                                                    Some((dimension.clone(), value.clone()));
+                                                best_score = score;
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                
-                // 3. ✅ NOUVEAU: Mapping intelligent par contexte (mots-clés génériques uniquement)
-                // ✅ CORRIGÉ: Ne pas hardcoder des produits spécifiques, utiliser des patterns génériques
-                if best_match.is_none() {
-                    let value_lower = normalized_value.as_str();
-                    
-                    // Mapping par patterns génériques (unités de mesure, qualificatifs, etc.)
-                    // ✅ CORRIGÉ: Patterns génériques uniquement, pas de produits spécifiques
-                    let generic_patterns: Vec<(&str, &str)> = vec![
-                        // Unités de mesure → conditionnement
-                        ("kg", "conditionnement"),
-                        ("g", "conditionnement"),
-                        ("ml", "conditionnement"),
-                        ("l", "conditionnement"),
-                        ("cl", "conditionnement"),
-                        ("dl", "conditionnement"),
-                        // Qualificatifs de qualité
-                        ("supérieur", "qualité"),
-                        ("standard", "qualité"),
-                        ("premium", "qualité"),
-                        ("excellence", "qualité"),
-                        ("premium", "qualité"),
-                        // Origine/Provenance (patterns génériques)
-                        ("importé", "origine"),
-                        ("import", "origine"),
-                        ("local", "origine"),
-                        ("locale", "origine"),
-                        ("national", "origine"),
-                        ("nationale", "origine"),
-                    ];
-                    
-                    for (pattern, dimension) in generic_patterns {
-                        if value_lower.contains(pattern) {
-                            // Vérifier si cette dimension existe dans sous_caracteristiques
-                            if sous_caracs.contains_key(dimension) {
-                                best_match = Some((dimension.to_string(), value.clone()));
-                                // Note: Score 0.7 pour correspondance par pattern (non utilisé mais documenté)
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                // Utiliser le meilleur match trouvé
-                if let Some((dimension, mapped_value)) = best_match {
-                    mapped_values.push((dimension.clone(), mapped_value));
-                    assigned_dimensions.insert(dimension);
-                } else {
-                    unmapped_values.push(value.clone());
-                }
-            }
-            
-            // Étape 2: Construire le résultat final dans l'ordre des dimensions
-            // ✅ CORRECTION: Gérer le cas où plusieurs valeurs correspondent à la même dimension
-            let mut final_labels: Vec<String> = vec![];
-            let mut final_values: Vec<String> = vec![];
-            
-            // Grouper les valeurs par dimension
-            let mut dimension_to_values: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
-            for (dimension, value) in &mapped_values {
-                dimension_to_values
-                    .entry(dimension.clone())
-                    .or_insert_with(Vec::new)
-                    .push(value.clone());
-            }
-            
-            // ✅ NOUVEAU: Essayer de mapper les valeurs non mappées aux dimensions vides
-            // en utilisant une correspondance sémantique basée sur les valeurs disponibles dans chaque dimension
-            let remaining_unmapped = unmapped_values.clone();
-            let mut used_unmapped_indices = std::collections::HashSet::new();
-            
-            for dimension in &dimension_order {
-                if let Some(values) = dimension_to_values.get(dimension) {
-                    // Cette dimension a été assignée - prendre la première valeur
-                    if let Some(value) = values.first() {
-                        final_labels.push(dimension.clone());
-                        final_values.push(value.clone());
-                    } else {
-                        final_labels.push(dimension.clone());
-                        final_values.push(String::new());
-                    }
-                } else {
-                    // Cette dimension n'a pas été assignée
-                    // ✅ NOUVEAU: Essayer de trouver une valeur non mappée qui pourrait correspondre
-                    // en vérifiant si une valeur non mappée est similaire aux valeurs disponibles dans cette dimension
-                    let mut found_match = false;
-                    if let Some(dimension_values_array) = sous_caracs.get(dimension).and_then(|v| v.as_array()) {
-                        for (idx, unmapped_value) in remaining_unmapped.iter().enumerate() {
-                            if used_unmapped_indices.contains(&idx) {
-                                continue;
-                            }
-                            
-                            let normalized_unmapped = unmapped_value.trim().to_lowercase();
-                            
-                            // Vérifier si la valeur non mappée est similaire à une valeur de cette dimension
-                            for dim_value in dimension_values_array {
-                                if let Some(dim_value_str) = dim_value.as_str() {
-                                    let normalized_dim = dim_value_str.trim().to_lowercase();
-                                    
-                                    // Correspondance partielle : si la valeur non mappée contient ou est contenue dans une valeur de dimension
-                                    if normalized_unmapped.contains(&normalized_dim) || normalized_dim.contains(&normalized_unmapped) {
-                                        final_labels.push(dimension.clone());
-                                        final_values.push(unmapped_value.clone());
-                                        used_unmapped_indices.insert(idx);
-                                        found_match = true;
-                                        break;
-                                    }
+
+                    // 3. ✅ NOUVEAU: Mapping intelligent par contexte (mots-clés génériques uniquement)
+                    // ✅ CORRIGÉ: Ne pas hardcoder des produits spécifiques, utiliser des patterns génériques
+                    if best_match.is_none() {
+                        let value_lower = normalized_value.as_str();
+
+                        // Mapping par patterns génériques (unités de mesure, qualificatifs, etc.)
+                        // ✅ CORRIGÉ: Patterns génériques uniquement, pas de produits spécifiques
+                        let generic_patterns: Vec<(&str, &str)> = vec![
+                            // Unités de mesure → conditionnement
+                            ("kg", "conditionnement"),
+                            ("g", "conditionnement"),
+                            ("ml", "conditionnement"),
+                            ("l", "conditionnement"),
+                            ("cl", "conditionnement"),
+                            ("dl", "conditionnement"),
+                            // Qualificatifs de qualité
+                            ("supérieur", "qualité"),
+                            ("standard", "qualité"),
+                            ("premium", "qualité"),
+                            ("excellence", "qualité"),
+                            ("premium", "qualité"),
+                            // Origine/Provenance (patterns génériques)
+                            ("importé", "origine"),
+                            ("import", "origine"),
+                            ("local", "origine"),
+                            ("locale", "origine"),
+                            ("national", "origine"),
+                            ("nationale", "origine"),
+                        ];
+
+                        for (pattern, dimension) in generic_patterns {
+                            if value_lower.contains(pattern) {
+                                // Vérifier si cette dimension existe dans sous_caracteristiques
+                                if sous_caracs.contains_key(dimension) {
+                                    best_match = Some((dimension.to_string(), value.clone()));
+                                    // Note: Score 0.7 pour correspondance par pattern (non utilisé mais documenté)
+                                    break;
                                 }
                             }
-                            
-                            if found_match {
-                                break;
-                            }
                         }
                     }
-                    
-                    if !found_match {
-                        // Aucune correspondance trouvée, ajouter valeur vide
-                        final_labels.push(dimension.clone());
-                        final_values.push(String::new());
+
+                    // Utiliser le meilleur match trouvé
+                    if let Some((dimension, mapped_value)) = best_match {
+                        mapped_values.push((dimension.clone(), mapped_value));
+                        assigned_dimensions.insert(dimension);
+                    } else {
+                        unmapped_values.push(value.clone());
                     }
                 }
-            }
-            
-            // Étape 3: Ajouter les valeurs restantes qui n'ont toujours pas été mappées (valeurs vraiment inconnues)
-            for (idx, value) in remaining_unmapped.iter().enumerate() {
-                if !used_unmapped_indices.contains(&idx) {
-                    final_labels.push(format!("caracteristique_{}", final_labels.len()));
-                    final_values.push(value.clone());
+
+                // Étape 2: Construire le résultat final dans l'ordre des dimensions
+                // ✅ CORRECTION: Gérer le cas où plusieurs valeurs correspondent à la même dimension
+                let mut final_labels: Vec<String> = vec![];
+                let mut final_values: Vec<String> = vec![];
+
+                // Grouper les valeurs par dimension
+                let mut dimension_to_values: std::collections::HashMap<String, Vec<String>> =
+                    std::collections::HashMap::new();
+                for (dimension, value) in &mapped_values {
+                    dimension_to_values
+                        .entry(dimension.clone())
+                        .or_insert_with(Vec::new)
+                        .push(value.clone());
                 }
-            }
-            
-            // ✅ NOUVEAU: Log détaillé pour identifier les problèmes de mapping
-            let mut mapping_details: Vec<String> = vec![];
-            for (dimension, values) in &dimension_to_values {
-                if values.len() > 1 {
-                    mapping_details.push(format!("{}: {} valeurs ({})", dimension, values.len(), values.join(", ")));
+
+                // ✅ NOUVEAU: Essayer de mapper les valeurs non mappées aux dimensions vides
+                // en utilisant une correspondance sémantique basée sur les valeurs disponibles dans chaque dimension
+                let remaining_unmapped = unmapped_values.clone();
+                let mut used_unmapped_indices = std::collections::HashSet::new();
+
+                for dimension in &dimension_order {
+                    if let Some(values) = dimension_to_values.get(dimension) {
+                        // Cette dimension a été assignée - prendre la première valeur
+                        if let Some(value) = values.first() {
+                            final_labels.push(dimension.clone());
+                            final_values.push(value.clone());
+                        } else {
+                            final_labels.push(dimension.clone());
+                            final_values.push(String::new());
+                        }
+                    } else {
+                        // Cette dimension n'a pas été assignée
+                        // ✅ NOUVEAU: Essayer de trouver une valeur non mappée qui pourrait correspondre
+                        // en vérifiant si une valeur non mappée est similaire aux valeurs disponibles dans cette dimension
+                        let mut found_match = false;
+                        if let Some(dimension_values_array) =
+                            sous_caracs.get(dimension).and_then(|v| v.as_array())
+                        {
+                            for (idx, unmapped_value) in remaining_unmapped.iter().enumerate() {
+                                if used_unmapped_indices.contains(&idx) {
+                                    continue;
+                                }
+
+                                let normalized_unmapped = unmapped_value.trim().to_lowercase();
+
+                                // Vérifier si la valeur non mappée est similaire à une valeur de cette dimension
+                                for dim_value in dimension_values_array {
+                                    if let Some(dim_value_str) = dim_value.as_str() {
+                                        let normalized_dim = dim_value_str.trim().to_lowercase();
+
+                                        // Correspondance partielle : si la valeur non mappée contient ou est contenue dans une valeur de dimension
+                                        if normalized_unmapped.contains(&normalized_dim)
+                                            || normalized_dim.contains(&normalized_unmapped)
+                                        {
+                                            final_labels.push(dimension.clone());
+                                            final_values.push(unmapped_value.clone());
+                                            used_unmapped_indices.insert(idx);
+                                            found_match = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if found_match {
+                                    break;
+                                }
+                            }
+                        }
+
+                        if !found_match {
+                            // Aucune correspondance trouvée, ajouter valeur vide
+                            final_labels.push(dimension.clone());
+                            final_values.push(String::new());
+                        }
+                    }
                 }
-            }
-            if !mapping_details.is_empty() {
-                log::warn!(
-                    "[save_ia_combinations_to_db] ⚠️ Dimensions avec plusieurs valeurs: {}",
-                    mapping_details.join("; ")
-                );
-            }
-            
-            // ✅ NOUVEAU: Log détaillé pour identifier les valeurs non mappées
-            if !unmapped_values.is_empty() {
-                log::warn!(
-                    "[save_ia_combinations_to_db] ⚠️ Valeurs non mappées: {}",
-                    unmapped_values.join(", ")
-                );
-            }
-            
-            // ✅ NOUVEAU: Log détaillé du mapping final pour debug
-            let mapping_pairs: Vec<String> = final_labels.iter()
-                .zip(final_values.iter())
-                .map(|(label, value)| format!("{}:{}", label, if value.is_empty() { "(vide)" } else { value }))
-                .collect();
-            
-            // ✅ NOUVEAU: Vérifier la cohérence entre labels et valeurs
-            let mut alignment_issues: Vec<String> = vec![];
-            for (idx, (label, value)) in final_labels.iter().zip(final_values.iter()).enumerate() {
-                if value.is_empty() && idx < product_vector.len() {
-                    // Il y a une valeur dans product_vector qui n'a pas été mappée à ce label
-                    alignment_issues.push(format!("Label '{}' [{}] est vide alors qu'il y a des valeurs non mappées", label, idx));
+
+                // Étape 3: Ajouter les valeurs restantes qui n'ont toujours pas été mappées (valeurs vraiment inconnues)
+                for (idx, value) in remaining_unmapped.iter().enumerate() {
+                    if !used_unmapped_indices.contains(&idx) {
+                        final_labels.push(format!("caracteristique_{}", final_labels.len()));
+                        final_values.push(value.clone());
+                    }
                 }
-            }
-            
-            if !alignment_issues.is_empty() {
-                log::warn!(
-                    "[save_ia_combinations_to_db] ⚠️ Problèmes d'alignement détectés: {}",
-                    alignment_issues.join("; ")
-                );
-            }
-            
-            log::info!(
+
+                // ✅ NOUVEAU: Log détaillé pour identifier les problèmes de mapping
+                let mut mapping_details: Vec<String> = vec![];
+                for (dimension, values) in &dimension_to_values {
+                    if values.len() > 1 {
+                        mapping_details.push(format!(
+                            "{}: {} valeurs ({})",
+                            dimension,
+                            values.len(),
+                            values.join(", ")
+                        ));
+                    }
+                }
+                if !mapping_details.is_empty() {
+                    log::warn!(
+                        "[save_ia_combinations_to_db] ⚠️ Dimensions avec plusieurs valeurs: {}",
+                        mapping_details.join("; ")
+                    );
+                }
+
+                // ✅ NOUVEAU: Log détaillé pour identifier les valeurs non mappées
+                if !unmapped_values.is_empty() {
+                    log::warn!(
+                        "[save_ia_combinations_to_db] ⚠️ Valeurs non mappées: {}",
+                        unmapped_values.join(", ")
+                    );
+                }
+
+                // ✅ NOUVEAU: Log détaillé du mapping final pour debug
+                let mapping_pairs: Vec<String> = final_labels
+                    .iter()
+                    .zip(final_values.iter())
+                    .map(|(label, value)| {
+                        format!(
+                            "{}:{}",
+                            label,
+                            if value.is_empty() { "(vide)" } else { value }
+                        )
+                    })
+                    .collect();
+
+                // ✅ NOUVEAU: Vérifier la cohérence entre labels et valeurs
+                let mut alignment_issues: Vec<String> = vec![];
+                for (idx, (label, value)) in
+                    final_labels.iter().zip(final_values.iter()).enumerate()
+                {
+                    if value.is_empty() && idx < product_vector.len() {
+                        // Il y a une valeur dans product_vector qui n'a pas été mappée à ce label
+                        alignment_issues.push(format!(
+                            "Label '{}' [{}] est vide alors qu'il y a des valeurs non mappées",
+                            label, idx
+                        ));
+                    }
+                }
+
+                if !alignment_issues.is_empty() {
+                    log::warn!(
+                        "[save_ia_combinations_to_db] ⚠️ Problèmes d'alignement détectés: {}",
+                        alignment_issues.join("; ")
+                    );
+                }
+
+                log::info!(
                 "[save_ia_combinations_to_db] Mapping intelligent appliqué: {} labels pour {} valeurs. Mapping: [{}]",
                 final_labels.len(),
                 final_values.len(),
                 mapping_pairs.join(", ")
             );
-            
-            (final_labels, final_values)
-        } else {
-            // Fallback si pas de sous_caracteristiques
-            let labels = (0..product_vector.len())
-                .map(|i| format!("caracteristique_{}", i))
-                .collect();
-            (labels, product_vector.clone())
-        };
-        
+
+                (final_labels, final_values)
+            } else {
+                // Fallback si pas de sous_caracteristiques
+                let labels = (0..product_vector.len())
+                    .map(|i| format!("caracteristique_{}", i))
+                    .collect();
+                (labels, product_vector.clone())
+            };
+
         // ✅ VÉRIFICATION FINALE: S'assurer que product_labels a la même longueur que product_vector
         if product_labels.len() != mapped_product_vector.len() {
             log::warn!(
@@ -5822,7 +5935,7 @@ pub async fn save_ia_combinations_to_db(
                 mapped_product_vector.push(String::new());
             }
         }
-        
+
         // Utiliser le vecteur mappé au lieu de l'original
         let product_vector = mapped_product_vector;
 
@@ -5992,12 +6105,19 @@ pub async fn save_autocomplete_combination(
         "[save_autocomplete_combination] Début sauvegarde pour service {} (VRAIS produits)",
         service_id
     );
-    
+
     // ✅ PHASE 1: Récupérer les produits depuis la table products au lieu de JSONB
     let products_service = ProductsService::new(std::sync::Arc::new(pool.clone()));
-    let products = products_service.get_products_by_service(service_id).await
-        .map_err(|e| AppError::Internal(format!("Erreur récupération produits depuis table products: {}", e)))?;
-    
+    let products = products_service
+        .get_products_by_service(service_id)
+        .await
+        .map_err(|e| {
+            AppError::Internal(format!(
+                "Erreur récupération produits depuis table products: {}",
+                e
+            ))
+        })?;
+
     if products.is_empty() {
         log::warn!(
             "[save_autocomplete_combination] Aucun produit trouvé dans table products pour service {} (peut être normal si produits pas encore créés)",
@@ -6074,40 +6194,49 @@ pub async fn save_autocomplete_combination(
     // 2. ✅ PHASE 1 CORRIGÉ: Boucler sur TOUS les produits pour créer une entrée autocomplete_characteristics pour chacun
     for product in &products {
         let product_id = product.id.to_string();
-        
+
         // Extraire product_vector depuis product_data de ce produit
         let mut product_vector: Vec<String> = Vec::new();
         let mut product_labels: Vec<String> = Vec::new();
         let mut variation_prix_node: Option<serde_json::Value> = None;
-        
+
         if let Some(product_obj) = product.product_data.as_object() {
             // Extraire product_vector depuis product_data
             product_vector = extract_product_vector_from_object(product_obj);
-            
+
             // Si product_vector est vide, essayer d'extraire depuis les champs standards
             if product_vector.is_empty() {
-                if let Some(nom) = product_obj.get("nom")
+                if let Some(nom) = product_obj
+                    .get("nom")
                     .and_then(|v| v.get("valeur"))
                     .and_then(|v| v.as_str())
                     .or_else(|| product_obj.get("nom").and_then(|v| v.as_str()))
-                    .or_else(|| product_obj.get("nom_produit")
-                        .and_then(|v| v.get("valeur"))
-                        .and_then(|v| v.as_str()))
-                    .or_else(|| product_obj.get("nom_produit").and_then(|v| v.as_str())) {
+                    .or_else(|| {
+                        product_obj
+                            .get("nom_produit")
+                            .and_then(|v| v.get("valeur"))
+                            .and_then(|v| v.as_str())
+                    })
+                    .or_else(|| product_obj.get("nom_produit").and_then(|v| v.as_str()))
+                {
                     product_vector.push(nom.to_string());
                 }
             }
-            
+
             // Extraire product_labels
-            if let Some(labels_array) = product_obj.get("product_labels").and_then(|v| v.as_array()) {
+            if let Some(labels_array) = product_obj.get("product_labels").and_then(|v| v.as_array())
+            {
                 product_labels = labels_array
                     .iter()
                     .filter_map(|label| label.as_str().map(|s| s.to_string()))
                     .collect();
-            } else if let Some(sous_caracs) = product_obj.get("sous_caracteristiques").and_then(|v| v.as_object()) {
+            } else if let Some(sous_caracs) = product_obj
+                .get("sous_caracteristiques")
+                .and_then(|v| v.as_object())
+            {
                 product_labels = sous_caracs.keys().map(|k| k.to_string()).collect();
             }
-            
+
             // Extraire variation_prix
             variation_prix_node = product_obj
                 .get("variabilite_prix")
@@ -6115,7 +6244,7 @@ pub async fn save_autocomplete_combination(
                 .or_else(|| product_obj.get("variation_prix").cloned())
                 .or_else(|| product_obj.get("price_variant").cloned());
         }
-        
+
         if product_vector.is_empty() {
             log::warn!(
                 "[save_autocomplete_combination] Vecteur produit vide pour produit {} (id: {}), skip",
@@ -6124,14 +6253,14 @@ pub async fn save_autocomplete_combination(
             );
             continue;
         }
-        
+
         log::info!(
             "[save_autocomplete_combination] Produit {} (id: {}): vecteur {:?}",
             product.product_index,
             product.id,
             product_vector
         );
-        
+
         // Vecteur complet = produit + location
         let mut full_vector = product_vector.clone();
         full_vector.extend(location_vector.clone());
@@ -6171,7 +6300,7 @@ pub async fn save_autocomplete_combination(
                     // Vecteur produit avec variation (sans lieu)
                     let mut variant_product_vector = product_vector.clone();
                     variant_product_vector.push(variant_value.to_string());
-                    
+
                     // ✅ CORRIGÉ: Mettre à jour product_labels pour correspondre à variant_product_vector
                     let mut variant_product_labels = product_labels.clone();
                     variant_product_labels.push(variant_dimension.to_string());
@@ -6190,7 +6319,8 @@ pub async fn save_autocomplete_combination(
                     // La contrainte unique est sur (identifiant_base, sous_caracteristique, valeur)
                     // ✅ CORRIGÉ: Utiliser product_id dans la valeur pour garantir l'unicité par produit et variation
                     // Format: "product_id|variant_value" pour éviter les conflits
-                    let variant_value_for_unique = format!("{}|{}", variant_product_id, variant_value);
+                    let variant_value_for_unique =
+                        format!("{}|{}", variant_product_id, variant_value);
                     let result_char = sqlx::query(
                         r#"INSERT INTO autocomplete_characteristics 
                            (identifiant_base, service_id, product_id, 
@@ -6295,7 +6425,7 @@ pub async fn save_autocomplete_combination(
                     .map(|i| format!("caracteristique_{}", i))
                     .collect();
             }
-            
+
             // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
             // ✅ CORRIGÉ: Utiliser ON CONFLICT pour gérer la contrainte unique_autocomplete_characteristic
             // La contrainte unique est sur (identifiant_base, sous_caracteristique, valeur)
@@ -6369,7 +6499,7 @@ pub async fn save_autocomplete_combination(
             }
         }
     }
-    
+
     log::info!(
         "[save_autocomplete_combination] ✅ Fin sauvegarde pour service {} ({} produits traités)",
         service_id,
@@ -6389,63 +6519,68 @@ pub async fn save_autocomplete_combination(
 
     for product in &products {
         let mut updated_product_data = product.product_data.clone();
-        
+
         if let Some(product_obj) = updated_product_data.as_object_mut() {
             // Extraire product_vector depuis product_data
             let mut product_vector: Vec<String> = Vec::new();
             if let Some(original_obj) = product.product_data.as_object() {
                 product_vector = extract_product_vector_from_object(original_obj);
-                
+
                 if product_vector.is_empty() {
-                    if let Some(nom) = original_obj.get("nom")
+                    if let Some(nom) = original_obj
+                        .get("nom")
                         .and_then(|v| v.get("valeur"))
                         .and_then(|v| v.as_str())
-                        .or_else(|| original_obj.get("nom").and_then(|v| v.as_str())) {
+                        .or_else(|| original_obj.get("nom").and_then(|v| v.as_str()))
+                    {
                         product_vector.push(nom.to_string());
                     }
                 }
             }
-            
+
             if !product_vector.is_empty() {
                 product_obj.insert(
                     "characteristic_vector".to_string(),
                     serde_json::json!(product_vector),
                 );
             }
-            
+
             // Extraire product_labels
             let mut product_labels: Vec<String> = Vec::new();
             if let Some(original_obj) = product.product_data.as_object() {
-                if let Some(labels_array) = original_obj.get("product_labels").and_then(|v| v.as_array()) {
+                if let Some(labels_array) = original_obj
+                    .get("product_labels")
+                    .and_then(|v| v.as_array())
+                {
                     product_labels = labels_array
                         .iter()
                         .filter_map(|label| label.as_str().map(|s| s.to_string()))
                         .collect();
-                } else if let Some(sous_caracs) = original_obj.get("sous_caracteristiques").and_then(|v| v.as_object()) {
+                } else if let Some(sous_caracs) = original_obj
+                    .get("sous_caracteristiques")
+                    .and_then(|v| v.as_object())
+                {
                     product_labels = sous_caracs.keys().map(|k| k.to_string()).collect();
                 }
             }
-            
+
             if !product_labels.is_empty() {
                 product_obj.insert(
                     "product_labels".to_string(),
                     serde_json::json!(product_labels),
                 );
             }
-            
+
             // Ajouter location_vector et chosen_location au produit
             product_obj.insert(
                 "location_vector".to_string(),
                 serde_json::json!(location_vector),
             );
             if let Some(chosen) = &chosen_location {
-                product_obj.insert(
-                    "chosen_location".to_string(),
-                    serde_json::json!(chosen),
-                );
+                product_obj.insert("chosen_location".to_string(), serde_json::json!(chosen));
             }
         }
-        
+
         // Mettre à jour le produit dans service_products
         if let Err(e) = products_service
             .update_product(service_id, product.product_index, &updated_product_data)

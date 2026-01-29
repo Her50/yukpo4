@@ -211,7 +211,9 @@ impl ProductAvailabilityService {
         };
 
         // ✅ CORRIGÉ 2026-01-22: Utiliser directement Vec<i32> (déjà décodé depuis INTEGER[])
-        let availability_days: Vec<i32> = config.availability_days.unwrap_or_else(|| vec![0, 1, 2, 3, 4, 5, 6]);
+        let availability_days: Vec<i32> = config
+            .availability_days
+            .unwrap_or_else(|| vec![0, 1, 2, 3, 4, 5, 6]);
         let now = Utc::now();
         let current_weekday = now.weekday().num_days_from_sunday() as i32;
         let is_available =

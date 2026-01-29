@@ -100,9 +100,9 @@ impl MediaStorageService {
                     AppError::Internal(format!("Erreur création répertoire: {}", e))
                 })?;
             }
-            fs::write(&local_target, data).await.map_err(|e| {
-                AppError::Internal(format!("Erreur écriture locale: {}", e))
-            })?;
+            fs::write(&local_target, data)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur écriture locale: {}", e)))?;
 
             let public_url = self.build_public_url(&storage_path);
             return Ok(StoredMediaLocation {
@@ -115,7 +115,7 @@ impl MediaStorageService {
         // ✅ OPTIMISÉ: Upload directement depuis les bytes en mémoire vers S3 (pas de fichier temporaire)
         if let Some(client) = &self.client {
             let object_key = storage_path.clone();
-            
+
             // Sauvegarder localement si keep_local_copy est activé
             if self.config.keep_local_copy {
                 let local_target = self.local_path_for(normalized_key);
@@ -135,7 +135,8 @@ impl MediaStorageService {
             }
 
             // Upload directement depuis les bytes vers S3
-            self.upload_bytes_to_s3(client, data, &object_key, content_type).await?;
+            self.upload_bytes_to_s3(client, data, &object_key, content_type)
+                .await?;
         }
 
         let public_url = self.build_public_url(&storage_path);
@@ -303,7 +304,9 @@ impl MediaStorageService {
 
         debug!(
             "[MediaStorage] Bytes uploadés vers S3 (bucket={}, key={}, size={} bytes)",
-            bucket, object_key, data.len()
+            bucket,
+            object_key,
+            data.len()
         );
 
         Ok(())
@@ -383,7 +386,7 @@ impl MediaStorageService {
                 base.trim_end_matches('/'),
                 storage_path.trim_start_matches('/')
             );
-            
+
             // ✅ Vérifier que c'est bien une URL complète (commence par http/https)
             if url.starts_with("http://") || url.starts_with("https://") {
                 debug!("[MediaStorage] URL CDN construite: {}", url);
@@ -400,7 +403,7 @@ impl MediaStorageService {
                 storage_path
             );
         }
-        
+
         // ⚠️ Fallback: Si pas de base URL ou URL invalide, retourner le chemin relatif
         // Le client devra construire l'URL complète ou utiliser le chemin API
         storage_path.to_string()

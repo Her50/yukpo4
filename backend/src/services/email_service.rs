@@ -126,11 +126,7 @@ impl EmailService {
 
         let api_key = self.config.sendgrid_api_key.as_ref().unwrap();
         let from_email = self.config.sendgrid_from_email.as_ref().unwrap();
-        let from_name = self
-            .config
-            .sendgrid_from_name
-            .as_deref()
-            .unwrap_or("Yukpo");
+        let from_name = self.config.sendgrid_from_name.as_deref().unwrap_or("Yukpo");
 
         let url = "https://api.sendgrid.com/v3/mail/send";
 

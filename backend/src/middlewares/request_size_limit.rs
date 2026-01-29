@@ -23,7 +23,7 @@ pub async fn request_size_limit(req: Request<Body>, next: Next) -> Result<Respon
                         "[request_size_limit] 💡 Vérifiez que DefaultBodyLimit est configuré sur la route (min: {} MB)",
                         size_mb.ceil() as usize
                     );
-                    
+
                     // ✅ Retourner une réponse JSON au lieu d'un simple StatusCode
                     let error_response = json!({
                         "error": "Payload Too Large",
@@ -35,13 +35,15 @@ pub async fn request_size_limit(req: Request<Body>, next: Next) -> Result<Respon
                         "max_size_mb": max_mb,
                         "status": 413
                     });
-                    
+
                     let response = Response::builder()
                         .status(StatusCode::PAYLOAD_TOO_LARGE)
                         .header("content-type", HeaderValue::from_static("application/json"))
-                        .body(Body::from(serde_json::to_string(&error_response).unwrap_or_default()))
+                        .body(Body::from(
+                            serde_json::to_string(&error_response).unwrap_or_default(),
+                        ))
                         .unwrap();
-                    
+
                     return Err(response);
                 }
                 log::debug!(

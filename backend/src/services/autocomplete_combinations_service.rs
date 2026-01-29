@@ -139,7 +139,7 @@ pub async fn upsert_combination(
     // ✅ OPTIMISÉ 2025-12-12: Utiliser INSERT ... ON CONFLICT directement au lieu de fonction PostgreSQL
     // Cela réduit le temps d'exécution de ~528ms à ~50-100ms pour la sauvegarde des seeds
     let now = chrono::Utc::now();
-    
+
     let result = sqlx::query(
         r#"
         INSERT INTO autocomplete_combinations 
@@ -197,12 +197,10 @@ pub async fn upsert_combination(
             let id: i32 = row.get::<i32, _>("id");
             Ok(id)
         }
-        Err(e) => {
-            Err(AppError::Internal(format!(
-                "Erreur upsert combinaison: {}",
-                e
-            )))
-        }
+        Err(e) => Err(AppError::Internal(format!(
+            "Erreur upsert combinaison: {}",
+            e
+        ))),
     }
 }
 

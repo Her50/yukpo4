@@ -280,23 +280,23 @@ impl MongoHistoryService {
     /// ✅ NOUVEAU 2025-12-30: Créer les index MongoDB pour optimiser les requêtes
     /// Index critiques pour get_service_stats et get_reviews
     pub async fn ensure_indexes(&self) -> AppResult<()> {
-        use mongodb::{IndexModel, options::IndexOptions};
-        
+        use mongodb::{options::IndexOptions, IndexModel};
+
         let collection = self.get_collection("history").await;
-        
+
         // Index sur service_id (critique pour get_service_stats et get_reviews)
         let service_id_index = IndexModel::builder()
             .keys(doc! { "service_id": 1 })
             .options(
                 IndexOptions::builder()
                     .name(Some("idx_service_id".to_string()))
-                    .build()
+                    .build(),
             )
             .build();
-        
+
         // Index composé pour les requêtes d'agrégation (service_id + event_type + interaction_type)
         let composite_index = IndexModel::builder()
-            .keys(doc! { 
+            .keys(doc! {
                 "service_id": 1,
                 "event_type": 1,
                 "data.interaction_type": 1
@@ -304,25 +304,25 @@ impl MongoHistoryService {
             .options(
                 IndexOptions::builder()
                     .name(Some("idx_service_event_interaction".to_string()))
-                    .build()
+                    .build(),
             )
             .build();
-        
+
         // Index sur timestamp pour tri et nettoyage
         let timestamp_index = IndexModel::builder()
             .keys(doc! { "timestamp": -1 })
             .options(
                 IndexOptions::builder()
                     .name(Some("idx_timestamp".to_string()))
-                    .build()
+                    .build(),
             )
             .build();
-        
+
         // Créer les index (ignore les erreurs si déjà existants)
         let _ = collection.create_index(service_id_index, None).await;
         let _ = collection.create_index(composite_index, None).await;
         let _ = collection.create_index(timestamp_index, None).await;
-        
+
         Ok(())
     }
 

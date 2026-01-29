@@ -35,7 +35,8 @@ pub async fn upload_files(
         user.id
     );
 
-    let files = handle_multipart_upload(&state.pg, user.id, multipart, state.media_storage.clone()).await?;
+    let files =
+        handle_multipart_upload(&state.pg, user.id, multipart, state.media_storage.clone()).await?;
 
     Ok((
         StatusCode::OK,

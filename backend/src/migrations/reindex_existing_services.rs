@@ -46,7 +46,8 @@ pub async fn reindex_all_services(pool: &PgPool) -> Result<usize, sqlx::Error> {
                 if let Some(first) = valeur_array.first() {
                     if let Some(obj) = first.as_object() {
                         // Utiliser la fonction extract_product_vector_from_object (même logique que creer_service.rs)
-                        product_vector = crate::services::creer_service::extract_product_vector_from_object(obj);
+                        product_vector =
+                            crate::services::creer_service::extract_product_vector_from_object(obj);
                     }
                 }
             }
@@ -58,7 +59,9 @@ pub async fn reindex_all_services(pool: &PgPool) -> Result<usize, sqlx::Error> {
                     .map(|s| s.trim().to_string())
                     .filter(|s| !s.is_empty())
                     .collect();
-            } else if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+            } else if let Some(valeur_array) =
+                produits_field.get("valeur").and_then(|v| v.as_array())
+            {
                 if let Some(first_str) = valeur_array.iter().filter_map(|v| v.as_str()).next() {
                     product_vector = first_str
                         .split(',')
@@ -70,7 +73,10 @@ pub async fn reindex_all_services(pool: &PgPool) -> Result<usize, sqlx::Error> {
         }
 
         if product_vector.is_empty() {
-            error!("⚠️ Service {} : Vecteur produit vide après extraction (format non reconnu)", service_id);
+            error!(
+                "⚠️ Service {} : Vecteur produit vide après extraction (format non reconnu)",
+                service_id
+            );
             continue;
         }
 

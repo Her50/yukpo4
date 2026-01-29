@@ -28,7 +28,7 @@ pub fn generate_preview_cache_key(
     max_duration: Option<f64>,
 ) -> String {
     let mut hasher = DefaultHasher::new();
-    
+
     // Hasher les éléments essentiels de la timeline
     if let Some(scenes) = timeline.get("scenes").and_then(|s| s.as_array()) {
         for scene in scenes {
@@ -48,12 +48,12 @@ pub fn generate_preview_cache_key(
             }
         }
     }
-    
+
     quality.hash(&mut hasher);
     if let Some(max_dur) = max_duration {
         max_dur.to_bits().hash(&mut hasher);
     }
-    
+
     let hash = hasher.finish();
     format!("preview:{}:{}", quality, hash)
 }
@@ -77,9 +77,7 @@ pub async fn get_cached_preview(
     .bind(cache_key)
     .fetch_optional(pool)
     .await
-    .map_err(|e| {
-        AppError::Internal(format!("Erreur récupération cache preview: {}", e))
-    })?;
+    .map_err(|e| AppError::Internal(format!("Erreur récupération cache preview: {}", e)))?;
 
     // ✅ CORRIGÉ: result est Option<Option<Value>>, utiliser flatten() pour obtenir Option<Value>
     if let Some(cache_value) = result.flatten() {
@@ -90,7 +88,8 @@ pub async fn get_cached_preview(
                 if file_exists {
                     info!(
                         "[PreviewCache] ✅ Cache hit pour preview: {} (accès #{})",
-                        cache_key, cached.access_count + 1
+                        cache_key,
+                        cached.access_count + 1
                     );
                     return Ok(Some(cached));
                 } else {
@@ -103,10 +102,7 @@ pub async fn get_cached_preview(
                 }
             }
             Err(e) => {
-                warn!(
-                    "[PreviewCache] ⚠️ Erreur désérialisation cache: {}",
-                    e
-                );
+                warn!("[PreviewCache] ⚠️ Erreur désérialisation cache: {}", e);
             }
         }
     }
@@ -121,9 +117,8 @@ pub async fn cache_preview(
     preview: &CachedPreview,
     ttl_seconds: i32,
 ) -> AppResult<()> {
-    let preview_json = serde_json::to_value(preview).map_err(|e| {
-        AppError::Internal(format!("Erreur sérialisation preview: {}", e))
-    })?;
+    let preview_json = serde_json::to_value(preview)
+        .map_err(|e| AppError::Internal(format!("Erreur sérialisation preview: {}", e)))?;
 
     sqlx::query(
         r#"
@@ -135,9 +130,7 @@ pub async fn cache_preview(
     .bind(ttl_seconds)
     .execute(pool)
     .await
-    .map_err(|e| {
-        AppError::Internal(format!("Erreur mise en cache preview: {}", e))
-    })?;
+    .map_err(|e| AppError::Internal(format!("Erreur mise en cache preview: {}", e)))?;
 
     info!(
         "[PreviewCache] ✅ Preview mise en cache: {} (TTL: {}s)",
@@ -148,10 +141,7 @@ pub async fn cache_preview(
 }
 
 /// ✅ Invalide une preview du cache
-pub async fn invalidate_preview_cache(
-    pool: &PgPool,
-    cache_key: &str,
-) -> AppResult<()> {
+pub async fn invalidate_preview_cache(pool: &PgPool, cache_key: &str) -> AppResult<()> {
     sqlx::query(
         r#"
         SELECT delete_cache($1)
@@ -160,21 +150,16 @@ pub async fn invalidate_preview_cache(
     .bind(cache_key)
     .execute(pool)
     .await
-    .map_err(|e| {
-        AppError::Internal(format!("Erreur invalidation cache preview: {}", e))
-    })?;
+    .map_err(|e| AppError::Internal(format!("Erreur invalidation cache preview: {}", e)))?;
 
     debug!("[PreviewCache] Cache invalidé: {}", cache_key);
     Ok(())
 }
 
 /// ✅ Invalide toutes les previews d'une session
-pub async fn invalidate_session_previews(
-    pool: &PgPool,
-    session_id: &str,
-) -> AppResult<()> {
+pub async fn invalidate_session_previews(pool: &PgPool, session_id: &str) -> AppResult<()> {
     let pattern = format!("preview:*:{}:*", session_id);
-    
+
     sqlx::query(
         r#"
         SELECT delete_cache_pattern($1)
@@ -183,20 +168,21 @@ pub async fn invalidate_session_previews(
     .bind(&pattern)
     .execute(pool)
     .await
-    .map_err(|e| {
-        AppError::Internal(format!("Erreur invalidation previews session: {}", e))
-    })?;
+    .map_err(|e| AppError::Internal(format!("Erreur invalidation previews session: {}", e)))?;
 
-    info!("[PreviewCache] Previews de session invalidées: {}", session_id);
+    info!(
+        "[PreviewCache] Previews de session invalidées: {}",
+        session_id
+    );
     Ok(())
 }
 
 /// ✅ Calcule le TTL optimal selon la qualité
 pub fn get_preview_ttl(quality: &str) -> i32 {
     match quality {
-        "low" => 3600,      // 1 heure pour previews basse qualité
-        "medium" => 7200,   // 2 heures pour previews moyenne qualité
-        "high" => 14400,    // 4 heures pour previews haute qualité
+        "low" => 3600,    // 1 heure pour previews basse qualité
+        "medium" => 7200, // 2 heures pour previews moyenne qualité
+        "high" => 14400,  // 4 heures pour previews haute qualité
         _ => 3600,
     }
 }
@@ -210,14 +196,14 @@ pub async fn cleanup_expired_previews(pool: &PgPool) -> AppResult<i32> {
     )
     .fetch_one(pool)
     .await
-    .map_err(|e| {
-        AppError::Internal(format!("Erreur nettoyage cache previews: {}", e))
-    })?;
+    .map_err(|e| AppError::Internal(format!("Erreur nettoyage cache previews: {}", e)))?;
 
     if deleted > 0 {
-        info!("[PreviewCache] ✅ {} preview(s) expirée(s) nettoyée(s)", deleted);
+        info!(
+            "[PreviewCache] ✅ {} preview(s) expirée(s) nettoyée(s)",
+            deleted
+        );
     }
 
     Ok(deleted)
 }
-
