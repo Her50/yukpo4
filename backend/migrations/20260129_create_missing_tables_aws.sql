@@ -51,7 +51,95 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- PARTIE 2: Tables de dépendance (si elles n'existent pas)
+-- PARTIE 2: Tables de base CRITIQUES (users, services) - DOIT être créé en premier
+-- ============================================================================
+
+-- Table users (CRITIQUE - doit être créée en premier)
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL,
+    nom VARCHAR(255),
+    prenom VARCHAR(255),
+    nom_complet VARCHAR(255),
+    photo_profil VARCHAR(500),
+    avatar_url VARCHAR(500),
+    is_provider BOOLEAN NOT NULL DEFAULT FALSE,
+    tokens_balance BIGINT NOT NULL DEFAULT 0,
+    token_price_user DOUBLE PRECISION NOT NULL,
+    token_price_provider DOUBLE PRECISION NOT NULL,
+    commission_pct REAL NOT NULL,
+    preferred_lang TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    gps VARCHAR(255),
+    gps_consent BOOLEAN DEFAULT TRUE,
+    groupe_sanguin VARCHAR(5) CHECK (groupe_sanguin IS NULL OR groupe_sanguin IN ('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_is_provider ON users(is_provider);
+
+-- Table services (CRITIQUE - doit être créée en deuxième)
+CREATE TABLE IF NOT EXISTS services (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    category_id INTEGER,
+    price_cfa NUMERIC(14,2),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_services_user_id ON services(user_id);
+CREATE INDEX IF NOT EXISTS idx_services_category_id ON services(category_id);
+CREATE INDEX IF NOT EXISTS idx_services_is_active ON services(is_active);
+
+-- Table media (CRITIQUE - nécessaire pour social_publication_jobs)
+CREATE TABLE IF NOT EXISTS media (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    product_id TEXT,
+    product_index INTEGER,
+    type TEXT NOT NULL,
+    path TEXT NOT NULL,
+    uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    media_type TEXT,
+    file_size BIGINT,
+    file_format TEXT,
+    is_main_image BOOLEAN NOT NULL DEFAULT FALSE,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    ai_description TEXT,
+    ai_tags TEXT[],
+    ai_category VARCHAR(100),
+    ai_metadata JSONB,
+    ai_analyzed_at TIMESTAMPTZ,
+    ai_model_used VARCHAR(100),
+    ai_confidence DOUBLE PRECISION
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'media_type_check' AND table_name = 'media'
+    ) THEN
+        ALTER TABLE media ADD CONSTRAINT media_type_check CHECK (media_type IN ('image', 'video', 'audio'));
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_media_service_id ON media(service_id);
+CREATE INDEX IF NOT EXISTS idx_media_product_id ON media(product_id) WHERE product_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_media_type ON media(media_type);
+CREATE INDEX IF NOT EXISTS idx_media_is_main_image ON media(is_main_image) WHERE is_main_image = TRUE;
+
+-- ============================================================================
+-- PARTIE 3: Tables de dépendance (si elles n'existent pas)
 -- ============================================================================
 
 -- Table parcel_types (si elle n'existe pas)
@@ -344,6 +432,213 @@ CREATE INDEX IF NOT EXISTS idx_product_orders_provider ON product_orders(provide
 CREATE INDEX IF NOT EXISTS idx_product_orders_delivery ON product_orders(delivery_id) WHERE delivery_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_product_orders_estimated_ready ON product_orders(estimated_ready_at) WHERE estimated_ready_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_product_orders_validation_deadline ON product_orders(validation_deadline) WHERE status = 'pending' AND validation_deadline IS NOT NULL;
+
+-- Table service_products (CRITIQUE - produits de services)
+CREATE TABLE IF NOT EXISTS service_products (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    product_index INTEGER NOT NULL,
+    product_data JSONB NOT NULL,
+    
+    -- Métadonnées générées
+    product_name TEXT GENERATED ALWAYS AS (
+        COALESCE(
+            product_data->'nom'->>'valeur',
+            product_data->>'nom',
+            product_data->'nom_produit'->>'valeur',
+            product_data->>'nom_produit',
+            'Produit sans nom'
+        )
+    ) STORED,
+    
+    product_type TEXT GENERATED ALWAYS AS (
+        COALESCE(
+            product_data->'type'->>'valeur',
+            product_data->>'type',
+            'autre'
+        )
+    ) STORED,
+    
+    product_price NUMERIC GENERATED ALWAYS AS (
+        CASE 
+            WHEN product_data->'prix'->'valeur'->>'montant' IS NOT NULL 
+            THEN CAST((product_data->'prix'->'valeur'->>'montant') AS NUMERIC)
+            WHEN product_data->'prix'->>'montant' IS NOT NULL 
+            THEN CAST((product_data->'prix'->>'montant') AS NUMERIC)
+            WHEN product_data->>'prix' IS NOT NULL 
+            THEN CAST((product_data->>'prix') AS NUMERIC)
+            ELSE NULL
+        END
+    ) STORED,
+    
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    auto_deactivate_at TIMESTAMPTZ,
+    
+    UNIQUE(service_id, product_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_service_products_service_id ON service_products(service_id);
+CREATE INDEX IF NOT EXISTS idx_service_products_active ON service_products(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_service_products_type ON service_products(product_type);
+CREATE INDEX IF NOT EXISTS idx_service_products_name_gin ON service_products USING GIN(to_tsvector('french', product_name));
+CREATE INDEX IF NOT EXISTS idx_service_products_data_gin ON service_products USING GIN(product_data);
+CREATE INDEX IF NOT EXISTS idx_service_products_service_index ON service_products(service_id, product_index);
+CREATE INDEX IF NOT EXISTS idx_service_products_created_at ON service_products(created_at DESC);
+
+-- Trigger pour updated_at
+CREATE OR REPLACE FUNCTION update_service_products_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_service_products_updated_at ON service_products;
+CREATE TRIGGER trg_service_products_updated_at
+    BEFORE UPDATE ON service_products
+    FOR EACH ROW
+    EXECUTE FUNCTION update_service_products_updated_at();
+
+-- Table publicites (gestion des publicités)
+CREATE TABLE IF NOT EXISTS publicites (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    titre VARCHAR(255) NOT NULL,
+    description TEXT,
+    produits_indexes TEXT[] NOT NULL DEFAULT '{}',
+    videos TEXT[] DEFAULT '{}',
+    thumbnails TEXT[] DEFAULT '{}',
+    duree_jours INTEGER NOT NULL CHECK (duree_jours > 0),
+    cout INTEGER NOT NULL CHECK (cout >= 0),
+    devise_utilisateur VARCHAR(10) DEFAULT 'FCFA',
+    zone_geographique VARCHAR(50) NOT NULL DEFAULT 'local' CHECK (zone_geographique IN ('local', 'regional', 'international')),
+    geo_publicitaire GEOMETRY(POINT, 4326),
+    rayon_km INTEGER DEFAULT 50,
+    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'pending', 'paused')),
+    date_debut TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    date_fin TIMESTAMPTZ NOT NULL,
+    vues INTEGER NOT NULL DEFAULT 0,
+    clics INTEGER NOT NULL DEFAULT 0,
+    impressions INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    targeting JSONB DEFAULT '{}',
+    ab_testing JSONB DEFAULT '{}',
+    schedule JSONB DEFAULT NULL,
+    placements JSONB DEFAULT '[]',
+    bid_strategy JSONB DEFAULT '{}',
+    retargeting JSONB DEFAULT '{}',
+    variant_performance JSONB DEFAULT '{}',
+    CONSTRAINT check_date_fin_after_debut CHECK (date_fin > date_debut),
+    CONSTRAINT check_produits_not_empty CHECK (array_length(produits_indexes, 1) > 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_publicites_user_id ON publicites(user_id);
+CREATE INDEX IF NOT EXISTS idx_publicites_status ON publicites(status);
+CREATE INDEX IF NOT EXISTS idx_publicites_zone ON publicites(zone_geographique);
+CREATE INDEX IF NOT EXISTS idx_publicites_date_fin ON publicites(date_fin);
+CREATE INDEX IF NOT EXISTS idx_publicites_produits_gin ON publicites USING GIN(produits_indexes);
+CREATE INDEX IF NOT EXISTS idx_publicites_targeting_gin ON publicites USING GIN(targeting);
+CREATE INDEX IF NOT EXISTS idx_publicites_ab_testing_gin ON publicites USING GIN(ab_testing);
+CREATE INDEX IF NOT EXISTS idx_publicites_placements_gin ON publicites USING GIN(placements);
+CREATE INDEX IF NOT EXISTS idx_publicites_retargeting_gin ON publicites USING GIN(retargeting);
+
+-- Table pharmacies
+CREATE TABLE IF NOT EXISTS pharmacies (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nom VARCHAR(255) NOT NULL,
+    adresse TEXT,
+    quartier VARCHAR(255),
+    ville VARCHAR(255),
+    gps VARCHAR(255),
+    jours_garde TEXT,
+    heures_ouverture TIME,
+    heures_fermeture TIME,
+    permanent_24h BOOLEAN DEFAULT FALSE,
+    telephone VARCHAR(50),
+    telephone_urgence VARCHAR(50),
+    whatsapp VARCHAR(50),
+    email VARCHAR(255),
+    services TEXT[],
+    is_active BOOLEAN DEFAULT TRUE,
+    is_on_duty_now BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_pharmacy_service UNIQUE(service_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pharmacies_user_id ON pharmacies(user_id);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_service_id ON pharmacies(service_id);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_is_active ON pharmacies(is_active);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_is_on_duty ON pharmacies(is_on_duty_now) WHERE is_on_duty_now = TRUE;
+CREATE INDEX IF NOT EXISTS idx_pharmacies_ville ON pharmacies(ville);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_quartier ON pharmacies(quartier);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_services_gin ON pharmacies USING GIN(services);
+
+-- Table offres_emploi (nécessaire pour matching_offres_candidats)
+CREATE TABLE IF NOT EXISTS offres_emploi (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+    titre_poste VARCHAR(255) NOT NULL,
+    description TEXT,
+    secteur VARCHAR(100),
+    type_contrat TEXT[],
+    salaire_min DECIMAL(10, 2),
+    salaire_max DECIMAL(10, 2),
+    lieu_travail VARCHAR(255),
+    remote BOOLEAN DEFAULT FALSE,
+    competences_requises TEXT[],
+    experience_requise INTEGER,
+    niveau_etude VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'closed', 'draft', 'expired')),
+    date_publication TIMESTAMPTZ DEFAULT NOW(),
+    date_expiration TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_offres_emploi_user_id ON offres_emploi(user_id);
+CREATE INDEX IF NOT EXISTS idx_offres_emploi_status ON offres_emploi(status);
+CREATE INDEX IF NOT EXISTS idx_offres_emploi_secteur ON offres_emploi(secteur);
+CREATE INDEX IF NOT EXISTS idx_offres_emploi_competences_gin ON offres_emploi USING GIN(competences_requises);
+
+-- Table matching_offres_candidats
+CREATE TABLE IF NOT EXISTS matching_offres_candidats (
+    id SERIAL PRIMARY KEY,
+    offre_id INTEGER NOT NULL REFERENCES offres_emploi(id) ON DELETE CASCADE,
+    candidat_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    
+    -- Score de matching
+    score_total DECIMAL(5, 2) NOT NULL,
+    score_competences DECIMAL(5, 2),
+    score_experience DECIMAL(5, 2),
+    score_localisation DECIMAL(5, 2),
+    score_salaire DECIMAL(5, 2),
+    
+    -- Détails matching
+    competences_match TEXT[],
+    competences_manquantes TEXT[],
+    criteres_match JSONB,
+    
+    -- Métadonnées
+    date_calcul TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_notified BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT unique_matching UNIQUE (offre_id, candidat_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_matching_offre ON matching_offres_candidats(offre_id, score_total DESC);
+CREATE INDEX IF NOT EXISTS idx_matching_candidat ON matching_offres_candidats(candidat_id, score_total DESC);
+CREATE INDEX IF NOT EXISTS idx_matching_score ON matching_offres_candidats(score_total DESC) WHERE score_total >= 70;
+CREATE INDEX IF NOT EXISTS idx_matching_notified ON matching_offres_candidats(is_notified, date_calcul) WHERE is_notified = false;
 
 -- ============================================================================
 -- PARTIE 4: Fonctions utilitaires

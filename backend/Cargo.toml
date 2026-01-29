@@ -64,6 +64,10 @@ name = "apply_fix_parcel_types_ids"
 path = "src/bin/apply_fix_parcel_types_ids.rs"
 
 [[bin]]
+name = "apply_missing_tables_aws"
+path = "src/bin/apply_missing_tables_aws.rs"
+
+[[bin]]
 name = "apply_migration_relevance"
 path = "scripts/apply_migration_relevance.rs"
 

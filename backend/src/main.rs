@@ -534,6 +534,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log::error!(
                     "❌ Les migrations automatiques ne pourront pas s'exécuter correctement"
                 );
+                
+                // ✅ NOUVEAU 2026-01-29: Essayer d'appliquer la migration consolidée si les tables de base manquent
+                log::warn!("🔄 Tentative d'application de la migration consolidée pour créer les tables manquantes...");
+                let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
+                use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+                
+                match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
+                    Ok(_) => {
+                        log::info!("✅ Migration consolidée appliquée avec succès");
+                        // Vérifier à nouveau
+                        let users_exists_after: bool = sqlx::query_scalar(
+                            "SELECT EXISTS (
+                                SELECT FROM information_schema.tables 
+                                WHERE table_schema = 'public' 
+                                AND table_name = 'users'
+                            )",
+                        )
+                        .fetch_one(&pg_pool)
+                        .await
+                        .unwrap_or(false);
+                        
+                        let services_exists_after: bool = sqlx::query_scalar(
+                            "SELECT EXISTS (
+                                SELECT FROM information_schema.tables 
+                                WHERE table_schema = 'public' 
+                                AND table_name = 'services'
+                            )",
+                        )
+                        .fetch_one(&pg_pool)
+                        .await
+                        .unwrap_or(false);
+                        
+                        if users_exists_after && services_exists_after {
+                            log::info!("✅ Tables de base créées par la migration consolidée");
+                        } else {
+                            log::error!("❌ Migration consolidée appliquée mais tables de base toujours manquantes");
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("❌ Erreur lors de l'application de la migration consolidée: {}", e);
+                    }
+                }
             } else {
                 log::info!("✅ Tables de base (users, services) vérifiées après migrations SQLx");
             }
@@ -611,8 +653,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 log::error!("❌ Les workers et services dépendant de ces tables ne fonctionneront pas");
                 log::error!("❌ CAUSE PROBABLE: Les migrations n'ont pas été appliquées correctement");
-                log::error!("❌ SOLUTION: Vérifier que toutes les migrations dans backend/migrations/ ont été exécutées");
-                log::error!("❌ Vérifier les logs de migration ci-dessus pour identifier l'erreur");
+                
+                // ✅ NOUVEAU 2026-01-29: Essayer d'appliquer la migration consolidée pour créer les tables manquantes
+                log::warn!("🔄 Tentative d'application de la migration consolidée pour créer les tables manquantes...");
+                let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
+                use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+                
+                match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
+                    Ok(_) => {
+                        log::info!("✅ Migration consolidée appliquée avec succès");
+                        
+                        // Vérifier à nouveau les tables manquantes
+                        let mut still_missing = Vec::new();
+                        for table_name in &missing_tables {
+                            let exists: bool = sqlx::query_scalar(
+                                "SELECT EXISTS (
+                                    SELECT FROM information_schema.tables 
+                                    WHERE table_schema = 'public' 
+                                    AND table_name = $1
+                                )",
+                            )
+                            .bind(table_name)
+                            .fetch_one(&pg_pool)
+                            .await
+                            .unwrap_or(false);
+                            
+                            if exists {
+                                log::info!("  ✅ Table '{}' créée par la migration consolidée", table_name);
+                            } else {
+                                log::error!("  ❌ Table '{}' toujours manquante après migration consolidée", table_name);
+                                still_missing.push(*table_name);
+                            }
+                        }
+                        
+                        if still_missing.is_empty() {
+                            log::info!("✅ Toutes les tables critiques ont été créées par la migration consolidée");
+                        } else {
+                            log::error!("❌ {} table(s) toujours manquante(s) après migration consolidée: {:?}", still_missing.len(), still_missing);
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("❌ Erreur lors de l'application de la migration consolidée: {}", e);
+                        log::error!("❌ SOLUTION: Vérifier que toutes les migrations dans backend/migrations/ ont été exécutées");
+                        log::error!("❌ Vérifier les logs de migration ci-dessus pour identifier l'erreur");
+                    }
+                }
                 
                 // ✅ NOUVEAU 2026-01-29: Arrêter l'application si les tables critiques sont manquantes
                 // (sauf en mode développement où on peut continuer avec des fonctionnalités limitées)
