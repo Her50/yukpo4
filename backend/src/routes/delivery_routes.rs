@@ -523,7 +523,7 @@ async fn save_product_delivery_config(
                     .bind(payload.service_id)
                     .fetch_optional(&state.pg)
                     .await?;
-                
+
                 match row {
                     Some(row) => {
                         let data: serde_json::Value = row.try_get("data")
@@ -4167,7 +4167,7 @@ async fn list_available_couriers(
                 // Calculer le temps estimé total
                 let distance_to_pickup_km = row.distance_to_pickup_meters.map(|d| d / 1000.0);
                 let distance_total_km = row.distance_pickup_to_delivery_meters.map(|d| d / 1000.0);
-                
+
                 // Vitesse moyenne selon le type de transport (km/h)
                 let avg_speed_kmh = match row.engine_type.as_deref() {
                     Some("velo_cargo") | Some("velo") => 15.0,

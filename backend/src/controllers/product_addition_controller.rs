@@ -437,7 +437,7 @@ pub async fn add_product_to_service(
                 )
                 .await
                 .map_err(|e| AppError::Internal(format!("Erreur récupération service: {}", e)))?;
-                
+
                 match row {
                     Some(row) => {
                         let data: serde_json::Value = row.try_get("data")

@@ -39,7 +39,7 @@ pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> Vid
         .enumerate()
         .map(|(idx, scene)| {
             let duration_seconds = scene.duration_in_frames as f64 / fps as f64;
-            
+
             // ✅ CORRIGÉ: Extraire media_url depuis assets avec vérification de validité
             // Essayer dans l'ordre: video_url > background_url > product_image_url
             let media_url = scene
@@ -55,7 +55,7 @@ pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> Vid
                     scene.assets.product_image_url.clone()
                         .filter(|url| !url.trim().is_empty())
                 });
-            
+
             // ✅ NOUVEAU: Log si aucune URL n'est trouvée pour diagnostic
             if media_url.is_none() {
                 warn!(
@@ -67,15 +67,15 @@ pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> Vid
                     scene.assets.product_image_url
                 );
             }
-            
+
             let scene_index = scene.id
                 .replace("scene_", "")
                 .parse::<usize>()
                 .unwrap_or(idx);
-            
+
             let start_time = current_time;
             current_time += duration_seconds;
-            
+
             // Convertir les effets depuis le template et transition
             let mut effects = Vec::new();
             let template_name = format!("{:?}", scene.template).to_lowercase();
@@ -85,7 +85,7 @@ pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> Vid
             if template_name.contains("glow") {
                 effects.push("glow".to_string());
             }
-            
+
             TimelineScene {
                 scene_index,
                 start_time,

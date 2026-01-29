@@ -1612,12 +1612,12 @@ pub async fn generate_product_video(
                             "image"
                         }
                     });
-                
+
                 info!(
                     "[VideoGeneration] ✅ Média converti en TimelineMediaItem: media_id={:?}, type={}, url={}",
                     source.id, media_type, url
                 );
-                
+
                 Some(TimelineMediaItem {
                     id: source.id,
                     url,
@@ -3415,7 +3415,7 @@ async fn append_video_to_service_data(
             let pool_clone = pool.clone();
             let service_id_clone = service_id;
             let product_index_clone = product_index;
-            
+
             Box::pin(async move {
                 // Récupérer le product_data actuel
                 let product_row = sqlx::query!(
@@ -3425,10 +3425,10 @@ async fn append_video_to_service_data(
                 )
                 .fetch_optional(&pool_clone)
                 .await?;
-                
+
                 if let Some(row) = product_row {
                     let mut product_data = row.product_data;
-                    
+
                     // Ajouter la vidéo au tableau videos
                     if let Some(obj) = product_data.as_object_mut() {
                         match obj.get_mut("videos") {
@@ -3454,7 +3454,7 @@ async fn append_video_to_service_data(
                                 );
                             }
                         }
-                        
+
                         // Ajouter les sous-titres si disponibles
                         if let Some(url) = subtitle_url_clone {
                             let mut current_subtitles = match obj.get_mut("videos_subtitles") {
@@ -3462,7 +3462,7 @@ async fn append_video_to_service_data(
                                 Some(_) => Vec::new(),
                                 None => Vec::new(),
                             };
-                            
+
                             current_subtitles.push(json!({
                                 "url": url,
                                 "created_at": Utc::now(),
@@ -3472,7 +3472,7 @@ async fn append_video_to_service_data(
                                 Value::Array(current_subtitles),
                             );
                         }
-                        
+
                         // Ajouter les variantes si disponibles
                         if !variant_urls_clone.is_empty() {
                             let mut current_variants = match obj.get_mut("videos_variants") {
@@ -3480,21 +3480,21 @@ async fn append_video_to_service_data(
                                 Some(_) => Vec::new(),
                                 None => Vec::new(),
                             };
-                            
+
                             for (format, url) in variant_urls_clone {
                                 current_variants.push(json!({
                                     "format": format,
                                     "url": url,
                                 }));
                             }
-                            
+
                             obj.insert(
                                 "videos_variants".to_string(),
                                 Value::Array(current_variants),
                             );
                         }
                     }
-                    
+
                     // Mettre à jour service_products
                     sqlx::query(
                         "UPDATE service_products SET product_data = $1, updated_at = NOW() WHERE service_id = $2 AND product_index = $3"
@@ -3504,7 +3504,7 @@ async fn append_video_to_service_data(
                     .bind(product_index_clone)
                     .execute(&pool_clone)
                     .await?;
-                    
+
                     info!(
                         "[VideoGeneration] ✅ Vidéo ajoutée à service_products.product_data->'videos' (service_id={}, product_index={})",
                         service_id_clone, product_index_clone
@@ -3515,7 +3515,7 @@ async fn append_video_to_service_data(
                         service_id_clone, product_index_clone
                     );
                 }
-                
+
                 Ok::<_, sqlx::Error>(())
             })
         },
@@ -3589,7 +3589,7 @@ async fn append_video_variants_to_service_data(
                 let service_id_clone = service_id_clone;
                 let product_index_clone = product_index_clone;
                 let pool_clone = pool.clone();
-                
+
                 Box::pin(async move {
                     // ✅ CORRIGÉ 2026-01-23: Mettre à jour service_products au lieu de services.data
                     sqlx::query(
@@ -3600,7 +3600,7 @@ async fn append_video_variants_to_service_data(
                     .bind(product_index_clone)
                     .execute(&pool_clone)
                     .await?;
-                    
+
                     Ok::<_, sqlx::Error>(())
                 })
             },

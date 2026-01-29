@@ -4359,7 +4359,7 @@ impl DeliveryService {
                     .and_then(|v| v.as_str())
                     .map(|t| t == "menu_shopping" || t == "food_shopping")
                     .unwrap_or(false);
-                
+
                 if is_menu_shopping {
                     // Récupérer les spécialisations du coursier depuis courier_assets
                     let courier_specializations: Vec<String> = candidate.metadata
@@ -4371,7 +4371,7 @@ impl DeliveryService {
                                 .collect()
                         })
                         .unwrap_or_default();
-                    
+
                     // Bonus significatif si le coursier a la spécialisation "food_shopping"
                     if courier_specializations.contains(&"food_shopping".to_string()) {
                         score += 0.5; // ✅ Bonus de 50% pour spécialisation correspondante
@@ -4381,14 +4381,14 @@ impl DeliveryService {
                         );
                     }
                 }
-                
+
                 // ✅ Bonus de score si le type de véhicule correspond
                 if let Some(ref req_vehicle) = required_vehicle_type {
                     // Récupérer le type de véhicule du coursier depuis metadata
                     let courier_vehicle_type = candidate.metadata
                         .get("engine_type")
                         .and_then(|v| v.as_str());
-                    
+
                     // Mapper les types backend vers les types frontend
                     let courier_type_normalized = courier_vehicle_type
                         .map(|t| match t.to_lowercase().as_str() {
@@ -4403,7 +4403,7 @@ impl DeliveryService {
                             "autre" => "motorcycle", // Par défaut
                             _ => t,
                         });
-                    
+
                     // Bonus significatif si le type correspond exactement
                     if let Some(courier_type) = courier_type_normalized {
                         if courier_type == req_vehicle.as_str() {

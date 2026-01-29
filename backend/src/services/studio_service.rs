@@ -812,13 +812,13 @@ impl StudioService {
                     "[StudioService] ⚠️ Quick preview échoué, fallback vers Remotion pour session {}: {:?}",
                     session_id, quick_err
                 );
-                
+
                 // Fallback vers Remotion si quick preview échoue
                 let request = RenderJobRequest {
                     job_id: None,
                     timeline: Arc::new(timeline_model.clone()),
                 };
-                
+
                 // ✅ Essayer le renderer Remotion
                 match renderer.render(&request).await {
                     Ok(r) => Ok(r),
@@ -827,7 +827,7 @@ impl StudioService {
                             "[StudioService] ❌ Échec génération preview Remotion session {}: {} (mode={:?}, retryable={})",
                             session_id, err.message, err.mode, err.retryable
                         );
-                        
+
                         // Si l'erreur est non-retryable, retourner l'erreur
                         let error_message = match err.mode {
                             RenderExecutionMode::Offline => {
