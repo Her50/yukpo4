@@ -4,7 +4,7 @@
 -- 1. Table assurance passagers
 CREATE TABLE IF NOT EXISTS covoiturage_insurance (
     id SERIAL PRIMARY KEY,
-    reservation_id INTEGER NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
+    reservation_id INTEGER NOT NULL REFERENCES specialized_reservations(id) ON DELETE CASCADE,  -- ✅ Corrigé: utiliser specialized_reservations
     passenger_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     insurance_provider TEXT, -- 'internal', 'external', 'partner'
     policy_number TEXT,
@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_covoiturage_insurance_dates ON covoiturage_insura
 -- 2. Table QR codes réservations
 CREATE TABLE IF NOT EXISTS reservation_qr_codes (
     id SERIAL PRIMARY KEY,
-    reservation_id INTEGER NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
+    reservation_id INTEGER NOT NULL REFERENCES specialized_reservations(id) ON DELETE CASCADE,  -- ✅ Corrigé: utiliser specialized_reservations
     qr_code TEXT NOT NULL UNIQUE, -- Code QR unique
     qr_code_url TEXT, -- URL image QR code
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'validated', 'expired', 'cancelled')),
@@ -43,8 +43,8 @@ CREATE INDEX IF NOT EXISTS idx_reservation_qr_codes_qr_code ON reservation_qr_co
 CREATE INDEX IF NOT EXISTS idx_reservation_qr_codes_status ON reservation_qr_codes(status);
 CREATE INDEX IF NOT EXISTS idx_reservation_qr_codes_expires ON reservation_qr_codes(expires_at);
 
--- 3. Ajouter colonne assurance dans reservations
-ALTER TABLE reservations
+-- 3. Ajouter colonne assurance dans specialized_reservations
+ALTER TABLE specialized_reservations
 ADD COLUMN IF NOT EXISTS insurance_included BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS insurance_coverage_amount DECIMAL(10,2);
 

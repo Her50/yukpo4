@@ -112,22 +112,40 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- Créer 10 partitions par hash
+-- ✅ Corrigé: Vérifier que la table est partitionnée avant de créer des partitions
 DO $$
 DECLARE
     i INTEGER;
     partition_name TEXT;
+    is_partitioned BOOLEAN;
 BEGIN
+    -- Vérifier si delivery_tracking_points est partitionnée
+    SELECT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'delivery_tracking_points' 
+        AND c.relkind = 'p'
+    ) INTO is_partitioned;
+    
+    IF NOT is_partitioned THEN
+        RAISE NOTICE 'Table delivery_tracking_points n''est pas partitionnée - création de partitions ignorée';
+        RETURN;
+    END IF;
+    
     FOR i IN 0..9 LOOP
         partition_name := 'delivery_tracking_points_' || i;
         
-        EXECUTE format('
-            CREATE TABLE IF NOT EXISTS %I PARTITION OF delivery_tracking_points
-            FOR VALUES WITH (MODULUS 10, REMAINDER %s)',
-            partition_name,
-            i
-        );
-        
-        RAISE NOTICE 'Partition créée: %', partition_name;
+        BEGIN
+            EXECUTE format('
+                CREATE TABLE IF NOT EXISTS %I PARTITION OF delivery_tracking_points
+                FOR VALUES WITH (MODULUS 10, REMAINDER %s)',
+                partition_name,
+                i
+            );
+            RAISE NOTICE 'Partition créée: %', partition_name;
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Erreur lors de la création de la partition %: %', partition_name, SQLERRM;
+        END;
     END LOOP;
 END $$;
 
@@ -161,28 +179,46 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- Créer les partitions pour les 6 prochains mois
+-- ✅ Corrigé: Vérifier que la table est partitionnée avant de créer des partitions
 DO $$
 DECLARE
     start_date DATE;
     end_date DATE;
     partition_name TEXT;
     i INTEGER;
+    is_partitioned BOOLEAN;
 BEGIN
+    -- Vérifier si delivery_status_events est partitionnée
+    SELECT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'delivery_status_events' 
+        AND c.relkind = 'p'
+    ) INTO is_partitioned;
+    
+    IF NOT is_partitioned THEN
+        RAISE NOTICE 'Table delivery_status_events n''est pas partitionnée - création de partitions ignorée';
+        RETURN;
+    END IF;
+    
     start_date := DATE_TRUNC('month', CURRENT_DATE);
     
     FOR i IN 0..5 LOOP
         end_date := start_date + INTERVAL '1 month';
         partition_name := 'delivery_status_events_' || TO_CHAR(start_date, 'YYYY_MM');
         
-        EXECUTE format('
-            CREATE TABLE IF NOT EXISTS %I PARTITION OF delivery_status_events
-            FOR VALUES FROM (%L) TO (%L)',
-            partition_name,
-            start_date,
-            end_date
-        );
-        
-        RAISE NOTICE 'Partition créée: %', partition_name;
+        BEGIN
+            EXECUTE format('
+                CREATE TABLE IF NOT EXISTS %I PARTITION OF delivery_status_events
+                FOR VALUES FROM (%L) TO (%L)',
+                partition_name,
+                start_date,
+                end_date
+            );
+            RAISE NOTICE 'Partition créée: %', partition_name;
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Erreur lors de la création de la partition %: %', partition_name, SQLERRM;
+        END;
         
         start_date := end_date;
     END LOOP;

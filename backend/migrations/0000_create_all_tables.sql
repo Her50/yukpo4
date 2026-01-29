@@ -121,7 +121,8 @@ CREATE TABLE IF NOT EXISTS services (
     active_days INTEGER,
     category VARCHAR(255),
     specialized_type VARCHAR(50),
-    last_alert_sent_at TIMESTAMP
+    last_alert_sent_at TIMESTAMP,
+    gps VARCHAR(255)  -- ✅ Colonne GPS pour géolocalisation (format: "lat,lng")
 );
 
 -- Table media
@@ -725,7 +726,7 @@ SELECT
     pc.updated_at,
     pc.edited_at,
     pc.is_deleted,
-    COALESCE(u.nom_complet, u.email) AS user_name,
+    COALESCE(u.nom_complet::TEXT, u.email) AS user_name,  -- ✅ Corrigé: utiliser TEXT explicitement
     u.avatar_url AS user_avatar,
     (
         SELECT jsonb_object_agg(reaction_type, reaction_count)
@@ -4839,7 +4840,7 @@ CREATE TABLE IF NOT EXISTS delivery_product_suggestions (
     id SERIAL PRIMARY KEY,
     delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    suggested_product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+    suggested_product_id INTEGER,  -- ✅ Référence optionnelle (table products n'existe pas encore)
     suggested_product_name TEXT NOT NULL,
     suggested_product_price DECIMAL(10, 2),
     suggestion_reason TEXT,

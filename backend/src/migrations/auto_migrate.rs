@@ -11861,19 +11861,21 @@ fn normalize_sql_command(cmd: &str) -> String {
                 // Nettoyer le nom (enlever ; si présent)
                 let trigger_name = trigger_name_candidate.trim_end_matches(';');
 
+                // ✅ CORRIGÉ: Utiliser EXECUTE car PostgreSQL ne permet pas CREATE TRIGGER dans IF THEN directement
                 // Wrapper dans DO $$ avec vérification d'existence
+                let trigger_sql = trigger_decl.trim_end_matches(';').replace('\'', "''"); // Échapper les quotes pour EXECUTE
                 return format!(
                     r#"DO $$
                     BEGIN
                         IF NOT EXISTS (
                             SELECT 1 FROM pg_trigger WHERE tgname = '{}'
                         ) THEN
-                            {}
+                            EXECUTE '{}';
                         END IF;
                     END $$;
                     "#,
                     trigger_name,
-                    trigger_decl.trim_end_matches(';')
+                    trigger_sql
                 );
             }
         }

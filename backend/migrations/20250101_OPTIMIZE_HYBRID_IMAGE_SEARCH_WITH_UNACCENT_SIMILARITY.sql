@@ -5,7 +5,8 @@
 --  2. Ajouter similarity() pour gérer les erreurs de saisie (comme keyword_search_with_gps)
 --  3. Aligner la logique avec la nouvelle approche optimisée
 
-DROP FUNCTION IF EXISTS hybrid_image_search CASCADE;
+-- ✅ Corrigé: Spécifier la signature complète pour éviter "function name is not unique"
+DROP FUNCTION IF EXISTS hybrid_image_search(TEXT[], TEXT, TEXT, TEXT, TEXT, FLOAT, FLOAT, INTEGER, INTEGER, TEXT) CASCADE;
 
 CREATE FUNCTION hybrid_image_search(
     search_tags TEXT[],

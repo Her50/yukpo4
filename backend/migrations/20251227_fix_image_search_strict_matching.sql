@@ -10,8 +10,8 @@
 -- - Adapter pour produits génériques: 1 tag suffit (au lieu de 2), marque/couleur optionnels
 -- Date: 2025-12-27
 
--- Supprimer l'ancienne fonction
-DROP FUNCTION IF EXISTS hybrid_image_search CASCADE;
+-- ✅ Corrigé: Spécifier la signature complète pour éviter "function name is not unique"
+DROP FUNCTION IF EXISTS hybrid_image_search(TEXT[], TEXT, TEXT, TEXT, TEXT, FLOAT, FLOAT, INTEGER, INTEGER, TEXT) CASCADE;
 
 CREATE FUNCTION hybrid_image_search(
     search_tags TEXT[],

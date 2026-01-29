@@ -15,10 +15,7 @@ CREATE TABLE IF NOT EXISTS loyalty_transactions (
     description TEXT NOT NULL,
     timestamp BIGINT NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW())::BIGINT,
     expiry_date BIGINT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    
-    INDEX idx_loyalty_user_id (user_id),
-    INDEX idx_loyalty_timestamp (timestamp)
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_loyalty_user_id ON loyalty_transactions(user_id);
@@ -63,11 +60,7 @@ CREATE TABLE IF NOT EXISTS chat_support_sessions (
     feedback TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     last_message_at TIMESTAMPTZ DEFAULT NOW(),
-    closed_at TIMESTAMPTZ,
-    
-    INDEX idx_chat_user_id (user_id),
-    INDEX idx_chat_status (status),
-    INDEX idx_chat_last_message (last_message_at)
+    closed_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_user_id ON chat_support_sessions(user_id);
@@ -83,10 +76,7 @@ CREATE TABLE IF NOT EXISTS chat_support_messages (
     sender VARCHAR(20) NOT NULL CHECK (sender IN ('user', 'support')),
     timestamp TIMESTAMPTZ DEFAULT NOW(),
     read BOOLEAN DEFAULT FALSE,
-    attachments JSONB,
-    
-    INDEX idx_chat_messages_session (session_id),
-    INDEX idx_chat_messages_timestamp (timestamp)
+    attachments JSONB
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_support_messages(session_id);
