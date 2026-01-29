@@ -1,4 +1,5 @@
 use std::{env, fs, net::SocketAddr, path::Path, sync::Arc};
+use std::error::Error;
 
 use dotenvy::dotenv;
 use mongodb::Client as MongoClient;
@@ -386,9 +387,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     match sqlx::migrate!("./migrations").run(&pg_pool).await {
-        Ok(migration_result) => {
+        Ok(_) => {
             log::info!("✅ Migrations SQLx standard appliquées avec succès");
-            log::info!("📊 Migrations appliquées: {}", migration_result.migrations_applied);
 
             // Vérifier si la migration 20251125_fix_idx_services_search_optimized a été appliquée
             check_index_migration(&pg_pool).await;
