@@ -92,15 +92,16 @@ pub async fn block_seat(
     }
 
     // Appeler la fonction SQL
+    // ✅ CORRIGÉ 2026-01-29: Ordre des paramètres corrigé (p_blocked_by avant les paramètres avec DEFAULT)
     let reason = payload.reason.unwrap_or_else(|| "maintenance".to_string());
     let result: Value =
         sqlx::query_scalar("SELECT block_bus_seat_manually($1, $2, $3, $4, $5, $6)")
             .bind(&payload.product_id)
             .bind(&payload.seat_id)
             .bind(payload.seat_number)
-            .bind(&reason)
-            .bind(&payload.reason_details)
-            .bind(user_id)
+            .bind(user_id)  // p_blocked_by (déplacé avant les paramètres avec DEFAULT)
+            .bind(&reason)  // p_reason (avec DEFAULT)
+            .bind(&payload.reason_details)  // p_reason_details (avec DEFAULT)
             .fetch_one(&state.pg)
             .await
             .map_err(|e| {

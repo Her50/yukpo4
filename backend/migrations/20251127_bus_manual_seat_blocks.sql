@@ -41,9 +41,9 @@ CREATE OR REPLACE FUNCTION block_bus_seat_manually(
     p_product_id TEXT,
     p_seat_id VARCHAR(50),
     p_seat_number INTEGER,
+    p_blocked_by INTEGER,
     p_reason VARCHAR(100) DEFAULT 'maintenance',
-    p_reason_details TEXT DEFAULT NULL,
-    p_blocked_by INTEGER
+    p_reason_details TEXT DEFAULT NULL
 )
 RETURNS JSONB AS $$
 DECLARE
@@ -82,17 +82,17 @@ BEGIN
         product_id,
         seat_id,
         seat_number,
+        blocked_by,
         reason,
-        reason_details,
-        blocked_by
+        reason_details
     )
     VALUES (
         p_product_id,
         p_seat_id,
         p_seat_number,
+        p_blocked_by,
         p_reason,
-        p_reason_details,
-        p_blocked_by
+        p_reason_details
     )
     RETURNING id INTO v_block_id;
     

@@ -4055,9 +4055,9 @@ CREATE OR REPLACE FUNCTION block_bus_seat_manually(
     p_product_id TEXT,
     p_seat_id VARCHAR(50),
     p_seat_number INTEGER,
+    p_blocked_by INTEGER,
     p_reason VARCHAR(100) DEFAULT 'maintenance',
-    p_reason_details TEXT DEFAULT NULL,
-    p_blocked_by INTEGER
+    p_reason_details TEXT DEFAULT NULL
 )
 RETURNS JSONB AS $$
 DECLARE
@@ -4078,8 +4078,8 @@ BEGIN
         RETURN jsonb_build_object('success', FALSE, 'error', 'Place déjà réservée, impossible de bloquer');
     END IF;
     
-    INSERT INTO bus_seat_blocks (product_id, seat_id, seat_number, reason, reason_details, blocked_by)
-    VALUES (p_product_id, p_seat_id, p_seat_number, p_reason, p_reason_details, p_blocked_by)
+    INSERT INTO bus_seat_blocks (product_id, seat_id, seat_number, blocked_by, reason, reason_details)
+    VALUES (p_product_id, p_seat_id, p_seat_number, p_blocked_by, p_reason, p_reason_details)
     RETURNING id INTO v_block_id;
     
     RETURN jsonb_build_object('success', TRUE, 'block_id', v_block_id, 'message', 'Place bloquée avec succès');
