@@ -512,8 +512,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("💡 Cette approche garantit que la migration consolidée s'exécute toujours, comme sur Render");
     let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
     log::info!("🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères", migration_sql.len());
-    use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
-    log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands importée, début de l'exécution...");
+    // execute_multiple_sql_commands déjà importé à la ligne 474
+    log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands déjà importée, début de l'exécution...");
     
     match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
         Ok(_) => {
