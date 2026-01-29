@@ -48,6 +48,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     yukpomnang_backend::init_logging();
 
+    // ✅ NOUVEAU 2026-01-29: Logs de diagnostic très tôt pour confirmer que le code s'exécute
+    log::info!("🔍 [STARTUP] Démarrage application - Version: {}", env!("CARGO_PKG_VERSION"));
+    log::info!("🔍 [STARTUP] Current working directory: {:?}", env::current_dir());
+    log::info!("🔍 [STARTUP] SQLX_OFFLINE au runtime: {:?}", env::var("SQLX_OFFLINE").ok());
+
     let mut db_url = env::var("DATABASE_URL").map_err(|e| {
         log::error!("❌ DATABASE_URL manquante ou invalide: {}", e);
         e
