@@ -75,6 +75,10 @@ path = "src/bin/verify_indexes.rs"
 name = "analyze_tables"
 path = "src/bin/analyze_tables.rs"
 
+[[bin]]
+name = "diagnose_migrations"
+path = "scripts/diagnose_migrations.rs"
+
 [features]
 mock = []
 gpu = ["image"]

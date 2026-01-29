@@ -360,9 +360,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 🔄 Exécuter les migrations SQLx standard au démarrage
     // ✅ CORRIGÉ 2026-01-28: Les migrations SQLx standard sont OBLIGATOIRES pour créer les tables de base
     log::info!("🚀 Application des migrations SQLx standard...");
+    
+    // ✅ NOUVEAU 2026-01-29: Vérifier l'état des migrations avant exécution
+    let migrations_table_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = '_sqlx_migrations'
+        )",
+    )
+    .fetch_one(&pg_pool)
+    .await
+    .unwrap_or(false);
+    
+    if migrations_table_exists {
+        let applied_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM _sqlx_migrations WHERE success = true",
+        )
+        .fetch_one(&pg_pool)
+        .await
+        .unwrap_or(0);
+        log::info!("📊 Migrations déjà appliquées: {}", applied_count);
+    } else {
+        log::info!("📊 Aucune migration appliquée précédemment (première exécution)");
+    }
+    
     match sqlx::migrate!("./migrations").run(&pg_pool).await {
-        Ok(_) => {
+        Ok(migration_result) => {
             log::info!("✅ Migrations SQLx standard appliquées avec succès");
+            log::info!("📊 Migrations appliquées: {}", migration_result.migrations_applied);
 
             // Vérifier si la migration 20251125_fix_idx_services_search_optimized a été appliquée
             check_index_migration(&pg_pool).await;
@@ -390,6 +416,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await
             .unwrap_or(false);
 
+            // ✅ NOUVEAU 2026-01-29: Vérifier d'autres tables critiques
+            let deliveries_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'deliveries'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            let product_creation_queue_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'product_creation_queue'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            let publicites_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'publicites'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
             if !users_exists || !services_exists {
                 log::error!("❌ ERREUR CRITIQUE: Les tables de base n'ont pas été créées par les migrations SQLx standard");
                 log::error!(
@@ -403,9 +463,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 log::info!("✅ Tables de base (users, services) vérifiées après migrations SQLx");
             }
+            
+            // ✅ NOUVEAU 2026-01-29: Logger l'état des autres tables critiques
+            log::info!("📊 État des tables critiques: deliveries={}, product_creation_queue={}, publicites={}", 
+                deliveries_exists, product_creation_queue_exists, publicites_exists);
+            
+            if !deliveries_exists {
+                log::warn!("⚠️ Table 'deliveries' manquante - certaines fonctionnalités seront indisponibles");
+            }
+            if !product_creation_queue_exists {
+                log::warn!("⚠️ Table 'product_creation_queue' manquante - le worker de création de produits ne fonctionnera pas");
+            }
+            if !publicites_exists {
+                log::warn!("⚠️ Table 'publicites' manquante - la tâche d'expiration des publicités ne fonctionnera pas");
+            }
         }
         Err(e) => {
             let error_str = e.to_string();
+            log::error!("❌ ERREUR DÉTAILLÉE lors de l'application des migrations SQLx standard:");
+            log::error!("   Type: {:?}", e);
+            log::error!("   Message: {}", error_str);
+            
+            // ✅ NOUVEAU 2026-01-29: Logs supplémentaires pour diagnostic
+            if let Some(source) = e.source() {
+                log::error!("   Source: {}", source);
+            }
+            
             // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
             if error_str.contains("migration 0 was previously applied but has been modified") {
                 log::warn!("⚠️ Migration 0 modifiée détectée (ignorée) - Si nécessaire, supprimez l'entrée de _sqlx_migrations pour la migration 0");
@@ -413,12 +496,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "ℹ️ Continuation du démarrage malgré l'avertissement de migration modifiée"
                 );
             } else {
-                log::error!(
-                    "❌ ERREUR CRITIQUE lors de l'application des migrations SQLx standard: {}",
-                    e
-                );
+                log::error!("❌ ERREUR CRITIQUE lors de l'application des migrations SQLx standard: {}", e);
                 log::error!("❌ Les migrations SQLx standard sont OBLIGATOIRES pour créer les tables de base (users, services)");
                 log::error!("❌ Les migrations automatiques ne pourront pas s'exécuter correctement sans ces tables");
+                log::error!("🔍 DIAGNOSTIC: Vérifiez:");
+                log::error!("   1. Que le dossier 'migrations' existe et contient des fichiers .sql");
+                log::error!("   2. Que la connexion à la base de données fonctionne");
+                log::error!("   3. Que l'utilisateur PostgreSQL a les permissions CREATE TABLE");
+                log::error!("   4. Les logs PostgreSQL pour plus de détails");
                 log::warn!("⚠️ Continuation du démarrage, mais certaines fonctionnalités peuvent être indisponibles");
             }
         }
