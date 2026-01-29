@@ -819,7 +819,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         log::error!("❌ ARRÊT DE L'APPLICATION: Tables critiques manquantes en production");
                         log::error!("❌ Les workers et services ne peuvent pas fonctionner sans ces tables");
                         log::error!("❌ ACTION REQUISE: Exécuter les migrations manuellement ou corriger les erreurs de migration");
-                        return Err(format!("Tables critiques manquantes après migrations: {}", missing_tables.join(", ")).into());
+                        let missing_str = missing_tables.iter().map(|s| *s).collect::<Vec<_>>().join(", ");
+                        return Err(format!("Tables critiques manquantes après migrations: {}", missing_str).into());
                     } else {
                         log::warn!("⚠️ Continuation avec fonctionnalités limitées (mode développement)");
                     }
@@ -1042,7 +1043,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         log::error!("❌ ARRÊT DE L'APPLICATION: Tables critiques manquantes en production");
                         log::error!("❌ Les workers et services ne peuvent pas fonctionner sans ces tables");
                         log::error!("❌ ACTION REQUISE: Exécuter les migrations manuellement ou corriger les erreurs de migration");
-                        return Err(format!("Tables critiques manquantes après échec SQLx: {}", missing_tables.join(", ")).into());
+                        let missing_str = missing_tables.iter().map(|s| *s).collect::<Vec<_>>().join(", ");
+                        return Err(format!("Tables critiques manquantes après échec SQLx: {}", missing_str).into());
                     } else {
                         log::warn!("⚠️ Continuation avec fonctionnalités limitées (mode développement)");
                     }
