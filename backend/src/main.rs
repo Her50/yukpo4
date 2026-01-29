@@ -463,6 +463,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match sqlx::migrate!("./migrations").run(&pg_pool).await {
         Ok(_) => {
             log::info!("✅ Migrations SQLx standard appliquées avec succès");
+            log::info!("🔍 [MIGRATION CONSOLIDÉE] Vérification des tables critiques après migrations SQLx...");
+            
+            // ✅ FORCER l'application de la migration consolidée TOUJOURS au démarrage
+            // pour s'assurer que toutes les tables existent même si les migrations SQLx ont échoué partiellement
+            log::warn!("🔄 [MIGRATION CONSOLIDÉE] Application FORCÉE de la migration consolidée au démarrage...");
+            let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
+            log::info!("🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères", migration_sql.len());
+            use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+            log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands importée, début de l'exécution...");
+            
+            match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
+                Ok(_) => {
+                    log::info!("✅ [MIGRATION CONSOLIDÉE] Migration consolidée appliquée avec succès (forcée au démarrage)");
+                }
+                Err(e) => {
+                    log::error!("❌ [MIGRATION CONSOLIDÉE] Erreur lors de l'application FORCÉE de la migration consolidée: {}", e);
+                    log::error!("❌ [MIGRATION CONSOLIDÉE] Type d'erreur: {:?}", e);
+                    if let Some(source) = e.source() {
+                        log::error!("❌ [MIGRATION CONSOLIDÉE] Source: {}", source);
+                    }
+                    // Ne pas arrêter l'application, continuer avec la vérification
+                }
+            }
 
             // Vérifier si la migration 20251125_fix_idx_services_search_optimized a été appliquée
             check_index_migration(&pg_pool).await;
@@ -524,6 +547,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await
             .unwrap_or(false);
 
+            log::info!("🔍 Vérification users: {}, services: {}", users_exists, services_exists);
+            
             if !users_exists || !services_exists {
                 log::error!("❌ ERREUR CRITIQUE: Les tables de base n'ont pas été créées par les migrations SQLx standard");
                 log::error!(
@@ -536,9 +561,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
                 
                 // ✅ NOUVEAU 2026-01-29: Essayer d'appliquer la migration consolidée si les tables de base manquent
-                log::warn!("🔄 Tentative d'application de la migration consolidée pour créer les tables manquantes...");
+                log::warn!("🔄 [MIGRATION CONSOLIDÉE] Tentative d'application de la migration consolidée pour créer les tables manquantes...");
+                log::info!("🔍 [MIGRATION CONSOLIDÉE] Chargement du fichier de migration...");
                 let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
+                log::info!("🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères", migration_sql.len());
                 use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+                log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands importée, début de l'exécution...");
                 
                 match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
                     Ok(_) => {
@@ -655,9 +683,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log::error!("❌ CAUSE PROBABLE: Les migrations n'ont pas été appliquées correctement");
                 
                 // ✅ NOUVEAU 2026-01-29: Essayer d'appliquer la migration consolidée pour créer les tables manquantes
-                log::warn!("🔄 Tentative d'application de la migration consolidée pour créer les tables manquantes...");
+                log::warn!("🔄 [MIGRATION CONSOLIDÉE] Tentative d'application de la migration consolidée pour créer les tables manquantes...");
+                log::info!("🔍 [MIGRATION CONSOLIDÉE] Tables manquantes: {:?}", missing_tables);
                 let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
+                log::info!("🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères", migration_sql.len());
                 use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+                log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands importée, début de l'exécution...");
                 
                 match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
                     Ok(_) => {
@@ -693,7 +724,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                     Err(e) => {
-                        log::error!("❌ Erreur lors de l'application de la migration consolidée: {}", e);
+                        log::error!("❌ [MIGRATION CONSOLIDÉE] Erreur lors de l'application de la migration consolidée: {}", e);
+                        log::error!("❌ [MIGRATION CONSOLIDÉE] Type d'erreur: {:?}", e);
+                        if let Some(source) = e.source() {
+                            log::error!("❌ [MIGRATION CONSOLIDÉE] Source: {}", source);
+                        }
                         log::error!("❌ SOLUTION: Vérifier que toutes les migrations dans backend/migrations/ ont été exécutées");
                         log::error!("❌ Vérifier les logs de migration ci-dessus pour identifier l'erreur");
                     }
