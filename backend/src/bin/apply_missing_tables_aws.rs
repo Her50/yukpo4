@@ -27,8 +27,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Lire et exécuter la migration SQL consolidée
     println!("🔄 Application de la migration SQL consolidée (20260129_create_missing_tables_aws.sql)...");
-    // ✅ CORRECTION: Chemin relatif depuis src/bin/ vers migrations/
-    let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
+    // ✅ CORRECTION: Chemin relatif depuis src/bin/ vers migrations/ (remonter de 2 niveaux)
+    let migration_sql = include_str!("../../migrations/20260129_create_missing_tables_aws.sql");
 
     // ✅ Utiliser execute_multiple_sql_commands pour gérer les blocs DO $$
     use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
