@@ -372,7 +372,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // ✅ NOUVEAU 2026-01-29: Vérifier que le dossier migrations existe
     // Note: sqlx::migrate!() nécessite un chemin littéral, donc on vérifie juste que le dossier existe
-    let migrations_path = Path::new("./migrations");
+    let _migrations_path = Path::new("./migrations");
     if let Ok(current_dir) = env::current_dir() {
         let migrations_dir = current_dir.join("migrations");
         if migrations_dir.exists() {
@@ -712,7 +712,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ("publicites", publicites_exists),
             ];
             
-            let missing_tables: Vec<&str> = critical_tables.iter()
+            let mut missing_tables: Vec<&str> = critical_tables.iter()
                 .filter_map(|(name, exists)| if !exists { Some(*name) } else { None })
                 .collect();
             
