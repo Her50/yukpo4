@@ -361,6 +361,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 🔄 Exécuter les migrations SQLx standard au démarrage
     // ✅ CORRIGÉ 2026-01-28: Les migrations SQLx standard sont OBLIGATOIRES pour créer les tables de base
     log::info!("🚀 Application des migrations SQLx standard...");
+    log::info!("🔍 [DIAGNOSTIC] SQLX_OFFLINE au runtime: {:?}", env::var("SQLX_OFFLINE").ok());
+    log::info!("🔍 [DIAGNOSTIC] Current working directory: {:?}", env::current_dir());
+    log::info!("🔍 [DIAGNOSTIC] Pool de connexions créé avec succès");
     
     // ✅ NOUVEAU 2026-01-29: Vérifier que le dossier migrations existe
     // Note: sqlx::migrate!() nécessite un chemin littéral, donc on vérifie juste que le dossier existe
@@ -440,6 +443,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::info!("📊 Migrations déjà appliquées: {}", applied_count);
     } else {
         log::info!("📊 Aucune migration appliquée précédemment (première exécution)");
+    }
+    
+    log::info!("🔍 [DIAGNOSTIC] Avant sqlx::migrate!() - Chemin: ./migrations");
+    log::info!("🔍 [DIAGNOSTIC] Vérification existence dossier migrations...");
+    let migrations_check = Path::new("./migrations").exists();
+    log::info!("🔍 [DIAGNOSTIC] Dossier ./migrations existe: {}", migrations_check);
+    if !migrations_check {
+        log::error!("❌ [DIAGNOSTIC] CRITIQUE: Dossier ./migrations n'existe pas !");
+        log::error!("❌ [DIAGNOSTIC] Current dir: {:?}", env::current_dir());
+        log::error!("❌ [DIAGNOSTIC] Contenu /app: {:?}", fs::read_dir("/app").ok().map(|d| d.collect::<Vec<_>>()));
     }
     
     match sqlx::migrate!("./migrations").run(&pg_pool).await {

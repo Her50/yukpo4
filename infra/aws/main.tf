@@ -453,7 +453,7 @@ resource "aws_secretsmanager_secret_version" "backend_secrets" {
     PORT         = "8080"
     HOST         = "0.0.0.0"
     APP_ENV      = var.environment
-    SQLX_OFFLINE = "true"
+    # SQLX_OFFLINE retiré : ne doit être défini qu'au build dans Dockerfile, pas au runtime
     ENABLE_AUTO_MIGRATIONS = "true"
   })
 }
