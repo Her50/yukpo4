@@ -3378,8 +3378,8 @@ BEGIN
                     calculate_distance_km(
                         p_user_lat,
                         p_user_lng,
-                        SPLIT_PART(av.gps, ',', 1)::DOUBLE PRECISION,
-                        SPLIT_PART(av.gps, ',', 2)::DOUBLE PRECISION
+                        CAST(SPLIT_PART(av.gps, ',', 1) AS DOUBLE PRECISION),
+                        CAST(SPLIT_PART(av.gps, ',', 2) AS DOUBLE PRECISION)
                     )
                 ELSE NULL
             END AS agency_distance_km
@@ -3393,8 +3393,8 @@ BEGIN
                 av.gps = '' OR
                 ST_DWithin(
                     ST_SetSRID(ST_MakePoint(
-                        SPLIT_PART(av.gps, ',', 2)::DOUBLE PRECISION,
-                        SPLIT_PART(av.gps, ',', 1)::DOUBLE PRECISION
+                        CAST(SPLIT_PART(av.gps, ',', 2) AS DOUBLE PRECISION),
+                        CAST(SPLIT_PART(av.gps, ',', 1) AS DOUBLE PRECISION)
                     ), 4326)::geography,
                     v_user_point,
                     p_radius_km * 1000
@@ -3485,7 +3485,7 @@ BEGIN
             CASE WHEN ad.agency_distance_km IS NOT NULL AND ad.agency_distance_km <= 25 THEN 3 ELSE 0 END +
             CASE WHEN p_departure_city IS NOT NULL AND pd.departure_city ILIKE '%' || p_departure_city || '%' THEN 8 ELSE 0 END +
             CASE WHEN p_arrival_city IS NOT NULL AND pd.arrival_city ILIKE '%' || p_arrival_city || '%' THEN 8 ELSE 0 END
-        )::DOUBLE PRECISION AS relevance_score
+        ) AS relevance_score
     FROM agency_data ad
     JOIN product_data pd ON pd.product_user_id = ad.id
     WHERE pd.available_seats >= p_min_seats
@@ -4234,12 +4234,12 @@ BEGIN
             u.whatsapp,
             CASE 
                 WHEN u.gps IS NOT NULL AND u.gps LIKE '%,%' THEN
-                    SPLIT_PART(u.gps, ',', 1)::DOUBLE PRECISION
+                    CAST(SPLIT_PART(u.gps, ',', 1) AS DOUBLE PRECISION)
                 ELSE NULL
             END as donor_lat,
             CASE 
                 WHEN u.gps IS NOT NULL AND u.gps LIKE '%,%' THEN
-                    SPLIT_PART(u.gps, ',', 2)::DOUBLE PRECISION
+                    CAST(SPLIT_PART(u.gps, ',', 2) AS DOUBLE PRECISION)
                 ELSE NULL
             END as donor_lng
         FROM user_blood_groups ubg
@@ -4365,10 +4365,10 @@ BEGIN
                 v_request_id,
                 (v_match->>'user_id')::INTEGER,
                 (v_match->>'blood_group_id')::INTEGER,
-                (v_match->>'donor_latitude')::DOUBLE PRECISION,
-                (v_match->>'donor_longitude')::DOUBLE PRECISION,
-                (v_match->>'distance_km')::DOUBLE PRECISION,
-                (v_match->>'relevance_score')::DOUBLE PRECISION,
+                CAST((v_match->>'donor_latitude') AS DOUBLE PRECISION),
+                CAST((v_match->>'donor_longitude') AS DOUBLE PRECISION),
+                CAST((v_match->>'distance_km') AS DOUBLE PRECISION),
+                CAST((v_match->>'relevance_score') AS DOUBLE PRECISION),
                 'pending'
             ) ON CONFLICT (request_id, donor_user_id) DO NOTHING;
         END LOOP;
