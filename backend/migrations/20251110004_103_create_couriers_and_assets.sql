@@ -1,5 +1,35 @@
 -- Migration: Création des tables couriers et courier_assets
 -- Date: 2025-11-10
+
+-- ✅ CORRIGÉ 2026-01-29: Vérifier et créer les types ENUM si nécessaire
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_courier_status') THEN
+        CREATE TYPE delivery_courier_status AS ENUM (
+            'pending_review',
+            'approved',
+            'rejected',
+            'suspended'
+        );
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_engine_type') THEN
+        CREATE TYPE delivery_engine_type AS ENUM (
+            'moto',
+            'scooter',
+            'voiture',
+            'camionnette',
+            'velo_cargo',
+            'pieton',
+            'camion_leger',
+            'autre'
+        );
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS couriers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,

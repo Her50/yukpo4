@@ -3,9 +3,10 @@
 -- Description: Tables pour gérer les messages de chat pendant les livraisons et la gamification
 
 -- 1. Table pour les messages de chat de livraison
+-- ✅ CORRIGÉ 2026-01-29: Créer la table sans contrainte FK d'abord, puis l'ajouter conditionnellement
 CREATE TABLE IF NOT EXISTS delivery_chat_messages (
     id SERIAL PRIMARY KEY,
-    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    delivery_id UUID NOT NULL,
     sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     sender_name TEXT NOT NULL,
     sender_role TEXT NOT NULL CHECK (sender_role IN ('client', 'courier', 'provider')),

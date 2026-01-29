@@ -1,6 +1,23 @@
 -- ✅ Migration : Table de configuration des prix par type d'engin
 -- Permet de paramétrer le coût de livraison selon le type d'engin utilisé
 
+-- ✅ CORRIGÉ 2026-01-29: Vérifier et créer le type ENUM si nécessaire
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_engine_type') THEN
+        CREATE TYPE delivery_engine_type AS ENUM (
+            'moto',
+            'scooter',
+            'voiture',
+            'camionnette',
+            'velo_cargo',
+            'pieton',
+            'camion_leger',
+            'autre'
+        );
+    END IF;
+END $$;
+
 -- Ajouter tricycle à l'enum si pas déjà présent
 -- ✅ CORRIGÉ: ALTER TYPE ADD VALUE ne peut pas être dans une transaction
 -- On utilise une exception pour ignorer l'erreur "unsafe use of new value"

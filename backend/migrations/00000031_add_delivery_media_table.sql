@@ -3,9 +3,10 @@
 -- Description: Table dédiée pour les médias de livraison avec support S3/CDN, similaire à media pour services
 
 -- Créer la table delivery_media
+-- ✅ CORRIGÉ 2026-01-29: Créer la table sans contrainte FK d'abord, puis l'ajouter conditionnellement
 CREATE TABLE IF NOT EXISTS delivery_media (
     id SERIAL PRIMARY KEY,
-    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    delivery_id UUID NOT NULL,
     parcel_id UUID REFERENCES delivery_parcels(id) ON DELETE SET NULL,
     
     -- Informations média
@@ -51,6 +52,36 @@ CREATE INDEX IF NOT EXISTS idx_delivery_media_uploaded_at ON delivery_media(uplo
 -- Index composite pour requêtes fréquentes
 CREATE INDEX IF NOT EXISTS idx_delivery_media_delivery_type ON delivery_media(delivery_id, type);
 CREATE INDEX IF NOT EXISTS idx_delivery_media_delivery_proof ON delivery_media(delivery_id, is_proof_media, proof_type);
+
+-- ✅ CORRIGÉ 2026-01-29: Ajouter les contraintes de clé étrangère seulement si les tables existent
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'deliveries') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints 
+            WHERE table_schema = 'public' 
+            AND table_name = 'delivery_media' 
+            AND constraint_name = 'delivery_media_delivery_id_fkey'
+        ) THEN
+            ALTER TABLE delivery_media
+                ADD CONSTRAINT delivery_media_delivery_id_fkey
+                FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE;
+        END IF;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'delivery_parcels') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints 
+            WHERE table_schema = 'public' 
+            AND table_name = 'delivery_media' 
+            AND constraint_name = 'delivery_media_parcel_id_fkey'
+        ) THEN
+            ALTER TABLE delivery_media
+                ADD CONSTRAINT delivery_media_parcel_id_fkey
+                FOREIGN KEY (parcel_id) REFERENCES delivery_parcels(id) ON DELETE SET NULL;
+        END IF;
+    END IF;
+END $$;
 
 -- Index GIN pour recherche full-text dans ai_description
 CREATE INDEX IF NOT EXISTS idx_delivery_media_ai_description_fulltext

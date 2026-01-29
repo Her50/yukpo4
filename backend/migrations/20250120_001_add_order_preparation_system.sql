@@ -33,9 +33,10 @@ CREATE INDEX IF NOT EXISTS idx_product_delivery_config_availability_days
 ON product_delivery_config USING GIN(availability_days);
 
 -- 3. Table commandes avec workflow de préparation
+-- ✅ CORRIGÉ 2026-01-29: Créer la table sans contrainte FK d'abord, puis l'ajouter conditionnellement
 CREATE TABLE IF NOT EXISTS product_orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    delivery_id UUID REFERENCES deliveries(id) ON DELETE CASCADE,
+    delivery_id UUID,
     service_id INTEGER NOT NULL REFERENCES services(id),
     product_index INTEGER NOT NULL,
     client_user_id INTEGER NOT NULL REFERENCES users(id),
@@ -74,6 +75,23 @@ ADD COLUMN IF NOT EXISTS validation_deadline TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_product_orders_validation_deadline 
 ON product_orders(validation_deadline) 
 WHERE status = 'pending' AND validation_deadline IS NOT NULL;
+
+-- ✅ CORRIGÉ 2026-01-29: Ajouter la contrainte de clé étrangère seulement si deliveries existe
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'deliveries') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints 
+            WHERE table_schema = 'public' 
+            AND table_name = 'product_orders' 
+            AND constraint_name = 'product_orders_delivery_id_fkey'
+        ) THEN
+            ALTER TABLE product_orders
+                ADD CONSTRAINT product_orders_delivery_id_fkey
+                FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE;
+        END IF;
+    END IF;
+END $$;
 
 -- 3.2. Table pour enregistrer les annulations (timeout, rejet, etc.)
 CREATE TABLE IF NOT EXISTS order_cancellations (

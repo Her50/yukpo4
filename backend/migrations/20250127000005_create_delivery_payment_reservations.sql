@@ -2,9 +2,10 @@
 -- Date: 2025-01-27
 -- Description: Réservations de paiement pour livraisons (Phase 5)
 
+-- ✅ CORRIGÉ 2026-01-29: Créer la table sans contrainte FK d'abord, puis l'ajouter conditionnellement
 CREATE TABLE IF NOT EXISTS delivery_payment_reservations (
     id SERIAL PRIMARY KEY,
-    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    delivery_id UUID NOT NULL,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     
     -- Montants
@@ -43,4 +44,21 @@ CREATE TABLE IF NOT EXISTS delivery_payment_reservations (
 CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_delivery ON delivery_payment_reservations(delivery_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_user ON delivery_payment_reservations(user_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_status ON delivery_payment_reservations(reservation_status);
+
+-- ✅ CORRIGÉ 2026-01-29: Ajouter la contrainte de clé étrangère seulement si deliveries existe
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'deliveries') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints 
+            WHERE table_schema = 'public' 
+            AND table_name = 'delivery_payment_reservations' 
+            AND constraint_name = 'delivery_payment_reservations_delivery_id_fkey'
+        ) THEN
+            ALTER TABLE delivery_payment_reservations
+                ADD CONSTRAINT delivery_payment_reservations_delivery_id_fkey
+                FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE;
+        END IF;
+    END IF;
+END $$;
 

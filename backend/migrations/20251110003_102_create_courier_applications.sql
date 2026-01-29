@@ -1,5 +1,20 @@
 -- Migration: Création de la table courier_applications
 -- Date: 2025-11-10
+
+-- ✅ CORRIGÉ 2026-01-29: Vérifier et créer le type ENUM si nécessaire
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_application_status') THEN
+        CREATE TYPE delivery_application_status AS ENUM (
+            'draft',
+            'submitted',
+            'under_review',
+            'approved',
+            'rejected'
+        );
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS courier_applications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,

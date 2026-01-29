@@ -48,6 +48,10 @@ name = "hash_password_helper"
 path = "src/bin/hash_password_helper.rs"
 
 [[bin]]
+name = "diagnose_migrations"
+path = "src/bin/diagnose_migrations.rs"
+
+[[bin]]
 name = "create_admin_user"
 path = "src/bin/create_admin_user.rs"
 
@@ -75,9 +79,6 @@ path = "src/bin/verify_indexes.rs"
 name = "analyze_tables"
 path = "src/bin/analyze_tables.rs"
 
-[[bin]]
-name = "diagnose_migrations"
-path = "scripts/diagnose_migrations.rs"
 
 [features]
 mock = []

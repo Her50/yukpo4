@@ -4,6 +4,23 @@
 -- Objectif: Gérer des millions de livraisons simultanées
 -- ============================================================================
 
+-- ✅ CORRIGÉ 2026-01-29: Vérifier et créer le type ENUM si nécessaire
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_engine_type') THEN
+        CREATE TYPE delivery_engine_type AS ENUM (
+            'moto',
+            'scooter',
+            'voiture',
+            'camionnette',
+            'velo_cargo',
+            'pieton',
+            'camion_leger',
+            'autre'
+        );
+    END IF;
+END $$;
+
 -- ============================================================================
 -- 1. INDEX PARTIELS POUR LIVRAISONS ACTIVES
 -- ============================================================================

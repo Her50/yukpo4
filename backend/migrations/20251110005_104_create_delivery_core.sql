@@ -1,5 +1,43 @@
 -- Migration: Création des tables coeur de livraison
 -- Date: 2025-11-10
+
+-- ✅ CORRIGÉ 2026-01-29: Vérifier et créer les types ENUM si nécessaire
+-- Cela évite les erreurs si la migration 0 s'arrête avant de créer les ENUM
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_status') THEN
+        CREATE TYPE delivery_status AS ENUM (
+            'requested',
+            'awaiting_courier_confirmation',
+            'accepted',
+            'en_route_pickup',
+            'arrival_pickup',
+            'picked_up',
+            'shopping_in_progress',
+            'shopping_completed',
+            'en_route_delivery',
+            'arrival_destination',
+            'delivered',
+            'completed',
+            'cancelled'
+        );
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_cancel_reason') THEN
+        CREATE TYPE delivery_cancel_reason AS ENUM (
+            'client_cancelled',
+            'courier_cancelled',
+            'no_courier_available',
+            'parcel_issue',
+            'system_failure'
+        );
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS delivery_parcels (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     type_id INTEGER REFERENCES parcel_types(id) ON DELETE SET NULL,
