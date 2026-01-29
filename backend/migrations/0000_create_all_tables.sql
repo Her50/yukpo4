@@ -3964,13 +3964,13 @@ CREATE TABLE IF NOT EXISTS bus_seat_blocks (
     blocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     unblocked_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    unblocked_at TIMESTAMPTZ,
-    CONSTRAINT unique_active_seat_block UNIQUE (product_id, seat_id) WHERE is_active = TRUE
+    unblocked_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_bus_seat_blocks_product ON bus_seat_blocks(product_id);
 CREATE INDEX IF NOT EXISTS idx_bus_seat_blocks_active ON bus_seat_blocks(is_active) WHERE is_active = TRUE;
 CREATE INDEX IF NOT EXISTS idx_bus_seat_blocks_seat ON bus_seat_blocks(seat_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bus_seat_blocks_unique_active ON bus_seat_blocks(product_id, seat_id) WHERE is_active = TRUE;
 
 -- Fonction pour bloquer une place manuellement
 CREATE OR REPLACE FUNCTION block_bus_seat_manually(
