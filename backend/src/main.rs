@@ -491,7 +491,61 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             
             // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
             if error_str.contains("migration 0 was previously applied but has been modified") {
-                log::warn!("⚠️ Migration 0 modifiée détectée (ignorée) - Si nécessaire, supprimez l'entrée de _sqlx_migrations pour la migration 0");
+                log::warn!("⚠️ Migration 0 modifiée détectée (ignorée)");
+                log::error!("🔍 DIAGNOSTIC DÉTAILLÉ Migration 0:");
+                
+                // ✅ NOUVEAU 2026-01-29: Afficher les détails de la migration 0
+                if migrations_table_exists {
+                    if let Ok(migration_info) = sqlx::query_as::<_, (i64, String, String, bool)>(
+                        "SELECT version, description, encode(checksum, 'hex') as checksum_hex, success 
+                         FROM _sqlx_migrations 
+                         WHERE version = 0"
+                    )
+                    .fetch_optional(&pg_pool)
+                    .await
+                    {
+                        if let Some((version, desc, checksum_hex, success)) = migration_info {
+                            log::error!("   Version: {}", version);
+                            log::error!("   Description: {}", desc);
+                            log::error!("   Checksum actuel (en base): {}", checksum_hex);
+                            log::error!("   Succès: {}", success);
+                            log::error!("   ⚠️ Le checksum du fichier migrations/0000_create_all_tables.sql a changé depuis l'application");
+                        }
+                    }
+                    
+                    // Lister toutes les migrations appliquées
+                    if let Ok(applied_migrations) = sqlx::query_as::<_, (i64, String, bool)>(
+                        "SELECT version, description, success 
+                         FROM _sqlx_migrations 
+                         ORDER BY version"
+                    )
+                    .fetch_all(&pg_pool)
+                    .await
+                    {
+                        let successful: Vec<_> = applied_migrations.iter()
+                            .filter(|(_, _, success)| *success)
+                            .collect();
+                        let failed: Vec<_> = applied_migrations.iter()
+                            .filter(|(_, _, success)| !*success)
+                            .collect();
+                        
+                        log::error!("   📊 Migrations en base: {} réussies, {} échouées", 
+                            successful.len(), failed.len());
+                        
+                        if !failed.is_empty() {
+                            log::error!("   ⚠️ Migrations échouées:");
+                            for (version, desc, _) in failed {
+                                log::error!("      - Version {}: {}", version, desc);
+                            }
+                        }
+                    }
+                }
+                
+                log::error!("🔧 SOLUTION: Pour corriger le checksum de la migration 0:");
+                log::error!("   1. Calculer le nouveau checksum du fichier migrations/0000_create_all_tables.sql");
+                log::error!("   2. Exécuter: UPDATE _sqlx_migrations SET checksum = decode('NOUVEAU_CHECKSUM_HEX', 'hex') WHERE version = 0;");
+                log::error!("   3. Relancer l'application pour appliquer les migrations en attente");
+                log::warn!("⚠️ Continuation du démarrage, mais les migrations ne seront pas appliquées");
                 log::info!(
                     "ℹ️ Continuation du démarrage malgré l'avertissement de migration modifiée"
                 );
@@ -499,11 +553,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log::error!("❌ ERREUR CRITIQUE lors de l'application des migrations SQLx standard: {}", e);
                 log::error!("❌ Les migrations SQLx standard sont OBLIGATOIRES pour créer les tables de base (users, services)");
                 log::error!("❌ Les migrations automatiques ne pourront pas s'exécuter correctement sans ces tables");
-                log::error!("🔍 DIAGNOSTIC: Vérifiez:");
+                
+                // ✅ NOUVEAU 2026-01-29: Diagnostic complet des tables manquantes
+                log::error!("🔍 DIAGNOSTIC COMPLET:");
+                let critical_tables = vec![
+                    "users", "services", "deliveries", "product_creation_queue", 
+                    "publicites", "pharmacies", "matching_offres_candidats",
+                    "live_flash_sales", "global_promo_events", "delivery_matching_queue",
+                    "video_generation_jobs", "delivery_proximity_suggestions",
+                    "product_orders", "social_publication_jobs"
+                ];
+                
+                let mut missing_tables = Vec::new();
+                for table in &critical_tables {
+                    let exists: bool = sqlx::query_scalar(&format!(
+                        "SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_schema = 'public' 
+                            AND table_name = '{}'
+                        )",
+                        table
+                    ))
+                    .fetch_one(&pg_pool)
+                    .await
+                    .unwrap_or(false);
+                    
+                    if !exists {
+                        missing_tables.push(table);
+                    }
+                }
+                
+                if !missing_tables.is_empty() {
+                    log::error!("   📋 Tables manquantes ({}/{}):", missing_tables.len(), critical_tables.len());
+                    for table in &missing_tables {
+                        log::error!("      - {}", table);
+                    }
+                }
+                
+                log::error!("🔍 VÉRIFICATIONS:");
                 log::error!("   1. Que le dossier 'migrations' existe et contient des fichiers .sql");
                 log::error!("   2. Que la connexion à la base de données fonctionne");
                 log::error!("   3. Que l'utilisateur PostgreSQL a les permissions CREATE TABLE");
-                log::error!("   4. Les logs PostgreSQL pour plus de détails");
+                log::error!("   4. Que la migration 0 n'a pas été modifiée après application");
+                log::error!("   5. Les logs PostgreSQL pour plus de détails");
+                log::error!("🔧 SOLUTION: Exécuter manuellement les migrations:");
+                log::error!("   cd backend && sqlx migrate run");
                 log::warn!("⚠️ Continuation du démarrage, mais certaines fonctionnalités peuvent être indisponibles");
             }
         }
