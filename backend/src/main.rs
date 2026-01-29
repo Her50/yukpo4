@@ -819,7 +819,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         log::error!("❌ ARRÊT DE L'APPLICATION: Tables critiques manquantes en production");
                         log::error!("❌ Les workers et services ne peuvent pas fonctionner sans ces tables");
                         log::error!("❌ ACTION REQUISE: Exécuter les migrations manuellement ou corriger les erreurs de migration");
-                        let missing_str = missing_tables.iter().map(|s| *s).collect::<Vec<_>>().join(", ");
+                        let missing_str = missing_tables.join(", ");
                         return Err(format!("Tables critiques manquantes après migrations: {}", missing_str).into());
                     } else {
                         log::warn!("⚠️ Continuation avec fonctionnalités limitées (mode développement)");
@@ -994,7 +994,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "product_orders", "social_publication_jobs"
                 ];
                 
-                let mut missing_tables = Vec::new();
+                let mut missing_tables: Vec<&str> = Vec::new();
                 for table in &critical_tables {
                     let exists: bool = sqlx::query_scalar(&format!(
                         "SELECT EXISTS (
@@ -1009,7 +1009,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .unwrap_or(false);
                     
                     if !exists {
-                        missing_tables.push(table);
+                        missing_tables.push(*table);
                     }
                 }
                 
@@ -1043,7 +1043,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         log::error!("❌ ARRÊT DE L'APPLICATION: Tables critiques manquantes en production");
                         log::error!("❌ Les workers et services ne peuvent pas fonctionner sans ces tables");
                         log::error!("❌ ACTION REQUISE: Exécuter les migrations manuellement ou corriger les erreurs de migration");
-                        let missing_str = missing_tables.iter().map(|s| *s).collect::<Vec<_>>().join(", ");
+                        let missing_str = missing_tables.join(", ");
                         return Err(format!("Tables critiques manquantes après échec SQLx: {}", missing_str).into());
                     } else {
                         log::warn!("⚠️ Continuation avec fonctionnalités limitées (mode développement)");
