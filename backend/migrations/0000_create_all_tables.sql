@@ -3278,10 +3278,10 @@ CREATE INDEX IF NOT EXISTS idx_banques_sang_quartier ON banques_sang(quartier);
 
 -- Index GPS (GIST pour recherche géographique)
 CREATE INDEX IF NOT EXISTS idx_banques_sang_gps ON banques_sang USING GIST(
-    ST_MakePoint(
+    ST_SetSRID(ST_MakePoint(
         SPLIT_PART(gps, ',', 2)::DOUBLE PRECISION,
         SPLIT_PART(gps, ',', 1)::DOUBLE PRECISION
-    )::geography
+    ), 4326)::geography
 ) WHERE gps IS NOT NULL AND gps != '';
 
 -- Trigger pour updated_at
