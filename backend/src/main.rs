@@ -499,88 +499,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    // ✅ SOLUTION CAUSE RACINE 2026-01-29: Utiliser execute_multiple_sql_commands() pour la migration 0
-    // au lieu de sqlx::migrate!() qui exécute tout dans une transaction unique (timeout dans AWS)
-    // Cette approche était utilisée dans Render et fonctionnait car chaque commande est exécutée individuellement
-    //
-    // IMPORTANT: On applique d'abord la migration 0 avec execute_multiple_sql_commands(),
-    // puis on laisse sqlx::migrate!() calculer le checksum correct et l'insérer dans _sqlx_migrations
-    // Si la migration 0 existe déjà avec un mauvais checksum, sqlx::migrate!() va échouer,
-    // donc on la supprime d'abord si nécessaire (déjà fait plus haut)
-    log::info!("🔄 [MIGRATION 0] Application de la migration 0 via execute_multiple_sql_commands (comme dans Render)...");
-    let migration_0_sql = include_str!("../migrations/0000_create_all_tables.sql");
-    log::info!(
-        "🔍 [MIGRATION 0] Fichier chargé, taille: {} caractères",
-        migration_0_sql.len()
-    );
     use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
 
-    // Vérifier si la migration 0 existe déjà dans _sqlx_migrations
-    let migration_0_exists = if migrations_table_exists {
-        sqlx::query_scalar::<_, bool>(
-            "SELECT EXISTS (SELECT 1 FROM _sqlx_migrations WHERE version = 0 AND success = true)",
-        )
-        .fetch_one(&pg_pool)
-        .await
-        .unwrap_or(false)
-    } else {
-        false
-    };
-
-    if !migration_0_exists {
-        log::info!("🔄 [MIGRATION 0] Migration 0 non trouvée dans _sqlx_migrations, application via execute_multiple_sql_commands...");
-        match execute_multiple_sql_commands(&pg_pool, migration_0_sql).await {
-            Ok(_) => {
-                log::info!("✅ [MIGRATION 0] Migration 0 appliquée avec succès via execute_multiple_sql_commands");
-                log::info!("ℹ️ [MIGRATION 0] SQLx va calculer et insérer le checksum correct lors de sqlx::migrate!()");
-            }
-            Err(e) => {
-                log::error!(
-                    "❌ [MIGRATION 0] Erreur lors de l'application de la migration 0: {}",
-                    e
-                );
-                log::error!("❌ [MIGRATION 0] Type d'erreur: {:?}", e);
-                if let Some(source) = e.source() {
-                    log::error!("❌ [MIGRATION 0] Source: {}", source);
-                }
-            }
-        }
-    } else {
-        log::info!("ℹ️ [MIGRATION 0] Migration 0 existe déjà dans _sqlx_migrations, skip de l'application directe");
-    }
-
-    // ✅ SOLUTION CAUSE RACINE 2026-01-29: Exécuter la migration consolidée AVANT sqlx::migrate!()
-    // pour garantir qu'elle s'exécute toujours, même si sqlx::migrate!() échoue ou ne s'exécute pas
-    // Cette approche est similaire à Render qui utilisait auto_migrate::run_auto_migrations()
-    // qui appelait directement execute_multiple_sql_commands() indépendamment de sqlx::migrate!()
-    log::warn!("🔄 [MIGRATION CONSOLIDÉE] Application FORCÉE de la migration consolidée AVANT sqlx::migrate!()...");
-    log::info!("💡 Cette approche garantit que la migration consolidée s'exécute toujours, comme sur Render");
-    let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
-    log::info!(
-        "🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères",
-        migration_sql.len()
-    );
-    // execute_multiple_sql_commands déjà importé à la ligne 474
-    log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands déjà importée, début de l'exécution...");
-
-    match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
-        Ok(_) => {
-            log::info!("✅ [MIGRATION CONSOLIDÉE] Migration consolidée appliquée avec succès (AVANT sqlx::migrate!())");
-        }
-        Err(e) => {
-            log::error!("❌ [MIGRATION CONSOLIDÉE] Erreur lors de l'application FORCÉE de la migration consolidée: {}", e);
-            log::error!("❌ [MIGRATION CONSOLIDÉE] Type d'erreur: {:?}", e);
-            if let Some(source) = e.source() {
-                log::error!("❌ [MIGRATION CONSOLIDÉE] Source: {}", source);
-            }
-            // Ne pas arrêter l'application, continuer avec sqlx::migrate!()
-        }
-    }
-
-    // ✅ NOUVEAU 2026-01-30: Exécuter les migrations de correction AVANT sqlx::migrate!()
-    // pour garantir qu'elles s'exécutent avant les migrations qui créent les objets problématiques
-    // Ordre d'exécution: 20260130_002 (corrections critiques) puis 20260130_003 (corrections supplémentaires)
-    log::info!("🔄 [MIGRATIONS CORRECTION] Application FORCÉE des migrations de correction AVANT sqlx::migrate!()...");
+    // ✅ CORRECTION CRITIQUE 2026-01-30: Exécuter les migrations de correction AVANT la migration 0
+    // pour préparer l'environnement et éviter les erreurs pendant l'exécution de la migration 0
+    // Ordre d'exécution: 20260130_002 (corrections critiques) puis 20260130_003 (corrections supplémentaires) puis 20260130_004 (correction finale)
+    log::info!("🔄 [MIGRATIONS CORRECTION] Application FORCÉE des migrations de correction AVANT la migration 0...");
+    log::info!("💡 Cette approche garantit que les corrections sont en place avant que la migration 0 ne crée des objets");
     
     // Migration 20260130_002: Corrections critiques (vue, types, tables manquantes, etc.)
     let migration_fix_1_sql = include_str!("../migrations/20260130_002_fix_critical_migration_errors.sql");
@@ -627,6 +552,82 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => {
             log::error!("❌ [MIGRATION CORRECTION 004] Erreur lors de l'application: {}", e);
             // Ne pas arrêter l'application, continuer
+        }
+    }
+
+    // ✅ SOLUTION CAUSE RACINE 2026-01-29: Utiliser execute_multiple_sql_commands() pour la migration 0
+    // au lieu de sqlx::migrate!() qui exécute tout dans une transaction unique (timeout dans AWS)
+    // Cette approche était utilisée dans Render et fonctionnait car chaque commande est exécutée individuellement
+    //
+    // IMPORTANT: On applique la migration 0 APRÈS les corrections pour éviter les erreurs
+    // puis on laisse sqlx::migrate!() calculer le checksum correct et l'insérer dans _sqlx_migrations
+    // Si la migration 0 existe déjà avec un mauvais checksum, sqlx::migrate!() va échouer,
+    // donc on la supprime d'abord si nécessaire (déjà fait plus haut)
+    log::info!("🔄 [MIGRATION 0] Application de la migration 0 via execute_multiple_sql_commands (APRÈS les corrections)...");
+    let migration_0_sql = include_str!("../migrations/0000_create_all_tables.sql");
+    log::info!(
+        "🔍 [MIGRATION 0] Fichier chargé, taille: {} caractères",
+        migration_0_sql.len()
+    );
+
+    // Vérifier si la migration 0 existe déjà dans _sqlx_migrations
+    let migration_0_exists = if migrations_table_exists {
+        sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS (SELECT 1 FROM _sqlx_migrations WHERE version = 0 AND success = true)",
+        )
+        .fetch_one(&pg_pool)
+        .await
+        .unwrap_or(false)
+    } else {
+        false
+    };
+
+    if !migration_0_exists {
+        log::info!("🔄 [MIGRATION 0] Migration 0 non trouvée dans _sqlx_migrations, application via execute_multiple_sql_commands...");
+        match execute_multiple_sql_commands(&pg_pool, migration_0_sql).await {
+            Ok(_) => {
+                log::info!("✅ [MIGRATION 0] Migration 0 appliquée avec succès via execute_multiple_sql_commands");
+                log::info!("ℹ️ [MIGRATION 0] SQLx va calculer et insérer le checksum correct lors de sqlx::migrate!()");
+            }
+            Err(e) => {
+                log::error!(
+                    "❌ [MIGRATION 0] Erreur lors de l'application de la migration 0: {}",
+                    e
+                );
+                log::error!("❌ [MIGRATION 0] Type d'erreur: {:?}", e);
+                if let Some(source) = e.source() {
+                    log::error!("❌ [MIGRATION 0] Source: {}", source);
+                }
+            }
+        }
+    } else {
+        log::info!("ℹ️ [MIGRATION 0] Migration 0 existe déjà dans _sqlx_migrations, skip de l'application directe");
+    }
+
+    // ✅ SOLUTION CAUSE RACINE 2026-01-29: Exécuter la migration consolidée AVANT sqlx::migrate!()
+    // pour garantir qu'elle s'exécute toujours, même si sqlx::migrate!() échoue ou ne s'exécute pas
+    // Cette approche est similaire à Render qui utilisait auto_migrate::run_auto_migrations()
+    // qui appelait directement execute_multiple_sql_commands() indépendamment de sqlx::migrate!()
+    log::warn!("🔄 [MIGRATION CONSOLIDÉE] Application FORCÉE de la migration consolidée AVANT sqlx::migrate!()...");
+    log::info!("💡 Cette approche garantit que la migration consolidée s'exécute toujours, comme sur Render");
+    let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
+    log::info!(
+        "🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères",
+        migration_sql.len()
+    );
+    log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands déjà importée, début de l'exécution...");
+
+    match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
+        Ok(_) => {
+            log::info!("✅ [MIGRATION CONSOLIDÉE] Migration consolidée appliquée avec succès (AVANT sqlx::migrate!())");
+        }
+        Err(e) => {
+            log::error!("❌ [MIGRATION CONSOLIDÉE] Erreur lors de l'application FORCÉE de la migration consolidée: {}", e);
+            log::error!("❌ [MIGRATION CONSOLIDÉE] Type d'erreur: {:?}", e);
+            if let Some(source) = e.source() {
+                log::error!("❌ [MIGRATION CONSOLIDÉE] Source: {}", source);
+            }
+            // Ne pas arrêter l'application, continuer avec sqlx::migrate!()
         }
     }
 
