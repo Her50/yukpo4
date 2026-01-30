@@ -621,6 +621,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // Migration 20260130_008: CRITIQUE - Garantir que les tables services et media existent (APRÈS users)
+    let migration_fix_7_sql = include_str!("../migrations/20260130_008_ensure_services_and_media_tables.sql");
+    log::info!(
+        "🔍 [MIGRATION CORRECTION 008] Fichier chargé, taille: {} caractères",
+        migration_fix_7_sql.len()
+    );
+    match execute_multiple_sql_commands(&pg_pool, migration_fix_7_sql).await {
+        Ok(_) => {
+            log::info!("✅ [MIGRATION CORRECTION 008] Tables services et media garanties d'exister");
+            // Vérifier que les tables existent maintenant
+            let services_exists_after: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'services'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+            let media_exists_after: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'media'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+            if services_exists_after && media_exists_after {
+                log::info!("✅ [MIGRATION CORRECTION 008] Vérification: Tables services et media existent bien");
+            } else {
+                log::error!("❌ [MIGRATION CORRECTION 008] ERREUR: services={}, media={}", services_exists_after, media_exists_after);
+            }
+        }
+        Err(e) => {
+            log::error!("❌ [MIGRATION CORRECTION 008] Erreur lors de la création des tables services/media: {}", e);
+            // Ne pas arrêter l'application, mais c'est grave
+        }
+    }
+
     // ✅ SOLUTION CAUSE RACINE 2026-01-29: Utiliser execute_multiple_sql_commands() pour la migration 0
     // au lieu de sqlx::migrate!() qui exécute tout dans une transaction unique (timeout dans AWS)
     // Cette approche était utilisée dans Render et fonctionnait car chaque commande est exécutée individuellement
