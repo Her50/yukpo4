@@ -12046,9 +12046,23 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 // On continue à accumuler
             }
         } else if !in_dollar_block {
+            // ✅ CORRECTION CRITIQUE 2026-01-30: Détecter DO $$ au début d'une ligne
+            // Si on voit "DO $$" ou "DO $tag$", on entre dans un bloc dollar
+            if trimmed.to_uppercase().starts_with("DO") && trimmed.contains("$$") {
+                // On va entrer dans un bloc dollar, donc on ne divise pas ici
+                // Le bloc sera détecté par la logique de détection de $$
+            }
+            
             // Commande normale - se termine par ;
             if trimmed.ends_with(';') {
                 let cmd = current.trim();
+                
+                // ✅ CORRECTION CRITIQUE 2026-01-30: Ne PAS diviser si on est dans un bloc DO $$
+                // Vérifier si la commande commence par DO $$ et n'a pas encore de END $$;
+                if cmd.to_uppercase().starts_with("DO") && cmd.contains("$$") && !cmd.contains("END $$") {
+                    // On est dans un bloc DO $$ qui n'est pas terminé, continuer à accumuler
+                    continue;
+                }
                 
                 // ✅ CORRECTION 2026-01-30: Détecter les fins de fonctions/triggers pour mieux diviser
                 // Pattern: "$$ language 'plpgsql';" suivi de "CREATE TRIGGER" ou "CREATE TABLE"
@@ -12057,7 +12071,8 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 
                 // ✅ CORRECTION 2026-01-30: Détecter et diviser les commandes multiples sur une seule ligne
                 // Exemple: "CREATE INDEX ...; CREATE INDEX ...;" doit être divisé en 2 commandes
-                if cmd.contains(";") && cmd.matches(';').count() > 1 {
+                // MAIS seulement si on n'est PAS dans un bloc DO $$
+                if !cmd.to_uppercase().starts_with("DO") && cmd.contains(";") && cmd.matches(';').count() > 1 {
                     // Diviser par ';' mais préserver le contexte
                     let parts: Vec<&str> = cmd.split(';').collect();
                     for part in parts {
