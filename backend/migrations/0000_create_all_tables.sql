@@ -712,7 +712,10 @@ CREATE TABLE IF NOT EXISTS product_comment_reactions (
 CREATE INDEX IF NOT EXISTS idx_product_comment_reactions_comment ON product_comment_reactions(comment_id);
 CREATE INDEX IF NOT EXISTS idx_product_comment_reactions_user ON product_comment_reactions(user_id);
 
-CREATE OR REPLACE VIEW product_comments_view AS
+-- ✅ CORRECTION 2026-01-30: DROP la vue avant de la recréer pour éviter l'erreur "cannot change data type"
+DROP VIEW IF EXISTS product_comments_view CASCADE;
+
+CREATE VIEW product_comments_view AS
 SELECT
     pc.id,
     pc.service_id,

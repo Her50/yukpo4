@@ -12063,31 +12063,66 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             // Commande normale - se termine par ;
             if trimmed.ends_with(';') {
                 let cmd = current.trim();
-                // Vérifier que la commande n'est pas vide et contient au moins un mot-clé SQL valide
-                if !cmd.is_empty()
-                    && !cmd.starts_with("--")
-                    && !cmd
-                        .trim_matches(|c: char| {
-                            c.is_whitespace() || c == ';' || c == '(' || c == ')'
-                        })
-                        .is_empty()
-                    && (cmd.to_uppercase().contains("CREATE")
-                        || cmd.to_uppercase().contains("ALTER")
-                        || cmd.to_uppercase().contains("DROP")
-                        || cmd.to_uppercase().contains("INSERT")
-                        || cmd.to_uppercase().contains("UPDATE")
-                        || cmd.to_uppercase().contains("DELETE")
-                        || cmd.to_uppercase().contains("SELECT")
-                        || cmd.to_uppercase().contains("GRANT")
-                        || cmd.to_uppercase().contains("REVOKE")
-                        || cmd.to_uppercase().contains("COMMENT")
-                        || cmd.to_uppercase().contains("TRUNCATE")
-                        || cmd.to_uppercase().contains("ANALYZE")
-                        || cmd.to_uppercase().contains("VACUUM")
-                        || cmd.to_uppercase().contains("EXECUTE")
-                        || cmd.to_uppercase().contains("DO"))
-                {
-                    commands.push(cmd.to_string());
+                // ✅ CORRECTION 2026-01-30: Détecter et diviser les commandes multiples sur une seule ligne
+                // Exemple: "CREATE INDEX ...; CREATE INDEX ...;" doit être divisé en 2 commandes
+                if cmd.contains(";") && cmd.matches(';').count() > 1 {
+                    // Diviser par ';' mais préserver le contexte
+                    let parts: Vec<&str> = cmd.split(';').collect();
+                    for part in parts {
+                        let part_trimmed = part.trim();
+                        if !part_trimmed.is_empty()
+                            && !part_trimmed.starts_with("--")
+                            && !part_trimmed
+                                .trim_matches(|c: char| {
+                                    c.is_whitespace() || c == ';' || c == '(' || c == ')'
+                                })
+                                .is_empty()
+                            && (part_trimmed.to_uppercase().contains("CREATE")
+                                || part_trimmed.to_uppercase().contains("ALTER")
+                                || part_trimmed.to_uppercase().contains("DROP")
+                                || part_trimmed.to_uppercase().contains("INSERT")
+                                || part_trimmed.to_uppercase().contains("UPDATE")
+                                || part_trimmed.to_uppercase().contains("DELETE")
+                                || part_trimmed.to_uppercase().contains("SELECT")
+                                || part_trimmed.to_uppercase().contains("GRANT")
+                                || part_trimmed.to_uppercase().contains("REVOKE")
+                                || part_trimmed.to_uppercase().contains("COMMENT")
+                                || part_trimmed.to_uppercase().contains("TRUNCATE")
+                                || part_trimmed.to_uppercase().contains("ANALYZE")
+                                || part_trimmed.to_uppercase().contains("VACUUM")
+                                || part_trimmed.to_uppercase().contains("EXECUTE")
+                                || part_trimmed.to_uppercase().contains("DO"))
+                        {
+                            commands.push(format!("{};", part_trimmed));
+                        }
+                    }
+                } else {
+                    // Commande unique - vérifier qu'elle est valide
+                    if !cmd.is_empty()
+                        && !cmd.starts_with("--")
+                        && !cmd
+                            .trim_matches(|c: char| {
+                                c.is_whitespace() || c == ';' || c == '(' || c == ')'
+                            })
+                            .is_empty()
+                        && (cmd.to_uppercase().contains("CREATE")
+                            || cmd.to_uppercase().contains("ALTER")
+                            || cmd.to_uppercase().contains("DROP")
+                            || cmd.to_uppercase().contains("INSERT")
+                            || cmd.to_uppercase().contains("UPDATE")
+                            || cmd.to_uppercase().contains("DELETE")
+                            || cmd.to_uppercase().contains("SELECT")
+                            || cmd.to_uppercase().contains("GRANT")
+                            || cmd.to_uppercase().contains("REVOKE")
+                            || cmd.to_uppercase().contains("COMMENT")
+                            || cmd.to_uppercase().contains("TRUNCATE")
+                            || cmd.to_uppercase().contains("ANALYZE")
+                            || cmd.to_uppercase().contains("VACUUM")
+                            || cmd.to_uppercase().contains("EXECUTE")
+                            || cmd.to_uppercase().contains("DO"))
+                    {
+                        commands.push(cmd.to_string());
+                    }
                 }
                 current.clear();
             }

@@ -56,8 +56,8 @@ CREATE TABLE IF NOT EXISTS product_comment_reactions (
 CREATE INDEX IF NOT EXISTS idx_product_comment_reactions_comment ON product_comment_reactions(comment_id);
 CREATE INDEX IF NOT EXISTS idx_product_comment_reactions_user ON product_comment_reactions(user_id);
 
-DROP VIEW IF EXISTS product_comments_view;
-CREATE OR REPLACE VIEW product_comments_view AS
+DROP VIEW IF EXISTS product_comments_view CASCADE;
+CREATE VIEW product_comments_view AS
 SELECT
     pc.id,
     pc.service_id,
