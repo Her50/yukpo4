@@ -577,6 +577,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // ✅ NOUVEAU 2026-01-30: Exécuter les migrations de correction AVANT sqlx::migrate!()
+    // pour garantir qu'elles s'exécutent avant les migrations qui créent les objets problématiques
+    // Ordre d'exécution: 20260130_002 (corrections critiques) puis 20260130_003 (corrections supplémentaires)
+    log::info!("🔄 [MIGRATIONS CORRECTION] Application FORCÉE des migrations de correction AVANT sqlx::migrate!()...");
+    
+    // Migration 20260130_002: Corrections critiques (vue, types, tables manquantes, etc.)
+    let migration_fix_1_sql = include_str!("../migrations/20260130_002_fix_critical_migration_errors.sql");
+    log::info!(
+        "🔍 [MIGRATION CORRECTION 002] Fichier chargé, taille: {} caractères",
+        migration_fix_1_sql.len()
+    );
+    match execute_multiple_sql_commands(&pg_pool, migration_fix_1_sql).await {
+        Ok(_) => {
+            log::info!("✅ [MIGRATION CORRECTION 002] Migration de correction appliquée avec succès");
+        }
+        Err(e) => {
+            log::error!("❌ [MIGRATION CORRECTION 002] Erreur lors de l'application: {}", e);
+            // Ne pas arrêter l'application, continuer
+        }
+    }
+
+    // Migration 20260130_003: Corrections supplémentaires (fonctions, index, colonnes, etc.)
+    let migration_fix_2_sql = include_str!("../migrations/20260130_003_fix_additional_migration_errors.sql");
+    log::info!(
+        "🔍 [MIGRATION CORRECTION 003] Fichier chargé, taille: {} caractères",
+        migration_fix_2_sql.len()
+    );
+    match execute_multiple_sql_commands(&pg_pool, migration_fix_2_sql).await {
+        Ok(_) => {
+            log::info!("✅ [MIGRATION CORRECTION 003] Migration de correction appliquée avec succès");
+        }
+        Err(e) => {
+            log::error!("❌ [MIGRATION CORRECTION 003] Erreur lors de l'application: {}", e);
+            // Ne pas arrêter l'application, continuer
+        }
+    }
+
     // ✅ Ensuite, appliquer toutes les migrations SQLx standard (y compris 0000 pour le checksum)
     // SQLx va détecter que la migration 0 est déjà appliquée (tables créées) et va juste
     // mettre à jour le checksum dans _sqlx_migrations si nécessaire
