@@ -1,3 +1,4 @@
+// Mise à jour: 2026-01-30 - Déclenchement workflow GitHub Actions
 use std::error::Error;
 use std::{env, fs, net::SocketAddr, path::Path, sync::Arc};
 
