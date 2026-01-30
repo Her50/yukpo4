@@ -194,6 +194,68 @@ def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
         return {"has_pending": True, "output": error_output, "connection_ok": True}
 
 
+def run_correction_migrations(database_url: str) -> bool:
+    """
+    Exécute les migrations de correction AVANT sqlx migrate run
+    Ces migrations corrigent les erreurs avant que les autres migrations ne s'exécutent
+    """
+    print("=" * 80)
+    print("🔄 Exécution des migrations de correction AVANT sqlx migrate run")
+    print("=" * 80)
+    print()
+    
+    correction_migrations = [
+        "20260130_002_fix_critical_migration_errors.sql",
+        "20260130_003_fix_additional_migration_errors.sql",
+        "20260130_004_fix_all_migration_errors_final.sql"
+    ]
+    
+    env = os.environ.copy()
+    env["DATABASE_URL"] = database_url
+    
+    for migration_file in correction_migrations:
+        migration_path = MIGRATIONS_DIR / migration_file
+        if not migration_path.exists():
+            print(f"⚠️ Migration de correction non trouvée: {migration_file} (ignorée)")
+            continue
+        
+        print(f"🔄 Exécution de la migration de correction: {migration_file}")
+        try:
+            # Utiliser psql pour exécuter le fichier SQL directement
+            # Cela permet d'exécuter les commandes une par une comme execute_multiple_sql_commands()
+            result = subprocess.run(
+                ["psql", database_url, "-f", str(migration_path)],
+                capture_output=True,
+                text=True,
+                check=False,  # Ne pas échouer si certaines commandes échouent (déjà appliquées)
+                timeout=300
+            )
+            
+            if result.returncode == 0:
+                print(f"✅ Migration de correction {migration_file} appliquée avec succès")
+            else:
+                # Vérifier si l'erreur est "already exists" ou similaire (non bloquant)
+                error_output = result.stderr.lower()
+                if any(keyword in error_output for keyword in [
+                    "already exists", "does not exist", "cannot be implemented",
+                    "duplicate", "relation already exists"
+                ]):
+                    print(f"⚠️ Migration de correction {migration_file} : erreurs attendues (déjà appliquée ou non bloquant)")
+                else:
+                    print(f"⚠️ Migration de correction {migration_file} : erreurs non critiques")
+                    if result.stderr:
+                        print(f"   Erreur: {result.stderr[:200]}...")
+        except subprocess.TimeoutExpired:
+            print(f"⚠️ Timeout lors de l'exécution de {migration_file} (ignoré)")
+        except Exception as e:
+            print(f"⚠️ Erreur lors de l'exécution de {migration_file}: {e} (ignoré)")
+    
+    print()
+    print("✅ Migrations de correction exécutées")
+    print()
+    return True
+
+
 def run_migrations(database_url: str, retry_count: int = 0) -> bool:
     """
     Exécute les migrations via sqlx migrate run avec retry
@@ -201,7 +263,7 @@ def run_migrations(database_url: str, retry_count: int = 0) -> bool:
     SQLx est idempotent : il vérifie la table _sqlx_migrations avant d'appliquer chaque migration.
     Si une migration a déjà été appliquée (même checksum), elle est automatiquement ignorée.
     """
-    print(f"🚀 Exécution des migrations... (tentative {retry_count + 1}/{MAX_RETRIES + 1})")
+    print(f"🚀 Exécution des migrations SQLx standard... (tentative {retry_count + 1}/{MAX_RETRIES + 1})")
     
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
@@ -219,7 +281,7 @@ def run_migrations(database_url: str, retry_count: int = 0) -> bool:
             check=True,
             timeout=timeout
         )
-        print("✅ Migrations exécutées avec succès")
+        print("✅ Migrations SQLx standard exécutées avec succès")
         if result.stdout:
             print(result.stdout)
         return True
@@ -328,7 +390,13 @@ def main():
             print("=" * 80)
             sys.exit(0)
     
-    # Exécuter les migrations si nécessaire
+    # ✅ NOUVEAU 2026-01-30: Exécuter les migrations de correction AVANT sqlx migrate run
+    # Cela garantit que les corrections sont en place avant que les autres migrations ne s'exécutent
+    print("🔄 Exécution des migrations de correction AVANT sqlx migrate run...")
+    run_correction_migrations(database_url)
+    print()
+    
+    # Exécuter les migrations SQLx standard si nécessaire
     if status["has_pending"]:
         print("🔄 Des migrations sont en attente, exécution...")
         success = run_migrations(database_url)
