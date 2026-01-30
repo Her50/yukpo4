@@ -614,6 +614,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // Migration 20260130_004: Correction FINALE de toutes les erreurs
+    let migration_fix_3_sql = include_str!("../migrations/20260130_004_fix_all_migration_errors_final.sql");
+    log::info!(
+        "🔍 [MIGRATION CORRECTION 004] Fichier chargé, taille: {} caractères",
+        migration_fix_3_sql.len()
+    );
+    match execute_multiple_sql_commands(&pg_pool, migration_fix_3_sql).await {
+        Ok(_) => {
+            log::info!("✅ [MIGRATION CORRECTION 004] Migration de correction FINALE appliquée avec succès");
+        }
+        Err(e) => {
+            log::error!("❌ [MIGRATION CORRECTION 004] Erreur lors de l'application: {}", e);
+            // Ne pas arrêter l'application, continuer
+        }
+    }
+
     // ✅ Ensuite, appliquer toutes les migrations SQLx standard (y compris 0000 pour le checksum)
     // SQLx va détecter que la migration 0 est déjà appliquée (tables créées) et va juste
     // mettre à jour le checksum dans _sqlx_migrations si nécessaire

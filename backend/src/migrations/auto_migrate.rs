@@ -12063,6 +12063,12 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             // Commande normale - se termine par ;
             if trimmed.ends_with(';') {
                 let cmd = current.trim();
+                
+                // ✅ CORRECTION 2026-01-30: Détecter les fins de fonctions/triggers pour mieux diviser
+                // Pattern: "$$ language 'plpgsql';" suivi de "CREATE TRIGGER" ou "CREATE TABLE"
+                let is_function_end = cmd.to_uppercase().contains("$$") 
+                    && (cmd.to_uppercase().contains("LANGUAGE") || cmd.to_uppercase().contains("AS $$"));
+                
                 // ✅ CORRECTION 2026-01-30: Détecter et diviser les commandes multiples sur une seule ligne
                 // Exemple: "CREATE INDEX ...; CREATE INDEX ...;" doit être divisé en 2 commandes
                 if cmd.contains(";") && cmd.matches(';').count() > 1 {
@@ -12096,6 +12102,18 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                             commands.push(format!("{};", part_trimmed));
                         }
                     }
+                } else if is_function_end {
+                    // Fin de fonction - vérifier si la ligne suivante commence une nouvelle commande
+                    // On garde la commande actuelle et on la termine ici
+                    if !cmd.is_empty()
+                        && !cmd.starts_with("--")
+                        && (cmd.to_uppercase().contains("CREATE")
+                            || cmd.to_uppercase().contains("ALTER")
+                            || cmd.to_uppercase().contains("DROP"))
+                    {
+                        commands.push(cmd.to_string());
+                    }
+                    current.clear();
                 } else {
                     // Commande unique - vérifier qu'elle est valide
                     if !cmd.is_empty()
@@ -12123,8 +12141,8 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                     {
                         commands.push(cmd.to_string());
                     }
+                    current.clear();
                 }
-                current.clear();
             }
         }
     }

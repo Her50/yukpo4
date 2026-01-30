@@ -94,6 +94,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ✅ CORRECTION 2026-01-30: DROP le trigger avant de le recréer pour éviter "already exists"
+DROP TRIGGER IF EXISTS trigger_update_user_documents_updated_at ON user_documents;
 CREATE TRIGGER trigger_update_user_documents_updated_at
     BEFORE UPDATE ON user_documents
     FOR EACH ROW
@@ -1073,6 +1075,8 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- ✅ CORRECTION 2026-01-30: DROP le trigger avant de le recréer pour éviter "already exists"
+DROP TRIGGER IF EXISTS update_user_push_tokens_updated_at ON user_push_tokens;
 CREATE TRIGGER update_user_push_tokens_updated_at 
     BEFORE UPDATE ON user_push_tokens 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -2116,6 +2120,20 @@ ALTER TABLE video_generation_jobs
     ADD COLUMN IF NOT EXISTS audio_status TEXT NOT NULL DEFAULT 'not_requested',
     ADD COLUMN IF NOT EXISTS audio_metadata JSONB;
 
+-- ✅ CORRECTION 2026-01-30: DROP la contrainte avant de la recréer pour éviter "already exists"
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE table_schema = 'public' 
+        AND table_name = 'video_generation_jobs' 
+        AND constraint_name = 'fk_video_generation_jobs_audio_job'
+    ) THEN
+        ALTER TABLE video_generation_jobs 
+        DROP CONSTRAINT fk_video_generation_jobs_audio_job;
+    END IF;
+END $$;
+
 ALTER TABLE video_generation_jobs
     ADD CONSTRAINT fk_video_generation_jobs_audio_job
     FOREIGN KEY (audio_job_id) REFERENCES premium_audio_jobs(job_id) ON DELETE SET NULL;
@@ -2694,6 +2712,8 @@ CREATE TABLE IF NOT EXISTS courier_availability_snapshots (
     id BIGSERIAL PRIMARY KEY,
     courier_id UUID NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
     zone_id UUID REFERENCES delivery_zones(id),
+    -- ✅ CORRECTION 2026-01-30: Ajouter user_id si la colonne n'existe pas
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_online BOOLEAN NOT NULL DEFAULT FALSE,
     active_deliveries SMALLINT NOT NULL DEFAULT 0,
@@ -2705,6 +2725,26 @@ CREATE TABLE IF NOT EXISTS courier_availability_snapshots (
     battery_level SMALLINT,
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb
 );
+
+-- ✅ CORRECTION 2026-01-30: Ajouter user_id si la colonne n'existe pas (pour tables existantes)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'courier_availability_snapshots'
+    ) THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'courier_availability_snapshots' 
+            AND column_name = 'user_id'
+        ) THEN
+            ALTER TABLE courier_availability_snapshots 
+            ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_courier ON courier_availability_snapshots(courier_id);
 CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_zone ON courier_availability_snapshots(zone_id);
@@ -5537,9 +5577,20 @@ ON courier_availability_snapshots(captured_at DESC, is_online, load_factor)
 WHERE is_online = true AND load_factor < 1.0;
 
 -- Index composite pour user_id et courier_id (utilisé dans jointure)
-CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_user_courier
-ON courier_availability_snapshots(user_id, courier_id)
-WHERE is_online = true;
+-- ✅ CORRECTION 2026-01-30: Créer l'index seulement si user_id existe
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'courier_availability_snapshots' 
+        AND column_name = 'user_id'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_user_courier
+        ON courier_availability_snapshots(user_id, courier_id)
+        WHERE is_online = true;
+    END IF;
+END $$;
 
 -- 3. Optimisation UPDATE delivery_matching_queue
 -- Index pour WHERE delivery_id = $1 dans UPDATE (amélioration)
