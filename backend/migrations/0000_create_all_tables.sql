@@ -789,7 +789,9 @@ BEGIN
 END $$;
 
 -- Fonction pour obtenir le décompte des réactions par produit
-CREATE OR REPLACE FUNCTION get_product_reactions_count(
+-- ✅ CORRECTION 2026-01-30: DROP avant CREATE pour éviter l'erreur de changement de type de retour
+DROP FUNCTION IF EXISTS get_product_reactions_count(INTEGER, TEXT) CASCADE;
+CREATE FUNCTION get_product_reactions_count(
     p_service_id INTEGER,
     p_product_id TEXT
 )
@@ -5414,14 +5416,17 @@ CREATE TABLE IF NOT EXISTS cache_table (
     last_accessed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+-- ✅ CORRECTION 2026-01-30: NOW() n'est pas IMMUTABLE, on ne peut pas l'utiliser dans un index partiel
+-- L'index est créé sans prédicat (la migration 20260130_003 corrigera cela)
 CREATE INDEX IF NOT EXISTS idx_cache_expires_at 
-    ON cache_table(expires_at) 
-    WHERE expires_at < NOW();
+    ON cache_table(expires_at);
 
 CREATE INDEX IF NOT EXISTS idx_cache_key_pattern 
     ON cache_table(cache_key text_pattern_ops);
 
-CREATE OR REPLACE FUNCTION cleanup_expired_cache()
+-- ✅ CORRECTION 2026-01-30: DROP avant CREATE pour éviter l'erreur de changement de type de retour
+DROP FUNCTION IF EXISTS cleanup_expired_cache() CASCADE;
+CREATE FUNCTION cleanup_expired_cache()
 RETURNS INTEGER AS $$
 DECLARE
     deleted_count INTEGER;
