@@ -198,34 +198,99 @@ CREATE TABLE IF NOT EXISTS pharmacy_reservations (
 -- 11b. CORRECTION: Table programmes_scolaires manquante
 -- =====================================================
 -- ✅ CORRECTION 2026-01-30: Créer la table complète avec toutes les colonnes nécessaires
-CREATE TABLE IF NOT EXISTS programmes_scolaires (
-    id SERIAL PRIMARY KEY,
-    etablissement_id INTEGER NOT NULL REFERENCES etablissements_scolaires(id) ON DELETE CASCADE,
-    -- Identification du programme
-    type_etablissement VARCHAR(50) NOT NULL, -- 'primaire', 'secondaire', 'superieur'
-    niveau VARCHAR(50) NOT NULL, -- 'CP1', '6ème', 'L1', etc.
-    classe VARCHAR(50), -- Pour primaire/secondaire
-    filiere VARCHAR(100), -- Pour secondaire/supérieur
-    specialite VARCHAR(100), -- Pour supérieur
-    -- Contenu
-    titre VARCHAR(255) NOT NULL,
-    description TEXT,
-    annee_scolaire VARCHAR(20) NOT NULL, -- '2024-2025'
-    -- Fichier
-    fichier_url TEXT, -- URL du fichier PDF/document
-    fichier_nom VARCHAR(255),
-    fichier_taille INTEGER, -- Taille en bytes
-    -- Métadonnées
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    -- ✅ CORRIGÉ: Pas de virgule en trop à la fin
-);
-
--- Index pour programmes_scolaires
-CREATE INDEX IF NOT EXISTS idx_programmes_etablissement ON programmes_scolaires(etablissement_id, is_active);
-CREATE INDEX IF NOT EXISTS idx_programmes_type_niveau ON programmes_scolaires(type_etablissement, niveau);
-CREATE INDEX IF NOT EXISTS idx_programmes_annee ON programmes_scolaires(annee_scolaire);
+-- ✅ CORRECTION 2026-01-30: Créer programmes_scolaires dans un bloc DO pour garantir l'ordre d'exécution
+DO $$
+BEGIN
+    -- Créer la table si elle n'existe pas
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'programmes_scolaires'
+    ) THEN
+        CREATE TABLE programmes_scolaires (
+            id SERIAL PRIMARY KEY,
+            etablissement_id INTEGER, -- ✅ CORRIGÉ: Pas de FOREIGN KEY si etablissements_scolaires n'existe pas
+            -- Identification du programme
+            type_etablissement VARCHAR(50) NOT NULL, -- 'primaire', 'secondaire', 'superieur'
+            niveau VARCHAR(50) NOT NULL, -- 'CP1', '6ème', 'L1', etc.
+            classe VARCHAR(50), -- Pour primaire/secondaire
+            filiere VARCHAR(100), -- Pour secondaire/supérieur
+            specialite VARCHAR(100), -- Pour supérieur
+            -- Contenu
+            titre VARCHAR(255) NOT NULL,
+            description TEXT,
+            annee_scolaire VARCHAR(20) NOT NULL, -- '2024-2025'
+            -- Fichier
+            fichier_url TEXT, -- URL du fichier PDF/document
+            fichier_nom VARCHAR(255),
+            fichier_taille INTEGER, -- Taille en bytes
+            -- Métadonnées
+            is_active BOOLEAN DEFAULT true,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        -- Ajouter la contrainte FOREIGN KEY si etablissements_scolaires existe
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'etablissements_scolaires'
+        ) THEN
+            ALTER TABLE programmes_scolaires 
+            ADD CONSTRAINT fk_programmes_etablissement 
+            FOREIGN KEY (etablissement_id) 
+            REFERENCES etablissements_scolaires(id) ON DELETE CASCADE;
+        END IF;
+    END IF;
+    
+    -- Créer les index SEULEMENT si la table existe et a les colonnes
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'programmes_scolaires'
+    ) THEN
+        -- Vérifier que les colonnes existent avant de créer les index
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'programmes_scolaires' 
+            AND column_name = 'etablissement_id'
+        ) AND EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'programmes_scolaires' 
+            AND column_name = 'is_active'
+        ) THEN
+            CREATE INDEX IF NOT EXISTS idx_programmes_etablissement 
+            ON programmes_scolaires(etablissement_id, is_active);
+        END IF;
+        
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'programmes_scolaires' 
+            AND column_name = 'type_etablissement'
+        ) AND EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'programmes_scolaires' 
+            AND column_name = 'niveau'
+        ) THEN
+            CREATE INDEX IF NOT EXISTS idx_programmes_type_niveau 
+            ON programmes_scolaires(type_etablissement, niveau);
+        END IF;
+        
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'programmes_scolaires' 
+            AND column_name = 'annee_scolaire'
+        ) THEN
+            CREATE INDEX IF NOT EXISTS idx_programmes_annee 
+            ON programmes_scolaires(annee_scolaire);
+        END IF;
+    END IF;
+END $$;
 
 -- =====================================================
 -- 12. CORRECTION: Type incompatible pharmacy_order_items.medication_id
