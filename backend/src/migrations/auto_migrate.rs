@@ -12002,22 +12002,39 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             }
         }
 
+        // ✅ CORRECTION CRITIQUE 2026-01-30: Détecter début d'un bloc DO $$ ou CREATE FUNCTION $$
         // Détecter début d'un bloc avec $$
         if trimmed.contains("$$") && !in_dollar_block {
-            // Détecter le tag $$ (peut être $$, $tag$, etc.)
-            if let Some(start) = trimmed.find("$$") {
-                let tag_end = trimmed[start + 2..].find("$$");
-                if tag_end.is_some() {
-                    // Tag simple $$
-                    dollar_tag = "$$".to_string();
-                    in_dollar_block = true;
-                } else {
-                    // Tag personnalisé $tag$
-                    let tag_start = trimmed[..start].rfind('$');
-                    if let Some(ts) = tag_start {
-                        dollar_tag = trimmed[ts..=start + 1].to_string();
+            // Vérifier si c'est le début d'un bloc DO $$ ou CREATE FUNCTION $$
+            let is_do_block = trimmed.to_uppercase().starts_with("DO");
+            let is_function_block = trimmed.to_uppercase().contains("CREATE FUNCTION") || trimmed.to_uppercase().contains("AS $$");
+            
+            if is_do_block || is_function_block {
+                // Détecter le tag $$ (peut être $$, $tag$, etc.)
+                if let Some(start) = trimmed.find("$$") {
+                    let tag_end = trimmed[start + 2..].find("$$");
+                    if tag_end.is_some() {
+                        // Tag simple $$ trouvé deux fois sur la même ligne (début et fin immédiat)
+                        // C'est probablement une fonction inline, on entre quand même dans le bloc
+                        dollar_tag = "$$".to_string();
                         in_dollar_block = true;
                     } else {
+                        // Tag simple $$ (début de bloc) ou tag personnalisé $tag$
+                        let tag_start = trimmed[..start].rfind('$');
+                        if let Some(ts) = tag_start {
+                            dollar_tag = trimmed[ts..=start + 1].to_string();
+                            in_dollar_block = true;
+                        } else {
+                            dollar_tag = "$$".to_string();
+                            in_dollar_block = true;
+                        }
+                    }
+                }
+            } else {
+                // Vérifier si la ligne précédente contenait DO ou CREATE FUNCTION
+                // (cas où DO $$ est sur deux lignes)
+                if current.to_uppercase().trim().ends_with("DO") || current.to_uppercase().contains("CREATE FUNCTION") {
+                    if let Some(start) = trimmed.find("$$") {
                         dollar_tag = "$$".to_string();
                         in_dollar_block = true;
                     }
