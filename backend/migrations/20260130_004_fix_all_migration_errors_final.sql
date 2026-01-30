@@ -69,6 +69,7 @@ END $$;
 -- =====================================================
 DROP TRIGGER IF EXISTS trigger_update_user_documents_updated_at ON user_documents;
 DROP TRIGGER IF EXISTS update_banques_sang_updated_at ON banques_sang;
+DROP TRIGGER IF EXISTS trigger_update_effects_updated_at ON effects;
 
 -- =====================================================
 -- 5. CORRECTION: Table conversations manquante
@@ -196,11 +197,35 @@ CREATE TABLE IF NOT EXISTS pharmacy_reservations (
 -- =====================================================
 -- 11b. CORRECTION: Table programmes_scolaires manquante
 -- =====================================================
+-- ✅ CORRECTION 2026-01-30: Créer la table complète avec toutes les colonnes nécessaires
 CREATE TABLE IF NOT EXISTS programmes_scolaires (
     id SERIAL PRIMARY KEY,
-    etablissement_id INTEGER,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    etablissement_id INTEGER NOT NULL REFERENCES etablissements_scolaires(id) ON DELETE CASCADE,
+    -- Identification du programme
+    type_etablissement VARCHAR(50) NOT NULL, -- 'primaire', 'secondaire', 'superieur'
+    niveau VARCHAR(50) NOT NULL, -- 'CP1', '6ème', 'L1', etc.
+    classe VARCHAR(50), -- Pour primaire/secondaire
+    filiere VARCHAR(100), -- Pour secondaire/supérieur
+    specialite VARCHAR(100), -- Pour supérieur
+    -- Contenu
+    titre VARCHAR(255) NOT NULL,
+    description TEXT,
+    annee_scolaire VARCHAR(20) NOT NULL, -- '2024-2025'
+    -- Fichier
+    fichier_url TEXT, -- URL du fichier PDF/document
+    fichier_nom VARCHAR(255),
+    fichier_taille INTEGER, -- Taille en bytes
+    -- Métadonnées
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    -- ✅ CORRIGÉ: Pas de virgule en trop à la fin
 );
+
+-- Index pour programmes_scolaires
+CREATE INDEX IF NOT EXISTS idx_programmes_etablissement ON programmes_scolaires(etablissement_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_programmes_type_niveau ON programmes_scolaires(type_etablissement, niveau);
+CREATE INDEX IF NOT EXISTS idx_programmes_annee ON programmes_scolaires(annee_scolaire);
 
 -- =====================================================
 -- 12. CORRECTION: Type incompatible pharmacy_order_items.medication_id

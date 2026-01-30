@@ -4937,6 +4937,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ✅ CORRECTION 2026-01-30: DROP le trigger avant de le recréer pour éviter "already exists"
+DROP TRIGGER IF EXISTS trigger_update_effects_updated_at ON effects;
 CREATE TRIGGER trigger_update_effects_updated_at
     BEFORE UPDATE ON effects
     FOR EACH ROW
