@@ -588,6 +588,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // Migration 20260130_007: CRITIQUE - Garantir que la table users existe (AVANT migration 0)
+    let migration_fix_6_sql = include_str!("../migrations/20260130_007_ensure_users_table_exists.sql");
+    log::info!(
+        "🔍 [MIGRATION CORRECTION 007] Fichier chargé, taille: {} caractères",
+        migration_fix_6_sql.len()
+    );
+    match execute_multiple_sql_commands(&pg_pool, migration_fix_6_sql).await {
+        Ok(_) => {
+            log::info!("✅ [MIGRATION CORRECTION 007] Table users garantie d'exister");
+            // Vérifier que la table existe maintenant
+            let users_exists_after: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'users'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+            if users_exists_after {
+                log::info!("✅ [MIGRATION CORRECTION 007] Vérification: Table users existe bien");
+            } else {
+                log::error!("❌ [MIGRATION CORRECTION 007] ERREUR CRITIQUE: Table users n'existe toujours pas après la migration!");
+            }
+        }
+        Err(e) => {
+            log::error!("❌ [MIGRATION CORRECTION 007] ERREUR CRITIQUE lors de la création de la table users: {}", e);
+            log::error!("❌ [MIGRATION CORRECTION 007] L'application ne pourra pas fonctionner sans la table users!");
+            // Ne pas arrêter l'application, mais c'est très grave
+        }
+    }
+
     // ✅ SOLUTION CAUSE RACINE 2026-01-29: Utiliser execute_multiple_sql_commands() pour la migration 0
     // au lieu de sqlx::migrate!() qui exécute tout dans une transaction unique (timeout dans AWS)
     // Cette approche était utilisée dans Render et fonctionnait car chaque commande est exécutée individuellement
