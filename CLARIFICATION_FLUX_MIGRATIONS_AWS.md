@@ -147,3 +147,9 @@ WHERE table_name IN ('programmes_scolaires', 'pharmacy_order_items', 'pharmacy_r
 **Date**: 2026-01-30  
 **Statut**: ✅ Solution réelle = migrations au démarrage ECS (dans main.rs)
 
+---
+
+## 🔄 Mise à jour : 2026-01-30
+
+Modification pour déclencher le workflow GitHub Actions et tester l'exécution des migrations de correction dans le workflow (même si elles échoueront probablement à cause du VPC privé).
+
