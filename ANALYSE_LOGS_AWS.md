@@ -97,3 +97,4 @@ Toutes ces tables devraient être créées par la migration `0000_create_all_tab
 **URGENT** : Exécuter les migrations SQLx manuellement pour créer toutes les tables, puis vérifier que le build AWS est mis à jour avec le code de migration.
 
 
+

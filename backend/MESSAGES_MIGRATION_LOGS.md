@@ -160,3 +160,4 @@ Les migrations sont considérées comme réussies si vous voyez **TOUS** ces mes
 - Les timestamps peuvent varier mais la séquence devrait être respectée
 - En production (AWS), vérifiez les logs CloudWatch pour voir tous les messages
 
+

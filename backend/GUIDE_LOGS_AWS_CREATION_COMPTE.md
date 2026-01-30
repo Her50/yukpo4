@@ -267,3 +267,4 @@ ou
 3. **Identifiez l'erreur** dans les logs
 4. **Consultez cette section** pour trouver la solution correspondante
 
+

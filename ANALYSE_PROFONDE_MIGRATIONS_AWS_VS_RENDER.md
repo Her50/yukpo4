@@ -191,3 +191,4 @@ Si les migrations SQLx échouent, les erreurs devraient apparaître dans les log
 **Solution long terme** : Diviser la migration 0 en plusieurs migrations plus petites pour éviter les timeouts.
 
 
+

@@ -151,3 +151,4 @@ Le problème principal est que **l'ALB n'est pas accessible** depuis votre machi
 
 Les logs analysés précédemment montrent que le backend est **actif** (workers, optimisations, etc.), mais **aucune requête HTTP de création de compte n'a été reçue**. Cela confirme que le problème est au niveau du **routage réseau** (ALB, Security Groups) plutôt qu'au niveau de l'application elle-même.
 
+

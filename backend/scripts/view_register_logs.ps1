@@ -98,3 +98,4 @@ Write-Host ""
 Write-Host "💡 Pour voir les logs en temps réel:" -ForegroundColor Cyan
 Write-Host "   aws logs tail $actualLogGroup --follow --region $Region | Select-String 'register_user'" -ForegroundColor Gray
 
+

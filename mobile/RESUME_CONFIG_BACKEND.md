@@ -57,3 +57,4 @@ Les builds EAS (preview/production) utilisent automatiquement les variables de `
 
 Le problème était uniquement en **mode développement local** qui utilisait le fichier `.env` pointant vers Render. Maintenant corrigé ✅.
 
+

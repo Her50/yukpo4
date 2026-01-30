@@ -146,3 +146,4 @@ GRANT ALL PRIVILEGES ON SCHEMA public TO yukpo_user;
 Après avoir exécuté les migrations, vérifiez dans les logs de l'application que les erreurs "relation does not exist" ont disparu.
 
 
+

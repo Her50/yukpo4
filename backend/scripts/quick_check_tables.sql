@@ -25,3 +25,4 @@ SELECT
     COUNT(CASE WHEN success = true THEN 1 END) as successful
 FROM _sqlx_migrations;
 
+

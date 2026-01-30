@@ -154,3 +154,4 @@ Cela suggère que le problème est probablement :
 - **Au niveau du frontend** (requête non envoyée, URL incorrecte)
 - **Au niveau de la connexion** (CORS, réseau)
 
+

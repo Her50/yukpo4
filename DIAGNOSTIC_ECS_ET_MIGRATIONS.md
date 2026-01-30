@@ -181,3 +181,4 @@ ORDER BY table_name;
 - Une fois les permissions corrigées, les tâches devraient démarrer et les migrations s'exécuter automatiquement
 
 
+

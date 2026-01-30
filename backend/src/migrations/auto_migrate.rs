@@ -7542,6 +7542,36 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Ok(_) => info!("✅ Correction critique: run_audio_cache_cleanup() vérifiée"),
         Err(e) => warn!("⚠️ Erreur correction run_audio_cache_cleanup: {} (non bloquant)", e),
     }
+    
+    // Correction 4: S'assurer que la colonne gps existe dans services
+    match ensure_services_gps_column(pool).await {
+        Ok(_) => info!("✅ Correction critique: colonne gps dans services vérifiée"),
+        Err(e) => warn!("⚠️ Erreur correction gps column: {} (non bloquant)", e),
+    }
+    
+    // Correction 5: Corriger l'index avec NOW() non IMMUTABLE
+    match fix_delivery_matching_queue_index(pool).await {
+        Ok(_) => info!("✅ Correction critique: index delivery_matching_queue corrigé"),
+        Err(e) => warn!("⚠️ Erreur correction index: {} (non bloquant)", e),
+    }
+    
+    // Correction 6: S'assurer que la table products existe
+    match ensure_products_table(pool).await {
+        Ok(_) => info!("✅ Correction critique: table products vérifiée"),
+        Err(e) => warn!("⚠️ Erreur correction products table: {} (non bloquant)", e),
+    }
+    
+    // Correction 7: Corriger les vues matérialisées pour gérer gps manquant
+    match fix_materialized_views_gps(pool).await {
+        Ok(_) => info!("✅ Correction critique: vues matérialisées corrigées"),
+        Err(e) => warn!("⚠️ Erreur correction vues matérialisées: {} (non bloquant)", e),
+    }
+    
+    // Correction 8: Supprimer les contraintes dupliquées
+    match fix_duplicate_constraints(pool).await {
+        Ok(_) => info!("✅ Correction critique: contraintes dupliquées supprimées"),
+        Err(e) => warn!("⚠️ Erreur correction contraintes: {} (non bloquant)", e),
+    }
 
     // ✅ NOUVEAU 2026-01-24: Vérification de l'extension pgvector
     match ensure_pgvector_extension(pool).await {
@@ -14597,6 +14627,372 @@ async fn ensure_specialized_reservations_table(pool: &PgPool) -> Result<(), sqlx
     
     execute_multiple_sql_commands(pool, sql).await?;
     info!("✅ Table specialized_reservations créée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-01-30: S'assure que la colonne gps existe dans services
+/// Problème: Les vues matérialisées échouent car s.gps n'existe pas
+async fn ensure_services_gps_column(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔧 Correction: Vérification de la colonne gps dans services...");
+    
+    let column_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'services' 
+            AND column_name = 'gps'
+        )"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !column_exists {
+        warn!("⚠️ Colonne gps manquante dans services, ajout en cours...");
+        sqlx::query("ALTER TABLE services ADD COLUMN IF NOT EXISTS gps VARCHAR(255)")
+            .execute(pool)
+            .await?;
+        info!("✅ Colonne gps ajoutée à services");
+    } else {
+        info!("✅ Colonne gps existe déjà dans services");
+    }
+    
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-01-30: Corrige l'index avec NOW() non IMMUTABLE
+/// Problème: functions in index predicate must be marked IMMUTABLE
+async fn fix_delivery_matching_queue_index(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔧 Correction: Vérification de l'index delivery_matching_queue...");
+    
+    // Supprimer l'index problématique s'il existe avec NOW() dans le prédicat
+    let sql = r#"
+        DO $$
+        BEGIN
+            -- Supprimer l'index s'il existe avec NOW() dans le prédicat
+            IF EXISTS (
+                SELECT 1 FROM pg_indexes 
+                WHERE indexname = 'idx_delivery_matching_queue_next_attempt_pending'
+                AND indexdef LIKE '%NOW()%'
+            ) THEN
+                DROP INDEX IF EXISTS idx_delivery_matching_queue_next_attempt_pending;
+                RAISE NOTICE 'Index problématique supprimé';
+            END IF;
+            
+            -- Recréer l'index sans NOW() dans le prédicat
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_indexes 
+                WHERE indexname = 'idx_delivery_matching_queue_next_attempt_pending'
+            ) THEN
+                CREATE INDEX idx_delivery_matching_queue_next_attempt_pending
+                ON delivery_matching_queue(next_attempt_at)
+                WHERE status IN ('queued', 'searching') AND next_attempt_at IS NOT NULL;
+                RAISE NOTICE 'Index corrigé créé';
+            END IF;
+        END $$;
+    "#;
+    
+    execute_multiple_sql_commands(pool, sql).await?;
+    info!("✅ Index delivery_matching_queue corrigé");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-01-30: S'assure que la table products existe
+/// Problème: relation "products" does not exist
+async fn ensure_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔧 Correction: Vérification de la table products...");
+    
+    let table_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'products'
+        )"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !table_exists {
+        warn!("⚠️ Table products manquante, création en cours...");
+        let sql = r#"
+            CREATE TABLE IF NOT EXISTS products (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                description TEXT,
+                price_cents BIGINT,
+                currency VARCHAR(10) DEFAULT 'XAF',
+                seat_map JSONB,
+                bus_configuration JSONB,
+                total_seats INTEGER,
+                numero_bus VARCHAR(50),
+                logo_agence TEXT,
+                conditions_voyage TEXT,
+                caution_reservation INTEGER DEFAULT 500,
+                metadata JSONB DEFAULT '{}'::jsonb,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            
+            CREATE INDEX IF NOT EXISTS idx_products_service_id ON products(service_id);
+            CREATE INDEX IF NOT EXISTS idx_products_type ON products(type);
+            CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);
+        "#;
+        
+        execute_multiple_sql_commands(pool, sql).await?;
+        info!("✅ Table products créée");
+    } else {
+        info!("✅ Table products existe déjà");
+    }
+    
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-01-30: Corrige les vues matérialisées pour gérer gps manquant
+/// Problème: Les vues matérialisées échouent car s.gps n'existe pas
+async fn fix_materialized_views_gps(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔧 Correction: Vérification des vues matérialisées...");
+    
+    // Vérifier si la colonne gps existe
+    let gps_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'services' 
+            AND column_name = 'gps'
+        )"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !gps_exists {
+        warn!("⚠️ Colonne gps n'existe pas, les vues matérialisées seront créées sans gps");
+        // Supprimer les vues matérialisées existantes pour les recréer sans gps
+        let sql = r#"
+            DROP MATERIALIZED VIEW IF EXISTS services_search_cache CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS active_products_cache CASCADE;
+            
+            -- Recréer services_search_cache sans gps
+            CREATE MATERIALIZED VIEW IF NOT EXISTS services_search_cache AS
+            SELECT 
+                s.id,
+                s.user_id,
+                s.data,
+                s.is_active,
+                s.category,
+                s.created_at,
+                to_tsvector('french', 
+                    COALESCE(s.data->'titre_service'->>'valeur', '') || ' ' ||
+                    COALESCE(s.data->'description'->>'valeur', '') || ' ' ||
+                    COALESCE(s.category, '')
+                ) as search_vector
+            FROM services s
+            WHERE s.is_active = TRUE;
+            
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_services_search_cache_id_unique
+            ON services_search_cache (id);
+            
+            CREATE INDEX IF NOT EXISTS idx_services_search_cache_vector
+            ON services_search_cache USING GIN (search_vector);
+            
+            CREATE INDEX IF NOT EXISTS idx_services_search_cache_category
+            ON services_search_cache (category, created_at DESC);
+            
+            CREATE INDEX IF NOT EXISTS idx_services_search_cache_active
+            ON services_search_cache (is_active, created_at DESC)
+            WHERE is_active = TRUE;
+            
+            -- Recréer active_products_cache sans gps
+            CREATE MATERIALIZED VIEW IF NOT EXISTS active_products_cache AS
+            SELECT 
+                (s.id::bigint * 1000000 + jsonb_array_elements.pos) as cache_id,
+                s.id as service_id,
+                s.user_id,
+                s.category,
+                jsonb_array_elements.product,
+                s.created_at
+            FROM services s
+            CROSS JOIN LATERAL jsonb_array_elements(
+                CASE 
+                    WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                    THEN s.data->'produits'
+                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                    THEN s.data->'produits'->'valeur'
+                    ELSE '[]'::jsonb
+                END
+            ) WITH ORDINALITY AS jsonb_array_elements(product, pos)
+            WHERE s.is_active = TRUE
+            AND (
+                jsonb_typeof(s.data->'produits') = 'array' OR
+                jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+            );
+            
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_active_products_cache_id_unique
+            ON active_products_cache (cache_id);
+            
+            CREATE INDEX IF NOT EXISTS idx_active_products_service_category
+            ON active_products_cache (service_id, category);
+            
+            CREATE INDEX IF NOT EXISTS idx_active_products_product_name
+            ON active_products_cache USING GIN (
+                to_tsvector('french', 
+                    COALESCE(product->>'name', '') || ' ' ||
+                    COALESCE(product->>'description', '')
+                )
+            );
+        "#;
+        
+        execute_multiple_sql_commands(pool, sql).await?;
+        info!("✅ Vues matérialisées recréées sans gps");
+    } else {
+        // La colonne gps existe, vérifier si les vues existent et les recréer si nécessaire
+        let services_cache_exists = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(
+                SELECT 1 FROM pg_matviews 
+                WHERE matviewname = 'services_search_cache'
+            )"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        let products_cache_exists = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(
+                SELECT 1 FROM pg_matviews 
+                WHERE matviewname = 'active_products_cache'
+            )"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !services_cache_exists || !products_cache_exists {
+            warn!("⚠️ Vues matérialisées manquantes, création en cours...");
+            let sql = r#"
+                CREATE MATERIALIZED VIEW IF NOT EXISTS services_search_cache AS
+                SELECT 
+                    s.id,
+                    s.user_id,
+                    s.data,
+                    s.is_active,
+                    s.category,
+                    s.gps,
+                    s.created_at,
+                    to_tsvector('french', 
+                        COALESCE(s.data->'titre_service'->>'valeur', '') || ' ' ||
+                        COALESCE(s.data->'description'->>'valeur', '') || ' ' ||
+                        COALESCE(s.category, '')
+                    ) as search_vector
+                FROM services s
+                WHERE s.is_active = TRUE;
+                
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_services_search_cache_id_unique
+                ON services_search_cache (id);
+                
+                CREATE INDEX IF NOT EXISTS idx_services_search_cache_vector
+                ON services_search_cache USING GIN (search_vector);
+                
+                CREATE INDEX IF NOT EXISTS idx_services_search_cache_category
+                ON services_search_cache (category, created_at DESC);
+                
+                CREATE INDEX IF NOT EXISTS idx_services_search_cache_active
+                ON services_search_cache (is_active, created_at DESC)
+                WHERE is_active = TRUE;
+                
+                CREATE MATERIALIZED VIEW IF NOT EXISTS active_products_cache AS
+                SELECT 
+                    (s.id::bigint * 1000000 + jsonb_array_elements.pos) as cache_id,
+                    s.id as service_id,
+                    s.user_id,
+                    s.category,
+                    s.gps,
+                    jsonb_array_elements.product,
+                    s.created_at
+                FROM services s
+                CROSS JOIN LATERAL jsonb_array_elements(
+                    CASE 
+                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                        THEN s.data->'produits'
+                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                        THEN s.data->'produits'->'valeur'
+                        ELSE '[]'::jsonb
+                    END
+                ) WITH ORDINALITY AS jsonb_array_elements(product, pos)
+                WHERE s.is_active = TRUE
+                AND (
+                    jsonb_typeof(s.data->'produits') = 'array' OR
+                    jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                );
+                
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_active_products_cache_id_unique
+                ON active_products_cache (cache_id);
+                
+                CREATE INDEX IF NOT EXISTS idx_active_products_service_category
+                ON active_products_cache (service_id, category);
+                
+                CREATE INDEX IF NOT EXISTS idx_active_products_product_name
+                ON active_products_cache USING GIN (
+                    to_tsvector('french', 
+                        COALESCE(product->>'name', '') || ' ' ||
+                        COALESCE(product->>'description', '')
+                    )
+                );
+            "#;
+            
+            execute_multiple_sql_commands(pool, sql).await?;
+            info!("✅ Vues matérialisées créées avec gps");
+        } else {
+            info!("✅ Vues matérialisées existent déjà");
+        }
+    }
+    
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-01-30: Supprime les contraintes dupliquées
+/// Problème: constraint "fk_video_generation_jobs_audio_job" already exists
+async fn fix_duplicate_constraints(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔧 Correction: Vérification des contraintes dupliquées...");
+    
+    let sql = r#"
+        DO $$
+        BEGIN
+            -- Supprimer la contrainte si elle existe avant de la recréer
+            IF EXISTS (
+                SELECT 1 FROM pg_constraint 
+                WHERE conname = 'fk_video_generation_jobs_audio_job'
+            ) THEN
+                ALTER TABLE video_generation_jobs 
+                DROP CONSTRAINT IF EXISTS fk_video_generation_jobs_audio_job;
+                RAISE NOTICE 'Contrainte fk_video_generation_jobs_audio_job supprimée';
+            END IF;
+            
+            -- Recréer la contrainte si la table et les colonnes existent
+            IF EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_name = 'video_generation_jobs'
+            ) AND EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'video_generation_jobs' 
+                AND column_name = 'audio_job_id'
+            ) AND EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_name = 'premium_audio_jobs'
+            ) AND EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'premium_audio_jobs' 
+                AND column_name = 'job_id'
+            ) THEN
+                ALTER TABLE video_generation_jobs 
+                ADD CONSTRAINT fk_video_generation_jobs_audio_job 
+                FOREIGN KEY (audio_job_id) 
+                REFERENCES premium_audio_jobs(job_id) 
+                ON DELETE SET NULL;
+                RAISE NOTICE 'Contrainte fk_video_generation_jobs_audio_job recréée';
+            END IF;
+        END $$;
+    "#;
+    
+    execute_multiple_sql_commands(pool, sql).await?;
+    info!("✅ Contraintes dupliquées corrigées");
     Ok(())
 }
 

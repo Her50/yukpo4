@@ -131,3 +131,4 @@ Diviser `0000_create_all_tables.sql` en plusieurs migrations plus petites :
 5. ⏳ **Améliorer la gestion d'erreur** dans `main.rs`
 
 
+

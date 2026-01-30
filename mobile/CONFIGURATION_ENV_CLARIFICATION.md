@@ -52,3 +52,4 @@ Le fichier `.env` est **uniquement pour le développement local** avec `expo sta
 
 Si vous voulez tester en développement local (`expo start`) et pointer vers AWS, alors vous pouvez mettre à jour `.env`. Sinon, laissez-le tel quel ou supprimez-le.
 
+

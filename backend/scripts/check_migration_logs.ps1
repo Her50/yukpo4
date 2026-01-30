@@ -126,3 +126,4 @@ if ($missingCritical.Count -eq 0 -and $foundSteps.Count -ge 8) {
 Write-Host ""
 Write-Host "✅ Vérification terminée" -ForegroundColor Cyan
 
+

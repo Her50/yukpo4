@@ -155,3 +155,4 @@ DELETE FROM _sqlx_migrations WHERE version = 0;
 La division de la migration 0 en plusieurs migrations plus petites est la **seule solution durable** pour éviter les timeouts dans AWS. La migration consolidée actuelle (`20260129_create_missing_tables_aws.sql`) est une solution temporaire, mais ne résout pas le problème à la racine.
 
 
+

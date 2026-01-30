@@ -174,3 +174,4 @@ Vérifier que toutes les tables critiques existent après les migrations et arr�
 **Conclusion** : Les migrations échouent car elles dépendent de types ENUM ou de tables qui n'existent pas, sans vérifier leur existence au préalable.
 
 
+

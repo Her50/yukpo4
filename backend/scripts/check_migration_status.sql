@@ -105,3 +105,4 @@ ORDER BY installed_on DESC;
 \echo ''
 \echo '✅ Vérification terminée'
 
+

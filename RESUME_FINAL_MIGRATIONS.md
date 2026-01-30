@@ -144,3 +144,4 @@ Chercher :
 - `✅ Tables de base (users, services) vérifiées après migrations SQLx`
 
 
+

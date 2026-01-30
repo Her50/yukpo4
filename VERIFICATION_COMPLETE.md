@@ -190,3 +190,4 @@ ORDER BY table_name;
 **Action suivante** : Une fois les migrations terminées, résoudre le problème du target group pour redémarrer le service ECS.
 
 
+

@@ -22,10 +22,11 @@ CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_status_priority_next_atte
 ON delivery_matching_queue(status, priority, next_attempt_at)
 WHERE status IN ('queued', 'searching');
 
--- Index partiel pour next_attempt_at <= NOW() (pour filtrage rapide)
+-- Index partiel pour next_attempt_at (sans NOW() car non IMMUTABLE)
+-- ✅ CORRIGÉ: Retirer NOW() du prédicat - la condition sera gérée dans les requêtes SQL
 CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_next_attempt_pending
 ON delivery_matching_queue(next_attempt_at)
-WHERE status IN ('queued', 'searching') AND next_attempt_at <= NOW();
+WHERE status IN ('queued', 'searching') AND next_attempt_at IS NOT NULL;
 
 -- =====================================================
 -- 3. Notes

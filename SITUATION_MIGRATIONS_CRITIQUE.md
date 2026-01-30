@@ -101,3 +101,4 @@ Créer une nouvelle tâche avec une commande plus simple qui utilise sqlx-cli pr
 Une fois les migrations appliquées, toutes les erreurs "relation does not exist" disparaîtront.
 
 
+

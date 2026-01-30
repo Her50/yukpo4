@@ -168,3 +168,4 @@ Write-Host "      # OU si le binaire n'existe pas :" -ForegroundColor Gray
 Write-Host "      cargo run --bin apply_missing_tables_aws --release" -ForegroundColor Gray
 
 
+

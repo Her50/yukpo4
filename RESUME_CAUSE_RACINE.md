@@ -61,3 +61,4 @@ CREATE TABLE IF NOT EXISTS product_creation_queue (
 3. ⏳ Vérifier que toutes les migrations suivantes vérifient aussi les types ENUM
 
 
+

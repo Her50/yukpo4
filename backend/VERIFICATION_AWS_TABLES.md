@@ -144,3 +144,4 @@ Si tout est OK, vous devriez voir :
 4. Cliquez sur une tâche pour voir les logs CloudWatch
 5. Recherchez les messages de migration dans les logs
 
+

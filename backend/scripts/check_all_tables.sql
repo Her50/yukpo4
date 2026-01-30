@@ -86,3 +86,4 @@ LIMIT 20;
 \echo ''
 \echo '✅ Vérification terminée'
 
+

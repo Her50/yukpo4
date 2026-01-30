@@ -25,3 +25,4 @@ if (Test-Path $scriptPath) {
     Write-Host "❌ Script SQL non trouvé: $scriptPath" -ForegroundColor Red
 }
 
+

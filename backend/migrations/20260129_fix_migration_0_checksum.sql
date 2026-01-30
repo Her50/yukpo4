@@ -77,3 +77,4 @@ END $$;
 COMMENT ON TABLE _sqlx_migrations IS 'Table de suivi des migrations SQLx. Cette migration corrige les entrées incorrectes pour permettre la réapplication des migrations.';
 
 
+
