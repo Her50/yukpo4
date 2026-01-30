@@ -572,6 +572,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // Migration 20260130_006: Ajout colonnes partner_type et partner_status à users (CRITIQUE pour inscription)
+    let migration_fix_5_sql = include_str!("../migrations/20260130_006_add_partner_columns_to_users.sql");
+    log::info!(
+        "🔍 [MIGRATION CORRECTION 006] Fichier chargé, taille: {} caractères",
+        migration_fix_5_sql.len()
+    );
+    match execute_multiple_sql_commands(&pg_pool, migration_fix_5_sql).await {
+        Ok(_) => {
+            log::info!("✅ [MIGRATION CORRECTION 006] Colonnes partner_type et partner_status ajoutées à users");
+        }
+        Err(e) => {
+            log::error!("❌ [MIGRATION CORRECTION 006] Erreur lors de l'application: {}", e);
+            // Ne pas arrêter l'application, continuer
+        }
+    }
+
     // ✅ SOLUTION CAUSE RACINE 2026-01-29: Utiliser execute_multiple_sql_commands() pour la migration 0
     // au lieu de sqlx::migrate!() qui exécute tout dans une transaction unique (timeout dans AWS)
     // Cette approche était utilisée dans Render et fonctionnait car chaque commande est exécutée individuellement
