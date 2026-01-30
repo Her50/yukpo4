@@ -65,9 +65,10 @@ BEGIN
 END $$;
 
 -- =====================================================
--- 4. CORRECTION: Trigger trigger_update_user_documents_updated_at déjà existant
+-- 4. CORRECTION: Triggers déjà existants
 -- =====================================================
 DROP TRIGGER IF EXISTS trigger_update_user_documents_updated_at ON user_documents;
+DROP TRIGGER IF EXISTS update_banques_sang_updated_at ON banques_sang;
 
 -- =====================================================
 -- 5. CORRECTION: Table conversations manquante
@@ -175,11 +176,29 @@ END $$;
 -- =====================================================
 CREATE TABLE IF NOT EXISTS pharmacy_order_items (
     id SERIAL PRIMARY KEY,
+    order_id INTEGER,
+    medication_id INTEGER,
+    pharmacy_id INTEGER,
+    user_id INTEGER,
+    status TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS pharmacy_reservations (
     id SERIAL PRIMARY KEY,
+    medication_id INTEGER,
+    pharmacy_id INTEGER,
+    user_id INTEGER,
+    status TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =====================================================
+-- 11b. CORRECTION: Table programmes_scolaires manquante
+-- =====================================================
+CREATE TABLE IF NOT EXISTS programmes_scolaires (
+    id SERIAL PRIMARY KEY,
+    etablissement_id INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

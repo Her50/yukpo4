@@ -3331,6 +3331,8 @@ CREATE INDEX IF NOT EXISTS idx_banques_sang_gps ON banques_sang USING GIST(
 ) WHERE gps IS NOT NULL AND gps != '';
 
 -- Trigger pour updated_at
+-- ✅ CORRECTION 2026-01-30: DROP le trigger avant de le recréer pour éviter "already exists"
+DROP TRIGGER IF EXISTS update_banques_sang_updated_at ON banques_sang;
 CREATE TRIGGER update_banques_sang_updated_at 
     BEFORE UPDATE ON banques_sang 
     FOR EACH ROW 
