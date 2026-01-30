@@ -7518,6 +7518,31 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         }
     }
 
+    // ============================================================================
+    // CORRECTIONS CRITIQUES AWS - 2026-01-30
+    // Ces corrections doivent s'exécuter AVANT toutes les autres migrations auto
+    // pour éviter les erreurs en cascade
+    // ============================================================================
+    info!("🔧 Application des corrections critiques AWS...");
+    
+    // Correction 1: Supprimer les versions dupliquées de hybrid_image_search
+    match fix_hybrid_image_search_duplicates(pool).await {
+        Ok(_) => info!("✅ Correction critique: hybrid_image_search dupliquées supprimées"),
+        Err(e) => warn!("⚠️ Erreur correction hybrid_image_search: {} (non bloquant)", e),
+    }
+    
+    // Correction 2: Créer specialized_reservations si manquante
+    match ensure_specialized_reservations_table(pool).await {
+        Ok(_) => info!("✅ Correction critique: specialized_reservations vérifiée"),
+        Err(e) => warn!("⚠️ Erreur correction specialized_reservations: {} (non bloquant)", e),
+    }
+    
+    // Correction 3: Créer run_audio_cache_cleanup() si manquante
+    match ensure_run_audio_cache_cleanup_function(pool).await {
+        Ok(_) => info!("✅ Correction critique: run_audio_cache_cleanup() vérifiée"),
+        Err(e) => warn!("⚠️ Erreur correction run_audio_cache_cleanup: {} (non bloquant)", e),
+    }
+
     // ✅ NOUVEAU 2026-01-24: Vérification de l'extension pgvector
     match ensure_pgvector_extension(pool).await {
         Ok(_) => info!("✅ Migration auto: pgvector extension vérifiée"),
@@ -14477,5 +14502,189 @@ pub async fn ensure_pgvector_extension(pool: &PgPool) -> Result<(), sqlx::Error>
         warn!("   - Puis redémarrer PostgreSQL et relancer les migrations");
     }
 
+    Ok(())
+}
+
+// ============================================================================
+// CORRECTIONS CRITIQUES AWS - 2026-01-30
+// ============================================================================
+
+/// Supprime toutes les versions dupliquées de hybrid_image_search
+async fn fix_hybrid_image_search_duplicates(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔧 Correction: Suppression des versions dupliquées de hybrid_image_search...");
+    
+    let sql = r#"
+        DO $$
+        DECLARE
+            func_record RECORD;
+        BEGIN
+            FOR func_record IN 
+                SELECT p.oid, p.proname, pg_get_function_arguments(p.oid) as args
+                FROM pg_proc p
+                JOIN pg_namespace n ON p.pronamespace = n.oid
+                WHERE p.proname = 'hybrid_image_search'
+                AND n.nspname = 'public'
+            LOOP
+                BEGIN
+                    EXECUTE format('DROP FUNCTION IF EXISTS %s(%s) CASCADE', 
+                        func_record.proname, 
+                        func_record.args);
+                    RAISE NOTICE 'Supprimé: hybrid_image_search(%)', func_record.args;
+                EXCEPTION WHEN OTHERS THEN
+                    RAISE NOTICE 'Erreur lors de la suppression de hybrid_image_search(%): %', 
+                        func_record.args, SQLERRM;
+                END;
+            END LOOP;
+        END $$;
+    "#;
+    
+    sqlx::query(sql).execute(pool).await?;
+    info!("✅ Toutes les versions dupliquées de hybrid_image_search ont été supprimées");
+    Ok(())
+}
+
+/// Crée la table specialized_reservations si elle n'existe pas
+async fn ensure_specialized_reservations_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔧 Correction: Vérification/création de specialized_reservations...");
+    
+    // Vérifier si la table existe
+    let exists: bool = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'specialized_reservations'
+        )"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if exists {
+        info!("✅ Table specialized_reservations existe déjà");
+        return Ok(());
+    }
+    
+    // Créer la table
+    let sql = r#"
+        CREATE TABLE specialized_reservations (
+            id SERIAL PRIMARY KEY,
+            service_id INTEGER NOT NULL,
+            service_type VARCHAR(50) NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            prestataire_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            reservation_type VARCHAR(50) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            requested_date TIMESTAMP WITH TIME ZONE,
+            confirmed_date TIMESTAMP WITH TIME ZONE,
+            completed_at TIMESTAMP WITH TIME ZONE,
+            cancelled_at TIMESTAMP WITH TIME ZONE,
+            details JSONB NOT NULL DEFAULT '{}',
+            amount NUMERIC(10, 2),
+            currency VARCHAR(10),
+            payment_status VARCHAR(20),
+            payment_method VARCHAR(50),
+            notes TEXT,
+            prestataire_notes TEXT,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_specialized_reservations_service_id ON specialized_reservations(service_id);
+        CREATE INDEX IF NOT EXISTS idx_specialized_reservations_user_id ON specialized_reservations(user_id);
+        CREATE INDEX IF NOT EXISTS idx_specialized_reservations_prestataire_id ON specialized_reservations(prestataire_id);
+        CREATE INDEX IF NOT EXISTS idx_specialized_reservations_status ON specialized_reservations(status);
+        CREATE INDEX IF NOT EXISTS idx_specialized_reservations_service_type ON specialized_reservations(service_type);
+    "#;
+    
+    execute_multiple_sql_commands(pool, sql).await?;
+    info!("✅ Table specialized_reservations créée avec succès");
+    Ok(())
+}
+
+/// Crée la fonction run_audio_cache_cleanup() si elle n'existe pas
+/// ✅ CORRIGÉ 2026-01-30: Supprime toutes les versions de la fonction avant de la recréer
+/// pour éviter les conflits de signature (comme pour hybrid_image_search)
+async fn ensure_run_audio_cache_cleanup_function(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔧 Correction: Vérification/création de run_audio_cache_cleanup()...");
+    
+    // ✅ CORRIGÉ: Supprimer TOUTES les versions de la fonction (toutes signatures)
+    // pour éviter les conflits si une version avec paramètres existe
+    let drop_sql = r#"
+        DO $$
+        DECLARE
+            r RECORD;
+        BEGIN
+            FOR r IN 
+                SELECT p.oid, p.proname, pg_get_function_arguments(p.oid) as args
+                FROM pg_proc p
+                JOIN pg_namespace n ON p.pronamespace = n.oid
+                WHERE p.proname = 'run_audio_cache_cleanup'
+                AND n.nspname = 'public'
+            LOOP
+                BEGIN
+                    EXECUTE format('DROP FUNCTION IF EXISTS %s(%s) CASCADE', 
+                        r.proname, r.args);
+                    RAISE NOTICE 'Supprimé: run_audio_cache_cleanup(%)', r.args;
+                EXCEPTION WHEN OTHERS THEN
+                    RAISE NOTICE 'Erreur lors de la suppression de run_audio_cache_cleanup(%): %', 
+                        r.args, SQLERRM;
+                END;
+            END LOOP;
+        END $$;
+    "#;
+    
+    execute_multiple_sql_commands(pool, drop_sql).await?;
+    info!("🧹 Toutes les versions de run_audio_cache_cleanup() supprimées");
+    
+    // Créer la fonction avec la signature exacte (sans paramètres)
+    let sql = r#"
+        CREATE OR REPLACE FUNCTION run_audio_cache_cleanup()
+        RETURNS TABLE(
+            deleted_count INTEGER,
+            kept_count INTEGER,
+            total_before INTEGER,
+            total_after INTEGER
+        ) AS $$
+        DECLARE
+            deleted_count_var INTEGER := 0;
+            kept_count_var INTEGER := 0;
+            total_before_var INTEGER := 0;
+            total_after_var INTEGER := 0;
+        BEGIN
+            -- Vérifier si la fonction cleanup_old_audio_transcriptions existe
+            IF EXISTS (
+                SELECT 1 FROM pg_proc 
+                WHERE proname = 'cleanup_old_audio_transcriptions'
+            ) THEN
+                -- Exécuter le nettoyage et récupérer les résultats dans des variables explicites
+                -- Utiliser COALESCE pour garantir des valeurs non-NULL
+                SELECT 
+                    COALESCE(deleted_count, 0),
+                    COALESCE(kept_count, 0),
+                    COALESCE(total_before, 0),
+                    COALESCE(total_after, 0)
+                INTO 
+                    deleted_count_var,
+                    kept_count_var,
+                    total_before_var,
+                    total_after_var
+                FROM cleanup_old_audio_transcriptions()
+                LIMIT 1;
+            ELSE
+                -- Si la fonction n'existe pas, retourner des valeurs par défaut (0)
+                RAISE NOTICE 'Fonction cleanup_old_audio_transcriptions non trouvée, retour de valeurs par défaut';
+            END IF;
+            
+            -- Log (peut être envoyé à un système de monitoring)
+            RAISE NOTICE 'Audio cache cleanup: deleted %, kept %, total before %, after %', 
+                deleted_count_var, kept_count_var, total_before_var, total_after_var;
+            
+            -- Retourner les résultats comme une table (toujours des valeurs non-NULL)
+            RETURN QUERY SELECT deleted_count_var, kept_count_var, total_before_var, total_after_var;
+        END;
+        $$ LANGUAGE plpgsql;
+    "#;
+    
+    execute_multiple_sql_commands(pool, sql).await?;
+    info!("✅ Fonction run_audio_cache_cleanup() créée avec succès (signature sans paramètres)");
     Ok(())
 }
