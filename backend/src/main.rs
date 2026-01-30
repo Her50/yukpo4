@@ -556,6 +556,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // Migration 20260130_005: Correction des erreurs restantes (log 10)
+    let migration_fix_4_sql = include_str!("../migrations/20260130_005_fix_remaining_migration_errors.sql");
+    log::info!(
+        "🔍 [MIGRATION CORRECTION 005] Fichier chargé, taille: {} caractères",
+        migration_fix_4_sql.len()
+    );
+    match execute_multiple_sql_commands(&pg_pool, migration_fix_4_sql).await {
+        Ok(_) => {
+            log::info!("✅ [MIGRATION CORRECTION 005] Migration de correction des erreurs restantes appliquée avec succès");
+        }
+        Err(e) => {
+            log::error!("❌ [MIGRATION CORRECTION 005] Erreur lors de l'application: {}", e);
+            // Ne pas arrêter l'application, continuer
+        }
+    }
+
     // ✅ SOLUTION CAUSE RACINE 2026-01-29: Utiliser execute_multiple_sql_commands() pour la migration 0
     // au lieu de sqlx::migrate!() qui exécute tout dans une transaction unique (timeout dans AWS)
     // Cette approche était utilisée dans Render et fonctionnait car chaque commande est exécutée individuellement
