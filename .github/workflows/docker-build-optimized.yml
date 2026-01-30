@@ -76,6 +76,12 @@ jobs:
         run: |
           pip install --cache-dir ~/.cache/pip -r scripts/requirements.txt
 
+      - name: Install PostgreSQL client (for migration corrections)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          psql --version
+
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
