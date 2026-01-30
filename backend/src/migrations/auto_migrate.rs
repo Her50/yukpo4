@@ -11950,6 +11950,38 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
     for line in sql.lines() {
         let trimmed = line.trim();
 
+        // ✅ CORRECTION CRITIQUE 2026-01-30: Vérifier la fin du bloc AVANT d'ajouter la ligne
+        // Cela permet de détecter correctement la fin et de séparer les commandes suivantes
+        let should_terminate_block = if in_dollar_block {
+            if trimmed.contains(&dollar_tag) {
+                let dollar_pos = trimmed.find(&dollar_tag);
+                if let Some(pos) = dollar_pos {
+                    let after_dollar: &str = trimmed[pos + dollar_tag.len()..].trim();
+                    
+                    // Cas 1: $$ LANGUAGE plpgsql; (LANGUAGE après $$) - FIN DE FONCTION
+                    if after_dollar.to_uppercase().starts_with("LANGUAGE") && trimmed.ends_with(';') {
+                        true
+                    }
+                    // Cas 2: END $$; (bloc DO) - FIN DE BLOC DO
+                    else if trimmed.contains("END") && trimmed.ends_with(&format!("{};", dollar_tag)) {
+                        true
+                    }
+                    // Cas 3: $$; simple (fin de bloc)
+                    else if (after_dollar.is_empty() || after_dollar == ";") && trimmed.ends_with(';') {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
         // Ignorer les lignes vides et les commentaires seuls UNIQUEMENT si on n'a pas de commande en cours
         // Ne pas ignorer si on est dans une commande multi-lignes (comme CREATE TABLE)
         if trimmed.is_empty() || trimmed.starts_with("--") {
@@ -11961,6 +11993,11 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                     current.push_str("\n");
                 }
                 // Sinon, on ignore vraiment (début de fichier ou après une commande complète)
+                continue;
+            } else {
+                // Dans un bloc dollar, on garde les commentaires
+                current.push_str(line);
+                current.push_str("\n");
                 continue;
             }
         }
@@ -11988,76 +12025,25 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             }
         }
 
+        // Ajouter la ligne à current
         current.push_str(line);
         current.push_str("\n");
 
-        // Détecter fin du bloc $$
-        if in_dollar_block {
-            // ✅ CORRECTION: Vérifier d'abord si la ligne contient $$ LANGUAGE (fin de fonction)
-            // Cela doit être vérifié AVANT de vérifier END; seul
-            if trimmed.contains(&dollar_tag) {
-                let dollar_pos = trimmed.find(&dollar_tag);
-                if let Some(pos) = dollar_pos {
-                    let after_dollar: &str = trimmed[pos + dollar_tag.len()..].trim();
+        // Si on doit terminer le bloc, le faire maintenant
+        if should_terminate_block {
+            commands.push(current.trim().to_string());
+            current.clear();
+            in_dollar_block = false;
+            dollar_tag.clear();
+            continue; // Passer à la ligne suivante (qui sera une nouvelle commande)
+        }
 
-                    // Cas 1: $$ LANGUAGE plpgsql; (LANGUAGE après $$) - FIN DE FONCTION
-                    // C'est le cas le plus important : END; suivi de $$ LANGUAGE plpgsql;
-                    if after_dollar.starts_with("LANGUAGE") {
-                        // Si le point-virgule est sur la même ligne
-                        if trimmed.ends_with(';') {
-                            commands.push(current.trim().to_string());
-                            current.clear();
-                            in_dollar_block = false;
-                            dollar_tag.clear();
-                            continue;
-                        }
-                        // Sinon, on continue à accumuler jusqu'au prochain ;
-                    }
-                    // Cas 2: END $$; (bloc DO) - FIN DE BLOC DO
-                    else if trimmed.contains("END")
-                        && trimmed.ends_with(&format!("{};", dollar_tag))
-                    {
-                        commands.push(current.trim().to_string());
-                        current.clear();
-                        in_dollar_block = false;
-                        dollar_tag.clear();
-                        continue;
-                    }
-                    // Cas 3: $$; simple (fin de bloc - pour CREATE FUNCTION ... AS $$ ... $$;)
-                    else if (after_dollar.is_empty() || after_dollar == ";")
-                        && trimmed.ends_with(';')
-                    {
-                        commands.push(current.trim().to_string());
-                        current.clear();
-                        in_dollar_block = false;
-                        dollar_tag.clear();
-                        continue;
-                    }
-                }
-            }
-            // ✅ CORRECTION: Si on trouve END; dans un bloc CREATE FUNCTION, vérifier si la ligne suivante contient $$ LANGUAGE
-            // Ne pas terminer le bloc sur END; seul si c'est une fonction (doit être suivi de $$ LANGUAGE)
-            else if trimmed == "END;"
-                && current.contains("CREATE")
-                && current.contains("FUNCTION")
-            {
-                // On continue à accumuler car la ligne suivante devrait contenir $$ LANGUAGE
-                // Ne pas terminer ici - la détection se fera sur la prochaine itération
-                // Note: Ne pas faire continue ici car on a déjà ajouté la ligne à current
-            }
-            // Si on est dans un bloc et qu'on trouve un point-virgule après LANGUAGE (sur ligne séparée)
-            // Ce cas est pour CREATE FUNCTION ... LANGUAGE plpgsql AS $$ ... $$; où LANGUAGE est avant AS
-            else if current.contains("LANGUAGE")
-                && trimmed.ends_with(';')
-                && !trimmed.contains(&dollar_tag)
-                && trimmed.trim() == ";"
-            {
-                // Le point-virgule final de la fonction (ligne séparée après $$)
-                commands.push(current.trim().to_string());
-                current.clear();
-                in_dollar_block = false;
-                dollar_tag.clear();
-                continue;
+        // Détecter fin du bloc $$ (cas supplémentaires)
+        if in_dollar_block {
+            // Si on trouve END; dans un bloc CREATE FUNCTION, on continue à accumuler
+            // car la ligne suivante devrait contenir $$ LANGUAGE
+            if trimmed == "END;" && current.contains("CREATE") && current.contains("FUNCTION") {
+                // On continue à accumuler
             }
         } else if !in_dollar_block {
             // Commande normale - se termine par ;
