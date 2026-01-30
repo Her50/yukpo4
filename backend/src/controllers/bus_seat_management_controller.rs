@@ -99,9 +99,9 @@ pub async fn block_seat(
             .bind(&payload.product_id)
             .bind(&payload.seat_id)
             .bind(payload.seat_number)
-            .bind(user_id)  // p_blocked_by (déplacé avant les paramètres avec DEFAULT)
-            .bind(&reason)  // p_reason (avec DEFAULT)
-            .bind(&payload.reason_details)  // p_reason_details (avec DEFAULT)
+            .bind(user_id) // p_blocked_by (déplacé avant les paramètres avec DEFAULT)
+            .bind(&reason) // p_reason (avec DEFAULT)
+            .bind(&payload.reason_details) // p_reason_details (avec DEFAULT)
             .fetch_one(&state.pg)
             .await
             .map_err(|e| {

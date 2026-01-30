@@ -26,7 +26,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Connexion établie");
 
     // Lire et exécuter la migration SQL consolidée
-    println!("🔄 Application de la migration SQL consolidée (20260129_create_missing_tables_aws.sql)...");
+    println!(
+        "🔄 Application de la migration SQL consolidée (20260129_create_missing_tables_aws.sql)..."
+    );
     // ✅ CORRECTION: Chemin relatif depuis src/bin/ vers migrations/ (remonter de 2 niveaux)
     let migration_sql = include_str!("../../migrations/20260129_create_missing_tables_aws.sql");
 
@@ -38,7 +40,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("✅ Migration SQL consolidée appliquée avec succès");
         }
         Err(e) => {
-            println!("⚠️ Erreur lors de l'application (certaines tables peuvent déjà exister): {}", e);
+            println!(
+                "⚠️ Erreur lors de l'application (certaines tables peuvent déjà exister): {}",
+                e
+            );
             // Ne pas échouer complètement, certaines tables peuvent déjà exister
         }
     }
@@ -85,13 +90,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if missing_tables.is_empty() {
         println!("\n✅ Toutes les tables critiques existent !");
     } else {
-        println!("\n⚠️ {} tables critiques manquent encore:", missing_tables.len());
+        println!(
+            "\n⚠️ {} tables critiques manquent encore:",
+            missing_tables.len()
+        );
         for table in &missing_tables {
             println!("   - {}", table);
         }
-        println!("\n💡 Vérifiez les logs pour comprendre pourquoi ces tables n'ont pas été créées.");
+        println!(
+            "\n💡 Vérifiez les logs pour comprendre pourquoi ces tables n'ont pas été créées."
+        );
     }
 
     Ok(())
 }
-

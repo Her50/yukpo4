@@ -95,4 +95,3 @@ impl Default for VersionInfo {
         Self::new()
     }
 }
-

@@ -11874,8 +11874,7 @@ fn normalize_sql_command(cmd: &str) -> String {
                         END IF;
                     END $$;
                     "#,
-                    trigger_name,
-                    trigger_sql
+                    trigger_name, trigger_sql
                 );
             }
         }
