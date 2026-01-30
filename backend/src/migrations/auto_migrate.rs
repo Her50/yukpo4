@@ -12070,6 +12070,30 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 // Le bloc sera détecté par la logique de détection de $$
             }
             
+            // ✅ CORRECTION CRITIQUE 2026-01-30: Détecter nouvelle commande SQL qui commence
+            // Si on a déjà du contenu dans current et qu'on voit un nouveau mot-clé SQL au début de la ligne,
+            // c'est qu'une nouvelle commande commence (la précédente s'est terminée par ;)
+            let sql_keywords = ["CREATE", "DROP", "ALTER", "INSERT", "UPDATE", "DELETE", "SELECT", 
+                                "GRANT", "REVOKE", "COMMENT", "TRUNCATE", "ANALYZE", "VACUUM", 
+                                "EXECUTE", "DO", "BEGIN", "COMMIT", "ROLLBACK"];
+            let is_new_command = sql_keywords.iter().any(|keyword| {
+                trimmed.to_uppercase().starts_with(keyword)
+            });
+            
+            // Si on détecte une nouvelle commande et qu'on a déjà du contenu, terminer la commande précédente
+            if is_new_command && !current.trim().is_empty() {
+                let prev_cmd = current.trim();
+                // Vérifier que la commande précédente est valide et se termine par ;
+                if prev_cmd.ends_with(';') && !prev_cmd.starts_with("--") {
+                    commands.push(prev_cmd.to_string());
+                    current.clear();
+                } else if !prev_cmd.ends_with(';') && !prev_cmd.is_empty() {
+                    // La commande précédente n'a pas de ;, l'ajouter
+                    commands.push(format!("{};", prev_cmd));
+                    current.clear();
+                }
+            }
+            
             // Commande normale - se termine par ;
             if trimmed.ends_with(';') {
                 let cmd = current.trim();
