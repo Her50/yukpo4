@@ -7524,47 +7524,59 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // pour éviter les erreurs en cascade
     // ============================================================================
     info!("🔧 Application des corrections critiques AWS...");
-    
+
     // Correction 1: Supprimer les versions dupliquées de hybrid_image_search
     match fix_hybrid_image_search_duplicates(pool).await {
         Ok(_) => info!("✅ Correction critique: hybrid_image_search dupliquées supprimées"),
-        Err(e) => warn!("⚠️ Erreur correction hybrid_image_search: {} (non bloquant)", e),
+        Err(e) => warn!(
+            "⚠️ Erreur correction hybrid_image_search: {} (non bloquant)",
+            e
+        ),
     }
-    
+
     // Correction 2: Créer specialized_reservations si manquante
     match ensure_specialized_reservations_table(pool).await {
         Ok(_) => info!("✅ Correction critique: specialized_reservations vérifiée"),
-        Err(e) => warn!("⚠️ Erreur correction specialized_reservations: {} (non bloquant)", e),
+        Err(e) => warn!(
+            "⚠️ Erreur correction specialized_reservations: {} (non bloquant)",
+            e
+        ),
     }
-    
+
     // Correction 3: Créer run_audio_cache_cleanup() si manquante
     match ensure_run_audio_cache_cleanup_function(pool).await {
         Ok(_) => info!("✅ Correction critique: run_audio_cache_cleanup() vérifiée"),
-        Err(e) => warn!("⚠️ Erreur correction run_audio_cache_cleanup: {} (non bloquant)", e),
+        Err(e) => warn!(
+            "⚠️ Erreur correction run_audio_cache_cleanup: {} (non bloquant)",
+            e
+        ),
     }
-    
+
     // Correction 4: S'assurer que la colonne gps existe dans services
     match ensure_services_gps_column(pool).await {
         Ok(_) => info!("✅ Correction critique: colonne gps dans services vérifiée"),
         Err(e) => warn!("⚠️ Erreur correction gps column: {} (non bloquant)", e),
     }
-    
+
     // Correction 5: Corriger l'index avec NOW() non IMMUTABLE
     match fix_delivery_matching_queue_index(pool).await {
         Ok(_) => info!("✅ Correction critique: index delivery_matching_queue corrigé"),
         Err(e) => warn!("⚠️ Erreur correction index: {} (non bloquant)", e),
     }
-    
+
     // Correction 6: S'assurer que la table products existe
     match ensure_products_table(pool).await {
         Ok(_) => info!("✅ Correction critique: table products vérifiée"),
         Err(e) => warn!("⚠️ Erreur correction products table: {} (non bloquant)", e),
     }
-    
+
     // Correction 7: Corriger les vues matérialisées pour gérer gps manquant
     match fix_materialized_views_gps(pool).await {
         Ok(_) => info!("✅ Correction critique: vues matérialisées corrigées"),
-        Err(e) => warn!("⚠️ Erreur correction vues matérialisées: {} (non bloquant)", e),
+        Err(e) => warn!(
+            "⚠️ Erreur correction vues matérialisées: {} (non bloquant)",
+            e
+        ),
     }
     
     // Correction 8: Supprimer les contraintes dupliquées
@@ -11957,17 +11969,22 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 let dollar_pos = trimmed.find(&dollar_tag);
                 if let Some(pos) = dollar_pos {
                     let after_dollar: &str = trimmed[pos + dollar_tag.len()..].trim();
-                    
+
                     // Cas 1: $$ LANGUAGE plpgsql; (LANGUAGE après $$) - FIN DE FONCTION
-                    if after_dollar.to_uppercase().starts_with("LANGUAGE") && trimmed.ends_with(';') {
+                    if after_dollar.to_uppercase().starts_with("LANGUAGE") && trimmed.ends_with(';')
+                    {
                         true
                     }
                     // Cas 2: END $$; (bloc DO) - FIN DE BLOC DO
-                    else if trimmed.contains("END") && trimmed.ends_with(&format!("{};", dollar_tag)) {
+                    else if trimmed.contains("END")
+                        && trimmed.ends_with(&format!("{};", dollar_tag))
+                    {
                         true
                     }
                     // Cas 3: $$; simple (fin de bloc)
-                    else if (after_dollar.is_empty() || after_dollar == ";") && trimmed.ends_with(';') {
+                    else if (after_dollar.is_empty() || after_dollar == ";")
+                        && trimmed.ends_with(';')
+                    {
                         true
                     } else {
                         false
@@ -12007,8 +12024,9 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
         if trimmed.contains("$$") && !in_dollar_block {
             // Vérifier si c'est le début d'un bloc DO $$ ou CREATE FUNCTION $$
             let is_do_block = trimmed.to_uppercase().starts_with("DO");
-            let is_function_block = trimmed.to_uppercase().contains("CREATE FUNCTION") || trimmed.to_uppercase().contains("AS $$");
-            
+            let is_function_block = trimmed.to_uppercase().contains("CREATE FUNCTION")
+                || trimmed.to_uppercase().contains("AS $$");
+
             if is_do_block || is_function_block {
                 // Détecter le tag $$ (peut être $$, $tag$, etc.)
                 if let Some(start) = trimmed.find("$$") {
@@ -12033,7 +12051,9 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             } else {
                 // Vérifier si la ligne précédente contenait DO ou CREATE FUNCTION
                 // (cas où DO $$ est sur deux lignes)
-                if current.to_uppercase().trim().ends_with("DO") || current.to_uppercase().contains("CREATE FUNCTION") {
+                if current.to_uppercase().trim().ends_with("DO")
+                    || current.to_uppercase().contains("CREATE FUNCTION")
+                {
                     if let Some(start) = trimmed.find("$$") {
                         dollar_tag = "$$".to_string();
                         in_dollar_block = true;
@@ -12073,13 +12093,15 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             // ✅ CORRECTION CRITIQUE 2026-01-30: Détecter nouvelle commande SQL qui commence
             // Si on a déjà du contenu dans current et qu'on voit un nouveau mot-clé SQL au début de la ligne,
             // c'est qu'une nouvelle commande commence (la précédente s'est terminée par ;)
-            let sql_keywords = ["CREATE", "DROP", "ALTER", "INSERT", "UPDATE", "DELETE", "SELECT", 
-                                "GRANT", "REVOKE", "COMMENT", "TRUNCATE", "ANALYZE", "VACUUM", 
-                                "EXECUTE", "DO", "BEGIN", "COMMIT", "ROLLBACK"];
-            let is_new_command = sql_keywords.iter().any(|keyword| {
-                trimmed.to_uppercase().starts_with(keyword)
-            });
-            
+            let sql_keywords = [
+                "CREATE", "DROP", "ALTER", "INSERT", "UPDATE", "DELETE", "SELECT", "GRANT",
+                "REVOKE", "COMMENT", "TRUNCATE", "ANALYZE", "VACUUM", "EXECUTE", "DO", "BEGIN",
+                "COMMIT", "ROLLBACK",
+            ];
+            let is_new_command = sql_keywords
+                .iter()
+                .any(|keyword| trimmed.to_uppercase().starts_with(keyword));
+
             // Si on détecte une nouvelle commande et qu'on a déjà du contenu, terminer la commande précédente
             if is_new_command && !current.trim().is_empty() {
                 let prev_cmd = current.trim();
@@ -12093,27 +12115,34 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                     current.clear();
                 }
             }
-            
+
             // Commande normale - se termine par ;
             if trimmed.ends_with(';') {
                 let cmd = current.trim();
-                
+
                 // ✅ CORRECTION CRITIQUE 2026-01-30: Ne PAS diviser si on est dans un bloc DO $$
                 // Vérifier si la commande commence par DO $$ et n'a pas encore de END $$;
-                if cmd.to_uppercase().starts_with("DO") && cmd.contains("$$") && !cmd.contains("END $$") {
+                if cmd.to_uppercase().starts_with("DO")
+                    && cmd.contains("$$")
+                    && !cmd.contains("END $$")
+                {
                     // On est dans un bloc DO $$ qui n'est pas terminé, continuer à accumuler
                     continue;
                 }
-                
+
                 // ✅ CORRECTION 2026-01-30: Détecter les fins de fonctions/triggers pour mieux diviser
                 // Pattern: "$$ language 'plpgsql';" suivi de "CREATE TRIGGER" ou "CREATE TABLE"
-                let is_function_end = cmd.to_uppercase().contains("$$") 
-                    && (cmd.to_uppercase().contains("LANGUAGE") || cmd.to_uppercase().contains("AS $$"));
-                
+                let is_function_end = cmd.to_uppercase().contains("$$")
+                    && (cmd.to_uppercase().contains("LANGUAGE")
+                        || cmd.to_uppercase().contains("AS $$"));
+
                 // ✅ CORRECTION 2026-01-30: Détecter et diviser les commandes multiples sur une seule ligne
                 // Exemple: "CREATE INDEX ...; CREATE INDEX ...;" doit être divisé en 2 commandes
                 // MAIS seulement si on n'est PAS dans un bloc DO $$
-                if !cmd.to_uppercase().starts_with("DO") && cmd.contains(";") && cmd.matches(';').count() > 1 {
+                if !cmd.to_uppercase().starts_with("DO")
+                    && cmd.contains(";")
+                    && cmd.matches(';').count() > 1
+                {
                     // Diviser par ';' mais préserver le contexte
                     let parts: Vec<&str> = cmd.split(';').collect();
                     for part in parts {
@@ -14637,7 +14666,7 @@ pub async fn ensure_pgvector_extension(pool: &PgPool) -> Result<(), sqlx::Error>
 /// Supprime toutes les versions dupliquées de hybrid_image_search
 async fn fix_hybrid_image_search_duplicates(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔧 Correction: Suppression des versions dupliquées de hybrid_image_search...");
-    
+
     let sql = r#"
         DO $$
         DECLARE
@@ -14662,7 +14691,7 @@ async fn fix_hybrid_image_search_duplicates(pool: &PgPool) -> Result<(), sqlx::E
             END LOOP;
         END $$;
     "#;
-    
+
     sqlx::query(sql).execute(pool).await?;
     info!("✅ Toutes les versions dupliquées de hybrid_image_search ont été supprimées");
     Ok(())
@@ -14671,23 +14700,23 @@ async fn fix_hybrid_image_search_duplicates(pool: &PgPool) -> Result<(), sqlx::E
 /// Crée la table specialized_reservations si elle n'existe pas
 async fn ensure_specialized_reservations_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔧 Correction: Vérification/création de specialized_reservations...");
-    
+
     // Vérifier si la table existe
     let exists: bool = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS (
             SELECT FROM information_schema.tables 
             WHERE table_schema = 'public' 
             AND table_name = 'specialized_reservations'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
-    
+
     if exists {
         info!("✅ Table specialized_reservations existe déjà");
         return Ok(());
     }
-    
+
     // Créer la table
     let sql = r#"
         CREATE TABLE specialized_reservations (
@@ -14719,7 +14748,7 @@ async fn ensure_specialized_reservations_table(pool: &PgPool) -> Result<(), sqlx
         CREATE INDEX IF NOT EXISTS idx_specialized_reservations_status ON specialized_reservations(status);
         CREATE INDEX IF NOT EXISTS idx_specialized_reservations_service_type ON specialized_reservations(service_type);
     "#;
-    
+
     execute_multiple_sql_commands(pool, sql).await?;
     info!("✅ Table specialized_reservations créée avec succès");
     Ok(())
@@ -14729,18 +14758,18 @@ async fn ensure_specialized_reservations_table(pool: &PgPool) -> Result<(), sqlx
 /// Problème: Les vues matérialisées échouent car s.gps n'existe pas
 async fn ensure_services_gps_column(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔧 Correction: Vérification de la colonne gps dans services...");
-    
+
     let column_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(
             SELECT 1 FROM information_schema.columns 
             WHERE table_schema = 'public' 
             AND table_name = 'services' 
             AND column_name = 'gps'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !column_exists {
         warn!("⚠️ Colonne gps manquante dans services, ajout en cours...");
         sqlx::query("ALTER TABLE services ADD COLUMN IF NOT EXISTS gps VARCHAR(255)")
@@ -14750,7 +14779,7 @@ async fn ensure_services_gps_column(pool: &PgPool) -> Result<(), sqlx::Error> {
     } else {
         info!("✅ Colonne gps existe déjà dans services");
     }
-    
+
     Ok(())
 }
 
@@ -14758,7 +14787,7 @@ async fn ensure_services_gps_column(pool: &PgPool) -> Result<(), sqlx::Error> {
 /// Problème: functions in index predicate must be marked IMMUTABLE
 async fn fix_delivery_matching_queue_index(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔧 Correction: Vérification de l'index delivery_matching_queue...");
-    
+
     // Supprimer l'index problématique s'il existe avec NOW() dans le prédicat
     let sql = r#"
         DO $$
@@ -14785,7 +14814,7 @@ async fn fix_delivery_matching_queue_index(pool: &PgPool) -> Result<(), sqlx::Er
             END IF;
         END $$;
     "#;
-    
+
     execute_multiple_sql_commands(pool, sql).await?;
     info!("✅ Index delivery_matching_queue corrigé");
     Ok(())
@@ -14795,17 +14824,17 @@ async fn fix_delivery_matching_queue_index(pool: &PgPool) -> Result<(), sqlx::Er
 /// Problème: relation "products" does not exist
 async fn ensure_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔧 Correction: Vérification de la table products...");
-    
+
     let table_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(
             SELECT 1 FROM information_schema.tables 
             WHERE table_schema = 'public' 
             AND table_name = 'products'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !table_exists {
         warn!("⚠️ Table products manquante, création en cours...");
         let sql = r#"
@@ -14833,13 +14862,13 @@ async fn ensure_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             CREATE INDEX IF NOT EXISTS idx_products_type ON products(type);
             CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);
         "#;
-        
+
         execute_multiple_sql_commands(pool, sql).await?;
         info!("✅ Table products créée");
     } else {
         info!("✅ Table products existe déjà");
     }
-    
+
     Ok(())
 }
 
@@ -14847,7 +14876,7 @@ async fn ensure_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
 /// Problème: Les vues matérialisées échouent car s.gps n'existe pas
 async fn fix_materialized_views_gps(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔧 Correction: Vérification des vues matérialisées...");
-    
+
     // Vérifier si la colonne gps existe
     let gps_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(
@@ -14855,11 +14884,11 @@ async fn fix_materialized_views_gps(pool: &PgPool) -> Result<(), sqlx::Error> {
             WHERE table_schema = 'public' 
             AND table_name = 'services' 
             AND column_name = 'gps'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !gps_exists {
         warn!("⚠️ Colonne gps n'existe pas, les vues matérialisées seront créées sans gps");
         // Supprimer les vues matérialisées existantes pour les recréer sans gps
@@ -14933,10 +14962,10 @@ async fn fix_materialized_views_gps(pool: &PgPool) -> Result<(), sqlx::Error> {
                 to_tsvector('french', 
                     COALESCE(product->>'name', '') || ' ' ||
                     COALESCE(product->>'description', '')
-                )
-            );
-        "#;
-        
+                    )
+                );
+            "#;
+
         execute_multiple_sql_commands(pool, sql).await?;
         info!("✅ Vues matérialisées recréées sans gps");
     } else {
@@ -14945,20 +14974,20 @@ async fn fix_materialized_views_gps(pool: &PgPool) -> Result<(), sqlx::Error> {
             "SELECT EXISTS(
                 SELECT 1 FROM pg_matviews 
                 WHERE matviewname = 'services_search_cache'
-            )"
+            )",
         )
         .fetch_one(pool)
         .await?;
-        
+
         let products_cache_exists = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(
                 SELECT 1 FROM pg_matviews 
                 WHERE matviewname = 'active_products_cache'
-            )"
+            )",
         )
         .fetch_one(pool)
         .await?;
-        
+
         if !services_cache_exists || !products_cache_exists {
             warn!("⚠️ Vues matérialisées manquantes, création en cours...");
             let sql = r#"
@@ -15031,14 +15060,14 @@ async fn fix_materialized_views_gps(pool: &PgPool) -> Result<(), sqlx::Error> {
                     )
                 );
             "#;
-            
+
             execute_multiple_sql_commands(pool, sql).await?;
             info!("✅ Vues matérialisées créées avec gps");
         } else {
             info!("✅ Vues matérialisées existent déjà");
         }
     }
-    
+
     Ok(())
 }
 
@@ -15046,7 +15075,7 @@ async fn fix_materialized_views_gps(pool: &PgPool) -> Result<(), sqlx::Error> {
 /// Problème: constraint "fk_video_generation_jobs_audio_job" already exists
 async fn fix_duplicate_constraints(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔧 Correction: Vérification des contraintes dupliquées...");
-    
+
     let sql = r#"
         DO $$
         BEGIN
@@ -15085,7 +15114,7 @@ async fn fix_duplicate_constraints(pool: &PgPool) -> Result<(), sqlx::Error> {
             END IF;
         END $$;
     "#;
-    
+
     execute_multiple_sql_commands(pool, sql).await?;
     info!("✅ Contraintes dupliquées corrigées");
     Ok(())
@@ -15096,7 +15125,7 @@ async fn fix_duplicate_constraints(pool: &PgPool) -> Result<(), sqlx::Error> {
 /// pour éviter les conflits de signature (comme pour hybrid_image_search)
 async fn ensure_run_audio_cache_cleanup_function(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔧 Correction: Vérification/création de run_audio_cache_cleanup()...");
-    
+
     // ✅ CORRIGÉ: Supprimer TOUTES les versions de la fonction (toutes signatures)
     // pour éviter les conflits si une version avec paramètres existe
     let drop_sql = r#"
@@ -15122,10 +15151,10 @@ async fn ensure_run_audio_cache_cleanup_function(pool: &PgPool) -> Result<(), sq
             END LOOP;
         END $$;
     "#;
-    
+
     execute_multiple_sql_commands(pool, drop_sql).await?;
     info!("🧹 Toutes les versions de run_audio_cache_cleanup() supprimées");
-    
+
     // Créer la fonction avec la signature exacte (sans paramètres)
     let sql = r#"
         CREATE OR REPLACE FUNCTION run_audio_cache_cleanup()
@@ -15174,7 +15203,7 @@ async fn ensure_run_audio_cache_cleanup_function(pool: &PgPool) -> Result<(), sq
         END;
         $$ LANGUAGE plpgsql;
     "#;
-    
+
     execute_multiple_sql_commands(pool, sql).await?;
     info!("✅ Fonction run_audio_cache_cleanup() créée avec succès (signature sans paramètres)");
     Ok(())

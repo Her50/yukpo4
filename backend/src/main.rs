@@ -507,41 +507,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Ordre d'exécution: 20260130_002 (corrections critiques) puis 20260130_003 (corrections supplémentaires) puis 20260130_004 (correction finale)
     log::info!("🔄 [MIGRATIONS CORRECTION] Application FORCÉE des migrations de correction AVANT la migration 0...");
     log::info!("💡 Cette approche garantit que les corrections sont en place avant que la migration 0 ne crée des objets");
-    
+
     // Migration 20260130_002: Corrections critiques (vue, types, tables manquantes, etc.)
-    let migration_fix_1_sql = include_str!("../migrations/20260130_002_fix_critical_migration_errors.sql");
+    let migration_fix_1_sql =
+        include_str!("../migrations/20260130_002_fix_critical_migration_errors.sql");
     log::info!(
         "🔍 [MIGRATION CORRECTION 002] Fichier chargé, taille: {} caractères",
         migration_fix_1_sql.len()
     );
     match execute_multiple_sql_commands(&pg_pool, migration_fix_1_sql).await {
         Ok(_) => {
-            log::info!("✅ [MIGRATION CORRECTION 002] Migration de correction appliquée avec succès");
+            log::info!(
+                "✅ [MIGRATION CORRECTION 002] Migration de correction appliquée avec succès"
+            );
         }
         Err(e) => {
-            log::error!("❌ [MIGRATION CORRECTION 002] Erreur lors de l'application: {}", e);
+            log::error!(
+                "❌ [MIGRATION CORRECTION 002] Erreur lors de l'application: {}",
+                e
+            );
             // Ne pas arrêter l'application, continuer
         }
     }
 
     // Migration 20260130_003: Corrections supplémentaires (fonctions, index, colonnes, etc.)
-    let migration_fix_2_sql = include_str!("../migrations/20260130_003_fix_additional_migration_errors.sql");
+    let migration_fix_2_sql =
+        include_str!("../migrations/20260130_003_fix_additional_migration_errors.sql");
     log::info!(
         "🔍 [MIGRATION CORRECTION 003] Fichier chargé, taille: {} caractères",
         migration_fix_2_sql.len()
     );
     match execute_multiple_sql_commands(&pg_pool, migration_fix_2_sql).await {
         Ok(_) => {
-            log::info!("✅ [MIGRATION CORRECTION 003] Migration de correction appliquée avec succès");
+            log::info!(
+                "✅ [MIGRATION CORRECTION 003] Migration de correction appliquée avec succès"
+            );
         }
         Err(e) => {
-            log::error!("❌ [MIGRATION CORRECTION 003] Erreur lors de l'application: {}", e);
+            log::error!(
+                "❌ [MIGRATION CORRECTION 003] Erreur lors de l'application: {}",
+                e
+            );
             // Ne pas arrêter l'application, continuer
         }
     }
 
     // Migration 20260130_004: Correction FINALE de toutes les erreurs
-    let migration_fix_3_sql = include_str!("../migrations/20260130_004_fix_all_migration_errors_final.sql");
+    let migration_fix_3_sql =
+        include_str!("../migrations/20260130_004_fix_all_migration_errors_final.sql");
     log::info!(
         "🔍 [MIGRATION CORRECTION 004] Fichier chargé, taille: {} caractères",
         migration_fix_3_sql.len()
@@ -551,13 +564,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log::info!("✅ [MIGRATION CORRECTION 004] Migration de correction FINALE appliquée avec succès");
         }
         Err(e) => {
-            log::error!("❌ [MIGRATION CORRECTION 004] Erreur lors de l'application: {}", e);
+            log::error!(
+                "❌ [MIGRATION CORRECTION 004] Erreur lors de l'application: {}",
+                e
+            );
             // Ne pas arrêter l'application, continuer
         }
     }
 
     // Migration 20260130_005: Correction des erreurs restantes (log 10)
-    let migration_fix_4_sql = include_str!("../migrations/20260130_005_fix_remaining_migration_errors.sql");
+    let migration_fix_4_sql =
+        include_str!("../migrations/20260130_005_fix_remaining_migration_errors.sql");
     log::info!(
         "🔍 [MIGRATION CORRECTION 005] Fichier chargé, taille: {} caractères",
         migration_fix_4_sql.len()
@@ -567,13 +584,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log::info!("✅ [MIGRATION CORRECTION 005] Migration de correction des erreurs restantes appliquée avec succès");
         }
         Err(e) => {
-            log::error!("❌ [MIGRATION CORRECTION 005] Erreur lors de l'application: {}", e);
+            log::error!(
+                "❌ [MIGRATION CORRECTION 005] Erreur lors de l'application: {}",
+                e
+            );
             // Ne pas arrêter l'application, continuer
         }
     }
 
     // Migration 20260130_006: Ajout colonnes partner_type et partner_status à users (CRITIQUE pour inscription)
-    let migration_fix_5_sql = include_str!("../migrations/20260130_006_add_partner_columns_to_users.sql");
+    let migration_fix_5_sql =
+        include_str!("../migrations/20260130_006_add_partner_columns_to_users.sql");
     log::info!(
         "🔍 [MIGRATION CORRECTION 006] Fichier chargé, taille: {} caractères",
         migration_fix_5_sql.len()
@@ -583,13 +604,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log::info!("✅ [MIGRATION CORRECTION 006] Colonnes partner_type et partner_status ajoutées à users");
         }
         Err(e) => {
-            log::error!("❌ [MIGRATION CORRECTION 006] Erreur lors de l'application: {}", e);
+            log::error!(
+                "❌ [MIGRATION CORRECTION 006] Erreur lors de l'application: {}",
+                e
+            );
             // Ne pas arrêter l'application, continuer
         }
     }
 
     // Migration 20260130_007: CRITIQUE - Garantir que la table users existe (AVANT migration 0)
-    let migration_fix_6_sql = include_str!("../migrations/20260130_007_ensure_users_table_exists.sql");
+    let migration_fix_6_sql =
+        include_str!("../migrations/20260130_007_ensure_users_table_exists.sql");
     log::info!(
         "🔍 [MIGRATION CORRECTION 007] Fichier chargé, taille: {} caractères",
         migration_fix_6_sql.len()
@@ -622,14 +647,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Migration 20260130_008: CRITIQUE - Garantir que les tables services et media existent (APRÈS users)
-    let migration_fix_7_sql = include_str!("../migrations/20260130_008_ensure_services_and_media_tables.sql");
+    let migration_fix_7_sql =
+        include_str!("../migrations/20260130_008_ensure_services_and_media_tables.sql");
     log::info!(
         "🔍 [MIGRATION CORRECTION 008] Fichier chargé, taille: {} caractères",
         migration_fix_7_sql.len()
     );
     match execute_multiple_sql_commands(&pg_pool, migration_fix_7_sql).await {
         Ok(_) => {
-            log::info!("✅ [MIGRATION CORRECTION 008] Tables services et media garanties d'exister");
+            log::info!(
+                "✅ [MIGRATION CORRECTION 008] Tables services et media garanties d'exister"
+            );
             // Vérifier que les tables existent maintenant
             let services_exists_after: bool = sqlx::query_scalar(
                 "SELECT EXISTS (
@@ -654,7 +682,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if services_exists_after && media_exists_after {
                 log::info!("✅ [MIGRATION CORRECTION 008] Vérification: Tables services et media existent bien");
             } else {
-                log::error!("❌ [MIGRATION CORRECTION 008] ERREUR: services={}, media={}", services_exists_after, media_exists_after);
+                log::error!(
+                    "❌ [MIGRATION CORRECTION 008] ERREUR: services={}, media={}",
+                    services_exists_after,
+                    media_exists_after
+                );
             }
         }
         Err(e) => {

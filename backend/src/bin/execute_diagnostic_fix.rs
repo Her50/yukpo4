@@ -11,10 +11,10 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
     let mut current = String::new();
     let mut in_dollar_quote = false;
     let mut dollar_tag = String::new();
-    
+
     for line in sql.lines() {
         let trimmed = line.trim();
-        
+
         // Détecter les blocs $$...$$
         if trimmed.contains("$$") {
             if !in_dollar_quote {
@@ -34,10 +34,10 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                 }
             }
         }
-        
+
         current.push_str(line);
         current.push('\n');
-        
+
         // Si on n'est pas dans un bloc $$ et qu'on trouve un ';', c'est une commande complète
         if !in_dollar_quote && trimmed.ends_with(';') {
             let cmd = current.trim().to_string();
@@ -47,7 +47,7 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
             current.clear();
         }
     }
-    
+
     // Ajouter la dernière commande si elle existe
     if !current.trim().is_empty() {
         commands.push(current.trim().to_string());
@@ -64,9 +64,10 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
             Err(e) => {
                 // Ignorer certaines erreurs (déjà existant, etc.)
                 let err_str = e.to_string().to_lowercase();
-                if err_str.contains("already exists") 
-                    || err_str.contains("duplicate") 
-                    || err_str.contains("does not exist") {
+                if err_str.contains("already exists")
+                    || err_str.contains("duplicate")
+                    || err_str.contains("does not exist")
+                {
                     println!("    ⚠️  Erreur ignorée (attendu): {}", e);
                 } else {
                     println!("    ❌ Erreur: {}", e);
@@ -75,37 +76,35 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
             }
         }
     }
-    
+
     Ok(())
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
-    
+
     // Récupérer DATABASE_URL
     let mut database_url = env::var("DATABASE_URL")
-        .map_err(|_| "DATABASE_URL doit être définie. Utilisez: export DATABASE_URL='postgresql://user:pass@host:port/db'")?;
-    
+        .map_err(|_| "DATABASE_URL doit être définie. Utilisez: export DATABASE_URL='***host:port/db'")?;
+
     // Ajouter sslmode=require si pas déjà présent (requis pour AWS RDS)
     if !database_url.contains("sslmode=") {
         let separator = if database_url.contains('?') { "&" } else { "?" };
         database_url.push_str(&format!("{}sslmode=require", separator));
         println!("🔧 Paramètre sslmode=require ajouté à DATABASE_URL (requis pour AWS RDS)");
     }
-    
+
     println!("🔍 Connexion à la base de données AWS...");
     let pool = PgPool::connect(&database_url).await?;
     println!("✅ Connecté à la base de données AWS");
-    
+
     // Chemin des scripts
-    let script_dir = env::current_dir()?
-        .join("backend")
-        .join("scripts");
-    
+    let script_dir = env::current_dir()?.join("backend").join("scripts");
+
     let diagnostic_script = script_dir.join("diagnostic_migrations_aws.sql");
     let fix_script = script_dir.join("fix_migrations_aws.sql");
-    
+
     // Vérifier que les scripts existent
     if !diagnostic_script.exists() {
         return Err(format!("Script de diagnostic non trouvé: {:?}", diagnostic_script).into());
@@ -113,18 +112,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !fix_script.exists() {
         return Err(format!("Script de correction non trouvé: {:?}", fix_script).into());
     }
-    
+
     // ============================================================================
     // ÉTAPE 1: DIAGNOSTIC
     // ============================================================================
-    println!("\n{}", "=".repeat(80));
     println!("ÉTAPE 1: DIAGNOSTIC");
     println!("{}", "=".repeat(80));
     println!();
-    
+
     println!("🔍 Exécution du script de diagnostic...");
     println!();
-    
+
     let diagnostic_sql = fs::read_to_string(&diagnostic_script)?;
     match execute_multiple_sql_commands(&pool, &diagnostic_sql).await {
         Ok(_) => {
@@ -136,23 +134,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!();
-    
+
     // Demander confirmation avant d'appliquer les corrections
     println!("{}", "=".repeat(80));
     println!("⚠️  ATTENTION: Le script de correction va modifier la base de données");
     println!("{}", "=".repeat(80));
     println!();
-    
+
     // Vérifier si AUTO_CONFIRM est défini
     let auto_confirm = env::var("AUTO_CONFIRM").unwrap_or_default() == "true";
-    
+
     if !auto_confirm {
         use std::io::{self, Write};
         print!("Voulez-vous continuer avec le script de correction? (O/N): ");
         io::stdout().flush()?;
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
-        
+
         if input.trim().to_lowercase() != "o" && input.trim().to_lowercase() != "y" {
             println!();
             println!("❌ Opération annulée par l'utilisateur");
@@ -162,18 +160,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Auto-confirmation activée, continuation automatique...");
     }
     println!();
-    
+
     // ============================================================================
     // ÉTAPE 2: CORRECTION
     // ============================================================================
-    println!("{}", "=".repeat(80));
     println!("ÉTAPE 2: CORRECTION");
     println!("{}", "=".repeat(80));
     println!();
-    
+
     println!("🔧 Exécution du script de correction...");
     println!();
-    
+
     let fix_sql = fs::read_to_string(&fix_script)?;
     match execute_multiple_sql_commands(&pool, &fix_sql).await {
         Ok(_) => {
@@ -185,18 +182,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!();
-    
+
     // ============================================================================
     // ÉTAPE 3: VÉRIFICATION FINALE
     // ============================================================================
-    println!("{}", "=".repeat(80));
     println!("ÉTAPE 3: VÉRIFICATION FINALE");
     println!("{}", "=".repeat(80));
     println!();
-    
+
     println!("🔍 Exécution du diagnostic final...");
     println!();
-    
+
     match execute_multiple_sql_commands(&pool, &diagnostic_sql).await {
         Ok(_) => {
             println!("✅ Vérification finale terminée");
@@ -206,7 +202,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!();
-    
+
     println!("{}", "=".repeat(80));
     println!("✅ PROCESSUS TERMINÉ");
     println!("{}", "=".repeat(80));
@@ -216,8 +212,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   2. Vérifier les logs de l'application");
     println!("   3. Tester les fonctionnalités critiques");
     println!();
-    
+
     Ok(())
 }
-
-
