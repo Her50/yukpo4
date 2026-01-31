@@ -12412,6 +12412,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
         if !valid_start_keywords.iter().any(|&kw| cmd_upper_first_words.starts_with(kw)) {
             // ✅ CORRECTION 2026-01-31: Liste étendue des fragments à rejeter (basée sur l'analyse Log 14)
             // Vérifier si c'est un fragment commun (commence par un identifiant de colonne, etc.)
+            let trimmed_lower = trimmed_cmd.to_lowercase();
             let is_fragment = first_word == "ID" 
                 || first_word.starts_with("U.")
                 || first_word.starts_with("S.")
@@ -12426,16 +12427,19 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 || first_word == "END"
                 || first_word == "FROM"  // ✅ NOUVEAU: Fragment de SELECT
                 || first_word == "BEFORE"  // ✅ NOUVEAU: Fragment de CREATE TRIGGER
+                || first_word == "AFTER"  // ✅ NOUVEAU Log 15: Fragment de CREATE TRIGGER
                 || first_word == "UPDATED_AT"  // ✅ NOUVEAU: Fragment de colonne (très fréquent ~20 erreurs)
                 || first_word == "USER_ID"  // ✅ NOUVEAU: Fragment de colonne/paramètre
                 || first_word.starts_with("P_SERVICE_ID")  // ✅ NOUVEAU: Fragment de fonction
                 || first_word.starts_with("P_PAYMENT_ID")  // ✅ NOUVEAU: Fragment de fonction
                 || trimmed_cmd.starts_with("(")
                 || trimmed_cmd.starts_with(",")
-                || trimmed_cmd.to_lowercase().starts_with("updated_at")  // ✅ NOUVEAU: Variante lowercase
-                || trimmed_cmd.to_lowercase().starts_with("user_id")  // ✅ NOUVEAU: Variante lowercase
-                || trimmed_cmd.to_lowercase().starts_with("p_service_id")  // ✅ NOUVEAU: Variante lowercase
-                || trimmed_cmd.to_lowercase().starts_with("p_payment_id");  // ✅ NOUVEAU: Variante lowercase
+                // ✅ CORRECTION CRITIQUE 2026-01-31: Vérifier aussi avec trimmed_lower pour capturer tous les cas
+                || trimmed_lower.trim().starts_with("updated_at")  // ✅ CRITIQUE: Fragment de colonne (très fréquent)
+                || trimmed_lower.trim().starts_with("user_id")  // ✅ NOUVEAU: Variante lowercase
+                || trimmed_lower.trim().starts_with("p_service_id")  // ✅ NOUVEAU: Variante lowercase
+                || trimmed_lower.trim().starts_with("p_payment_id")  // ✅ NOUVEAU: Variante lowercase
+                || trimmed_lower.trim().starts_with("after");  // ✅ NOUVEAU Log 15: Variante lowercase
             
             if is_fragment {
                 warn!("⚠️ Fragment de commande SQL ignoré (ne commence pas par un mot-clé SQL valide): {}", 
@@ -12552,9 +12556,35 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                     .collect();
                 
                 if valid_parts.len() > 1 {
-                    // Exécuter chaque partie séparément
-                    warn!("⚠️ Commande multiple détectée et divisée en {} parties avant exécution", valid_parts.len());
-                    for (i, part_cmd) in valid_parts.iter().enumerate() {
+                    // ✅ CORRECTION 2026-01-31: Filtrer les fragments avant d'exécuter
+                    let filtered_parts: Vec<String> = valid_parts.iter()
+                        .filter(|part_cmd| {
+                            let part_trimmed = part_cmd.trim();
+                            let part_lower = part_trimmed.to_lowercase();
+                            // Rejeter les fragments communs
+                            !part_lower.starts_with("updated_at")
+                                && !part_lower.starts_with("user_id")
+                                && !part_lower.starts_with("p_service_id")
+                                && !part_lower.starts_with("p_payment_id")
+                                && !part_lower.starts_with("from")
+                                && !part_lower.starts_with("before")
+                                && !part_lower.starts_with("after")
+                                && !part_lower.starts_with("returns")
+                                && !part_trimmed.starts_with("(")
+                                && !part_trimmed.starts_with(",")
+                        })
+                        .cloned()
+                        .collect();
+                    
+                    if filtered_parts.is_empty() {
+                        warn!("⚠️ Toutes les parties de la commande multiple ont été filtrées comme fragments");
+                        continue;
+                    }
+                    
+                    // Exécuter chaque partie valide séparément
+                    warn!("⚠️ Commande multiple détectée et divisée en {} parties valides avant exécution ({} parties filtrées)", 
+                        filtered_parts.len(), valid_parts.len() - filtered_parts.len());
+                    for (i, part_cmd) in filtered_parts.iter().enumerate() {
                         let part_normalized = normalize_sql_command(part_cmd);
                         // Ignorer ANALYZE dans les migrations
                         if part_normalized.to_uppercase().trim().starts_with("ANALYZE") {
@@ -12573,6 +12603,33 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
         } else {
             normalize_sql_command(trimmed_cmd)
         };
+
+        // ✅ CORRECTION 2026-01-31: Gérer DROP TRIGGER avant CREATE TRIGGER
+        // Si la commande contient CREATE TRIGGER, vérifier s'il y a un DROP TRIGGER correspondant avant
+        let cmd_upper = normalized_cmd.to_uppercase();
+        if cmd_upper.contains("CREATE TRIGGER") && !cmd_upper.contains("DROP TRIGGER IF EXISTS") {
+            // Extraire le nom du trigger et de la table depuis CREATE TRIGGER ... ON table_name
+            if let Some(trigger_start) = cmd_upper.find("CREATE TRIGGER") {
+                let after_trigger = &normalized_cmd[trigger_start + "CREATE TRIGGER".len()..];
+                let parts: Vec<&str> = after_trigger.split_whitespace().collect();
+                if parts.len() >= 3 {
+                    let trigger_name = parts[0].trim_end_matches(';');
+                    // Chercher "ON" dans les parties suivantes
+                    if let Some(on_idx) = parts.iter().position(|&p| p.to_uppercase() == "ON") {
+                        if on_idx + 1 < parts.len() {
+                            let table_name = parts[on_idx + 1].trim_end_matches(';');
+                            if !trigger_name.is_empty() && !table_name.is_empty() {
+                                // Exécuter DROP TRIGGER IF EXISTS avant CREATE TRIGGER
+                                let full_drop_cmd = format!("DROP TRIGGER IF EXISTS {} ON {};", trigger_name, table_name);
+                                if let Err(e) = sqlx::query(&full_drop_cmd).execute(pool).await {
+                                    debug!("ℹ️ Erreur DROP TRIGGER (ignorée): {}", e);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Ignorer les erreurs pour les commandes qui peuvent échouer si l'objet existe déjà
         if normalized_cmd.to_uppercase().contains("DROP INDEX")
