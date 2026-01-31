@@ -4,29 +4,32 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, Envelope, Lock, WarningCircle } from 'phosphor-react-native';
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Alert,
   Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Platform
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { modernColors, modernStyles, modernTheme } from '../../theme/modernTheme';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { API_BASE_URL } from '../../config/api';
+
+// Configuration WebBrowser pour OAuth
+WebBrowser.maybeCompleteAuthSession();
 
 const { width, height } = Dimensions.get('window');
-// TODO: Ajouter les packages OAuth pour React Native
-// import * as WebBrowser from 'expo-web-browser';
-// import * as Google from 'expo-auth-session/providers/google';
-// import * as Facebook from 'expo-auth-session/providers/facebook';
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { login, loading } = useAuth();
+  const { login, loading, updateUser } = useAuth();
 
   // États du formulaire
   const [email, setEmail] = useState('');
@@ -35,9 +38,29 @@ const LoginScreen: React.FC = () => {
   const [showLogoutMessage, setShowLogoutMessage] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
 
-  // TODO: Configuration OAuth (à implémenter quand les packages seront disponibles)
-  // const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({...});
-  // const [facebookRequest, facebookResponse, facebookPromptAsync] = Facebook.useAuthRequest({...});
+  // Configuration Google OAuth
+  // Note: Le GOOGLE_CLIENT_ID doit être configuré dans les variables d'environnement
+  // Pour mobile, utilisez le client ID Android ou iOS selon la plateforme
+  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com',
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com',
+  });
+
+  // Gérer la réponse Google OAuth
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const { id_token } = googleResponse.authentication || {};
+      if (id_token) {
+        handleOAuthLogin('google', id_token);
+      }
+    } else if (googleResponse?.type === 'error') {
+      console.error('[LoginScreen] Erreur Google OAuth:', googleResponse.error);
+      setError('Erreur de connexion Google. Veuillez réessayer.');
+      setFormLoading(false);
+    }
+  }, [googleResponse]);
 
   // Fonction de connexion OAuth
   const handleOAuthLogin = async (provider: string, token: string) => {
@@ -45,7 +68,7 @@ const LoginScreen: React.FC = () => {
       setFormLoading(true);
       setError(null);
 
-      const response = await fetch('/auth/oauth', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/oauth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token_id: token, provider }),
@@ -54,16 +77,50 @@ const LoginScreen: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.token) {
-          await login(data.email, data.password); // Utiliser les credentials du OAuth
-          Alert.alert('Succès', `Bienvenue ${data.email} ! Vous êtes connecté.`);
+          // Sauvegarder le token et mettre à jour le contexte d'authentification
+          const { jwtDecode } = await import('../../utils/jwtDecode');
+          const SafeStorage = (await import('../../utils/safeStorage')).default;
+          await SafeStorage.setItem('auth_token', data.token);
+          
+          // Décoder le token pour obtenir les informations utilisateur
+          const decoded = jwtDecode(data.token);
+          
+          // Mettre à jour le contexte d'authentification
+          updateUser({
+            id: String(decoded.sub),
+            email: decoded.email,
+            name: decoded.name || decoded.email?.split('@')[0] || 'Utilisateur',
+            token: data.token,
+            credits: decoded.tokens_balance ?? 0,
+            role: decoded.role || 'user',
+          });
+          
+          Alert.alert('Succès', `Bienvenue ! Vous êtes connecté avec Google.`);
+        } else {
+          throw new Error('Token non reçu du serveur');
         }
       } else {
-        throw new Error('Erreur OAuth');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erreur OAuth');
       }
-    } catch (error) {
-      console.error('Erreur OAuth:', error);
-      Alert.alert('Erreur', 'Connexion échouée.');
+    } catch (error: any) {
+      console.error('[LoginScreen] Erreur OAuth:', error);
+      setError(error.message || 'Connexion échouée. Veuillez réessayer.');
+      Alert.alert('Erreur', error.message || 'Connexion échouée.');
     } finally {
+      setFormLoading(false);
+    }
+  };
+
+  // Fonction pour déclencher la connexion Google
+  const handleGoogleLogin = async () => {
+    try {
+      setFormLoading(true);
+      setError(null);
+      await googlePromptAsync();
+    } catch (error: any) {
+      console.error('[LoginScreen] Erreur lors du lancement Google OAuth:', error);
+      setError('Impossible de lancer la connexion Google. Veuillez réessayer.');
       setFormLoading(false);
     }
   };
@@ -180,7 +237,7 @@ const LoginScreen: React.FC = () => {
           <View style={styles.oauthContainer}>
             <OAuthButton
               provider="google"
-              onPress={() => Alert.alert('OAuth', 'Fonctionnalité Google à implémenter')}
+              onPress={handleGoogleLogin}
             />
             <OAuthButton
               provider="facebook"

@@ -12296,7 +12296,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                     // Log les commandes invalides pour diagnostic
                     if !cmd_clean.is_empty() && !cmd_clean.starts_with("--") {
                         debug!("⚠️ Commande invalide ignorée: {}", 
-                            if cmd_clean.len() > 100 { format!("{}...", &cmd_clean[..100]) } else { cmd_clean });
+                            if cmd_clean.len() > 100 { format!("{}...", &cmd_clean[..100]) } else { cmd_clean.to_string() });
                     }
                 }
                 current.clear();
@@ -12463,6 +12463,25 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 warn!("   Commande (preview): {}", cmd_preview);
                 warn!("   Erreur: {}", error_str);
 
+                // ✅ CORRECTION 2026-01-31: Traiter le cas spécial "cannot insert multiple commands" avant l'expression booléenne
+                // Si cette erreur se produit, diviser la commande et réessayer
+                if error_lower.contains("cannot insert multiple commands into a prepared statement") {
+                    warn!("   ⚠️ Commande multiple détectée, tentative de division...");
+                    // Essayer de diviser la commande par ';' et exécuter chaque partie
+                    let parts: Vec<&str> = normalized_cmd.split(';').filter(|p| !p.trim().is_empty()).collect();
+                    if parts.len() > 1 {
+                        for (i, part) in parts.iter().enumerate() {
+                            let part_cmd = format!("{};", part.trim());
+                            if !part_cmd.trim().is_empty() && !part_cmd.trim().starts_with("--") {
+                                if let Err(e2) = sqlx::query(&part_cmd).execute(pool).await {
+                                    warn!("   ⚠️ Erreur partie {}: {}", i + 1, e2);
+                                }
+                            }
+                        }
+                        continue; // On a traité la commande multiple, passer à la suivante
+                    }
+                }
+
                 // ✅ CORRIGÉ: Ignorer silencieusement les erreurs attendues courantes
                 let is_expected_error =
                     // Colonnes/tables/index/triggers déjà existants
@@ -12493,24 +12512,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                         error_lower.contains("near \")\"") ||
                         error_lower.contains("unexpected") && error_lower.contains(")")
                     )) ||
-                    // Commandes multiples dans prepared statement
-                    // ✅ CORRECTION 2026-01-31: Si cette erreur se produit, diviser la commande et réessayer
-                    if error_lower.contains("cannot insert multiple commands into a prepared statement") {
-                        warn!("   ⚠️ Commande multiple détectée, tentative de division...");
-                        // Essayer de diviser la commande par ';' et exécuter chaque partie
-                        let parts: Vec<&str> = normalized_cmd.split(';').filter(|p| !p.trim().is_empty()).collect();
-                        if parts.len() > 1 {
-                            for (i, part) in parts.iter().enumerate() {
-                                let part_cmd = format!("{};", part.trim());
-                                if !part_cmd.trim().is_empty() && !part_cmd.trim().starts_with("--") {
-                                    if let Err(e2) = sqlx::query(&part_cmd).execute(pool).await {
-                                        warn!("   ⚠️ Erreur partie {}: {}", i + 1, e2);
-                                    }
-                                }
-                            }
-                            continue; // On a traité la commande multiple, passer à la suivante
-                        }
-                    }
+                    // Commandes multiples dans prepared statement (erreur attendue si on n'a pas pu la diviser)
                     error_lower.contains("cannot insert multiple commands into a prepared statement") ||
                     // Fonctions dans index predicate (IMMUTABLE requis)
                     error_lower.contains("functions in index predicate must be marked immutable") ||

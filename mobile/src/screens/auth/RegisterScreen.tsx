@@ -3,7 +3,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { CheckCircle, Envelope, WarningCircle } from 'phosphor-react-native';
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -18,10 +18,12 @@ import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../theme/theme';
-// TODO: Ajouter les packages OAuth pour React Native
-// import * as WebBrowser from 'expo-web-browser';
-// import * as Google from 'expo-auth-session/providers/google';
-// import * as Facebook from 'expo-auth-session/providers/facebook';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { API_BASE_URL } from '../../config/api';
+
+// Configuration WebBrowser pour OAuth
+WebBrowser.maybeCompleteAuthSession();
 
 interface RegisterForm {
   nom: string;
@@ -33,7 +35,7 @@ interface RegisterForm {
 
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { register, loading } = useAuth();
+  const { register, loading, updateUser } = useAuth();
 
   // États du formulaire
   const [form, setForm] = useState<RegisterForm>({
@@ -47,17 +49,35 @@ const RegisterScreen: React.FC = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
-  // TODO: Configuration OAuth (à implémenter quand les packages seront disponibles)
-  // const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({...});
-  // const [facebookRequest, facebookResponse, facebookPromptAsync] = Facebook.useAuthRequest({...});
+  // Configuration Google OAuth
+  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com',
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com',
+  });
 
-  // Fonction d'inscription OAuth
+  // Gérer la réponse Google OAuth
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const { id_token } = googleResponse.authentication || {};
+      if (id_token) {
+        handleOAuthRegister('google', id_token);
+      }
+    } else if (googleResponse?.type === 'error') {
+      console.error('[RegisterScreen] Erreur Google OAuth:', googleResponse.error);
+      setError('Erreur de connexion Google. Veuillez réessayer.');
+      setFormLoading(false);
+    }
+  }, [googleResponse]);
+
+  // Fonction d'inscription OAuth (le backend crée automatiquement le compte si nécessaire)
   const handleOAuthRegister = async (provider: string, token: string) => {
     try {
       setFormLoading(true);
       setError(null);
 
-      const response = await fetch('/auth/oauth', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/oauth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token_id: token, provider }),
@@ -66,20 +86,51 @@ const RegisterScreen: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.token) {
-          await register({
-            name: data.name || 'Utilisateur',
-            email: data.email,
-            password: 'oauth_generated',
+          // Sauvegarder le token et mettre à jour le contexte d'authentification
+          const { jwtDecode } = await import('../../utils/jwtDecode');
+          const SafeStorage = (await import('../../utils/safeStorage')).default;
+          await SafeStorage.setItem('auth_token', data.token);
+          
+          // Décoder le token pour obtenir les informations utilisateur
+          const decoded = jwtDecode(data.token);
+          
+          // Mettre à jour le contexte d'authentification
+          updateUser({
+            id: String(decoded.sub),
+            email: decoded.email,
+            name: decoded.name || decoded.email?.split('@')[0] || 'Utilisateur',
+            token: data.token,
+            credits: decoded.tokens_balance ?? 0,
+            role: decoded.role || 'user',
           });
-          Alert.alert('Succès', `Bienvenue ${data.email} ! Votre compte a été créé.`);
+          
+          setRegistrationSuccess(true);
+          Alert.alert('Succès', `Bienvenue ! Votre compte a été créé avec Google.`);
+        } else {
+          throw new Error('Token non reçu du serveur');
         }
       } else {
-        throw new Error('Erreur OAuth');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erreur OAuth');
       }
-    } catch (error) {
-      console.error('Erreur OAuth:', error);
-      Alert.alert('Erreur', 'Inscription échouée.');
+    } catch (error: any) {
+      console.error('[RegisterScreen] Erreur OAuth:', error);
+      setError(error.message || 'Inscription échouée. Veuillez réessayer.');
+      Alert.alert('Erreur', error.message || 'Inscription échouée.');
     } finally {
+      setFormLoading(false);
+    }
+  };
+
+  // Fonction pour déclencher l'inscription Google
+  const handleGoogleRegister = async () => {
+    try {
+      setFormLoading(true);
+      setError(null);
+      await googlePromptAsync();
+    } catch (error: any) {
+      console.error('[RegisterScreen] Erreur lors du lancement Google OAuth:', error);
+      setError('Impossible de lancer l\'inscription Google. Veuillez réessayer.');
       setFormLoading(false);
     }
   };
@@ -254,7 +305,7 @@ const RegisterScreen: React.FC = () => {
         <View style={styles.oauthContainer}>
           <OAuthButton
             provider="google"
-            onPress={() => Alert.alert('OAuth', 'Fonctionnalité Google à implémenter')}
+            onPress={handleGoogleRegister}
           />
           <OAuthButton
             provider="facebook"
