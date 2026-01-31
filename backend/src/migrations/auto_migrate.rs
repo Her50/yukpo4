@@ -12145,6 +12145,28 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 }
             }
 
+            // ✅ CORRECTION 2026-01-31: Détecter les fragments de fonctions qui commencent par des paramètres
+            // Si on voit un paramètre (p_service_id, p_payment_id, etc.) au début d'une ligne,
+            // c'est qu'une fonction a été coupée - fusionner avec la commande précédente
+            if (trimmed.to_uppercase().starts_with("P_SERVICE_ID")
+                || trimmed.to_uppercase().starts_with("P_PAYMENT_ID")
+                || trimmed.to_uppercase().starts_with("P_"))
+                && !current.to_uppercase().contains("CREATE FUNCTION")
+                && !current.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
+            {
+                // Chercher la commande précédente dans commands qui pourrait être la fonction
+                if let Some(last_cmd) = commands.last_mut() {
+                    if last_cmd.to_uppercase().contains("CREATE FUNCTION") 
+                        || last_cmd.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
+                    {
+                        // Fusionner avec la commande précédente
+                        last_cmd.push_str("\n");
+                        last_cmd.push_str(line);
+                        continue;
+                    }
+                }
+            }
+
             // Commande normale - se termine par ;
             if trimmed.ends_with(';') {
                 let cmd = current.trim();
@@ -12388,6 +12410,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
         
         // Si la commande ne commence pas par un mot-clé SQL valide, c'est probablement un fragment
         if !valid_start_keywords.iter().any(|&kw| cmd_upper_first_words.starts_with(kw)) {
+            // ✅ CORRECTION 2026-01-31: Liste étendue des fragments à rejeter (basée sur l'analyse Log 14)
             // Vérifier si c'est un fragment commun (commence par un identifiant de colonne, etc.)
             let is_fragment = first_word == "ID" 
                 || first_word.starts_with("U.")
@@ -12401,8 +12424,18 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 || first_word == "THEN"
                 || first_word == "ELSE"
                 || first_word == "END"
+                || first_word == "FROM"  // ✅ NOUVEAU: Fragment de SELECT
+                || first_word == "BEFORE"  // ✅ NOUVEAU: Fragment de CREATE TRIGGER
+                || first_word == "UPDATED_AT"  // ✅ NOUVEAU: Fragment de colonne (très fréquent ~20 erreurs)
+                || first_word == "USER_ID"  // ✅ NOUVEAU: Fragment de colonne/paramètre
+                || first_word.starts_with("P_SERVICE_ID")  // ✅ NOUVEAU: Fragment de fonction
+                || first_word.starts_with("P_PAYMENT_ID")  // ✅ NOUVEAU: Fragment de fonction
                 || trimmed_cmd.starts_with("(")
-                || trimmed_cmd.starts_with(",");
+                || trimmed_cmd.starts_with(",")
+                || trimmed_cmd.to_lowercase().starts_with("updated_at")  // ✅ NOUVEAU: Variante lowercase
+                || trimmed_cmd.to_lowercase().starts_with("user_id")  // ✅ NOUVEAU: Variante lowercase
+                || trimmed_cmd.to_lowercase().starts_with("p_service_id")  // ✅ NOUVEAU: Variante lowercase
+                || trimmed_cmd.to_lowercase().starts_with("p_payment_id");  // ✅ NOUVEAU: Variante lowercase
             
             if is_fragment {
                 warn!("⚠️ Fragment de commande SQL ignoré (ne commence pas par un mot-clé SQL valide): {}", 
@@ -12438,32 +12471,108 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             && !cmd_upper.contains("LANGUAGE")
             && !cmd_upper.contains("RETURNS TRIGGER")
         {
-            // Vérifier si c'est une fonction qui devrait avoir LANGUAGE
-            if cmd_upper.contains("RETURNS") && cmd_upper.contains("AS $$") {
-                warn!("⚠️ Fonction sans LANGUAGE détectée, tentative de correction...");
-                // Essayer de corriger en ajoutant LANGUAGE plpgsql avant le dernier $$
-                if let Some(last_dollar) = trimmed_cmd.rfind("$$") {
-                    let before = &trimmed_cmd[..last_dollar];
-                    let after = &trimmed_cmd[last_dollar..];
-                    // Vérifier si END; est présent avant $$
-                    if before.to_uppercase().contains("END") {
-                        let corrected = format!("{} LANGUAGE plpgsql{}", before.trim_end_matches(';'), after);
-                        warn!("   Commande corrigée: {}", 
-                            if corrected.len() > 150 { format!("{}...", &corrected[..150]) } else { corrected.clone() });
-                        // Utiliser la commande corrigée
-                        let normalized_cmd = normalize_sql_command(&corrected);
-                        // Continuer avec la commande corrigée
-                        if let Err(e) = sqlx::query(&normalized_cmd).execute(pool).await {
-                            warn!("   ⚠️ Erreur même après correction: {}", e);
-                        }
-                        continue;
+            // ✅ AMÉLIORATION: Détecter toutes les fonctions sans LANGUAGE, pas seulement celles avec RETURNS
+            warn!("⚠️ Fonction sans LANGUAGE détectée, tentative de correction...");
+            // Essayer de corriger en ajoutant LANGUAGE plpgsql avant le dernier $$
+            if let Some(last_dollar) = trimmed_cmd.rfind("$$") {
+                let before = &trimmed_cmd[..last_dollar];
+                let after = &trimmed_cmd[last_dollar..];
+                // Vérifier si END; ou END $$ est présent avant $$
+                if before.to_uppercase().contains("END") || before.to_uppercase().ends_with("END") {
+                    let corrected = format!("{} LANGUAGE plpgsql{}", before.trim_end_matches(';').trim_end(), after);
+                    warn!("   Commande corrigée: {}", 
+                        if corrected.len() > 150 { format!("{}...", &corrected[..150]) } else { corrected.clone() });
+                    // Utiliser la commande corrigée
+                    let normalized_cmd = normalize_sql_command(&corrected);
+                    // Continuer avec la commande corrigée
+                    if let Err(e) = sqlx::query(&normalized_cmd).execute(pool).await {
+                        warn!("   ⚠️ Erreur même après correction: {}", e);
                     }
+                    continue;
+                } else if before.to_uppercase().contains("AS $$") || before.to_uppercase().contains("$$") {
+                    // Fonction avec AS $$ mais sans END explicite - ajouter LANGUAGE avant le dernier $$
+                    let corrected = format!("{} LANGUAGE plpgsql{}", before.trim_end(), after);
+                    warn!("   Commande corrigée (sans END): {}", 
+                        if corrected.len() > 150 { format!("{}...", &corrected[..150]) } else { corrected.clone() });
+                    let normalized_cmd = normalize_sql_command(&corrected);
+                    if let Err(e) = sqlx::query(&normalized_cmd).execute(pool).await {
+                        warn!("   ⚠️ Erreur même après correction: {}", e);
+                    }
+                    continue;
                 }
             }
         }
 
-        // ✅ CORRECTION RACINE: Normaliser la commande SQL avant exécution
-        let normalized_cmd = normalize_sql_command(trimmed_cmd);
+        // ✅ CORRECTION 2026-01-31: Détecter et diviser les commandes multiples AVANT l'exécution
+        // Cela évite l'erreur "cannot insert multiple commands" en divisant préventivement
+        let normalized_cmd = if trimmed_cmd.matches(';').count() > 1 
+            && !trimmed_cmd.to_uppercase().contains("DO $$")
+            && !trimmed_cmd.to_uppercase().contains("CREATE FUNCTION")
+            && !trimmed_cmd.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
+        {
+            // Détecter plusieurs commandes dans un même bloc
+            // Diviser intelligemment en préservant les blocs DO $$ et les fonctions
+            let parts: Vec<&str> = trimmed_cmd.split(';').filter(|p| !p.trim().is_empty()).collect();
+            if parts.len() > 1 {
+                // Vérifier que chaque partie commence par un mot-clé SQL valide
+                let valid_parts: Vec<String> = parts.iter()
+                    .filter_map(|part| {
+                        let part_trimmed = part.trim();
+                        if part_trimmed.is_empty() || part_trimmed.starts_with("--") {
+                            return None;
+                        }
+                        let part_upper = part_trimmed.to_uppercase();
+                        let is_valid = part_upper.starts_with("CREATE")
+                            || part_upper.starts_with("ALTER")
+                            || part_upper.starts_with("DROP")
+                            || part_upper.starts_with("INSERT")
+                            || part_upper.starts_with("UPDATE")
+                            || part_upper.starts_with("DELETE")
+                            || part_upper.starts_with("SELECT")
+                            || part_upper.starts_with("GRANT")
+                            || part_upper.starts_with("REVOKE")
+                            || part_upper.starts_with("COMMENT")
+                            || part_upper.starts_with("TRUNCATE")
+                            || part_upper.starts_with("ANALYZE")
+                            || part_upper.starts_with("VACUUM")
+                            || part_upper.starts_with("EXECUTE")
+                            || part_upper.starts_with("DO")
+                            || part_upper.starts_with("BEGIN")
+                            || part_upper.starts_with("COMMIT")
+                            || part_upper.starts_with("ROLLBACK")
+                            || part_upper.starts_with("SET")
+                            || part_upper.starts_with("RESET");
+                        
+                        if is_valid {
+                            Some(format!("{};", part_trimmed))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                
+                if valid_parts.len() > 1 {
+                    // Exécuter chaque partie séparément
+                    warn!("⚠️ Commande multiple détectée et divisée en {} parties avant exécution", valid_parts.len());
+                    for (i, part_cmd) in valid_parts.iter().enumerate() {
+                        let part_normalized = normalize_sql_command(part_cmd);
+                        // Ignorer ANALYZE dans les migrations
+                        if part_normalized.to_uppercase().trim().starts_with("ANALYZE") {
+                            debug!("ℹ️ ANALYZE ignoré dans migration (exécuté séparément)");
+                            continue;
+                        }
+                        if let Err(e) = sqlx::query(&part_normalized).execute(pool).await {
+                            warn!("   ⚠️ Erreur partie {}: {}", i + 1, e);
+                        }
+                    }
+                    continue; // Passer à la commande suivante
+                }
+            }
+            // Si la division n'a pas fonctionné, continuer avec la commande originale
+            normalize_sql_command(trimmed_cmd)
+        } else {
+            normalize_sql_command(trimmed_cmd)
+        };
 
         // Ignorer les erreurs pour les commandes qui peuvent échouer si l'objet existe déjà
         if normalized_cmd.to_uppercase().contains("DROP INDEX")
