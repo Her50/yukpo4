@@ -12125,6 +12125,26 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 }
             }
 
+            // ✅ CORRECTION 2026-01-31: Détecter les fonctions qui commencent par RETURNS sans CREATE FUNCTION
+            // Si on voit RETURNS au début d'une ligne et qu'on n'a pas de CREATE FUNCTION dans current,
+            // c'est qu'une fonction a été coupée - fusionner avec la commande précédente
+            if trimmed.to_uppercase().starts_with("RETURNS") 
+                && !current.to_uppercase().contains("CREATE FUNCTION")
+                && !current.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
+            {
+                // Chercher la commande précédente dans commands qui pourrait être la fonction
+                if let Some(last_cmd) = commands.last_mut() {
+                    if last_cmd.to_uppercase().contains("CREATE FUNCTION") 
+                        || last_cmd.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
+                    {
+                        // Fusionner avec la commande précédente
+                        last_cmd.push_str("\n");
+                        last_cmd.push_str(line);
+                        continue;
+                    }
+                }
+            }
+
             // Commande normale - se termine par ;
             if trimmed.ends_with(';') {
                 let cmd = current.trim();
@@ -12236,30 +12256,48 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                     paren_depth = 0; // Réinitialiser le compteur de parenthèses
                 } else {
                     // Commande unique - vérifier qu'elle est valide
-                if !cmd.is_empty()
-                    && !cmd.starts_with("--")
-                    && !cmd
+                // ✅ CORRECTION 2026-01-31: Validation plus stricte pour éviter les commandes incomplètes
+                let cmd_clean = cmd.trim();
+                let cmd_upper = cmd_clean.to_uppercase();
+                
+                // Vérifier que la commande n'est pas vide et contient du contenu valide
+                let is_valid = !cmd_clean.is_empty()
+                    && !cmd_clean.starts_with("--")
+                    && !cmd_clean
                         .trim_matches(|c: char| {
                             c.is_whitespace() || c == ';' || c == '(' || c == ')'
                         })
                         .is_empty()
-                    && (cmd.to_uppercase().contains("CREATE")
-                        || cmd.to_uppercase().contains("ALTER")
-                        || cmd.to_uppercase().contains("DROP")
-                        || cmd.to_uppercase().contains("INSERT")
-                        || cmd.to_uppercase().contains("UPDATE")
-                        || cmd.to_uppercase().contains("DELETE")
-                        || cmd.to_uppercase().contains("SELECT")
-                        || cmd.to_uppercase().contains("GRANT")
-                        || cmd.to_uppercase().contains("REVOKE")
-                        || cmd.to_uppercase().contains("COMMENT")
-                        || cmd.to_uppercase().contains("TRUNCATE")
-                        || cmd.to_uppercase().contains("ANALYZE")
-                        || cmd.to_uppercase().contains("VACUUM")
-                        || cmd.to_uppercase().contains("EXECUTE")
-                        || cmd.to_uppercase().contains("DO"))
-                {
+                    // Vérifier qu'elle ne se termine pas par (; ou AS; sans contenu
+                    && !cmd_clean.ends_with("(;")
+                    && !cmd_clean.ends_with("AS;")
+                    && !(cmd_upper.contains("CREATE TABLE") && cmd_clean.ends_with("(;"))
+                    && !(cmd_upper.contains("CREATE INDEX") && !cmd_upper.contains("ON "))
+                    && !(cmd_upper.contains("CREATE FUNCTION") && cmd_clean.ends_with("(;"))
+                    && (cmd_upper.contains("CREATE")
+                        || cmd_upper.contains("ALTER")
+                        || cmd_upper.contains("DROP")
+                        || cmd_upper.contains("INSERT")
+                        || cmd_upper.contains("UPDATE")
+                        || cmd_upper.contains("DELETE")
+                        || cmd_upper.contains("SELECT")
+                        || cmd_upper.contains("GRANT")
+                        || cmd_upper.contains("REVOKE")
+                        || cmd_upper.contains("COMMENT")
+                        || cmd_upper.contains("TRUNCATE")
+                        || cmd_upper.contains("ANALYZE")
+                        || cmd_upper.contains("VACUUM")
+                        || cmd_upper.contains("EXECUTE")
+                        || cmd_upper.contains("DO"));
+                
+                if is_valid {
                     commands.push(cmd.to_string());
+                } else {
+                    // Log les commandes invalides pour diagnostic
+                    if !cmd_clean.is_empty() && !cmd_clean.starts_with("--") {
+                        debug!("⚠️ Commande invalide ignorée: {}", 
+                            if cmd_clean.len() > 100 { format!("{}...", &cmd_clean[..100]) } else { cmd_clean });
+                    }
                 }
                 current.clear();
                     paren_depth = 0; // Réinitialiser le compteur de parenthèses
@@ -12314,6 +12352,8 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
     // ✅ CORRECTION RACINE: Normaliser et exécuter chaque commande
     for cmd in commands {
         let trimmed_cmd = cmd.trim();
+        
+        // ✅ CORRECTION 2026-01-31: Validation stricte des commandes
         // Ignorer les commandes vides, les commentaires, et les commandes qui ne sont que des parenthèses
         if trimmed_cmd.is_empty()
             || trimmed_cmd.starts_with("--")
@@ -12324,6 +12364,57 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 .is_empty()
         {
             continue;
+        }
+
+        // ✅ CORRECTION 2026-01-31: Filtrer les commandes incomplètes (se terminent par ; sans contenu valide)
+        // Exemples: "CREATE TABLE IF NOT EXISTS duets (;" ou "CREATE INDEX IF NOT EXISTS idx_name;"
+        let cmd_upper = trimmed_cmd.to_uppercase();
+        let cmd_without_parens = trimmed_cmd.replace("(", "").replace(")", "").trim().to_string();
+        
+        // Vérifier si la commande est incomplète (se termine par (; ou AS; sans contenu)
+        if (cmd_upper.contains("CREATE TABLE") && trimmed_cmd.ends_with("(;"))
+            || (cmd_upper.contains("CREATE INDEX") && trimmed_cmd.ends_with(";") && !cmd_upper.contains("ON "))
+            || (cmd_upper.contains("CREATE MATERIALIZED VIEW") && trimmed_cmd.ends_with("AS;"))
+            || (cmd_upper.contains("CREATE FUNCTION") && trimmed_cmd.ends_with("(;"))
+            || (cmd_upper.contains("CREATE OR REPLACE FUNCTION") && trimmed_cmd.ends_with("(;"))
+            || (cmd_upper.contains("COMMENT ON") && trimmed_cmd.ends_with("IS;"))
+            || (cmd_upper.contains("DELETE FROM") && trimmed_cmd.ends_with("NOT IN (;"))
+            || (cmd_upper.contains("ALTER TABLE") && trimmed_cmd.ends_with(";"))
+        {
+            warn!("⚠️ Commande SQL incomplète ignorée: {}", 
+                if trimmed_cmd.len() > 100 { format!("{}...", &trimmed_cmd[..100]) } else { trimmed_cmd.to_string() });
+            continue;
+        }
+
+        // ✅ CORRECTION 2026-01-31: Vérifier que les fonctions ont LANGUAGE plpgsql
+        // Si c'est une fonction qui se termine par $$ mais n'a pas LANGUAGE, l'ajouter
+        if (cmd_upper.contains("CREATE FUNCTION") || cmd_upper.contains("CREATE OR REPLACE FUNCTION"))
+            && cmd_upper.contains("$$")
+            && !cmd_upper.contains("LANGUAGE")
+            && !cmd_upper.contains("RETURNS TRIGGER")
+        {
+            // Vérifier si c'est une fonction qui devrait avoir LANGUAGE
+            if cmd_upper.contains("RETURNS") && cmd_upper.contains("AS $$") {
+                warn!("⚠️ Fonction sans LANGUAGE détectée, tentative de correction...");
+                // Essayer de corriger en ajoutant LANGUAGE plpgsql avant le dernier $$
+                if let Some(last_dollar) = trimmed_cmd.rfind("$$") {
+                    let before = &trimmed_cmd[..last_dollar];
+                    let after = &trimmed_cmd[last_dollar..];
+                    // Vérifier si END; est présent avant $$
+                    if before.to_uppercase().contains("END") {
+                        let corrected = format!("{} LANGUAGE plpgsql{}", before.trim_end_matches(';'), after);
+                        warn!("   Commande corrigée: {}", 
+                            if corrected.len() > 150 { format!("{}...", &corrected[..150]) } else { corrected.clone() });
+                        // Utiliser la commande corrigée
+                        let normalized_cmd = normalize_sql_command(&corrected);
+                        // Continuer avec la commande corrigée
+                        if let Err(e) = sqlx::query(&normalized_cmd).execute(pool).await {
+                            warn!("   ⚠️ Erreur même après correction: {}", e);
+                        }
+                        continue;
+                    }
+                }
+            }
         }
 
         // ✅ CORRECTION RACINE: Normaliser la commande SQL avant exécution
@@ -12403,6 +12494,23 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                         error_lower.contains("unexpected") && error_lower.contains(")")
                     )) ||
                     // Commandes multiples dans prepared statement
+                    // ✅ CORRECTION 2026-01-31: Si cette erreur se produit, diviser la commande et réessayer
+                    if error_lower.contains("cannot insert multiple commands into a prepared statement") {
+                        warn!("   ⚠️ Commande multiple détectée, tentative de division...");
+                        // Essayer de diviser la commande par ';' et exécuter chaque partie
+                        let parts: Vec<&str> = normalized_cmd.split(';').filter(|p| !p.trim().is_empty()).collect();
+                        if parts.len() > 1 {
+                            for (i, part) in parts.iter().enumerate() {
+                                let part_cmd = format!("{};", part.trim());
+                                if !part_cmd.trim().is_empty() && !part_cmd.trim().starts_with("--") {
+                                    if let Err(e2) = sqlx::query(&part_cmd).execute(pool).await {
+                                        warn!("   ⚠️ Erreur partie {}: {}", i + 1, e2);
+                                    }
+                                }
+                            }
+                            continue; // On a traité la commande multiple, passer à la suivante
+                        }
+                    }
                     error_lower.contains("cannot insert multiple commands into a prepared statement") ||
                     // Fonctions dans index predicate (IMMUTABLE requis)
                     error_lower.contains("functions in index predicate must be marked immutable") ||

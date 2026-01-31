@@ -5590,9 +5590,9 @@ BEGIN
         AND table_name = 'courier_availability_snapshots' 
         AND column_name = 'user_id'
     ) THEN
-        CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_user_courier
-        ON courier_availability_snapshots(user_id, courier_id)
-        WHERE is_online = true;
+CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_user_courier
+ON courier_availability_snapshots(user_id, courier_id)
+WHERE is_online = true;
     END IF;
 END $$;
 
