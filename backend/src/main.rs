@@ -865,14 +865,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         } else {
                             log::error!("❌ Migration consolidée appliquée mais tables de base toujours manquantes");
                         }
-                    }
-                    Err(e) => {
-                        log::error!(
-                            "❌ Erreur lors de l'application de la migration consolidée: {}",
-                            e
-                        );
-                    }
-                }
             } else {
                 log::info!("✅ Tables de base (users, services) vérifiées après migrations SQLx");
             }
@@ -1285,6 +1277,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     log::warn!("⚠️ Continuation du démarrage, mais certaines fonctionnalités peuvent être indisponibles");
                 }
             }
+        }
+        Err(e) => {
+            log::error!(
+                "❌ Erreur lors de l'application des migrations SQLx: {}",
+                e
+            );
         }
     }
 
