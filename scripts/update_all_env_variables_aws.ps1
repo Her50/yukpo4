@@ -132,6 +132,7 @@ Write-Host ""
 
 # 3. Variables GPU (toutes activees comme dans Render)
 Write-Host "Variables GPU" -ForegroundColor Magenta
+Update-SSMParameter -Name "AMD_GPU_AVAILABLE" -Value "false" -Description "GPU AMD disponible (false car on utilise NVIDIA)"
 Update-SSMParameter -Name "GPU_AVAILABLE" -Value "true" -Description "GPU disponible dans l'environnement"
 Update-SSMParameter -Name "GPU_MEMORY_GB" -Value "16" -Description "Memoire GPU disponible (GB)"
 Update-SSMParameter -Name "GPU_TYPE" -Value "nvidia" -Description "Type de GPU"
