@@ -21,6 +21,9 @@ backend/**/target/
 *.rs.bk
 Cargo.lock
 
+# Dépôts Git embarqués / sous-modules non configurés
+pgvector/
+
 # Backend - Fichiers volumineux
 backend/blender/*.tar.xz
 backend/blender/*.tar

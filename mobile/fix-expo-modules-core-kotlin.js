@@ -18,15 +18,17 @@ console.log('📄 Reading expo-modules-core/android/build.gradle...');
 console.log(`   File size: ${buildGradleContent.length} characters`);
 console.log(`   First 200 chars: ${buildGradleContent.substring(0, 200)}`);
 
-// Vérifier si le plugin Kotlin est déjà dans le buildscript ET que le buildscript est avant l'import
+// Vérifier si les plugins Android et Kotlin sont déjà dans le buildscript ET que le buildscript est avant l'import
+const hasAndroidPlugin = buildGradleContent.includes('classpath("com.android.tools.build:gradle') || 
+    buildGradleContent.includes("classpath('com.android.tools.build:gradle");
 const hasKotlinPlugin = buildGradleContent.includes('classpath("org.jetbrains.kotlin:kotlin-gradle-plugin') || 
     buildGradleContent.includes("classpath('org.jetbrains.kotlin:kotlin-gradle-plugin");
 const hasKotlinImport = buildGradleContent.includes('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile');
 const buildscriptIndex = buildGradleContent.indexOf('buildscript');
 const importIndex = buildGradleContent.indexOf('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile');
 
-if (hasKotlinPlugin && (!hasKotlinImport || (buildscriptIndex !== -1 && importIndex !== -1 && buildscriptIndex < importIndex))) {
-    console.log('✅ Kotlin plugin already present in buildscript and correctly positioned');
+if (hasAndroidPlugin && hasKotlinPlugin && (!hasKotlinImport || (buildscriptIndex !== -1 && importIndex !== -1 && buildscriptIndex < importIndex))) {
+    console.log('✅ Android and Kotlin plugins already present in buildscript and correctly positioned');
     process.exit(0);
 }
 
@@ -53,7 +55,7 @@ if (hasKotlinImport && (buildscriptIndex === -1 || importIndex < buildscriptInde
     const imports = importLines.length > 0 ? importLines.join('\n') + '\n\n' : '';
     const restOfFile = lines.slice(i).join('\n');
     
-    // Créer le buildscript avec le plugin Kotlin AVANT les imports
+    // Créer le buildscript avec le plugin Kotlin et Android AVANT les imports
     const buildscript = `buildscript {
     ext {
         kotlinVersion = findProperty('kotlinVersion') ?: findProperty('android.kotlinVersion') ?: '1.9.25'
@@ -63,6 +65,7 @@ if (hasKotlinImport && (buildscriptIndex === -1 || importIndex < buildscriptInde
         mavenCentral()
     }
     dependencies {
+        classpath("com.android.tools.build:gradle:8.6.0")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlinVersion")
     }
 }
@@ -115,14 +118,21 @@ if (hasKotlinImport && (buildscriptIndex === -1 || importIndex < buildscriptInde
         }
     }
     
-    // Ajouter le plugin Kotlin dans dependencies
+    // Ajouter les plugins Android et Kotlin dans dependencies
     if (buildGradleContent.match(/buildscript\s*\{[^}]*dependencies\s*\{/s)) {
         // dependencies existe déjà
+        let depsToAdd = [];
+        if (!buildGradleContent.match(/buildscript\s*\{[^}]*dependencies\s*\{[^}]*com\.android\.tools\.build:gradle/s)) {
+            depsToAdd.push('        classpath("com.android.tools.build:gradle:8.6.0")');
+        }
         if (!buildGradleContent.match(/buildscript\s*\{[^}]*dependencies\s*\{[^}]*kotlin-gradle-plugin/s)) {
+            depsToAdd.push('        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")');
+        }
+        if (depsToAdd.length > 0) {
             buildGradleContent = buildGradleContent.replace(
                 /(buildscript\s*\{[^}]*dependencies\s*\{)/s,
                 `$1
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlinVersion")`
+${depsToAdd.join('\n')}`
             );
         }
     } else {
@@ -131,6 +141,7 @@ if (hasKotlinImport && (buildscriptIndex === -1 || importIndex < buildscriptInde
             /(buildscript\s*\{[^}]*repositories\s*\{[^}]*\})/s,
             `$1
     dependencies {
+        classpath("com.android.tools.build:gradle:8.6.0")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlinVersion")
     }`
         );
@@ -148,6 +159,7 @@ if (hasKotlinImport && (buildscriptIndex === -1 || importIndex < buildscriptInde
         mavenCentral()
     }
     dependencies {
+        classpath("com.android.tools.build:gradle:8.6.0")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlinVersion")
     }
 }
@@ -183,11 +195,14 @@ if (buildGradleContent !== originalContent) {
     const finalContent = fs.readFileSync(buildGradlePath, 'utf8');
     const finalBuildscriptIndex = finalContent.indexOf('buildscript');
     const finalImportIndex = finalContent.indexOf('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile');
+    const finalAndroidPlugin = finalContent.includes('classpath("com.android.tools.build:gradle') || 
+        finalContent.includes("classpath('com.android.tools.build:gradle");
     const finalKotlinPlugin = finalContent.includes('classpath("org.jetbrains.kotlin:kotlin-gradle-plugin') || 
         finalContent.includes("classpath('org.jetbrains.kotlin:kotlin-gradle-plugin");
     
     console.log(`   Final buildscript index: ${finalBuildscriptIndex}`);
     console.log(`   Final import index: ${finalImportIndex}`);
+    console.log(`   Android plugin present: ${finalAndroidPlugin}`);
     console.log(`   Kotlin plugin present: ${finalKotlinPlugin}`);
     
     if (finalImportIndex !== -1 && finalBuildscriptIndex !== -1 && finalImportIndex < finalBuildscriptIndex) {
@@ -200,12 +215,17 @@ if (buildGradleContent !== originalContent) {
         console.log('❌ ERROR: Import found but no buildscript after fix!');
         console.log('   This will cause the build to fail.');
         process.exit(1);
+    } else if (!finalAndroidPlugin) {
+        console.log('❌ ERROR: Android plugin not found in buildscript after fix!');
+        console.log('   This will cause the build to fail.');
+        process.exit(1);
     } else if (!finalKotlinPlugin) {
         console.log('❌ ERROR: Kotlin plugin not found in buildscript after fix!');
         console.log('   This will cause the build to fail.');
         process.exit(1);
     } else {
         console.log('✅ Buildscript is correctly positioned before imports');
+        console.log('✅ Android plugin is present in buildscript');
         console.log('✅ Kotlin plugin is present in buildscript');
         console.log('✅ Fix applied successfully!');
     }
@@ -213,14 +233,17 @@ if (buildGradleContent !== originalContent) {
     console.log('⚠️ No changes made to build.gradle');
     // Vérifier quand même si le problème persiste
     if (buildGradleContent.includes('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile')) {
-        const hasPlugin = buildGradleContent.includes('classpath("org.jetbrains.kotlin:kotlin-gradle-plugin') || 
+        const hasAndroidPlugin = buildGradleContent.includes('classpath("com.android.tools.build:gradle') || 
+            buildGradleContent.includes("classpath('com.android.tools.build:gradle");
+        const hasKotlinPlugin = buildGradleContent.includes('classpath("org.jetbrains.kotlin:kotlin-gradle-plugin') || 
             buildGradleContent.includes("classpath('org.jetbrains.kotlin:kotlin-gradle-plugin");
         const bsIndex = buildGradleContent.indexOf('buildscript');
         const impIndex = buildGradleContent.indexOf('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile');
         
-        if (!hasPlugin || (bsIndex === -1) || (impIndex !== -1 && impIndex < bsIndex)) {
+        if (!hasAndroidPlugin || !hasKotlinPlugin || (bsIndex === -1) || (impIndex !== -1 && impIndex < bsIndex)) {
             console.log('❌ ERROR: KotlinCompile import found but fix not applied!');
-            console.log(`   Has plugin: ${hasPlugin}`);
+            console.log(`   Has Android plugin: ${hasAndroidPlugin}`);
+            console.log(`   Has Kotlin plugin: ${hasKotlinPlugin}`);
             console.log(`   Buildscript index: ${bsIndex}`);
             console.log(`   Import index: ${impIndex}`);
             console.log('   This will cause the build to fail.');
@@ -228,7 +251,7 @@ if (buildGradleContent !== originalContent) {
             console.log(buildGradleContent.substring(0, 500));
             process.exit(1);
         } else {
-            console.log('✅ File already correctly configured');
+            console.log('✅ File already correctly configured with both Android and Kotlin plugins');
         }
     } else {
         console.log('✅ No KotlinCompile import found, file should be OK');
