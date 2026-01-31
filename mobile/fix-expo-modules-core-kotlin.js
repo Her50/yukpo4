@@ -56,6 +56,7 @@ if (hasKotlinImport && (buildscriptIndex === -1 || importIndex < buildscriptInde
     const restOfFile = lines.slice(i).join('\n');
     
     // Créer le buildscript avec le plugin Kotlin et Android AVANT les imports
+    // + un bloc ext au niveau du projet pour que les propriétés soient accessibles dans android {}
     const buildscript = `buildscript {
     ext {
         kotlinVersion = findProperty('kotlinVersion') ?: findProperty('android.kotlinVersion') ?: '1.9.25'
@@ -70,6 +71,13 @@ if (hasKotlinImport && (buildscriptIndex === -1 || importIndex < buildscriptInde
     }
 }
 
+ext {
+    buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
+    minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
+    compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
+    targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '35')
+}
+
 `;
     
     buildGradleContent = buildscript + imports + restOfFile;
@@ -78,20 +86,63 @@ if (hasKotlinImport && (buildscriptIndex === -1 || importIndex < buildscriptInde
     // Le buildscript existe et est avant l'import (ou pas d'import), ajouter le plugin Kotlin dedans
     console.log('🔧 Adding Kotlin plugin to existing buildscript...');
     
-    // Vérifier si le buildscript a un bloc ext pour kotlinVersion
+    // Vérifier si le buildscript a un bloc ext avec toutes les propriétés nécessaires
     const buildscriptBlock = buildGradleContent.substring(buildscriptIndex);
     const buildscriptEnd = buildscriptBlock.indexOf('}') + 1; // Trouver la fin du bloc buildscript
     const buildscriptContent = buildGradleContent.substring(buildscriptIndex, buildscriptIndex + buildscriptEnd);
     
-    if (!buildscriptContent.includes('kotlinVersion')) {
-        // Ajouter ext avec kotlinVersion dans le buildscript
-        buildGradleContent = buildGradleContent.replace(
-            /(buildscript\s*\{)/s,
-            `$1
+    if (!buildscriptContent.includes('kotlinVersion') || !buildscriptContent.includes('compileSdkVersion')) {
+        // Ajouter ou mettre à jour ext avec toutes les propriétés nécessaires
+        if (buildscriptContent.includes('ext {')) {
+            // Mettre à jour le bloc ext existant
+            if (!buildscriptContent.includes('kotlinVersion')) {
+                buildGradleContent = buildGradleContent.replace(
+                    /(buildscript\s*\{[^}]*ext\s*\{)/s,
+                    `$1
+        kotlinVersion = findProperty('kotlinVersion') ?: findProperty('android.kotlinVersion') ?: '1.9.25'`
+                );
+            }
+            if (!buildscriptContent.includes('compileSdkVersion')) {
+                buildGradleContent = buildGradleContent.replace(
+                    /(buildscript\s*\{[^}]*ext\s*\{[^}]*kotlinVersion[^}]*)/s,
+                    `$1
+        buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
+        minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
+        compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
+        targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '35')`
+                );
+            }
+        } else {
+            // Ajouter un nouveau bloc ext dans buildscript (pour kotlinVersion seulement)
+            buildGradleContent = buildGradleContent.replace(
+                /(buildscript\s*\{)/s,
+                `$1
     ext {
         kotlinVersion = findProperty('kotlinVersion') ?: findProperty('android.kotlinVersion') ?: '1.9.25'
     }`
-        );
+            );
+        }
+        
+        // S'assurer qu'un bloc ext au niveau du projet existe (après buildscript)
+        if (!buildGradleContent.match(/buildscript\s*\{[^}]*\}\s*\n\s*ext\s*\{/s)) {
+            // Trouver la fin du buildscript et ajouter ext après
+            const buildscriptEndMatch = buildGradleContent.match(/buildscript\s*\{[^}]*\}/s);
+            if (buildscriptEndMatch) {
+                const insertIndex = buildscriptEndMatch.index + buildscriptEndMatch[0].length;
+                const extBlock = `
+
+ext {
+    buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
+    minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
+    compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
+    targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '35')
+}
+
+`;
+                buildGradleContent = buildGradleContent.slice(0, insertIndex) + extBlock + buildGradleContent.slice(insertIndex);
+                console.log('✅ Added ext block at project level for Android SDK properties');
+            }
+        }
     }
     
     // Vérifier si repositories existe dans buildscript
@@ -153,6 +204,10 @@ ${depsToAdd.join('\n')}`
     const buildscript = `buildscript {
     ext {
         kotlinVersion = findProperty('kotlinVersion') ?: findProperty('android.kotlinVersion') ?: '1.9.25'
+        buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
+        minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
+        compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
+        targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '35')
     }
     repositories {
         google()
@@ -183,6 +238,103 @@ ${depsToAdd.join('\n')}`
         buildGradleContent = buildscript + imports + restOfFile;
     } else {
         buildGradleContent = buildscript + buildGradleContent;
+    }
+}
+
+// S'assurer qu'un bloc ext au niveau du projet existe (après buildscript, avant android)
+// Ce bloc doit contenir les propriétés Android SDK accessibles dans android {}
+if (!buildGradleContent.match(/buildscript\s*\{[^}]*\}\s*\n\s*ext\s*\{[^}]*compileSdkVersion/s)) {
+    // Trouver la fin du buildscript et ajouter ext après
+    const buildscriptEndMatch = buildGradleContent.match(/buildscript\s*\{[^}]*\}/s);
+    if (buildscriptEndMatch) {
+        const insertIndex = buildscriptEndMatch.index + buildscriptEndMatch[0].length;
+        // Vérifier s'il y a déjà un ext mais sans compileSdkVersion
+        const afterBuildscript = buildGradleContent.substring(insertIndex);
+        if (afterBuildscript.match(/^\s*ext\s*\{/)) {
+            // Mettre à jour le bloc ext existant
+            buildGradleContent = buildGradleContent.replace(
+                /(buildscript\s*\{[^}]*\}\s*\n\s*ext\s*\{)/s,
+                `$1
+    buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
+    minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
+    compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
+    targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '35')`
+            );
+        } else {
+            // Ajouter un nouveau bloc ext
+            const extBlock = `
+
+ext {
+    buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
+    minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
+    compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
+    targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '35')
+}
+
+`;
+            buildGradleContent = buildGradleContent.slice(0, insertIndex) + extBlock + buildGradleContent.slice(insertIndex);
+        }
+        console.log('✅ Added/updated ext block at project level for Android SDK properties');
+    }
+}
+
+// Après avoir ajouté le buildscript, vérifier et ajouter/modifier le bloc android
+if (buildGradleContent.includes('android {')) {
+    console.log('🔧 Found android block, ensuring compileSdkVersion is set...');
+    
+    // Vérifier si compileSdkVersion est déjà dans le bloc android
+    const androidBlockMatch = buildGradleContent.match(/android\s*\{[^}]*\}/s);
+    if (androidBlockMatch) {
+        const androidBlock = androidBlockMatch[0];
+        if (!androidBlock.includes('compileSdkVersion')) {
+            // Ajouter compileSdkVersion dans le bloc android
+            // Utiliser directement les valeurs depuis ext (défini au niveau du projet)
+            buildGradleContent = buildGradleContent.replace(
+                /(android\s*\{)/s,
+                `$1
+    compileSdkVersion ext.compileSdkVersion
+    buildToolsVersion ext.buildToolsVersion
+    
+    defaultConfig {
+        minSdkVersion ext.minSdkVersion
+        targetSdkVersion ext.targetSdkVersion
+    }`
+            );
+            console.log('✅ Added compileSdkVersion and defaultConfig to android block');
+        } else if (!androidBlock.includes('defaultConfig')) {
+            // compileSdkVersion existe mais pas defaultConfig
+            buildGradleContent = buildGradleContent.replace(
+                /(android\s*\{[^}]*compileSdkVersion[^}]*)/s,
+                `$1
+    
+    defaultConfig {
+        minSdkVersion ext.minSdkVersion
+        targetSdkVersion ext.targetSdkVersion
+    }`
+            );
+            console.log('✅ Added defaultConfig to android block');
+        }
+    }
+} else if (buildGradleContent.includes('apply plugin') && buildGradleContent.includes('com.android.library')) {
+    // Le plugin android est appliqué mais pas de bloc android, l'ajouter
+    console.log('🔧 Plugin android found but no android block, adding it...');
+    // Trouver où insérer le bloc android (après les apply plugin)
+    const applyPluginMatch = buildGradleContent.match(/(apply\s+plugin[^\n]+\n)+/);
+    if (applyPluginMatch) {
+        const insertIndex = applyPluginMatch.index + applyPluginMatch[0].length;
+        const androidBlock = `
+android {
+    compileSdkVersion ext.compileSdkVersion
+    buildToolsVersion ext.buildToolsVersion
+    
+    defaultConfig {
+        minSdkVersion ext.minSdkVersion
+        targetSdkVersion ext.targetSdkVersion
+    }
+}
+`;
+        buildGradleContent = buildGradleContent.slice(0, insertIndex) + androidBlock + buildGradleContent.slice(insertIndex);
+        console.log('✅ Added android block with compileSdkVersion');
     }
 }
 
