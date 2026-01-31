@@ -12176,7 +12176,14 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 // Exemple: "CREATE INDEX ...; CREATE INDEX ...;" doit être divisé en 2 commandes
                 // MAIS seulement si on n'est PAS dans un bloc DO $$ ET si on n'est PAS dans une parenthèse
                 // ✅ CORRECTION CRITIQUE 2026-01-30: Ne PAS diviser si paren_depth > 0
+                // ✅ CORRECTION 2026-01-31: Ne PAS diviser si c'est une fonction (contient RETURNS, AS $$, LANGUAGE)
+                let is_function = cmd.to_uppercase().contains("CREATE FUNCTION")
+                    || cmd.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
+                    || cmd.to_uppercase().contains("RETURNS")
+                    || (cmd.to_uppercase().contains("AS $$") && !cmd.to_uppercase().contains("LANGUAGE"));
+                
                 if !cmd.to_uppercase().starts_with("DO")
+                    && !is_function
                     && cmd.contains(";")
                     && cmd.matches(';').count() > 1
                     && paren_depth == 0  // ✅ Ne diviser que si toutes les parenthèses sont fermées
@@ -12366,6 +12373,44 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             continue;
         }
 
+        // ✅ CORRECTION CRITIQUE 2026-01-31: Rejeter les fragments de commandes qui ne commencent pas par un mot-clé SQL valide
+        // Les fragments commencent souvent par des identifiants de colonnes (id, u., etc.) ou des mots-clés de continuation
+        let cmd_upper_first_words = trimmed_cmd.to_uppercase();
+        let first_word = cmd_upper_first_words.split_whitespace().next().unwrap_or("");
+        
+        // Liste des mots-clés SQL valides pour commencer une commande
+        let valid_start_keywords = [
+            "CREATE", "ALTER", "DROP", "INSERT", "UPDATE", "DELETE", "SELECT", 
+            "GRANT", "REVOKE", "COMMENT", "TRUNCATE", "ANALYZE", "VACUUM", 
+            "EXECUTE", "DO", "BEGIN", "COMMIT", "ROLLBACK", "SET", "RESET",
+            "WITH", "EXPLAIN", "PREPARE", "DEALLOCATE", "COPY", "LOCK", "UNLOCK"
+        ];
+        
+        // Si la commande ne commence pas par un mot-clé SQL valide, c'est probablement un fragment
+        if !valid_start_keywords.iter().any(|&kw| cmd_upper_first_words.starts_with(kw)) {
+            // Vérifier si c'est un fragment commun (commence par un identifiant de colonne, etc.)
+            let is_fragment = first_word == "ID" 
+                || first_word.starts_with("U.")
+                || first_word.starts_with("S.")
+                || first_word.starts_with("P.")
+                || first_word == "RETURNS"
+                || first_word == "AS"
+                || first_word == "ON"
+                || first_word == "FOR"
+                || first_word == "WHEN"
+                || first_word == "THEN"
+                || first_word == "ELSE"
+                || first_word == "END"
+                || trimmed_cmd.starts_with("(")
+                || trimmed_cmd.starts_with(",");
+            
+            if is_fragment {
+                warn!("⚠️ Fragment de commande SQL ignoré (ne commence pas par un mot-clé SQL valide): {}", 
+                    if trimmed_cmd.len() > 100 { format!("{}...", &trimmed_cmd[..100]) } else { trimmed_cmd.to_string() });
+                continue;
+            }
+        }
+
         // ✅ CORRECTION 2026-01-31: Filtrer les commandes incomplètes (se terminent par ; sans contenu valide)
         // Exemples: "CREATE TABLE IF NOT EXISTS duets (;" ou "CREATE INDEX IF NOT EXISTS idx_name;"
         let cmd_upper = trimmed_cmd.to_uppercase();
@@ -12468,14 +12513,45 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 if error_lower.contains("cannot insert multiple commands into a prepared statement") {
                     warn!("   ⚠️ Commande multiple détectée, tentative de division...");
                     // Essayer de diviser la commande par ';' et exécuter chaque partie
+                    // ✅ AMÉLIORATION: Diviser intelligemment en préservant les blocs DO $$ et les fonctions
                     let parts: Vec<&str> = normalized_cmd.split(';').filter(|p| !p.trim().is_empty()).collect();
                     if parts.len() > 1 {
-                        for (i, part) in parts.iter().enumerate() {
-                            let part_cmd = format!("{};", part.trim());
-                            if !part_cmd.trim().is_empty() && !part_cmd.trim().starts_with("--") {
-                                if let Err(e2) = sqlx::query(&part_cmd).execute(pool).await {
-                                    warn!("   ⚠️ Erreur partie {}: {}", i + 1, e2);
-                                }
+                        let mut valid_parts = Vec::new();
+                        for part in parts.iter() {
+                            let part_trimmed = part.trim();
+                            // Vérifier que la partie commence par un mot-clé SQL valide
+                            let part_upper = part_trimmed.to_uppercase();
+                            let is_valid = part_upper.starts_with("CREATE")
+                                || part_upper.starts_with("ALTER")
+                                || part_upper.starts_with("DROP")
+                                || part_upper.starts_with("INSERT")
+                                || part_upper.starts_with("UPDATE")
+                                || part_upper.starts_with("DELETE")
+                                || part_upper.starts_with("SELECT")
+                                || part_upper.starts_with("GRANT")
+                                || part_upper.starts_with("REVOKE")
+                                || part_upper.starts_with("COMMENT")
+                                || part_upper.starts_with("TRUNCATE")
+                                || part_upper.starts_with("ANALYZE")
+                                || part_upper.starts_with("VACUUM")
+                                || part_upper.starts_with("EXECUTE")
+                                || part_upper.starts_with("DO")
+                                || part_upper.starts_with("BEGIN")
+                                || part_upper.starts_with("COMMIT")
+                                || part_upper.starts_with("ROLLBACK")
+                                || part_upper.starts_with("SET")
+                                || part_upper.starts_with("RESET");
+                            
+                            if is_valid && !part_trimmed.starts_with("--") {
+                                valid_parts.push(part_trimmed);
+                            }
+                        }
+                        
+                        // Exécuter chaque partie valide
+                        for (i, part) in valid_parts.iter().enumerate() {
+                            let part_cmd = format!("{};", part);
+                            if let Err(e2) = sqlx::query(&part_cmd).execute(pool).await {
+                                warn!("   ⚠️ Erreur partie {}: {}", i + 1, e2);
                             }
                         }
                         continue; // On a traité la commande multiple, passer à la suivante
