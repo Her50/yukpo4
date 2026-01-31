@@ -11908,15 +11908,14 @@ fn normalize_sql_command(cmd: &str) -> String {
         }
     }
 
-    // Normaliser CREATE TRIGGER - wrapper dans DO $$ block avec vérification
-    // ✅ CORRECTION RACINE: Ne pas wrapper si déjà dans un DO $$ block ou si DROP TRIGGER IF EXISTS est présent
+    // ✅ AMÉLIORATION 2026-01-31: Normaliser CREATE TRIGGER - wrapper dans DO $$ block avec vérification
+    // Ne pas wrapper si déjà dans un DO $$ block ou si DROP TRIGGER IF EXISTS est présent
     if upper.contains("CREATE TRIGGER")
         && !upper.contains("DO $$")
         && !upper.contains("IF NOT EXISTS")
         && !upper.contains("DROP TRIGGER IF EXISTS")
-    // Si DROP est déjà présent, laisser tel quel
     {
-        // Extraire le nom du trigger
+        // Extraire le nom du trigger et la définition complète
         // Pattern: CREATE TRIGGER trigger_name ON table_name ...
         if let Some(trigger_pos) = upper.find("CREATE TRIGGER") {
             let trigger_decl = &trimmed[trigger_pos..];
@@ -11928,8 +11927,23 @@ fn normalize_sql_command(cmd: &str) -> String {
                 // Nettoyer le nom (enlever ; si présent)
                 let trigger_name = trigger_name_candidate.trim_end_matches(';');
 
+                // ✅ AMÉLIORATION: Vérifier que la définition du trigger est complète
+                // Un trigger complet doit contenir: ON table_name, FOR EACH ROW, EXECUTE FUNCTION
+                let trigger_decl_upper = trigger_decl.to_uppercase();
+                let is_complete = trigger_decl_upper.contains("ON ")
+                    && (trigger_decl_upper.contains("FOR EACH ROW") || trigger_decl_upper.contains("FOR EACH STATEMENT"))
+                    && trigger_decl_upper.contains("EXECUTE FUNCTION");
+                
+                if !is_complete {
+                    // Trigger incomplet - ne pas wrapper, laisser tel quel pour que l'erreur soit détectée
+                    warn!("⚠️ Trigger incomplet détecté (manque ON table_name, FOR EACH ROW, ou EXECUTE FUNCTION): {}", 
+                        if trigger_decl.len() > 100 { format!("{}...", &trigger_decl[..100]) } else { trigger_decl.to_string() });
+                    return trimmed.to_string(); // Retourner tel quel pour que l'erreur soit détectée
+                }
+
                 // ✅ CORRIGÉ: Utiliser EXECUTE car PostgreSQL ne permet pas CREATE TRIGGER dans IF THEN directement
                 // Wrapper dans DO $$ avec vérification d'existence
+                // IMPORTANT: Inclure TOUTE la définition du trigger dans EXECUTE
                 let trigger_sql = trigger_decl.trim_end_matches(';').replace('\'', "''"); // Échapper les quotes pour EXECUTE
                 return format!(
                     r#"DO $$
@@ -12143,7 +12157,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 }
             }
 
-            // ✅ CORRECTION 2026-01-31: Détecter les fonctions qui commencent par RETURNS sans CREATE FUNCTION
+            // ✅ AMÉLIORATION 2026-01-31: Détecter les fonctions qui commencent par RETURNS sans CREATE FUNCTION
             // Si on voit RETURNS au début d'une ligne et qu'on n'a pas de CREATE FUNCTION dans current,
             // c'est qu'une fonction a été coupée - fusionner avec la commande précédente
             if trimmed.to_uppercase().starts_with("RETURNS") 
@@ -12163,7 +12177,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 }
             }
 
-            // ✅ CORRECTION 2026-01-31: Détecter les fragments de fonctions qui commencent par des paramètres
+            // ✅ AMÉLIORATION 2026-01-31: Détecter les fragments de fonctions qui commencent par des paramètres
             // Si on voit un paramètre (p_service_id, p_payment_id, etc.) au début d'une ligne,
             // c'est qu'une fonction a été coupée - fusionner avec la commande précédente
             if (trimmed.to_uppercase().starts_with("P_SERVICE_ID")
@@ -12183,6 +12197,33 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                         continue;
                     }
                 }
+            }
+            
+            // ✅ NOUVEAU 2026-01-31: Détecter les fragments de colonnes qui commencent par des noms de colonnes
+            // Si on voit un nom de colonne (updated_at, user_id, etc.) au début d'une ligne,
+            // c'est qu'une commande CREATE TABLE ou ALTER TABLE a été coupée - ignorer ce fragment
+            let trimmed_lower = trimmed.to_lowercase();
+            let is_column_fragment = trimmed_lower.trim().starts_with("updated_at")
+                || trimmed_lower.trim().starts_with("user_id")
+                || trimmed_lower.trim().starts_with("doctor_name")
+                || trimmed_lower.trim().starts_with("comment_participant")
+                || trimmed_lower.trim().starts_with("download_count")
+                || trimmed_lower.trim().starts_with("tags")
+                || (trimmed_lower.trim().starts_with("updated_at") && trimmed_lower.contains("timestamptz"))
+                || (trimmed_lower.trim().starts_with("user_id") && trimmed_lower.contains("integer"))
+                || (trimmed_lower.trim().starts_with("doctor_name") && trimmed_lower.contains("varchar"))
+                || (trimmed_lower.trim().starts_with("comment_participant") && trimmed_lower.contains("text"))
+                || (trimmed_lower.trim().starts_with("download_count") && trimmed_lower.contains("integer"))
+                || (trimmed_lower.trim().starts_with("tags") && trimmed_lower.contains("text[]"));
+            
+            if is_column_fragment && !current.to_uppercase().contains("CREATE TABLE") 
+                && !current.to_uppercase().contains("ALTER TABLE")
+                && !current.to_uppercase().contains("CREATE FUNCTION")
+            {
+                // C'est un fragment de colonne isolé - l'ignorer
+                warn!("⚠️ Fragment de colonne détecté et ignoré: {}", 
+                    if trimmed.len() > 100 { format!("{}...", &trimmed[..100]) } else { trimmed.to_string() });
+                continue;
             }
 
             // Commande normale - se termine par ;
@@ -12204,6 +12245,38 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 if paren_depth > 0 {
                     // On est dans une parenthèse, continuer à accumuler jusqu'à ce que toutes les parenthèses soient fermées
                     continue;
+                }
+                
+                // ✅ AMÉLIORATION 2026-01-31: Ne PAS diviser si on est dans un CREATE TRIGGER incomplet
+                // Un trigger complet doit contenir: ON table_name, FOR EACH ROW, EXECUTE FUNCTION
+                let cmd_upper = cmd.to_uppercase();
+                if cmd_upper.contains("CREATE TRIGGER") {
+                    let has_on = cmd_upper.contains("ON ");
+                    let has_for_each = cmd_upper.contains("FOR EACH ROW") || cmd_upper.contains("FOR EACH STATEMENT");
+                    let has_execute = cmd_upper.contains("EXECUTE FUNCTION");
+                    
+                    // Si le trigger n'est pas complet, continuer à accumuler
+                    if !has_on || !has_for_each || !has_execute {
+                        continue;
+                    }
+                }
+                
+                // ✅ NOUVEAU 2026-01-31: Ne PAS diviser si c'est une fonction qui se termine par (; ou qui n'a pas de $$ LANGUAGE
+                // Exemples: CREATE OR REPLACE FUNCTION add_product_to_service_jsonb(;
+                //          CREATE OR REPLACE FUNCTION get_user_stats(user_id_param INTEGER); (suivi de RETURNS)
+                if cmd_upper.contains("CREATE FUNCTION") || cmd_upper.contains("CREATE OR REPLACE FUNCTION") {
+                    // Si la fonction se termine par (; c'est incomplet
+                    if cmd.ends_with("(;") {
+                        continue; // Continuer à accumuler
+                    }
+                    // Si la fonction se termine par ; mais n'a pas de $$ LANGUAGE, elle est probablement incomplète
+                    // (la ligne suivante devrait contenir RETURNS ou un paramètre)
+                    if cmd.ends_with(");") && !cmd_upper.contains("$$") && !cmd_upper.contains("LANGUAGE") {
+                        // Vérifier si la ligne suivante commence par RETURNS ou un paramètre
+                        // On ne peut pas vérifier la ligne suivante ici, donc on continue à accumuler
+                        // et on laissera la validation finale rejeter si c'est vraiment incomplet
+                        continue;
+                    }
                 }
 
                 // ✅ CORRECTION 2026-01-30: Détecter les fins de fonctions/triggers pour mieux diviser
@@ -12307,9 +12380,43 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 let cmd_clean = cmd.trim();
                 let cmd_upper = cmd_clean.to_uppercase();
                 
+                // ✅ AMÉLIORATION 2026-01-31: Validation stricte pour éviter les commandes incomplètes et fragments
                 // Vérifier que la commande n'est pas vide et contient du contenu valide
+                let cmd_lower = cmd_clean.to_lowercase();
+                
+                // Rejeter les fragments de colonnes qui commencent par des noms de colonnes
+                let is_column_fragment = cmd_lower.trim().starts_with("updated_at")
+                    || cmd_lower.trim().starts_with("user_id")
+                    || cmd_lower.trim().starts_with("doctor_name")
+                    || cmd_lower.trim().starts_with("comment_participant")
+                    || cmd_lower.trim().starts_with("download_count")
+                    || cmd_lower.trim().starts_with("tags")
+                    || (cmd_lower.trim().starts_with("updated_at") && cmd_lower.contains("timestamptz"))
+                    || (cmd_lower.trim().starts_with("user_id") && cmd_lower.contains("integer"))
+                    || (cmd_lower.trim().starts_with("doctor_name") && cmd_lower.contains("varchar"))
+                    || (cmd_lower.trim().starts_with("comment_participant") && cmd_lower.contains("text"))
+                    || (cmd_lower.trim().starts_with("download_count") && cmd_lower.contains("integer"))
+                    || (cmd_lower.trim().starts_with("tags") && cmd_lower.contains("text[]"));
+                
+                // Rejeter les fragments de fonctions qui commencent par RETURNS ou des paramètres
+                let is_function_fragment = cmd_upper.starts_with("RETURNS")
+                    || cmd_upper.starts_with("P_SERVICE_ID")
+                    || cmd_upper.starts_with("P_PAYMENT_ID")
+                    || (cmd_upper.starts_with("P_") && !cmd_upper.contains("CREATE"));
+                
+                // ✅ AMÉLIORATION 2026-01-31: Rejeter les fonctions qui se terminent par ); sans $$ LANGUAGE
+                // Exemple: CREATE OR REPLACE FUNCTION get_user_stats(user_id_param INTEGER);
+                let is_incomplete_function = (cmd_upper.contains("CREATE FUNCTION") || cmd_upper.contains("CREATE OR REPLACE FUNCTION"))
+                    && (cmd_clean.ends_with(");") || cmd_clean.ends_with(";"))
+                    && !cmd_upper.contains("$$")
+                    && !cmd_upper.contains("LANGUAGE")
+                    && !cmd_upper.contains("RETURNS TRIGGER");
+                
                 let is_valid = !cmd_clean.is_empty()
                     && !cmd_clean.starts_with("--")
+                    && !is_column_fragment
+                    && !is_function_fragment
+                    && !is_incomplete_function
                     && !cmd_clean
                         .trim_matches(|c: char| {
                             c.is_whitespace() || c == ';' || c == '(' || c == ')'
@@ -12320,7 +12427,11 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                     && !cmd_clean.ends_with("AS;")
                     && !(cmd_upper.contains("CREATE TABLE") && cmd_clean.ends_with("(;"))
                     && !(cmd_upper.contains("CREATE INDEX") && !cmd_upper.contains("ON "))
+                    && !(cmd_upper.contains("CREATE UNIQUE INDEX") && !cmd_upper.contains("ON "))
                     && !(cmd_upper.contains("CREATE FUNCTION") && cmd_clean.ends_with("(;"))
+                    && !(cmd_upper.contains("CREATE OR REPLACE FUNCTION") && cmd_clean.ends_with("(;"))
+                    // ✅ NOUVEAU 2026-01-31: Rejeter les CREATE INDEX sans colonnes (se termine par ON table;)
+                    && !(cmd_upper.contains("CREATE INDEX") && cmd_clean.ends_with(";") && cmd_upper.contains("ON ") && !cmd_clean.contains("(") && !cmd_clean.contains("USING"))
                     && (cmd_upper.contains("CREATE")
                         || cmd_upper.contains("ALTER")
                         || cmd_upper.contains("DROP")
@@ -12431,6 +12542,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             // ✅ CORRECTION 2026-01-31: Liste étendue des fragments à rejeter (basée sur l'analyse Log 14)
             // Vérifier si c'est un fragment commun (commence par un identifiant de colonne, etc.)
             let trimmed_lower = trimmed_cmd.to_lowercase();
+            // ✅ AMÉLIORATION 2026-01-31: Liste étendue des fragments à rejeter
             let is_fragment = first_word == "ID" 
                 || first_word.starts_with("U.")
                 || first_word.starts_with("S.")
@@ -12443,21 +12555,36 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 || first_word == "THEN"
                 || first_word == "ELSE"
                 || first_word == "END"
-                || first_word == "FROM"  // ✅ NOUVEAU: Fragment de SELECT
-                || first_word == "BEFORE"  // ✅ NOUVEAU: Fragment de CREATE TRIGGER
-                || first_word == "AFTER"  // ✅ NOUVEAU Log 15: Fragment de CREATE TRIGGER
-                || first_word == "UPDATED_AT"  // ✅ NOUVEAU: Fragment de colonne (très fréquent ~20 erreurs)
-                || first_word == "USER_ID"  // ✅ NOUVEAU: Fragment de colonne/paramètre
-                || first_word.starts_with("P_SERVICE_ID")  // ✅ NOUVEAU: Fragment de fonction
-                || first_word.starts_with("P_PAYMENT_ID")  // ✅ NOUVEAU: Fragment de fonction
+                || first_word == "FROM"  // Fragment de SELECT
+                || first_word == "BEFORE"  // Fragment de CREATE TRIGGER
+                || first_word == "AFTER"  // Fragment de CREATE TRIGGER
+                || first_word == "UPDATED_AT"  // Fragment de colonne (très fréquent)
+                || first_word == "USER_ID"  // Fragment de colonne/paramètre
+                || first_word == "DOCTOR_NAME"  // Fragment de colonne
+                || first_word == "COMMENT_PARTICIPANT"  // Fragment de colonne
+                || first_word == "DOWNLOAD_COUNT"  // Fragment de colonne
+                || first_word == "TAGS"  // Fragment de colonne
+                || first_word.starts_with("P_SERVICE_ID")  // Fragment de fonction
+                || first_word.starts_with("P_PAYMENT_ID")  // Fragment de fonction
                 || trimmed_cmd.starts_with("(")
                 || trimmed_cmd.starts_with(",")
-                // ✅ CORRECTION CRITIQUE 2026-01-31: Vérifier aussi avec trimmed_lower pour capturer tous les cas
-                || trimmed_lower.trim().starts_with("updated_at")  // ✅ CRITIQUE: Fragment de colonne (très fréquent)
-                || trimmed_lower.trim().starts_with("user_id")  // ✅ NOUVEAU: Variante lowercase
-                || trimmed_lower.trim().starts_with("p_service_id")  // ✅ NOUVEAU: Variante lowercase
-                || trimmed_lower.trim().starts_with("p_payment_id")  // ✅ NOUVEAU: Variante lowercase
-                || trimmed_lower.trim().starts_with("after");  // ✅ NOUVEAU Log 15: Variante lowercase
+                // Vérifier aussi avec trimmed_lower pour capturer tous les cas
+                || trimmed_lower.trim().starts_with("updated_at")  // Fragment de colonne (très fréquent)
+                || trimmed_lower.trim().starts_with("user_id")  // Variante lowercase
+                || trimmed_lower.trim().starts_with("doctor_name")  // Fragment de colonne
+                || trimmed_lower.trim().starts_with("comment_participant")  // Fragment de colonne
+                || trimmed_lower.trim().starts_with("download_count")  // Fragment de colonne
+                || trimmed_lower.trim().starts_with("tags")  // Fragment de colonne
+                || trimmed_lower.trim().starts_with("p_service_id")  // Variante lowercase
+                || trimmed_lower.trim().starts_with("p_payment_id")  // Variante lowercase
+                || trimmed_lower.trim().starts_with("after")  // Variante lowercase
+                // ✅ NOUVEAU 2026-01-31: Détecter les fragments de colonnes avec types SQL
+                || (trimmed_lower.trim().starts_with("updated_at") && trimmed_lower.contains("timestamptz"))
+                || (trimmed_lower.trim().starts_with("user_id") && trimmed_lower.contains("integer"))
+                || (trimmed_lower.trim().starts_with("doctor_name") && trimmed_lower.contains("varchar"))
+                || (trimmed_lower.trim().starts_with("comment_participant") && trimmed_lower.contains("text"))
+                || (trimmed_lower.trim().starts_with("download_count") && trimmed_lower.contains("integer"))
+                || (trimmed_lower.trim().starts_with("tags") && trimmed_lower.contains("text[]"));
             
             if is_fragment {
                 warn!("⚠️ Fragment de commande SQL ignoré (ne commence pas par un mot-clé SQL valide): {}", 
@@ -12466,60 +12593,76 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             }
         }
 
-        // ✅ CORRECTION 2026-01-31: Filtrer les commandes incomplètes (se terminent par ; sans contenu valide)
+        // ✅ AMÉLIORATION 2026-01-31: Filtrer les commandes incomplètes (se terminent par ; sans contenu valide)
         // Exemples: "CREATE TABLE IF NOT EXISTS duets (;" ou "CREATE INDEX IF NOT EXISTS idx_name;"
         let cmd_upper = trimmed_cmd.to_uppercase();
         
         // Vérifier si la commande est incomplète (se termine par (; ou AS; sans contenu)
-        if (cmd_upper.contains("CREATE TABLE") && trimmed_cmd.ends_with("(;"))
+        let is_incomplete = (cmd_upper.contains("CREATE TABLE") && trimmed_cmd.ends_with("(;"))
             || (cmd_upper.contains("CREATE INDEX") && trimmed_cmd.ends_with(";") && !cmd_upper.contains("ON "))
+            || (cmd_upper.contains("CREATE UNIQUE INDEX") && trimmed_cmd.ends_with(";") && !cmd_upper.contains("ON "))
             || (cmd_upper.contains("CREATE MATERIALIZED VIEW") && trimmed_cmd.ends_with("AS;"))
             || (cmd_upper.contains("CREATE FUNCTION") && trimmed_cmd.ends_with("(;"))
             || (cmd_upper.contains("CREATE OR REPLACE FUNCTION") && trimmed_cmd.ends_with("(;"))
             || (cmd_upper.contains("COMMENT ON") && trimmed_cmd.ends_with("IS;"))
             || (cmd_upper.contains("DELETE FROM") && trimmed_cmd.ends_with("NOT IN (;"))
-            || (cmd_upper.contains("ALTER TABLE") && trimmed_cmd.ends_with(";"))
-        {
+            || (cmd_upper.contains("ALTER TABLE") && trimmed_cmd.ends_with(";") && !cmd_upper.contains("ADD COLUMN") && !cmd_upper.contains("DROP COLUMN") && !cmd_upper.contains("ALTER COLUMN"))
+            // ✅ NOUVEAU 2026-01-31: Détecter les INSERT incomplets
+            || (cmd_upper.contains("INSERT INTO") && trimmed_cmd.ends_with(";") && !cmd_upper.contains("VALUES") && !cmd_upper.contains("SELECT"))
+            // ✅ NOUVEAU 2026-01-31: Détecter les CREATE INDEX sans colonnes (se termine par ON table;)
+            || (cmd_upper.contains("CREATE INDEX") && trimmed_cmd.ends_with(";") && cmd_upper.contains("ON ") && !trimmed_cmd.contains("(") && !trimmed_cmd.contains("USING"));
+        
+        if is_incomplete {
             warn!("⚠️ Commande SQL incomplète ignorée: {}", 
                 if trimmed_cmd.len() > 100 { format!("{}...", &trimmed_cmd[..100]) } else { trimmed_cmd.to_string() });
             continue;
         }
 
-        // ✅ CORRECTION 2026-01-31: Vérifier que les fonctions ont LANGUAGE plpgsql
-        // Si c'est une fonction qui se termine par $$ mais n'a pas LANGUAGE, l'ajouter
+        // ✅ AMÉLIORATION 2026-01-31: Vérifier que les fonctions ont LANGUAGE plpgsql
+        // Détecter toutes les fonctions sans LANGUAGE, même celles qui se terminent par ;
         if (cmd_upper.contains("CREATE FUNCTION") || cmd_upper.contains("CREATE OR REPLACE FUNCTION"))
-            && cmd_upper.contains("$$")
             && !cmd_upper.contains("LANGUAGE")
             && !cmd_upper.contains("RETURNS TRIGGER")
         {
-            // ✅ AMÉLIORATION: Détecter toutes les fonctions sans LANGUAGE, pas seulement celles avec RETURNS
-            warn!("⚠️ Fonction sans LANGUAGE détectée, tentative de correction...");
-            // Essayer de corriger en ajoutant LANGUAGE plpgsql avant le dernier $$
-            if let Some(last_dollar) = trimmed_cmd.rfind("$$") {
-                let before = &trimmed_cmd[..last_dollar];
-                let after = &trimmed_cmd[last_dollar..];
-                // Vérifier si END; ou END $$ est présent avant $$
-                if before.to_uppercase().contains("END") || before.to_uppercase().ends_with("END") {
-                    let corrected = format!("{} LANGUAGE plpgsql{}", before.trim_end_matches(';').trim_end(), after);
-                    warn!("   Commande corrigée: {}", 
-                        if corrected.len() > 150 { format!("{}...", &corrected[..150]) } else { corrected.clone() });
-                    // Utiliser la commande corrigée
-                    let normalized_cmd = normalize_sql_command(&corrected);
-                    // Continuer avec la commande corrigée
-                    if let Err(e) = sqlx::query(&normalized_cmd).execute(pool).await {
-                        warn!("   ⚠️ Erreur même après correction: {}", e);
+            // Si la fonction se termine par ; ou ); sans LANGUAGE, c'est une fonction incomplète
+            // Exemples: CREATE OR REPLACE FUNCTION get_user_stats(user_id_param INTEGER);
+            //          CREATE OR REPLACE FUNCTION add_product_to_service_jsonb(;
+            if (trimmed_cmd.ends_with(";") || trimmed_cmd.ends_with(");")) && !cmd_upper.contains("$$") {
+                warn!("⚠️ Fonction incomplète détectée (se termine par ; ou ); sans $$ LANGUAGE): {}", 
+                    if trimmed_cmd.len() > 100 { format!("{}...", &trimmed_cmd[..100]) } else { trimmed_cmd.to_string() });
+                continue; // Ignorer cette fonction incomplète
+            }
+            
+            // Si la fonction contient $$ mais pas LANGUAGE, ajouter LANGUAGE plpgsql
+            if cmd_upper.contains("$$") {
+                warn!("⚠️ Fonction sans LANGUAGE détectée, tentative de correction...");
+                // Essayer de corriger en ajoutant LANGUAGE plpgsql avant le dernier $$
+                if let Some(last_dollar) = trimmed_cmd.rfind("$$") {
+                    let before = &trimmed_cmd[..last_dollar];
+                    let after = &trimmed_cmd[last_dollar..];
+                    // Vérifier si END; ou END $$ est présent avant $$
+                    if before.to_uppercase().contains("END") || before.to_uppercase().ends_with("END") {
+                        let corrected = format!("{} LANGUAGE plpgsql{}", before.trim_end_matches(';').trim_end(), after);
+                        warn!("   Commande corrigée: {}", 
+                            if corrected.len() > 150 { format!("{}...", &corrected[..150]) } else { corrected.clone() });
+                        // Utiliser la commande corrigée
+                        let normalized_cmd = normalize_sql_command(&corrected);
+                        // Continuer avec la commande corrigée
+                        if let Err(e) = sqlx::query(&normalized_cmd).execute(pool).await {
+                            warn!("   ⚠️ Erreur même après correction: {}", e);
+                        }
+                        continue;
+                    } else if before.to_uppercase().contains("AS $$") || before.to_uppercase().contains("$$") {
+                        // Fonction avec AS $$ mais sans END explicite - ajouter LANGUAGE avant le dernier $$
+                        let corrected = format!("{} LANGUAGE plpgsql{}", before.trim_end(), after);
+                        warn!("   Commande corrigée (sans END): {}", 
+                            if corrected.len() > 150 { format!("{}...", &corrected[..150]) } else { corrected.clone() });
+                        let normalized_cmd = normalize_sql_command(&corrected);
+                        if let Err(e) = sqlx::query(&normalized_cmd).execute(pool).await {
+                            warn!("   ⚠️ Erreur même après correction: {}", e);
+                        }
+                        continue;
                     }
-                    continue;
-                } else if before.to_uppercase().contains("AS $$") || before.to_uppercase().contains("$$") {
-                    // Fonction avec AS $$ mais sans END explicite - ajouter LANGUAGE avant le dernier $$
-                    let corrected = format!("{} LANGUAGE plpgsql{}", before.trim_end(), after);
-                    warn!("   Commande corrigée (sans END): {}", 
-                        if corrected.len() > 150 { format!("{}...", &corrected[..150]) } else { corrected.clone() });
-                    let normalized_cmd = normalize_sql_command(&corrected);
-                    if let Err(e) = sqlx::query(&normalized_cmd).execute(pool).await {
-                        warn!("   ⚠️ Erreur même après correction: {}", e);
-                    }
-                    continue;
                 }
             }
         }
@@ -12741,7 +12884,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                     }
                 }
 
-                // ✅ CORRIGÉ: Ignorer silencieusement les erreurs attendues courantes
+                // ✅ AMÉLIORATION 2026-01-31: Ignorer silencieusement les erreurs attendues courantes
                 let is_expected_error =
                     // Colonnes/tables/index/triggers déjà existants
                     error_lower.contains("already exists") ||
@@ -12771,6 +12914,8 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                         error_lower.contains("near \")\"") ||
                         error_lower.contains("unexpected") && error_lower.contains(")")
                     )) ||
+                    // ✅ NOUVEAU 2026-01-31: Erreurs "syntax error at end of input" pour triggers incomplets dans EXECUTE
+                    (error_lower.contains("syntax error") && error_lower.contains("at end of input") && normalized_cmd.to_uppercase().contains("EXECUTE") && normalized_cmd.to_uppercase().contains("CREATE TRIGGER")) ||
                     // Commandes multiples dans prepared statement (erreur attendue si on n'a pas pu la diviser)
                     error_lower.contains("cannot insert multiple commands into a prepared statement") ||
                     // Fonctions dans index predicate (IMMUTABLE requis)

@@ -741,32 +741,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::info!("ℹ️ [MIGRATIONS INDIVIDUELLES] Migration 0 existe déjà dans _sqlx_migrations, skip de l'application directe");
     }
 
-    // ✅ SOLUTION CAUSE RACINE 2026-01-29: Exécuter la migration consolidée AVANT sqlx::migrate!()
-    // pour garantir qu'elle s'exécute toujours, même si sqlx::migrate!() échoue ou ne s'exécute pas
-    // Cette approche est similaire à Render qui utilisait auto_migrate::run_auto_migrations()
-    // qui appelait directement execute_multiple_sql_commands() indépendamment de sqlx::migrate!()
-    log::warn!("🔄 [MIGRATION CONSOLIDÉE] Application FORCÉE de la migration consolidée AVANT sqlx::migrate!()...");
-    log::info!("💡 Cette approche garantit que la migration consolidée s'exécute toujours, comme sur Render");
-    let migration_sql = include_str!("../migrations/20260129_create_missing_tables_aws.sql");
-    log::info!(
-        "🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères",
-        migration_sql.len()
-    );
-    log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands déjà importée, début de l'exécution...");
-
-    match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
-        Ok(_) => {
-            log::info!("✅ [MIGRATION CONSOLIDÉE] Migration consolidée appliquée avec succès (AVANT sqlx::migrate!())");
-        }
-        Err(e) => {
-            log::error!("❌ [MIGRATION CONSOLIDÉE] Erreur lors de l'application FORCÉE de la migration consolidée: {}", e);
-            log::error!("❌ [MIGRATION CONSOLIDÉE] Type d'erreur: {:?}", e);
-            if let Some(source) = e.source() {
-                log::error!("❌ [MIGRATION CONSOLIDÉE] Source: {}", source);
-            }
-            // Ne pas arrêter l'application, continuer avec sqlx::migrate!()
-        }
-    }
+    // ✅ SUPPRIMÉ 2026-01-31: Migration consolidée redondante supprimée
+    // Les migrations individuelles (run_individual_migrations) sont maintenant utilisées exclusivement
+    // Cela évite les conflits et les erreurs de division SQL
+    // Ancien code supprimé: migration consolidée 20260129_create_missing_tables_aws.sql
 
     // ✅ Ensuite, appliquer toutes les migrations SQLx standard (y compris 0000 pour le checksum)
     // SQLx va détecter que la migration 0 est déjà appliquée (tables créées) et va juste
@@ -854,23 +832,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "❌ Les migrations automatiques ne pourront pas s'exécuter correctement"
                 );
 
-                // ✅ NOUVEAU 2026-01-29: Essayer d'appliquer la migration consolidée si les tables de base manquent
-                log::warn!("🔄 [MIGRATION CONSOLIDÉE] Tentative d'application de la migration consolidée pour créer les tables manquantes...");
-                log::info!("🔍 [MIGRATION CONSOLIDÉE] Chargement du fichier de migration...");
-                let migration_sql =
-                    include_str!("../migrations/20260129_create_missing_tables_aws.sql");
-                log::info!(
-                    "🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères",
-                    migration_sql.len()
-                );
-                use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
-                log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands importée, début de l'exécution...");
-
-                match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
-                    Ok(_) => {
-                        log::info!("✅ Migration consolidée appliquée avec succès");
-                        // Vérifier à nouveau
-                        let users_exists_after: bool = sqlx::query_scalar(
+                // ✅ SUPPRIMÉ 2026-01-31: Migration consolidée redondante supprimée
+                // Les migrations individuelles (run_individual_migrations) sont maintenant utilisées exclusivement
+                // Si les tables manquent, vérifier que run_individual_migrations a bien été exécuté
+                log::warn!("⚠️ [MIGRATIONS] Tables de base manquantes. Vérifiez que run_individual_migrations a été exécuté.");
+                
+                // Vérifier à nouveau (sans migration consolidée)
+                let users_exists_after: bool = sqlx::query_scalar(
                             "SELECT EXISTS (
                                 SELECT FROM information_schema.tables 
                                 WHERE table_schema = 'public' 
@@ -1030,26 +998,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "❌ CAUSE PROBABLE: Les migrations n'ont pas été appliquées correctement"
                 );
 
-                // ✅ NOUVEAU 2026-01-29: Essayer d'appliquer la migration consolidée pour créer les tables manquantes
-                log::warn!("🔄 [MIGRATION CONSOLIDÉE] Tentative d'application de la migration consolidée pour créer les tables manquantes...");
-                log::info!(
-                    "🔍 [MIGRATION CONSOLIDÉE] Tables manquantes: {:?}",
-                    missing_tables
-                );
-                let migration_sql =
-                    include_str!("../migrations/20260129_create_missing_tables_aws.sql");
-                log::info!(
-                    "🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères",
-                    migration_sql.len()
-                );
-                use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
-                log::info!("🔍 [MIGRATION CONSOLIDÉE] Fonction execute_multiple_sql_commands importée, début de l'exécution...");
+                // ✅ SUPPRIMÉ 2026-01-31: Migration consolidée redondante supprimée
+                // Les migrations individuelles (run_individual_migrations) sont maintenant utilisées exclusivement
+                log::warn!("⚠️ [MIGRATIONS] Tables manquantes: {:?}", missing_tables);
+                log::warn!("⚠️ [MIGRATIONS] Vérifiez que run_individual_migrations a été exécuté correctement.");
 
-                match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
-                    Ok(_) => {
-                        log::info!("✅ Migration consolidée appliquée avec succès");
-
-                        // Vérifier à nouveau les tables manquantes
+                        // Vérifier les tables manquantes (sans migration consolidée)
                         let mut still_missing = Vec::new();
                         for table_name in &missing_tables {
                             let exists: bool = sqlx::query_scalar(
@@ -1066,12 +1020,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                             if exists {
                                 log::info!(
-                                    "  ✅ Table '{}' créée par la migration consolidée",
+                                    "  ✅ Table '{}' existe",
                                     table_name
                                 );
                             } else {
                                 log::error!(
-                                    "  ❌ Table '{}' toujours manquante après migration consolidée",
+                                    "  ❌ Table '{}' toujours manquante",
                                     table_name
                                 );
                                 still_missing.push(*table_name);
@@ -1165,31 +1119,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log::error!("   Source: {}", source);
             }
 
-            // ✅ NOUVEAU 2026-01-29: FORCER l'application de la migration consolidée même si SQLx échoue
-            log::warn!("🔄 [MIGRATION CONSOLIDÉE] SQLx a échoué, tentative d'application de la migration consolidée de secours...");
-            let migration_sql =
-                include_str!("../migrations/20260129_create_missing_tables_aws.sql");
-            log::info!(
-                "🔍 [MIGRATION CONSOLIDÉE] Fichier chargé, taille: {} caractères",
-                migration_sql.len()
-            );
-            use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
-
-            match execute_multiple_sql_commands(&pg_pool, migration_sql).await {
-                Ok(_) => {
-                    log::info!("✅ [MIGRATION CONSOLIDÉE] Migration consolidée appliquée avec succès (après échec SQLx)");
-                }
-                Err(migration_err) => {
-                    log::error!("❌ [MIGRATION CONSOLIDÉE] Erreur lors de l'application de la migration consolidée: {}", migration_err);
-                    log::error!(
-                        "❌ [MIGRATION CONSOLIDÉE] Type d'erreur: {:?}",
-                        migration_err
-                    );
-                    if let Some(source) = migration_err.source() {
-                        log::error!("❌ [MIGRATION CONSOLIDÉE] Source: {}", source);
-                    }
-                }
-            }
+            // ✅ SUPPRIMÉ 2026-01-31: Migration consolidée redondante supprimée
+            // Les migrations individuelles (run_individual_migrations) sont maintenant utilisées exclusivement
+            // Si SQLx échoue, vérifier que run_individual_migrations a bien été exécuté
+            log::warn!("⚠️ [MIGRATIONS] SQLx a échoué. Vérifiez que run_individual_migrations a été exécuté correctement.");
+            log::warn!("⚠️ [MIGRATIONS] Les migrations individuelles doivent être appliquées avant sqlx::migrate!()");
 
             // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
             if error_str.contains("migration 0 was previously applied but has been modified") {
