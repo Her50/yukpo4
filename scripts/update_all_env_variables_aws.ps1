@@ -42,11 +42,24 @@ Write-Host ""
 # Demander le mot de passe si non fourni
 if ([string]::IsNullOrEmpty($DbPassword)) {
     Write-Host "Mot de passe de la base de donnees requis" -ForegroundColor Yellow
-    Write-Host "Note: Le mot de passe ne sera pas affiche a l'ecran pour des raisons de securite" -ForegroundColor Gray
-    $securePassword = Read-Host "Entrez le mot de passe de la base de donnees" -AsSecureString
-    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
-    $DbPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
     Write-Host ""
+    Write-Host "Usage: .\update_all_env_variables_aws.ps1 -DbPassword 'VOTRE_MOT_DE_PASSE'" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Ou definir la variable d'environnement:" -ForegroundColor Cyan
+    Write-Host '  $env:DB_PASSWORD = "VOTRE_MOT_DE_PASSE"' -ForegroundColor Cyan
+    Write-Host '  .\update_all_env_variables_aws.ps1' -ForegroundColor Cyan
+    Write-Host ""
+    
+    # Essayer de recuperer depuis la variable d'environnement
+    if (-not [string]::IsNullOrEmpty($env:DB_PASSWORD)) {
+        $DbPassword = $env:DB_PASSWORD
+        Write-Host "Mot de passe recupere depuis la variable d'environnement DB_PASSWORD" -ForegroundColor Green
+        Write-Host ""
+    } else {
+        Write-Host "ERREUR: Mot de passe non fourni" -ForegroundColor Red
+        Write-Host "Fournissez le mot de passe avec -DbPassword ou definissez DB_PASSWORD" -ForegroundColor Red
+        exit 1
+    }
 }
 
 # Construire le DATABASE_URL
