@@ -18,8 +18,12 @@ Liste des services externes qui référencent encore Render et doivent être mis
 **Action** : Vérifier si ces URLs pointent vers Render ou un serveur externe. Si c'est un serveur externe, pas de changement nécessaire.
 
 **Où mettre à jour** :
-- AWS SSM Parameter Store : `/yukpomnang/production/LIVEKIT_*`
-- Configuration LiveKit si elle référence le backend Render
+- **AWS SSM Parameter Store** : `/yukpomnang/production/LIVEKIT_*`
+  - Console AWS : https://console.aws.amazon.com/systems-manager/parameters
+  - Ou via AWS CLI : `aws ssm put-parameter --name "/yukpomnang/production/LIVEKIT_API_URL" --value "..." --region us-east-1 --overwrite`
+- **Configuration LiveKit** : Si LiveKit a une console web, vérifier les URLs de callback
+  - Console LiveKit (si hébergé) : Généralement sur le même serveur que l'API (`http://46.224.14.85:7880`)
+  - Dashboard LiveKit : Vérifier les paramètres de configuration
 
 ---
 
@@ -31,8 +35,12 @@ Liste des services externes qui référencent encore Render et doivent être mis
 **Action** : Vérifier si ce service est hébergé sur Render ou externe. Si Render, mettre à jour vers AWS.
 
 **Où mettre à jour** :
-- AWS SSM Parameter Store : `/yukpomnang/production/VIDEO_RENDERER_RPC_URL`
-- Configuration du service Video Renderer
+- **AWS SSM Parameter Store** : `/yukpomnang/production/VIDEO_RENDERER_RPC_URL`
+  - Console AWS : https://console.aws.amazon.com/systems-manager/parameters
+  - Ou via AWS CLI : `aws ssm put-parameter --name "/yukpomnang/production/VIDEO_RENDERER_RPC_URL" --value "http://VOTRE_SERVEUR:8088/render" --region us-east-1 --overwrite`
+- **Configuration du service Video Renderer** :
+  - Si hébergé sur un serveur : Accéder à la configuration du service (fichier de config ou interface web)
+  - Si sur Render : https://dashboard.render.com → Voir les services
 
 ---
 
@@ -45,8 +53,13 @@ Liste des services externes qui référencent encore Render et doivent être mis
 **Action** : Vérifier si SRS est hébergé sur Render ou externe.
 
 **Où mettre à jour** :
-- AWS SSM Parameter Store : `/yukpomnang/production/SRS_*`
-- Configuration SRS
+- **AWS SSM Parameter Store** : `/yukpomnang/production/SRS_*`
+  - Console AWS : https://console.aws.amazon.com/systems-manager/parameters
+  - Ou via AWS CLI : `aws ssm put-parameter --name "/yukpomnang/production/SRS_HLS_URL" --value "..." --region us-east-1 --overwrite`
+- **Configuration SRS** :
+  - Console SRS : Généralement `http://46.224.14.85:1985` (port par défaut)
+  - Dashboard SRS : `http://46.224.14.85:1985/console`
+  - Fichier de configuration : `/usr/local/srs/conf/srs.conf` (si accès SSH)
 
 ---
 
@@ -58,15 +71,33 @@ Liste des services externes qui référencent encore Render et doivent être mis
 **⚠️ CRITIQUE** : Cette URL doit être mise à jour vers l'URL AWS ALB.
 
 **Où mettre à jour** :
+
 1. **Google Cloud Console** (YouTube OAuth) :
-   - Aller dans [Google Cloud Console](https://console.cloud.google.com/)
-   - APIs & Services → Credentials
-   - Sélectionner le OAuth 2.0 Client ID
-   - Mettre à jour "Authorized redirect URIs" avec l'URL AWS ALB
+   - **Lien direct** : https://console.cloud.google.com/apis/credentials
+   - **Étapes** :
+     - Aller dans [Google Cloud Console](https://console.cloud.google.com/)
+     - Sélectionner votre projet (ou créer un projet si nécessaire)
+     - Menu latéral : **APIs & Services** → **Credentials**
+     - Chercher le **OAuth 2.0 Client ID** utilisé pour YouTube
+     - Cliquer sur le nom du client pour l'éditer
+     - Dans **Authorized redirect URIs**, ajouter/modifier :
+       ```
+       https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com/api/social/youtube/callback
+       ```
+     - Cliquer sur **Save**
 
 2. **AWS SSM Parameter Store** :
-   - `/yukpomnang/production/YOUTUBE_REDIRECT_URI`
-   - Nouvelle valeur : `https://VOTRE_ALB_URL/api/social/youtube/callback`
+   - **Lien direct** : https://console.aws.amazon.com/systems-manager/parameters?region=us-east-1
+   - **Étapes** :
+     - Aller dans [AWS Systems Manager Parameter Store](https://console.aws.amazon.com/systems-manager/parameters?region=us-east-1)
+     - Rechercher `/yukpomnang/production/YOUTUBE_REDIRECT_URI`
+     - Cliquer sur le paramètre → **Edit**
+     - Nouvelle valeur : `https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com/api/social/youtube/callback`
+     - Cliquer sur **Save changes**
+   - **Ou via AWS CLI** :
+     ```powershell
+     aws ssm put-parameter --name "/yukpomnang/production/YOUTUBE_REDIRECT_URI" --value "https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com/api/social/youtube/callback" --type "String" --region us-east-1 --overwrite
+     ```
 
 **Nouvelle URL attendue** :
 ```
@@ -84,8 +115,28 @@ https://VOTRE_ALB_DNS_NAME.region.elb.amazonaws.com/api/social/youtube/callback
 **Action** : Vérifier si le CDN pointe vers Render ou AWS S3/CloudFront.
 
 **Où mettre à jour** :
-- Si le CDN pointe vers Render, mettre à jour vers AWS S3/CloudFront
-- AWS SSM Parameter Store : `/yukpomnang/production/PUBLIC_BASE_URL` et `/yukpomnang/production/UPLOAD_BASE_URL`
+
+1. **AWS CloudFront** (si vous utilisez CloudFront) :
+   - **Lien direct** : https://console.aws.amazon.com/cloudfront/v3/home
+   - **Étapes** :
+     - Aller dans [AWS CloudFront Console](https://console.aws.amazon.com/cloudfront/v3/home)
+     - Sélectionner votre distribution CloudFront
+     - Vérifier les **Origins** et **Behaviors**
+     - Si le CDN pointe vers Render, mettre à jour vers S3 ou ALB
+
+2. **AWS S3** (si vous utilisez S3 directement) :
+   - **Lien direct** : https://s3.console.aws.amazon.com/s3/buckets
+   - **Étapes** :
+     - Aller dans [AWS S3 Console](https://s3.console.aws.amazon.com/s3/buckets)
+     - Vérifier que le bucket `yukpomnang-media-prod` est configuré correctement
+     - Vérifier les permissions et la configuration CORS
+
+3. **AWS SSM Parameter Store** :
+   - **Lien direct** : https://console.aws.amazon.com/systems-manager/parameters?region=us-east-1
+   - **Étapes** :
+     - Mettre à jour `/yukpomnang/production/PUBLIC_BASE_URL` et `/yukpomnang/production/UPLOAD_BASE_URL`
+     - Si vous utilisez CloudFront, utiliser l'URL CloudFront
+     - Si vous utilisez S3 directement, utiliser l'URL S3 (ex: `https://yukpomnang-media-prod.s3.us-east-1.amazonaws.com`)
 
 ---
 
@@ -98,8 +149,20 @@ https://VOTRE_ALB_DNS_NAME.region.elb.amazonaws.com/api/social/youtube/callback
 **Action** : Ces webhooks Slack sont externes, pas besoin de changement. Mais vérifier que les notifications pointent vers le bon backend.
 
 **Où mettre à jour** :
-- Si les webhooks doivent notifier le backend, mettre à jour les URLs dans Slack
-- AWS SSM Parameter Store : `/yukpomnang/production/PIPELINE_ALERT_WEBHOOK` et `/yukpomnang/production/SLA_ALERT_WEBHOOK`
+
+1. **Slack** (si vous devez créer/modifier des webhooks) :
+   - **Lien direct** : https://api.slack.com/apps
+   - **Étapes** :
+     - Aller dans [Slack API Apps](https://api.slack.com/apps)
+     - Sélectionner votre application Slack
+     - **Incoming Webhooks** → Vérifier/modifier les URLs de webhook
+     - Ou créer de nouveaux webhooks si nécessaire
+
+2. **AWS SSM Parameter Store** :
+   - **Lien direct** : https://console.aws.amazon.com/systems-manager/parameters?region=us-east-1
+   - **Étapes** :
+     - Mettre à jour `/yukpomnang/production/PIPELINE_ALERT_WEBHOOK` et `/yukpomnang/production/SLA_ALERT_WEBHOOK`
+     - Les valeurs sont déjà correctes (webhooks Slack), juste vérifier qu'elles existent dans SSM
 
 ---
 
@@ -110,14 +173,27 @@ https://VOTRE_ALB_DNS_NAME.region.elb.amazonaws.com/api/social/youtube/callback
 - **YouTube OAuth** : `YOUTUBE_CLIENT_ID` et `YOUTUBE_CLIENT_SECRET`
 
 **Action** : Mettre à jour les "Authorized redirect URIs" dans :
+
 1. **Google Cloud Console** :
-   - APIs & Services → Credentials
-   - Mettre à jour les redirect URIs pour pointer vers AWS ALB
+   - **Lien direct** : https://console.cloud.google.com/apis/credentials
+   - **Étapes** :
+     - Aller dans [Google Cloud Console](https://console.cloud.google.com/)
+     - Sélectionner votre projet
+     - Menu latéral : **APIs & Services** → **Credentials**
+     - Chercher les **OAuth 2.0 Client IDs** :
+       - Un pour Google OAuth général
+       - Un pour YouTube OAuth
+     - Pour chaque client :
+       - Cliquer sur le nom du client pour l'éditer
+       - Dans **Authorized redirect URIs**, ajouter/modifier :
+         - Google OAuth : `https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com/api/auth/google/callback`
+         - YouTube OAuth : `https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com/api/social/youtube/callback`
+       - Cliquer sur **Save**
 
 **Nouvelle URL attendue** :
 ```
-https://VOTRE_ALB_DNS_NAME/api/auth/google/callback
-https://VOTRE_ALB_DNS_NAME/api/social/youtube/callback
+https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com/api/auth/google/callback
+https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com/api/social/youtube/callback
 ```
 
 ---
@@ -130,8 +206,30 @@ https://VOTRE_ALB_DNS_NAME/api/social/youtube/callback
 **Action** : Vérifier si ces services ont des webhooks ou callbacks qui pointent vers Render.
 
 **Où mettre à jour** :
-- Dashboards MTN Money / Orange Money
-- URLs de callback/webhook vers AWS ALB
+
+1. **MTN Money** :
+   - **Lien direct** : https://momodeveloper.mtn.com/ (si vous utilisez l'API MTN)
+   - **Étapes** :
+     - Aller dans le dashboard MTN Money Developer
+     - Vérifier les **Webhooks** ou **Callbacks**
+     - Mettre à jour les URLs vers AWS ALB :
+       ```
+       https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com/api/payments/mtn/callback
+       ```
+
+2. **Orange Money** :
+   - **Lien direct** : https://developer.orange.com/ (si vous utilisez l'API Orange)
+   - **Étapes** :
+     - Aller dans le dashboard Orange Developer
+     - Vérifier les **Webhooks** ou **Callbacks**
+     - Mettre à jour les URLs vers AWS ALB :
+       ```
+       https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com/api/payments/orange/callback
+       ```
+
+3. **AWS SSM Parameter Store** :
+   - **Lien direct** : https://console.aws.amazon.com/systems-manager/parameters?region=us-east-1
+   - Vérifier que les variables `MTN_MONEY_*` et `ORANGE_MONEY_*` sont présentes
 
 ---
 
@@ -139,16 +237,20 @@ https://VOTRE_ALB_DNS_NAME/api/social/youtube/callback
 
 ### Via AWS Console
 
-1. **Console AWS** → **EC2** → **Load Balancers**
-2. Sélectionner votre ALB (Application Load Balancer)
-3. Onglet **Description**
-4. Copier le **DNS name** (ex: `yukpomnang-alb-123456789.us-east-1.elb.amazonaws.com`)
+1. **Lien direct** : https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#LoadBalancers:
+2. **Étapes** :
+   - Aller dans [AWS EC2 Console - Load Balancers](https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#LoadBalancers:)
+   - Sélectionner votre ALB : `yukpomnang-backend-alb`
+   - Onglet **Description**
+   - Copier le **DNS name** : `yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com`
 
 ### Via AWS CLI
 
 ```powershell
 aws elbv2 describe-load-balancers --region us-east-1 --query "LoadBalancers[?contains(LoadBalancerName, 'yukpomnang')].DNSName" --output text
 ```
+
+**Résultat actuel** : `yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com`
 
 ---
 
