@@ -14,32 +14,43 @@ if (!fs.existsSync(buildGradlePath)) {
 let buildGradleContent = fs.readFileSync(buildGradlePath, 'utf8');
 const originalContent = buildGradleContent;
 
-// Vérifier si le plugin Kotlin est déjà dans le buildscript
-if (buildGradleContent.includes('classpath("org.jetbrains.kotlin:kotlin-gradle-plugin') || 
-    buildGradleContent.includes("classpath('org.jetbrains.kotlin:kotlin-gradle-plugin")) {
-    console.log('✅ Kotlin plugin already present in buildscript');
-    // Vérifier aussi si le buildscript existe et est correctement configuré
-    if (!buildGradleContent.includes('buildscript')) {
-        console.log('⚠️ No buildscript found, but Kotlin plugin reference exists. This may cause issues.');
-    }
+console.log('📄 Reading expo-modules-core/android/build.gradle...');
+console.log(`   File size: ${buildGradleContent.length} characters`);
+console.log(`   First 200 chars: ${buildGradleContent.substring(0, 200)}`);
+
+// Vérifier si le plugin Kotlin est déjà dans le buildscript ET que le buildscript est avant l'import
+const hasKotlinPlugin = buildGradleContent.includes('classpath("org.jetbrains.kotlin:kotlin-gradle-plugin') || 
+    buildGradleContent.includes("classpath('org.jetbrains.kotlin:kotlin-gradle-plugin");
+const hasKotlinImport = buildGradleContent.includes('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile');
+const buildscriptIndex = buildGradleContent.indexOf('buildscript');
+const importIndex = buildGradleContent.indexOf('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile');
+
+if (hasKotlinPlugin && (!hasKotlinImport || (buildscriptIndex !== -1 && importIndex !== -1 && buildscriptIndex < importIndex))) {
+    console.log('✅ Kotlin plugin already present in buildscript and correctly positioned');
     process.exit(0);
 }
 
-// Vérifier si le fichier commence par un import KotlinCompile (c'est le problème)
-const hasKotlinImport = /^import\s+org\.jetbrains\.kotlin\.gradle\.tasks\.KotlinCompile/m.test(buildGradleContent);
-
-if (hasKotlinImport && !buildGradleContent.includes('buildscript')) {
-    console.log('🔧 Found KotlinCompile import but no buildscript. Adding buildscript before imports...');
+// Si l'import existe et est avant le buildscript (ou pas de buildscript), on doit corriger
+if (hasKotlinImport && (buildscriptIndex === -1 || importIndex < buildscriptIndex)) {
+    console.log('🔧 CRITICAL: Found KotlinCompile import before buildscript. Fixing...');
+    console.log(`   Import at index: ${importIndex}`);
+    console.log(`   Buildscript at index: ${buildscriptIndex}`);
     
-    // Extraire tous les imports au début du fichier
-    const importLines = [];
+    // Extraire tous les imports au début du fichier (peuvent être sur plusieurs lignes)
     const lines = buildGradleContent.split('\n');
+    const importLines = [];
     let i = 0;
+    // Collecter tous les imports consécutifs au début
     while (i < lines.length && /^\s*import\s+/.test(lines[i])) {
         importLines.push(lines[i]);
         i++;
     }
-    const imports = importLines.length > 0 ? importLines.join('\n') + '\n' : '';
+    // Ignorer les lignes vides après les imports
+    while (i < lines.length && /^\s*$/.test(lines[i])) {
+        i++;
+    }
+    
+    const imports = importLines.length > 0 ? importLines.join('\n') + '\n\n' : '';
     const restOfFile = lines.slice(i).join('\n');
     
     // Créer le buildscript avec le plugin Kotlin AVANT les imports
@@ -59,12 +70,17 @@ if (hasKotlinImport && !buildGradleContent.includes('buildscript')) {
 `;
     
     buildGradleContent = buildscript + imports + restOfFile;
-} else if (buildGradleContent.includes('buildscript')) {
-    // Le buildscript existe, ajouter le plugin Kotlin dedans
+    console.log('✅ Buildscript added before imports');
+} else if (buildGradleContent.includes('buildscript') && buildscriptIndex !== -1 && (importIndex === -1 || buildscriptIndex < importIndex)) {
+    // Le buildscript existe et est avant l'import (ou pas d'import), ajouter le plugin Kotlin dedans
     console.log('🔧 Adding Kotlin plugin to existing buildscript...');
     
     // Vérifier si le buildscript a un bloc ext pour kotlinVersion
-    if (!buildGradleContent.includes('ext {') || !buildGradleContent.match(/ext\s*\{[^}]*kotlinVersion/s)) {
+    const buildscriptBlock = buildGradleContent.substring(buildscriptIndex);
+    const buildscriptEnd = buildscriptBlock.indexOf('}') + 1; // Trouver la fin du bloc buildscript
+    const buildscriptContent = buildGradleContent.substring(buildscriptIndex, buildscriptIndex + buildscriptEnd);
+    
+    if (!buildscriptContent.includes('kotlinVersion')) {
         // Ajouter ext avec kotlinVersion dans le buildscript
         buildGradleContent = buildGradleContent.replace(
             /(buildscript\s*\{)/s,
@@ -77,15 +93,26 @@ if (hasKotlinImport && !buildGradleContent.includes('buildscript')) {
     
     // Vérifier si repositories existe dans buildscript
     if (!buildGradleContent.match(/buildscript\s*\{[^}]*repositories\s*\{/s)) {
-        // Ajouter repositories après ext
-        buildGradleContent = buildGradleContent.replace(
-            /(buildscript\s*\{[^}]*ext\s*\{[^}]*\})/s,
-            `$1
+        // Ajouter repositories après ext ou au début du buildscript
+        if (buildGradleContent.match(/buildscript\s*\{[^}]*ext\s*\{[^}]*\}/s)) {
+            buildGradleContent = buildGradleContent.replace(
+                /(buildscript\s*\{[^}]*ext\s*\{[^}]*\})/s,
+                `$1
     repositories {
         google()
         mavenCentral()
     }`
-        );
+            );
+        } else {
+            buildGradleContent = buildGradleContent.replace(
+                /(buildscript\s*\{)/s,
+                `$1
+    repositories {
+        google()
+        mavenCentral()
+    }`
+            );
+        }
     }
     
     // Ajouter le plugin Kotlin dans dependencies
@@ -109,8 +136,9 @@ if (hasKotlinImport && !buildGradleContent.includes('buildscript')) {
         );
     }
 } else {
-    // Pas de buildscript, pas d'import - ajouter le buildscript au début
-    console.log('🔧 No buildscript found. Adding buildscript at the beginning...');
+    // Pas de buildscript, ou buildscript après l'import - ajouter le buildscript au début
+    console.log('🔧 No buildscript found (or buildscript after import). Adding buildscript at the beginning...');
+    
     const buildscript = `buildscript {
     ext {
         kotlinVersion = findProperty('kotlinVersion') ?: findProperty('android.kotlinVersion') ?: '1.9.25'
@@ -125,34 +153,85 @@ if (hasKotlinImport && !buildGradleContent.includes('buildscript')) {
 }
 
 `;
-    buildGradleContent = buildscript + buildGradleContent;
+    
+    // Si l'import existe, l'extraire d'abord
+    if (hasKotlinImport) {
+        const lines = buildGradleContent.split('\n');
+        const importLines = [];
+        let i = 0;
+        while (i < lines.length && /^\s*import\s+/.test(lines[i])) {
+            importLines.push(lines[i]);
+            i++;
+        }
+        while (i < lines.length && /^\s*$/.test(lines[i])) {
+            i++;
+        }
+        const imports = importLines.length > 0 ? importLines.join('\n') + '\n\n' : '';
+        const restOfFile = lines.slice(i).join('\n');
+        buildGradleContent = buildscript + imports + restOfFile;
+    } else {
+        buildGradleContent = buildscript + buildGradleContent;
+    }
 }
 
 if (buildGradleContent !== originalContent) {
     fs.writeFileSync(buildGradlePath, buildGradleContent, 'utf8');
     console.log('✅ Kotlin plugin added to expo-modules-core/android/build.gradle');
+    console.log(`   File modified: ${buildGradlePath}`);
     
     // Vérifier que le buildscript est bien avant les imports
     const finalContent = fs.readFileSync(buildGradlePath, 'utf8');
-    const buildscriptIndex = finalContent.indexOf('buildscript');
-    const importIndex = finalContent.indexOf('import org.jetbrains.kotlin');
+    const finalBuildscriptIndex = finalContent.indexOf('buildscript');
+    const finalImportIndex = finalContent.indexOf('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile');
+    const finalKotlinPlugin = finalContent.includes('classpath("org.jetbrains.kotlin:kotlin-gradle-plugin') || 
+        finalContent.includes("classpath('org.jetbrains.kotlin:kotlin-gradle-plugin");
     
-    if (importIndex !== -1 && buildscriptIndex !== -1 && importIndex < buildscriptIndex) {
-        console.log('⚠️ WARNING: Import found before buildscript. This may cause issues.');
-        console.log('   Consider moving imports after buildscript or using fully qualified class names.');
-    } else if (importIndex !== -1 && buildscriptIndex === -1) {
-        console.log('⚠️ WARNING: Import found but no buildscript. This will cause build failures.');
+    console.log(`   Final buildscript index: ${finalBuildscriptIndex}`);
+    console.log(`   Final import index: ${finalImportIndex}`);
+    console.log(`   Kotlin plugin present: ${finalKotlinPlugin}`);
+    
+    if (finalImportIndex !== -1 && finalBuildscriptIndex !== -1 && finalImportIndex < finalBuildscriptIndex) {
+        console.log('❌ ERROR: Import still found before buildscript after fix!');
+        console.log('   This will cause the build to fail.');
+        console.log('   First 500 chars of file:');
+        console.log(finalContent.substring(0, 500));
+        process.exit(1);
+    } else if (finalImportIndex !== -1 && finalBuildscriptIndex === -1) {
+        console.log('❌ ERROR: Import found but no buildscript after fix!');
+        console.log('   This will cause the build to fail.');
+        process.exit(1);
+    } else if (!finalKotlinPlugin) {
+        console.log('❌ ERROR: Kotlin plugin not found in buildscript after fix!');
+        console.log('   This will cause the build to fail.');
+        process.exit(1);
     } else {
-        console.log('✅ Buildscript is correctly positioned before imports (if any)');
+        console.log('✅ Buildscript is correctly positioned before imports');
+        console.log('✅ Kotlin plugin is present in buildscript');
+        console.log('✅ Fix applied successfully!');
     }
 } else {
     console.log('⚠️ No changes made to build.gradle');
     // Vérifier quand même si le problème persiste
-    if (buildGradleContent.includes('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile') && 
-        !buildGradleContent.includes('classpath("org.jetbrains.kotlin:kotlin-gradle-plugin')) {
-        console.log('❌ ERROR: KotlinCompile import found but Kotlin plugin not in buildscript!');
-        console.log('   This will cause the build to fail.');
-        process.exit(1);
+    if (buildGradleContent.includes('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile')) {
+        const hasPlugin = buildGradleContent.includes('classpath("org.jetbrains.kotlin:kotlin-gradle-plugin') || 
+            buildGradleContent.includes("classpath('org.jetbrains.kotlin:kotlin-gradle-plugin");
+        const bsIndex = buildGradleContent.indexOf('buildscript');
+        const impIndex = buildGradleContent.indexOf('import org.jetbrains.kotlin.gradle.tasks.KotlinCompile');
+        
+        if (!hasPlugin || (bsIndex === -1) || (impIndex !== -1 && impIndex < bsIndex)) {
+            console.log('❌ ERROR: KotlinCompile import found but fix not applied!');
+            console.log(`   Has plugin: ${hasPlugin}`);
+            console.log(`   Buildscript index: ${bsIndex}`);
+            console.log(`   Import index: ${impIndex}`);
+            console.log('   This will cause the build to fail.');
+            console.log('   First 500 chars of file:');
+            console.log(buildGradleContent.substring(0, 500));
+            process.exit(1);
+        } else {
+            console.log('✅ File already correctly configured');
+        }
+    } else {
+        console.log('✅ No KotlinCompile import found, file should be OK');
     }
 }
 

@@ -11947,6 +11947,24 @@ fn normalize_sql_command(cmd: &str) -> String {
         }
     }
 
+    // ✅ NOUVEAU 2026-01-31: Normaliser ALTER TABLE ADD COLUMN - ajouter IF NOT EXISTS si manquant
+    // PostgreSQL supporte ALTER TABLE ... ADD COLUMN IF NOT EXISTS depuis la version 9.6
+    if upper.contains("ALTER TABLE")
+        && upper.contains("ADD COLUMN")
+        && !upper.contains("IF NOT EXISTS")
+    {
+        // Pattern: ALTER TABLE table_name ADD COLUMN column_name ...
+        // -> ALTER TABLE table_name ADD COLUMN IF NOT EXISTS column_name ...
+        if let Some(add_col_pos) = upper.find("ADD COLUMN") {
+            let before_add = &trimmed[..add_col_pos];
+            let after_add = &trimmed[add_col_pos + "ADD COLUMN".len()..];
+            // Vérifier qu'on n'a pas déjà IF NOT EXISTS après ADD COLUMN
+            if !after_add.trim_start().to_uppercase().starts_with("IF NOT EXISTS") {
+                return format!("{}ADD COLUMN IF NOT EXISTS{}", before_add, after_add);
+            }
+        }
+    }
+
     trimmed.to_string()
 }
 
@@ -12056,7 +12074,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 if current.to_uppercase().trim().ends_with("DO")
                     || current.to_uppercase().contains("CREATE FUNCTION")
                 {
-                    if let Some(start) = trimmed.find("$$") {
+                    if trimmed.contains("$$") {
                         dollar_tag = "$$".to_string();
                         in_dollar_block = true;
                     }
@@ -12451,7 +12469,6 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
         // ✅ CORRECTION 2026-01-31: Filtrer les commandes incomplètes (se terminent par ; sans contenu valide)
         // Exemples: "CREATE TABLE IF NOT EXISTS duets (;" ou "CREATE INDEX IF NOT EXISTS idx_name;"
         let cmd_upper = trimmed_cmd.to_uppercase();
-        let cmd_without_parens = trimmed_cmd.replace("(", "").replace(")", "").trim().to_string();
         
         // Vérifier si la commande est incomplète (se termine par (; ou AS; sans contenu)
         if (cmd_upper.contains("CREATE TABLE") && trimmed_cmd.ends_with("(;"))
@@ -15685,7 +15702,7 @@ pub async fn run_individual_migrations(pool: &PgPool) -> Result<(), sqlx::Error>
         
         // Charger le contenu du fichier de migration
         // Note: On utilise include_str! pour chaque fichier individuellement
-        let migration_sql = match file_name {
+        let migration_sql = match *file_name {
             "00000001_create_extensions.sql" => include_str!("../../migrations/00000001_create_extensions.sql"),
             "00000002_create_base_tables.sql" => include_str!("../../migrations/00000002_create_base_tables.sql"),
             "00000003_create_utility_tables.sql" => include_str!("../../migrations/00000003_create_utility_tables.sql"),

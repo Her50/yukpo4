@@ -52,12 +52,39 @@ fi
 # ✅ CORRIGÉ: Ajouter le plugin Kotlin dans le buildscript de expo-modules-core/android/build.gradle
 echo "🔧 Adding Kotlin plugin to expo-modules-core/android/build.gradle buildscript..."
 if [ -f "fix-expo-modules-core-kotlin.js" ]; then
-    node fix-expo-modules-core-kotlin.js || {
-        echo "❌ CRITICAL: Failed to add Kotlin plugin to expo-modules-core/android/build.gradle"
-        echo "   This will cause the Gradle build to fail with 'unable to resolve class KotlinCompile'"
-        exit 1
-    }
-    echo "✅ Kotlin plugin fix completed"
+    # Vérifier que le fichier existe avant de le modifier
+    EXPO_MODULES_BUILD_GRADLE="$EXPO_MODULES_CORE_ANDROID/build.gradle"
+    if [ ! -f "$EXPO_MODULES_BUILD_GRADLE" ]; then
+        echo "⚠️ expo-modules-core/android/build.gradle not found, skipping fix"
+    else
+        echo "   Found build.gradle at: $EXPO_MODULES_BUILD_GRADLE"
+        echo "   File size before fix: $(wc -c < "$EXPO_MODULES_BUILD_GRADLE") bytes"
+        echo "   First line: $(head -n 1 "$EXPO_MODULES_BUILD_GRADLE")"
+        
+        node fix-expo-modules-core-kotlin.js || {
+            echo "❌ CRITICAL: Failed to add Kotlin plugin to expo-modules-core/android/build.gradle"
+            echo "   This will cause the Gradle build to fail with 'unable to resolve class KotlinCompile'"
+            echo "   Verifying file state..."
+            if [ -f "$EXPO_MODULES_BUILD_GRADLE" ]; then
+                echo "   First 10 lines of build.gradle:"
+                head -n 10 "$EXPO_MODULES_BUILD_GRADLE"
+            fi
+            exit 1
+        }
+        
+        # Vérifier que le fix a été appliqué
+        if [ -f "$EXPO_MODULES_BUILD_GRADLE" ]; then
+            echo "   File size after fix: $(wc -c < "$EXPO_MODULES_BUILD_GRADLE") bytes"
+            echo "   First line: $(head -n 1 "$EXPO_MODULES_BUILD_GRADLE")"
+            if grep -q "buildscript" "$EXPO_MODULES_BUILD_GRADLE" && grep -q "kotlin-gradle-plugin" "$EXPO_MODULES_BUILD_GRADLE"; then
+                echo "✅ Kotlin plugin fix verified successfully"
+            else
+                echo "⚠️ WARNING: Fix may not have been applied correctly"
+                echo "   Checking if buildscript exists: $(grep -c 'buildscript' "$EXPO_MODULES_BUILD_GRADLE" || echo '0')"
+                echo "   Checking if kotlin plugin exists: $(grep -c 'kotlin-gradle-plugin' "$EXPO_MODULES_BUILD_GRADLE" || echo '0')"
+            fi
+        fi
+    fi
 else
     echo "❌ CRITICAL: fix-expo-modules-core-kotlin.js not found"
     echo "   This script is required to fix the KotlinCompile import issue"
