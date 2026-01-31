@@ -11954,10 +11954,12 @@ fn normalize_sql_command(cmd: &str) -> String {
 pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {
     // Amélioration : gérer les blocs DO $$...END $$; et CREATE FUNCTION $$...$$ LANGUAGE correctement
     // Diviser par ";" mais préserver les blocs $$...$$;
+    // ✅ CORRECTION CRITIQUE 2026-01-30: Compter les parenthèses pour ne pas diviser dans CREATE TABLE (...)
     let mut commands = Vec::new();
     let mut current = String::new();
     let mut in_dollar_block = false;
     let mut dollar_tag = String::new();
+    let mut paren_depth = 0i32; // Compteur de parenthèses ouvertes/fermées
 
     for line in sql.lines() {
         let trimmed = line.trim();
@@ -12062,6 +12064,12 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             }
         }
 
+        // ✅ CORRECTION CRITIQUE 2026-01-30: Compter les parenthèses AVANT d'ajouter la ligne
+        // Cela permet de détecter si on est dans une parenthèse avant de diviser sur ;
+        let open_parens = trimmed.matches('(').count();
+        let close_parens = trimmed.matches(')').count();
+        paren_depth += (open_parens as i32) - (close_parens as i32);
+
         // Ajouter la ligne à current
         current.push_str(line);
         current.push_str("\n");
@@ -12072,6 +12080,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             current.clear();
             in_dollar_block = false;
             dollar_tag.clear();
+            paren_depth = 0; // Réinitialiser le compteur de parenthèses
             continue; // Passer à la ligne suivante (qui sera une nouvelle commande)
         }
 
@@ -12130,6 +12139,13 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                     continue;
                 }
 
+                // ✅ CORRECTION CRITIQUE 2026-01-30: Ne PAS diviser si on est dans une parenthèse
+                // Exemple: CREATE TABLE IF NOT EXISTS duets (col1, col2); ne doit pas être divisé sur le ; après (
+                if paren_depth > 0 {
+                    // On est dans une parenthèse, continuer à accumuler jusqu'à ce que toutes les parenthèses soient fermées
+                    continue;
+                }
+
                 // ✅ CORRECTION 2026-01-30: Détecter les fins de fonctions/triggers pour mieux diviser
                 // Pattern: "$$ language 'plpgsql';" suivi de "CREATE TRIGGER" ou "CREATE TABLE"
                 let is_function_end = cmd.to_uppercase().contains("$$")
@@ -12138,41 +12154,74 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
 
                 // ✅ CORRECTION 2026-01-30: Détecter et diviser les commandes multiples sur une seule ligne
                 // Exemple: "CREATE INDEX ...; CREATE INDEX ...;" doit être divisé en 2 commandes
-                // MAIS seulement si on n'est PAS dans un bloc DO $$
+                // MAIS seulement si on n'est PAS dans un bloc DO $$ ET si on n'est PAS dans une parenthèse
+                // ✅ CORRECTION CRITIQUE 2026-01-30: Ne PAS diviser si paren_depth > 0
                 if !cmd.to_uppercase().starts_with("DO")
                     && cmd.contains(";")
                     && cmd.matches(';').count() > 1
+                    && paren_depth == 0  // ✅ Ne diviser que si toutes les parenthèses sont fermées
                 {
                     // Diviser par ';' mais préserver le contexte
-                    let parts: Vec<&str> = cmd.split(';').collect();
-                    for part in parts {
-                        let part_trimmed = part.trim();
-                        if !part_trimmed.is_empty()
-                            && !part_trimmed.starts_with("--")
-                            && !part_trimmed
-                                .trim_matches(|c: char| {
-                                    c.is_whitespace() || c == ';' || c == '(' || c == ')'
-                                })
-                                .is_empty()
-                            && (part_trimmed.to_uppercase().contains("CREATE")
-                                || part_trimmed.to_uppercase().contains("ALTER")
-                                || part_trimmed.to_uppercase().contains("DROP")
-                                || part_trimmed.to_uppercase().contains("INSERT")
-                                || part_trimmed.to_uppercase().contains("UPDATE")
-                                || part_trimmed.to_uppercase().contains("DELETE")
-                                || part_trimmed.to_uppercase().contains("SELECT")
-                                || part_trimmed.to_uppercase().contains("GRANT")
-                                || part_trimmed.to_uppercase().contains("REVOKE")
-                                || part_trimmed.to_uppercase().contains("COMMENT")
-                                || part_trimmed.to_uppercase().contains("TRUNCATE")
-                                || part_trimmed.to_uppercase().contains("ANALYZE")
-                                || part_trimmed.to_uppercase().contains("VACUUM")
-                                || part_trimmed.to_uppercase().contains("EXECUTE")
-                                || part_trimmed.to_uppercase().contains("DO"))
-                        {
-                            commands.push(format!("{};", part_trimmed));
+                    // ✅ CORRECTION CRITIQUE 2026-01-30: Diviser intelligemment en comptant les parenthèses
+                    let mut parts = Vec::new();
+                    let mut current_part = String::new();
+                    let mut part_paren_depth = 0i32;
+                    
+                    for ch in cmd.chars() {
+                        current_part.push(ch);
+                        if ch == '(' {
+                            part_paren_depth += 1;
+                        } else if ch == ')' {
+                            part_paren_depth -= 1;
+                        } else if ch == ';' && part_paren_depth == 0 {
+                            // On a trouvé un ; qui n'est pas dans une parenthèse
+                            let part_trimmed = current_part.trim();
+                            if !part_trimmed.is_empty()
+                                && !part_trimmed.starts_with("--")
+                                && !part_trimmed
+                                    .trim_matches(|c: char| {
+                                        c.is_whitespace() || c == ';' || c == '(' || c == ')'
+                                    })
+                                    .is_empty()
+                                && (part_trimmed.to_uppercase().contains("CREATE")
+                                    || part_trimmed.to_uppercase().contains("ALTER")
+                                    || part_trimmed.to_uppercase().contains("DROP")
+                                    || part_trimmed.to_uppercase().contains("INSERT")
+                                    || part_trimmed.to_uppercase().contains("UPDATE")
+                                    || part_trimmed.to_uppercase().contains("DELETE")
+                                    || part_trimmed.to_uppercase().contains("SELECT")
+                                    || part_trimmed.to_uppercase().contains("GRANT")
+                                    || part_trimmed.to_uppercase().contains("REVOKE")
+                                    || part_trimmed.to_uppercase().contains("COMMENT")
+                                    || part_trimmed.to_uppercase().contains("TRUNCATE")
+                                    || part_trimmed.to_uppercase().contains("ANALYZE")
+                                    || part_trimmed.to_uppercase().contains("VACUUM")
+                                    || part_trimmed.to_uppercase().contains("EXECUTE")
+                                    || part_trimmed.to_uppercase().contains("DO"))
+                            {
+                                commands.push(part_trimmed.to_string());
+                            }
+                            current_part.clear();
                         }
                     }
+                    // Traiter la dernière partie si elle existe
+                    if !current_part.trim().is_empty() && part_paren_depth == 0 {
+                        let part_trimmed = current_part.trim();
+                        if !part_trimmed.is_empty()
+                            && !part_trimmed.starts_with("--")
+                            && (part_trimmed.to_uppercase().contains("CREATE")
+                                || part_trimmed.to_uppercase().contains("ALTER")
+                                || part_trimmed.to_uppercase().contains("DROP"))
+                        {
+                            if !part_trimmed.ends_with(';') {
+                                commands.push(format!("{};", part_trimmed));
+                            } else {
+                                commands.push(part_trimmed.to_string());
+                            }
+                        }
+                    }
+                    current.clear();
+                    paren_depth = 0; // Réinitialiser le compteur de parenthèses
                 } else if is_function_end {
                     // Fin de fonction - vérifier si la ligne suivante commence une nouvelle commande
                     // On garde la commande actuelle et on la termine ici
@@ -12185,6 +12234,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                         commands.push(cmd.to_string());
                     }
                     current.clear();
+                    paren_depth = 0; // Réinitialiser le compteur de parenthèses
                 } else {
                     // Commande unique - vérifier qu'elle est valide
                     if !cmd.is_empty()
@@ -12213,7 +12263,22 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                         commands.push(cmd.to_string());
                     }
                     current.clear();
+                    paren_depth = 0; // Réinitialiser le compteur de parenthèses
                 }
+            }
+        }
+    }
+
+    // ✅ CORRECTION CRITIQUE 2026-01-30: Traiter la dernière commande si elle existe
+    // (cas où le fichier ne se termine pas par ;)
+    if !current.trim().is_empty() {
+        let cmd = current.trim();
+        if !cmd.starts_with("--") && paren_depth == 0 {
+            // Si la commande n'a pas de ;, l'ajouter
+            if !cmd.ends_with(';') {
+                commands.push(format!("{};", cmd));
+            } else {
+                commands.push(cmd.to_string());
             }
         }
     }
