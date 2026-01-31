@@ -12163,7 +12163,6 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 {
                     // Diviser par ';' mais préserver le contexte
                     // ✅ CORRECTION CRITIQUE 2026-01-30: Diviser intelligemment en comptant les parenthèses
-                    let mut parts = Vec::new();
                     let mut current_part = String::new();
                     let mut part_paren_depth = 0i32;
                     
