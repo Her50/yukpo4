@@ -37,6 +37,7 @@ import SmartPhoneModelInput from './SmartPhoneModelInput';
 import ModernGPSModal from './ModernGPSModal';
 // Code corrigé (remplace @ts-ignore)
 import { SmartModalityInput } from './SmartModalityInput';
+import StorageLocationSelector from './StorageLocationSelector';
 // ✅ NOUVEAU: Composants pour modalités réutilisables
 import AssuranceProduitSelector from './AssuranceProduitSelector';
 import VehicleModelSelector from './VehicleModelSelector';
@@ -682,6 +683,7 @@ interface Product {
     montageRequis?: boolean; // Montage nécessaire
     livraison?: boolean; // Livraison disponible
     fraisLivraison?: string; // Montant des frais de livraison
+    storageLocationId?: number | null; // ✅ NOUVEAU: ID du lieu de stockage GPS
     garantieMobilier?: string; // ✅ AMÉLIORÉ: Garantie (liste)
     poids?: string; // Poids en kg
     demontable?: boolean; // Facilement démontable
@@ -22151,6 +22153,28 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             </View>
                                         )}
                                     </View>
+
+                                    {/* ✅ NOUVEAU: Section Lieu de stockage GPS */}
+                                    <View style={styles.storageLocationSectionContainer}>
+                                        <View style={styles.sectionHeader}>
+                                            <SafeIcon name="warehouse" size={20} color={modernColors.primary} />
+                                            <Text style={styles.sectionTitle}>📍 Lieu de stockage GPS</Text>
+                                        </View>
+                                        
+                                        <View style={styles.hintBox}>
+                                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                                            <Text style={styles.hintText}>
+                                                💡 Indiquez où se trouve physiquement votre produit. Cela permet d'optimiser les livraisons et de mieux gérer votre stock.
+                                            </Text>
+                                        </View>
+
+                                        <StorageLocationSelector
+                                            value={newProduct.storageLocationId}
+                                            onSelect={(locationId) => setNewProduct({ ...newProduct, storageLocationId: locationId })}
+                                            label="Lieu de stockage"
+                                            showCreateButton={true}
+                                        />
+                                    </View>
                                 </View>
                             )}
                         </ScrollView>
@@ -23677,6 +23701,14 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#FDBA74',
+    },
+    storageLocationSectionContainer: {
+        marginTop: 16,
+        padding: 16,
+        backgroundColor: modernColors.surface,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: modernColors.border,
     },
     promotionFields: {
         gap: 12,

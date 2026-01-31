@@ -28,6 +28,9 @@ buildscript {
 apply plugin: "com.facebook.react.rootproject"
 
 allprojects {
+    // ✅ CORRIGÉ: Définir kotlinVersion au niveau allprojects pour qu'il soit accessible partout
+    ext.kotlinVersion = rootProject.ext.kotlinVersion ?: findProperty('android.kotlinVersion') ?: '1.9.25'
+    
     repositories {
         // ✅ CORRIGÉ: Ordre important - repositories publics en premier
         google()

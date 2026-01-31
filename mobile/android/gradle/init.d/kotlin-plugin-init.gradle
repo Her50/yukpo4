@@ -1,0 +1,36 @@
+// Script d'initialisation Gradle pour s'assurer que le plugin Kotlin est disponible
+// pour tous les projets inclus, y compris expo-modules-core
+
+allprojects { project ->
+    // S'assurer que kotlinVersion est défini pour tous les projets
+    if (!project.hasProperty('kotlinVersion')) {
+        project.ext.kotlinVersion = rootProject.findProperty('kotlinVersion') 
+            ?: rootProject.findProperty('android.kotlinVersion') 
+            ?: '1.9.25'
+    }
+    
+    // Pour les projets inclus (composite builds), s'assurer que le buildscript a le plugin Kotlin
+    project.afterEvaluate {
+        if (project.buildscript.configurations.classpath) {
+            def hasKotlinPlugin = project.buildscript.configurations.classpath.dependencies.any { dep ->
+                dep.group == 'org.jetbrains.kotlin' && dep.name == 'kotlin-gradle-plugin'
+            }
+            
+            if (!hasKotlinPlugin && project.file('build.gradle').exists()) {
+                def buildGradleContent = project.file('build.gradle').text
+                // Si le fichier utilise KotlinCompile ou d'autres classes Kotlin, on doit ajouter le plugin
+                if (buildGradleContent.contains('KotlinCompile') || 
+                    buildGradleContent.contains('import org.jetbrains.kotlin')) {
+                    println "⚠️ Project ${project.name} uses Kotlin but plugin not in buildscript classpath"
+                }
+            }
+        }
+    }
+}
+
+// Pour les composite builds inclus, s'assurer que kotlinVersion est accessible
+settings.extensions.extraProperties.set('kotlinVersion', 
+    rootProject.findProperty('kotlinVersion') 
+        ?: rootProject.findProperty('android.kotlinVersion') 
+        ?: '1.9.25')
+

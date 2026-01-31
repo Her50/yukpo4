@@ -85,6 +85,15 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const isTransversalMode = productIndex === -1;
     const [loading, setLoading] = useState(false);
     const [parcelTypes, setParcelTypes] = useState<ParcelType[]>([]);
+    const [storageLocations, setStorageLocations] = useState<Array<{
+        id: number;
+        name: string;
+        address: string;
+        latitude: number;
+        longitude: number;
+        is_active: boolean;
+    }>>([]);
+    const [loadingLocations, setLoadingLocations] = useState(false);
     
     // ✅ NOUVEAU: Options de réutilisation de configuration
     const [useExistingConfig, setUseExistingConfig] = useState(false);
@@ -116,7 +125,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         pickup_availability_schedule: '{}',
         pickup_instructions: '',
         billing_mode: 'standard',
-        billing_partner_label: ''
+        billing_partner_label: '',
+        storage_location_id: null as number | null // ✅ NOUVEAU: Lieu de stockage GPS
     });
 
     // ✅ NOUVEAU: État pour stocker les données du produit
@@ -245,6 +255,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     useEffect(() => {
         if (visible) {
             loadParcelTypes();
+            loadStorageLocations();
             if (!isTransversalMode) {
                 // ✅ CORRIGÉ: Attendre que productData soit chargé avant de charger la config existante
                 // pour éviter d'écraser l'adresse du produit
@@ -263,6 +274,52 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             }
         }
     }, [visible, serviceId, productIndex, productData]);
+
+    const loadStorageLocations = async () => {
+        setLoadingLocations(true);
+        try {
+            const response = await deliveryApi.listStorageLocations();
+            if (response.success && response.data) {
+                const data = response.data as any;
+                const activeLocations = Array.isArray(data?.locations)
+                    ? data.locations.filter((loc: any) => loc && loc.is_active)
+                    : [];
+                setStorageLocations(activeLocations);
+            }
+        } catch (error) {
+            console.error('Erreur chargement lieux de stock:', error);
+        } finally {
+            setLoadingLocations(false);
+        }
+    };
+
+    // ✅ Mettre à jour les coordonnées de la première adresse quand un lieu de stock est sélectionné
+    useEffect(() => {
+        if (config.storage_location_id && storageLocations.length > 0 && pickupAddresses.length > 0) {
+            const selectedLocation = storageLocations.find(loc => loc.id === config.storage_location_id);
+            if (selectedLocation) {
+                // Mettre à jour la première adresse de récupération avec les coordonnées du lieu de stockage
+                setPickupAddresses(prev => {
+                    const updated = [...prev];
+                    if (updated[0]) {
+                        updated[0] = {
+                            ...updated[0],
+                            address: selectedLocation.address,
+                            latitude: selectedLocation.latitude,
+                            longitude: selectedLocation.longitude,
+                            location: {
+                                raw: selectedLocation.address,
+                                place_name: selectedLocation.address,
+                                components: {},
+                                coordinates: { lat: selectedLocation.latitude, lng: selectedLocation.longitude }
+                            }
+                        };
+                    }
+                    return updated;
+                });
+            }
+        }
+    }, [config.storage_location_id, storageLocations]);
 
     // ✅ NOUVEAU: Fonction pour ajouter une nouvelle adresse de récupération
     const handleAddPickupAddress = () => {
@@ -385,7 +442,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     pickup_availability_schedule: JSON.stringify(c.pickup_availability_schedule || {}, null, 2),
                     pickup_instructions: (typeof c.pickup_instructions === 'string' ? c.pickup_instructions : '') || '',
                     billing_mode: (typeof c.billing_mode === 'string' ? c.billing_mode : 'standard') || 'standard',
-                    billing_partner_label: (typeof c.billing_partner_label === 'string' ? c.billing_partner_label : '') || ''
+                    billing_partner_label: (typeof c.billing_partner_label === 'string' ? c.billing_partner_label : '') || '',
+                    storage_location_id: (typeof c.storage_location_id === 'number' ? c.storage_location_id : null) || null // ✅ NOUVEAU: Charger le lieu de stockage
                 });
             } else {
                 // ✅ NOUVEAU: Si pas de config existante, charger lieu_produit depuis product_data si disponible
@@ -591,7 +649,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 pickup_availability_schedule: finalSchedule, // ✅ CORRIGÉ: Utiliser l'objet validé
                 pickup_instructions: (config && typeof config.pickup_instructions === 'string' && config.pickup_instructions.trim()) ? config.pickup_instructions : undefined,
                 billing_mode: typeof config.billing_mode === 'string' ? config.billing_mode : 'standard',
-                billing_partner_label: (typeof config.billing_partner_label === 'string' && config.billing_partner_label.trim()) ? config.billing_partner_label : undefined
+                billing_partner_label: (typeof config.billing_partner_label === 'string' && config.billing_partner_label.trim()) ? config.billing_partner_label : undefined,
+                storage_location_id: config && typeof config.storage_location_id === 'number' ? config.storage_location_id : null // ✅ NOUVEAU: Lieu de stockage GPS
             };
 
             // ✅ DEBUG: Logger le payload pour diagnostiquer les erreurs
@@ -905,6 +964,48 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             </View>
                         ))}
                     </View>
+
+                    {/* ✅ Lieu de stockage GPS (cohérent avec GlobalDeliveryConfigModal) */}
+                    {Array.isArray(storageLocations) && storageLocations.length > 0 && (
+                        <View style={styles.section}>
+                            <Text style={styles.label}>📍 Lieu de stockage GPS</Text>
+                            <Text style={styles.hint}>
+                                Sélectionnez le lieu de stockage principal pour ce produit. Ce lieu sera utilisé pour le calcul automatique des frais de livraison.
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.select}
+                                onPress={() => {
+                                    Alert.alert(
+                                        'Lieu de stock',
+                                        'Sélectionnez un lieu de stock (optionnel)',
+                                        [
+                                            { 
+                                                text: 'Aucun (saisie manuelle)', 
+                                                onPress: () => setConfig(prev => ({ ...prev, storage_location_id: null }))
+                                            },
+                                            ...storageLocations.map(loc => ({
+                                                text: `${loc.name} - ${loc.address}`,
+                                                onPress: () => {
+                                                    setConfig(prev => ({
+                                                        ...prev,
+                                                        storage_location_id: loc.id,
+                                                    }));
+                                                }
+                                            })),
+                                            { text: 'Annuler', style: 'cancel' as const }
+                                        ]
+                                    );
+                                }}
+                            >
+                                <Text style={styles.selectText}>
+                                    {config.storage_location_id
+                                        ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.name || 'Lieu sélectionné')
+                                        : 'Sélectionner un lieu de stock (optionnel)'}
+                                </Text>
+                                <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                     {/* ✅ CORRIGÉ 2026-01-02: Type de véhicule avec modal personnalisé (toutes les options) */}
                     <View style={styles.section}>

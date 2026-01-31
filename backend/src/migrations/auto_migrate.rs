@@ -9987,7 +9987,7 @@ pub async fn ensure_token_consumption_and_purchase_history_tables(
 
     if !token_consumption_exists || !purchase_history_exists {
         // ✅ CORRECTION: Réduire verbosité - passer en debug au lieu de warn
-        debug!("ℹ️ Tables token_consumption_logs ou purchase_history manquantes (seront créées par 0000_create_all_tables.sql)");
+        debug!("ℹ️ Tables token_consumption_logs ou purchase_history manquantes (seront créées par les migrations individuelles)");
     } else {
         debug!("✅ Tables token_consumption_logs et purchase_history présentes");
     }
@@ -9995,7 +9995,7 @@ pub async fn ensure_token_consumption_and_purchase_history_tables(
     Ok(())
 }
 
-/// Vérifie que la table service_products existe (créée via 0000_create_all_tables.sql)
+/// Vérifie que la table service_products existe (créée via 00000006_create_product_tables.sql)
 /// ✅ NOUVEAU 2026-01-03: Vérifie et crée la table service_products séparée pour améliorer les performances
 /// Cette table remplace le stockage JSONB dans services.data->'produits'->'valeur'
 /// NOTE: La table products (UUID) pour tickets de bus est préservée et non modifiée
@@ -10134,7 +10134,7 @@ pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Er
     Ok(())
 }
 
-/// Vérifie que la table echanges existe (créée via 0000_create_all_tables.sql)
+/// Vérifie que la table echanges existe (créée via les migrations individuelles)
 pub async fn ensure_echanges_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table echanges...");
 
@@ -10145,7 +10145,7 @@ pub async fn ensure_echanges_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     .await?;
 
     if !echanges_exists {
-        warn!("⚠️ Table echanges manquante (sera créée par 0000_create_all_tables.sql)");
+        warn!("⚠️ Table echanges manquante (sera créée par les migrations individuelles)");
     } else {
         info!("✅ Table echanges présente");
     }
@@ -10153,7 +10153,7 @@ pub async fn ensure_echanges_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-/// Vérifie que les tables de chat existent (créées via 0000_create_all_tables.sql)
+/// Vérifie que les tables de chat existent (créées via 00000012_create_communication_tables.sql)
 pub async fn ensure_chat_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables de chat...");
 
@@ -10170,7 +10170,7 @@ pub async fn ensure_chat_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     .await?;
 
     if !conversations_exists || !chat_messages_exists {
-        warn!("⚠️ Tables de chat manquantes (seront créées par 0000_create_all_tables.sql)");
+        warn!("⚠️ Tables de chat manquantes (seront créées par 00000012_create_communication_tables.sql)");
     } else {
         info!("✅ Tables de chat présentes");
     }
@@ -10313,7 +10313,7 @@ pub async fn ensure_push_tokens_table(pool: &PgPool) -> Result<(), sqlx::Error> 
     Ok(())
 }
 
-/// Vérifie que la table image_analyses existe (créée via 0000_create_all_tables.sql)
+/// Vérifie que la table image_analyses existe (créée via les migrations individuelles)
 pub async fn ensure_image_analyses_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table image_analyses...");
 
@@ -10324,7 +10324,7 @@ pub async fn ensure_image_analyses_table(pool: &PgPool) -> Result<(), sqlx::Erro
     .await?;
 
     if !image_analyses_exists {
-        warn!("⚠️ Table image_analyses manquante (sera créée par 0000_create_all_tables.sql)");
+        warn!("⚠️ Table image_analyses manquante (sera créée par les migrations individuelles)");
     } else {
         info!("✅ Table image_analyses présente");
     }
@@ -10332,7 +10332,7 @@ pub async fn ensure_image_analyses_table(pool: &PgPool) -> Result<(), sqlx::Erro
     Ok(())
 }
 
-/// Vérifie que la table programmes_scolaires existe (créée via 0000_create_all_tables.sql)
+/// Vérifie que la table programmes_scolaires existe (créée via 00000039_create_orientation_scolaire_advanced_tables.sql)
 pub async fn ensure_programmes_scolaires_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table programmes_scolaires...");
 
@@ -10344,7 +10344,7 @@ pub async fn ensure_programmes_scolaires_table(pool: &PgPool) -> Result<(), sqlx
 
     if !programmes_scolaires_exists {
         warn!(
-            "⚠️ Table programmes_scolaires manquante (sera créée par 0000_create_all_tables.sql)"
+            "⚠️ Table programmes_scolaires manquante (sera créée par 00000039_create_orientation_scolaire_advanced_tables.sql)"
         );
     } else {
         info!("✅ Table programmes_scolaires présente");
@@ -10353,7 +10353,7 @@ pub async fn ensure_programmes_scolaires_table(pool: &PgPool) -> Result<(), sqlx
     Ok(())
 }
 
-/// Vérifie que les tables de modèles produits existent (créées via 0000_create_all_tables.sql)
+/// Vérifie que les tables de modèles produits existent (créées via les migrations individuelles)
 pub async fn ensure_product_models_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables de modèles produits...");
 
@@ -10365,7 +10365,7 @@ pub async fn ensure_product_models_tables(pool: &PgPool) -> Result<(), sqlx::Err
 
     if !product_models_exists {
         // ✅ CORRECTION: Réduire verbosité - passer en debug au lieu de warn
-        debug!("ℹ️ Tables de modèles produits manquantes (seront créées par 0000_create_all_tables.sql)");
+        debug!("ℹ️ Tables de modèles produits manquantes (seront créées par les migrations individuelles)");
     } else {
         debug!("✅ Tables de modèles produits présentes");
     }
@@ -10373,7 +10373,7 @@ pub async fn ensure_product_models_tables(pool: &PgPool) -> Result<(), sqlx::Err
     Ok(())
 }
 
-/// Vérifie que la table visibility_tracking existe (créée via 0000_create_all_tables.sql)
+/// Vérifie que la table visibility_tracking existe (créée via les migrations individuelles)
 pub async fn ensure_visibility_tracking_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table visibility_tracking...");
 
@@ -10384,7 +10384,7 @@ pub async fn ensure_visibility_tracking_table(pool: &PgPool) -> Result<(), sqlx:
     .await?;
 
     if !visibility_tracking_exists {
-        warn!("⚠️ Table visibility_tracking manquante (sera créée par 0000_create_all_tables.sql)");
+        warn!("⚠️ Table visibility_tracking manquante (sera créée par les migrations individuelles)");
     } else {
         info!("✅ Table visibility_tracking présente");
     }
@@ -10392,7 +10392,7 @@ pub async fn ensure_visibility_tracking_table(pool: &PgPool) -> Result<(), sqlx:
     Ok(())
 }
 
-/// Vérifie que les tables service_team_management existent (créées via 0000_create_all_tables.sql)
+/// Vérifie que les tables service_team_management existent (créées via les migrations individuelles)
 pub async fn ensure_service_team_management_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables service_team_management...");
 
@@ -10403,7 +10403,7 @@ pub async fn ensure_service_team_management_table(pool: &PgPool) -> Result<(), s
     .await?;
 
     if !service_team_exists {
-        warn!("⚠️ Tables service_team_management manquantes (seront créées par 0000_create_all_tables.sql)");
+        warn!("⚠️ Tables service_team_management manquantes (seront créées par les migrations individuelles)");
     } else {
         info!("✅ Tables service_team_management présentes");
     }
@@ -10411,7 +10411,7 @@ pub async fn ensure_service_team_management_table(pool: &PgPool) -> Result<(), s
     Ok(())
 }
 
-/// Vérifie que la table bus_return_trips existe (créée via 0000_create_all_tables.sql)
+/// Vérifie que la table bus_return_trips existe (créée via 00000031_create_bus_tables.sql)
 pub async fn ensure_bus_return_trips_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table bus_return_trips...");
 
@@ -10422,7 +10422,7 @@ pub async fn ensure_bus_return_trips_table(pool: &PgPool) -> Result<(), sqlx::Er
     .await?;
 
     if !bus_return_trips_exists {
-        warn!("⚠️ Table bus_return_trips manquante (sera créée par 0000_create_all_tables.sql)");
+        warn!("⚠️ Table bus_return_trips manquante (sera créée par 00000031_create_bus_tables.sql)");
     } else {
         info!("✅ Table bus_return_trips présente");
     }
@@ -15622,5 +15622,138 @@ async fn ensure_run_audio_cache_cleanup_function(pool: &PgPool) -> Result<(), sq
     
     execute_multiple_sql_commands(pool, sql).await?;
     info!("✅ Fonction run_audio_cache_cleanup() créée avec succès (signature sans paramètres)");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-01-31: Exécute toutes les migrations individuelles (00000001 à 00000041)
+/// Remplace l'ancien fichier consolidé 0000_create_all_tables.sql
+/// ✅ Mise à jour 2026-01-31: Migrations individuelles 00000001 à 00000041
+pub async fn run_individual_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔄 [MIGRATIONS INDIVIDUELLES] Démarrage de l'application des migrations individuelles...");
+    
+    // Liste ordonnée des fichiers de migration individuels
+    let migration_files = vec![
+        "00000001_create_extensions.sql",
+        "00000002_create_base_tables.sql",
+        "00000003_create_utility_tables.sql",
+        "00000004_create_payment_tables.sql",
+        "00000005_create_autocomplete_tables.sql",
+        "00000006_create_product_tables.sql",
+        "00000007_create_review_tables.sql",
+        "00000008_create_delivery_tables.sql",
+        "00000009_create_specialized_services_tables.sql",
+        "00000010_create_functions.sql",
+        "00000011_create_indexes_and_optimizations.sql",
+        "00000012_create_communication_tables.sql",
+        "00000013_create_advertising_tables.sql",
+        "00000014_create_live_streaming_tables.sql",
+        "00000015_create_flash_sales_tables.sql",
+        "00000016_create_promotion_tables.sql",
+        "00000017_create_social_media_tables.sql",
+        "00000018_create_media_engagement_tables.sql",
+        "00000019_create_video_audio_tables.sql",
+        "00000020_create_studio_tables.sql",
+        "00000021_create_additional_functions.sql",
+        "00000022_create_remaining_tables_and_functions.sql",
+        "00000023_create_videos_tables.sql",
+        "00000024_create_message_reactions_and_delivery_chat_tables.sql",
+        "00000025_create_effects_and_templates_tables.sql",
+        "00000026_create_plugin_marketplace_tables.sql",
+        "00000027_create_menu_planning_tables.sql",
+        "00000028_create_optimized_functions_and_cache.sql",
+        "00000029_create_blood_donation_and_specialized_tables.sql",
+        "00000030_create_final_optimizations_and_views.sql",
+        "00000031_create_bus_tables.sql",
+        "00000032_create_bus_functions_and_agency_tables.sql",
+        "00000033_create_missing_delivery_tables.sql",
+        "00000034_create_immobilier_tables.sql",
+        "00000035_create_pharmacy_advanced_tables.sql",
+        "00000036_create_hospital_advanced_tables.sql",
+        "00000037_create_lab_advanced_tables.sql",
+        "00000038_create_offres_emploi_advanced_tables.sql",
+        "00000039_create_orientation_scolaire_advanced_tables.sql",
+        "00000040_create_bourse_livre_advanced_tables.sql",
+        "00000041_create_bus_ratings_return_trips_and_additional_tables.sql",
+    ];
+    
+    let mut success_count = 0;
+    let mut error_count = 0;
+    
+    for (index, file_name) in migration_files.iter().enumerate() {
+        let migration_number = index + 1;
+        info!("🔄 [MIGRATION {}/{}] Application de {}...", migration_number, migration_files.len(), file_name);
+        
+        // Charger le contenu du fichier de migration
+        // Note: On utilise include_str! pour chaque fichier individuellement
+        let migration_sql = match file_name {
+            "00000001_create_extensions.sql" => include_str!("../../migrations/00000001_create_extensions.sql"),
+            "00000002_create_base_tables.sql" => include_str!("../../migrations/00000002_create_base_tables.sql"),
+            "00000003_create_utility_tables.sql" => include_str!("../../migrations/00000003_create_utility_tables.sql"),
+            "00000004_create_payment_tables.sql" => include_str!("../../migrations/00000004_create_payment_tables.sql"),
+            "00000005_create_autocomplete_tables.sql" => include_str!("../../migrations/00000005_create_autocomplete_tables.sql"),
+            "00000006_create_product_tables.sql" => include_str!("../../migrations/00000006_create_product_tables.sql"),
+            "00000007_create_review_tables.sql" => include_str!("../../migrations/00000007_create_review_tables.sql"),
+            "00000008_create_delivery_tables.sql" => include_str!("../../migrations/00000008_create_delivery_tables.sql"),
+            "00000009_create_specialized_services_tables.sql" => include_str!("../../migrations/00000009_create_specialized_services_tables.sql"),
+            "00000010_create_functions.sql" => include_str!("../../migrations/00000010_create_functions.sql"),
+            "00000011_create_indexes_and_optimizations.sql" => include_str!("../../migrations/00000011_create_indexes_and_optimizations.sql"),
+            "00000012_create_communication_tables.sql" => include_str!("../../migrations/00000012_create_communication_tables.sql"),
+            "00000013_create_advertising_tables.sql" => include_str!("../../migrations/00000013_create_advertising_tables.sql"),
+            "00000014_create_live_streaming_tables.sql" => include_str!("../../migrations/00000014_create_live_streaming_tables.sql"),
+            "00000015_create_flash_sales_tables.sql" => include_str!("../../migrations/00000015_create_flash_sales_tables.sql"),
+            "00000016_create_promotion_tables.sql" => include_str!("../../migrations/00000016_create_promotion_tables.sql"),
+            "00000017_create_social_media_tables.sql" => include_str!("../../migrations/00000017_create_social_media_tables.sql"),
+            "00000018_create_media_engagement_tables.sql" => include_str!("../../migrations/00000018_create_media_engagement_tables.sql"),
+            "00000019_create_video_audio_tables.sql" => include_str!("../../migrations/00000019_create_video_audio_tables.sql"),
+            "00000020_create_studio_tables.sql" => include_str!("../../migrations/00000020_create_studio_tables.sql"),
+            "00000021_create_additional_functions.sql" => include_str!("../../migrations/00000021_create_additional_functions.sql"),
+            "00000022_create_remaining_tables_and_functions.sql" => include_str!("../../migrations/00000022_create_remaining_tables_and_functions.sql"),
+            "00000023_create_videos_tables.sql" => include_str!("../../migrations/00000023_create_videos_tables.sql"),
+            "00000024_create_message_reactions_and_delivery_chat_tables.sql" => include_str!("../../migrations/00000024_create_message_reactions_and_delivery_chat_tables.sql"),
+            "00000025_create_effects_and_templates_tables.sql" => include_str!("../../migrations/00000025_create_effects_and_templates_tables.sql"),
+            "00000026_create_plugin_marketplace_tables.sql" => include_str!("../../migrations/00000026_create_plugin_marketplace_tables.sql"),
+            "00000027_create_menu_planning_tables.sql" => include_str!("../../migrations/00000027_create_menu_planning_tables.sql"),
+            "00000028_create_optimized_functions_and_cache.sql" => include_str!("../../migrations/00000028_create_optimized_functions_and_cache.sql"),
+            "00000029_create_blood_donation_and_specialized_tables.sql" => include_str!("../../migrations/00000029_create_blood_donation_and_specialized_tables.sql"),
+            "00000030_create_final_optimizations_and_views.sql" => include_str!("../../migrations/00000030_create_final_optimizations_and_views.sql"),
+            "00000031_create_bus_tables.sql" => include_str!("../../migrations/00000031_create_bus_tables.sql"),
+            "00000032_create_bus_functions_and_agency_tables.sql" => include_str!("../../migrations/00000032_create_bus_functions_and_agency_tables.sql"),
+            "00000033_create_missing_delivery_tables.sql" => include_str!("../../migrations/00000033_create_missing_delivery_tables.sql"),
+            "00000034_create_immobilier_tables.sql" => include_str!("../../migrations/00000034_create_immobilier_tables.sql"),
+            "00000035_create_pharmacy_advanced_tables.sql" => include_str!("../../migrations/00000035_create_pharmacy_advanced_tables.sql"),
+            "00000036_create_hospital_advanced_tables.sql" => include_str!("../../migrations/00000036_create_hospital_advanced_tables.sql"),
+            "00000037_create_lab_advanced_tables.sql" => include_str!("../../migrations/00000037_create_lab_advanced_tables.sql"),
+            "00000038_create_offres_emploi_advanced_tables.sql" => include_str!("../../migrations/00000038_create_offres_emploi_advanced_tables.sql"),
+            "00000039_create_orientation_scolaire_advanced_tables.sql" => include_str!("../../migrations/00000039_create_orientation_scolaire_advanced_tables.sql"),
+            "00000040_create_bourse_livre_advanced_tables.sql" => include_str!("../../migrations/00000040_create_bourse_livre_advanced_tables.sql"),
+            "00000041_create_bus_ratings_return_trips_and_additional_tables.sql" => include_str!("../../migrations/00000041_create_bus_ratings_return_trips_and_additional_tables.sql"),
+            _ => {
+                error!("❌ [MIGRATION {}] Fichier de migration inconnu: {}", migration_number, file_name);
+                error_count += 1;
+                continue;
+            }
+        };
+        
+        info!("🔍 [MIGRATION {}] Fichier chargé, taille: {} caractères", migration_number, migration_sql.len());
+        
+        match execute_multiple_sql_commands(pool, &migration_sql).await {
+            Ok(_) => {
+                info!("✅ [MIGRATION {}] {} appliquée avec succès", migration_number, file_name);
+                success_count += 1;
+            }
+            Err(e) => {
+                error!("❌ [MIGRATION {}] Erreur lors de l'application de {}: {}", migration_number, file_name, e);
+                error_count += 1;
+                // Continuer avec les migrations suivantes même en cas d'erreur
+            }
+        }
+    }
+    
+    info!("✅ [MIGRATIONS INDIVIDUELLES] Terminé: {} succès, {} erreurs", success_count, error_count);
+    
+    if error_count > 0 {
+        warn!("⚠️ [MIGRATIONS INDIVIDUELLES] Certaines migrations ont échoué. Vérifiez les logs ci-dessus.");
+    }
+    
     Ok(())
 }

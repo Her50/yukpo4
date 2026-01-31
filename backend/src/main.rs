@@ -703,13 +703,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // puis on laisse sqlx::migrate!() calculer le checksum correct et l'insérer dans _sqlx_migrations
     // Si la migration 0 existe déjà avec un mauvais checksum, sqlx::migrate!() va échouer,
     // donc on la supprime d'abord si nécessaire (déjà fait plus haut)
-    log::info!("🔄 [MIGRATION 0] Application de la migration 0 via execute_multiple_sql_commands (APRÈS les corrections)...");
-    let migration_0_sql = include_str!("../migrations/0000_create_all_tables.sql");
-    log::info!(
-        "🔍 [MIGRATION 0] Fichier chargé, taille: {} caractères",
-        migration_0_sql.len()
-    );
-
+    // ✅ NOUVEAU 2026-01-31: Utiliser les migrations individuelles au lieu du fichier consolidé
+    // Les migrations individuelles (00000001 à 00000041) remplacent l'ancien 0000_create_all_tables.sql
+    log::info!("🔄 [MIGRATIONS INDIVIDUELLES] Application des migrations individuelles (00000001 à 00000041)...");
+    
     // Vérifier si la migration 0 existe déjà dans _sqlx_migrations
     let migration_0_exists = if migrations_table_exists {
         sqlx::query_scalar::<_, bool>(
@@ -723,25 +720,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     if !migration_0_exists {
-        log::info!("🔄 [MIGRATION 0] Migration 0 non trouvée dans _sqlx_migrations, application via execute_multiple_sql_commands...");
-        match execute_multiple_sql_commands(&pg_pool, migration_0_sql).await {
+        log::info!("🔄 [MIGRATIONS INDIVIDUELLES] Migration 0 non trouvée dans _sqlx_migrations, application des migrations individuelles...");
+        match yukpomnang_backend::migrations::auto_migrate::run_individual_migrations(&pg_pool).await {
             Ok(_) => {
-                log::info!("✅ [MIGRATION 0] Migration 0 appliquée avec succès via execute_multiple_sql_commands");
-                log::info!("ℹ️ [MIGRATION 0] SQLx va calculer et insérer le checksum correct lors de sqlx::migrate!()");
+                log::info!("✅ [MIGRATIONS INDIVIDUELLES] Toutes les migrations individuelles appliquées avec succès");
+                log::info!("ℹ️ [MIGRATIONS INDIVIDUELLES] SQLx va calculer et insérer le checksum correct lors de sqlx::migrate!()");
             }
             Err(e) => {
                 log::error!(
-                    "❌ [MIGRATION 0] Erreur lors de l'application de la migration 0: {}",
+                    "❌ [MIGRATIONS INDIVIDUELLES] Erreur lors de l'application des migrations individuelles: {}",
                     e
                 );
-                log::error!("❌ [MIGRATION 0] Type d'erreur: {:?}", e);
+                log::error!("❌ [MIGRATIONS INDIVIDUELLES] Type d'erreur: {:?}", e);
                 if let Some(source) = e.source() {
-                    log::error!("❌ [MIGRATION 0] Source: {}", source);
+                    log::error!("❌ [MIGRATIONS INDIVIDUELLES] Source: {}", source);
                 }
             }
         }
     } else {
-        log::info!("ℹ️ [MIGRATION 0] Migration 0 existe déjà dans _sqlx_migrations, skip de l'application directe");
+        log::info!("ℹ️ [MIGRATIONS INDIVIDUELLES] Migration 0 existe déjà dans _sqlx_migrations, skip de l'application directe");
     }
 
     // ✅ SOLUTION CAUSE RACINE 2026-01-29: Exécuter la migration consolidée AVANT sqlx::migrate!()
@@ -1227,7 +1224,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 log::error!("   💡 SOLUTION: La migration de correction sera appliquée automatiquement au prochain démarrage");
                                 log::error!("   💡 Elle supprimera l'entrée incorrecte de migration 0 pour permettre la réapplication correcte");
                             } else {
-                                log::error!("   ⚠️ Le checksum du fichier migrations/0000_create_all_tables.sql a changé depuis l'application");
+                                log::error!("   ⚠️ Le checksum d'une migration a changé depuis l'application");
                             }
                         }
                     }
@@ -1299,13 +1296,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             log::error!("      2. Relancer l'application pour appliquer la bonne migration 0 (create all tables)");
                         } else {
                             log::error!("🔧 SOLUTION: Pour corriger le checksum de la migration 0:");
-                            log::error!("   1. Calculer le nouveau checksum du fichier migrations/0000_create_all_tables.sql");
+                            log::error!("   1. Vérifier les migrations individuelles dans backend/migrations/");
                             log::error!("   2. Exécuter: UPDATE _sqlx_migrations SET checksum = decode('NOUVEAU_CHECKSUM_HEX', 'hex') WHERE version = 0;");
                             log::error!("   3. Relancer l'application pour appliquer les migrations en attente");
                         }
                     } else {
                         log::error!("🔧 SOLUTION: Pour corriger le checksum de la migration 0:");
-                        log::error!("   1. Calculer le nouveau checksum du fichier migrations/0000_create_all_tables.sql");
+                        log::error!("   1. Vérifier les migrations individuelles dans backend/migrations/");
                         log::error!("   2. Exécuter: UPDATE _sqlx_migrations SET checksum = decode('NOUVEAU_CHECKSUM_HEX', 'hex') WHERE version = 0;");
                         log::error!("   3. Relancer l'application pour appliquer les migrations en attente");
                     }

@@ -743,12 +743,13 @@ async fn save_product_delivery_config(
             requires_isothermal, requires_fragile_handling,
             pickup_availability_schedule,
             pickup_instructions, billing_mode, billing_partner_label,
+            storage_location_id,
             is_configured, configured_at, configured_by
         )
         VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-            CASE WHEN $16 THEN NOW() ELSE NULL END, 
-            CASE WHEN $16 THEN $17 ELSE NULL END
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+            CASE WHEN $18 THEN NOW() ELSE NULL END, 
+            CASE WHEN $18 THEN $19 ELSE NULL END
         )
         ON CONFLICT (service_id, product_index)
         DO UPDATE SET
@@ -765,6 +766,7 @@ async fn save_product_delivery_config(
             pickup_instructions = EXCLUDED.pickup_instructions,
             billing_mode = EXCLUDED.billing_mode,
             billing_partner_label = EXCLUDED.billing_partner_label,
+            storage_location_id = EXCLUDED.storage_location_id,
             is_configured = EXCLUDED.is_configured,
             configured_at = CASE WHEN EXCLUDED.is_configured THEN NOW() ELSE product_delivery_config.configured_at END,
             configured_by = CASE WHEN EXCLUDED.is_configured THEN EXCLUDED.configured_by ELSE product_delivery_config.configured_by END,
@@ -787,6 +789,7 @@ async fn save_product_delivery_config(
     .bind(pickup_instructions_final.as_deref())
     .bind(payload.billing_mode.as_deref().unwrap_or("standard"))
     .bind(payload.billing_partner_label.as_deref())
+    .bind(payload.storage_location_id) // ✅ NOUVEAU: Lieu de stockage principal
     .bind(is_complete)
     .bind(user.id)
     .fetch_one(&state.pg)
@@ -1195,6 +1198,7 @@ async fn get_product_delivery_config(
             requires_isothermal, requires_fragile_handling,
             pickup_availability_schedule,
             pickup_instructions, billing_mode, billing_partner_label,
+            storage_location_id,
             is_configured, configured_at, configured_by,
             created_at, updated_at
         FROM product_delivery_config
@@ -1248,6 +1252,7 @@ async fn get_product_delivery_config(
                 "pickup_instructions": config.try_get::<Option<String>, _>("pickup_instructions")?,
                 "billing_mode": config.get::<String, _>("billing_mode"),
                 "billing_partner_label": config.try_get::<Option<String>, _>("billing_partner_label")?,
+                "storage_location_id": config.try_get::<Option<i32>, _>("storage_location_id")?, // ✅ NOUVEAU: Lieu de stockage principal
                 "is_configured": config.get::<bool, _>("is_configured"),
                 "configured_at": config.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("configured_at")?,
                 "storage_location_ids": storage_location_ids,
