@@ -500,7 +500,89 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+    // ✅ NOUVEAU 2026-01-31: Fonction helper simple pour exécuter des migrations SQL
+    // Divise les commandes sur ';' mais préserve les blocs DO $$ et les fonctions
+    async fn execute_migration_sql(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {
+        // Diviser par ';' mais préserver les blocs $$...$$
+        let mut commands = Vec::new();
+        let mut current = String::new();
+        let mut in_dollar_block = false;
+        let mut dollar_tag = String::new();
+        let mut paren_depth = 0i32;
+
+        for line in sql.lines() {
+            let trimmed = line.trim();
+
+            // Ignorer les lignes vides et commentaires seuls
+            if trimmed.is_empty() || trimmed.starts_with("--") {
+                if !current.trim().is_empty() {
+                    current.push_str(line);
+                    current.push_str("\n");
+                }
+                continue;
+            }
+
+            // Détecter début/fin de blocs $$
+            if trimmed.contains("$$") {
+                if !in_dollar_block {
+                    // Début d'un bloc
+                    if let Some(start) = trimmed.find("$$") {
+                        dollar_tag = "$$".to_string();
+                        in_dollar_block = true;
+                    }
+                } else if trimmed.contains(&dollar_tag) {
+                    // Fin d'un bloc
+                    in_dollar_block = false;
+                    dollar_tag.clear();
+                }
+            }
+
+            // Compter les parenthèses
+            let open_parens = trimmed.matches('(').count();
+            let close_parens = trimmed.matches(')').count();
+            paren_depth += (open_parens as i32) - (close_parens as i32);
+
+            current.push_str(line);
+            current.push_str("\n");
+
+            // Si on trouve un ';' et qu'on n'est pas dans un bloc $$ ou une parenthèse
+            if trimmed.ends_with(';') && !in_dollar_block && paren_depth == 0 {
+                let cmd = current.trim();
+                if !cmd.is_empty() && !cmd.starts_with("--") {
+                    // Vérifier que la commande commence par un mot-clé SQL valide
+                    let cmd_upper = cmd.to_uppercase();
+                    let valid_keywords = [
+                        "CREATE", "ALTER", "DROP", "INSERT", "UPDATE", "DELETE", "SELECT", "GRANT",
+                        "REVOKE", "COMMENT", "TRUNCATE", "ANALYZE", "VACUUM", "EXECUTE", "DO",
+                        "BEGIN", "COMMIT", "ROLLBACK",
+                    ];
+                    if valid_keywords.iter().any(|kw| cmd_upper.starts_with(kw)) {
+                        commands.push(cmd.to_string());
+                    }
+                }
+                current.clear();
+                paren_depth = 0;
+            }
+        }
+
+        // Traiter la dernière commande si elle existe
+        if !current.trim().is_empty() && !in_dollar_block && paren_depth == 0 {
+            let cmd = current.trim();
+            if !cmd.is_empty() && !cmd.starts_with("--") {
+                commands.push(cmd.to_string());
+            }
+        }
+
+        // Exécuter chaque commande
+        for cmd in commands {
+            if cmd.trim().is_empty() || cmd.trim().starts_with("--") {
+                continue;
+            }
+            sqlx::query(&cmd).execute(pool).await?;
+        }
+
+        Ok(())
+    }
 
     // ✅ CORRECTION CRITIQUE 2026-01-30: Exécuter les migrations de correction AVANT la migration 0
     // pour préparer l'environnement et éviter les erreurs pendant l'exécution de la migration 0
@@ -515,7 +597,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "🔍 [MIGRATION CORRECTION 002] Fichier chargé, taille: {} caractères",
         migration_fix_1_sql.len()
     );
-    match execute_multiple_sql_commands(&pg_pool, migration_fix_1_sql).await {
+    match execute_migration_sql(&pg_pool, migration_fix_1_sql).await {
         Ok(_) => {
             log::info!(
                 "✅ [MIGRATION CORRECTION 002] Migration de correction appliquée avec succès"
@@ -537,7 +619,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "🔍 [MIGRATION CORRECTION 003] Fichier chargé, taille: {} caractères",
         migration_fix_2_sql.len()
     );
-    match execute_multiple_sql_commands(&pg_pool, migration_fix_2_sql).await {
+    match execute_migration_sql(&pg_pool, migration_fix_2_sql).await {
         Ok(_) => {
             log::info!(
                 "✅ [MIGRATION CORRECTION 003] Migration de correction appliquée avec succès"
@@ -559,7 +641,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "🔍 [MIGRATION CORRECTION 004] Fichier chargé, taille: {} caractères",
         migration_fix_3_sql.len()
     );
-    match execute_multiple_sql_commands(&pg_pool, migration_fix_3_sql).await {
+    match execute_migration_sql(&pg_pool, migration_fix_3_sql).await {
         Ok(_) => {
             log::info!("✅ [MIGRATION CORRECTION 004] Migration de correction FINALE appliquée avec succès");
         }
@@ -579,7 +661,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "🔍 [MIGRATION CORRECTION 005] Fichier chargé, taille: {} caractères",
         migration_fix_4_sql.len()
     );
-    match execute_multiple_sql_commands(&pg_pool, migration_fix_4_sql).await {
+    match execute_migration_sql(&pg_pool, migration_fix_4_sql).await {
         Ok(_) => {
             log::info!("✅ [MIGRATION CORRECTION 005] Migration de correction des erreurs restantes appliquée avec succès");
         }
@@ -599,7 +681,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "🔍 [MIGRATION CORRECTION 006] Fichier chargé, taille: {} caractères",
         migration_fix_5_sql.len()
     );
-    match execute_multiple_sql_commands(&pg_pool, migration_fix_5_sql).await {
+    match execute_migration_sql(&pg_pool, migration_fix_5_sql).await {
         Ok(_) => {
             log::info!("✅ [MIGRATION CORRECTION 006] Colonnes partner_type et partner_status ajoutées à users");
         }
@@ -619,7 +701,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "🔍 [MIGRATION CORRECTION 007] Fichier chargé, taille: {} caractères",
         migration_fix_6_sql.len()
     );
-    match execute_multiple_sql_commands(&pg_pool, migration_fix_6_sql).await {
+    match execute_migration_sql(&pg_pool, migration_fix_6_sql).await {
         Ok(_) => {
             log::info!("✅ [MIGRATION CORRECTION 007] Table users garantie d'exister");
             // Vérifier que la table existe maintenant
@@ -653,7 +735,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "🔍 [MIGRATION CORRECTION 008] Fichier chargé, taille: {} caractères",
         migration_fix_7_sql.len()
     );
-    match execute_multiple_sql_commands(&pg_pool, migration_fix_7_sql).await {
+    match execute_migration_sql(&pg_pool, migration_fix_7_sql).await {
         Ok(_) => {
             log::info!(
                 "✅ [MIGRATION CORRECTION 008] Tables services et media garanties d'exister"
@@ -703,53 +785,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // puis on laisse sqlx::migrate!() calculer le checksum correct et l'insérer dans _sqlx_migrations
     // Si la migration 0 existe déjà avec un mauvais checksum, sqlx::migrate!() va échouer,
     // donc on la supprime d'abord si nécessaire (déjà fait plus haut)
-    // ✅ NOUVEAU 2026-01-31: Utiliser les migrations individuelles au lieu du fichier consolidé
-    // Les migrations individuelles (00000001 à 00000041) remplacent l'ancien 0000_create_all_tables.sql
-    log::info!("🔄 [MIGRATIONS INDIVIDUELLES] Application des migrations individuelles (00000001 à 00000041)...");
-    
-    // Vérifier si la migration 0 existe déjà dans _sqlx_migrations
-    let migration_0_exists = if migrations_table_exists {
-        sqlx::query_scalar::<_, bool>(
-            "SELECT EXISTS (SELECT 1 FROM _sqlx_migrations WHERE version = 0 AND success = true)",
-        )
-        .fetch_one(&pg_pool)
-        .await
-        .unwrap_or(false)
-    } else {
-        false
-    };
-
-    if !migration_0_exists {
-        log::info!("🔄 [MIGRATIONS INDIVIDUELLES] Migration 0 non trouvée dans _sqlx_migrations, application des migrations individuelles...");
-        match yukpomnang_backend::migrations::auto_migrate::run_individual_migrations(&pg_pool).await {
-            Ok(_) => {
-                log::info!("✅ [MIGRATIONS INDIVIDUELLES] Toutes les migrations individuelles appliquées avec succès");
-                log::info!("ℹ️ [MIGRATIONS INDIVIDUELLES] SQLx va calculer et insérer le checksum correct lors de sqlx::migrate!()");
-            }
-            Err(e) => {
-                log::error!(
-                    "❌ [MIGRATIONS INDIVIDUELLES] Erreur lors de l'application des migrations individuelles: {}",
-                    e
-                );
-                log::error!("❌ [MIGRATIONS INDIVIDUELLES] Type d'erreur: {:?}", e);
-                if let Some(source) = e.source() {
-                    log::error!("❌ [MIGRATIONS INDIVIDUELLES] Source: {}", source);
-                }
-            }
-        }
-    } else {
-        log::info!("ℹ️ [MIGRATIONS INDIVIDUELLES] Migration 0 existe déjà dans _sqlx_migrations, skip de l'application directe");
-    }
-
-    // ✅ SUPPRIMÉ 2026-01-31: Migration consolidée redondante supprimée
-    // Les migrations individuelles (run_individual_migrations) sont maintenant utilisées exclusivement
-    // Cela évite les conflits et les erreurs de division SQL
-    // Ancien code supprimé: migration consolidée 20260129_create_missing_tables_aws.sql
-
-    // ✅ Ensuite, appliquer toutes les migrations SQLx standard (y compris 0000 pour le checksum)
-    // SQLx va détecter que la migration 0 est déjà appliquée (tables créées) et va juste
-    // mettre à jour le checksum dans _sqlx_migrations si nécessaire
-    log::info!("🔄 [MIGRATIONS SQLX] Application des migrations SQLx standard (incluant vérification checksum migration 0)...");
+    // ✅ NOUVEAU 2026-01-31: Utiliser uniquement sqlx::migrate!() pour toutes les migrations
+    // SQLx gère automatiquement les fichiers SQL complets, les blocs DO $$, les fonctions, etc.
+    // Plus besoin de run_individual_migrations ou execute_multiple_sql_commands
+    log::info!("🔄 [MIGRATIONS SQLX] Application de toutes les migrations SQLx standard...");
     match sqlx::migrate!("./migrations").run(&pg_pool).await {
         Ok(_) => {
             log::info!("✅ Migrations SQLx standard appliquées avec succès");
@@ -832,39 +871,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "❌ Les migrations automatiques ne pourront pas s'exécuter correctement"
                 );
 
-                // ✅ SUPPRIMÉ 2026-01-31: Migration consolidée redondante supprimée
-                // Les migrations individuelles (run_individual_migrations) sont maintenant utilisées exclusivement
-                // Si les tables manquent, vérifier que run_individual_migrations a bien été exécuté
-                log::warn!("⚠️ [MIGRATIONS] Tables de base manquantes. Vérifiez que run_individual_migrations a été exécuté.");
-                
+                // ✅ NOUVEAU 2026-01-31: Utilisation de sqlx::migrate!() pour toutes les migrations
+                // SQLx gère automatiquement les fichiers SQL complets sans division
+                log::warn!("⚠️ [MIGRATIONS] Tables de base manquantes. Vérifiez que les migrations SQLx ont été exécutées.");
+
                 // Vérifier à nouveau (sans migration consolidée)
                 let users_exists_after: bool = sqlx::query_scalar(
-                            "SELECT EXISTS (
+                    "SELECT EXISTS (
                                 SELECT FROM information_schema.tables 
                                 WHERE table_schema = 'public' 
                                 AND table_name = 'users'
                             )",
-                        )
-                        .fetch_one(&pg_pool)
-                        .await
-                        .unwrap_or(false);
+                )
+                .fetch_one(&pg_pool)
+                .await
+                .unwrap_or(false);
 
-                        let services_exists_after: bool = sqlx::query_scalar(
-                            "SELECT EXISTS (
+                let services_exists_after: bool = sqlx::query_scalar(
+                    "SELECT EXISTS (
                                 SELECT FROM information_schema.tables 
                                 WHERE table_schema = 'public' 
                                 AND table_name = 'services'
                             )",
-                        )
-                        .fetch_one(&pg_pool)
-                        .await
-                        .unwrap_or(false);
+                )
+                .fetch_one(&pg_pool)
+                .await
+                .unwrap_or(false);
 
-                        if users_exists_after && services_exists_after {
-                            log::info!("✅ Tables de base créées par la migration consolidée");
-                        } else {
-                            log::error!("❌ Migration consolidée appliquée mais tables de base toujours manquantes");
-                        }
+                if users_exists_after && services_exists_after {
+                    log::info!("✅ Tables de base créées par la migration consolidée");
+                } else {
+                    log::error!(
+                        "❌ Migration consolidée appliquée mais tables de base toujours manquantes"
+                    );
+                }
             } else {
                 log::info!("✅ Tables de base (users, services) vérifiées après migrations SQLx");
             }
@@ -990,10 +1030,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "❌ CAUSE PROBABLE: Les migrations n'ont pas été appliquées correctement"
                 );
 
-                // ✅ SUPPRIMÉ 2026-01-31: Migration consolidée redondante supprimée
-                // Les migrations individuelles (run_individual_migrations) sont maintenant utilisées exclusivement
+                // ✅ NOUVEAU 2026-01-31: Utilisation de sqlx::migrate!() pour toutes les migrations
                 log::warn!("⚠️ [MIGRATIONS] Tables manquantes: {:?}", missing_tables);
-                log::warn!("⚠️ [MIGRATIONS] Vérifiez que run_individual_migrations a été exécuté correctement.");
+                log::warn!("⚠️ [MIGRATIONS] Vérifiez que les migrations SQLx ont été exécutées correctement.");
 
                 // ✅ NOUVEAU 2026-01-29: Arrêter l'application si les tables critiques sont manquantes
                 // (sauf en mode développement où on peut continuer avec des fonctionnalités limitées)
@@ -1042,9 +1081,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             // ✅ SUPPRIMÉ 2026-01-31: Migration consolidée redondante supprimée
-            // Les migrations individuelles (run_individual_migrations) sont maintenant utilisées exclusivement
-            // Si SQLx échoue, vérifier que run_individual_migrations a bien été exécuté
-            log::warn!("⚠️ [MIGRATIONS] SQLx a échoué. Vérifiez que run_individual_migrations a été exécuté correctement.");
+            // ✅ NOUVEAU 2026-01-31: Utilisation de sqlx::migrate!() pour toutes les migrations
+            log::warn!(
+                "⚠️ [MIGRATIONS] SQLx a échoué. Vérifiez les logs ci-dessus pour plus de détails."
+            );
             log::warn!("⚠️ [MIGRATIONS] Les migrations individuelles doivent être appliquées avant sqlx::migrate!()");
 
             // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
@@ -1279,10 +1319,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Err(e) => {
-            log::error!(
-                "❌ Erreur lors de l'application des migrations SQLx: {}",
-                e
-            );
+            log::error!("❌ Erreur lors de l'application des migrations SQLx: {}", e);
         }
     }
 
