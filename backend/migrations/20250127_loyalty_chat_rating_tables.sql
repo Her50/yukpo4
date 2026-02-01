@@ -36,12 +36,14 @@ CREATE TABLE IF NOT EXISTS loyalty_rewards (
 );
 
 -- Insérer les récompenses par défaut
+-- ✅ CORRECTION 2026-02-01: Ajout ON CONFLICT pour éviter les erreurs "duplicate key value"
 INSERT INTO loyalty_rewards (id, name, description, points_cost, discount_percent, category, available)
 VALUES
     ('discount_5', 'Réduction 5%', '5% de réduction sur votre prochaine réservation', 100, 5, 'discount', TRUE),
     ('discount_10', 'Réduction 10%', '10% de réduction sur votre prochaine réservation', 200, 10, 'discount', TRUE),
     ('discount_15', 'Réduction 15%', '15% de réduction sur votre prochaine réservation', 300, 15, 'discount', TRUE),
     ('free_ticket', 'Ticket gratuit', 'Un ticket gratuit jusqu''à 5000 FCFA', 500, NULL, 'free_ticket', TRUE)
+ON CONFLICT (id) DO NOTHING
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================

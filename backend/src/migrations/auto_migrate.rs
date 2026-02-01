@@ -12076,9 +12076,24 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
         // ✅ AMÉLIORATION 2026-02-01: Détecter la fin d'une commande de plusieurs façons
         let mut should_end_command = false;
 
-        // 1. Si on trouve un ';' et qu'on n'est pas dans un bloc $$ ou une parenthèse
+        // 1. ✅ AMÉLIORATION 2026-02-01: Si on trouve un ';' et qu'on n'est pas dans un bloc $$ ou une parenthèse
+        // Exception: Ne pas terminer une CREATE TABLE si elle n'a pas de ');' final
         if trimmed.ends_with(';') && !in_dollar_block && paren_depth == 0 {
-            should_end_command = true;
+            let cmd_upper = current.to_uppercase();
+            let is_create_table = cmd_upper.contains("CREATE TABLE");
+            
+            // Si c'est une CREATE TABLE, vérifier qu'elle a ');' avant de terminer
+            if is_create_table {
+                // Vérifier si la ligne actuelle ou une ligne précédente contient ');'
+                let has_table_closing = trimmed.contains(");") || cmd_upper.contains(");");
+                if has_table_closing {
+                    should_end_command = true;
+                }
+                // Sinon, on attend la ligne suivante pour voir si elle contient ');'
+            } else {
+                // Pour les autres commandes, terminer normalement
+                should_end_command = true;
+            }
         }
 
         // 2. ✅ NOUVEAU: Détecter la fin d'un CREATE TRIGGER même sans ';' après EXECUTE FUNCTION
@@ -12114,7 +12129,8 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
             }
         }
 
-        // 3. ✅ NOUVEAU: Détecter une nouvelle commande qui commence même si la précédente n'a pas de ';'
+        // 3. ✅ AMÉLIORATION 2026-02-01: Détecter une nouvelle commande qui commence même si la précédente n'a pas de ';'
+        // Amélioration: Ne pas terminer une commande CREATE TABLE si elle n'a pas de ');' final
         if !in_dollar_block && paren_depth == 0 && !current.trim().is_empty() && i + 1 < lines.len()
         {
             let next_line = lines[i + 1].trim();
@@ -12128,16 +12144,24 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                 // Si la ligne suivante commence par un mot-clé SQL et que la commande actuelle est complète
                 if sql_keywords.iter().any(|kw| next_upper.starts_with(kw)) {
                     let cmd_upper = current.to_uppercase();
-                    // Vérifier que la commande actuelle est complète (se termine par ';' ou est une commande complète)
+                    
+                    // ✅ CRITIQUE: Ne pas terminer une CREATE TABLE si elle n'a pas de ');' final
+                    // Les CREATE TABLE doivent se terminer par ');' même si c'est sur plusieurs lignes
+                    let is_create_table = cmd_upper.contains("CREATE TABLE");
+                    let has_table_closing = cmd_upper.contains(");") || trimmed.contains(");");
+                    
+                    // Vérifier que la commande actuelle est complète
                     if trimmed.ends_with(';')
                         || (cmd_upper.contains("CREATE TRIGGER")
                             && cmd_upper.contains("ON ")
                             && cmd_upper.contains("EXECUTE FUNCTION"))
-                        || (cmd_upper.contains("CREATE TABLE") && cmd_upper.contains(");"))
-                        || (cmd_upper.contains("CREATE INDEX") && trimmed.ends_with(';'))
+                        || (is_create_table && has_table_closing)
+                        || (!is_create_table && cmd_upper.contains("CREATE INDEX") && trimmed.ends_with(';'))
+                        || (!is_create_table && cmd_upper.contains("COMMENT ON") && (trimmed.ends_with("'") || trimmed.ends_with("';")))
                     {
                         should_end_command = true;
                     }
+                    // Si c'est une CREATE TABLE sans ');', ne pas terminer (attendre la ligne suivante)
                 }
             }
         }
