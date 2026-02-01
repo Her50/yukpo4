@@ -26,12 +26,14 @@ GROUP BY u.id, u.tokens_balance;
 -- Index unique pour permettre REFRESH CONCURRENTLY
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_stats_id ON mv_user_stats(id);
 
--- ✅ Corriger hashtag_stats_materialized (erreur: column "tag.tag" must appear in the GROUP BY)
+-- ✅ CORRECTION 2026-02-01: Corriger hashtag_stats_materialized (erreur: column "tag.tag" must appear in the GROUP BY)
+-- Le problème: CROSS JOIN LATERAL unnest(...) AS tag crée une ambiguïté avec tag.tag
+-- Solution: Utiliser un alias explicite pour la colonne tag
 DROP MATERIALIZED VIEW IF EXISTS hashtag_stats_materialized CASCADE;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS hashtag_stats_materialized AS
 SELECT 
-    tag,
+    tag_value as tag,
     COUNT(DISTINCT v.id) as video_count,
     SUM(v.view_count) as total_views,
     SUM(v.like_count) as total_likes,
@@ -42,9 +44,9 @@ SELECT
     ) as trend_score,
     MAX(v.created_at) as last_video_at
 FROM videos v
-CROSS JOIN LATERAL unnest(v.hashtags) AS tag
+CROSS JOIN LATERAL unnest(v.hashtags) AS tag_value
 WHERE v.is_active = TRUE
-GROUP BY tag;
+GROUP BY tag_value;
 
 -- Index unique pour permettre REFRESH CONCURRENTLY
 CREATE UNIQUE INDEX IF NOT EXISTS idx_hashtag_stats_materialized_tag 

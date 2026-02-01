@@ -12020,16 +12020,41 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
             continue;
         }
 
-        // Détecter début/fin de blocs $$
-        if trimmed.contains("$$") {
-            if !in_dollar_block {
-                // Début d'un bloc
-                if let Some(_start) = trimmed.find("$$") {
-                    dollar_tag = "$$".to_string();
-                    in_dollar_block = true;
+        // ✅ AMÉLIORATION 2026-02-01: Détecter début/fin de blocs $$ avec support des tags personnalisés
+        // Exemples: $$, $tag$, $function$, etc.
+        if trimmed.contains("$") {
+            // Chercher tous les patterns $$ ou $tag$
+            let dollar_patterns: Vec<&str> = trimmed
+                .split_whitespace()
+                .filter(|s| s.contains('$'))
+                .collect();
+            
+            for pattern in dollar_patterns {
+                // Extraire le tag (entre les $)
+                if let Some(start) = pattern.find('$') {
+                    if let Some(end) = pattern[start+1..].find('$') {
+                        let tag = &pattern[start..=start+end+1];
+                        
+                        if !in_dollar_block {
+                            // Début d'un bloc
+                            dollar_tag = tag.to_string();
+                            in_dollar_block = true;
+                            break;
+                        } else if pattern.contains(&dollar_tag) {
+                            // Fin d'un bloc (même tag)
+                            in_dollar_block = false;
+                            dollar_tag.clear();
+                            break;
+                        }
+                    }
                 }
-            } else if trimmed.contains(&dollar_tag) {
-                // Fin d'un bloc
+            }
+            
+            // Fallback pour le pattern simple $$
+            if !in_dollar_block && trimmed.contains("$$") {
+                dollar_tag = "$$".to_string();
+                in_dollar_block = true;
+            } else if in_dollar_block && trimmed.contains("$$") && dollar_tag == "$$" {
                 in_dollar_block = false;
                 dollar_tag.clear();
             }
@@ -12077,21 +12102,45 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
         let mut should_end_command = false;
 
         // 1. ✅ AMÉLIORATION 2026-02-01: Si on trouve un ';' et qu'on n'est pas dans un bloc $$ ou une parenthèse
-        // Exception: Ne pas terminer une CREATE TABLE si elle n'a pas de ');' final
+        // Exception: Ne pas terminer certaines commandes multi-lignes si elles ne sont pas complètes
         if trimmed.ends_with(';') && !in_dollar_block && paren_depth == 0 {
             let cmd_upper = current.to_uppercase();
             let is_create_table = cmd_upper.contains("CREATE TABLE");
+            let is_create_index = cmd_upper.contains("CREATE INDEX") || cmd_upper.contains("CREATE UNIQUE INDEX");
+            let is_comment_on = cmd_upper.contains("COMMENT ON");
+            let is_create_materialized_view = cmd_upper.contains("CREATE MATERIALIZED VIEW");
             
             // Si c'est une CREATE TABLE, vérifier qu'elle a ');' avant de terminer
             if is_create_table {
-                // Vérifier si la ligne actuelle ou une ligne précédente contient ');'
                 let has_table_closing = trimmed.contains(");") || cmd_upper.contains(");");
                 if has_table_closing {
                     should_end_command = true;
                 }
-                // Sinon, on attend la ligne suivante pour voir si elle contient ');'
-            } else {
-                // Pour les autres commandes, terminer normalement
+            }
+            // Si c'est une CREATE INDEX, vérifier qu'elle a "ON table_name" avant de terminer
+            else if is_create_index {
+                let has_index_on = cmd_upper.contains(" ON ");
+                if has_index_on {
+                    should_end_command = true;
+                }
+            }
+            // Si c'est un COMMENT ON, vérifier qu'il y a "IS" et une chaîne complète
+            else if is_comment_on {
+                let has_comment_is = cmd_upper.contains(" IS ");
+                let has_string = trimmed.ends_with("'") || trimmed.ends_with("';") || trimmed.ends_with("'::text");
+                if has_comment_is && has_string {
+                    should_end_command = true;
+                }
+            }
+            // Si c'est une CREATE MATERIALIZED VIEW, vérifier qu'elle a "AS SELECT" avant de terminer
+            else if is_create_materialized_view {
+                let has_materialized_as = cmd_upper.contains(" AS ");
+                if has_materialized_as {
+                    should_end_command = true;
+                }
+            }
+            // Pour les autres commandes, terminer normalement
+            else {
                 should_end_command = true;
             }
         }
@@ -12150,18 +12199,36 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                     let is_create_table = cmd_upper.contains("CREATE TABLE");
                     let has_table_closing = cmd_upper.contains(");") || trimmed.contains(");");
                     
+                    // ✅ AMÉLIORATION 2026-02-01: Détecter la fin des CREATE INDEX et COMMENT ON multi-lignes
+                    let is_create_index = cmd_upper.contains("CREATE INDEX") || cmd_upper.contains("CREATE UNIQUE INDEX");
+                    let is_comment_on = cmd_upper.contains("COMMENT ON");
+                    let is_create_materialized_view = cmd_upper.contains("CREATE MATERIALIZED VIEW");
+                    
+                    // Pour CREATE INDEX, vérifier qu'il y a "ON table_name" et que ça se termine par ';'
+                    let has_index_on = is_create_index && cmd_upper.contains(" ON ");
+                    let index_complete = is_create_index && has_index_on && (trimmed.ends_with(';') || trimmed.ends_with(");"));
+                    
+                    // Pour COMMENT ON, vérifier qu'il y a "IS" et que ça se termine par une chaîne complète
+                    let has_comment_is = is_comment_on && cmd_upper.contains(" IS ");
+                    let comment_complete = is_comment_on && has_comment_is && (trimmed.ends_with("'") || trimmed.ends_with("';") || trimmed.ends_with("'::text"));
+                    
+                    // Pour CREATE MATERIALIZED VIEW, vérifier qu'il y a "AS SELECT" et que ça se termine par ';'
+                    let has_materialized_as = is_create_materialized_view && cmd_upper.contains(" AS ");
+                    let materialized_complete = is_create_materialized_view && has_materialized_as && trimmed.ends_with(';');
+                    
                     // Vérifier que la commande actuelle est complète
                     if trimmed.ends_with(';')
                         || (cmd_upper.contains("CREATE TRIGGER")
                             && cmd_upper.contains("ON ")
                             && cmd_upper.contains("EXECUTE FUNCTION"))
                         || (is_create_table && has_table_closing)
-                        || (!is_create_table && cmd_upper.contains("CREATE INDEX") && trimmed.ends_with(';'))
-                        || (!is_create_table && cmd_upper.contains("COMMENT ON") && (trimmed.ends_with("'") || trimmed.ends_with("';")))
+                        || index_complete
+                        || comment_complete
+                        || materialized_complete
                     {
                         should_end_command = true;
                     }
-                    // Si c'est une CREATE TABLE sans ');', ne pas terminer (attendre la ligne suivante)
+                    // Si c'est une commande multi-ligne sans fin complète, ne pas terminer (attendre la ligne suivante)
                 }
             }
         }
