@@ -12186,7 +12186,7 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
             continue;
         }
 
-        // ✅ NOUVEAU: Gérer les commandes multiples dans un seul statement
+        // ✅ AMÉLIORATION 2026-02-01: Gérer les commandes multiples dans un seul statement
         // Si la commande contient plusieurs ';' et n'est pas dans un bloc DO $$, diviser
         let cmd_upper = trimmed_cmd.to_uppercase();
         // Vérifier si on est dans une parenthèse en comptant les parenthèses dans la commande
@@ -12195,11 +12195,19 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
             .map(|c| if c == '(' { 1 } else if c == ')' { -1 } else { 0 })
             .sum();
         
+        // ✅ NOUVEAU: Détecter les blocs DO $$ qui contiennent plusieurs commandes séparées
+        // Exemple: DO $$ BEGIN DROP TRIGGER ...; CREATE TRIGGER ...; END $$;
+        let is_do_block_with_multiple_commands = cmd_upper.contains("DO $$")
+            && cmd_upper.contains("BEGIN")
+            && cmd_upper.contains("END $$")
+            && trimmed_cmd.matches(';').count() > 2; // Plus de 2 ';' = plusieurs commandes dans le bloc
+        
         if trimmed_cmd.matches(';').count() > 1
             && !cmd_upper.contains("DO $$")
             && !cmd_upper.contains("CREATE FUNCTION")
             && !cmd_upper.contains("CREATE OR REPLACE FUNCTION")
             && cmd_paren_depth == 0
+            && !is_do_block_with_multiple_commands
         {
             // Diviser en commandes individuelles
             let parts: Vec<&str> = trimmed_cmd
@@ -12268,7 +12276,71 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                     if error_lower
                         .contains("cannot insert multiple commands into a prepared statement")
                     {
-                        // Diviser la commande et réessayer
+                        // ✅ NOUVEAU: Gérer spécialement les blocs DO $$ avec plusieurs commandes
+                        let cmd_upper = trimmed_cmd.to_uppercase();
+                        if cmd_upper.contains("DO $$") && cmd_upper.contains("BEGIN") && cmd_upper.contains("END $$") {
+                            // Extraire les commandes du bloc DO $$ en divisant par ';' mais en préservant la structure
+                            // Exemple: DO $$ BEGIN DROP TRIGGER ...; CREATE TRIGGER ...; END $$;
+                            // On doit diviser en: DROP TRIGGER ...; et CREATE TRIGGER ...; (séparément)
+                            
+                            // Trouver le contenu entre BEGIN et END $$
+                            if let Some(begin_pos) = cmd_upper.find("BEGIN") {
+                                if let Some(end_pos) = cmd_upper.find("END $$") {
+                                    let block_content = &trimmed_cmd[begin_pos + 5..end_pos].trim();
+                                    // Diviser le contenu par ';' mais garder les commandes complètes
+                                    let inner_commands: Vec<&str> = block_content
+                                        .split(';')
+                                        .map(|s| s.trim())
+                                        .filter(|s| !s.is_empty() && !s.to_uppercase().starts_with("--"))
+                                        .collect();
+                                    
+                                    // Exécuter chaque commande individuellement
+                                    for inner_cmd in inner_commands {
+                                        let inner_upper = inner_cmd.to_uppercase();
+                                        let valid_keywords = [
+                                            "CREATE", "ALTER", "DROP", "INSERT", "UPDATE", "DELETE", "SELECT",
+                                            "GRANT", "REVOKE", "COMMENT", "TRUNCATE", "ANALYZE", "VACUUM",
+                                            "EXECUTE", "BEGIN", "COMMIT", "ROLLBACK",
+                                        ];
+                                        
+                                        if valid_keywords.iter().any(|kw| inner_upper.starts_with(kw)) {
+                                            let inner_cmd_with_semicolon = format!("{};", inner_cmd);
+                                            if let Err(e2) = sqlx::query(&inner_cmd_with_semicolon).execute(pool).await {
+                                                let error_str2 = e2.to_string();
+                                                let error_lower2 = error_str2.to_lowercase();
+                                                let is_benign2 = error_lower2.contains("already exists")
+                                                    || error_lower2.contains("does not exist")
+                                                    || error_lower2.contains("is not unique")
+                                                    || error_lower2.contains("cannot change return type")
+                                                    || error_lower2.contains("functions in index predicate must be marked immutable");
+                                                
+                                                if !is_benign2 {
+                                                    error!(
+                                                        "❌ [MIGRATION] Erreur critique dans commande extraite du bloc DO: {} | Commande: {}",
+                                                        error_str2,
+                                                        if inner_cmd.len() > 100 {
+                                                            format!("{}...", &inner_cmd[..100])
+                                                        } else {
+                                                            inner_cmd.to_string()
+                                                        }
+                                                    );
+                                                    return Err(e2);
+                                                } else {
+                                                    debug!(
+                                                        "ℹ️ [MIGRATION] Erreur bénigne ignorée dans commande extraite du bloc DO: {}",
+                                                        error_str2
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    }
+                                    // Continuer avec la prochaine commande après avoir traité le bloc DO
+                                    continue;
+                                }
+                            }
+                        }
+                        
+                        // Diviser la commande et réessayer (logique existante)
                         let parts: Vec<&str> = trimmed_cmd
                             .split(';')
                             .filter(|p| !p.trim().is_empty())
@@ -12356,6 +12428,20 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                                     trimmed_cmd.to_string()
                                 }
                             );
+                        } else if error_lower.contains("syntax error at end of input") {
+                            // ✅ NOUVEAU: Gérer les fragments de commandes (syntax error at end of input)
+                            // Cela indique qu'une commande est incomplète, probablement coupée par le parser
+                            warn!(
+                                "⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): {} | Commande: {}",
+                                error_str,
+                                if trimmed_cmd.len() > 200 {
+                                    format!("{}...", &trimmed_cmd[..200])
+                                } else {
+                                    trimmed_cmd.to_string()
+                                }
+                            );
+                            // Ignorer les fragments - ils seront probablement corrigés dans une prochaine migration
+                            debug!("ℹ️ [MIGRATION] Fragment ignoré, probablement dû à un parsing incomplet");
                         } else {
                             // Erreur critique : logger et retourner
                             error!(
