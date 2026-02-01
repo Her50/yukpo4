@@ -10188,7 +10188,7 @@ pub async fn ensure_message_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
     let migration_sql = include_str!("../../migrations/20250127_add_message_reactions.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Table message_reactions créée avec succès");
     Ok(())
@@ -11578,7 +11578,7 @@ pub async fn ensure_hybrid_image_search_fallback(pool: &PgPool) -> Result<(), sq
     info!("🔍 Application migration hybrid_image_search_fallback...");
     let migration_sql =
         include_str!("../../migrations/20251221_add_fallback_to_hybrid_image_search.sql");
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_fallback appliquée");
     Ok(())
 }
@@ -11589,7 +11589,7 @@ pub async fn ensure_hybrid_image_search_relevance(pool: &PgPool) -> Result<(), s
     info!("🔍 Application migration hybrid_image_search_relevance...");
     let migration_sql =
         include_str!("../../migrations/20251223_improve_hybrid_image_search_relevance.sql");
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_relevance appliquée");
     Ok(())
 }
@@ -11603,7 +11603,7 @@ pub async fn ensure_hybrid_image_search_language_and_relevance(
     let migration_sql = include_str!(
         "../../migrations/20251224_improve_hybrid_image_search_language_and_relevance.sql"
     );
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_language_and_relevance appliquée");
     Ok(())
 }
@@ -11616,7 +11616,7 @@ pub async fn ensure_hybrid_image_search_relevance_and_performance(
     info!("🔍 Application migration hybrid_image_search_relevance_and_performance...");
     let migration_sql =
         include_str!("../../migrations/20251224_fix_image_search_relevance_and_performance.sql");
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_relevance_and_performance appliquée");
     Ok(())
 }
@@ -11629,7 +11629,7 @@ pub async fn ensure_hybrid_image_search_generic_products(pool: &PgPool) -> Resul
     info!("🔍 Application migration hybrid_image_search_generic_products...");
     let migration_sql =
         include_str!("../../migrations/20251227_fix_image_search_strict_matching.sql");
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_generic_products appliquée");
     Ok(())
 }
@@ -11641,7 +11641,7 @@ pub async fn ensure_optimize_slow_queries_critical(pool: &PgPool) -> Result<(), 
     info!("🔍 Application migration optimize_slow_queries_critical...");
     let migration_sql =
         include_str!("../../migrations/20251224_optimize_slow_queries_critical.sql");
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration optimize_slow_queries_critical appliquée");
     Ok(())
 }
@@ -11653,7 +11653,7 @@ pub async fn ensure_optimize_delivery_queries_additional(pool: &PgPool) -> Resul
     info!("🔍 Application migration optimize_delivery_queries_additional...");
     let migration_sql =
         include_str!("../../migrations/20260111_optimize_delivery_queries_additional.sql");
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration optimize_delivery_queries_additional appliquée");
     Ok(())
 }
@@ -11667,7 +11667,7 @@ pub async fn ensure_optimize_delivery_queries_additional(pool: &PgPool) -> Resul
 pub async fn ensure_optimize_search_performance(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration optimize_search_performance...");
     let migration_sql = include_str!("../../migrations/20260114_optimize_search_performance.sql");
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration optimize_search_performance appliquée");
     Ok(())
 }
@@ -11991,12 +11991,97 @@ fn normalize_sql_command(cmd: &str) -> String {
     trimmed.to_string()
 }
 
+/// ✅ NOUVEAU 2026-02-01: Fonction helper simple pour exécuter des migrations SQL
+/// Divise les commandes sur ';' mais préserve les blocs DO $$ et les fonctions
+/// Cette fonction remplace execute_multiple_sql_commands pour éviter les fragments SQL invalides
+pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {
+    // Diviser par ';' mais préserver les blocs $$...$$
+    let mut commands = Vec::new();
+    let mut current = String::new();
+    let mut in_dollar_block = false;
+    let mut dollar_tag = String::new();
+    let mut paren_depth = 0i32;
+
+    for line in sql.lines() {
+        let trimmed = line.trim();
+
+        // Ignorer les lignes vides et commentaires seuls
+        if trimmed.is_empty() || trimmed.starts_with("--") {
+            if !current.trim().is_empty() {
+                current.push_str(line);
+                current.push_str("\n");
+            }
+            continue;
+        }
+
+        // Détecter début/fin de blocs $$
+        if trimmed.contains("$$") {
+            if !in_dollar_block {
+                // Début d'un bloc
+                if let Some(_start) = trimmed.find("$$") {
+                    dollar_tag = "$$".to_string();
+                    in_dollar_block = true;
+                }
+            } else if trimmed.contains(&dollar_tag) {
+                // Fin d'un bloc
+                in_dollar_block = false;
+                dollar_tag.clear();
+            }
+        }
+
+        // Compter les parenthèses
+        let open_parens = trimmed.matches('(').count();
+        let close_parens = trimmed.matches(')').count();
+        paren_depth += (open_parens as i32) - (close_parens as i32);
+
+        current.push_str(line);
+        current.push_str("\n");
+
+        // Si on trouve un ';' et qu'on n'est pas dans un bloc $$ ou une parenthèse
+        if trimmed.ends_with(';') && !in_dollar_block && paren_depth == 0 {
+            let cmd = current.trim();
+            if !cmd.is_empty() && !cmd.starts_with("--") {
+                // Vérifier que la commande commence par un mot-clé SQL valide
+                let cmd_upper = cmd.to_uppercase();
+                let valid_keywords = [
+                    "CREATE", "ALTER", "DROP", "INSERT", "UPDATE", "DELETE", "SELECT", "GRANT",
+                    "REVOKE", "COMMENT", "TRUNCATE", "ANALYZE", "VACUUM", "EXECUTE", "DO", "BEGIN",
+                    "COMMIT", "ROLLBACK",
+                ];
+                if valid_keywords.iter().any(|kw| cmd_upper.starts_with(kw)) {
+                    commands.push(cmd.to_string());
+                }
+            }
+            current.clear();
+            paren_depth = 0;
+        }
+    }
+
+    // Traiter la dernière commande si elle existe
+    if !current.trim().is_empty() && !in_dollar_block && paren_depth == 0 {
+        let cmd = current.trim();
+        if !cmd.is_empty() && !cmd.starts_with("--") {
+            commands.push(cmd.to_string());
+        }
+    }
+
+    // Exécuter chaque commande
+    for cmd in commands {
+        if cmd.trim().is_empty() || cmd.trim().starts_with("--") {
+            continue;
+        }
+        sqlx::query(&cmd).execute(pool).await?;
+    }
+
+    Ok(())
+}
+
 /// ⚠️ DÉPRÉCIÉ 2026-01-31: Cette fonction crée des fragments SQL invalides
-/// Utilisez plutôt sqlx::migrate!() ou sqlx::query() directement
+/// Utilisez plutôt execute_migration_sql_safe() ou sqlx::migrate!() ou sqlx::query() directement
 /// Cette fonction est conservée uniquement pour compatibilité avec les scripts binaires
 ///
 /// Fonction publique pour exécuter des migrations SQL avec gestion des blocs DO $$
-#[deprecated(note = "Utilisez sqlx::migrate!() ou sqlx::query() à la place")]
+#[deprecated(note = "Utilisez execute_migration_sql_safe() ou sqlx::migrate!() à la place")]
 pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {
     // Amélioration : gérer les blocs DO $$...END $$; et CREATE FUNCTION $$...$$ LANGUAGE correctement
     // Diviser par ";" mais préserver les blocs $$...$$;
@@ -13175,7 +13260,7 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
             include_str!("../../migrations/20251126_create_specialized_services_tables.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
-        execute_multiple_sql_commands(pool, migration_sql).await?;
+        execute_migration_sql_safe(pool, migration_sql).await?;
         info!("✅ Tables services spécialisés créées via migration complète");
     } else {
         info!("✅ Toutes les tables services spécialisés déjà présentes");
@@ -13628,7 +13713,7 @@ pub async fn ensure_banques_sang_table(pool: &PgPool) -> Result<(), sqlx::Error>
         let migration_sql = include_str!("../../migrations/20251127_create_banques_sang_table.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
-        execute_multiple_sql_commands(pool, migration_sql).await?;
+        execute_migration_sql_safe(pool, migration_sql).await?;
         info!("✅ Table banques_sang créée");
     } else {
         info!("✅ Table banques_sang déjà présente");
@@ -13647,7 +13732,7 @@ pub async fn ensure_bus_tickets_integration(pool: &PgPool) -> Result<(), sqlx::E
         include_str!("../../migrations/20251127_integrate_bus_tickets_with_agences_voyage.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Intégration tickets bus avec agences_voyage créée/mise à jour");
     Ok(())
@@ -13662,7 +13747,7 @@ pub async fn ensure_bus_ticket_commission_system(pool: &PgPool) -> Result<(), sq
         include_str!("../../migrations/20251127_add_commission_to_bus_payments.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Système commission et reversement tickets bus créé/mis à jour");
     Ok(())
@@ -13686,7 +13771,7 @@ pub async fn ensure_bus_ticket_validation_system(pool: &PgPool) -> Result<(), sq
             include_str!("../../migrations/20251127_bus_ticket_validation_system.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
-        execute_multiple_sql_commands(pool, migration_sql).await?;
+        execute_migration_sql_safe(pool, migration_sql).await?;
         info!("✅ Système validation tickets bus créé");
     } else {
         info!("✅ Système validation tickets bus déjà présent");
@@ -13712,7 +13797,7 @@ pub async fn ensure_bus_seat_blocks_system(pool: &PgPool) -> Result<(), sqlx::Er
         let migration_sql = include_str!("../../migrations/20251127_bus_manual_seat_blocks.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
-        execute_multiple_sql_commands(pool, migration_sql).await?;
+        execute_migration_sql_safe(pool, migration_sql).await?;
         info!("✅ Système blocage places bus créé");
     } else {
         info!("✅ Système blocage places bus déjà présent");
@@ -13740,7 +13825,7 @@ pub async fn ensure_blood_donation_matching_system(pool: &PgPool) -> Result<(), 
             include_str!("../../migrations/20251127_blood_donation_matching_system.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
-        execute_multiple_sql_commands(pool, migration_sql).await?;
+        execute_migration_sql_safe(pool, migration_sql).await?;
         info!("✅ Système matching intelligent banque de sang créé");
     } else {
         info!("✅ Système matching intelligent banque de sang déjà présent");
@@ -13768,7 +13853,7 @@ pub async fn ensure_agency_departure_schedules(pool: &PgPool) -> Result<(), sqlx
             include_str!("../../migrations/20251127_agency_departure_schedules.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
-        execute_multiple_sql_commands(pool, migration_sql).await?;
+        execute_migration_sql_safe(pool, migration_sql).await?;
         info!("✅ Table agency_departure_schedules créée");
     } else {
         info!("✅ Table agency_departure_schedules déjà présente");
@@ -13796,7 +13881,7 @@ pub async fn ensure_return_time_columns(pool: &PgPool) -> Result<(), sqlx::Error
             include_str!("../../migrations/20251127_add_return_time_to_bus_payments.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
-        execute_multiple_sql_commands(pool, migration_sql).await?;
+        execute_migration_sql_safe(pool, migration_sql).await?;
         info!("✅ Colonnes return_date et return_time ajoutées");
     } else {
         info!("✅ Colonnes return_date et return_time déjà présentes");
@@ -13820,7 +13905,7 @@ pub async fn ensure_improved_return_matching(pool: &PgPool) -> Result<(), sqlx::
         include_str!("../../migrations/20251127_improve_return_trip_matching_with_time.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Fonction match_return_trip_requests améliorée avec matching par heure");
 
     Ok(())
@@ -13844,7 +13929,7 @@ pub async fn ensure_blood_group_column_in_users(pool: &PgPool) -> Result<(), sql
         let migration_sql = include_str!("../../migrations/20251127_add_blood_group_to_users.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
-        execute_multiple_sql_commands(pool, migration_sql).await?;
+        execute_migration_sql_safe(pool, migration_sql).await?;
         info!("✅ Colonne groupe_sanguin ajoutée dans users");
     } else {
         info!("✅ Colonne groupe_sanguin déjà présente dans users");
@@ -13973,7 +14058,7 @@ pub async fn ensure_specialized_type_triggers(pool: &PgPool) -> Result<(), sqlx:
     let migration_sql = include_str!("../../migrations/20250128_add_specialized_type_triggers.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Triggers specialized_type créés");
     Ok(())
@@ -13992,7 +14077,7 @@ pub async fn ensure_search_services_gps_final_signature_fix(
         include_str!("../../migrations/20251126_fix_search_services_gps_final_signature.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Signature de search_services_gps_final corrigée");
     Ok(())
@@ -14012,7 +14097,7 @@ pub async fn ensure_search_services_gps_final_optimization(
         include_str!("../../migrations/20251201_OPTIMIZE_SEARCH_GPS_FINAL_CRITICAL.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Optimisation CRITIQUE de search_services_gps_final appliquée (réduction ~17s → <2s)");
     Ok(())
@@ -14029,7 +14114,7 @@ pub async fn ensure_search_services_gps_final_alignment(pool: &PgPool) -> Result
         include_str!("../../migrations/20250101_ALIGN_SEARCH_GPS_FINAL_WITH_KEYWORD_SEARCH.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Alignement de search_services_gps_final avec keyword_search_with_gps appliqué");
     Ok(())
@@ -14047,7 +14132,7 @@ pub async fn ensure_hybrid_image_search_optimization(pool: &PgPool) -> Result<()
     );
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Optimisation de hybrid_image_search appliquée (unaccent + similarity)");
     Ok(())
@@ -14063,7 +14148,7 @@ pub async fn ensure_search_indexes_optimization(pool: &PgPool) -> Result<(), sql
     let migration_sql = include_str!("../../migrations/20251126_optimize_search_indexes.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Index d'optimisation de recherche créés");
     Ok(())
@@ -14080,7 +14165,7 @@ pub async fn ensure_get_services_performance_indexes(pool: &PgPool) -> Result<()
         include_str!("../../migrations/20251127_optimize_get_services_performance.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Index d'optimisation get_services_for_prestataire créés");
     Ok(())
@@ -14096,26 +14181,26 @@ pub async fn ensure_scalability_indexes(pool: &PgPool) -> Result<(), sqlx::Error
     let migration_sql = include_str!("../../migrations/20251201_scalability_indexes.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     // ✅ CORRECTION 2025-12-09: Appliquer la correction des index uniques
     let fix_migration_sql =
         include_str!("../../migrations/20251209_fix_materialized_views_unique_indexes.sql");
-    if let Err(e) = execute_multiple_sql_commands(pool, fix_migration_sql).await {
+    if let Err(e) = execute_migration_sql_safe(pool, fix_migration_sql).await {
         warn!("⚠️ Erreur lors de l'application de la correction des index uniques (peut être ignorée si déjà appliquée): {}", e);
     }
 
     // ✅ CORRECTION 2025-12-09: Appliquer l'optimisation des requêtes lentes
     let optimize_slow_queries_sql =
         include_str!("../../migrations/20251209_optimize_slow_queries_indexes.sql");
-    if let Err(e) = execute_multiple_sql_commands(pool, optimize_slow_queries_sql).await {
+    if let Err(e) = execute_migration_sql_safe(pool, optimize_slow_queries_sql).await {
         warn!("⚠️ Erreur lors de l'optimisation des requêtes lentes (peut être ignorée si déjà appliquée): {}", e);
     }
 
     // ✅ CORRECTION 2025-12-10: Vérifier et corriger l'erreur u_client.name dans les vues/fonctions
     let fix_u_client_name_sql =
         include_str!("../../migrations/20251210_fix_u_client_name_error.sql");
-    if let Err(e) = execute_multiple_sql_commands(pool, fix_u_client_name_sql).await {
+    if let Err(e) = execute_migration_sql_safe(pool, fix_u_client_name_sql).await {
         warn!("⚠️ Erreur lors de la vérification u_client.name (peut être ignorée si déjà appliquée): {}", e);
     }
 
@@ -14133,7 +14218,7 @@ pub async fn ensure_delivery_phase1_optimizations(pool: &PgPool) -> Result<(), s
     let migration_sql = include_str!("../../migrations/20250127_phase1_delivery_optimizations.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Optimisations Phase 1 livraison créées (index, fonction SQL, vues matérialisées)");
     Ok(())
@@ -14149,7 +14234,7 @@ pub async fn ensure_delivery_phase2_partitioning(pool: &PgPool) -> Result<(), sq
     let migration_sql = include_str!("../../migrations/20250127_phase2_delivery_partitioning.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Optimisations Phase 2 livraison créées (partitions, archivage)");
     Ok(())
@@ -14165,7 +14250,7 @@ pub async fn ensure_video_scalability_improvements(pool: &PgPool) -> Result<(), 
     let migration_sql = include_str!("../../migrations/20250101_scalability_improvements.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Améliorations de scalabilité vidéo appliquées");
     Ok(())
@@ -14182,7 +14267,7 @@ pub async fn ensure_videos_table(pool: &PgPool) -> Result<(), sqlx::Error> {
         include_str!("../../migrations/20251203_create_videos_table_with_hashtags.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Table videos avec hashtags créée");
     Ok(())
@@ -14198,7 +14283,7 @@ pub async fn ensure_hashtags_scalability_optimizations(pool: &PgPool) -> Result<
     let migration_sql = include_str!("../../migrations/20251203_optimize_hashtags_scalability.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Optimisations de scalabilité hashtags appliquées (support millions d'interactions)");
     Ok(())
@@ -14215,7 +14300,7 @@ pub async fn ensure_recommendations_enhancement(pool: &PgPool) -> Result<(), sql
         include_str!("../../migrations/20251203_enhance_recommendations_algorithm.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Améliorations algorithme recommandations appliquées");
     Ok(())
@@ -14232,7 +14317,7 @@ pub async fn ensure_specialized_services_constraints(pool: &PgPool) -> Result<()
         include_str!("../../migrations/20250128_add_specialized_services_constraints.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Contraintes de validation services spécialisés appliquées");
     Ok(())
@@ -14249,7 +14334,7 @@ pub async fn ensure_specialized_services_drafts_table(pool: &PgPool) -> Result<(
         include_str!("../../migrations/20250128_create_specialized_services_drafts.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Table specialized_services_drafts créée");
     Ok(())
@@ -14266,7 +14351,7 @@ pub async fn ensure_search_history_tables(pool: &PgPool) -> Result<(), sqlx::Err
         include_str!("../../migrations/20250128_create_search_history_and_saved_searches.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables search_history et saved_searches créées");
     Ok(())
@@ -14283,7 +14368,7 @@ pub async fn ensure_taxi_covoit_scalability_indexes(pool: &PgPool) -> Result<(),
         include_str!("../../migrations/20250128_add_taxi_covoit_scalability_indexes.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Index de scalabilité Taxi/Covoiturage créés");
     Ok(())
@@ -14300,7 +14385,7 @@ pub async fn ensure_hospital_lab_scalability_indexes(pool: &PgPool) -> Result<()
         include_str!("../../migrations/20250128_add_hospital_lab_scalability_indexes.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Index de scalabilité Hôpitaux/Laboratoires créés");
     Ok(())
@@ -14315,7 +14400,7 @@ pub async fn ensure_livres_scolaires_tables(pool: &PgPool) -> Result<(), sqlx::E
     let migration_sql = include_str!("../../migrations/20250128_create_livres_scolaires_troc.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables livres scolaires et troc créées");
     Ok(())
@@ -14330,7 +14415,7 @@ pub async fn ensure_offres_emploi_tables(pool: &PgPool) -> Result<(), sqlx::Erro
     let migration_sql = include_str!("../../migrations/20250128_create_offres_emploi.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables offres d'emploi créées");
     Ok(())
@@ -14345,7 +14430,7 @@ pub async fn ensure_orientation_scolaire_tables(pool: &PgPool) -> Result<(), sql
     let migration_sql = include_str!("../../migrations/20250128_create_orientation_scolaire.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables orientation scolaire créées");
     Ok(())
@@ -14360,7 +14445,7 @@ pub async fn ensure_delivery_chat_tables(pool: &PgPool) -> Result<(), sqlx::Erro
     let migration_sql = include_str!("../../migrations/20250128_create_delivery_chat_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables chat de livraison et gamification créées");
     Ok(())
@@ -14375,7 +14460,7 @@ pub async fn ensure_user_documents_table(pool: &PgPool) -> Result<(), sqlx::Erro
     let migration_sql = include_str!("../../migrations/20250129_create_user_documents.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Table user_documents créée");
     Ok(())
@@ -14390,7 +14475,7 @@ pub async fn ensure_insurance_qr_tables(pool: &PgPool) -> Result<(), sqlx::Error
     let migration_sql = include_str!("../../migrations/20250129_add_insurance_qr_covoiturage.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables assurance + QR code créées");
     Ok(())
@@ -14404,7 +14489,7 @@ async fn ensure_loyalty_chat_rating_tables(pool: &PgPool) -> Result<(), sqlx::Er
     let migration_sql = include_str!("../../migrations/20250127_loyalty_chat_rating_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables loyalty, chat_support et bus_ticket_ratings créées/vérifiées");
     Ok(())
@@ -14420,7 +14505,7 @@ pub async fn ensure_hospital_advanced_tables(pool: &PgPool) -> Result<(), sqlx::
         include_str!("../../migrations/20250127_create_hospital_advanced_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables avancées hôpitaux créées");
     Ok(())
@@ -14435,7 +14520,7 @@ pub async fn ensure_pharmacy_products_table(pool: &PgPool) -> Result<(), sqlx::E
     let migration_sql = include_str!("../../migrations/20250128_002_add_pharmacy_products.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Table pharmacy_products créée");
     Ok(())
@@ -14451,7 +14536,7 @@ pub async fn ensure_pharmacy_advanced_tables(pool: &PgPool) -> Result<(), sqlx::
         include_str!("../../migrations/20250127_create_pharmacy_advanced_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables avancées pharmacies créées");
     Ok(())
@@ -14468,7 +14553,7 @@ pub async fn ensure_lab_advanced_tables(pool: &PgPool) -> Result<(), sqlx::Error
     let migration_sql = include_str!("../../migrations/20250127_create_lab_advanced_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables avancées laboratoires créées");
     Ok(())
@@ -14483,7 +14568,7 @@ pub async fn ensure_plugin_marketplace_tables(pool: &PgPool) -> Result<(), sqlx:
     let migration_sql = include_str!("../../migrations/20250127_012_create_plugin_marketplace.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables plugin marketplace créées");
     Ok(())
@@ -14499,7 +14584,7 @@ pub async fn ensure_bourse_livre_advanced_tables(pool: &PgPool) -> Result<(), sq
         include_str!("../../migrations/20250127_create_bourse_livre_advanced_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables avancées bourse du livre créées");
     Ok(())
@@ -14515,7 +14600,7 @@ pub async fn ensure_orientation_scolaire_advanced_tables(pool: &PgPool) -> Resul
         include_str!("../../migrations/20250127_create_orientation_scolaire_advanced_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables avancées orientation scolaire créées");
     Ok(())
@@ -14531,7 +14616,7 @@ pub async fn ensure_immobilier_complete_tables(pool: &PgPool) -> Result<(), sqlx
         include_str!("../../migrations/20250127_create_immobilier_complete_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables immobilier complet créées");
     Ok(())
@@ -14547,7 +14632,7 @@ pub async fn ensure_offres_emploi_advanced_tables(pool: &PgPool) -> Result<(), s
         include_str!("../../migrations/20250127_create_offres_emploi_advanced_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables avancées offres d'emploi créées");
     Ok(())
@@ -14562,7 +14647,7 @@ pub async fn ensure_menu_planning_tables(pool: &PgPool) -> Result<(), sqlx::Erro
     let migration_sql = include_str!("../../migrations/20250127_create_menu_planning_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables planification menus créées");
     Ok(())
@@ -14577,7 +14662,7 @@ pub async fn ensure_social_video_tables(pool: &PgPool) -> Result<(), sqlx::Error
     let migration_sql = include_str!("../../migrations/20251207_create_social_video_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables sociales vidéo créées");
     Ok(())
@@ -14693,7 +14778,7 @@ pub async fn ensure_user_stats_objects(pool: &PgPool) -> Result<(), sqlx::Error>
     let migration_sql = include_str!("../../migrations/20251211_fix_user_stats_errors.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Vue matérialisée et fonction user_stats créées");
     Ok(())
@@ -14710,7 +14795,7 @@ pub async fn ensure_delivery_matching_queue_index(pool: &PgPool) -> Result<(), s
         include_str!("../../migrations/20251212_optimize_delivery_matching_queue_index.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Index delivery_matching_queue optimisé créé");
     Ok(())
@@ -14732,7 +14817,7 @@ pub async fn ensure_optimize_product_creation_performance(
         include_str!("../../migrations/20251216_optimize_product_creation_performance.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration optimize_product_creation_performance appliquée");
     Ok(())
@@ -14751,7 +14836,7 @@ pub async fn ensure_fix_add_product_tls_error(pool: &PgPool) -> Result<(), sqlx:
     let migration_sql = include_str!("../../migrations/20251230_fix_add_product_tls_error.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration fix_add_product_tls_error appliquée");
     Ok(())
@@ -14770,7 +14855,7 @@ pub async fn ensure_fix_product_creation_issues(pool: &PgPool) -> Result<(), sql
     let migration_sql = include_str!("../../migrations/20251231_fix_product_creation_issues.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration fix_product_creation_issues appliquée");
     Ok(())
@@ -14790,7 +14875,7 @@ pub async fn ensure_fix_product_creation_performance_v2(pool: &PgPool) -> Result
         include_str!("../../migrations/20251231_fix_product_creation_performance_v2.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration fix_product_creation_performance_v2 appliquée");
     Ok(())
@@ -14809,7 +14894,7 @@ pub async fn ensure_fix_product_creation_timeout(pool: &PgPool) -> Result<(), sq
     let migration_sql = include_str!("../../migrations/20251231_fix_product_creation_timeout.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration fix_product_creation_timeout appliquée");
     Ok(())
@@ -14828,7 +14913,7 @@ pub async fn ensure_optimize_slow_endpoints(pool: &PgPool) -> Result<(), sqlx::E
     let migration_sql = include_str!("../../migrations/20251221_optimize_slow_endpoints.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration optimize_slow_endpoints appliquée");
     Ok(())
@@ -14841,7 +14926,7 @@ pub async fn ensure_optimize_delivery_indexes(pool: &PgPool) -> Result<(), sqlx:
     let migration_sql = include_str!("../../migrations/20251221_optimize_delivery_indexes.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration optimize_delivery_indexes appliquée");
     Ok(())
@@ -14860,7 +14945,7 @@ pub async fn ensure_align_parcel_types_with_vehicle_types(
         include_str!("../../migrations/20251221_align_parcel_types_with_vehicle_types.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration align_parcel_types_with_vehicle_types appliquée");
     Ok(())
@@ -14877,7 +14962,7 @@ pub async fn ensure_fix_parcel_types_ids(pool: &PgPool) -> Result<(), sqlx::Erro
     let migration_sql = include_str!("../../migrations/20260115_fix_parcel_types_ids.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration fix_parcel_types_ids appliquée");
     Ok(())
@@ -14894,7 +14979,7 @@ pub async fn ensure_optimize_services_update_performance(pool: &PgPool) -> Resul
         include_str!("../../migrations/20251221_optimize_services_update_performance.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration optimize_services_update_performance appliquée");
     Ok(())
@@ -15459,7 +15544,7 @@ async fn ensure_specialized_reservations_table(pool: &PgPool) -> Result<(), sqlx
         CREATE INDEX IF NOT EXISTS idx_specialized_reservations_service_type ON specialized_reservations(service_type);
     "#;
 
-    execute_multiple_sql_commands(pool, sql).await?;
+    execute_migration_sql_safe(pool, sql).await?;
     info!("✅ Table specialized_reservations créée avec succès");
     Ok(())
 }
@@ -15525,7 +15610,7 @@ async fn fix_delivery_matching_queue_index(pool: &PgPool) -> Result<(), sqlx::Er
         END $$;
     "#;
 
-    execute_multiple_sql_commands(pool, sql).await?;
+    execute_migration_sql_safe(pool, sql).await?;
     info!("✅ Index delivery_matching_queue corrigé");
     Ok(())
 }
@@ -15573,7 +15658,7 @@ async fn ensure_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);
         "#;
 
-        execute_multiple_sql_commands(pool, sql).await?;
+        execute_migration_sql_safe(pool, sql).await?;
         info!("✅ Table products créée");
     } else {
         info!("✅ Table products existe déjà");
@@ -15676,7 +15761,7 @@ async fn fix_materialized_views_gps(pool: &PgPool) -> Result<(), sqlx::Error> {
             );
         "#;
 
-        execute_multiple_sql_commands(pool, sql).await?;
+        execute_migration_sql_safe(pool, sql).await?;
         info!("✅ Vues matérialisées recréées sans gps");
     } else {
         // La colonne gps existe, vérifier si les vues existent et les recréer si nécessaire
@@ -15771,7 +15856,7 @@ async fn fix_materialized_views_gps(pool: &PgPool) -> Result<(), sqlx::Error> {
                 );
             "#;
 
-            execute_multiple_sql_commands(pool, sql).await?;
+            execute_migration_sql_safe(pool, sql).await?;
             info!("✅ Vues matérialisées créées avec gps");
         } else {
             info!("✅ Vues matérialisées existent déjà");
@@ -15825,7 +15910,7 @@ async fn fix_duplicate_constraints(pool: &PgPool) -> Result<(), sqlx::Error> {
         END $$;
     "#;
 
-    execute_multiple_sql_commands(pool, sql).await?;
+    execute_migration_sql_safe(pool, sql).await?;
     info!("✅ Contraintes dupliquées corrigées");
     Ok(())
 }
@@ -15862,7 +15947,7 @@ async fn ensure_run_audio_cache_cleanup_function(pool: &PgPool) -> Result<(), sq
         END $$;
     "#;
 
-    execute_multiple_sql_commands(pool, drop_sql).await?;
+    execute_migration_sql_safe(pool, drop_sql).await?;
     info!("🧹 Toutes les versions de run_audio_cache_cleanup() supprimées");
 
     // Créer la fonction avec la signature exacte (sans paramètres)
@@ -15914,7 +15999,7 @@ async fn ensure_run_audio_cache_cleanup_function(pool: &PgPool) -> Result<(), sq
         $$ LANGUAGE plpgsql;
     "#;
 
-    execute_multiple_sql_commands(pool, sql).await?;
+    execute_migration_sql_safe(pool, sql).await?;
     info!("✅ Fonction run_audio_cache_cleanup() créée avec succès (signature sans paramètres)");
     Ok(())
 }
@@ -16045,7 +16130,7 @@ pub async fn run_individual_migrations(pool: &PgPool) -> Result<(), sqlx::Error>
             migration_sql.len()
         );
 
-        match execute_multiple_sql_commands(pool, &migration_sql).await {
+        match execute_migration_sql_safe(pool, &migration_sql).await {
             Ok(_) => {
                 info!(
                     "✅ [MIGRATION {}] {} appliquée avec succès",
