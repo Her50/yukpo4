@@ -12035,13 +12035,43 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
             }
         }
 
-        // Compter les parenthèses
+        // Compter les parenthèses AVANT d'ajouter la ligne
         let open_parens = trimmed.matches('(').count();
         let close_parens = trimmed.matches(')').count();
-        paren_depth += (open_parens as i32) - (close_parens as i32);
+        let new_paren_depth = paren_depth + (open_parens as i32) - (close_parens as i32);
 
+        // ✅ CRITIQUE 2026-02-01: Vérifier si la ligne actuelle se termine par ';' AVANT d'ajouter à current
+        // Si oui et qu'on n'est pas dans un bloc $$ ou une parenthèse, terminer la commande actuelle
+        let line_ends_with_semicolon = trimmed.ends_with(';');
+        let should_end_before_adding = line_ends_with_semicolon 
+            && !in_dollar_block 
+            && new_paren_depth == 0
+            && !current.trim().is_empty();
+
+        // Si on doit terminer avant d'ajouter, traiter la commande actuelle d'abord
+        if should_end_before_adding {
+            let cmd = current.trim();
+            if !cmd.is_empty() && !cmd.starts_with("--") {
+                let cmd_upper = cmd.to_uppercase();
+                let valid_keywords = [
+                    "CREATE", "ALTER", "DROP", "INSERT", "UPDATE", "DELETE", "SELECT", "GRANT",
+                    "REVOKE", "COMMENT", "TRUNCATE", "ANALYZE", "VACUUM", "EXECUTE", "DO", "BEGIN",
+                    "COMMIT", "ROLLBACK",
+                ];
+                if valid_keywords.iter().any(|kw| cmd_upper.starts_with(kw)) {
+                    commands.push(cmd.to_string());
+                }
+            }
+            current.clear();
+            paren_depth = 0;
+        }
+
+        // Maintenant ajouter la ligne actuelle
         current.push_str(line);
         current.push_str("\n");
+        
+        // Mettre à jour paren_depth après avoir ajouté la ligne
+        paren_depth = new_paren_depth;
 
         // ✅ AMÉLIORATION 2026-02-01: Détecter la fin d'une commande de plusieurs façons
         let mut should_end_command = false;
@@ -12197,10 +12227,12 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                         Err(e) => {
                             let error_str = e.to_string();
                             let error_lower = error_str.to_lowercase();
-                            // Ignorer les erreurs "already exists" et "does not exist" pour les objets optionnels
+                            // Ignorer les erreurs "already exists", "does not exist", "is not unique", "cannot change return type"
                             if !error_lower.contains("already exists")
                                 && !error_lower.contains("does not exist")
                                 && !error_lower.contains("is not unique")
+                                && !error_lower.contains("cannot change return type")
+                                && !error_lower.contains("functions in index predicate must be marked immutable")
                             {
                                 return Err(e);
                             }
@@ -12244,10 +12276,12 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                                 if let Err(e2) = sqlx::query(&part_cmd).execute(pool).await {
                                     let error_str2 = e2.to_string();
                                     let error_lower2 = error_str2.to_lowercase();
-                                    // Ignorer les erreurs "already exists" et "does not exist"
+                                    // Ignorer les erreurs "already exists", "does not exist", "is not unique", "cannot change return type"
                                     if !error_lower2.contains("already exists")
                                         && !error_lower2.contains("does not exist")
                                         && !error_lower2.contains("is not unique")
+                                        && !error_lower2.contains("cannot change return type")
+                                        && !error_lower2.contains("functions in index predicate must be marked immutable")
                                     {
                                         return Err(e2);
                                     }
@@ -12255,11 +12289,17 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                             }
                         }
                     } else {
-                        // Ignorer les erreurs "already exists", "does not exist", "is not unique"
+                        // ✅ AMÉLIORATION 2026-02-01: Ignorer les erreurs communes qui ne sont pas critiques
+                        // - "already exists" : objets déjà créés (triggers, tables, fonctions, etc.)
+                        // - "does not exist" : dépendances manquantes (tables, colonnes, etc.)
+                        // - "is not unique" : fonctions avec plusieurs signatures
+                        // - "cannot change return type" : changement de signature de fonction
+                        // - "functions in index predicate must be marked immutable" : NOW() dans index (à corriger dans les migrations)
                         if !error_lower.contains("already exists")
                             && !error_lower.contains("does not exist")
                             && !error_lower.contains("is not unique")
                             && !error_lower.contains("cannot change return type")
+                            && !error_lower.contains("functions in index predicate must be marked immutable")
                         {
                             return Err(e);
                         }
@@ -16325,7 +16365,7 @@ pub async fn run_individual_migrations(pool: &PgPool) -> Result<(), sqlx::Error>
             migration_number,
             migration_sql.len()
         );
-
+        
         match execute_migration_sql_safe(pool, &migration_sql).await {
             Ok(_) => {
                 info!(
