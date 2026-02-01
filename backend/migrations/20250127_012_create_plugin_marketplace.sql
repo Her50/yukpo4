@@ -43,6 +43,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ✅ CORRECTION 2026-02-01: DROP le trigger avant de le recréer pour éviter "already exists"
+DROP TRIGGER IF EXISTS trigger_update_plugin_marketplace_updated_at ON plugin_marketplace;
 -- Trigger pour updated_at
 CREATE TRIGGER trigger_update_plugin_marketplace_updated_at
     BEFORE UPDATE ON plugin_marketplace

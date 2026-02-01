@@ -12228,13 +12228,29 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                             let error_str = e.to_string();
                             let error_lower = error_str.to_lowercase();
                             // Ignorer les erreurs "already exists", "does not exist", "is not unique", "cannot change return type"
-                            if !error_lower.contains("already exists")
-                                && !error_lower.contains("does not exist")
-                                && !error_lower.contains("is not unique")
-                                && !error_lower.contains("cannot change return type")
-                                && !error_lower.contains("functions in index predicate must be marked immutable")
-                            {
+                            // Gestion intelligente des erreurs avec logging
+                            let is_benign_part = error_lower.contains("already exists")
+                                || error_lower.contains("does not exist")
+                                || error_lower.contains("is not unique")
+                                || error_lower.contains("cannot change return type")
+                                || error_lower.contains("functions in index predicate must be marked immutable");
+                            
+                            if !is_benign_part {
+                                error!(
+                                    "❌ [MIGRATION] Erreur critique dans partie divisée: {} | Partie: {}",
+                                    error_str,
+                                    if part_trimmed.len() > 100 {
+                                        format!("{}...", &part_trimmed[..100])
+                                    } else {
+                                        part_trimmed.to_string()
+                                    }
+                                );
                                 return Err(e);
+                            } else {
+                                debug!(
+                                    "ℹ️ [MIGRATION] Erreur bénigne ignorée dans partie divisée: {}",
+                                    error_str
+                                );
                             }
                         }
                     }
@@ -12276,31 +12292,81 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                                 if let Err(e2) = sqlx::query(&part_cmd).execute(pool).await {
                                     let error_str2 = e2.to_string();
                                     let error_lower2 = error_str2.to_lowercase();
-                                    // Ignorer les erreurs "already exists", "does not exist", "is not unique", "cannot change return type"
-                                    if !error_lower2.contains("already exists")
-                                        && !error_lower2.contains("does not exist")
-                                        && !error_lower2.contains("is not unique")
-                                        && !error_lower2.contains("cannot change return type")
-                                        && !error_lower2.contains("functions in index predicate must be marked immutable")
-                                    {
+                                    // Gestion intelligente des erreurs avec logging
+                                    let is_benign2 = error_lower2.contains("already exists")
+                                        || error_lower2.contains("does not exist")
+                                        || error_lower2.contains("is not unique")
+                                        || error_lower2.contains("cannot change return type")
+                                        || error_lower2.contains("functions in index predicate must be marked immutable");
+                                    
+                                    if !is_benign2 {
+                                        error!(
+                                            "❌ [MIGRATION] Erreur critique après division: {} | Partie: {}",
+                                            error_str2,
+                                            if part_trimmed.len() > 100 {
+                                                format!("{}...", &part_trimmed[..100])
+                                            } else {
+                                                part_trimmed.to_string()
+                                            }
+                                        );
                                         return Err(e2);
+                                    } else {
+                                        debug!(
+                                            "ℹ️ [MIGRATION] Erreur bénigne ignorée après division: {}",
+                                            error_str2
+                                        );
                                     }
                                 }
                             }
                         }
                     } else {
-                        // ✅ AMÉLIORATION 2026-02-01: Ignorer les erreurs communes qui ne sont pas critiques
-                        // - "already exists" : objets déjà créés (triggers, tables, fonctions, etc.)
-                        // - "does not exist" : dépendances manquantes (tables, colonnes, etc.)
-                        // - "is not unique" : fonctions avec plusieurs signatures
-                        // - "cannot change return type" : changement de signature de fonction
-                        // - "functions in index predicate must be marked immutable" : NOW() dans index (à corriger dans les migrations)
-                        if !error_lower.contains("already exists")
-                            && !error_lower.contains("does not exist")
-                            && !error_lower.contains("is not unique")
-                            && !error_lower.contains("cannot change return type")
-                            && !error_lower.contains("functions in index predicate must be marked immutable")
-                        {
+                        // ✅ AMÉLIORATION 2026-02-01: Gestion intelligente des erreurs avec logging détaillé
+                        // Distinguer les erreurs bénignes (attendues) des erreurs critiques
+                        
+                        let is_benign = error_lower.contains("already exists")
+                            || error_lower.contains("does not exist")
+                            || error_lower.contains("is not unique")
+                            || error_lower.contains("cannot change return type")
+                            || error_lower.contains("functions in index predicate must be marked immutable");
+                        
+                        if is_benign {
+                            // Erreur bénigne : logger avec niveau approprié
+                            let error_type = if error_lower.contains("already exists") {
+                                "already_exists"
+                            } else if error_lower.contains("does not exist") {
+                                "does_not_exist"
+                            } else if error_lower.contains("is not unique") {
+                                "is_not_unique"
+                            } else if error_lower.contains("cannot change return type") {
+                                "cannot_change_return_type"
+                            } else if error_lower.contains("functions in index predicate must be marked immutable") {
+                                "immutable_function_required"
+                            } else {
+                                "unknown_benign"
+                            };
+                            
+                            // Logger avec contexte pour analyse
+                            debug!(
+                                "ℹ️ [MIGRATION] Erreur bénigne ignorée [{}]: {} | Commande: {}",
+                                error_type,
+                                error_str,
+                                if trimmed_cmd.len() > 100 {
+                                    format!("{}...", &trimmed_cmd[..100])
+                                } else {
+                                    trimmed_cmd.to_string()
+                                }
+                            );
+                        } else {
+                            // Erreur critique : logger et retourner
+                            error!(
+                                "❌ [MIGRATION] Erreur critique non ignorée: {} | Commande: {}",
+                                error_str,
+                                if trimmed_cmd.len() > 200 {
+                                    format!("{}...", &trimmed_cmd[..200])
+                                } else {
+                                    trimmed_cmd.to_string()
+                                }
+                            );
                             return Err(e);
                         }
                     }

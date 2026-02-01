@@ -34,9 +34,11 @@ ON couriers(user_id)
 WHERE user_id IS NOT NULL;
 
 -- ✅ INDEX 7: Pour list_matching_candidates (courier_availability_snapshots)
+-- ✅ CORRECTION 2026-02-01: NOW() n'est pas IMMUTABLE, on ne peut pas l'utiliser dans un index partiel
+-- La condition de date sera gérée dans les requêtes SQL
 CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_active 
 ON courier_availability_snapshots(captured_at DESC, is_online, active_deliveries, max_capacity)
-WHERE is_online = TRUE AND captured_at >= NOW() - INTERVAL '30 minutes';
+WHERE is_online = TRUE;
 
 -- ✅ INDEX 8: Pour list_matching_candidates (géospatial)
 CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_location 
