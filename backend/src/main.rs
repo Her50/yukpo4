@@ -500,88 +500,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    // ✅ NOUVEAU 2026-01-31: Fonction helper simple pour exécuter des migrations SQL
-    // Divise les commandes sur ';' mais préserve les blocs DO $$ et les fonctions
+    // ✅ AMÉLIORÉ 2026-02-01: Fonction helper pour exécuter des migrations SQL
+    // Utilise la même logique que execute_migration_sql_safe dans auto_migrate.rs
     async fn execute_migration_sql(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {
-        // Diviser par ';' mais préserver les blocs $$...$$
-        let mut commands = Vec::new();
-        let mut current = String::new();
-        let mut in_dollar_block = false;
-        let mut dollar_tag = String::new();
-        let mut paren_depth = 0i32;
-
-        for line in sql.lines() {
-            let trimmed = line.trim();
-
-            // Ignorer les lignes vides et commentaires seuls
-            if trimmed.is_empty() || trimmed.starts_with("--") {
-                if !current.trim().is_empty() {
-                    current.push_str(line);
-                    current.push_str("\n");
-                }
-                continue;
-            }
-
-            // Détecter début/fin de blocs $$
-            if trimmed.contains("$$") {
-                if !in_dollar_block {
-                    // Début d'un bloc
-                    if let Some(start) = trimmed.find("$$") {
-                        dollar_tag = "$$".to_string();
-                        in_dollar_block = true;
-                    }
-                } else if trimmed.contains(&dollar_tag) {
-                    // Fin d'un bloc
-                    in_dollar_block = false;
-                    dollar_tag.clear();
-                }
-            }
-
-            // Compter les parenthèses
-            let open_parens = trimmed.matches('(').count();
-            let close_parens = trimmed.matches(')').count();
-            paren_depth += (open_parens as i32) - (close_parens as i32);
-
-            current.push_str(line);
-            current.push_str("\n");
-
-            // Si on trouve un ';' et qu'on n'est pas dans un bloc $$ ou une parenthèse
-            if trimmed.ends_with(';') && !in_dollar_block && paren_depth == 0 {
-                let cmd = current.trim();
-                if !cmd.is_empty() && !cmd.starts_with("--") {
-                    // Vérifier que la commande commence par un mot-clé SQL valide
-                    let cmd_upper = cmd.to_uppercase();
-                    let valid_keywords = [
-                        "CREATE", "ALTER", "DROP", "INSERT", "UPDATE", "DELETE", "SELECT", "GRANT",
-                        "REVOKE", "COMMENT", "TRUNCATE", "ANALYZE", "VACUUM", "EXECUTE", "DO",
-                        "BEGIN", "COMMIT", "ROLLBACK",
-                    ];
-                    if valid_keywords.iter().any(|kw| cmd_upper.starts_with(kw)) {
-                        commands.push(cmd.to_string());
-                    }
-                }
-                current.clear();
-                paren_depth = 0;
-            }
-        }
-
-        // Traiter la dernière commande si elle existe
-        if !current.trim().is_empty() && !in_dollar_block && paren_depth == 0 {
-            let cmd = current.trim();
-            if !cmd.is_empty() && !cmd.starts_with("--") {
-                commands.push(cmd.to_string());
-            }
-        }
-
-        // Exécuter chaque commande
-        for cmd in commands {
-            if cmd.trim().is_empty() || cmd.trim().starts_with("--") {
-                continue;
-            }
-            sqlx::query(&cmd).execute(pool).await?;
-        }
-
-        Ok(())
+        // Utiliser la fonction publique de auto_migrate.rs pour cohérence
+        yukpomnang_backend::migrations::auto_migrate::execute_migration_sql_safe(pool, sql).await
     }
 
     // ✅ CORRECTION CRITIQUE 2026-01-30: Exécuter les migrations de correction AVANT la migration 0
