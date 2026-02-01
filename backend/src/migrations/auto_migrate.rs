@@ -12102,6 +12102,7 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
         let mut should_end_command = false;
 
         // 1. ✅ AMÉLIORATION 2026-02-01: Si on trouve un ';' et qu'on n'est pas dans un bloc $$ ou une parenthèse
+        // CRITIQUE: Ne jamais terminer une commande si on est dans un bloc $$ (même avec ';')
         // Exception: Ne pas terminer certaines commandes multi-lignes si elles ne sont pas complètes
         if trimmed.ends_with(';') && !in_dollar_block && paren_depth == 0 {
             let cmd_upper = current.to_uppercase();
