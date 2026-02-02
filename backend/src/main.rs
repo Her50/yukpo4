@@ -992,6 +992,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 log::info!("✅ Toutes les tables critiques existent");
             }
+
+            // ✅ CORRECTION 2026-02-02: Corriger l'index unique de services_search_optimized_v2
+            // Cette migration doit être exécutée APRÈS les migrations SQLx car la vue matérialisée
+            // doit exister avant de créer l'index unique
+            let migration_fix_index_sql =
+                include_str!("../migrations/20260201_fix_materialized_view_index.sql");
+            log::info!(
+                "🔍 [MIGRATION CORRECTION INDEX] Application de la correction de l'index unique pour services_search_optimized_v2..."
+            );
+            match execute_migration_sql(&pg_pool, migration_fix_index_sql).await {
+                Ok(_) => {
+                    log::info!(
+                        "✅ [MIGRATION CORRECTION INDEX] Index unique pour services_search_optimized_v2 vérifié/créé"
+                    );
+                }
+                Err(e) => {
+                    log::warn!(
+                        "⚠️ [MIGRATION CORRECTION INDEX] Erreur lors de la création de l'index unique (non bloquant): {}",
+                        e
+                    );
+                }
+            }
         }
         Err(e) => {
             let error_str = e.to_string();
