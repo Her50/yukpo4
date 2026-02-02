@@ -10,9 +10,11 @@
 | Métrique | Log 24 | Log 25 | Évolution |
 |----------|--------|--------|-----------|
 | **Erreurs totales (ERROR:)** | 65 | **678** | ⚠️ **+943%** (+613) |
-| **CREATE TABLE** | 15 | **639** | ✅ **+4160%** (beaucoup de tables créées) |
-| **CREATE INDEX** | ? | **1368** | ✅ Beaucoup d'index créés |
-| **CREATE FUNCTION** | ? | **306** | ✅ Beaucoup de fonctions créées |
+| **CREATE TABLE (tentatives)** | 15 | **639** | ⚠️ **+4160%** (tentatives multiples, réexécution migrations) |
+| **Tables uniques réelles** | ? | **~180** | ✅ Nombre réel de tables dans l'application |
+| **Tables uniques dans migrations** | ? | **261** | ✅ Nombre total de tables définies dans les fichiers |
+| **CREATE INDEX** | ? | **1368** | ⚠️ Tentatives multiples (réexécution) |
+| **CREATE FUNCTION** | ? | **306** | ⚠️ Tentatives multiples (réexécution) |
 | **"syntax error at end of input"** | 43 | **447** | ⚠️ **+940%** (+404) |
 | **"unterminated dollar-quoted string"** | 8 | **159** | ⚠️ **+1888%** (+151) |
 | **"cannot insert multiple commands"** | 5 | **21** | ⚠️ **+320%** (+16) |
@@ -35,10 +37,12 @@
 
 ### ✅ Points positifs
 
-1. **Beaucoup de tables créées** : **639 CREATE TABLE** détectés
-2. **Beaucoup d'index créés** : **1368 CREATE INDEX** détectés
-3. **Beaucoup de fonctions créées** : **306 CREATE FUNCTION** détectés
-4. **Tables uniques créées** : **~180 tables** (sans doublons)
+1. **Tables créées** : **~180 tables uniques** dans l'application (261 dans les migrations)
+   - ⚠️ **639 CREATE TABLE** dans les logs = tentatives multiples (réexécution des migrations)
+   - ✅ **~180 tables uniques** réellement créées (sans doublons)
+2. **Index créés** : **1368 CREATE INDEX** détectés (tentatives multiples)
+3. **Fonctions créées** : **306 CREATE FUNCTION** détectés (tentatives multiples)
+4. **Statut** : La plupart des objets de base de données sont créés avec succès
 
 ## 🔍 Analyse détaillée des erreurs
 
@@ -99,7 +103,12 @@
 
 ### Tables créées (sans doublons)
 
-**Total** : **~180 tables uniques** détectées dans les logs
+**Clarification importante** :
+- **639 CREATE TABLE** dans les logs = tentatives multiples (réexécution des migrations)
+- **~180 tables uniques** réellement créées dans la base de données (sans doublons)
+- **261 tables uniques** définies dans les fichiers de migrations
+
+**Total réel** : **~180 tables uniques** dans l'application
 
 **Liste des tables principales** :
 - `users`, `user_documents`, `services`, `media`
@@ -114,7 +123,12 @@
 - `cache_table`, `payment_transactions`, `token_transactions`
 - Et beaucoup d'autres...
 
-**Statut** : ✅ **La plupart des tables sont créées**
+**Statut** : ✅ **La plupart des tables sont créées** (~180 sur 261 définies dans les migrations)
+
+**Note** : L'application a **~180 tables** réelles, ce qui est normal pour une application complexe avec :
+- Services multiples (livraison, transport, immobilier, santé, éducation, etc.)
+- Systèmes spécialisés (vidéos, publicités, paiements, notifications, etc.)
+- Analytics et tracking (engagements, impressions, statistiques, etc.)
 
 ### Index créés
 
