@@ -12055,8 +12055,12 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                 dollar_tag = "$$".to_string();
                 in_dollar_block = true;
             } else if in_dollar_block && trimmed.contains("$$") && dollar_tag == "$$" {
-                in_dollar_block = false;
-                dollar_tag.clear();
+                // ✅ AMÉLIORATION 2026-02-02: Vérifier que c'est bien la fin du bloc (END $$; ou $$ LANGUAGE)
+                // Ne pas fermer le bloc si c'est juste $$ au milieu d'une fonction
+                if trimmed.contains("END $$") || trimmed.contains("$$ LANGUAGE") || trimmed.contains("$$;") {
+                    in_dollar_block = false;
+                    dollar_tag.clear();
+                }
             }
         }
 
@@ -12140,6 +12144,15 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                     should_end_command = true;
                 }
             }
+            // ✅ NOUVEAU: Si c'est une CREATE VIEW, vérifier qu'elle a "AS SELECT" et se termine par ';'
+            else if cmd_upper.contains("CREATE VIEW") {
+                let has_view_as = cmd_upper.contains(" AS ");
+                let has_from = cmd_upper.contains(" FROM ");
+                // Une vue complète doit avoir AS, FROM, et se terminer par ';'
+                if has_view_as && has_from && trimmed.ends_with(';') {
+                    should_end_command = true;
+                }
+            }
             // Pour les autres commandes, terminer normalement
             else {
                 should_end_command = true;
@@ -12180,7 +12193,8 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
         }
 
         // 3. ✅ AMÉLIORATION 2026-02-01: Détecter une nouvelle commande qui commence même si la précédente n'a pas de ';'
-        // Amélioration: Ne pas terminer une commande CREATE TABLE si elle n'a pas de ');' final
+        // Amélioration: Ne pas terminer une commande CREATE TABLE/CREATE VIEW si elle n'est pas complète
+        // CRITIQUE: Ne jamais terminer une commande si on est dans un bloc $$ (même si paren_depth == 0)
         if !in_dollar_block && paren_depth == 0 && !current.trim().is_empty() && i + 1 < lines.len()
         {
             let next_line = lines[i + 1].trim();
@@ -12217,12 +12231,20 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                     let has_materialized_as = is_create_materialized_view && cmd_upper.contains(" AS ");
                     let materialized_complete = is_create_materialized_view && has_materialized_as && trimmed.ends_with(';');
                     
+                    // ✅ NOUVEAU 2026-02-02: Pour CREATE VIEW, vérifier qu'elle a AS, FROM, et se termine par ';'
+                    let is_create_view = cmd_upper.contains("CREATE VIEW");
+                    let view_complete = is_create_view 
+                        && cmd_upper.contains(" AS ")
+                        && cmd_upper.contains(" FROM ")
+                        && trimmed.ends_with(';');
+                    
                     // Vérifier que la commande actuelle est complète
                     if trimmed.ends_with(';')
                         || (cmd_upper.contains("CREATE TRIGGER")
                             && cmd_upper.contains("ON ")
                             && cmd_upper.contains("EXECUTE FUNCTION"))
                         || (is_create_table && has_table_closing)
+                        || view_complete
                         || index_complete
                         || comment_complete
                         || materialized_complete
