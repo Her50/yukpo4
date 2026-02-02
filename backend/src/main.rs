@@ -1014,6 +1014,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     );
                 }
             }
+
+            // ✅ CORRECTION 2026-02-02: Forcer la mise à jour de refresh_services_search_optimized()
+            // Cette migration doit être exécutée APRÈS la création de l'index pour s'assurer que
+            // la fonction a la logique de création automatique de l'index
+            let migration_fix_function_sql =
+                include_str!("../migrations/20260202_fix_refresh_services_search_optimized_function.sql");
+            log::info!(
+                "🔍 [MIGRATION CORRECTION FUNCTION] Application de la correction de refresh_services_search_optimized()..."
+            );
+            match execute_migration_sql(&pg_pool, migration_fix_function_sql).await {
+                Ok(_) => {
+                    log::info!(
+                        "✅ [MIGRATION CORRECTION FUNCTION] Fonction refresh_services_search_optimized() mise à jour avec création automatique de l'index"
+                    );
+                }
+                Err(e) => {
+                    log::warn!(
+                        "⚠️ [MIGRATION CORRECTION FUNCTION] Erreur lors de la mise à jour de la fonction (non bloquant): {}",
+                        e
+                    );
+                }
+            }
         }
         Err(e) => {
             let error_str = e.to_string();
