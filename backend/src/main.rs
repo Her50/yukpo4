@@ -709,6 +709,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Si la migration 0 existe déjà avec un mauvais checksum, sqlx::migrate!() va échouer,
     // donc on la supprime d'abord si nécessaire (déjà fait plus haut)
     // ✅ NOUVEAU 2026-01-31: Utiliser uniquement sqlx::migrate!() pour toutes les migrations
+// ✅ 2026-02-01: Corrections migrations - parsing amélioré, erreurs critiques corrigées
     // SQLx gère automatiquement les fichiers SQL complets, les blocs DO $$, les fonctions, etc.
     // Plus besoin de run_individual_migrations ou execute_multiple_sql_commands
     log::info!("🔄 [MIGRATIONS SQLX] Application de toutes les migrations SQLx standard...");
@@ -797,36 +798,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // ✅ NOUVEAU 2026-01-31: Utilisation de sqlx::migrate!() pour toutes les migrations
                 // SQLx gère automatiquement les fichiers SQL complets sans division
                 log::warn!("⚠️ [MIGRATIONS] Tables de base manquantes. Vérifiez que les migrations SQLx ont été exécutées.");
-
+                
                 // Vérifier à nouveau (sans migration consolidée)
                 let users_exists_after: bool = sqlx::query_scalar(
-                    "SELECT EXISTS (
+                            "SELECT EXISTS (
                                 SELECT FROM information_schema.tables 
                                 WHERE table_schema = 'public' 
                                 AND table_name = 'users'
                             )",
-                )
-                .fetch_one(&pg_pool)
-                .await
-                .unwrap_or(false);
+                        )
+                        .fetch_one(&pg_pool)
+                        .await
+                        .unwrap_or(false);
 
-                let services_exists_after: bool = sqlx::query_scalar(
-                    "SELECT EXISTS (
+                        let services_exists_after: bool = sqlx::query_scalar(
+                            "SELECT EXISTS (
                                 SELECT FROM information_schema.tables 
                                 WHERE table_schema = 'public' 
                                 AND table_name = 'services'
                             )",
-                )
-                .fetch_one(&pg_pool)
-                .await
-                .unwrap_or(false);
+                        )
+                        .fetch_one(&pg_pool)
+                        .await
+                        .unwrap_or(false);
 
-                if users_exists_after && services_exists_after {
-                    log::info!("✅ Tables de base créées par la migration consolidée");
-                } else {
-                    log::error!(
+                        if users_exists_after && services_exists_after {
+                            log::info!("✅ Tables de base créées par la migration consolidée");
+                        } else {
+                        log::error!(
                         "❌ Migration consolidée appliquée mais tables de base toujours manquantes"
-                    );
+                        );
                 }
             } else {
                 log::info!("✅ Tables de base (users, services) vérifiées après migrations SQLx");
