@@ -101,6 +101,18 @@ RETURNS void AS $$
 BEGIN
     -- ✅ OPTIMISÉ: Utiliser la vue v2 si elle existe, sinon utiliser l'ancienne
     IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'services_search_optimized_v2') THEN
+        -- ✅ CORRECTION 2026-02-02: Créer l'index unique si nécessaire AVANT le refresh
+        -- Le problème: REFRESH CONCURRENTLY nécessite un index unique sans clause WHERE
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_indexes 
+            WHERE tablename = 'services_search_optimized_v2' 
+            AND indexname = 'idx_services_search_optimized_v2_unique'
+        ) THEN
+            -- Créer l'index unique requis pour REFRESH CONCURRENTLY
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_services_search_optimized_v2_unique
+            ON services_search_optimized_v2 (service_id);
+        END IF;
+        
         REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2;
     ELSIF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'services_search_optimized') THEN
         REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized;
