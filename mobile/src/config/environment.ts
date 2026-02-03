@@ -6,12 +6,13 @@ export const ENVIRONMENT = {
     // Clé API Google Maps (Places, Geocoding, etc.)
     GOOGLE_MAPS_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ',
 
-    // URL de l'API backend - Configurable via .env
-    // Par défaut: Render (production)
-    // Pour développement local: http://localhost:3000
-    // Pour autre serveur: définir EXPO_PUBLIC_API_BASE_URL dans .env
-    API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpomnang.onrender.com',
-    UPLOAD_BASE_URL: process.env.EXPO_PUBLIC_UPLOAD_BASE_URL || process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpomnang.onrender.com',
+           // URL de l'API backend - Configurable via .env
+           // ✅ 2026-02-02: Mise à jour vers domaine personnalisé api.yukpomnang.com
+           // Par défaut: api.yukpomnang.com (domaine personnalisé)
+           // Pour développement local: http://localhost:3000
+           // Pour autre serveur: définir EXPO_PUBLIC_API_BASE_URL dans .env
+           API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.yukpomnang.com',
+           UPLOAD_BASE_URL: process.env.EXPO_PUBLIC_UPLOAD_BASE_URL || process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.yukpomnang.com',
 
     // Environnement (development, production, staging)
     ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'production',

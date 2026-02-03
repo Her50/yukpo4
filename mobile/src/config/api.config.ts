@@ -15,8 +15,9 @@ const EXPO_WS_URL = process.env.EXPO_PUBLIC_WS_URL;
 const EXPO_ENV = process.env.EXPO_PUBLIC_ENVIRONMENT || 'production';
 
 // ✅ Utiliser les variables d'environnement en priorité, avec fallback sécurisé
-export const API_BASE_URL = EXPO_API_URL || 'https://yukpomnang.onrender.com';
-export const WS_BASE_URL = EXPO_WS_URL || 'wss://yukpomnang.onrender.com';
+// ✅ 2026-02-02: Mise à jour vers domaine personnalisé api.yukpomnang.com
+export const API_BASE_URL = EXPO_API_URL || 'https://api.yukpomnang.com';
+export const WS_BASE_URL = EXPO_WS_URL || 'wss://api.yukpomnang.com';
 
 // Log pour vérifier la configuration chargée (seulement en développement)
 if (__DEV__) {
