@@ -103,10 +103,7 @@ async fn test_google_maps_distance_matrix(
         .await
         .map_err(|e| format!("Erreur requête: {}", e))?;
 
-    let data: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Erreur parsing: {}", e))?;
+    let data: Value = response.json().await.map_err(|e| format!("Erreur parsing: {}", e))?;
 
     // Parser la réponse
     if let Some(rows) = data.get("rows").and_then(|r| r.as_array()) {
@@ -229,10 +226,7 @@ async fn check_redis_direct(State(state): State<Arc<AppState>>) -> impl IntoResp
                     Ok(_) => true,
                     Err(_) => {
                         // Si get échoue, essayer de set/get pour vérifier la connexion
-                        match conn
-                            .set::<_, _, String>("__health_check_pool__", "ok")
-                            .await
-                        {
+                        match conn.set::<_, _, String>("__health_check_pool__", "ok").await {
                             Ok(_) => {
                                 let _ = conn.del::<_, i32>("__health_check_pool__").await;
                                 true
@@ -263,9 +257,7 @@ async fn check_redis_direct(State(state): State<Arc<AppState>>) -> impl IntoResp
     } else {
         format!(
             "❌ Redis non accessible: {}",
-            ping_error
-                .clone()
-                .unwrap_or_else(|| "Erreur inconnue".to_string())
+            ping_error.clone().unwrap_or_else(|| "Erreur inconnue".to_string())
         )
     };
 
@@ -320,10 +312,7 @@ async fn optional_jwt_auth(
     use std::env;
 
     // Essayer d'extraire le JWT
-    let auth_header = req
-        .headers()
-        .get("Authorization")
-        .and_then(|v| v.to_str().ok());
+    let auth_header = req.headers().get("Authorization").and_then(|v| v.to_str().ok());
 
     if let Some(auth_header) = auth_header {
         if let Some(token) = auth_header.strip_prefix("Bearer ") {

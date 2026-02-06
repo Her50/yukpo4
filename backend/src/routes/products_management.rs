@@ -369,14 +369,10 @@ pub async fn delete_product(
                             .get("product_lifecycle_id")
                             .and_then(|v| v.as_i64())
                             .map(|v| v as i32);
-                        let legacy_id = item
-                            .get("lifecycle_id")
-                            .and_then(|v| v.as_i64())
-                            .map(|v| v as i32);
-                        let product_id_field = item
-                            .get("product_id")
-                            .and_then(|v| v.as_i64())
-                            .map(|v| v as i32);
+                        let legacy_id =
+                            item.get("lifecycle_id").and_then(|v| v.as_i64()).map(|v| v as i32);
+                        let product_id_field =
+                            item.get("product_id").and_then(|v| v.as_i64()).map(|v| v as i32);
 
                         lifecycle_id == Some(product_id_i32)
                             || legacy_id == Some(product_id_i32)

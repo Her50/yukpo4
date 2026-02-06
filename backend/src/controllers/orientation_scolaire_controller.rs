@@ -50,9 +50,7 @@ pub async fn create_etablissement(
     let service_id = 0; // À remplacer par création réelle du service
 
     let service = OrientationScolaireService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
-    let etablissement = service
-        .create_etablissement(user_id, service_id, request)
-        .await?;
+    let etablissement = service.create_etablissement(user_id, service_id, request).await?;
 
     Ok((
         StatusCode::CREATED,
@@ -132,9 +130,7 @@ pub async fn update_statistiques_examens(
     // TODO: Vérifier que l'utilisateur est propriétaire de l'établissement
 
     let service = OrientationScolaireService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
-    let etablissement = service
-        .update_statistiques_examens(etablissement_id, request)
-        .await?;
+    let etablissement = service.update_statistiques_examens(etablissement_id, request).await?;
 
     Ok((
         StatusCode::OK,
@@ -196,9 +192,8 @@ pub async fn get_programmes_by_etablissement(
     let limit = params.get("limit").and_then(|v| v.as_i64());
 
     let service = ProgrammesScolairesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
-    let (programmes, total) = service
-        .get_programmes_by_etablissement(etablissement_id, page, limit)
-        .await?;
+    let (programmes, total) =
+        service.get_programmes_by_etablissement(etablissement_id, page, limit).await?;
 
     let page = page.unwrap_or(1);
     let limit = limit.unwrap_or(20);
@@ -285,9 +280,8 @@ pub async fn get_fournitures_by_etablissement(
     let limit = params.get("limit").and_then(|v| v.as_i64());
 
     let service = FournituresScolairesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
-    let (fournitures, total) = service
-        .get_fournitures_by_etablissement(etablissement_id, page, limit)
-        .await?;
+    let (fournitures, total) =
+        service.get_fournitures_by_etablissement(etablissement_id, page, limit).await?;
 
     let page = page.unwrap_or(1);
     let limit = limit.unwrap_or(20);
@@ -467,9 +461,8 @@ pub async fn list_experiences_by_etablissement(
     Path(etablissement_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     let service = ExperiencesEtudiantsService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
-    let (experiences, _total) = service
-        .list_experiences_by_etablissement(etablissement_id, None, None)
-        .await?;
+    let (experiences, _total) =
+        service.list_experiences_by_etablissement(etablissement_id, None, None).await?;
 
     Ok((
         StatusCode::OK,
@@ -634,9 +627,7 @@ pub async fn ai_analyze_profile(
             profile.id,
             &profile.niveau_actuel.unwrap_or_default(),
             &profile.notes_moyennes,
-            profile
-                .moyenne_generale
-                .map(|m| m.to_string().parse().unwrap_or(0.0)),
+            profile.moyenne_generale.map(|m| m.to_string().parse().unwrap_or(0.0)),
             &profile.matieres_preferees,
             &profile.objectifs_carriere,
         )

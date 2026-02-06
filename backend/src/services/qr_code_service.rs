@@ -31,11 +31,7 @@ impl QRCodeService {
             "COV-{}-{}-{}",
             reservation_id,
             chrono::Utc::now().timestamp(),
-            Uuid::new_v4()
-                .to_string()
-                .chars()
-                .take(8)
-                .collect::<String>()
+            Uuid::new_v4().to_string().chars().take(8).collect::<String>()
         );
 
         // Expiration : 2h après départ prévu

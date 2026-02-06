@@ -113,10 +113,7 @@ pub struct ImmersiveTimeline {
 
 impl ImmersiveTimeline {
     pub fn total_frames(&self) -> u32 {
-        self.scenes
-            .iter()
-            .map(|scene| scene.duration_in_frames)
-            .sum()
+        self.scenes.iter().map(|scene| scene.duration_in_frames).sum()
     }
 }
 
@@ -284,13 +281,10 @@ pub fn apply_style_hints_to_timeline(
         }
 
         if grade_hint.is_some() || grade_intensity.is_some() {
-            let mut grade = scene
-                .color_grade
-                .clone()
-                .unwrap_or_else(|| ImmersiveSceneColorGrade {
-                    style: default_color_grade_style(),
-                    intensity: default_color_grade_intensity(),
-                });
+            let mut grade = scene.color_grade.clone().unwrap_or_else(|| ImmersiveSceneColorGrade {
+                style: default_color_grade_style(),
+                intensity: default_color_grade_intensity(),
+            });
             if let Some(ref style) = grade_hint {
                 grade.style = style.clone();
             }

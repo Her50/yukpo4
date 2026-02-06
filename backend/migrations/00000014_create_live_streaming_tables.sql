@@ -56,3 +56,5 @@ CREATE INDEX IF NOT EXISTS idx_live_session_analytics_session ON live_session_an
 CREATE INDEX IF NOT EXISTS idx_live_session_analytics_metric ON live_session_analytics(metric_name);
 CREATE INDEX IF NOT EXISTS idx_live_session_analytics_recorded_at ON live_session_analytics(recorded_at DESC);
 
+
+

@@ -21,6 +21,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     env:
       SQLX_OFFLINE: "true"
       DATABASE_URL: ${{ secrets.DATABASE_URL_OFFLINE }}
@@ -57,7 +59,24 @@ jobs:
         shell: bash
         continue-on-error: true
 
-      - name: Cargo fmt
+      - name: Format Rust code (auto-fix on schedule)
+        if: github.event_name == 'schedule'
+        run: |
+          cargo fmt
+          if ! git diff --exit-code; then
+            echo "⚠️ Des changements de formatage détectés lors du cron"
+            echo "⚠️ Création d'un commit automatique..."
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add -u
+            git commit -m "chore: formatage automatique du code Rust [skip ci]" || true
+            git push origin HEAD:${{ github.ref }} || echo "⚠️ Impossible de push (peut-être pas de permissions ou pas de changements)"
+          else
+            echo "✅ Aucun changement de formatage nécessaire"
+          fi
+
+      - name: Cargo fmt check
+        if: github.event_name != 'schedule'
         run: cargo fmt -- --check
 
       - name: Cargo clippy

@@ -175,8 +175,7 @@ impl DynamicPreparationTimeService {
         };
 
         // Mettre à jour les stats
-        self.upsert_category_stats(category, avg, median, count as i32)
-            .await?;
+        self.upsert_category_stats(category, avg, median, count as i32).await?;
 
         Ok(())
     }

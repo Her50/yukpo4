@@ -84,14 +84,8 @@ pub async fn list_service_ratings(
     Path(service_id): Path<i32>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> AppResult<impl IntoResponse> {
-    let limit = params
-        .get("limit")
-        .and_then(|s| s.parse::<i32>().ok())
-        .unwrap_or(20);
-    let offset = params
-        .get("offset")
-        .and_then(|s| s.parse::<i32>().ok())
-        .unwrap_or(0);
+    let limit = params.get("limit").and_then(|s| s.parse::<i32>().ok()).unwrap_or(20);
+    let offset = params.get("offset").and_then(|s| s.parse::<i32>().ok()).unwrap_or(0);
 
     let rating_service = SpecializedRatingService::new(Arc::new(state.pg.clone()));
     let ratings = rating_service

@@ -524,9 +524,8 @@ pub async fn toggle_product_comment_reaction(
         "added"
     };
 
-    let reaction_counts = refresh_comment_reaction_counts(&state, comment_id)
-        .await
-        .map_err(|err| {
+    let reaction_counts =
+        refresh_comment_reaction_counts(&state, comment_id).await.map_err(|err| {
             error!(
                 "[ProductComments] ❌ Erreur lors de l'actualisation des réactions: {}",
                 err
@@ -887,9 +886,7 @@ async fn load_replies_for_comment(
                 .unwrap_or_else(|| json!({})),
             user_reactions,
             // ✅ FINALISÉ: Récupérer media_urls pour les réponses aussi
-            media_urls: row
-                .get::<Option<Value>, _>("media_urls")
-                .unwrap_or_else(|| json!([])),
+            media_urls: row.get::<Option<Value>, _>("media_urls").unwrap_or_else(|| json!([])),
             created_at: row.get::<DateTime<Utc>, _>("created_at"),
             updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
             edited_at: row.get::<Option<DateTime<Utc>>, _>("edited_at"),
@@ -944,10 +941,7 @@ async fn load_user_reactions(
     .fetch_all(&state.pg)
     .await?;
 
-    Ok(rows
-        .into_iter()
-        .map(|row| row.get::<String, _>("reaction_type"))
-        .collect())
+    Ok(rows.into_iter().map(|row| row.get::<String, _>("reaction_type")).collect())
 }
 
 fn build_comment_tree(

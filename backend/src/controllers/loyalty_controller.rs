@@ -97,14 +97,10 @@ pub async fn get_loyalty_points(
         WHERE user_id = $1
     "#;
 
-    let row = sqlx::query(query)
-        .bind(user_id)
-        .fetch_one(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[get_loyalty_points] Erreur: {}", e);
-            AppError::Internal(format!("Erreur récupération points: {}", e))
-        })?;
+    let row = sqlx::query(query).bind(user_id).fetch_one(&state.pg).await.map_err(|e| {
+        error!("[get_loyalty_points] Erreur: {}", e);
+        AppError::Internal(format!("Erreur récupération points: {}", e))
+    })?;
 
     let total_points: i32 = row.get("total_points");
     let available_points: i32 = row.get("available_points");
@@ -298,11 +294,7 @@ pub async fn get_loyalty_transactions(
         .and_then(|v| v.as_i64())
         .map(|v| v as i32)
         .unwrap_or(user.id);
-    let limit = params
-        .get("limit")
-        .and_then(|v| v.as_i64())
-        .map(|v| v as i32)
-        .unwrap_or(50);
+    let limit = params.get("limit").and_then(|v| v.as_i64()).map(|v| v as i32).unwrap_or(50);
 
     info!(
         "[get_loyalty_transactions] User ID: {}, Limit: {}",

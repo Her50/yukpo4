@@ -251,3 +251,5 @@ COMMENT ON COLUMN matching_offres_candidats.ai_score IS 'Score IA de matching (0
 COMMENT ON COLUMN cv_ai_analyses.score_qualite IS 'Score de qualité du CV IA (0-100)';
 COMMENT ON COLUMN salary_predictions.salaire_predicted_median IS 'Salaire prédit médian par IA';
 
+
+

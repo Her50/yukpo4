@@ -1726,15 +1726,30 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // ✅ NOUVEAU: Traitement spécial pour le champ produits (autocomplete)
             if (fieldName === 'produits' && typeDonnee === 'autocomplete') {
               // Pour autocomplete, garder toute la structure avec sous_caracteristiques
+              // ✅ CORRECTION CRITIQUE: Extraire product_labels pour garantir l'ordre correct des labels
+              const productLabels = Array.isArray(fieldData.product_labels) && fieldData.product_labels.length > 0
+                ? fieldData.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0)
+                : undefined;
+              
               initialValues[fieldName] = {
                 type_donnee: 'autocomplete',
                 valeur: Array.isArray(fieldData.valeur) ? fieldData.valeur : [],
                 separateur: fieldData.separateur || ',',
                 sous_caracteristiques: fieldData.sous_caracteristiques || {},
+                product_labels: productLabels, // ✅ NOUVEAU: Ajouter product_labels pour alignement correct
                 identifiant_base: fieldData.identifiant_base || 'produits',
                 filtrable: fieldData.filtrable !== false,
                 origine_champs: fieldData.origine_champs || 'ia'
               };
+              
+              // ✅ NOUVEAU: Stocker aussi product_labels au niveau racine de initialValues pour accès facile
+              if (productLabels && productLabels.length > 0) {
+                initialValues.product_labels = productLabels;
+                console.log(`[FormulaireYukpoIntelligentScreen] ✅ product_labels extrait depuis IA:`, productLabels);
+              } else {
+                console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ product_labels non trouvé dans fieldData pour produits (autocomplete)`);
+              }
+              
               console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ produits (autocomplete) pré-rempli:`, initialValues[fieldName]);
             }
             // ✅ NOUVEAU: Traitement spécial pour price_variant (variabilite_prix)
@@ -2211,11 +2226,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       clearTimeout(debounceTimeoutsRef.current[fieldName]);
     }
 
-    // ✅ CORRECTION CRITIQUE: Débouncer la mise à jour de l'état pour éviter les re-renders fréquents
-    // Pour les champs texte simples, utiliser un délai de 300ms (augmenté pour éviter les sauts de curseur)
+    // ✅ CORRECTION CRITIQUE: Réduire le debounce pour améliorer la fluidité
+    // StableTextInput gère déjà son propre debounce, donc on peut réduire ici
+    // Pour les champs texte simples, utiliser un délai de 100ms (réduit pour plus de fluidité)
     // Pour les autres champs (select, checkbox, etc.), mettre à jour immédiatement
     const isTextInput = typeof processedValue === 'string';
-    const debounceDelay = isTextInput ? 300 : 0; // ✅ AUGMENTÉ: De 150ms à 300ms pour plus de stabilité
+    const debounceDelay = isTextInput ? 100 : 0; // ✅ RÉDUIT: De 300ms à 100ms pour plus de fluidité
 
     debounceTimeoutsRef.current[fieldName] = setTimeout(() => {
       setValeursFormulaire(prev => {
@@ -3023,7 +3039,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               keyboardType={keyboardType}
               autoCapitalize={field.type === 'email' || field.type === 'url' ? 'none' : 'sentences'}
               autoCorrect={field.type === 'email' || field.type === 'url' ? false : true}
-              debounceMs={300}
+              debounceMs={0}
               style={[
                 styles.fieldInput,
                 hasError && styles.fieldInputError,
@@ -3077,12 +3093,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <Text style={styles.fieldLabel}>
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
-            <NativeInput
+            <StableTextInput
+              key={`textarea-${field.name}`}
               placeholder={field.placeholder}
               value={textareaValue}
-              onChangeText={(text) => handleFieldChange(field.name, text)}
+              onChangeText={(text) => {
+                // ✅ CORRECTION CRITIQUE: Utiliser StableTextInput pour les textarea aussi
+                // Cela évite les re-renders pendant la saisie qui causent les sauts de curseur
+                handleFieldChange(field.name, text);
+              }}
               multiline={true}
-              minLines={linesMinimum}
+              numberOfLines={linesMinimum}
+              textAlignVertical="top"
+              debounceMs={0}
               style={[
                 styles.fieldInput,
                 styles.textareaInput,
@@ -3104,11 +3127,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 <Text style={styles.fieldLabel}>
                   {field.label} {field.required && <Text style={styles.required}>*</Text>}
                 </Text>
-                <NativeInput
+                <StableTextInput
+                  key={`input-${field.name}`}
                   placeholder={field.placeholder}
                   value={valeursFormulaire[field.name]?.toString() || ''}
                   onChangeText={(text) => handleFieldChange(field.name, text)}
                   keyboardType="numeric"
+                  debounceMs={0}
                   style={styles.fieldInput}
                 />
               </View>
@@ -3148,11 +3173,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <Text style={styles.fieldLabel}>
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
-            <NativeInput
+            <StableTextInput
+              key={`input-${field.name}`}
               placeholder={field.placeholder}
               value={valeursFormulaire[field.name]?.toString() || ''}
               onChangeText={(text) => handleFieldChange(field.name, text)}
               keyboardType="numeric"
+              debounceMs={0}
               style={styles.fieldInput}
             />
           </View>

@@ -137,9 +137,8 @@ pub async fn list_pending_documents(
             if let Some(ai_analysis) = meta.get("ai_analysis") {
                 // Les résultats sont dans extracted_data
                 if let Some(extracted_data) = ai_analysis.get("extracted_data") {
-                    let confidence = extracted_data
-                        .get("confidence_score")
-                        .and_then(|v| v.as_f64());
+                    let confidence =
+                        extracted_data.get("confidence_score").and_then(|v| v.as_f64());
                     let recommendation = extracted_data
                         .get("recommendation")
                         .and_then(|v| v.as_str())
@@ -238,9 +237,7 @@ pub async fn verify_document_manual(
         verified_at: Some(chrono::Utc::now()),
     };
 
-    kyc_service
-        .verify_document(document_id, result, Some(admin_id))
-        .await?;
+    kyc_service.verify_document(document_id, result, Some(admin_id)).await?;
 
     info!(
         "[verify_document_manual] ✅ Document ID={} vérifié manuellement par admin ID={}",

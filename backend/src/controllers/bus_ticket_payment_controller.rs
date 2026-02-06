@@ -258,10 +258,7 @@ pub async fn process_ticket_payment(
                 AppError::Internal(format!("Erreur calcul commission: {}", e))
             })?;
 
-    let success = commission_result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let success = commission_result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
 
     if !success {
         let error_msg = commission_result
@@ -389,18 +386,13 @@ pub async fn get_user_tickets(
 
     let mut tickets = Vec::new();
     for row in rows {
-        let reservation_ids: Vec<String> = row
-            .try_get::<Vec<String>, _>("reservation_ids")
-            .unwrap_or_default();
+        let reservation_ids: Vec<String> =
+            row.try_get::<Vec<String>, _>("reservation_ids").unwrap_or_default();
 
-        let return_date: Option<String> = row
-            .try_get::<Option<String>, _>("return_date")
-            .ok()
-            .flatten();
-        let return_time: Option<String> = row
-            .try_get::<Option<String>, _>("return_time")
-            .ok()
-            .flatten();
+        let return_date: Option<String> =
+            row.try_get::<Option<String>, _>("return_date").ok().flatten();
+        let return_time: Option<String> =
+            row.try_get::<Option<String>, _>("return_time").ok().flatten();
         let is_round_trip = return_date.is_some() || return_time.is_some();
 
         let ticket = UserTicket {
@@ -418,15 +410,11 @@ pub async fn get_user_tickets(
             ticket_price: row.get::<i32, _>("ticket_price"),
             number_of_tickets: row.get::<i32, _>("number_of_tickets"),
             total_amount: row.get::<i32, _>("total_amount"),
-            currency: row
-                .get::<Option<String>, _>("currency")
-                .unwrap_or_else(|| "XAF".to_string()),
+            currency: row.get::<Option<String>, _>("currency").unwrap_or_else(|| "XAF".to_string()),
             payment_status: row.get::<String, _>("payment_status"),
             ticket_pdf_url: row.get::<Option<String>, _>("ticket_pdf_url"),
             reservation_ids,
-            created_at: row
-                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                .to_rfc3339(),
+            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
         };
         tickets.push(ticket);
     }
@@ -511,14 +499,10 @@ pub async fn get_ticket_details(
             let reservations_details: Option<Value> =
                 row.get::<Option<Value>, _>("reservations_details");
 
-            let return_date: Option<String> = row
-                .try_get::<Option<String>, _>("return_date")
-                .ok()
-                .flatten();
-            let return_time: Option<String> = row
-                .try_get::<Option<String>, _>("return_time")
-                .ok()
-                .flatten();
+            let return_date: Option<String> =
+                row.try_get::<Option<String>, _>("return_date").ok().flatten();
+            let return_time: Option<String> =
+                row.try_get::<Option<String>, _>("return_time").ok().flatten();
             let is_round_trip = return_date.is_some() || return_time.is_some();
 
             let ticket_details = json!({

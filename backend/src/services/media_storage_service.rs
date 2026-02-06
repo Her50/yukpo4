@@ -63,9 +63,7 @@ impl MediaStorageService {
     }
 
     pub fn local_path_for(&self, storage_key: &str) -> PathBuf {
-        self.config
-            .upload_root
-            .join(storage_key.trim_start_matches('/'))
+        self.config.upload_root.join(storage_key.trim_start_matches('/'))
     }
 
     pub fn storage_path_for(&self, storage_key: &str) -> String {
@@ -135,8 +133,7 @@ impl MediaStorageService {
             }
 
             // Upload directement depuis les bytes vers S3
-            self.upload_bytes_to_s3(client, data, &object_key, content_type)
-                .await?;
+            self.upload_bytes_to_s3(client, data, &object_key, content_type).await?;
         }
 
         let public_url = self.build_public_url(&storage_path);
@@ -181,8 +178,7 @@ impl MediaStorageService {
 
         if let Some(client) = &self.client {
             let object_key = storage_path.clone();
-            self.upload_to_s3(client, &source_for_upload, &object_key, content_type)
-                .await?;
+            self.upload_to_s3(client, &source_for_upload, &object_key, content_type).await?;
 
             if !self.config.keep_local_copy && self.config.remove_source_after_upload {
                 if let Err(err) = fs::remove_file(&source_for_upload).await {
@@ -287,11 +283,7 @@ impl MediaStorageService {
         // ✅ OPTIMISÉ: Utiliser ByteStream::from directement depuis les bytes (pas de fichier)
         let body = ByteStream::from(data.to_vec());
 
-        let mut request = client
-            .put_object()
-            .bucket(bucket)
-            .key(object_key.to_string())
-            .body(body);
+        let mut request = client.put_object().bucket(bucket).key(object_key.to_string()).body(body);
 
         if let Some(ct) = content_type {
             request = request.content_type(ct.to_string());
@@ -332,11 +324,7 @@ impl MediaStorageService {
             AppError::Internal(format!("Lecture fichier pour S3 impossible: {err}"))
         })?;
 
-        let mut request = client
-            .put_object()
-            .bucket(bucket)
-            .key(object_key.to_string())
-            .body(body);
+        let mut request = client.put_object().bucket(bucket).key(object_key.to_string()).body(body);
 
         if let Some(ct) = content_type {
             request = request.content_type(ct.to_string());
@@ -373,12 +361,7 @@ impl MediaStorageService {
             .upload_base_url
             .as_deref()
             .filter(|value| !value.is_empty())
-            .or_else(|| {
-                self.config
-                    .public_base_url
-                    .as_deref()
-                    .filter(|value| !value.is_empty())
-            });
+            .or_else(|| self.config.public_base_url.as_deref().filter(|value| !value.is_empty()));
 
         if let Some(base) = candidate_base {
             let url = format!(

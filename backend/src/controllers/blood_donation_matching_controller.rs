@@ -230,10 +230,7 @@ pub async fn create_blood_donation_request(
         AppError::Internal(format!("Erreur création demande: {}", e))
     })?;
 
-    let success = result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
 
     if !success {
         let error_msg = result
@@ -243,15 +240,9 @@ pub async fn create_blood_donation_request(
         return Err(AppError::BadRequest(error_msg.to_string()));
     }
 
-    let request_id = result
-        .get("request_id")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let request_id = result.get("request_id").and_then(|v| v.as_str()).map(|s| s.to_string());
     let matches_found = result.get("matches_found").and_then(|v| v.as_i64());
-    let message = result
-        .get("message")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let message = result.get("message").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     // Si des matches ont été trouvés et que la demande est urgente, notifier immédiatement
     if matches_found.unwrap_or(0) > 0 && payload.is_urgent.unwrap_or(false) {
@@ -426,10 +417,8 @@ async fn notify_donors_for_request_internal(
     }
 
     // 3. Limiter au maximum
-    let donors_to_notify: Vec<_> = donors_to_notify
-        .into_iter()
-        .take(max_notifications as usize)
-        .collect();
+    let donors_to_notify: Vec<_> =
+        donors_to_notify.into_iter().take(max_notifications as usize).collect();
 
     let mut notified_count = 0;
 
@@ -599,10 +588,7 @@ pub async fn update_match_status(
             AppError::Internal(format!("Erreur mise à jour match: {}", e))
         })?;
 
-    let success = result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
 
     if !success {
         let error_msg = result
@@ -757,15 +743,11 @@ pub async fn list_active_requests(
             urgence_level: row
                 .get::<Option<String>, _>("urgence_level")
                 .unwrap_or_else(|| "normal".to_string()),
-            status: row
-                .get::<Option<String>, _>("status")
-                .unwrap_or_else(|| "active".to_string()),
+            status: row.get::<Option<String>, _>("status").unwrap_or_else(|| "active".to_string()),
             request_location_address: row.get::<Option<String>, _>("request_location_address"),
             patient_name: row.get::<Option<String>, _>("patient_name"),
             hospital_name: row.get::<Option<String>, _>("hospital_name"),
-            created_at: row
-                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                .to_rfc3339(),
+            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
             matches_count: row.get::<i64, _>("matches_count"),
             accepted_matches_count: row.get::<i64, _>("accepted_matches_count"),
         };
@@ -884,16 +866,11 @@ pub async fn update_last_donation(
             AppError::Internal(format!("Erreur mise à jour dernier don: {}", e))
         })?;
 
-    let success = result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
 
     if !success {
-        let error_msg = result
-            .get("error")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Erreur mise à jour");
+        let error_msg =
+            result.get("error").and_then(|v| v.as_str()).unwrap_or("Erreur mise à jour");
         return Err(AppError::BadRequest(error_msg.to_string()));
     }
 
@@ -901,10 +878,7 @@ pub async fn update_last_donation(
         .get("next_donation_available_date")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-    let message = result
-        .get("message")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let message = result.get("message").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     Ok((
         StatusCode::OK,

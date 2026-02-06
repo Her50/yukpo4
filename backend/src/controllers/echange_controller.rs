@@ -36,25 +36,9 @@ pub async fn creer_echange(
     // intention - extraire depuis les données plutôt que de forcer "echange"
     let intention = serde_json::to_value(&payload)
         .ok()
-        .and_then(|v| {
-            v.get("intention")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
-        .or_else(|| {
-            payload
-                .offre
-                .get("intention")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
-        .or_else(|| {
-            payload
-                .besoin
-                .get("intention")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
+        .and_then(|v| v.get("intention").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .or_else(|| payload.offre.get("intention").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .or_else(|| payload.besoin.get("intention").and_then(|v| v.as_str()).map(|s| s.to_string()))
         .unwrap_or_else(|| "".to_string());
     if !intention.is_empty() {
         data.insert(
@@ -67,25 +51,9 @@ pub async fn creer_echange(
     // Extraction du mode : racine, puis offre, puis besoin
     let mode = serde_json::to_value(&payload)
         .ok()
-        .and_then(|v| {
-            v.get("mode")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
-        .or_else(|| {
-            payload
-                .offre
-                .get("mode")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
-        .or_else(|| {
-            payload
-                .besoin
-                .get("mode")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
+        .and_then(|v| v.get("mode").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .or_else(|| payload.offre.get("mode").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .or_else(|| payload.besoin.get("mode").and_then(|v| v.as_str()).map(|s| s.to_string()))
         .unwrap_or_else(|| "".to_string());
     // Validation : seulement si mode est présent et non autorisé
     if !mode.is_empty() && mode != "echange" && mode != "don" {
@@ -108,23 +76,9 @@ pub async fn creer_echange(
     // mode_troc : racine, puis offre, puis besoin
     let mode_troc = serde_json::to_value(&payload)
         .ok()
-        .and_then(|v| {
-            v.get("mode_troc")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
-        .or_else(|| {
-            offre
-                .get("mode_troc")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
-        .or_else(|| {
-            besoin
-                .get("mode_troc")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
+        .and_then(|v| v.get("mode_troc").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .or_else(|| offre.get("mode_troc").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .or_else(|| besoin.get("mode_troc").and_then(|v| v.as_str()).map(|s| s.to_string()))
         .unwrap_or_else(|| "".to_string());
     if mode_troc.is_empty() {
         return Json(json!({"error": "Le champ 'mode_troc' est obligatoire"}));

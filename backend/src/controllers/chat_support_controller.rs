@@ -117,9 +117,7 @@ pub async fn start_chat_session(
     let session = ChatSession {
         id: row.get::<String, _>("id"),
         status: row.get::<String, _>("status"),
-        created_at: row
-            .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-            .timestamp(),
+        created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").timestamp(),
         last_message_at: row
             .get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at")
             .map(|dt| dt.timestamp())
@@ -231,9 +229,7 @@ pub async fn send_chat_message(
         id: row.get::<String, _>("id"),
         text: row.get::<String, _>("text"),
         sender: row.get::<String, _>("sender"),
-        timestamp: row
-            .get::<chrono::DateTime<chrono::Utc>, _>("timestamp")
-            .timestamp(),
+        timestamp: row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp").timestamp(),
         read: row.get::<bool, _>("read"),
         attachments: payload.attachments.clone(),
     };
@@ -285,11 +281,8 @@ async fn generate_ai_support_response(
             AppError::Internal(format!("Erreur historique: {}", e))
         })?;
 
-    let conversation_history: Vec<String> = history_rows
-        .iter()
-        .rev()
-        .map(|row| row.get::<String, _>("text"))
-        .collect();
+    let conversation_history: Vec<String> =
+        history_rows.iter().rev().map(|row| row.get::<String, _>("text")).collect();
 
     // Récupérer le topic de la session
     let topic_query = r#"
@@ -375,9 +368,7 @@ async fn generate_ai_support_response(
         id: ai_row.get::<String, _>("id"),
         text: ai_row.get::<String, _>("text"),
         sender: ai_row.get::<String, _>("sender"),
-        timestamp: ai_row
-            .get::<chrono::DateTime<chrono::Utc>, _>("timestamp")
-            .timestamp(),
+        timestamp: ai_row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp").timestamp(),
         read: ai_row.get::<bool, _>("read"),
         attachments: None,
     };
@@ -397,11 +388,7 @@ pub async fn get_chat_messages(
         .get("session_id")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::BadRequest("session_id requis".to_string()))?;
-    let limit = params
-        .get("limit")
-        .and_then(|v| v.as_i64())
-        .map(|v| v as i32)
-        .unwrap_or(50);
+    let limit = params.get("limit").and_then(|v| v.as_i64()).map(|v| v as i32).unwrap_or(50);
 
     info!(
         "[get_chat_messages] Session: {}, Limit: {}",
@@ -420,9 +407,9 @@ pub async fn get_chat_messages(
         .fetch_optional(&state.pg)
         .await
         .map_err(|e| {
-            error!("[get_chat_messages] Erreur vérification session: {}", e);
-            AppError::Internal(format!("Erreur vérification session: {}", e))
-        })?;
+        error!("[get_chat_messages] Erreur vérification session: {}", e);
+        AppError::Internal(format!("Erreur vérification session: {}", e))
+    })?;
 
     if session_row.is_none() {
         return Err(AppError::NotFound("Session introuvable".to_string()));
@@ -465,27 +452,23 @@ pub async fn get_chat_messages(
         .map(|row| {
             let attachments: Option<String> = row.get::<Option<String>, _>("attachments");
             let attachments_parsed = attachments.and_then(|a| {
-                serde_json::from_str::<Vec<serde_json::Value>>(&a)
-                    .ok()
-                    .map(|v| {
-                        v.iter()
-                            .filter_map(|item| {
-                                Some(Attachment {
-                                    type_: item.get("type")?.as_str()?.to_string(),
-                                    url: item.get("url")?.as_str()?.to_string(),
-                                })
+                serde_json::from_str::<Vec<serde_json::Value>>(&a).ok().map(|v| {
+                    v.iter()
+                        .filter_map(|item| {
+                            Some(Attachment {
+                                type_: item.get("type")?.as_str()?.to_string(),
+                                url: item.get("url")?.as_str()?.to_string(),
                             })
-                            .collect()
-                    })
+                        })
+                        .collect()
+                })
             });
 
             ChatMessage {
                 id: row.get::<String, _>("id"),
                 text: row.get::<String, _>("text"),
                 sender: row.get::<String, _>("sender"),
-                timestamp: row
-                    .get::<chrono::DateTime<chrono::Utc>, _>("timestamp")
-                    .timestamp(),
+                timestamp: row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp").timestamp(),
                 read: row.get::<bool, _>("read"),
                 attachments: attachments_parsed,
             }
@@ -529,23 +512,17 @@ pub async fn get_chat_sessions(
         ORDER BY last_message_at DESC
     "#;
 
-    let rows = sqlx::query(query)
-        .bind(user_id)
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[get_chat_sessions] Erreur: {}", e);
-            AppError::Internal(format!("Erreur récupération sessions: {}", e))
-        })?;
+    let rows = sqlx::query(query).bind(user_id).fetch_all(&state.pg).await.map_err(|e| {
+        error!("[get_chat_sessions] Erreur: {}", e);
+        AppError::Internal(format!("Erreur récupération sessions: {}", e))
+    })?;
 
     let sessions: Vec<ChatSession> = rows
         .iter()
         .map(|row| ChatSession {
             id: row.get::<String, _>("id"),
             status: row.get::<String, _>("status"),
-            created_at: row
-                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                .timestamp(),
+            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").timestamp(),
             last_message_at: row
                 .get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at")
                 .map(|dt| dt.timestamp())

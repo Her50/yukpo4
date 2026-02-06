@@ -194,3 +194,4 @@ Après avoir exécuté les scripts :
 3. ✅ Tester depuis le mobile
 4. ✅ Vérifier les logs backend pour confirmer que les requêtes arrivent
 
+

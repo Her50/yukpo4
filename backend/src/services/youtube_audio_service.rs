@@ -90,28 +90,20 @@ impl YouTubeAudioService {
 
         // Pour l'instant, retourner une bibliothèque statique de tracks YouTube Audio Library
         // Dans une implémentation réelle, on utiliserait le scraping ou une API tierce
-        let tracks = self
-            .get_curated_youtube_audio_tracks(query, genre, mood, license)
-            .await?;
+        let tracks = self.get_curated_youtube_audio_tracks(query, genre, mood, license).await?;
 
         let limit_val = limit.unwrap_or(20);
         let offset_val = offset.unwrap_or(0);
         let total = tracks.len() as u32;
-        let paginated: Vec<_> = tracks
-            .into_iter()
-            .skip(offset_val as usize)
-            .take(limit_val as usize)
-            .collect();
+        let paginated: Vec<_> =
+            tracks.into_iter().skip(offset_val as usize).take(limit_val as usize).collect();
 
         // Mettre en cache
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        self.cache
-            .lock()
-            .await
-            .insert(cache_key, (paginated.clone(), now));
+        self.cache.lock().await.insert(cache_key, (paginated.clone(), now));
 
         Ok((paginated, total))
     }
@@ -245,16 +237,11 @@ impl YouTubeAudioService {
 
     /// Récupère les détails d'un track spécifique
     pub async fn get_track_details(&self, track_id: &str) -> AppResult<AudioMetadata> {
-        let tracks = self
-            .get_curated_youtube_audio_tracks(None, None, None, None)
-            .await?;
+        let tracks = self.get_curated_youtube_audio_tracks(None, None, None, None).await?;
 
-        tracks
-            .into_iter()
-            .find(|t| t.track_id == track_id)
-            .ok_or_else(|| {
-                AppError::NotFound(format!("Track YouTube Audio '{}' non trouvé", track_id))
-            })
+        tracks.into_iter().find(|t| t.track_id == track_id).ok_or_else(|| {
+            AppError::NotFound(format!("Track YouTube Audio '{}' non trouvé", track_id))
+        })
     }
 
     /// Récupère l'URL de téléchargement d'un track

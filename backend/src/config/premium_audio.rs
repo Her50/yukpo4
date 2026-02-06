@@ -149,9 +149,7 @@ impl DolbyConfig {
         let api_secret = env::var("DOLBY_API_SECRET").ok()?;
         let base_url =
             env::var("DOLBY_BASE_URL").unwrap_or_else(|_| "https://api.dolby.com".into());
-        let preset = env::var("DOLBY_ENHANCE_PRESET")
-            .ok()
-            .filter(|v| !v.is_empty());
+        let preset = env::var("DOLBY_ENHANCE_PRESET").ok().filter(|v| !v.is_empty());
         let webhook_secret = env::var("DOLBY_WEBHOOK_SIGNATURE_SECRET").ok();
 
         Some(Self {
@@ -195,9 +193,7 @@ impl AuphonicConfig {
         let base_url =
             env::var("AUPHONIC_BASE_URL").unwrap_or_else(|_| "https://api.auphonic.com".into());
         let preset = env::var("AUPHONIC_PRESET").ok().filter(|v| !v.is_empty());
-        let format = env::var("AUPHONIC_OUTPUT_FORMAT")
-            .ok()
-            .filter(|v| !v.is_empty());
+        let format = env::var("AUPHONIC_OUTPUT_FORMAT").ok().filter(|v| !v.is_empty());
         let webhook_secret = env::var("AUPHONIC_WEBHOOK_SECRET").ok();
         let poll_interval_secs = env::var("AUPHONIC_POLL_INTERVAL_SECS")
             .ok()

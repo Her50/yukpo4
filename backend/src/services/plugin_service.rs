@@ -283,12 +283,10 @@ impl PluginService {
         if let Some(plugin) = plugins.remove(plugin_id) {
             // Supprimer les fichiers du plugin
             if plugin.install_path.exists() {
-                fs::remove_dir_all(&plugin.install_path)
-                    .await
-                    .map_err(|e| {
-                        error!("[PluginService] Erreur suppression plugin: {}", e);
-                        AppError::Internal(format!("Erreur désinstallation plugin: {}", e))
-                    })?;
+                fs::remove_dir_all(&plugin.install_path).await.map_err(|e| {
+                    error!("[PluginService] Erreur suppression plugin: {}", e);
+                    AppError::Internal(format!("Erreur désinstallation plugin: {}", e))
+                })?;
             }
 
             info!("[PluginService] Plugin {} désinstallé", plugin_id);
@@ -608,9 +606,8 @@ impl PluginService {
         }
 
         // Lire le manifest du plugin
-        let manifest_content = tokio::fs::read_to_string(&plugin_manifest_path)
-            .await
-            .map_err(|e| {
+        let manifest_content =
+            tokio::fs::read_to_string(&plugin_manifest_path).await.map_err(|e| {
                 AppError::Internal(format!(
                     "Erreur lecture manifest plugin {}: {}",
                     plugin.metadata.id, e
@@ -641,10 +638,7 @@ impl PluginService {
         }
 
         // ✅ Exécuter le plugin selon son type
-        let plugin_type = manifest
-            .get("type")
-            .and_then(|t| t.as_str())
-            .unwrap_or("unknown");
+        let plugin_type = manifest.get("type").and_then(|t| t.as_str()).unwrap_or("unknown");
 
         let output = match plugin_type {
             "effect" => {
@@ -653,8 +647,7 @@ impl PluginService {
             }
             "transition" => {
                 // Plugin de transition
-                self.execute_transition_plugin(plugin, input, context)
-                    .await?
+                self.execute_transition_plugin(plugin, input, context).await?
             }
             "filter" => {
                 // Plugin de filtre

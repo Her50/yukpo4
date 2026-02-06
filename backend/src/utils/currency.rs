@@ -325,10 +325,7 @@ fn ensure_product_currency(product: &mut Value, service_country: Option<&str>) {
 
     // Inject currency into price variations if missing
     if let Some(variation) = product.get_mut("variation_prix") {
-        if let Some(modalites) = variation
-            .get_mut("modalites")
-            .and_then(|v| v.as_array_mut())
-        {
+        if let Some(modalites) = variation.get_mut("modalites").and_then(|v| v.as_array_mut()) {
             for modalite in modalites {
                 ensure_modalite_currency(modalite, product_country.as_deref());
             }
@@ -337,14 +334,10 @@ fn ensure_product_currency(product: &mut Value, service_country: Option<&str>) {
 }
 
 pub fn auto_fill_currencies(service_data: &mut Value) {
-    let mut service_country = service_data
-        .get("lieu_produit")
-        .and_then(|v| extract_country(v));
+    let mut service_country = service_data.get("lieu_produit").and_then(|v| extract_country(v));
 
     if service_country.is_none() {
-        service_country = service_data
-            .get("location_vector")
-            .and_then(|v| extract_country(v));
+        service_country = service_data.get("location_vector").and_then(|v| extract_country(v));
     }
 
     if let Some(products_value) = service_data.get_mut("produits") {

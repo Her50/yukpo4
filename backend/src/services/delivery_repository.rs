@@ -1727,11 +1727,7 @@ impl DeliveryRepository {
         )
         .bind(payload.delivery_id)
         .bind(payload.status as DeliveryStatus)
-        .bind(
-            payload
-                .payload
-                .unwrap_or_else(|| Value::Object(Default::default())),
-        )
+        .bind(payload.payload.unwrap_or_else(|| Value::Object(Default::default())))
         .bind(payload.recorded_by)
         .fetch_one(&self.pool)
         .await?;
@@ -3369,9 +3365,7 @@ impl DeliveryRepository {
                     .as_ref()
                     .and_then(|v| v.as_array())
                     .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
                     })
                     .unwrap_or_default();
 
@@ -3581,9 +3575,7 @@ impl DeliveryRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        let tags = row
-            .tags
-            .map(|values| values.into_iter().flatten().collect::<Vec<String>>());
+        let tags = row.tags.map(|values| values.into_iter().flatten().collect::<Vec<String>>());
 
         Ok(CourierRating {
             id: row.id,
@@ -3636,9 +3628,7 @@ impl DeliveryRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        let tags = row
-            .tags
-            .map(|values| values.into_iter().flatten().collect::<Vec<String>>());
+        let tags = row.tags.map(|values| values.into_iter().flatten().collect::<Vec<String>>());
 
         Ok(ClientRating {
             id: row.id,

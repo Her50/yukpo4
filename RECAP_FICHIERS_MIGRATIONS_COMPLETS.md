@@ -103,3 +103,5 @@ Ces éléments peuvent être ajoutés dans des migrations séparées si nécessa
 3. Ajouter les tables spécialisées restantes si nécessaire
 4. Supprimer ou archiver le fichier consolidé `0000_create_all_tables.sql`
 
+
+

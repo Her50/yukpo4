@@ -324,10 +324,8 @@ impl ProductsService {
         product_index: i32,
     ) -> AppResult<Product> {
         // Récupérer le produit source
-        let source_product = self
-            .get_product(service_id, product_index)
-            .await?
-            .ok_or_else(|| {
+        let source_product =
+            self.get_product(service_id, product_index).await?.ok_or_else(|| {
                 AppError::NotFound(format!(
                     "Produit source non trouvé (service_id: {}, product_index: {})",
                     service_id, product_index
@@ -380,9 +378,7 @@ impl ProductsService {
         }
 
         // Créer le nouveau produit
-        let new_product = self
-            .create_product(service_id, new_index, &new_product_data)
-            .await?;
+        let new_product = self.create_product(service_id, new_index, &new_product_data).await?;
 
         Ok(new_product)
     }
@@ -412,10 +408,8 @@ impl ProductsService {
         deactivation_data: Option<Value>,
     ) -> AppResult<Product> {
         // Récupérer le produit actuel
-        let mut current_product = self
-            .get_product(service_id, product_index)
-            .await?
-            .ok_or_else(|| {
+        let mut current_product =
+            self.get_product(service_id, product_index).await?.ok_or_else(|| {
                 AppError::NotFound(format!(
                     "Produit non trouvé (service_id: {}, product_index: {})",
                     service_id, product_index

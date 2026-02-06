@@ -185,9 +185,7 @@ impl GPURenderService {
 
         // Pour NVIDIA, vérifier avec nvidia-smi
         if self.gpu_detector.is_nvidia_gpu() {
-            if let Ok(output) = std::process::Command::new("nvidia-smi")
-                .arg("--list-gpus")
-                .output()
+            if let Ok(output) = std::process::Command::new("nvidia-smi").arg("--list-gpus").output()
             {
                 let output_str = String::from_utf8_lossy(&output.stdout);
                 let gpu_count = output_str.lines().count();
@@ -218,9 +216,8 @@ impl GPURenderService {
         // Pour NVIDIA multi-GPU, utiliser FFmpeg avec distribution
         if self.gpu_detector.is_nvidia_gpu() {
             // Obtenir le nombre de GPUs
-            let gpu_count = if let Ok(output) = std::process::Command::new("nvidia-smi")
-                .arg("--list-gpus")
-                .output()
+            let gpu_count = if let Ok(output) =
+                std::process::Command::new("nvidia-smi").arg("--list-gpus").output()
             {
                 String::from_utf8_lossy(&output.stdout).lines().count()
             } else {

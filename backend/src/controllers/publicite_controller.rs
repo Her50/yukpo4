@@ -236,13 +236,11 @@ pub async fn create_publicite(
     };
 
     // Calculer le rayon selon la zone
-    let rayon = payload
-        .rayon_km
-        .unwrap_or_else(|| match payload.zone_geographique.as_str() {
-            "local" => 50,
-            "regional" => 500,
-            _ => 0,
-        });
+    let rayon = payload.rayon_km.unwrap_or_else(|| match payload.zone_geographique.as_str() {
+        "local" => 50,
+        "regional" => 500,
+        _ => 0,
+    });
 
     // Calculer métadonnées vidéos
     let videos_meta_vec = payload.videos_meta.clone().unwrap_or_default();
@@ -252,10 +250,7 @@ pub async fn create_publicite(
     let mut manual_count: i64 = 0;
     for meta in &videos_meta_vec {
         let ai_generated = meta.ai_generated.unwrap_or_else(|| {
-            meta.source
-                .as_ref()
-                .map(|s| s.to_lowercase().contains("ai"))
-                .unwrap_or(false)
+            meta.source.as_ref().map(|s| s.to_lowercase().contains("ai")).unwrap_or(false)
         });
         if ai_generated {
             ai_generated_count += 1;
@@ -316,9 +311,7 @@ pub async fn create_publicite(
     let date_debut_opt = if let Some(ref schedule) = payload.schedule {
         if let Some(ref start_date) = schedule.start_date {
             // Parser la date ISO depuis le schedule
-            chrono::DateTime::parse_from_rfc3339(start_date)
-                .ok()
-                .map(|dt| dt.naive_utc())
+            chrono::DateTime::parse_from_rfc3339(start_date).ok().map(|dt| dt.naive_utc())
         } else {
             None
         }
@@ -514,12 +507,7 @@ pub async fn get_active_publicites(
     let categories: Vec<String> = params
         .categories
         .as_ref()
-        .map(|c| {
-            c.split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect()
-        })
+        .map(|c| c.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
         .unwrap_or_default();
     let categories_lower: HashSet<String> = categories.iter().map(|c| c.to_lowercase()).collect();
 
@@ -544,10 +532,8 @@ pub async fn get_active_publicites(
             (
                 row.get::<Option<i32>, _>("age"),
                 row.get::<Option<String>, _>("gender"),
-                row.get::<Option<Vec<String>>, _>("interests")
-                    .unwrap_or_default(),
-                row.get::<Option<Vec<String>>, _>("behaviors")
-                    .unwrap_or_default(),
+                row.get::<Option<Vec<String>>, _>("interests").unwrap_or_default(),
+                row.get::<Option<Vec<String>>, _>("behaviors").unwrap_or_default(),
             )
         } else {
             (None, None, vec![], vec![])
@@ -721,31 +707,23 @@ pub async fn get_active_publicites(
         let status: String = row.get::<String, _>("status");
         let vues: i32 = row.get::<i32, _>("vues");
         let clics: i32 = row.get::<i32, _>("clics");
-        let videos_meta_value: Value = row
-            .get::<Option<Value>, _>("videos_meta")
-            .unwrap_or_else(|| json!([]));
-        let video_stats_value: Value = row
-            .get::<Option<Value>, _>("video_stats")
-            .unwrap_or_else(|| json!({}));
+        let videos_meta_value: Value =
+            row.get::<Option<Value>, _>("videos_meta").unwrap_or_else(|| json!([]));
+        let video_stats_value: Value =
+            row.get::<Option<Value>, _>("video_stats").unwrap_or_else(|| json!({}));
         // ✅ NOUVEAU: Extraire les nouvelles colonnes depuis la base de données
-        let targeting_value: Value = row
-            .get::<Option<Value>, _>("targeting")
-            .unwrap_or_else(|| json!({}));
-        let ab_testing_value: Value = row
-            .get::<Option<Value>, _>("ab_testing")
-            .unwrap_or_else(|| json!({}));
-        let schedule_value: Value = row
-            .get::<Option<Value>, _>("schedule")
-            .unwrap_or_else(|| json!(null));
-        let placements_value: Value = row
-            .get::<Option<Value>, _>("placements")
-            .unwrap_or_else(|| json!([]));
-        let bid_strategy_value: Value = row
-            .get::<Option<Value>, _>("bid_strategy")
-            .unwrap_or_else(|| json!({}));
-        let retargeting_value: Value = row
-            .get::<Option<Value>, _>("retargeting")
-            .unwrap_or_else(|| json!({}));
+        let targeting_value: Value =
+            row.get::<Option<Value>, _>("targeting").unwrap_or_else(|| json!({}));
+        let ab_testing_value: Value =
+            row.get::<Option<Value>, _>("ab_testing").unwrap_or_else(|| json!({}));
+        let schedule_value: Value =
+            row.get::<Option<Value>, _>("schedule").unwrap_or_else(|| json!(null));
+        let placements_value: Value =
+            row.get::<Option<Value>, _>("placements").unwrap_or_else(|| json!([]));
+        let bid_strategy_value: Value =
+            row.get::<Option<Value>, _>("bid_strategy").unwrap_or_else(|| json!({}));
+        let retargeting_value: Value =
+            row.get::<Option<Value>, _>("retargeting").unwrap_or_else(|| json!({}));
 
         // ✅ AMÉLIORÉ: Sélectionner et appliquer la meilleure variante A/B
         let mut final_titre = titre.clone();
@@ -776,10 +754,7 @@ pub async fn get_active_publicites(
             }
         }
 
-        for service_id in produits_indexes
-            .iter()
-            .filter_map(|idx| extract_service_id(idx))
-        {
+        for service_id in produits_indexes.iter().filter_map(|idx| extract_service_id(idx)) {
             produit_service_ids.insert(service_id);
         }
 
@@ -820,24 +795,19 @@ pub async fn get_active_publicites(
     }
 
     let service_category_map = if !categories_lower.is_empty() && !produit_service_ids.is_empty() {
-        fetch_service_categories(pool, &produit_service_ids)
-            .await
-            .map_err(|e| {
-                log::error!(
-                    "Erreur récupération catégories services pour publicités: {:?}",
-                    e
-                );
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?
+        fetch_service_categories(pool, &produit_service_ids).await.map_err(|e| {
+            log::error!(
+                "Erreur récupération catégories services pour publicités: {:?}",
+                e
+            );
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?
     } else {
         HashMap::new()
     };
 
     let mut filtered_publicites: Vec<serde_json::Value> = if categories_lower.is_empty() {
-        prepared_publicites
-            .iter()
-            .map(|item| item.json.clone())
-            .collect()
+        prepared_publicites.iter().map(|item| item.json.clone()).collect()
     } else {
         prepared_publicites
             .iter()
@@ -845,9 +815,7 @@ pub async fn get_active_publicites(
                 item.produits_indexes.iter().any(|idx| {
                     extract_service_id(idx)
                         .and_then(|service_id| {
-                            service_category_map
-                                .get(&service_id)
-                                .and_then(|cat| cat.as_ref())
+                            service_category_map.get(&service_id).and_then(|cat| cat.as_ref())
                         })
                         .map(|category| categories_lower.contains(&category.to_lowercase()))
                         .unwrap_or(false)
@@ -862,10 +830,7 @@ pub async fn get_active_publicites(
             "ℹ️ [Publicité] Aucune publicité ne correspond aux catégories {:?}, retour au flux complet",
             categories
         );
-        filtered_publicites = prepared_publicites
-            .into_iter()
-            .map(|item| item.json)
-            .collect();
+        filtered_publicites = prepared_publicites.into_iter().map(|item| item.json).collect();
     }
 
     Ok(Json(filtered_publicites))
@@ -877,10 +842,7 @@ pub async fn get_publicite_dashboard(
     Query(user_query): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<PubliciteDashboardResponse>, StatusCode> {
     let pool = &state.pg;
-    let user_id: i32 = user_query
-        .get("user_id")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let user_id: i32 = user_query.get("user_id").and_then(|s| s.parse().ok()).unwrap_or(0);
 
     log::info!("📊 [Publicité] Dashboard pour user {}", user_id);
 
@@ -954,15 +916,12 @@ pub async fn get_publicite_dashboard(
             0.0
         };
 
-        let produits_indexes: Vec<String> = row
-            .get::<Option<Vec<String>>, _>("produits_indexes")
-            .unwrap_or_default();
-        let video_stats_value: Value = row
-            .get::<Option<Value>, _>("video_stats")
-            .unwrap_or_else(|| json!({}));
-        let videos_meta_value: Value = row
-            .get::<Option<Value>, _>("videos_meta")
-            .unwrap_or_else(|| json!([]));
+        let produits_indexes: Vec<String> =
+            row.get::<Option<Vec<String>>, _>("produits_indexes").unwrap_or_default();
+        let video_stats_value: Value =
+            row.get::<Option<Value>, _>("video_stats").unwrap_or_else(|| json!({}));
+        let videos_meta_value: Value =
+            row.get::<Option<Value>, _>("videos_meta").unwrap_or_else(|| json!([]));
         let videos_meta: Vec<PubliciteVideoMeta> =
             serde_json::from_value(videos_meta_value.clone()).unwrap_or_default();
 
@@ -981,10 +940,7 @@ pub async fn get_publicite_dashboard(
                 let format_key = format.to_lowercase();
                 let increment = count.as_i64().unwrap_or(0);
                 if increment > 0 {
-                    *video_summary
-                        .clicks_by_format
-                        .entry(format_key)
-                        .or_insert(0) += increment;
+                    *video_summary.clicks_by_format.entry(format_key).or_insert(0) += increment;
                 }
             }
         }
@@ -993,10 +949,7 @@ pub async fn get_publicite_dashboard(
         let mut manual_count: i64 = 0;
         for meta in &videos_meta {
             let ai_generated = meta.ai_generated.unwrap_or_else(|| {
-                meta.source
-                    .as_ref()
-                    .map(|s| s.to_lowercase().contains("ai"))
-                    .unwrap_or(false)
+                meta.source.as_ref().map(|s| s.to_lowercase().contains("ai")).unwrap_or(false)
             });
             if ai_generated {
                 ai_count += 1;
@@ -1101,15 +1054,9 @@ pub async fn get_advanced_analytics(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<AdvancedAnalyticsResponse>, StatusCode> {
     let pool = &state.pg;
-    let user_id: i32 = params
-        .get("user_id")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let user_id: i32 = params.get("user_id").and_then(|s| s.parse().ok()).unwrap_or(0);
 
-    let period_days: i32 = params
-        .get("period_days")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(30);
+    let period_days: i32 = params.get("period_days").and_then(|s| s.parse().ok()).unwrap_or(30);
 
     log::info!(
         "📊 [Analytics Avancés] Pour user {} ({} jours)",
@@ -1349,9 +1296,7 @@ pub async fn get_advanced_analytics(
     let mut performance_by_targeting = Vec::new();
     for row in targeting_rows {
         performance_by_targeting.push(TargetingPerformance {
-            targeting_type: row
-                .get::<Option<String>, _>("targeting_type")
-                .unwrap_or_default(),
+            targeting_type: row.get::<Option<String>, _>("targeting_type").unwrap_or_default(),
             count: row.get::<Option<i32>, _>("count").unwrap_or(0) as i64,
             avg_conversion: row.get::<Option<f64>, _>("avg_conversion").unwrap_or(0.0),
             avg_ctr: row.get::<Option<f64>, _>("avg_ctr").unwrap_or(0.0),
@@ -1378,10 +1323,7 @@ pub async fn get_optimization_suggestions(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<OptimizationResponse>, StatusCode> {
     let pool = &state.pg;
-    let user_id: i32 = params
-        .get("user_id")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let user_id: i32 = params.get("user_id").and_then(|s| s.parse().ok()).unwrap_or(0);
 
     log::info!("🔧 [Optimisation] Suggestions pour user {}", user_id);
 
@@ -1441,10 +1383,7 @@ pub async fn get_publicite_alerts(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<PubliciteAlertsResponse>, StatusCode> {
     let pool = &state.pg;
-    let user_id: i32 = params
-        .get("user_id")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let user_id: i32 = params.get("user_id").and_then(|s| s.parse().ok()).unwrap_or(0);
 
     log::info!("🔔 [Alertes] Pour user {}", user_id);
 
@@ -1472,26 +1411,16 @@ pub async fn get_publicite_alerts(
 
     let mut alerts = Vec::new();
     for row in alert_rows {
-        let data: serde_json::Value = row
-            .get::<Option<serde_json::Value>, _>("data")
-            .unwrap_or_else(|| json!({}));
-        let alert_type = data
-            .get("alert_type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown")
-            .to_string();
-        let severity = data
-            .get("severity")
-            .and_then(|v| v.as_str())
-            .unwrap_or("info")
-            .to_string();
+        let data: serde_json::Value =
+            row.get::<Option<serde_json::Value>, _>("data").unwrap_or_else(|| json!({}));
+        let alert_type =
+            data.get("alert_type").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+        let severity = data.get("severity").and_then(|v| v.as_str()).unwrap_or("info").to_string();
 
         alerts.push(PubliciteAlertResponse {
             id: row.get::<i32, _>("id") as i64,
             campaign_id: row.get::<Option<i32>, _>("campaign_id").unwrap_or(0),
-            campaign_title: row
-                .get::<Option<String>, _>("campaign_title")
-                .unwrap_or_default(),
+            campaign_title: row.get::<Option<String>, _>("campaign_title").unwrap_or_default(),
             alert_type,
             message: row.get::<String, _>("message"),
             severity,
@@ -1599,15 +1528,9 @@ pub async fn export_excel_campaigns(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<axum::response::Response, StatusCode> {
     let pool = &state.pg;
-    let user_id: i32 = params
-        .get("user_id")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let user_id: i32 = params.get("user_id").and_then(|s| s.parse().ok()).unwrap_or(0);
 
-    let period_days: i32 = params
-        .get("period_days")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(30);
+    let period_days: i32 = params.get("period_days").and_then(|s| s.parse().ok()).unwrap_or(30);
 
     log::info!(
         "📤 [Export Excel] Campagnes pour user {} ({} jours)",
@@ -1647,10 +1570,7 @@ pub async fn export_all_campaigns(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
-    let user_id: i32 = params
-        .get("user_id")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let user_id: i32 = params.get("user_id").and_then(|s| s.parse().ok()).unwrap_or(0);
 
     log::info!("📤 [Export] Toutes les campagnes pour user {}", user_id);
 
@@ -1713,43 +1633,30 @@ pub async fn import_campaign(
     Json(payload): Json<ImportCampaignRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
-    let user_id: i32 = params
-        .get("user_id")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let user_id: i32 = params.get("user_id").and_then(|s| s.parse().ok()).unwrap_or(0);
 
     log::info!("📥 [Import] Campagne pour user {}", user_id);
 
     let campaign = &payload.campaign;
 
     // Extraire les données
-    let titre = campaign
-        .get("titre")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| {
-            log::error!("Titre manquant dans l'import");
-            StatusCode::BAD_REQUEST
-        })?;
+    let titre = campaign.get("titre").and_then(|v| v.as_str()).ok_or_else(|| {
+        log::error!("Titre manquant dans l'import");
+        StatusCode::BAD_REQUEST
+    })?;
 
     let description = campaign.get("description").and_then(|v| v.as_str());
     let produits_indexes: Vec<String> = campaign
         .get("produits_indexes")
         .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect()
-        })
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
         .unwrap_or_default();
 
     if produits_indexes.is_empty() {
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    let duree_jours = campaign
-        .get("duree_jours")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(30) as i32;
+    let duree_jours = campaign.get("duree_jours").and_then(|v| v.as_i64()).unwrap_or(30) as i32;
 
     let cout = campaign.get("cout").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
 
@@ -1966,10 +1873,7 @@ struct PubliciteItem {
 }
 
 fn extract_service_id(index: &str) -> Option<i32> {
-    index
-        .split('_')
-        .next()
-        .and_then(|id_part| id_part.parse::<i32>().ok())
+    index.split('_').next().and_then(|id_part| id_part.parse::<i32>().ok())
 }
 
 async fn fetch_service_categories(

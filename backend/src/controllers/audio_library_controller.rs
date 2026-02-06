@@ -70,10 +70,7 @@ pub async fn create_voice_profile(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateVoiceProfilePayload>,
 ) -> AppResult<Json<VoiceProfileSummary>> {
-    let record = state
-        .voice_profiles
-        .create_profile(user.id, payload)
-        .await?;
+    let record = state.voice_profiles.create_profile(user.id, payload).await?;
     Ok(Json(to_summary(&record)))
 }
 
@@ -82,9 +79,6 @@ pub async fn delete_voice_profile(
     Extension(user): Extension<AuthenticatedUser>,
     Path(profile_id): Path<i32>,
 ) -> AppResult<Json<serde_json::Value>> {
-    state
-        .voice_profiles
-        .delete_profile(user.id, profile_id)
-        .await?;
+    state.voice_profiles.delete_profile(user.id, profile_id).await?;
     Ok(Json(json!({ "success": true })))
 }

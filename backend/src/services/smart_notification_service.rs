@@ -83,16 +83,11 @@ impl SmartNotificationService {
 
         if alternatives.is_empty() {
             // Pas de produits similaires, envoyer notification simple
-            return self
-                .notify_client_order_rejected(client_user_id, order_id, None)
-                .await;
+            return self.notify_client_order_rejected(client_user_id, order_id, None).await;
         }
 
         // Construire le payload de notification avec produits préchargés
-        let search_query = alternatives
-            .first()
-            .map(|p| p.name.clone())
-            .unwrap_or_default();
+        let search_query = alternatives.first().map(|p| p.name.clone()).unwrap_or_default();
 
         let notification_data = json!({
             "type": "order_rejected_with_alternatives",
@@ -194,10 +189,7 @@ impl SmartNotificationService {
             })
             .collect();
 
-        let search_query = alternatives
-            .first()
-            .map(|p| p.name.clone())
-            .unwrap_or_default();
+        let search_query = alternatives.first().map(|p| p.name.clone()).unwrap_or_default();
 
         let notification_data = json!({
             "type": "order_timeout_with_alternatives",

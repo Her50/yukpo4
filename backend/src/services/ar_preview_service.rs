@@ -36,16 +36,11 @@ impl ARPreviewService {
         let clips = self.load_timeline_clips(&request.timeline_id).await?;
 
         // 2. Convertir clips en scène 3D
-        let scene_data = self
-            .render_service
-            .timeline_to_ar_scene(&request.timeline_id, clips)
-            .await?;
+        let scene_data =
+            self.render_service.timeline_to_ar_scene(&request.timeline_id, clips).await?;
 
         // 3. Rendre la scène en vidéo preview avec le service de rendu 3D
-        let response = self
-            .render_service
-            .render_ar_preview(request, &scene_data)
-            .await?;
+        let response = self.render_service.render_ar_preview(request, &scene_data).await?;
 
         Ok(response)
     }

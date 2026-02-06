@@ -61,12 +61,7 @@ async fn main() -> Result<()> {
     println!("   GET {}", health_url);
 
     let client = Client::new();
-    match client
-        .get(&health_url)
-        .timeout(std::time::Duration::from_secs(10))
-        .send()
-        .await
-    {
+    match client.get(&health_url).timeout(std::time::Duration::from_secs(10)).send().await {
         Ok(response) => {
             let status = response.status();
             if status.is_success() {

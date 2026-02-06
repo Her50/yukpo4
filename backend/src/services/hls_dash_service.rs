@@ -127,12 +127,8 @@ impl HLSDashService {
             }
 
             // Calculer bandwidth (bitrate vidéo + audio)
-            let bandwidth = quality
-                .bitrate
-                .trim_end_matches('k')
-                .parse::<u32>()
-                .unwrap_or(500)
-                + 128; // + audio bitrate
+            let bandwidth =
+                quality.bitrate.trim_end_matches('k').parse::<u32>().unwrap_or(500) + 128; // + audio bitrate
 
             variant_playlists.push(VariantPlaylist {
                 quality: quality.resolution.clone(),
@@ -146,9 +142,7 @@ impl HLSDashService {
         }
 
         // Générer master playlist
-        let master_playlist = self
-            .generate_master_playlist(&variant_playlists, video_id)
-            .await?;
+        let master_playlist = self.generate_master_playlist(&variant_playlists, video_id).await?;
         let master_playlist_path = video_dir.join("master.m3u8");
         fs::write(&master_playlist_path, master_playlist)
             .await

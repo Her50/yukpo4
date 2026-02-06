@@ -162,12 +162,8 @@ pub async fn diagnose_livekit_connection(
             "⚠️ IP privée détectée ({}) - Le serveur doit être accessible depuis Internet",
             host
         ));
-        diagnostic
-            .suggestions
-            .push("  Solutions possibles:".to_string());
-        diagnostic
-            .suggestions
-            .push("    - Utiliser une IP publique".to_string());
+        diagnostic.suggestions.push("  Solutions possibles:".to_string());
+        diagnostic.suggestions.push("    - Utiliser une IP publique".to_string());
         diagnostic
             .suggestions
             .push("    - Configurer un tunnel (ngrok, cloudflare tunnel, etc.)".to_string());
@@ -175,9 +171,7 @@ pub async fn diagnose_livekit_connection(
             .suggestions
             .push("    - Utiliser un service LiveKit cloud (livekit.cloud)".to_string());
     } else {
-        diagnostic
-            .suggestions
-            .push(format!("✅ IP publique détectée ({})", host));
+        diagnostic.suggestions.push(format!("✅ IP publique détectée ({})", host));
     }
 
     // ✅ VÉRIFICATION AUTOMATIQUE 2: Vérifier le statut du serveur (ping/connectivité)
@@ -200,9 +194,7 @@ pub async fn diagnose_livekit_connection(
                 .push("  - Vérifiez les logs du serveur LiveKit".to_string());
         }
         s if s.contains("refusée") => {
-            diagnostic
-                .suggestions
-                .push(format!("❌ Serveur: {} - Connexion refusée", s));
+            diagnostic.suggestions.push(format!("❌ Serveur: {} - Connexion refusée", s));
             diagnostic
                 .suggestions
                 .push("  - Le serveur LiveKit n'est probablement pas démarré".to_string());
@@ -218,9 +210,7 @@ pub async fn diagnose_livekit_connection(
     diagnostic.firewall_check = Some(firewall_check_result.clone());
 
     if firewall_check_result.contains("bloqué") || firewall_check_result.contains("fermé") {
-        diagnostic
-            .suggestions
-            .push(format!("⚠️ Firewall: {}", firewall_check_result));
+        diagnostic.suggestions.push(format!("⚠️ Firewall: {}", firewall_check_result));
         diagnostic
             .suggestions
             .push(format!("  - Ouvrir le port {} dans le firewall", port));
@@ -232,9 +222,7 @@ pub async fn diagnose_livekit_connection(
             port
         ));
     } else if firewall_check_result.contains("accessible") {
-        diagnostic
-            .suggestions
-            .push(format!("✅ Firewall: {}", firewall_check_result));
+        diagnostic.suggestions.push(format!("✅ Firewall: {}", firewall_check_result));
     }
 
     // ✅ AMÉLIORATION: Test de connexion TCP avec timeout et retry
@@ -284,15 +272,11 @@ pub async fn diagnose_livekit_connection(
             "Le serveur LiveKit n'est pas accessible sur {}:{}. Vérifiez que:",
             host, port
         ));
-        diagnostic
-            .suggestions
-            .push("  - Le serveur LiveKit est démarré".to_string());
+        diagnostic.suggestions.push("  - Le serveur LiveKit est démarré".to_string());
         diagnostic
             .suggestions
             .push("  - Le port est ouvert dans le firewall".to_string());
-        diagnostic
-            .suggestions
-            .push("  - L'IP/Port sont corrects".to_string());
+        diagnostic.suggestions.push("  - L'IP/Port sont corrects".to_string());
         diagnostic
             .suggestions
             .push("  - Le serveur n'est pas sur un réseau privé".to_string());
@@ -379,9 +363,7 @@ pub async fn diagnose_livekit_connection(
                     "Erreur TLS - essayez https:// au lieu de http:// si disponible".to_string(),
                 );
             } else {
-                diagnostic
-                    .suggestions
-                    .push(format!("Erreur inconnue: {}", err_msg));
+                diagnostic.suggestions.push(format!("Erreur inconnue: {}", err_msg));
             }
         }
     }

@@ -38,9 +38,7 @@ pub async fn get_analytics_overview(
     // TODO: Vérifier que l'utilisateur est admin
 
     let analytics_service = TaxiAnalyticsService::new(Arc::new(state.pg.clone()));
-    let overview = analytics_service
-        .get_overview(query.start_date, query.end_date)
-        .await?;
+    let overview = analytics_service.get_overview(query.start_date, query.end_date).await?;
 
     Ok(Json(json!({
         "success": true,

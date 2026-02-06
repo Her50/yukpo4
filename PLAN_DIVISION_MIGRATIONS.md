@@ -101,3 +101,5 @@ Diviser le fichier consolidé en fichiers de migration plus petits et logiques p
 4. ⏳ Mettre à jour `auto_migrate.rs` pour utiliser les nouveaux fichiers
 5. ⏳ Supprimer ou archiver `0000_create_all_tables.sql`
 
+
+

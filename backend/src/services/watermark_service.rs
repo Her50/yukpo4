@@ -163,16 +163,12 @@ impl WatermarkService {
         ffmpeg_args.push(output_video.to_string_lossy().to_string());
 
         // Exécuter FFmpeg
-        let output = Command::new("ffmpeg")
-            .args(&ffmpeg_args)
-            .output()
-            .await
-            .map_err(|err| {
-                AppError::Internal(format!(
-                    "Impossible d'exécuter FFmpeg pour watermark: {}",
-                    err
-                ))
-            })?;
+        let output = Command::new("ffmpeg").args(&ffmpeg_args).output().await.map_err(|err| {
+            AppError::Internal(format!(
+                "Impossible d'exécuter FFmpeg pour watermark: {}",
+                err
+            ))
+        })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);

@@ -89,12 +89,8 @@ impl PubliciteReportingService {
                 ctr,
                 cpc,
                 roi,
-                date_debut
-                    .map(|d| d.format("%Y-%m-%d").to_string())
-                    .unwrap_or_default(),
-                date_fin
-                    .map(|d| d.format("%Y-%m-%d").to_string())
-                    .unwrap_or_default(),
+                date_debut.map(|d| d.format("%Y-%m-%d").to_string()).unwrap_or_default(),
+                date_fin.map(|d| d.format("%Y-%m-%d").to_string()).unwrap_or_default(),
                 status
             ));
         }

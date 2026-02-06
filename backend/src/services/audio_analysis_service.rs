@@ -121,10 +121,8 @@ pub async fn detect_beats(audio_url: &str) -> AppResult<(Vec<Beat>, f64)> {
         .await
         .map_err(|e| AppError::Internal(format!("Erreur ffprobe: {}", e)))?;
 
-    let duration: f64 = String::from_utf8_lossy(&duration_output.stdout)
-        .trim()
-        .parse()
-        .unwrap_or(30.0);
+    let duration: f64 =
+        String::from_utf8_lossy(&duration_output.stdout).trim().parse().unwrap_or(30.0);
 
     // 2. Analyser le signal audio pour estimer le BPM
     // Utiliser une approche basée sur l'analyse d'énergie

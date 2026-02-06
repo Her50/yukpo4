@@ -92,17 +92,12 @@ impl MassiveLoadHandler {
 
                 // Si le cache dépasse la limite, supprimer les plus anciennes
                 if cache.len() > max_entries {
-                    let mut entries: Vec<(String, Instant)> = cache
-                        .iter()
-                        .map(|(key, cached)| (key.clone(), cached.timestamp))
-                        .collect();
+                    let mut entries: Vec<(String, Instant)> =
+                        cache.iter().map(|(key, cached)| (key.clone(), cached.timestamp)).collect();
                     entries.sort_by_key(|(_, timestamp)| *timestamp);
                     let to_remove = cache.len() - max_entries;
-                    let keys_to_remove: Vec<String> = entries
-                        .iter()
-                        .take(to_remove)
-                        .map(|(key, _)| key.clone())
-                        .collect();
+                    let keys_to_remove: Vec<String> =
+                        entries.iter().take(to_remove).map(|(key, _)| key.clone()).collect();
                     for key in keys_to_remove {
                         cache.remove(&key);
                     }
@@ -152,18 +147,15 @@ impl MassiveLoadHandler {
         let result = match priority {
             RequestPriority::Critical => {
                 // Traitement imm?diat pour les requ?tes critiques
-                self.process_critical_request(request_data, &connection)
-                    .await
+                self.process_critical_request(request_data, &connection).await
             }
             RequestPriority::High => {
                 // Traitement prioritaire
-                self.process_high_priority_request(request_data, &connection)
-                    .await
+                self.process_high_priority_request(request_data, &connection).await
             }
             _ => {
                 // Traitement par lot pour les requ?tes normales/basses
-                self.process_batch_request(request_data, priority.clone(), &connection)
-                    .await
+                self.process_batch_request(request_data, priority.clone(), &connection).await
             }
         };
 
@@ -173,8 +165,7 @@ impl MassiveLoadHandler {
         }
 
         // Mettre ? jour les statistiques
-        self.update_connection_stats(&connection, start_time.elapsed())
-            .await;
+        self.update_connection_stats(&connection, start_time.elapsed()).await;
 
         log::info!(
             "? Requ?te {} trait?e en {:?} (priorit?: {:?})",
@@ -335,8 +326,7 @@ impl MassiveLoadHandler {
                 request_count: 1,
             };
 
-            pool.connections
-                .insert(request_id.to_string(), connection.clone());
+            pool.connections.insert(request_id.to_string(), connection.clone());
             connection
         }
     }
@@ -355,10 +345,7 @@ impl MassiveLoadHandler {
     /// ?? G?n?re un ID de requ?te unique
     fn generate_request_id(&self) -> String {
         use std::time::{SystemTime, UNIX_EPOCH};
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
         format!("req_{}_{}", timestamp, rand::random::<u32>())
     }
 
@@ -427,8 +414,7 @@ impl BatchProcessor {
         }
 
         // Trier par priorit?
-        self.current_batch
-            .sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.current_batch.sort_by(|a, b| b.priority.cmp(&a.priority));
 
         log::info!(
             "?? Traitement du lot de {} requ?tes",

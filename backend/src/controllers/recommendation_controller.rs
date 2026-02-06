@@ -93,9 +93,8 @@ pub async fn get_recommended_products(
             let products: Vec<serde_json::Value> = rows
                 .iter()
                 .map(|row| {
-                    let product_data: serde_json::Value = row
-                        .get::<Option<_>, _>("product_data")
-                        .unwrap_or(serde_json::json!({}));
+                    let product_data: serde_json::Value =
+                        row.get::<Option<_>, _>("product_data").unwrap_or(serde_json::json!({}));
                     let relevance_score: f64 = row
                         .get::<Option<sqlx::types::BigDecimal>, _>("relevance_score")
                         .and_then(|d| d.to_string().parse::<f64>().ok())
@@ -141,12 +140,7 @@ pub async fn get_mixed_content(
     let categories: Vec<String> = params
         .categories
         .as_ref()
-        .map(|c| {
-            c.split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect()
-        })
+        .map(|c| c.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
         .unwrap_or_default();
     let categories_lower: HashSet<String> = categories.iter().map(|c| c.to_lowercase()).collect();
 
@@ -175,9 +169,7 @@ pub async fn get_mixed_content(
                 "ℹ️ [MixedContent] Aucun service correspondant aux catégories {:?}, bascule sur fallback global",
                 categories
             );
-            fetch_recent_services(pool, limit as i64, None)
-                .await
-                .unwrap_or_default()
+            fetch_recent_services(pool, limit as i64, None).await.unwrap_or_default()
         }
         Err(e) => {
             log::error!(
@@ -253,14 +245,8 @@ pub async fn get_mixed_content(
 
     for row in engagement_counts_rows {
         let content_id = row.get::<String, _>("content_id");
-        let likes: i64 = row
-            .try_get::<Option<i64>, _>("likes")
-            .unwrap_or(Some(0))
-            .unwrap_or(0);
-        let saves: i64 = row
-            .try_get::<Option<i64>, _>("saves")
-            .unwrap_or(Some(0))
-            .unwrap_or(0);
+        let likes: i64 = row.try_get::<Option<i64>, _>("likes").unwrap_or(Some(0)).unwrap_or(0);
+        let saves: i64 = row.try_get::<Option<i64>, _>("saves").unwrap_or(Some(0)).unwrap_or(0);
         let entry = engagement_map
             .entry(content_id.clone())
             .or_insert_with(EngagementStats::default);
@@ -276,10 +262,8 @@ pub async fn get_mixed_content(
         let row_category: Option<String> = row.get::<Option<_>, _>("category");
 
         if let Some(produits) = row_data.get("produits") {
-            if let Some(produits_array) = produits
-                .as_object()
-                .and_then(|p| p.get("valeur"))
-                .and_then(|v| v.as_array())
+            if let Some(produits_array) =
+                produits.as_object().and_then(|p| p.get("valeur")).and_then(|v| v.as_array())
             {
                 for (index, product) in produits_array.iter().enumerate() {
                     let content_id = format!("service_{}_{}", row_id, index);
@@ -333,21 +317,16 @@ pub async fn get_mixed_content(
         let titre: String = row.get::<Option<_>, _>("titre").unwrap_or_default();
         let description: Option<String> = row.get::<Option<_>, _>("description");
         let videos: Vec<String> = row.try_get::<Vec<String>, _>("videos").unwrap_or_default();
-        let thumbnails: Vec<String> = row
-            .try_get::<Vec<String>, _>("thumbnails")
-            .unwrap_or_default();
+        let thumbnails: Vec<String> =
+            row.try_get::<Vec<String>, _>("thumbnails").unwrap_or_default();
         let boost_level: Option<String> = row.get::<Option<_>, _>("boost_level");
         let frequency_ratio: Option<f64> = row.get::<Option<_>, _>("frequency_ratio");
-        let produits_indexes: Vec<String> = row
-            .try_get::<Vec<String>, _>("produits_indexes")
-            .unwrap_or_default();
+        let produits_indexes: Vec<String> =
+            row.try_get::<Vec<String>, _>("produits_indexes").unwrap_or_default();
         let content_id = format!("paid-{}", id);
         let stats = engagement_map.get(&content_id).copied().unwrap_or_default();
 
-        for service_id in produits_indexes
-            .iter()
-            .filter_map(|idx| extract_service_id(idx))
-        {
+        for service_id in produits_indexes.iter().filter_map(|idx| extract_service_id(idx)) {
             produit_service_ids.insert(service_id);
         }
 
@@ -379,9 +358,7 @@ pub async fn get_mixed_content(
     }
 
     let service_category_map = if !categories_lower.is_empty() && !produit_service_ids.is_empty() {
-        fetch_service_categories(pool, &produit_service_ids)
-            .await
-            .unwrap_or_default()
+        fetch_service_categories(pool, &produit_service_ids).await.unwrap_or_default()
     } else {
         HashMap::new()
     };
@@ -424,15 +401,13 @@ pub async fn get_mixed_content(
                         let description: Option<String> = row.get::<Option<_>, _>("description");
                         let videos: Vec<String> =
                             row.try_get::<Vec<String>, _>("videos").unwrap_or_default();
-                        let thumbnails: Vec<String> = row
-                            .try_get::<Vec<String>, _>("thumbnails")
-                            .unwrap_or_default();
+                        let thumbnails: Vec<String> =
+                            row.try_get::<Vec<String>, _>("thumbnails").unwrap_or_default();
                         let boost_level: Option<String> = row.get::<Option<_>, _>("boost_level");
                         let frequency_ratio: Option<f64> =
                             row.get::<Option<_>, _>("frequency_ratio");
-                        let produits_indexes: Vec<String> = row
-                            .try_get::<Vec<String>, _>("produits_indexes")
-                            .unwrap_or_default();
+                        let produits_indexes: Vec<String> =
+                            row.try_get::<Vec<String>, _>("produits_indexes").unwrap_or_default();
                         let content_id = format!("paid-{}", id);
                         let stats = engagement_map.get(&content_id).copied().unwrap_or_default();
 
@@ -516,11 +491,7 @@ async fn fetch_recent_services(
     if use_categories {
         let cats = categories.unwrap();
         let cat_refs: Vec<&str> = cats.iter().map(|c| c.as_str()).collect();
-        sqlx::query(&base_query)
-            .bind(limit)
-            .bind(cat_refs)
-            .fetch_all(pool)
-            .await
+        sqlx::query(&base_query).bind(limit).bind(cat_refs).fetch_all(pool).await
     } else {
         sqlx::query(&base_query).bind(limit).fetch_all(pool).await
     }
@@ -629,10 +600,7 @@ fn compute_category_score(item: &serde_json::Value, categories: &HashSet<String>
 }
 
 fn extract_service_id(index: &str) -> Option<i32> {
-    index
-        .split('_')
-        .next()
-        .and_then(|id_part| id_part.parse::<i32>().ok())
+    index.split('_').next().and_then(|id_part| id_part.parse::<i32>().ok())
 }
 
 async fn fetch_service_categories(
@@ -683,9 +651,7 @@ fn mix_content_intelligently(
                 .map(|stats| stats.score)
                 .unwrap_or(0.0)
         };
-        key(b)
-            .partial_cmp(&key(a))
-            .unwrap_or(std::cmp::Ordering::Equal)
+        key(b).partial_cmp(&key(a)).unwrap_or(std::cmp::Ordering::Equal)
     });
 
     // Grouper les publicités par niveau de boost

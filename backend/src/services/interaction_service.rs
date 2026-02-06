@@ -64,11 +64,7 @@ pub async fn get_interactions(
         .await
         .map_err(|e| format!("Erreur MongoDB: {e}"))?;
     let mut results = Vec::new();
-    while let Some(doc) = cursor
-        .try_next()
-        .await
-        .map_err(|e| format!("Erreur it?ration: {e}"))?
-    {
+    while let Some(doc) = cursor.try_next().await.map_err(|e| format!("Erreur it?ration: {e}"))? {
         let v: Value =
             mongodb::bson::from_document(doc).map_err(|e| format!("Erreur conversion: {e}"))?;
         results.push(v);
@@ -148,11 +144,7 @@ pub async fn get_reviews(
         .await
         .map_err(|e| format!("Erreur MongoDB: {e}"))?;
     let mut results = Vec::new();
-    while let Some(doc) = cursor
-        .try_next()
-        .await
-        .map_err(|e| format!("Erreur it?ration: {e}"))?
-    {
+    while let Some(doc) = cursor.try_next().await.map_err(|e| format!("Erreur it?ration: {e}"))? {
         let v: Value =
             mongodb::bson::from_document(doc).map_err(|e| format!("Erreur conversion: {e}"))?;
         results.push(v);
@@ -204,10 +196,8 @@ pub async fn get_service_stats_optimized(
     let mut likes = 0;
 
     // Parcourir les résultats de l'agrégation
-    while let Some(doc) = cursor
-        .try_next()
-        .await
-        .map_err(|e| format!("Erreur itération stats: {e}"))?
+    while let Some(doc) =
+        cursor.try_next().await.map_err(|e| format!("Erreur itération stats: {e}"))?
     {
         if let Ok(bson) = mongodb::bson::to_bson(&doc) {
             if let Ok(json) = serde_json::to_value(bson) {

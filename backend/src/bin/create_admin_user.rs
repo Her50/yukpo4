@@ -8,17 +8,14 @@ use std::env;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL doit être défini dans .env");
 
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await?;
+    let pool = PgPoolOptions::new().max_connections(5).connect(&database_url).await?;
 
     let admin_email = "admin@yukpo.dev";
-    let admin_name = "Super Admin";
+    let admin_name = "Super Super Admin";
     // Hash pour le mot de passe: Hernandez87
     let password_hash = "$2b$12$yi.th1fxm9Xrz6A.PjP9wuWyDrueHMZZBReIH7i7X.efPhGNV1Pii";
 
-    println!("Vérification si l'utilisateur admin existe déjà...");
+    println!("Vérification si l'utilisateur super admin existe déjà...");
 
     // Vérifier si l'utilisateur existe
     let user_exists: bool =
@@ -28,13 +25,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await?;
 
     if user_exists {
-        println!("✅ L'utilisateur admin existe déjà. Mise à jour...");
+        println!("✅ L'utilisateur super admin existe déjà. Mise à jour...");
         sqlx::query(
             r#"
             UPDATE users 
             SET 
                 password_hash = $1,
-                role = 'admin',
+                role = 'super_admin',
                 nom_complet = $2,
                 updated_at = NOW()
             WHERE email = $3
@@ -45,9 +42,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .bind(admin_email)
         .execute(&pool)
         .await?;
-        println!("✅ Utilisateur admin mis à jour avec succès!");
+        println!("✅ Utilisateur super admin mis à jour avec succès!");
     } else {
-        println!("Création de l'utilisateur admin...");
+        println!("Création de l'utilisateur super admin...");
         sqlx::query(
             r#"
             INSERT INTO users (
@@ -65,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 updated_at
             )
             VALUES (
-                $1, $2, 'admin', $3, 1000000, 1.0, 1.0, 0.0, 'fr', false, NOW(), NOW()
+                $1, $2, 'super_admin', $3, 1000000, 1.0, 1.0, 0.0, 'fr', false, NOW(), NOW()
             )
             "#,
         )
@@ -74,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .bind(admin_name)
         .execute(&pool)
         .await?;
-        println!("✅ Utilisateur admin créé avec succès!");
+        println!("✅ Utilisateur super admin créé avec succès!");
     }
 
     // Afficher l'utilisateur créé
@@ -110,6 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n=== Identifiants de connexion ===");
     println!("Email: {}", admin_email);
     println!("Mot de passe: Hernandez87");
+    println!("Rôle: super_admin (tous les droits)");
 
     Ok(())
 }

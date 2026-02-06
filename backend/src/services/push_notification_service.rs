@@ -464,10 +464,8 @@ async fn send_high_priority_call_notification(
                     }
                 } else {
                     let status = resp.status();
-                    let error_text = resp
-                        .text()
-                        .await
-                        .unwrap_or_else(|_| "Unknown error".to_string());
+                    let error_text =
+                        resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
                     error!("[PushService] ❌ Erreur push ({}): {}", status, error_text);
                 }
             }

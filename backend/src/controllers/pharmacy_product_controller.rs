@@ -152,11 +152,8 @@ pub async fn calculate_budget(
     let user_lng = params.get("lng").and_then(|s| s.parse::<f64>().ok());
 
     let service = Service::new(Arc::new(state.pg.clone()));
-    let items: Vec<(i32, i32)> = payload
-        .items
-        .into_iter()
-        .map(|item| (item.product_id, item.quantity))
-        .collect();
+    let items: Vec<(i32, i32)> =
+        payload.items.into_iter().map(|item| (item.product_id, item.quantity)).collect();
 
     let comparison = service.calculate_budget(items, user_lat, user_lng).await?;
 
@@ -170,9 +167,7 @@ pub async fn get_pharmacy_products(
     Path(pharmacy_service_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     let service = Service::new(Arc::new(state.pg.clone()));
-    let products = service
-        .get_products_by_pharmacy(pharmacy_service_id)
-        .await?;
+    let products = service.get_products_by_pharmacy(pharmacy_service_id).await?;
 
     Ok(Json(json!({ "success": true, "products": products })))
 }
@@ -395,9 +390,7 @@ pub async fn delete_product(
     }
 
     let service = Service::new(Arc::new(state.pg.clone()));
-    service
-        .delete_product(product_id, pharmacy_service_id)
-        .await?;
+    service.delete_product(product_id, pharmacy_service_id).await?;
 
     Ok(Json(
         json!({ "success": true, "message": "Produit supprimé" }),

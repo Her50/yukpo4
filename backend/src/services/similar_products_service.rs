@@ -137,9 +137,7 @@ impl SimilarProductsService {
                     service_id, product_index
                 );
                 // Fallback : récupérer depuis services directement
-                return self
-                    .find_similar_products_fallback(service_id, product_index, limit)
-                    .await;
+                return self.find_similar_products_fallback(service_id, product_index, limit).await;
             }
         };
 
@@ -704,14 +702,8 @@ impl SimilarProductsService {
         // Trier par score de similarité décroissant, puis par distance (si disponible)
         results.sort_by(|a, b| {
             // Priorité aux produits proches (< 10km) si distance disponible
-            let a_priority = a
-                .distance_km
-                .map(|d| if d <= 10.0 { 0 } else { 1 })
-                .unwrap_or(1);
-            let b_priority = b
-                .distance_km
-                .map(|d| if d <= 10.0 { 0 } else { 1 })
-                .unwrap_or(1);
+            let a_priority = a.distance_km.map(|d| if d <= 10.0 { 0 } else { 1 }).unwrap_or(1);
+            let b_priority = b.distance_km.map(|d| if d <= 10.0 { 0 } else { 1 }).unwrap_or(1);
 
             match a_priority.cmp(&b_priority) {
                 std::cmp::Ordering::Equal => {
@@ -720,9 +712,9 @@ impl SimilarProductsService {
                         Some(std::cmp::Ordering::Equal) => {
                             // Enfin par distance (plus proche d'abord)
                             match (a.distance_km, b.distance_km) {
-                                (Some(a_dist), Some(b_dist)) => a_dist
-                                    .partial_cmp(&b_dist)
-                                    .unwrap_or(std::cmp::Ordering::Equal),
+                                (Some(a_dist), Some(b_dist)) => {
+                                    a_dist.partial_cmp(&b_dist).unwrap_or(std::cmp::Ordering::Equal)
+                                }
                                 _ => std::cmp::Ordering::Equal,
                             }
                         }
@@ -975,10 +967,7 @@ impl SimilarProductsService {
         }
         if let Some(cat) = category {
             results.retain(|p| {
-                p.category
-                    .as_ref()
-                    .map(|c| c.eq_ignore_ascii_case(&cat))
-                    .unwrap_or(false)
+                p.category.as_ref().map(|c| c.eq_ignore_ascii_case(&cat)).unwrap_or(false)
             });
         }
         // ✅ NOUVEAU : Filtrer par distance maximale

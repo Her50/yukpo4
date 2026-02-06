@@ -244,9 +244,7 @@ pub async fn get_service_score(
     State(state): State<Arc<AppState>>,
 ) -> Json<ServiceScore> {
     let _ = compute_score(state.mongo_history.clone(), service_id).await;
-    let score = get_score(state.mongo_history.clone(), service_id)
-        .await
-        .expect("get_score");
+    let score = get_score(state.mongo_history.clone(), service_id).await.expect("get_score");
     Json(score)
 }
 
@@ -374,10 +372,8 @@ pub async fn get_services_reviews_batch_endpoint(
     }
 
     // Parser les service_ids (format: "58,157,200")
-    let service_ids: Result<Vec<i32>, _> = service_ids_str
-        .split(',')
-        .map(|s| s.trim().parse::<i32>())
-        .collect();
+    let service_ids: Result<Vec<i32>, _> =
+        service_ids_str.split(',').map(|s| s.trim().parse::<i32>()).collect();
 
     let service_ids = match service_ids {
         Ok(ids) if !ids.is_empty() => ids,
@@ -397,10 +393,7 @@ pub async fn get_services_reviews_batch_endpoint(
     );
 
     // Récupérer la limite optionnelle
-    let limit = params
-        .get("limit")
-        .and_then(|s| s.parse::<i64>().ok())
-        .unwrap_or(20);
+    let limit = params.get("limit").and_then(|s| s.parse::<i64>().ok()).unwrap_or(20);
 
     match get_services_reviews_batch(
         state.mongo_history.clone(),
@@ -446,10 +439,8 @@ pub async fn get_services_stats_batch_endpoint(
     }
 
     // Parser les service_ids (format: "58,157,200")
-    let service_ids: Result<Vec<i32>, _> = service_ids_str
-        .split(',')
-        .map(|s| s.trim().parse::<i32>())
-        .collect();
+    let service_ids: Result<Vec<i32>, _> =
+        service_ids_str.split(',').map(|s| s.trim().parse::<i32>()).collect();
 
     let service_ids = match service_ids {
         Ok(ids) if !ids.is_empty() => ids,
@@ -469,10 +460,8 @@ pub async fn get_services_stats_batch_endpoint(
     );
 
     // ✅ OPTIMISÉ 2025-01-01: Vérifier le cache Redis en premier pour chaque service
-    let cache_keys: Vec<String> = service_ids
-        .iter()
-        .map(|id| format!("service_stats:{}", id))
-        .collect();
+    let cache_keys: Vec<String> =
+        service_ids.iter().map(|id| format!("service_stats:{}", id)).collect();
 
     let mut cached_stats_map = serde_json::Map::new();
     let mut uncached_service_ids = Vec::new();

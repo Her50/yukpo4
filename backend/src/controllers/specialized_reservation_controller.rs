@@ -107,9 +107,7 @@ pub async fn list_user_reservations(
     let status_filter = params.get("status").map(|s| s.as_str());
 
     let reservation_service = SpecializedReservationService::new(Arc::new(state.pg.clone()));
-    let reservations = reservation_service
-        .list_user_reservations(user_id, status_filter)
-        .await?;
+    let reservations = reservation_service.list_user_reservations(user_id, status_filter).await?;
 
     Ok((
         StatusCode::OK,
@@ -174,15 +172,11 @@ pub async fn cancel_reservation(
     Path(reservation_id): Path<i32>,
     Json(payload): Json<serde_json::Value>,
 ) -> AppResult<impl IntoResponse> {
-    let reason = payload
-        .get("reason")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let reason = payload.get("reason").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     let reservation_service = SpecializedReservationService::new(Arc::new(state.pg.clone()));
-    let reservation = reservation_service
-        .cancel_reservation(reservation_id, user_id, reason)
-        .await?;
+    let reservation =
+        reservation_service.cancel_reservation(reservation_id, user_id, reason).await?;
 
     Ok((
         StatusCode::OK,

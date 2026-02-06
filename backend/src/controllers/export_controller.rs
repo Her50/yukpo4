@@ -82,16 +82,8 @@ pub async fn list_exports(
     // TODO: Récupérer user_id depuis le token JWT
     let user_id = 1; // Placeholder
 
-    let limit = params
-        .get("limit")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(20)
-        .min(100);
-    let offset = params
-        .get("offset")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0)
-        .max(0);
+    let limit = params.get("limit").and_then(|v| v.as_i64()).unwrap_or(20).min(100);
+    let offset = params.get("offset").and_then(|v| v.as_i64()).unwrap_or(0).max(0);
 
     let export_service =
         ExportService::new(Arc::new(state.pg.clone()), Arc::clone(&state.media_storage));

@@ -442,17 +442,11 @@ where
 }
 
 fn extract_amount(details: &Value, key: &str) -> Option<f64> {
-    details
-        .get(key)
-        .and_then(|v| v.as_i64())
-        .map(cents_to_units)
+    details.get(key).and_then(|v| v.as_i64()).map(cents_to_units)
 }
 
 fn extract_string(value: &Value, key: &str) -> Option<String> {
-    value
-        .get(key)
-        .and_then(|v| v.as_str())
-        .map(ToString::to_string)
+    value.get(key).and_then(|v| v.as_str()).map(ToString::to_string)
 }
 
 fn build_pickup_location(
@@ -479,10 +473,7 @@ fn build_pickup_location(
         .and_then(|s| s.as_str())
         .map(ToString::to_string);
 
-    let location_point = summary
-        .store_location
-        .clone()
-        .unwrap_or(summary.pickup.clone());
+    let location_point = summary.store_location.clone().unwrap_or(summary.pickup.clone());
 
     FrontendDeliveryLocation {
         label: Some(label.unwrap_or_else(|| "Point de retrait".to_string())),
@@ -509,20 +500,14 @@ fn build_dropoff_location(summary: &DeliverySummary) -> FrontendDeliveryLocation
         .unwrap_or((summary.dropoff.latitude, summary.dropoff.longitude));
 
     FrontendDeliveryLocation {
-        label: summary
-            .recipient
-            .as_ref()
-            .and_then(|recipient| recipient.contact_name.clone()),
+        label: summary.recipient.as_ref().and_then(|recipient| recipient.contact_name.clone()),
         address: summary
             .recipient
             .as_ref()
             .and_then(|recipient| recipient.dropoff_address.clone())
             .or_else(|| summary.dropoff_address.clone()),
         location: Some(FrontendLocationPoint { lat, lng }),
-        instructions: summary
-            .recipient
-            .as_ref()
-            .and_then(|recipient| recipient.notes.clone()),
+        instructions: summary.recipient.as_ref().and_then(|recipient| recipient.notes.clone()),
     }
 }
 
@@ -535,11 +520,7 @@ fn build_frontend_checkpoints(
         .map(|event| FrontendDeliveryCheckpoint {
             status: map_delivery_status(event.status).to_string(),
             timestamp: event.occurred_at.to_rfc3339(),
-            note: event
-                .payload
-                .get("note")
-                .and_then(|v| v.as_str())
-                .map(ToString::to_string),
+            note: event.payload.get("note").and_then(|v| v.as_str()).map(ToString::to_string),
             actor: event
                 .payload
                 .get("actor")
@@ -564,10 +545,7 @@ fn build_frontend_checkpoints(
     {
         checkpoints.push(FrontendDeliveryCheckpoint {
             status: map_delivery_status(summary.status).to_string(),
-            timestamp: summary
-                .delivered_at
-                .unwrap_or(summary.requested_at)
-                .to_rfc3339(),
+            timestamp: summary.delivered_at.unwrap_or(summary.requested_at).to_rfc3339(),
             note: None,
             actor: Some("system".to_string()),
             location: None,
@@ -588,10 +566,7 @@ fn build_checkpoint_location(payload: &Value) -> Option<FrontendCheckpointLocati
         accuracy: location.get("accuracy").and_then(|v| v.as_f64()),
         heading: location.get("heading").and_then(|v| v.as_f64()),
         speed: location.get("speed").and_then(|v| v.as_f64()),
-        source: location
-            .get("source")
-            .and_then(|v| v.as_str())
-            .map(ToString::to_string),
+        source: location.get("source").and_then(|v| v.as_str()).map(ToString::to_string),
     })
 }
 
@@ -1004,9 +979,7 @@ impl DeliveryService {
         let lat_rounded = (pickup.latitude * 1000.0).round() / 1000.0;
         let lng_rounded = (pickup.longitude * 1000.0).round() / 1000.0;
 
-        let zone_str = zone_id
-            .map(|z| z.to_string())
-            .unwrap_or_else(|| "any".to_string());
+        let zone_str = zone_id.map(|z| z.to_string()).unwrap_or_else(|| "any".to_string());
 
         let distance_str = (max_distance / 100.0).round() as i32; // Arrondir à 100m
 
@@ -1053,12 +1026,7 @@ impl DeliveryService {
             .get("billing_mode")
             .and_then(|v| v.as_str())
             .map(|mode| mode.eq_ignore_ascii_case("merchant_inclusive"))
-            .or_else(|| {
-                summary
-                    .metadata
-                    .get("billing_inclusive")
-                    .and_then(|v| v.as_bool())
-            })
+            .or_else(|| summary.metadata.get("billing_inclusive").and_then(|v| v.as_bool()))
             .unwrap_or(false);
 
         if merchant_inclusive {
@@ -1175,10 +1143,7 @@ impl DeliveryService {
         &self,
         user_id: i32,
     ) -> AppResult<Vec<FrontendDeliverySummary>> {
-        let delivery_ids = self
-            .repository
-            .list_delivery_ids_for_user(user_id, 25)
-            .await?;
+        let delivery_ids = self.repository.list_delivery_ids_for_user(user_id, 25).await?;
 
         let mut output = Vec::with_capacity(delivery_ids.len());
         for delivery_id in delivery_ids {
@@ -1225,15 +1190,9 @@ impl DeliveryService {
             .ok_or_else(|| AppError::NotFound("Livraison introuvable".into()))?;
         self.ensure_delivery_access(&summary, user_id).await?;
 
-        let updates = self
-            .repository
-            .list_recipient_updates(delivery_id, limit.max(1))
-            .await?;
+        let updates = self.repository.list_recipient_updates(delivery_id, limit.max(1)).await?;
 
-        Ok(updates
-            .into_iter()
-            .map(FrontendRecipientUpdate::from)
-            .collect())
+        Ok(updates.into_iter().map(FrontendRecipientUpdate::from).collect())
     }
 
     /// Liste les types de colis disponibles
@@ -1255,31 +1214,38 @@ impl DeliveryService {
         );
 
         // ✅ NOUVEAU: Valider que le partner_id existe s'il est fourni
+        // ✅ CORRIGÉ: Ignorer les IDs invalides (négatifs ou zéro) pour éviter les erreurs
         let validated_partner_id = if let Some(partner_id) = input.partner_id {
-            let partner_exists: Option<i32> = sqlx::query_scalar(
-                "SELECT id FROM delivery_partners WHERE id = $1 AND is_active = true",
-            )
-            .bind(partner_id)
-            .fetch_optional(self.repository.pool())
-            .await?;
-
-            if partner_exists.is_none() {
-                log::warn!(
-                    "[submit_courier_application] ⚠️ partner_id {} n'existe pas ou n'est pas actif, utilisation de NULL",
+            // Ignorer les IDs invalides (négatifs, zéro, ou -1 pour Yukpo virtuel)
+            if partner_id <= 0 {
+                log::info!(
+                    "[submit_courier_application] ⚠️ partner_id {} invalide (négatif ou zéro), utilisation de NULL",
                     partner_id
                 );
                 None
             } else {
-                Some(partner_id)
+                let partner_exists: Option<i32> = sqlx::query_scalar(
+                    "SELECT id FROM delivery_partners WHERE id = $1 AND is_active = true",
+                )
+                .bind(partner_id)
+                .fetch_optional(self.repository.pool())
+                .await?;
+
+                if partner_exists.is_none() {
+                    log::warn!(
+                        "[submit_courier_application] ⚠️ partner_id {} n'existe pas ou n'est pas actif, utilisation de NULL",
+                        partner_id
+                    );
+                    None
+                } else {
+                    Some(partner_id)
+                }
             }
         } else {
             None
         };
 
-        let existing = self
-            .repository
-            .find_courier_application_by_user(input.user_id)
-            .await?;
+        let existing = self.repository.find_courier_application_by_user(input.user_id).await?;
 
         if let Some(app) = existing {
             if app.status == crate::models::delivery_model::DeliveryApplicationStatus::Approved {
@@ -1385,9 +1351,7 @@ impl DeliveryService {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> AppResult<Vec<CourierApplication>> {
-        self.repository
-            .list_courier_applications(status_filter, limit, offset)
-            .await
+        self.repository.list_courier_applications(status_filter, limit, offset).await
     }
 
     /// ✅ NOUVEAU : Liste des candidatures par ensemble de statuts (admin/backoffice)
@@ -1489,9 +1453,7 @@ impl DeliveryService {
             type_id
         } else {
             // Essayer de trouver le type depuis preferred_vehicle_type dans metadata
-            let preferred_slug = metadata
-                .get("preferred_vehicle_type")
-                .and_then(|v| v.as_str());
+            let preferred_slug = metadata.get("preferred_vehicle_type").and_then(|v| v.as_str());
 
             let type_id = if let Some(slug) = preferred_slug {
                 // Essayer de trouver le type par slug
@@ -1601,8 +1563,7 @@ impl DeliveryService {
         }
 
         let summary = self.repository.create_delivery_request(request).await?;
-        self.broadcast_status_update(summary.id, DeliveryStatus::Requested, None)
-            .await;
+        self.broadcast_status_update(summary.id, DeliveryStatus::Requested, None).await;
 
         // ✅ CORRIGÉ 2025-12-21 : Déclencher le matching si un destinataire est fourni à la création
         // ✅ NOUVEAU 2025-01-31 : Gérer le matching selon le mode de planification
@@ -1776,10 +1737,7 @@ impl DeliveryService {
             contact_phone: recipient.contact_phone.clone(),
             notes: recipient.notes.clone(),
             chat_thread_id: recipient.chat_thread_id,
-            dropoff_override: recipient
-                .dropoff_override
-                .as_ref()
-                .map(|loc| loc.clone().into()),
+            dropoff_override: recipient.dropoff_override.as_ref().map(|loc| loc.clone().into()),
             dropoff_address: recipient.dropoff_address.clone(),
             country_code: recipient.country_code.clone(),
             allow_tracking: recipient.allow_tracking,
@@ -2046,10 +2004,7 @@ impl DeliveryService {
         let summary = self.get_delivery_summary(delivery_id).await?;
         self.ensure_delivery_access(&summary, user_id).await?;
 
-        let tracking_token = self
-            .repository
-            .ensure_recipient_tracking_token(delivery_id)
-            .await?;
+        let tracking_token = self.repository.ensure_recipient_tracking_token(delivery_id).await?;
 
         let now = Utc::now().to_rfc3339();
         self.repository
@@ -2120,10 +2075,7 @@ impl DeliveryService {
             .get("studio_brief_excerpt")
             .and_then(|v| v.as_str())
             .map(ToString::to_string);
-        let vehicle_type_id = summary
-            .metadata
-            .get("vehicle_type_id")
-            .and_then(|v| v.as_i64());
+        let vehicle_type_id = summary.metadata.get("vehicle_type_id").and_then(|v| v.as_i64());
 
         Ok(PublicDropoffSnapshot {
             delivery_id,
@@ -2489,8 +2441,7 @@ impl DeliveryService {
             })
             .await?;
 
-        self.broadcast_status_update(delivery_id, status, cancel_reason)
-            .await;
+        self.broadcast_status_update(delivery_id, status, cancel_reason).await;
 
         // ✅ RECOMMANDATION 1: Envoyer notification push au créateur et au destinataire
         self.send_delivery_status_notifications(delivery_id, status, cancel_reason)
@@ -2999,9 +2950,7 @@ impl DeliveryService {
             }
         };
 
-        self.repository
-            .update_shopping_status(order.delivery_id, input.status)
-            .await?;
+        self.repository.update_shopping_status(order.delivery_id, input.status).await?;
 
         let mapped_status = match input.status {
             ShoppingStatus::ShoppingInProgress => Some(DeliveryStatus::ShoppingInProgress),
@@ -3045,10 +2994,7 @@ impl DeliveryService {
         let (order, delivery) = self.load_shopping_context(input.order_id).await?;
         self.ensure_courier_for_delivery(&delivery, user_id).await?;
 
-        let existing = self
-            .repository
-            .get_pricing_by_delivery(order.delivery_id)
-            .await?;
+        let existing = self.repository.get_pricing_by_delivery(order.delivery_id).await?;
 
         let pricing_snapshot = existing.unwrap_or(DeliveryPricing {
             id: Uuid::nil(),
@@ -3064,11 +3010,8 @@ impl DeliveryService {
             shopping_discount_cents: 0,
         });
 
-        let reserved_cents = order
-            .payload
-            .get("reserved_cents")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
+        let reserved_cents =
+            order.payload.get("reserved_cents").and_then(|v| v.as_i64()).unwrap_or(0);
         let delivery_cost_cents = (pricing_snapshot.base_price_cents
             + pricing_snapshot.distance_price_cents
             + pricing_snapshot.surcharge_cents
@@ -3215,11 +3158,7 @@ impl DeliveryService {
             return Err(AppError::BadRequest("Score invalide (1..5)".into()));
         }
 
-        if let Some(courier) = self
-            .repository
-            .find_courier_by_user(courier_user_id)
-            .await?
-        {
+        if let Some(courier) = self.repository.find_courier_by_user(courier_user_id).await? {
             if courier.id != courier_id {
                 return Err(AppError::Forbidden(
                     "Ce coursier ne correspond pas à la livraison".into(),
@@ -3279,17 +3218,11 @@ impl DeliveryService {
 
     /// Traite les éléments en file d'attente (cron/worker)
     pub async fn process_matching_backlog(&self, batch_size: usize) -> AppResult<usize> {
-        let queue_items = self
-            .repository
-            .fetch_matching_queue_batch(batch_size as i64)
-            .await?;
+        let queue_items = self.repository.fetch_matching_queue_batch(batch_size as i64).await?;
 
         let mut processed = 0usize;
         for item in queue_items {
-            let Some(summary) = self
-                .repository
-                .get_delivery_summary(item.delivery_id)
-                .await?
+            let Some(summary) = self.repository.get_delivery_summary(item.delivery_id).await?
             else {
                 log::warn!(
                     "[DeliveryMatching] Impossible de recharger la livraison {} (supprimée?)",
@@ -3308,16 +3241,10 @@ impl DeliveryService {
             };
 
             // ✅ NOUVEAU : Vérifier si la commande est prête (estimated_ready_at)
-            let service_id = summary
-                .metadata
-                .get("service_id")
-                .and_then(|v| v.as_i64())
-                .map(|i| i as i32);
-            let product_index = summary
-                .metadata
-                .get("product_index")
-                .and_then(|v| v.as_i64())
-                .map(|i| i as i32);
+            let service_id =
+                summary.metadata.get("service_id").and_then(|v| v.as_i64()).map(|i| i as i32);
+            let product_index =
+                summary.metadata.get("product_index").and_then(|v| v.as_i64()).map(|i| i as i32);
 
             if let (Some(sid), Some(pidx)) = (service_id, product_index) {
                 // Vérifier le statut et estimated_ready_at de la commande
@@ -3465,13 +3392,9 @@ impl DeliveryService {
         delivery: &DeliverySummary,
         user_id: i32,
     ) -> AppResult<Uuid> {
-        let courier = self
-            .repository
-            .find_courier_by_user(user_id)
-            .await?
-            .ok_or_else(|| {
-                AppError::Forbidden("Utilisateur non enregistré comme coursier Yukpo.".into())
-            })?;
+        let courier = self.repository.find_courier_by_user(user_id).await?.ok_or_else(|| {
+            AppError::Forbidden("Utilisateur non enregistré comme coursier Yukpo.".into())
+        })?;
 
         if delivery.courier_id != Some(courier.id) {
             return Err(AppError::Forbidden(
@@ -3506,12 +3429,8 @@ impl DeliveryService {
                 DeliveryWsEvent::Location {
                     latitude: input.latitude,
                     longitude: input.longitude,
-                    speed_kmh: input
-                        .speed_kmh
-                        .and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
-                    bearing: input
-                        .bearing
-                        .and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
+                    speed_kmh: input.speed_kmh.and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
+                    bearing: input.bearing.and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
                     accuracy_meters: input
                         .accuracy_meters
                         .and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
@@ -3543,11 +3462,7 @@ impl DeliveryService {
         user_id: i32,
     ) -> AppResult<()> {
         if summary.creator_id == user_id
-            || summary
-                .recipient
-                .as_ref()
-                .and_then(|recipient| recipient.user_id)
-                == Some(user_id)
+            || summary.recipient.as_ref().and_then(|recipient| recipient.user_id) == Some(user_id)
         {
             return Ok(());
         }
@@ -3579,10 +3494,8 @@ impl DeliveryService {
 
         let courier_preview = if let Some(courier_id) = summary.courier_id {
             if let Some(courier) = self.repository.find_courier_by_id(courier_id).await? {
-                self.repository
-                    .get_user_preview(courier.user_id)
-                    .await?
-                    .map(|user| FrontendDeliveryParticipant {
+                self.repository.get_user_preview(courier.user_id).await?.map(|user| {
+                    FrontendDeliveryParticipant {
                         id: Some(courier.user_id.to_string()),
                         name: user.nom_complet.or(user.prenom).or(user.nom),
                         phone: None,
@@ -3598,7 +3511,8 @@ impl DeliveryService {
                         country_code: None,
                         preferred_language: None,
                         current_location: None,
-                    })
+                    }
+                })
             } else {
                 None
             }
@@ -3607,31 +3521,26 @@ impl DeliveryService {
         };
 
         let recipient_participant =
-            summary
-                .recipient
-                .as_ref()
-                .map(|recipient| FrontendDeliveryParticipant {
-                    id: recipient.user_id.map(|id| id.to_string()),
-                    name: recipient.contact_name.clone(),
-                    phone: recipient.contact_phone.clone(),
-                    avatar_url: None,
-                    rating: None,
-                    notes: recipient.notes.clone(),
-                    vehicle_type: None,
-                    eta_minutes: None,
-                    is_online: None,
-                    allow_tracking: recipient.allow_tracking,
-                    allow_contact: recipient.allow_contact,
-                    consent_granted: recipient.consent_granted,
-                    country_code: recipient.country_code.clone(),
-                    preferred_language: recipient.preferred_language.clone(),
-                    current_location: None,
-                });
+            summary.recipient.as_ref().map(|recipient| FrontendDeliveryParticipant {
+                id: recipient.user_id.map(|id| id.to_string()),
+                name: recipient.contact_name.clone(),
+                phone: recipient.contact_phone.clone(),
+                avatar_url: None,
+                rating: None,
+                notes: recipient.notes.clone(),
+                vehicle_type: None,
+                eta_minutes: None,
+                is_online: None,
+                allow_tracking: recipient.allow_tracking,
+                allow_contact: recipient.allow_contact,
+                consent_granted: recipient.consent_granted,
+                country_code: recipient.country_code.clone(),
+                preferred_language: recipient.preferred_language.clone(),
+                current_location: None,
+            });
 
         let checkpoints = build_frontend_checkpoints(&summary, &status_events);
-        let last_event_at = checkpoints
-            .last()
-            .map(|checkpoint| checkpoint.timestamp.clone());
+        let last_event_at = checkpoints.last().map(|checkpoint| checkpoint.timestamp.clone());
 
         let pricing_view = pricing.map(FrontendDeliveryPricing::from);
         let shopping_view = shopping_order.as_ref().map(|order| {
@@ -3666,16 +3575,10 @@ impl DeliveryService {
     /// Enfile immédiatement la livraison dans la file de matching et tente un dispatch express
     pub async fn enqueue_delivery_matching(&self, summary: &DeliverySummary) -> AppResult<()> {
         // ✅ NOUVEAU : Vérifier si la commande est "Ready" avant de démarrer le matching
-        let service_id = summary
-            .metadata
-            .get("service_id")
-            .and_then(|v| v.as_i64())
-            .map(|i| i as i32);
-        let product_index = summary
-            .metadata
-            .get("product_index")
-            .and_then(|v| v.as_i64())
-            .map(|i| i as i32);
+        let service_id =
+            summary.metadata.get("service_id").and_then(|v| v.as_i64()).map(|i| i as i32);
+        let product_index =
+            summary.metadata.get("product_index").and_then(|v| v.as_i64()).map(|i| i as i32);
 
         if let (Some(sid), Some(pidx)) = (service_id, product_index) {
             // Vérifier le statut de la commande dans product_orders
@@ -4011,10 +3914,8 @@ impl DeliveryService {
         // ✅ Phase 9 - Amélioration 28 : Prioriser preferred_courier_id s'il est défini
         if let Some(preferred_courier_id) = summary.preferred_courier_id {
             // Vérifier que le coursier préféré est disponible et éligible
-            if let Ok(Some(courier)) = self
-                .repository
-                .find_courier_by_id(preferred_courier_id)
-                .await
+            if let Ok(Some(courier)) =
+                self.repository.find_courier_by_id(preferred_courier_id).await
             {
                 // Vérifier que le coursier est actif
                 if courier.status == crate::models::delivery_model::DeliveryCourierStatus::Approved
@@ -4105,10 +4006,8 @@ impl DeliveryService {
             .and_then(|mode| mode.as_str())
             .map(|mode| mode.eq_ignore_ascii_case("passenger"))
             .unwrap_or(false);
-        let vehicle_type_id = summary
-            .metadata
-            .get("vehicle_type_id")
-            .and_then(|value| value.as_i64());
+        let vehicle_type_id =
+            summary.metadata.get("vehicle_type_id").and_then(|value| value.as_i64());
 
         // ✅ NOUVEAU : Récupérer le type de véhicule préféré depuis les métadonnées
         // Si non spécifié, utiliser "motorcycle" par défaut
@@ -4439,14 +4338,11 @@ impl DeliveryService {
 
         // ✅ NOUVEAU : Notifier les N meilleurs coursiers (jusqu'à 10) au lieu d'assigner automatiquement
         let top_candidates_count = scored_candidates.len().min(10); // Notifier jusqu'à 10 coursiers (ou moins s'il y en a moins)
-        let top_candidates: Vec<_> = scored_candidates
-            .into_iter()
-            .take(top_candidates_count)
-            .collect();
+        let top_candidates: Vec<_> =
+            scored_candidates.into_iter().take(top_candidates_count).collect();
 
         // ✅ NOUVEAU : Notifier tous les coursiers sélectionnés au lieu d'assigner automatiquement
-        self.notify_available_couriers(summary, &top_candidates)
-            .await?;
+        self.notify_available_couriers(summary, &top_candidates).await?;
 
         // ✅ NOUVEAU : Mettre à jour le statut de matching à "Searching" (en attente d'acceptation)
         let notified_courier_ids: Vec<Uuid> =
@@ -4499,11 +4395,7 @@ impl DeliveryService {
         let mut notified_user_ids = Vec::new();
 
         // Détecter si c'est un relais
-        let is_relay = summary
-            .metadata
-            .get("is_relay")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        let is_relay = summary.metadata.get("is_relay").and_then(|v| v.as_bool()).unwrap_or(false);
         let relay_info = summary.metadata.get("relay_info").cloned();
         let courier_difficulty = summary.metadata.get("courier_difficulty").cloned();
 
@@ -4584,10 +4476,8 @@ impl DeliveryService {
                 }
 
                 // ✅ Ajouter les informations d'aller-retour si applicable
-                if let Some(is_round_trip) = summary
-                    .metadata
-                    .get("is_round_trip")
-                    .and_then(|v| v.as_bool())
+                if let Some(is_round_trip) =
+                    summary.metadata.get("is_round_trip").and_then(|v| v.as_bool())
                 {
                     if is_round_trip {
                         notification_data["is_round_trip"] = json!(true);
@@ -4614,10 +4504,8 @@ impl DeliveryService {
 
         // ✅ Sauvegarder la liste des coursiers notifiés dans les métadonnées
         let mut metadata = summary.metadata.clone();
-        metadata["notified_couriers"] = json!(notified_courier_ids
-            .iter()
-            .map(|id| id.to_string())
-            .collect::<Vec<_>>());
+        metadata["notified_couriers"] =
+            json!(notified_courier_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>());
         metadata["notified_user_ids"] = json!(notified_user_ids);
         metadata["notification_sent_at"] = json!(Utc::now().to_rfc3339());
         metadata["notification_repeat_interval_seconds"] = json!(30); // Répéter toutes les 30 secondes
@@ -4650,11 +4538,7 @@ impl DeliveryService {
             .metadata
             .get("notified_user_ids")
             .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_i64().map(|i| i as i32))
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_i64().map(|i| i as i32)).collect())
             .unwrap_or_default();
 
         if notified_user_ids.is_empty() {
@@ -4724,9 +4608,7 @@ impl DeliveryService {
     }
 
     fn compute_candidate_score(candidate: &CourierMatchingCandidate, passenger_mode: bool) -> f64 {
-        let distance = candidate
-            .distance_meters
-            .unwrap_or(MATCHING_MAX_DISTANCE_METERS * 2.0);
+        let distance = candidate.distance_meters.unwrap_or(MATCHING_MAX_DISTANCE_METERS * 2.0);
         let distance_ratio = (distance / MATCHING_MAX_DISTANCE_METERS).min(2.0);
         let distance_component = (1.0 - distance_ratio).max(-0.5);
 

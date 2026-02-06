@@ -158,15 +158,9 @@ pub fn init_logging() {
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     let filter = EnvFilter::new(log_level);
     if log_format == "json" {
-        tracing_subscriber::registry()
-            .with(filter)
-            .with(fmt::layer().json())
-            .init();
+        tracing_subscriber::registry().with(filter).with(fmt::layer().json()).init();
     } else {
-        tracing_subscriber::registry()
-            .with(filter)
-            .with(fmt::layer())
-            .init();
+        tracing_subscriber::registry().with(filter).with(fmt::layer()).init();
     }
 }
 // Handler Axum compatible pour la gestion intelligente des fournitures scolaires
@@ -175,10 +169,7 @@ async fn fournitures_axum_handler(
     Json(payload): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
     // use crate::services::fournitures_service::gestion_fournitures_scolaires;
-    let _user_id = payload
-        .get("user_id")
-        .and_then(|v| v.as_i64())
-        .map(|v| v as i32);
+    let _user_id = payload.get("user_id").and_then(|v| v.as_i64()).map(|v| v as i32);
     let _pool = &state.pg;
     // match gestion_fournitures_scolaires(user_id, &payload, pool).await {
     //     Ok(res) => Ok(Json(res)),
@@ -336,9 +327,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ServeDir pour les autres fichiers .well-known (assetlinks.json, etc.)
         .nest_service(
             "/.well-known",
-            ServeDir::new("public/.well-known")
-                .precompressed_gzip()
-                .precompressed_br(),
+            ServeDir::new("public/.well-known").precompressed_gzip().precompressed_br(),
         )
         .nest("/api", auth)
         .merge(users)

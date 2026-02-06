@@ -216,10 +216,7 @@ impl AsyncUploadService {
         fs::create_dir_all(&dest_dir).await?;
 
         // Générer un nom de fichier unique
-        let extension = Path::new(&file_name)
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("bin");
+        let extension = Path::new(&file_name).extension().and_then(|e| e.to_str()).unwrap_or("bin");
         let unique_name = format!("{}_{}.{}", upload_id, Uuid::new_v4(), extension);
         let file_path = dest_dir.join(&unique_name);
 

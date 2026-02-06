@@ -64,3 +64,5 @@
 - La fonction `execute_multiple_sql_commands` est conservée pour éviter de casser les scripts existants
 - Toutes les migrations automatiques utilisent maintenant `execute_migration_sql_safe` qui devrait éviter les fragments SQL invalides
 
+
+

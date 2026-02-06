@@ -181,12 +181,8 @@ pub async fn create_candidature(
                 .flatten();
 
         // Préparer les valeurs pour les notifications
-        let titre_offre_str = titre_offre
-            .clone()
-            .unwrap_or_else(|| "Offre d'emploi".to_string());
-        let candidat_nom_str = candidat_nom
-            .clone()
-            .unwrap_or_else(|| "Un candidat".to_string());
+        let titre_offre_str = titre_offre.clone().unwrap_or_else(|| "Offre d'emploi".to_string());
+        let candidat_nom_str = candidat_nom.clone().unwrap_or_else(|| "Un candidat".to_string());
 
         // Créer la notification
         let notification_data = json!({
@@ -238,9 +234,8 @@ pub async fn create_candidature(
             .ok()
             .flatten();
 
-    let titre_offre_candidat_str = titre_offre_candidat
-        .clone()
-        .unwrap_or_else(|| "Offre d'emploi".to_string());
+    let titre_offre_candidat_str =
+        titre_offre_candidat.clone().unwrap_or_else(|| "Offre d'emploi".to_string());
     let notification_data_candidat = json!({
         "offre_id": request.offre_id,
         "candidature_id": candidature.id,
@@ -536,9 +531,7 @@ pub async fn update_statut_candidature(
     }
 
     let service = CandidaturesService::new(state.pg.clone(), Some(state.redis_client.clone()));
-    let candidature = service
-        .update_statut_candidature(candidature_id, request.clone())
-        .await?;
+    let candidature = service.update_statut_candidature(candidature_id, request.clone()).await?;
 
     // ✅ NOUVEAU: Envoyer une notification au candidat lors du changement de statut
     // Récupérer l'ID du candidat
@@ -565,9 +558,7 @@ pub async fn update_statut_candidature(
         .ok()
         .flatten();
 
-        let titre_offre_str = titre_offre
-            .clone()
-            .unwrap_or_else(|| "Offre d'emploi".to_string());
+        let titre_offre_str = titre_offre.clone().unwrap_or_else(|| "Offre d'emploi".to_string());
         let statut_label = match request.statut.as_str() {
             "accepted" => "acceptée",
             "rejected" => "refusée",

@@ -445,9 +445,7 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .route(
             "/api/delivery/saved-addresses/{id}",
-            get(get_saved_address)
-                .put(update_saved_address)
-                .delete(delete_saved_address),
+            get(get_saved_address).put(update_saved_address).delete(delete_saved_address),
         )
         .route(
             "/api/delivery/saved-addresses/{id}/set-default",
@@ -592,10 +590,7 @@ async fn save_product_delivery_config(
             .any(|p| p.product_index == payload.product_index as i32);
 
         if !product_exists && retry_count < MAX_RETRIES {
-            let delay_ms = RETRY_DELAYS_MS
-                .get(retry_count as usize)
-                .copied()
-                .unwrap_or(2000);
+            let delay_ms = RETRY_DELAYS_MS.get(retry_count as usize).copied().unwrap_or(2000);
             log::debug!(
                 "[save_product_delivery_config] Produit {} non trouvé pour service {}, retry {}/{} dans {}ms...",
                 payload.product_index,
@@ -733,7 +728,8 @@ async fn save_product_delivery_config(
         };
 
     // ✅ 5. Créer ou mettre à jour la configuration
-    // ✅ CORRIGÉ 2026-01-12: Gestion d'erreur robuste pour éviter erreur 500
+    // ✅ CORRIGÉ 2026-01-30: Gestion d'erreur robuste pour éviter erreur 500
+    // ✅ CORRIGÉ 2026-01-30: Vérifier que storage_location_id existe dans la table avant de l'utiliser
     let config_row = match sqlx::query(
         r#"
         INSERT INTO product_delivery_config (
@@ -780,7 +776,7 @@ async fn save_product_delivery_config(
     .bind(payload.pickup_latitude)
     .bind(payload.pickup_longitude)
     .bind(payload_vehicle_type_id) // ✅ CORRIGÉ: Utiliser l'ID final (converti depuis slug si nécessaire)
-    .bind(payload.preparation_time_minutes) // ✅ NOUVEAU: Temps de préparation
+    .bind(payload.preparation_time_minutes) // ✅ NOUVEAU: Temps de préparation (Option<i32>, peut être None)
     .bind(payload.weight_kg)
     .bind(payload.volume_cm3)
     .bind(payload.requires_isothermal.unwrap_or(false))
@@ -789,7 +785,7 @@ async fn save_product_delivery_config(
     .bind(pickup_instructions_final.as_deref())
     .bind(payload.billing_mode.as_deref().unwrap_or("standard"))
     .bind(payload.billing_partner_label.as_deref())
-    .bind(payload.storage_location_id) // ✅ NOUVEAU: Lieu de stockage principal
+    .bind(payload.storage_location_id) // ✅ NOUVEAU: Lieu de stockage principal (Option<i32>, peut être None)
     .bind(is_complete)
     .bind(user.id)
     .fetch_one(&state.pg)
@@ -900,9 +896,7 @@ async fn get_product_availability(
         state.pg.clone(),
     );
 
-    let availability = service
-        .check_availability(service_id, product_index, None)
-        .await?;
+    let availability = service.check_availability(service_id, product_index, None).await?;
 
     Ok(Json(json!({
         "success": true,
@@ -1052,9 +1046,7 @@ async fn save_client_delivery_preferences(
     }
 
     let window_hours = payload.preferred_delivery_window_hours.unwrap_or(2);
-    let urgency = payload
-        .urgency_level
-        .unwrap_or_else(|| "standard".to_string());
+    let urgency = payload.urgency_level.unwrap_or_else(|| "standard".to_string());
     let is_flex = payload.is_flexible.unwrap_or(true);
     let flex_days = payload.flexibility_window_days.unwrap_or(3);
 
@@ -1436,11 +1428,7 @@ async fn create_delivery(
             metadata_aller["scheduled_delivery_at_utc"] = json!(scheduled_utc.to_rfc3339());
 
             // ✅ Mode de matching: "immediate" ou "scheduled" (par défaut: "immediate" pour matching instantané)
-            let matching_mode = payload
-                .matching_mode
-                .as_deref()
-                .unwrap_or("immediate")
-                .to_string();
+            let matching_mode = payload.matching_mode.as_deref().unwrap_or("immediate").to_string();
 
             if matching_mode != "immediate" && matching_mode != "scheduled" {
                 return Err(crate::core::types::AppError::BadRequest(
@@ -1500,16 +1488,13 @@ async fn create_delivery(
         initial_event_payload: payload.initial_event_payload.clone(),
     };
 
-    let summary_aller = service
-        .create_delivery_request(params_aller)
-        .await
-        .map_err(|e| {
-            log::error!(
-                "[create_delivery] Erreur lors de la création de la livraison aller: {:?}",
-                e
-            );
+    let summary_aller = service.create_delivery_request(params_aller).await.map_err(|e| {
+        log::error!(
+            "[create_delivery] Erreur lors de la création de la livraison aller: {:?}",
             e
-        })?;
+        );
+        e
+    })?;
 
     // ✅ Si aller-retour, créer automatiquement la livraison retour
     if is_round_trip {
@@ -1560,16 +1545,13 @@ async fn create_delivery(
             initial_event_payload: json!({}),
         };
 
-        let summary_retour = service
-            .create_delivery_request(params_retour)
-            .await
-            .map_err(|e| {
-                log::error!(
-                    "[create_delivery] Erreur lors de la création de la livraison retour: {:?}",
-                    e
-                );
+        let summary_retour = service.create_delivery_request(params_retour).await.map_err(|e| {
+            log::error!(
+                "[create_delivery] Erreur lors de la création de la livraison retour: {:?}",
                 e
-            })?;
+            );
+            e
+        })?;
 
         // ✅ Lier les deux livraisons dans la base
         sqlx::query(
@@ -1916,9 +1898,8 @@ async fn create_client_order(
         .cloned()
         .collect();
 
-        let backend_vehicle_type = vehicle_type_mapping
-            .get(vehicle_type.as_str())
-            .unwrap_or(&"autre");
+        let backend_vehicle_type =
+            vehicle_type_mapping.get(vehicle_type.as_str()).unwrap_or(&"autre");
 
         metadata["preferred_vehicle_type"] = serde_json::json!(vehicle_type);
         metadata["preferred_vehicle_type_backend"] = serde_json::json!(backend_vehicle_type);
@@ -2014,10 +1995,7 @@ async fn create_client_order(
                     .await
                     .unwrap_or_else(|_| {
                         // Fallback : prix de base depuis product_price (colonne générée)
-                        product_row
-                            .product_price
-                            .and_then(|p| p.to_i64())
-                            .unwrap_or(0)
+                        product_row.product_price.and_then(|p| p.to_i64()).unwrap_or(0)
                     })
                 } else {
                     0
@@ -2035,11 +2013,7 @@ async fn create_client_order(
 
             // Récupérer le billing_mode depuis product_delivery_config
             let billing_mode = if let Some(config) = &delivery_config {
-                config
-                    .billing_mode
-                    .as_deref()
-                    .unwrap_or("standard")
-                    .to_string()
+                config.billing_mode.as_deref().unwrap_or("standard").to_string()
             } else {
                 "standard".to_string()
             };
@@ -2127,9 +2101,7 @@ async fn assign_delivery_recipient(
     enforce_delivery_access(&service, &summary, user.id).await?;
 
     let recipient = DeliveryRecipientInput::from(&payload);
-    let updated = service
-        .assign_delivery_recipient(delivery_id, recipient)
-        .await?;
+    let updated = service.assign_delivery_recipient(delivery_id, recipient).await?;
 
     Ok(Json(json!({ "recipient": updated })))
 }
@@ -2242,9 +2214,7 @@ async fn list_frontend_deliveries(
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
-    let deliveries = service
-        .list_user_active_deliveries_frontend(user.id)
-        .await?;
+    let deliveries = service.list_user_active_deliveries_frontend(user.id).await?;
     Ok(Json(json!({ "deliveries": deliveries })))
 }
 
@@ -2254,9 +2224,7 @@ async fn get_frontend_delivery(
     Path(delivery_id): Path<Uuid>,
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
-    let delivery = service
-        .get_frontend_delivery_summary(delivery_id, user.id)
-        .await?;
+    let delivery = service.get_frontend_delivery_summary(delivery_id, user.id).await?;
     Ok(Json(json!({ "delivery": delivery })))
 }
 
@@ -2268,9 +2236,7 @@ async fn get_frontend_recipient_updates(
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
-    let updates = service
-        .list_frontend_recipient_updates(delivery_id, user.id, limit)
-        .await?;
+    let updates = service.list_frontend_recipient_updates(delivery_id, user.id, limit).await?;
     Ok(Json(json!({ "updates": updates })))
 }
 
@@ -2450,9 +2416,8 @@ async fn update_delivery_status(
                 if product_rejected {
                     // ✅ Produit rejeté : Pas de commission, pas de reversement
                     // Rembourser le client via handle_product_rejection
-                    if let Err(e) = payment_service
-                        .handle_product_rejection(delivery_id, user.id)
-                        .await
+                    if let Err(e) =
+                        payment_service.handle_product_rejection(delivery_id, user.id).await
                     {
                         log::error!(
                             "Erreur gestion rejet produit pour livraison {}: {:?}",
@@ -2463,9 +2428,8 @@ async fn update_delivery_status(
                 } else {
                     // Produit accepté : Reverser au prestataire avec commission
                     let merchant_user_id = summary.creator_id;
-                    if let Err(e) = payment_service
-                        .payout_merchant(delivery_id, merchant_user_id)
-                        .await
+                    if let Err(e) =
+                        payment_service.payout_merchant(delivery_id, merchant_user_id).await
                     {
                         log::error!(
                             "Erreur reversement prestataire pour livraison {}: {:?}",
@@ -2486,9 +2450,8 @@ async fn update_delivery_status(
                                 .flatten();
 
                         if let Some((courier_user_id,)) = courier_user_id_result {
-                            if let Err(e) = payment_service
-                                .payout_courier(delivery_id, courier_user_id)
-                                .await
+                            if let Err(e) =
+                                payment_service.payout_courier(delivery_id, courier_user_id).await
                             {
                                 log::error!(
                                     "Erreur reversement coursier pour livraison {}: {:?}",
@@ -2656,10 +2619,7 @@ async fn estimate_delivery_costs(
                 .await
                 .unwrap_or_else(|_| {
                     // Fallback : prix de base depuis product_price (colonne générée)
-                    product_row
-                        .product_price
-                        .and_then(|p| p.to_i64())
-                        .unwrap_or(0)
+                    product_row.product_price.and_then(|p| p.to_i64()).unwrap_or(0)
                 })
             } else {
                 0
@@ -2839,14 +2799,10 @@ async fn estimate_delivery_costs(
         metrics.estimate_cost_duration_seconds.observe(duration);
 
         metrics.delivery_cost_calculated_total.inc();
-        metrics
-            .delivery_cost_amount_cents_total
-            .inc_by(delivery_cost_cents as f64);
+        metrics.delivery_cost_amount_cents_total.inc_by(delivery_cost_cents as f64);
 
         metrics.product_price_calculated_total.inc();
-        metrics
-            .product_price_amount_cents_total
-            .inc_by(product_price_cents as f64);
+        metrics.product_price_amount_cents_total.inc_by(product_price_cents as f64);
 
         // Billing mode
         match billing_mode.as_str() {
@@ -2931,11 +2887,10 @@ async fn add_tracking_point(
     let service = delivery_service(&state)?;
 
     let summary = service.get_delivery_summary(delivery_id).await?;
-    let courier = service
-        .repository()
-        .find_courier_by_user(user.id)
-        .await?
-        .ok_or_else(|| AppError::Forbidden("Coursier introuvable pour cet utilisateur".into()))?;
+    let courier =
+        service.repository().find_courier_by_user(user.id).await?.ok_or_else(|| {
+            AppError::Forbidden("Coursier introuvable pour cet utilisateur".into())
+        })?;
 
     if summary.courier_id != Some(courier.id) {
         return Err(AppError::Forbidden(
@@ -3048,6 +3003,21 @@ async fn submit_courier_application(
         payload.partner_id
     );
 
+    // ✅ CORRIGÉ: Valider et nettoyer le partner_id avant traitement
+    let cleaned_partner_id = if let Some(pid) = payload.partner_id {
+        if pid > 0 {
+            Some(pid)
+        } else {
+            log::info!(
+                "[submit_courier_application] ⚠️ partner_id {} invalide (négatif ou zéro), conversion en NULL",
+                pid
+            );
+            None
+        }
+    } else {
+        None
+    };
+
     let service = delivery_service(&state)?;
     let application = match service
         .submit_courier_application(CourierApplicationInput {
@@ -3055,7 +3025,7 @@ async fn submit_courier_application(
             profile_data: payload.profile_data.clone(),
             documents: payload.documents.clone(),
             submitted: payload.submitted,
-            partner_id: payload.partner_id, // ✅ NOUVEAU 2026-01-04: Partenaire de livraison
+            partner_id: cleaned_partner_id, // ✅ CORRIGÉ: Utiliser le partner_id nettoyé
         })
         .await
     {
@@ -3072,6 +3042,12 @@ async fn submit_courier_application(
                 "[submit_courier_application] ❌ Erreur soumission candidature - user_id: {}, erreur: {}",
                 user.id,
                 e
+            );
+            // ✅ AMÉLIORÉ: Logger plus de détails pour le diagnostic
+            log::error!(
+                "[submit_courier_application] ❌ Détails erreur - type: {:?}, message: {}",
+                e,
+                e.to_string()
             );
             return Err(e);
         }
@@ -3095,10 +3071,7 @@ async fn get_my_courier_status(
     let courier = service.repository().find_courier_by_user(user.id).await?;
 
     // Vérifier si l'utilisateur a une candidature en cours
-    let application = service
-        .repository()
-        .find_courier_application_by_user(user.id)
-        .await?;
+    let application = service.repository().find_courier_application_by_user(user.id).await?;
 
     Ok(Json(json!({
         "is_courier": courier.is_some(),
@@ -3149,10 +3122,7 @@ async fn list_courier_applications(
     // ✅ AMÉLIORÉ: "submitted" sur mobile = souvent "à valider".
     // Certains clients anciens peuvent laisser la candidature en draft malgré un clic "soumettre".
     // On élargit donc le filtre "submitted" à plusieurs statuts.
-    let status_param = params
-        .get("status")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_lowercase());
+    let status_param = params.get("status").and_then(|v| v.as_str()).map(|s| s.to_lowercase());
 
     let statuses_filter: Option<Vec<crate::models::delivery_model::DeliveryApplicationStatus>> =
         status_param.as_deref().and_then(|s| match s {
@@ -3230,9 +3200,7 @@ async fn list_courier_applications(
                     status_filter
                 );
             }
-            let result = service
-                .list_courier_applications(status_filter, limit, offset)
-                .await?;
+            let result = service.list_courier_applications(status_filter, limit, offset).await?;
             log::info!(
                 "[list_courier_applications] Résultat filtre single-status/all: {} candidature(s) trouvée(s)",
                 result.len()
@@ -3282,8 +3250,7 @@ async fn list_courier_applications(
 
         let (name, email, avatar) = match user_info {
             Ok(Some(u)) => (
-                u.nom_complet
-                    .unwrap_or_else(|| format!("User {}", app.user_id)),
+                u.nom_complet.unwrap_or_else(|| format!("User {}", app.user_id)),
                 u.email,
                 u.avatar_url,
             ),
@@ -3362,12 +3329,7 @@ async fn approve_courier_application_endpoint(
         .and_then(|p| p.get("bio"))
         .and_then(|b| b.as_str())
         .map(|s| s.to_string())
-        .or_else(|| {
-            profile_data
-                .get("bio")
-                .and_then(|b| b.as_str())
-                .map(|s| s.to_string())
-        });
+        .or_else(|| profile_data.get("bio").and_then(|b| b.as_str()).map(|s| s.to_string()));
 
     // Extraire les informations de transport
     let vehicle_type_str = transport
@@ -3535,10 +3497,7 @@ async fn reject_courier_application_endpoint(
 
     // Extraire les données du profil
     let profile_data = application.profile_data;
-    let bio = profile_data
-        .get("bio")
-        .and_then(|b| b.as_str())
-        .map(|s| s.to_string());
+    let bio = profile_data.get("bio").and_then(|b| b.as_str()).map(|s| s.to_string());
 
     // Rejeter la candidature
     let (updated_app, _courier, _asset) = service
@@ -3636,11 +3595,10 @@ async fn upsert_courier_asset(
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
 
-    let courier = service
-        .repository()
-        .find_courier_by_user(user.id)
-        .await?
-        .ok_or_else(|| AppError::Forbidden("Coursier introuvable pour cet utilisateur".into()))?;
+    let courier =
+        service.repository().find_courier_by_user(user.id).await?.ok_or_else(|| {
+            AppError::Forbidden("Coursier introuvable pour cet utilisateur".into())
+        })?;
 
     if courier.id != courier_id {
         return Err(AppError::Forbidden(
@@ -3677,11 +3635,10 @@ async fn get_courier_navigation(
     let summary = service.get_delivery_summary(delivery_id).await?;
 
     // Vérifier que l'utilisateur est le coursier assigné
-    let courier = service
-        .repository()
-        .find_courier_by_user(user.id)
-        .await?
-        .ok_or_else(|| AppError::Forbidden("Coursier introuvable pour cet utilisateur".into()))?;
+    let courier =
+        service.repository().find_courier_by_user(user.id).await?.ok_or_else(|| {
+            AppError::Forbidden("Coursier introuvable pour cet utilisateur".into())
+        })?;
 
     if summary.courier_id != Some(courier.id) {
         return Err(AppError::Forbidden(
@@ -3739,9 +3696,7 @@ async fn get_courier_navigation(
         .as_ref()
         .ok_or_else(|| AppError::Internal("Service géographique non disponible".into()))?;
 
-    let directions = geo_service
-        .get_navigation_directions(origin, destination, None)
-        .await?;
+    let directions = geo_service.get_navigation_directions(origin, destination, None).await?;
 
     Ok(Json(json!({
         "delivery_id": delivery_id,
@@ -3832,11 +3787,7 @@ async fn handle_delivery_tracking_ws(
         "timestamp": Utc::now()
     });
 
-    if sender
-        .send(Message::Text(connected.to_string().into()))
-        .await
-        .is_err()
-    {
+    if sender.send(Message::Text(connected.to_string().into())).await.is_err() {
         record_ws_error();
         manager.cleanup(delivery_id).await;
         record_ws_connection_close();
@@ -4000,27 +3951,21 @@ async fn list_available_couriers(
     Query(params): Query<serde_json::Value>,
 ) -> AppResult<Json<Value>> {
     // ✅ NOUVEAU: Extraire les paramètres de recherche avancée
-    let _service_id: Option<i32> = params
-        .get("service_id")
-        .and_then(|v| v.as_i64())
-        .map(|i| i as i32);
+    let _service_id: Option<i32> =
+        params.get("service_id").and_then(|v| v.as_i64()).map(|i| i as i32);
 
     let pickup_lat: Option<f64> = params.get("pickup_latitude").and_then(|v| v.as_f64());
     let pickup_lng: Option<f64> = params.get("pickup_longitude").and_then(|v| v.as_f64());
     let delivery_lat: Option<f64> = params.get("delivery_latitude").and_then(|v| v.as_f64());
     let delivery_lng: Option<f64> = params.get("delivery_longitude").and_then(|v| v.as_f64());
-    let transport_type: Option<String> = params
-        .get("transport_type")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let transport_type: Option<String> =
+        params.get("transport_type").and_then(|v| v.as_str()).map(|s| s.to_string());
     let preparation_time_minutes: Option<i32> = params
         .get("preparation_time_minutes")
         .and_then(|v| v.as_i64())
         .map(|i| i as i32);
-    let max_distance_km: Option<f64> = params
-        .get("max_distance_km")
-        .and_then(|v| v.as_f64())
-        .or(Some(10.0)); // 10km par défaut
+    let max_distance_km: Option<f64> =
+        params.get("max_distance_km").and_then(|v| v.as_f64()).or(Some(10.0)); // 10km par défaut
 
     // ✅ NOUVEAU: Si pickup/delivery sont fournis, utiliser la recherche géographique optimisée
     let couriers: Vec<Value> = if pickup_lat.is_some() && pickup_lng.is_some() {
@@ -4522,11 +4467,7 @@ async fn list_proof_media(
                         storage_path[path_start + 1..].to_string() // +1 pour garder le "/"
                     } else {
                         // Si pas de /uploads/, utiliser le dernier segment
-                        storage_path
-                            .split('/')
-                            .last()
-                            .unwrap_or(&storage_path)
-                            .to_string()
+                        storage_path.split('/').last().unwrap_or(&storage_path).to_string()
                     }
                 } else {
                     // Déjà un chemin relatif
@@ -4538,10 +4479,7 @@ async fn list_proof_media(
                 };
 
             // Générer URL pré-signée (48 heures = 48 * 3600 secondes)
-            match media_storage
-                .generate_presigned_url(&storage_path_clean, 48 * 3600)
-                .await
-            {
+            match media_storage.generate_presigned_url(&storage_path_clean, 48 * 3600).await {
                 Ok(presigned_url) => {
                     json!({
                         "id": m.id,
@@ -4712,11 +4650,7 @@ async fn enforce_delivery_access(
     user_id: i32,
 ) -> AppResult<()> {
     if summary.creator_id == user_id
-        || summary
-            .recipient
-            .as_ref()
-            .and_then(|recipient| recipient.user_id)
-            == Some(user_id)
+        || summary.recipient.as_ref().and_then(|recipient| recipient.user_id) == Some(user_id)
     {
         return Ok(());
     }
@@ -4985,9 +4919,7 @@ async fn delete_stock_location(
     }
 
     let stock_service = ProductStockService::new(state.pg.clone());
-    stock_service
-        .remove_stock_location(config_id, location_id)
-        .await?;
+    stock_service.remove_stock_location(config_id, location_id).await?;
 
     Ok(Json(json!({
         "success": true,
@@ -5089,9 +5021,8 @@ async fn get_verification_code(
     }
 
     let verification_service = CourierVerificationService::new(state.pg.clone());
-    let verification_code = verification_service
-        .get_verification_code_for_delivery(delivery_id)
-        .await?;
+    let verification_code =
+        verification_service.get_verification_code_for_delivery(delivery_id).await?;
 
     Ok(Json(json!({
         "verification_code": verification_code
@@ -5360,9 +5291,7 @@ async fn update_saved_address(
     }
 
     let repo = delivery_repository(&state)?;
-    let address = repo
-        .update_saved_address(user.id, address_id, payload)
-        .await?;
+    let address = repo.update_saved_address(user.id, address_id, payload).await?;
 
     Ok(Json(json!({
         "success": true,
@@ -5392,12 +5321,9 @@ async fn set_default_saved_address(
     Path(address_id): Path<i32>,
     Json(payload): Json<serde_json::Value>,
 ) -> AppResult<Json<Value>> {
-    let address_type = payload
-        .get("address_type")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| {
-            AppError::BadRequest("address_type est requis ('pickup' ou 'dropoff')".to_string())
-        })?;
+    let address_type = payload.get("address_type").and_then(|v| v.as_str()).ok_or_else(|| {
+        AppError::BadRequest("address_type est requis ('pickup' ou 'dropoff')".to_string())
+    })?;
 
     if !["pickup", "dropoff"].contains(&address_type) {
         return Err(AppError::BadRequest(
@@ -5406,9 +5332,7 @@ async fn set_default_saved_address(
     }
 
     let repo = delivery_repository(&state)?;
-    let address = repo
-        .set_default_saved_address(user.id, address_id, address_type)
-        .await?;
+    let address = repo.set_default_saved_address(user.id, address_id, address_type).await?;
 
     Ok(Json(json!({
         "success": true,
@@ -5438,10 +5362,8 @@ async fn list_delivery_partners(
     }
 
     // ✅ NOUVEAU 2026-01-04: Filtrer par type si fourni (pour l'écran d'enregistrement coursier)
-    let partner_type_filter: Option<String> = params
-        .get("type")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let partner_type_filter: Option<String> =
+        params.get("type").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     let partners: Vec<crate::models::delivery_model::DeliveryPartner> = if let Some(partner_type) =
         partner_type_filter
@@ -5491,10 +5413,8 @@ async fn list_delivery_partners_public(
     Query(params): Query<serde_json::Map<String, serde_json::Value>>,
 ) -> AppResult<Json<Value>> {
     // ✅ NOUVEAU 2026-01-14: Filtrer par type si fourni (pour l'écran d'enregistrement coursier)
-    let partner_type_filter: Option<String> = params
-        .get("type")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_lowercase()); // Normaliser la casse
+    let partner_type_filter: Option<String> =
+        params.get("type").and_then(|v| v.as_str()).map(|s| s.to_lowercase()); // Normaliser la casse
 
     let partners: Vec<crate::models::delivery_model::DeliveryPartner> = if let Some(partner_type) =
         partner_type_filter
@@ -5789,10 +5709,8 @@ async fn search_partners_autocomplete(
     Query(params): Query<serde_json::Map<String, serde_json::Value>>,
 ) -> AppResult<Json<Value>> {
     // Récupérer les paramètres de requête
-    let partner_type: Option<String> = params
-        .get("type")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let partner_type: Option<String> =
+        params.get("type").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     let query: Option<String> = params
         .get("query")
@@ -5800,11 +5718,7 @@ async fn search_partners_autocomplete(
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
 
-    let limit: i64 = params
-        .get("limit")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(20)
-        .min(50); // Limiter à 50 résultats max
+    let limit: i64 = params.get("limit").and_then(|v| v.as_i64()).unwrap_or(20).min(50); // Limiter à 50 résultats max
 
     // Valider le type de partenaire si fourni
     if let Some(ref pt) = partner_type {
@@ -6174,10 +6088,7 @@ async fn report_courier_difficulty(
         relay_location.get("latitude").and_then(|v| v.as_f64()),
         relay_location.get("longitude").and_then(|v| v.as_f64()),
     ) {
-        let address = relay_location
-            .get("address")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
+        let address = relay_location.get("address").and_then(|v| v.as_str()).map(|s| s.to_string());
 
         sqlx::query(
             r#"
@@ -6305,11 +6216,7 @@ async fn accept_delivery(
         .metadata
         .get("notified_couriers")
         .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect()
-        })
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
         .unwrap_or_default();
 
     let courier_id_str = courier_id.to_string();
@@ -6321,10 +6228,7 @@ async fn accept_delivery(
 
     // ✅ NOUVEAU: Vérifier la compatibilité avec les courses actives du coursier
     // Un coursier peut accepter plusieurs courses si elles sont compatibles (même pickup ou sur trajectoire)
-    let active_deliveries = service
-        .repository()
-        .get_courier_active_deliveries(courier_id)
-        .await?;
+    let active_deliveries = service.repository().get_courier_active_deliveries(courier_id).await?;
 
     // Si le coursier a déjà des courses actives, vérifier la compatibilité
     if !active_deliveries.is_empty() {
@@ -6358,10 +6262,7 @@ async fn accept_delivery(
     }
 
     // ✅ Assigner le coursier à la livraison
-    service
-        .repository()
-        .assign_delivery_courier(delivery_id, courier_id)
-        .await?;
+    service.repository().assign_delivery_courier(delivery_id, courier_id).await?;
 
     // ✅ Mettre à jour le statut de matching
     service

@@ -4,11 +4,13 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::sharing_service::{generate_deep_link, is_mobile_user_agent};
 use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
-    response::Json,
-    Extension,
+    http::HeaderMap,
+    response::{Html, Redirect},
+    Extension, Json,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -38,9 +40,7 @@ pub async fn get_products_by_service(
 ) -> AppResult<Json<Vec<ProductResponse>>> {
     let products_service = &state.products_service;
 
-    let products = products_service
-        .get_active_products_by_service(service_id)
-        .await?;
+    let products = products_service.get_active_products_by_service(service_id).await?;
 
     let response: Vec<ProductResponse> = products
         .into_iter()
@@ -70,10 +70,8 @@ pub async fn get_product(
 ) -> AppResult<Json<ProductResponse>> {
     let products_service = &state.products_service;
 
-    let product = products_service
-        .get_product(service_id, product_index)
-        .await?
-        .ok_or_else(|| {
+    let product =
+        products_service.get_product(service_id, product_index).await?.ok_or_else(|| {
             AppError::NotFound(format!(
                 "Produit non trouvé (service_id: {}, product_index: {})",
                 service_id, product_index
@@ -171,9 +169,7 @@ pub async fn delete_product(
     let products_service = &state.products_service;
 
     // ✅ PHASE 5: Suppression uniquement dans la table service_products (plus d'écriture JSONB)
-    products_service
-        .delete_product(service_id, product_index)
-        .await?;
+    products_service.delete_product(service_id, product_index).await?;
 
     // Réindexer les produits restants
     products_service.reindex_products(service_id).await?;
@@ -291,9 +287,7 @@ pub async fn duplicate_product(
     let products_service = &state.products_service;
 
     // Dupliquer le produit
-    let new_product = products_service
-        .duplicate_product(service_id, product_index)
-        .await?;
+    let new_product = products_service.duplicate_product(service_id, product_index).await?;
 
     let response = ProductResponse {
         id: new_product.id,
@@ -310,4 +304,192 @@ pub async fn duplicate_product(
     };
 
     Ok(Json(response))
+}
+
+/// Structure pour les paramètres de requête de partage
+#[derive(Debug, Deserialize)]
+pub struct ShareQueryParams {
+    pub service_id: Option<i32>,
+}
+
+/// GET /product/:product_id?serviceId=:service_id
+/// Route publique pour le partage intelligent de produits
+/// Détecte le User-Agent et redirige vers l'app si mobile, ou affiche la page web si desktop
+pub async fn share_product_redirect(
+    Path(product_id): Path<String>,
+    Query(params): Query<ShareQueryParams>,
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> AppResult<axum::response::Response> {
+    let service_id = params.service_id.ok_or_else(|| {
+        AppError::BadRequest("serviceId est requis dans les paramètres de requête".to_string())
+    })?;
+
+    // Récupérer le User-Agent
+    let user_agent = headers.get("user-agent").and_then(|h| h.to_str().ok()).unwrap_or("");
+
+    // Vérifier si c'est un appareil mobile
+    if is_mobile_user_agent(user_agent) {
+        // Rediriger vers le deep link de l'app
+        let deep_link = generate_deep_link(&product_id, service_id);
+        log::info!(
+            "📱 Redirection mobile vers deep link: {} (User-Agent: {})",
+            deep_link,
+            user_agent
+        );
+        return Ok(Redirect::temporary(&deep_link).into_response());
+    }
+
+    // Sinon, afficher la page web du produit
+    // Récupérer les informations du produit
+    let products_service = &state.products_service;
+
+    // Parser product_id (format: service_id_product_index ou juste product_index)
+    let (parsed_service_id, product_index) = if let Some(underscore_pos) = product_id.find('_') {
+        let service_id_str = &product_id[..underscore_pos];
+        let index_str = &product_id[underscore_pos + 1..];
+        (
+            service_id_str.parse::<i32>().ok(),
+            index_str.parse::<i32>().ok(),
+        )
+    } else {
+        (Some(service_id), product_id.parse::<i32>().ok())
+    };
+
+    let final_service_id = parsed_service_id.unwrap_or(service_id);
+    let final_product_index = product_index.unwrap_or(0);
+
+    // Récupérer le produit
+    let product = products_service
+        .get_product(final_service_id, final_product_index)
+        .await?
+        .ok_or_else(|| {
+            AppError::NotFound(format!(
+                "Produit non trouvé (product_id: {}, service_id: {})",
+                product_id, service_id
+            ))
+        })?;
+
+    let product_data = &product.product_data;
+    let product_name = &product.product_name;
+    let product_price = product.product_price.as_ref().map(|p| p.to_string());
+
+    // Générer la page HTML
+    let html = format!(
+        r#"
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{} - Yukpomnang</title>
+    <meta property="og:title" content="{}" />
+    <meta property="og:description" content="Découvrez ce produit sur Yukpomnang" />
+    <meta property="og:type" content="product" />
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        .container {{
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }}
+        h1 {{
+            color: #1f2937;
+            margin: 0 0 16px 0;
+            font-size: 28px;
+        }}
+        .price {{
+            font-size: 24px;
+            font-weight: bold;
+            color: #10b981;
+            margin: 16px 0;
+        }}
+        .description {{
+            color: #6b7280;
+            line-height: 1.6;
+            margin: 16px 0;
+        }}
+        .button {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 24px;
+            transition: transform 0.2s;
+        }}
+        .button:hover {{
+            transform: translateY(-2px);
+        }}
+        .button:active {{
+            transform: translateY(0);
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{}</h1>
+        {}
+        <div class="description">
+            Découvrez ce produit et bien plus sur Yukpomnang
+        </div>
+        <button class="button" onclick="openApp()">
+            📱 Ouvrir dans l'app Yukpomnang
+        </button>
+    </div>
+    <script>
+        function openApp() {{
+            const deepLink = 'yukpomnang://product/{}?serviceId={}';
+            const appStoreUrl = 'https://apps.apple.com/app/yukpomnang';
+            const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.yukpomnang.app';
+            
+            // Essayer d'ouvrir l'app
+            window.location.href = deepLink;
+            
+            // Si l'app n'est pas installée, redirect après 2s
+            setTimeout(() => {{
+                if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {{
+                    window.location.href = appStoreUrl;
+                }} else {{
+                    window.location.href = playStoreUrl;
+                }}
+            }}, 2000);
+        }}
+    </script>
+</body>
+</html>
+"#,
+        product_name,
+        product_name,
+        product_name,
+        product_price
+            .map(|p| format!(r#"<div class="price">{} XAF</div>"#, p))
+            .unwrap_or_else(|| "".to_string()),
+        product_id,
+        service_id
+    );
+
+    log::info!(
+        "🌐 Affichage page web produit: {} (User-Agent: {})",
+        product_id,
+        user_agent
+    );
+
+    Ok(Html(html).into_response())
 }

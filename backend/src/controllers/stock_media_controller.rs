@@ -44,25 +44,19 @@ pub async fn search_stock_media(
         _ => StockMediaType::Photo,
     };
 
-    let provider = params
-        .provider
-        .as_deref()
-        .and_then(|p| match p.to_lowercase().as_str() {
-            "unsplash" => Some(StockMediaProvider::Unsplash),
-            "pexels" => Some(StockMediaProvider::Pexels),
-            "pixabay" => Some(StockMediaProvider::Pixabay),
-            _ => None,
-        });
+    let provider = params.provider.as_deref().and_then(|p| match p.to_lowercase().as_str() {
+        "unsplash" => Some(StockMediaProvider::Unsplash),
+        "pexels" => Some(StockMediaProvider::Pexels),
+        "pixabay" => Some(StockMediaProvider::Pixabay),
+        _ => None,
+    });
 
-    let orientation = params
-        .orientation
-        .as_deref()
-        .and_then(|o| match o.to_lowercase().as_str() {
-            "landscape" => Some(StockMediaOrientation::Landscape),
-            "portrait" => Some(StockMediaOrientation::Portrait),
-            "square" => Some(StockMediaOrientation::Square),
-            _ => None,
-        });
+    let orientation = params.orientation.as_deref().and_then(|o| match o.to_lowercase().as_str() {
+        "landscape" => Some(StockMediaOrientation::Landscape),
+        "portrait" => Some(StockMediaOrientation::Portrait),
+        "square" => Some(StockMediaOrientation::Square),
+        _ => None,
+    });
 
     let request = StockMediaSearchRequest {
         query: params.query,

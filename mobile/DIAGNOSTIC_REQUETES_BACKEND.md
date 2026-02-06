@@ -160,3 +160,5 @@ aws logs tail /ecs/yukpomnang-backend --follow --region us-east-1 | Select-Strin
 **Corriger d'abord l'URL dans le mobile**, puis vérifier l'accessibilité de l'ALB.
 
 
+
+

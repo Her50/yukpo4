@@ -20,10 +20,8 @@ fn main() {
         // 3. Lister les fichiers
         match fs::read_dir(&model_dir) {
             Ok(entries) => {
-                let files: Vec<_> = entries
-                    .filter_map(|e| e.ok())
-                    .filter(|e| e.path().is_file())
-                    .collect();
+                let files: Vec<_> =
+                    entries.filter_map(|e| e.ok()).filter(|e| e.path().is_file()).collect();
 
                 if files.is_empty() {
                     println!("⚠️  Répertoire vide - Aucun modèle trouvé");

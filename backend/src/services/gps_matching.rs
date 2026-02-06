@@ -113,22 +113,10 @@ pub async fn find_matching_carpools(
 
     for (service_id, data) in carpool_services {
         // Extraire les coordonnées depuis les métadonnées
-        let departure_lat = data
-            .get("departure_latitude")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
-        let departure_lon = data
-            .get("departure_longitude")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
-        let dest_lat = data
-            .get("destination_latitude")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
-        let dest_lon = data
-            .get("destination_longitude")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
+        let departure_lat = data.get("departure_latitude").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let departure_lon = data.get("departure_longitude").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let dest_lat = data.get("destination_latitude").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let dest_lon = data.get("destination_longitude").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
         if departure_lat == 0.0 || departure_lon == 0.0 || dest_lat == 0.0 || dest_lon == 0.0 {
             continue;
@@ -142,16 +130,10 @@ pub async fn find_matching_carpools(
             calculate_distance_km(destination_lat, destination_lon, dest_lat, dest_lon);
 
         if distance_departure <= max_distance_km && distance_destination <= max_distance_km {
-            let departure_name = data
-                .get("departure")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            let destination_name = data
-                .get("destination")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
+            let departure_name =
+                data.get("departure").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let destination_name =
+                data.get("destination").and_then(|v| v.as_str()).unwrap_or("").to_string();
 
             matches.push((service_id, departure_name, destination_name));
         }
@@ -192,10 +174,7 @@ pub async fn find_taxis_in_zone(
 
     for (service_id, data) in taxi_services {
         let taxi_lat = data.get("latitude").and_then(|v| v.as_f64()).unwrap_or(0.0);
-        let taxi_lon = data
-            .get("longitude")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
+        let taxi_lon = data.get("longitude").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
         if taxi_lat == 0.0 || taxi_lon == 0.0 {
             continue;

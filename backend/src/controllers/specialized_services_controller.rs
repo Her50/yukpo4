@@ -1387,22 +1387,16 @@ pub async fn search_properties(
     query_builder.push(" OFFSET ");
     query_builder.push_bind(offset);
 
-    let properties = query_builder
-        .build()
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[search_properties] Erreur: {}", e);
-            AppError::Internal("Erreur recherche biens".to_string())
-        })?;
+    let properties = query_builder.build().fetch_all(&state.pg).await.map_err(|e| {
+        error!("[search_properties] Erreur: {}", e);
+        AppError::Internal("Erreur recherche biens".to_string())
+    })?;
 
     let mut properties_json = Vec::new();
     for row in properties {
         // Extraire photos depuis JSONB
-        let photos_value: Option<serde_json::Value> = row
-            .try_get::<Option<serde_json::Value>, _>("photos")
-            .ok()
-            .flatten();
+        let photos_value: Option<serde_json::Value> =
+            row.try_get::<Option<serde_json::Value>, _>("photos").ok().flatten();
         let photos_array: Option<Vec<String>> = photos_value.and_then(|v| {
             if v.is_array() {
                 Some(
@@ -1560,15 +1554,11 @@ pub async fn create_property(
 
     // Convertir les prix en Decimal
     use rust_decimal::Decimal;
-    let prix_vente = payload
-        .prix_vente
-        .map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
+    let prix_vente = payload.prix_vente.map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
     let prix_location = payload
         .prix_location_mensuel
         .map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
-    let superficie = payload
-        .superficie_m2
-        .map(|s| Decimal::from_f64_retain(s).unwrap_or_default());
+    let superficie = payload.superficie_m2.map(|s| Decimal::from_f64_retain(s).unwrap_or_default());
 
     // Insérer le bien immobilier
     let property_id = sqlx::query_scalar::<_, i32>(
@@ -2085,10 +2075,7 @@ pub async fn get_property_analytics(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Query(query): Query<serde_json::Value>,
 ) -> AppResult<impl IntoResponse> {
-    let property_id = query
-        .get("property_id")
-        .and_then(|v| v.as_i64())
-        .map(|v| v as i32);
+    let property_id = query.get("property_id").and_then(|v| v.as_i64()).map(|v| v as i32);
 
     if property_id.is_none() {
         return Err(AppError::BadRequest("property_id requis".to_string()));
@@ -2901,14 +2888,10 @@ pub async fn search_decorators(
     query_builder.push(" OFFSET ");
     query_builder.push_bind(offset);
 
-    let decorators = query_builder
-        .build()
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[search_decorators] Erreur: {}", e);
-            AppError::Internal("Erreur recherche décorateurs".to_string())
-        })?;
+    let decorators = query_builder.build().fetch_all(&state.pg).await.map_err(|e| {
+        error!("[search_decorators] Erreur: {}", e);
+        AppError::Internal("Erreur recherche décorateurs".to_string())
+    })?;
 
     let mut decorators_json = Vec::new();
     for row in decorators {
@@ -3040,11 +3023,7 @@ pub async fn create_moving_quote(
 
     // Estimer le coût avec IA
     let services_additionnels_value = request.services_additionnels.map(|v| {
-        serde_json::Value::Array(
-            v.into_iter()
-                .map(|s| serde_json::Value::String(s))
-                .collect(),
-        )
+        serde_json::Value::Array(v.into_iter().map(|s| serde_json::Value::String(s)).collect())
     });
     let cost_estimate = moving_service
         .estimate_cost(

@@ -169,42 +169,14 @@ Réponds SEULEMENT le JSON, rien d'autre."#,
         .map_err(|e| AppError::Internal(format!("JSON malformé: {}", e)))?;
 
     Ok(ColorAdjustments {
-        exposure: parsed
-            .get("exposure")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0)
-            * intensity,
-        contrast: parsed
-            .get("contrast")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0)
-            * intensity,
-        saturation: parsed
-            .get("saturation")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0)
-            * intensity,
-        highlights: parsed
-            .get("highlights")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0)
-            * intensity,
-        shadows: parsed
-            .get("shadows")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0)
-            * intensity,
-        temperature: parsed
-            .get("temperature")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0)
-            * intensity,
+        exposure: parsed.get("exposure").and_then(|v| v.as_f64()).unwrap_or(0.0) * intensity,
+        contrast: parsed.get("contrast").and_then(|v| v.as_f64()).unwrap_or(0.0) * intensity,
+        saturation: parsed.get("saturation").and_then(|v| v.as_f64()).unwrap_or(0.0) * intensity,
+        highlights: parsed.get("highlights").and_then(|v| v.as_f64()).unwrap_or(0.0) * intensity,
+        shadows: parsed.get("shadows").and_then(|v| v.as_f64()).unwrap_or(0.0) * intensity,
+        temperature: parsed.get("temperature").and_then(|v| v.as_f64()).unwrap_or(0.0) * intensity,
         tint: parsed.get("tint").and_then(|v| v.as_f64()).unwrap_or(0.0) * intensity,
-        vibrance: parsed
-            .get("vibrance")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0)
-            * intensity,
+        vibrance: parsed.get("vibrance").and_then(|v| v.as_f64()).unwrap_or(0.0) * intensity,
     })
 }
 

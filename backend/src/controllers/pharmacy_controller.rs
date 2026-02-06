@@ -530,13 +530,10 @@ pub async fn search_pharmacies(
         } else {
             sql.push_str(" ORDER BY p.is_on_duty_now DESC, p.nom ASC LIMIT 50");
 
-            sqlx::query_as::<_, Pharmacy>(&sql)
-                .fetch_all(&state.pg)
-                .await
-                .map_err(|e| {
-                    error!("[search_pharmacies] Erreur recherche: {}", e);
-                    AppError::Internal("Erreur recherche".to_string())
-                })?
+            sqlx::query_as::<_, Pharmacy>(&sql).fetch_all(&state.pg).await.map_err(|e| {
+                error!("[search_pharmacies] Erreur recherche: {}", e);
+                AppError::Internal("Erreur recherche".to_string())
+            })?
         }
     };
 

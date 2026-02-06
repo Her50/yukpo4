@@ -212,11 +212,8 @@ impl ExperiencesEtudiantsService {
             count_query.push_bind(filiere);
         }
 
-        let total: i64 = count_query
-            .build_query_scalar()
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|e| {
+        let total: i64 =
+            count_query.build_query_scalar().fetch_one(&*self.pool).await.map_err(|e| {
                 error!("[EXPERIENCES_ETUDIANTS] Erreur count: {}", e);
                 AppError::Internal(format!("Erreur count expériences: {}", e))
             })?;

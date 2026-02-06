@@ -146,9 +146,7 @@ pub async fn notify_live_scheduled(
     let body = format!(
         "Le live \"{}\" commencera le {}.",
         session_title,
-        scheduled_start
-            .with_timezone(&chrono::Local)
-            .format("%d/%m %H:%M")
+        scheduled_start.with_timezone(&chrono::Local).format("%d/%m %H:%M")
     );
 
     let primary_service_id = service_ids.first().copied();

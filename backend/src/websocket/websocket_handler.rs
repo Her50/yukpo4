@@ -184,10 +184,7 @@ async fn handle_notifications_websocket(socket: WebSocket, user_id: i32) {
 
             // ✅ CORRIGÉ: Envoi de notification avec gestion d'erreur améliorée
             // Détecte les connexions fermées et les gère proprement
-            match sender
-                .send(Message::Text(notification.to_string().into()))
-                .await
-            {
+            match sender.send(Message::Text(notification.to_string().into())).await {
                 Ok(_) => {
                     log::debug!(
                         "Notification envoyée avec succès à l'utilisateur {}",

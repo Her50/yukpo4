@@ -160,9 +160,7 @@ impl DeliveryPaymentService {
                 &*crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS
             {
                 metrics.payment_reservation_failed_total.inc();
-                metrics
-                    .payment_reservation_failed_insufficient_balance_total
-                    .inc();
+                metrics.payment_reservation_failed_insufficient_balance_total.inc();
             }
 
             return Err(AppError::BadRequest(format!(
@@ -206,9 +204,7 @@ impl DeliveryPaymentService {
         // ✅ Monitoring : Enregistrer réservation créée
         if let Ok(metrics) = &*crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS {
             metrics.payment_reservation_created_total.inc();
-            metrics
-                .payment_reservation_amount_cents_total
-                .inc_by(total_amount_cents as f64);
+            metrics.payment_reservation_amount_cents_total.inc_by(total_amount_cents as f64);
         }
 
         // ✅ Débiter immédiatement (réservation = débit immédiat pour garantir les fonds)
@@ -240,9 +236,7 @@ impl DeliveryPaymentService {
             product_price_cents: reservation.product_price_cents,
             delivery_cost_cents: reservation.delivery_cost_cents,
             total_amount_cents: reservation.total_amount_cents,
-            billing_mode: reservation
-                .billing_mode
-                .unwrap_or_else(|| "client_pays".to_string()),
+            billing_mode: reservation.billing_mode.unwrap_or_else(|| "client_pays".to_string()),
             merchant_pays_delivery: reservation.merchant_pays_delivery.unwrap_or(false),
             reservation_status: reservation
                 .reservation_status

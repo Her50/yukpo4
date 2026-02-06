@@ -55,3 +55,5 @@ CREATE INDEX IF NOT EXISTS idx_flash_sale_commentaries_sale ON live_flash_sale_c
 CREATE INDEX IF NOT EXISTS idx_flash_sale_commentaries_user ON live_flash_sale_commentaries(user_id);
 CREATE INDEX IF NOT EXISTS idx_flash_sale_commentaries_created_at ON live_flash_sale_commentaries(created_at DESC);
 
+
+

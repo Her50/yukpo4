@@ -88,8 +88,7 @@ impl CandidaturesService {
         })?;
 
         // Invalider les caches
-        self.invalidate_candidature_cache(request.offre_id, candidat_id)
-            .await;
+        self.invalidate_candidature_cache(request.offre_id, candidat_id).await;
 
         info!(
             "[create_candidature] ✅ Candidature créée avec id={}",

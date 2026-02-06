@@ -63,10 +63,7 @@ pub async fn list_assets(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<ResponseJson<ListAssetsResponse>, StatusCode> {
     let pool = &state.pg;
-    let user_id: i32 = params
-        .get("user_id")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(1); // TODO: Récupérer depuis JWT
+    let user_id: i32 = params.get("user_id").and_then(|v| v.parse().ok()).unwrap_or(1); // TODO: Récupérer depuis JWT
 
     let filter_type = params.get("type").cloned();
 

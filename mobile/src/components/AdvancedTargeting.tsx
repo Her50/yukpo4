@@ -180,6 +180,54 @@ export const AdvancedTargeting: React.FC<AdvancedTargetingProps> = ({
                     ))}
                 </View>
             </View>
+
+            {/* ✅ NOUVEAU: Zones géographiques */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>📍 Zones géographiques</Text>
+                <Text style={styles.sectionHint}>
+                    Sélectionnez les zones spécifiques pour cibler votre publicité
+                </Text>
+                <View style={styles.tagsContainer}>
+                    {[
+                        'Douala', 'Yaoundé', 'Abidjan', 'Dakar', 'Bamako',
+                        'Ouagadougou', 'Niamey', 'Lomé', 'Cotonou', 'Kinshasa',
+                        'Brazzaville', 'Libreville', 'Bangui', 'N\'Djamena', 'Autre'
+                    ].map((location) => (
+                        <TouchableOpacity
+                            key={location}
+                            style={[
+                                styles.tag,
+                                targeting.locations.includes(location) && styles.tagActive,
+                            ]}
+                            onPress={() => {
+                                const newLocations = targeting.locations.includes(location)
+                                    ? targeting.locations.filter(l => l !== location)
+                                    : [...targeting.locations, location];
+                                onTargetingChange({ ...targeting, locations: newLocations });
+                            }}
+                        >
+                            <Text
+                                style={[
+                                    styles.tagText,
+                                    targeting.locations.includes(location) && styles.tagTextActive,
+                                ]}
+                            >
+                                {location}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+                {targeting.locations.length > 0 && (
+                    <View style={styles.selectedLocations}>
+                        <Text style={styles.selectedLocationsLabel}>
+                            Zones sélectionnées ({targeting.locations.length}):
+                        </Text>
+                        <Text style={styles.selectedLocationsText}>
+                            {targeting.locations.join(', ')}
+                        </Text>
+                    </View>
+                )}
+            </View>
         </NativeCard>
     );
 };
@@ -284,6 +332,29 @@ const styles = StyleSheet.create({
     },
     tagTextActive: {
         color: '#fff',
+    },
+    sectionHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginBottom: 12,
+        lineHeight: 16,
+    },
+    selectedLocations: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: modernColors.surfaceVariant,
+        borderRadius: 8,
+    },
+    selectedLocationsLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    selectedLocationsText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        lineHeight: 18,
     },
 });
 

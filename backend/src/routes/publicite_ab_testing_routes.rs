@@ -46,10 +46,7 @@ pub async fn get_ab_test_stats(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<ResponseJson<ABTestStatsResponse>, StatusCode> {
     let pool = &state.pg;
-    let campaign_id: i32 = params
-        .get("campaign_id")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
+    let campaign_id: i32 = params.get("campaign_id").and_then(|v| v.parse().ok()).unwrap_or(0);
 
     if campaign_id == 0 {
         return Err(StatusCode::BAD_REQUEST);
@@ -63,11 +60,7 @@ pub async fn get_ab_test_stats(
         WHERE id = $1
     "#;
 
-    match sqlx::query(query)
-        .bind(campaign_id)
-        .fetch_optional(pool)
-        .await
-    {
+    match sqlx::query(query).bind(campaign_id).fetch_optional(pool).await {
         Ok(Some(row)) => {
             // Parser les données A/B testing
             let ab_testing: Option<serde_json::Value> = row.get("ab_testing");
@@ -179,9 +172,7 @@ pub async fn get_ab_test_stats(
 
                     // Trier par performance (CTR décroissant)
                     stats.sort_by(|a, b| {
-                        b.ctr
-                            .partial_cmp(&a.ctr)
-                            .unwrap_or(std::cmp::Ordering::Equal)
+                        b.ctr.partial_cmp(&a.ctr).unwrap_or(std::cmp::Ordering::Equal)
                     });
 
                     // Marquer le meilleur comme gagnant

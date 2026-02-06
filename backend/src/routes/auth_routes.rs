@@ -6,7 +6,7 @@ use axum::{
 };
 use std::sync::Arc;
 
-use crate::controllers::auth_controller::{login_handler, register_user};
+use crate::controllers::auth_controller::{bootstrap_super_admin, login_handler, register_user};
 use crate::middlewares::anti_bruteforce;
 use crate::middlewares::cors::cors_preflight_handler;
 use crate::state::AppState;
@@ -26,6 +26,8 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/auth/login", options(cors_preflight_handler))
         .route("/auth/register", post(register_user))
         .route("/auth/register", options(cors_preflight_handler))
+        // ✅ TEMPORAIRE: Endpoint pour créer le super admin (sécurisé par token)
+        .route("/auth/bootstrap-super-admin", post(bootstrap_super_admin))
         .layer(middleware::from_fn(
             crate::middlewares::monitoring::monitoring,
         ))

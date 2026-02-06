@@ -101,9 +101,8 @@ pub async fn reindex_all_services(pool: &PgPool) -> Result<usize, sqlx::Error> {
         full_vector.extend(location_vector.clone());
 
         // Extraire labels
-        let product_labels: Vec<String> = if let Some(sous_caracs) = produits_field
-            .get("sous_caracteristiques")
-            .and_then(|v| v.as_object())
+        let product_labels: Vec<String> = if let Some(sous_caracs) =
+            produits_field.get("sous_caracteristiques").and_then(|v| v.as_object())
         {
             sous_caracs.keys().map(|k| k.to_string()).collect()
         } else {

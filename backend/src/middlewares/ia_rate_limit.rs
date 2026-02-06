@@ -34,11 +34,8 @@ pub async fn ia_rate_limit(
     match state.redis_client.get_multiplexed_async_connection().await {
         Ok(mut conn) => {
             // Vérifier compteur minute
-            let minute_count: i32 = conn
-                .get::<_, Option<i32>>(&minute_key)
-                .await
-                .unwrap_or(None)
-                .unwrap_or(0);
+            let minute_count: i32 =
+                conn.get::<_, Option<i32>>(&minute_key).await.unwrap_or(None).unwrap_or(0);
 
             if minute_count >= limit_per_minute {
                 warn!(
@@ -57,11 +54,8 @@ pub async fn ia_rate_limit(
             }
 
             // Vérifier compteur heure
-            let hour_count: i32 = conn
-                .get::<_, Option<i32>>(&hour_key)
-                .await
-                .unwrap_or(None)
-                .unwrap_or(0);
+            let hour_count: i32 =
+                conn.get::<_, Option<i32>>(&hour_key).await.unwrap_or(None).unwrap_or(0);
 
             if hour_count >= limit_per_hour {
                 warn!(

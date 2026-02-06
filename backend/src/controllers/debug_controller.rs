@@ -304,10 +304,8 @@ pub async fn check_autocomplete_tables(
         .await
         .unwrap_or_default();
 
-        let villes_map: serde_json::Map<String, serde_json::Value> = villes
-            .into_iter()
-            .map(|(ville, count)| (ville, json!(count)))
-            .collect();
+        let villes_map: serde_json::Map<String, serde_json::Value> =
+            villes.into_iter().map(|(ville, count)| (ville, json!(count))).collect();
 
         results.insert(
             "african_locations".to_string(),
@@ -511,13 +509,9 @@ pub async fn clean_invalid_combinations(
             .unwrap_or(0);
 
     // 5. Optimiser la table
-    let _ = sqlx::query("REINDEX TABLE autocomplete_combinations")
-        .execute(pool)
-        .await;
+    let _ = sqlx::query("REINDEX TABLE autocomplete_combinations").execute(pool).await;
 
-    let _ = sqlx::query("ANALYZE autocomplete_combinations")
-        .execute(pool)
-        .await;
+    let _ = sqlx::query("ANALYZE autocomplete_combinations").execute(pool).await;
 
     log::info!(
         "✅ [Debug] Nettoyage terminé: {} combinaisons supprimées",

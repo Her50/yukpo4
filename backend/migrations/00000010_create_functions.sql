@@ -295,3 +295,5 @@ $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION add_product_to_service_jsonb_v2 IS 'Fonction optimisée qui évite les verrous longs. Lit les données AVANT le verrou, construit le nouveau JSONB en mémoire, puis fait un UPDATE atomique rapide.';
 
+
+

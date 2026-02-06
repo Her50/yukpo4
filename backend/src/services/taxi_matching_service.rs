@@ -182,9 +182,7 @@ impl TaxiMatchingService {
                 .partial_cmp(&a.compatibility_score)
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then_with(|| {
-                    a.distance_km
-                        .partial_cmp(&b.distance_km)
-                        .unwrap_or(std::cmp::Ordering::Equal)
+                    a.distance_km.partial_cmp(&b.distance_km).unwrap_or(std::cmp::Ordering::Equal)
                 })
         });
 

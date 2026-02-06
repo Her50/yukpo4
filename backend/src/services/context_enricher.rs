@@ -63,11 +63,7 @@ pub async fn enrichir_input_context(mut multipart: Multipart) -> AppResult<()> {
     while let Some(field) = multipart.next_field().await? {
         let name = field.name().unwrap_or("unknown").to_string();
         let file_name = field.file_name().unwrap_or("fichier").to_string();
-        let ext = file_name
-            .split('.')
-            .next_back()
-            .unwrap_or("bin")
-            .to_lowercase();
+        let ext = file_name.split('.').next_back().unwrap_or("bin").to_lowercase();
         let bytes = field.bytes().await?;
 
         // ✅ NOUVEAU: Validation de taille avant traitement

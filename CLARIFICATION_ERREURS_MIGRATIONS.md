@@ -174,3 +174,5 @@ SELECT EXISTS(
 **Conclusion** : Les erreurs PostgreSQL sont réelles, les corrections sont nécessaires, mais elles doivent être déployées pour être effectives.
 
 
+
+

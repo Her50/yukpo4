@@ -368,10 +368,7 @@ mod tests {
 
         let couriers = vec![(1, 6.3680, 2.3900)];
 
-        let solution = solver
-            .solve(deliveries, couriers, 10)
-            .await
-            .expect("Should solve VRP");
+        let solution = solver.solve(deliveries, couriers, 10).await.expect("Should solve VRP");
 
         assert_eq!(solution.routes.len(), 1);
         assert!(solution.total_distance_km > 0.0);

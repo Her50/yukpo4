@@ -172,3 +172,5 @@
 
 **32 fichiers de migration créés** couvrant **~95% du contenu** du fichier original, organisés de manière logique et compatible avec SQLx. Les fichiers sont prêts à être utilisés pour remplacer le système de migration custom.
 
+
+

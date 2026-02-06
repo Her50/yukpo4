@@ -31,3 +31,5 @@ END $$;
 -- - idx_timestamp: sur timestamp (pour tri et nettoyage)
 -- Ils sont appliqués automatiquement au démarrage du backend via main.rs
 
+
+

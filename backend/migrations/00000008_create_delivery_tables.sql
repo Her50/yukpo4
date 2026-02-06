@@ -533,3 +533,5 @@ ON CONFLICT (slug) DO UPDATE SET
 -- Réinitialiser la séquence pour commencer à 9 (après les 8 types fixes)
 SELECT setval('parcel_types_id_seq', 8, true);
 
+
+

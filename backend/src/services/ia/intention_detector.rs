@@ -274,9 +274,7 @@ mod tests {
         };
 
         assert_eq!(
-            detector
-                .parse_intention_response("creation_service")
-                .unwrap(),
+            detector.parse_intention_response("creation_service").unwrap(),
             "creation_service"
         );
         assert_eq!(
@@ -284,9 +282,7 @@ mod tests {
             "creation_service"
         );
         assert_eq!(
-            detector
-                .parse_intention_response("recherche_service")
-                .unwrap(),
+            detector.parse_intention_response("recherche_service").unwrap(),
             "recherche_service"
         );
         assert_eq!(
@@ -294,9 +290,7 @@ mod tests {
             "echange"
         );
         assert_eq!(
-            detector
-                .parse_intention_response("question_generale")
-                .unwrap(),
+            detector.parse_intention_response("question_generale").unwrap(),
             "question_generale"
         );
         assert_eq!(
@@ -304,9 +298,7 @@ mod tests {
             "support"
         );
         assert_eq!(
-            detector
-                .parse_intention_response("intention_inconnue")
-                .unwrap(),
+            detector.parse_intention_response("intention_inconnue").unwrap(),
             "question_generale"
         );
     }

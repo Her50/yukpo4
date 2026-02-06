@@ -162,25 +162,17 @@ async fn fetch_distribution_context(
     let ai_tags = row
         .ai_tags
         .map(|tags: Vec<String>| {
-            tags.into_iter()
-                .filter(|tag| !tag.trim().is_empty())
-                .collect::<Vec<_>>()
+            tags.into_iter().filter(|tag| !tag.trim().is_empty()).collect::<Vec<_>>()
         })
         .unwrap_or_default();
 
-    let ai_metadata = row
-        .ai_metadata
-        .unwrap_or_else(|| Value::Object(Default::default()));
+    let ai_metadata = row.ai_metadata.unwrap_or_else(|| Value::Object(Default::default()));
 
     let service_snapshot = build_service_snapshot(&row.service_data);
 
     let product_snapshot = match provided_snapshot {
         Some(snapshot) => Some(snapshot),
-        None => state
-            .commerce_connector
-            .snapshot_by_index(service_id, product_index)
-            .await
-            .ok(),
+        None => state.commerce_connector.snapshot_by_index(service_id, product_index).await.ok(),
     };
 
     Ok(DistributionContext {
@@ -199,17 +191,10 @@ fn build_service_snapshot(service_data: &Value) -> Value {
     let total_products = produits.len();
     let products_in_stock = produits
         .iter()
-        .filter(|item| {
-            item.get("stock")
-                .and_then(|stock| stock.as_i64())
-                .unwrap_or(0)
-                > 0
-        })
+        .filter(|item| item.get("stock").and_then(|stock| stock.as_i64()).unwrap_or(0) > 0)
         .count();
     let has_promo = produits.iter().any(|item| {
-        item.get("promotion_active")
-            .and_then(|value| value.as_bool())
-            .unwrap_or(false)
+        item.get("promotion_active").and_then(|value| value.as_bool()).unwrap_or(false)
     });
 
     let deliveries = service_data

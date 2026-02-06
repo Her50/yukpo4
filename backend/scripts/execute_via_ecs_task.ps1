@@ -98,3 +98,5 @@ Write-Host "  2. Cloner le repo dans CloudShell" -ForegroundColor Gray
 Write-Host "  3. Executer les scripts depuis CloudShell" -ForegroundColor Gray
 
 
+
+

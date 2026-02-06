@@ -750,11 +750,20 @@ const CourierRegistrationScreen: React.FC = () => {
                 partner_id: selectedPartnerId, // ✅ NOUVEAU 2026-01-04: ID du partenaire sélectionné
             };
 
+            // ✅ CORRIGÉ: Convertir -1 (Yukpo virtuel) en null pour éviter les erreurs de contrainte de clé étrangère
+            const validPartnerId = selectedPartnerId && selectedPartnerId > 0 ? selectedPartnerId : null;
+            
+            console.log('[CourierRegistrationScreen] 🔍 Soumission avec partner_id:', {
+                selectedPartnerId,
+                validPartnerId,
+                'est Yukpo virtuel': selectedPartnerId === -1,
+            });
+
             const response = await deliveryApi.submitCourierApplication({
                 profile_data: profileData,
                 documents,
                 submitted: submit,
-                partner_id: selectedPartnerId, // ✅ NOUVEAU 2026-01-04: Envoyer aussi partner_id à la racine pour le backend
+                partner_id: validPartnerId, // ✅ CORRIGÉ: Utiliser validPartnerId (null si -1 ou invalide)
             });
 
             // ✅ DEBUG: Log complet de la réponse pour diagnostic

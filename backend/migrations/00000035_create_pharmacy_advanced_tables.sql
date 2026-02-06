@@ -131,3 +131,5 @@ COMMENT ON TABLE pharmacy_order_items IS 'Détails des médicaments dans chaque 
 COMMENT ON TABLE pharmacy_reservations IS 'Réservations de médicaments en attente de disponibilité';
 COMMENT ON TABLE pharmacy_analytics IS 'Statistiques quotidiennes des pharmacies pour analytics';
 
+
+

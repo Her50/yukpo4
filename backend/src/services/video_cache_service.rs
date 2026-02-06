@@ -76,9 +76,7 @@ impl VideoCacheService {
         let ttl = ttl.unwrap_or(self.default_ttl);
 
         if let Some(redis) = &self.redis {
-            redis
-                .set_json(cache_key, &session, Some(ttl.as_secs()))
-                .await?;
+            redis.set_json(cache_key, &session, Some(ttl.as_secs())).await?;
         } else {
             // ✅ Fallback: Cache en DB
             sqlx::query(

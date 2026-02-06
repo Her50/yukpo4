@@ -66,8 +66,7 @@ impl DeliveryDemandForecastingService {
         let forecast = self.calculate_forecast(&zone, hour, day_of_week).await?;
 
         // Mettre en cache
-        self.forecast_cache
-            .insert(cache_key, (forecast.clone(), Utc::now()));
+        self.forecast_cache.insert(cache_key, (forecast.clone(), Utc::now()));
 
         Ok(forecast)
     }
@@ -163,8 +162,7 @@ impl DeliveryDemandForecastingService {
 
         // Invalider le cache pour cette zone/heure
         let cache_key = format!("{}_{}_0", zone.zone_id, hour); // day_of_week = 0 pour pattern
-        self.forecast_cache
-            .retain(|k, _| !k.starts_with(&cache_key));
+        self.forecast_cache.retain(|k, _| !k.starts_with(&cache_key));
 
         log::info!(
             "[Demand Forecasting] Recorded demand {} for zone {} at hour {}",

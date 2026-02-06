@@ -1,0 +1,28 @@
+# Configuration rustfmt pour garantir un formatage cohérent
+# Cette configuration évite les différences de formatage entre environnements
+# ✅ Utilise uniquement les options stables (pas de nightly features)
+
+# Longueur maximale des lignes (défaut: 100)
+max_width = 100
+
+# Indentation (défaut: 4)
+tab_spaces = 4
+
+# Nouvelle ligne à la fin des fichiers (Unix pour cohérence CI/CD)
+newline_style = "Unix"
+
+# Espacement
+use_small_heuristics = "Default"
+
+# Autres options
+chain_width = 80
+single_line_if_else_max_width = 50
+
+# Note: Les options suivantes nécessitent Rust nightly et sont donc désactivées:
+# - format_strings (nightly)
+# - format_code_in_doc_comments (nightly)
+# - format_macro_matchers (nightly)
+# - format_macro_bodies (nightly)
+# - imports_granularity (nightly)
+# - group_imports (nightly)
+

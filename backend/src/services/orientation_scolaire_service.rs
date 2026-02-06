@@ -237,11 +237,8 @@ impl OrientationScolaireService {
             count_query.push(")");
         }
 
-        let total: i64 = count_query
-            .build_query_scalar()
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|e| {
+        let total: i64 =
+            count_query.build_query_scalar().fetch_one(&*self.pool).await.map_err(|e| {
                 error!("[ORIENTATION_SCOLAIRE] Erreur count: {}", e);
                 AppError::Internal(format!("Erreur count établissements: {}", e))
             })?;
@@ -316,11 +313,7 @@ impl OrientationScolaireService {
 
         // Récupérer les statistiques actuelles
         let etablissement = self.get_etablissement_details(etablissement_id).await?;
-        let mut stats = etablissement
-            .statistiques_examens
-            .as_object()
-            .cloned()
-            .unwrap_or_default();
+        let mut stats = etablissement.statistiques_examens.as_object().cloned().unwrap_or_default();
 
         // Mettre à jour les statistiques pour l'année
         let annee_stats = json!({
@@ -485,12 +478,7 @@ impl OrientationScolaireService {
     /// Invalider le cache de recherche
     async fn invalidate_cache_search(&self) {
         let pattern = "orientation:search:*";
-        if let Ok(mut conn) = self
-            .state
-            .redis_client
-            .get_multiplexed_async_connection()
-            .await
-        {
+        if let Ok(mut conn) = self.state.redis_client.get_multiplexed_async_connection().await {
             let _: Result<(), _> = conn.del(pattern).await;
         }
     }

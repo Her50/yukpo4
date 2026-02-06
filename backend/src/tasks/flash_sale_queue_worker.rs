@@ -81,18 +81,16 @@ impl FlashSaleQueueWorker {
     }
 
     async fn ensure_consumer_group(&self) -> AppResult<()> {
-        let mut conn = redis_helper::get_redis_connection(&self.redis, 3, 100)
-            .await
-            .map_err(|e| {
+        let mut conn =
+            redis_helper::get_redis_connection(&self.redis, 3, 100).await.map_err(|e| {
                 crate::core::types::AppError::Internal(format!("Redis connection failed: {}", e))
             })?;
 
         // XGROUP CREATE avec MKSTREAM si nécessaire
         // Note: Utiliser xgroup_create_mkstream de redis-rs
         use redis::AsyncCommands;
-        let _: Result<(), _> = conn
-            .xgroup_create_mkstream(&self.stream_name, &self.consumer_group, "0")
-            .await;
+        let _: Result<(), _> =
+            conn.xgroup_create_mkstream(&self.stream_name, &self.consumer_group, "0").await;
 
         // Si le groupe existe déjà, on ignore l'erreur
 
@@ -101,9 +99,8 @@ impl FlashSaleQueueWorker {
     }
 
     async fn process_batch(&self) -> AppResult<()> {
-        let mut conn = redis_helper::get_redis_connection(&self.redis, 3, 100)
-            .await
-            .map_err(|e| {
+        let mut conn =
+            redis_helper::get_redis_connection(&self.redis, 3, 100).await.map_err(|e| {
                 crate::core::types::AppError::Internal(format!("Redis connection failed: {}", e))
             })?;
 
@@ -213,10 +210,7 @@ impl FlashSaleQueueWorker {
         self.update_ticket_status(ticket_id, "processing").await?;
 
         // Vérifier le stock dans le cache (fast path)
-        if let Some(available_stock) = self
-            .cache
-            .get_available_stock(request.flash_sale_id)
-            .await?
+        if let Some(available_stock) = self.cache.get_available_stock(request.flash_sale_id).await?
         {
             if available_stock < request.quantity {
                 self.update_ticket_status(ticket_id, "failed").await?;
@@ -239,12 +233,8 @@ impl FlashSaleQueueWorker {
                 // Mettre à jour le cache
                 let available =
                     (summary.stock_target as i64 - summary.reserved_quantity).max(0) as i32;
-                self.cache
-                    .set_available_stock(request.flash_sale_id, available)
-                    .await?;
-                self.cache
-                    .set_flash_sale_summary(request.flash_sale_id, &summary)
-                    .await?;
+                self.cache.set_available_stock(request.flash_sale_id, available).await?;
+                self.cache.set_flash_sale_summary(request.flash_sale_id, &summary).await?;
 
                 // ✅ NOUVEAU: Diffuser la mise à jour de stock via Redis pub/sub
                 LiveFlashSaleService::broadcast_stock_update(
@@ -268,9 +258,8 @@ impl FlashSaleQueueWorker {
     }
 
     async fn update_ticket_status(&self, ticket_id: &str, status: &str) -> AppResult<()> {
-        let mut conn = redis_helper::get_redis_connection(&self.redis, 3, 100)
-            .await
-            .map_err(|e| {
+        let mut conn =
+            redis_helper::get_redis_connection(&self.redis, 3, 100).await.map_err(|e| {
                 crate::core::types::AppError::Internal(format!("Redis connection failed: {}", e))
             })?;
 
@@ -290,20 +279,17 @@ impl FlashSaleQueueWorker {
                 crate::core::types::AppError::Internal(format!("Serialization failed: {}", e))
             })?;
 
-            conn.set_ex::<_, _, ()>(&ticket_key, json, 300)
-                .await
-                .map_err(|e| {
-                    crate::core::types::AppError::Internal(format!("Redis SET failed: {}", e))
-                })?;
+            conn.set_ex::<_, _, ()>(&ticket_key, json, 300).await.map_err(|e| {
+                crate::core::types::AppError::Internal(format!("Redis SET failed: {}", e))
+            })?;
         }
 
         Ok(())
     }
 
     async fn ack_message(&self, message_id: &str) -> AppResult<()> {
-        let mut conn = redis_helper::get_redis_connection(&self.redis, 3, 100)
-            .await
-            .map_err(|e| {
+        let mut conn =
+            redis_helper::get_redis_connection(&self.redis, 3, 100).await.map_err(|e| {
                 crate::core::types::AppError::Internal(format!("Redis connection failed: {}", e))
             })?;
 

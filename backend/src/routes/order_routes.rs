@@ -170,26 +170,16 @@ async fn validate_order(
     }
 
     let order_service = OrderPreparationService::new(state.pg.clone());
-    let updated_order = order_service
-        .validate_order(order_id, user.id, payload)
-        .await?;
+    let updated_order = order_service.validate_order(order_id, user.id, payload).await?;
 
     // ✅ NOUVEAU : Si la commande est "ready" (is_immediately_available = TRUE), démarrer le matching immédiatement
     if updated_order.status == "ready" {
         // Récupérer la livraison associée
         if let Some(delivery_id) = updated_order.delivery_id {
             // Utiliser le delivery_service depuis l'état
-            if let Ok(summary) = state
-                .delivery_service
-                .get_delivery_summary(delivery_id)
-                .await
-            {
+            if let Ok(summary) = state.delivery_service.get_delivery_summary(delivery_id).await {
                 // Démarrer le matching immédiatement
-                if let Err(e) = state
-                    .delivery_service
-                    .enqueue_delivery_matching(&summary)
-                    .await
-                {
+                if let Err(e) = state.delivery_service.enqueue_delivery_matching(&summary).await {
                     log::warn!(
                         "[OrderRoutes] Erreur démarrage matching pour delivery_id={}: {}",
                         delivery_id,
@@ -256,9 +246,8 @@ async fn reject_order(
     }
 
     let order_service = OrderPreparationService::new(state.pg.clone());
-    let updated_order = order_service
-        .reject_order(order_id, order.provider_user_id, payload)
-        .await?;
+    let updated_order =
+        order_service.reject_order(order_id, order.provider_user_id, payload).await?;
 
     // Notifier le client avec produits similaires
     let notification_service = SmartNotificationService::new(state.pg.clone());
@@ -415,14 +404,10 @@ async fn get_order(
     let order_value =
         order.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
 
-    let client_user_id = order_value
-        .get("client_user_id")
-        .and_then(|v| v.as_i64())
-        .map(|v| v as i32);
-    let provider_user_id = order_value
-        .get("provider_user_id")
-        .and_then(|v| v.as_i64())
-        .map(|v| v as i32);
+    let client_user_id =
+        order_value.get("client_user_id").and_then(|v| v.as_i64()).map(|v| v as i32);
+    let provider_user_id =
+        order_value.get("provider_user_id").and_then(|v| v.as_i64()).map(|v| v as i32);
 
     // Vérifier que l'utilisateur est le client ou le prestataire
     if let (Some(client_id), Some(provider_id)) = (client_user_id, provider_user_id) {

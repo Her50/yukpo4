@@ -34,12 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .payload()
             .downcast_ref::<&str>()
             .copied()
-            .or_else(|| {
-                panic_info
-                    .payload()
-                    .downcast_ref::<String>()
-                    .map(|s| s.as_str())
-            })
+            .or_else(|| panic_info.payload().downcast_ref::<String>().map(|s| s.as_str()))
             .unwrap_or("unknown panic message");
 
         log::error!("🚨 PANIC détecté à {}: {}", location, message);
@@ -802,10 +797,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Vérifier à nouveau (sans migration consolidée)
                 let users_exists_after: bool = sqlx::query_scalar(
                     "SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_schema = 'public' 
-                        AND table_name = 'users'
-                    )",
+                                SELECT FROM information_schema.tables 
+                                WHERE table_schema = 'public' 
+                                AND table_name = 'users'
+                            )",
                 )
                 .fetch_one(&pg_pool)
                 .await
@@ -813,10 +808,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 let services_exists_after: bool = sqlx::query_scalar(
                     "SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_schema = 'public' 
-                        AND table_name = 'services'
-                    )",
+                                SELECT FROM information_schema.tables 
+                                WHERE table_schema = 'public' 
+                                AND table_name = 'services'
+                            )",
                 )
                 .fetch_one(&pg_pool)
                 .await
@@ -1018,8 +1013,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // ✅ CORRECTION 2026-02-02: Forcer la mise à jour de refresh_services_search_optimized()
             // Cette migration doit être exécutée APRÈS la création de l'index pour s'assurer que
             // la fonction a la logique de création automatique de l'index
-            let migration_fix_function_sql =
-                include_str!("../migrations/20260202_fix_refresh_services_search_optimized_function.sql");
+            let migration_fix_function_sql = include_str!(
+                "../migrations/20260202_fix_refresh_services_search_optimized_function.sql"
+            );
             log::info!(
                 "🔍 [MIGRATION CORRECTION FUNCTION] Application de la correction de refresh_services_search_optimized()..."
             );
@@ -1102,14 +1098,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .fetch_all(&pg_pool)
                     .await
                     {
-                        let successful: Vec<_> = applied_migrations
-                            .iter()
-                            .filter(|(_, _, success)| *success)
-                            .collect();
-                        let failed: Vec<_> = applied_migrations
-                            .iter()
-                            .filter(|(_, _, success)| !*success)
-                            .collect();
+                        let successful: Vec<_> =
+                            applied_migrations.iter().filter(|(_, _, success)| *success).collect();
+                        let failed: Vec<_> =
+                            applied_migrations.iter().filter(|(_, _, success)| !*success).collect();
 
                         log::error!(
                             "   📊 Migrations en base: {} réussies, {} échouées",

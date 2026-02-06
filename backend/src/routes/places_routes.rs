@@ -206,10 +206,8 @@ pub async fn autocomplete_places(
                         .collect();
 
                     // ✅ Compatibilité: format simple (string) pour l'ancien code
-                    let simple_results: Vec<String> = enriched_results
-                        .iter()
-                        .map(|r| r.description.clone())
-                        .collect();
+                    let simple_results: Vec<String> =
+                        enriched_results.iter().map(|r| r.description.clone()).collect();
 
                     return (
                         StatusCode::OK,
@@ -280,12 +278,7 @@ pub async fn fetch_place_photo(Query(params): Query<PlacePhotoQuery>) -> impl In
     }
 
     let client = reqwest::Client::new();
-    match client
-        .get(&url)
-        .header("X-Goog-Api-Key", api_key)
-        .send()
-        .await
-    {
+    match client.get(&url).header("X-Goog-Api-Key", api_key).send().await {
         Ok(response) => {
             if !response.status().is_success() {
                 return StatusCode::from_u16(response.status().as_u16())

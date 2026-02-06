@@ -3176,9 +3176,7 @@ pub async fn ensure_vector_matching_optimization(pool: &PgPool) -> Result<(), sq
     .await?;
 
     // 6. Analyser la table pour optimiser les statistiques
-    sqlx::query("ANALYZE autocomplete_characteristics")
-        .execute(pool)
-        .await?;
+    sqlx::query("ANALYZE autocomplete_characteristics").execute(pool).await?;
 
     info!("✅ Optimisation matching vectoriel appliquée avec succès !");
     Ok(())
@@ -9641,13 +9639,9 @@ pub async fn clean_invalid_combinations_migration(pool: &PgPool) -> Result<(), s
         info!("✅ {} combinaisons invalides supprimées", deleted_count);
 
         // Optimiser la table après nettoyage
-        let _ = sqlx::query("REINDEX TABLE autocomplete_combinations")
-            .execute(pool)
-            .await;
+        let _ = sqlx::query("REINDEX TABLE autocomplete_combinations").execute(pool).await;
 
-        let _ = sqlx::query("ANALYZE autocomplete_combinations")
-            .execute(pool)
-            .await;
+        let _ = sqlx::query("ANALYZE autocomplete_combinations").execute(pool).await;
 
         info!("✅ Table autocomplete_combinations optimisée");
     } else {
@@ -11978,11 +11972,7 @@ fn normalize_sql_command(cmd: &str) -> String {
             let before_add = &trimmed[..add_col_pos];
             let after_add = &trimmed[add_col_pos + "ADD COLUMN".len()..];
             // Vérifier qu'on n'a pas déjà IF NOT EXISTS après ADD COLUMN
-            if !after_add
-                .trim_start()
-                .to_uppercase()
-                .starts_with("IF NOT EXISTS")
-            {
+            if !after_add.trim_start().to_uppercase().starts_with("IF NOT EXISTS") {
                 return format!("{}ADD COLUMN IF NOT EXISTS{}", before_add, after_add);
             }
         }
@@ -12024,10 +12014,8 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
         // Exemples: $$, $tag$, $function$, etc.
         if trimmed.contains("$") {
             // Chercher tous les patterns $$ ou $tag$
-            let dollar_patterns: Vec<&str> = trimmed
-                .split_whitespace()
-                .filter(|s| s.contains('$'))
-                .collect();
+            let dollar_patterns: Vec<&str> =
+                trimmed.split_whitespace().filter(|s| s.contains('$')).collect();
 
             for pattern in dollar_patterns {
                 // Extraire le tag (entre les $)
@@ -12349,10 +12337,8 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
             && !is_do_block_with_multiple_commands
         {
             // Diviser en commandes individuelles
-            let parts: Vec<&str> = trimmed_cmd
-                .split(';')
-                .filter(|p| !p.trim().is_empty())
-                .collect();
+            let parts: Vec<&str> =
+                trimmed_cmd.split(';').filter(|p| !p.trim().is_empty()).collect();
 
             for part in parts {
                 let part_trimmed = part.trim();
@@ -12495,10 +12481,8 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                         }
 
                         // Diviser la commande et réessayer (logique existante)
-                        let parts: Vec<&str> = trimmed_cmd
-                            .split(';')
-                            .filter(|p| !p.trim().is_empty())
-                            .collect();
+                        let parts: Vec<&str> =
+                            trimmed_cmd.split(';').filter(|p| !p.trim().is_empty()).collect();
 
                         for part in parts {
                             let part_trimmed = part.trim();
@@ -12785,9 +12769,8 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 "REVOKE", "COMMENT", "TRUNCATE", "ANALYZE", "VACUUM", "EXECUTE", "DO", "BEGIN",
                 "COMMIT", "ROLLBACK",
             ];
-            let is_new_command = sql_keywords
-                .iter()
-                .any(|keyword| trimmed.to_uppercase().starts_with(keyword));
+            let is_new_command =
+                sql_keywords.iter().any(|keyword| trimmed.to_uppercase().starts_with(keyword));
 
             // Si on détecte une nouvelle commande et qu'on a déjà du contenu, terminer la commande précédente
             if is_new_command && !current.trim().is_empty() {
@@ -12808,16 +12791,12 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
             // c'est qu'une fonction a été coupée - fusionner avec la commande précédente
             if trimmed.to_uppercase().starts_with("RETURNS")
                 && !current.to_uppercase().contains("CREATE FUNCTION")
-                && !current
-                    .to_uppercase()
-                    .contains("CREATE OR REPLACE FUNCTION")
+                && !current.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
             {
                 // Chercher la commande précédente dans commands qui pourrait être la fonction
                 if let Some(last_cmd) = commands.last_mut() {
                     if last_cmd.to_uppercase().contains("CREATE FUNCTION")
-                        || last_cmd
-                            .to_uppercase()
-                            .contains("CREATE OR REPLACE FUNCTION")
+                        || last_cmd.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
                     {
                         // Fusionner avec la commande précédente
                         last_cmd.push_str("\n");
@@ -12834,16 +12813,12 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                 || trimmed.to_uppercase().starts_with("P_PAYMENT_ID")
                 || trimmed.to_uppercase().starts_with("P_"))
                 && !current.to_uppercase().contains("CREATE FUNCTION")
-                && !current
-                    .to_uppercase()
-                    .contains("CREATE OR REPLACE FUNCTION")
+                && !current.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
             {
                 // Chercher la commande précédente dans commands qui pourrait être la fonction
                 if let Some(last_cmd) = commands.last_mut() {
                     if last_cmd.to_uppercase().contains("CREATE FUNCTION")
-                        || last_cmd
-                            .to_uppercase()
-                            .contains("CREATE OR REPLACE FUNCTION")
+                        || last_cmd.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
                     {
                         // Fusionner avec la commande précédente
                         last_cmd.push_str("\n");
@@ -13213,10 +13188,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
         // ✅ CORRECTION CRITIQUE 2026-01-31: Rejeter les fragments de commandes qui ne commencent pas par un mot-clé SQL valide
         // Les fragments commencent souvent par des identifiants de colonnes (id, u., etc.) ou des mots-clés de continuation
         let cmd_upper_first_words = trimmed_cmd.to_uppercase();
-        let first_word = cmd_upper_first_words
-            .split_whitespace()
-            .next()
-            .unwrap_or("");
+        let first_word = cmd_upper_first_words.split_whitespace().next().unwrap_or("");
 
         // Liste des mots-clés SQL valides pour commencer une commande
         let valid_start_keywords = [
@@ -13250,10 +13222,7 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
         ];
 
         // Si la commande ne commence pas par un mot-clé SQL valide, c'est probablement un fragment
-        if !valid_start_keywords
-            .iter()
-            .any(|&kw| cmd_upper_first_words.starts_with(kw))
-        {
+        if !valid_start_keywords.iter().any(|&kw| cmd_upper_first_words.starts_with(kw)) {
             // ✅ CORRECTION 2026-01-31: Liste étendue des fragments à rejeter (basée sur l'analyse Log 14)
             // Vérifier si c'est un fragment commun (commence par un identifiant de colonne, etc.)
             let trimmed_lower = trimmed_cmd.to_lowercase();
@@ -13422,16 +13391,12 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
         let normalized_cmd = if trimmed_cmd.matches(';').count() > 1
             && !trimmed_cmd.to_uppercase().contains("DO $$")
             && !trimmed_cmd.to_uppercase().contains("CREATE FUNCTION")
-            && !trimmed_cmd
-                .to_uppercase()
-                .contains("CREATE OR REPLACE FUNCTION")
+            && !trimmed_cmd.to_uppercase().contains("CREATE OR REPLACE FUNCTION")
         {
             // Détecter plusieurs commandes dans un même bloc
             // Diviser intelligemment en préservant les blocs DO $$ et les fonctions
-            let parts: Vec<&str> = trimmed_cmd
-                .split(';')
-                .filter(|p| !p.trim().is_empty())
-                .collect();
+            let parts: Vec<&str> =
+                trimmed_cmd.split(';').filter(|p| !p.trim().is_empty()).collect();
             if parts.len() > 1 {
                 // Vérifier que chaque partie commence par un mot-clé SQL valide
                 let valid_parts: Vec<String> = parts
@@ -13601,10 +13566,8 @@ pub async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(
                     warn!("   ⚠️ Commande multiple détectée, tentative de division...");
                     // Essayer de diviser la commande par ';' et exécuter chaque partie
                     // ✅ AMÉLIORATION: Diviser intelligemment en préservant les blocs DO $$ et les fonctions
-                    let parts: Vec<&str> = normalized_cmd
-                        .split(';')
-                        .filter(|p| !p.trim().is_empty())
-                        .collect();
+                    let parts: Vec<&str> =
+                        normalized_cmd.split(';').filter(|p| !p.trim().is_empty()).collect();
                     if parts.len() > 1 {
                         let mut valid_parts = Vec::new();
                         for part in parts.iter() {

@@ -67,18 +67,15 @@ impl PromptOptimizerPro {
         log_info(&format!("[PromptOptimizer] Domain classified: {}", domain));
 
         // 2. S?lection du template optimal
-        let template = self
-            .domain_templates
-            .get(&domain)
-            .unwrap_or(&self.domain_templates["default"]);
+        let template =
+            self.domain_templates.get(&domain).unwrap_or(&self.domain_templates["default"]);
 
         // 3. Analyse contextuelle intelligente
         let smart_context = self.analyze_context_intelligence(input, context).await?;
 
         // 4. Construction du prompt ultra-optimis?
-        let optimized_prompt = self
-            .build_ultra_optimized_prompt(template, input, &smart_context)
-            .await?;
+        let optimized_prompt =
+            self.build_ultra_optimized_prompt(template, input, &smart_context).await?;
 
         // 5. Injection des instructions de performance GPT-4o
         let gpt4o_optimized =

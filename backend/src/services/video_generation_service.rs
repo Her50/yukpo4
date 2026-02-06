@@ -746,11 +746,7 @@ pub async fn generate_product_video(
     let mut resolved_voiceover_lang = payload.voiceover_lang.clone();
     if resolved_voiceover_lang.is_none() {
         if let Some(profile) = &voice_profile {
-            if let Some(lang) = profile
-                .metadata
-                .get("lang")
-                .and_then(|value| value.as_str())
-            {
+            if let Some(lang) = profile.metadata.get("lang").and_then(|value| value.as_str()) {
                 resolved_voiceover_lang = Some(lang.to_string());
             }
         }
@@ -775,10 +771,7 @@ pub async fn generate_product_video(
                 scenes
                     .iter()
                     .filter_map(|scene| {
-                        scene
-                            .get("text")
-                            .and_then(|t| t.as_str())
-                            .map(|s| s.to_string())
+                        scene.get("text").and_then(|t| t.as_str()).map(|s| s.to_string())
                     })
                     .collect()
             })
@@ -896,14 +889,8 @@ pub async fn generate_product_video(
     }
 
     if payload.use_ai_templates.unwrap_or(false)
-        || headline
-            .as_ref()
-            .map(|h| h.trim().is_empty())
-            .unwrap_or(true)
-        || call_to_action
-            .as_ref()
-            .map(|c| c.trim().is_empty())
-            .unwrap_or(true)
+        || headline.as_ref().map(|h| h.trim().is_empty()).unwrap_or(true)
+        || call_to_action.as_ref().map(|c| c.trim().is_empty()).unwrap_or(true)
     {
         let description = extract_string(
             &primary_product,
@@ -926,10 +913,8 @@ pub async fn generate_product_video(
             }
         }
 
-        let target_audience = payload
-            .distribute_channels
-            .as_ref()
-            .map(|channels| channels.join(", "));
+        let target_audience =
+            payload.distribute_channels.as_ref().map(|channels| channels.join(", "));
 
         let tone = payload.style.clone();
         let lang = payload
@@ -956,25 +941,13 @@ pub async fn generate_product_video(
                     if !brief.script_outline.is_empty() {
                         script_outline = brief.script_outline.clone();
                     }
-                    if headline
-                        .as_ref()
-                        .map(|h| h.trim().is_empty())
-                        .unwrap_or(true)
-                    {
+                    if headline.as_ref().map(|h| h.trim().is_empty()).unwrap_or(true) {
                         headline = brief.headline.clone();
                     }
-                    if call_to_action
-                        .as_ref()
-                        .map(|c| c.trim().is_empty())
-                        .unwrap_or(true)
-                    {
+                    if call_to_action.as_ref().map(|c| c.trim().is_empty()).unwrap_or(true) {
                         call_to_action = brief.call_to_action.clone();
                     }
-                    if voiceover_script_opt
-                        .as_ref()
-                        .map(|v| v.trim().is_empty())
-                        .unwrap_or(true)
-                    {
+                    if voiceover_script_opt.as_ref().map(|v| v.trim().is_empty()).unwrap_or(true) {
                         voiceover_script_opt = brief.voiceover.clone();
                     }
                 }
@@ -1258,10 +1231,7 @@ pub async fn generate_product_video(
     let mut slide_filenames: Vec<String> = Vec::new();
     let mut broll_clips: Vec<broll_service::BrollClip> = Vec::new();
     for (idx, media) in media_sources.iter().enumerate() {
-        let slide_duration = slide_durations
-            .get(idx)
-            .copied()
-            .unwrap_or(per_slide_seconds);
+        let slide_duration = slide_durations.get(idx).copied().unwrap_or(per_slide_seconds);
 
         let slide_name = format!("slide_{:02}.mp4", idx + 1);
         let duration_arg = format!("{:.2}", slide_duration);
@@ -1490,15 +1460,10 @@ pub async fn generate_product_video(
     .unwrap_or_else(|| product_type.clone());
     let delivery_sla_hint = extract_delivery_sla_hint(&primary_product)
         .or_else(|| extract_delivery_sla_hint(&service_data));
-    let inventory_signal = state
-        .inventory
-        .latest_signal(service_id, product_index)
-        .await?;
+    let inventory_signal = state.inventory.latest_signal(service_id, product_index).await?;
     let mut stock_last_synced_at = None;
     let mut stock_source_label = None;
-    let mut stock_level_hint = product_snapshot
-        .as_ref()
-        .and_then(|snapshot| snapshot.stock);
+    let mut stock_level_hint = product_snapshot.as_ref().and_then(|snapshot| snapshot.stock);
     let mut orchestration_warnings: Vec<String> = Vec::new();
     match inventory_signal {
         Some(signal) => {
@@ -1547,9 +1512,7 @@ pub async fn generate_product_video(
     let timeline_context = TimelineBusinessContext {
         service_category: Some(service_category_hint),
         tone: payload.style.clone(),
-        cta_label: call_to_action
-            .clone()
-            .or_else(|| payload.call_to_action.clone()),
+        cta_label: call_to_action.clone().or_else(|| payload.call_to_action.clone()),
         delivery_sla_minutes: delivery_sla_hint,
         stock_level: stock_level_hint,
         stock_last_synced_at,
@@ -1795,10 +1758,7 @@ pub async fn generate_product_video(
             }
         }
     }
-    let used_media_ids: Vec<i32> = media_sources
-        .iter()
-        .filter_map(|source| source.id)
-        .collect();
+    let used_media_ids: Vec<i32> = media_sources.iter().filter_map(|source| source.id).collect();
 
     let transition_type = payload.style_transitions.as_ref().and_then(|transitions| {
         transitions
@@ -1834,11 +1794,9 @@ pub async fn generate_product_video(
             .iter()
             .map(|name| format!("file '{}'\n", name))
             .collect::<String>();
-        fs::write(&concat_file, concat_content)
-            .await
-            .map_err(|err| {
-                AppError::Internal(format!("Erreur préparation concaténation vidéo: {err}"))
-            })?;
+        fs::write(&concat_file, concat_content).await.map_err(|err| {
+            AppError::Internal(format!("Erreur préparation concaténation vidéo: {err}"))
+        })?;
 
         run_ffmpeg(
             &session_dir,
@@ -1939,25 +1897,19 @@ pub async fn generate_product_video(
                         if let Err(err) = fs::write(&path, bytes).await {
                             warn!("[VideoGeneration] Écriture voix IA impossible: {err}");
                             let voice = voice_hint.as_deref().unwrap_or("fr");
-                            generate_voiceover_audio(&session_dir, &trimmed, lang, voice)
-                                .await
-                                .ok()
+                            generate_voiceover_audio(&session_dir, &trimmed, lang, voice).await.ok()
                         } else {
                             Some(path)
                         }
                     }
                     Ok(None) => {
                         let voice = voice_hint.as_deref().unwrap_or("fr");
-                        generate_voiceover_audio(&session_dir, &trimmed, lang, voice)
-                            .await
-                            .ok()
+                        generate_voiceover_audio(&session_dir, &trimmed, lang, voice).await.ok()
                     }
                     Err(err) => {
                         warn!("[VideoGeneration] Voix IA indisponible: {err}");
                         let voice = voice_hint.as_deref().unwrap_or("fr");
-                        generate_voiceover_audio(&session_dir, &trimmed, lang, voice)
-                            .await
-                            .ok()
+                        generate_voiceover_audio(&session_dir, &trimmed, lang, voice).await.ok()
                     }
                 }
             }
@@ -2008,10 +1960,7 @@ pub async fn generate_product_video(
 
     let mastered_audio_path = if let Some(service) = state.audio_mastering.clone() {
         let mastering_dir = session_dir.join("mastering");
-        match service
-            .master_audio(&mixed_audio_path, &mastering_dir, job_id)
-            .await
-        {
+        match service.master_audio(&mixed_audio_path, &mastering_dir, job_id).await {
             Ok(AudioMasteringOutcome::Completed(result)) => {
                 info!(
                     "[VideoGeneration] Mastering premium appliqué via {}",
@@ -2230,10 +2179,7 @@ pub async fn generate_product_video(
 
     let normalized_relative = stored_video.storage_path.replace('\\', "/");
     let public_url = stored_video.public_url.clone();
-    let file_size = stored_video
-        .content_length
-        .unwrap_or(0)
-        .min(i64::MAX as u64) as i64;
+    let file_size = stored_video.content_length.unwrap_or(0).min(i64::MAX as u64) as i64;
 
     let subtitle_public_url = if let Some(sub_file) = subtitle_file.as_ref() {
         let subtitle_name = format!("subtitles_{}.srt", session_id);
@@ -3125,10 +3071,8 @@ fn reorder_media_sources(
     let mut manual_map: BTreeMap<usize, MediaSource> = BTreeMap::new();
 
     if let Some(overrides) = manual_overrides {
-        let reverse: HashMap<i32, usize> = overrides
-            .iter()
-            .map(|(scene_idx, media_id)| (*media_id, *scene_idx))
-            .collect();
+        let reverse: HashMap<i32, usize> =
+            overrides.iter().map(|(scene_idx, media_id)| (*media_id, *scene_idx)).collect();
 
         let mut retained = Vec::new();
         for source in remaining.into_iter() {
@@ -3238,9 +3182,8 @@ fn build_slide_overlays(
     }
 
     let price_line = price_label.as_ref().map(|price| format!("Prix : {price}"));
-    let promotion_line = promotion_label
-        .as_ref()
-        .map(|promo| format!("🔥 Promo spéciale : {promo}"));
+    let promotion_line =
+        promotion_label.as_ref().map(|promo| format!("🔥 Promo spéciale : {promo}"));
 
     for index in 0..total_slides {
         let headline = if index == 0 {
@@ -3749,9 +3692,7 @@ async fn apply_crossfade_transitions(
         let target = session_dir.join("combined.mp4");
 
         // Vérifier si la source a un stream audio
-        let has_audio = audio_pipeline::has_audio_stream(&source)
-            .await
-            .unwrap_or(false);
+        let has_audio = audio_pipeline::has_audio_stream(&source).await.unwrap_or(false);
 
         if has_audio {
             // Si elle a déjà de l'audio, juste renommer
@@ -3815,11 +3756,7 @@ async fn apply_crossfade_transitions(
 
     for index in 0..(slide_filenames.len() - 1) {
         let current_duration = slide_durations.get(index).copied().unwrap_or(4.0).max(0.2);
-        let next_duration = slide_durations
-            .get(index + 1)
-            .copied()
-            .unwrap_or(4.0)
-            .max(0.2);
+        let next_duration = slide_durations.get(index + 1).copied().unwrap_or(4.0).max(0.2);
 
         let transition_duration = (current_duration.min(next_duration) * 0.25).clamp(0.35, 1.25);
         let offset = (accumulated - transition_duration).max(0.05);
@@ -3887,18 +3824,11 @@ fn locate_product_array(data: &Value) -> Option<&Vec<Value>> {
     if let Some(arr) = data.get("produits").and_then(Value::as_array) {
         return Some(arr);
     }
-    if let Some(arr) = data
-        .get("produits")
-        .and_then(|v| v.get("valeur"))
-        .and_then(Value::as_array)
+    if let Some(arr) = data.get("produits").and_then(|v| v.get("valeur")).and_then(Value::as_array)
     {
         return Some(arr);
     }
-    if let Some(arr) = data
-        .get("data")
-        .and_then(|v| v.get("produits"))
-        .and_then(Value::as_array)
-    {
+    if let Some(arr) = data.get("data").and_then(|v| v.get("produits")).and_then(Value::as_array) {
         return Some(arr);
     }
     None
@@ -3960,13 +3890,11 @@ async fn generate_subtitles_file(
     }
 
     let file_path = session_dir.join("subtitles_auto.srt");
-    fs::write(&file_path, srt_content.as_bytes())
-        .await
-        .map_err(|err| {
-            AppError::Internal(format!(
-                "Impossible d'écrire le fichier de sous-titres: {err}"
-            ))
-        })?;
+    fs::write(&file_path, srt_content.as_bytes()).await.map_err(|err| {
+        AppError::Internal(format!(
+            "Impossible d'écrire le fichier de sous-titres: {err}"
+        ))
+    })?;
 
     Ok(Some(file_path))
 }
@@ -4051,14 +3979,14 @@ async fn generate_premium_voiceover(
         return Ok(None);
     }
 
-    let preferred_voice = voice_hint
-        .map(|value| value.to_string())
-        .unwrap_or_else(|| match lang.to_lowercase().as_str() {
+    let preferred_voice = voice_hint.map(|value| value.to_string()).unwrap_or_else(|| {
+        match lang.to_lowercase().as_str() {
             "en" | "en-us" | "en_usa" => "en_premium".to_string(),
             "fr" | "fr-fr" | "fr_ca" => "fr_premium".to_string(),
             "es" | "es-es" => "es_premium".to_string(),
             _ => "global_premium".to_string(),
-        });
+        }
+    });
 
     match generate_voiceover_audio(session_dir, script, lang, &preferred_voice).await {
         Ok(path) => Ok(Some(path)),
@@ -4204,10 +4132,7 @@ async fn generate_additional_variant(
     }
 
     // Obtenir la taille du fichier
-    let file_size = tokio::fs::metadata(&variant_path)
-        .await
-        .map(|m| m.len())
-        .unwrap_or(0);
+    let file_size = tokio::fs::metadata(&variant_path).await.map(|m| m.len()).unwrap_or(0);
 
     if file_size == 0 {
         warn!(
@@ -4589,11 +4514,7 @@ async fn generate_background_music(
             "44100",
             "-ac",
             "2",
-            wav_path
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .as_ref(),
+            wav_path.file_name().unwrap_or_default().to_string_lossy().as_ref(),
         ])
         .output()
         .await
@@ -4615,32 +4536,21 @@ async fn generate_background_music(
     }
 
     // ✅ CORRECTION: Convertir WAV en MP3 si le fichier de sortie est en MP3
-    let file_ext = track_path
-        .extension()
-        .and_then(|s| s.to_str())
-        .unwrap_or("mp3");
+    let file_ext = track_path.extension().and_then(|s| s.to_str()).unwrap_or("mp3");
     if file_ext == "mp3" {
         let output = Command::new("ffmpeg")
             .current_dir(session_dir)
             .args([
                 "-y",
                 "-i",
-                wav_path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .as_ref(),
+                wav_path.file_name().unwrap_or_default().to_string_lossy().as_ref(),
                 "-c:a",
                 "libmp3lame",
                 "-b:a",
                 "160k",
                 "-q:a",
                 "2",
-                track_path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .as_ref(),
+                track_path.file_name().unwrap_or_default().to_string_lossy().as_ref(),
             ])
             .output()
             .await
@@ -4683,10 +4593,7 @@ async fn select_curated_audio_track(
     mode: Option<&str>,
     hint: Option<&str>,
 ) -> AppResult<Option<PathBuf>> {
-    if mode
-        .map(|value| value.eq_ignore_ascii_case("none"))
-        .unwrap_or(false)
-    {
+    if mode.map(|value| value.eq_ignore_ascii_case("none")).unwrap_or(false) {
         return Ok(None);
     }
 
@@ -4830,12 +4737,7 @@ async fn download_curated_audio(
             .to_vec()
     };
 
-    let extension = loop_info
-        .url
-        .rsplit('.')
-        .next()
-        .unwrap_or("mp3")
-        .to_lowercase();
+    let extension = loop_info.url.rsplit('.').next().unwrap_or("mp3").to_lowercase();
     let filename = format!(
         "curated_loop_{}_{}.{}",
         loop_info.id,

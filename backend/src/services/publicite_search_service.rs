@@ -78,12 +78,10 @@ impl PubliciteSearchService {
             let mut publicites = Vec::new();
             for row in rows {
                 let id: i32 = row.get::<i32, _>("id");
-                let produits_indexes: Vec<String> = row
-                    .get::<Option<Vec<String>>, _>("produits_indexes")
-                    .unwrap_or_default();
-                let zone: String = row
-                    .get::<Option<String>, _>("zone_geographique")
-                    .unwrap_or_default();
+                let produits_indexes: Vec<String> =
+                    row.get::<Option<Vec<String>>, _>("produits_indexes").unwrap_or_default();
+                let zone: String =
+                    row.get::<Option<String>, _>("zone_geographique").unwrap_or_default();
                 let pub_lng: Option<f64> = row.get::<Option<f64>, _>("pub_lng");
                 let pub_lat: Option<f64> = row.get::<Option<f64>, _>("pub_lat");
                 let rayon_km: Option<i32> = row.get::<Option<i32>, _>("rayon_km");
@@ -93,9 +91,7 @@ impl PubliciteSearchService {
 
             // ✅ Mettre en cache pour 5 minutes
             if let Some(cache) = &self.cache_service {
-                let _ = cache
-                    .set_with_ttl(cache_key, &publicites, Duration::from_secs(300))
-                    .await;
+                let _ = cache.set_with_ttl(cache_key, &publicites, Duration::from_secs(300)).await;
             }
 
             publicites
@@ -114,10 +110,8 @@ impl PubliciteSearchService {
         // Enrichir chaque résultat
         for result in results.iter_mut() {
             // Clone service_id pour éviter le conflit de borrow
-            let service_id = result
-                .get("service_id")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
+            let service_id =
+                result.get("service_id").and_then(|v| v.as_str()).map(|s| s.to_string());
 
             if let Some(service_id_str) = service_id {
                 // Pour chaque produit du service, vérifier s'il est en promotion

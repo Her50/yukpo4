@@ -18,10 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("🔌 Connexion à la base de données...");
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&db_url_final)
-        .await?;
+    let pool = PgPoolOptions::new().max_connections(5).connect(&db_url_final).await?;
 
     println!("📝 Application de la migration hybrid_image_search_relevance...");
 

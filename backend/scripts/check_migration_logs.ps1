@@ -127,3 +127,5 @@ Write-Host ""
 Write-Host "✅ Vérification terminée" -ForegroundColor Cyan
 
 
+
+

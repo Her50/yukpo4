@@ -507,8 +507,7 @@ impl StudioService {
         }
 
         let mut tx = self.pool.begin().await?;
-        self.fetch_session_for_update(&mut tx, session_id, user_id)
-            .await?;
+        self.fetch_session_for_update(&mut tx, session_id, user_id).await?;
 
         sqlx::query("DELETE FROM studio_timeline_clips WHERE session_id = $1")
             .bind(session_id)
@@ -561,8 +560,7 @@ impl StudioService {
         payload: AttachAssetPayload,
     ) -> AppResult<StudioDynamicAssetRecord> {
         let mut tx = self.pool.begin().await?;
-        self.fetch_session_for_update(&mut tx, session_id, user_id)
-            .await?;
+        self.fetch_session_for_update(&mut tx, session_id, user_id).await?;
 
         let record = sqlx::query_as::<_, StudioDynamicAssetRecord>(
             r#"
@@ -689,10 +687,7 @@ impl StudioService {
         )
         .await?;
 
-        let latency_ms = preview_start
-            .elapsed()
-            .as_millis()
-            .min(u128::from(u64::MAX)) as u64;
+        let latency_ms = preview_start.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
         PreviewMonitoring::record_request(template_name.as_deref(), latency_ms, &result.warnings);
 
         Ok(PreviewResponse {
@@ -887,10 +882,7 @@ impl StudioService {
             duration_seconds
         );
 
-        let latency_ms = preview_start
-            .elapsed()
-            .as_millis()
-            .min(u128::from(u64::MAX)) as u64;
+        let latency_ms = preview_start.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
         PreviewMonitoring::record_request(template_name.as_deref(), latency_ms, &result.warnings);
 
         Ok(PreviewResponse {

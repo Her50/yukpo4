@@ -83,10 +83,7 @@ pub async fn predict_eta(
     });
 
     // Essayer d'abord avec l'IA (nécessite &mut)
-    let delivery_type = payload
-        .delivery_type
-        .clone()
-        .unwrap_or_else(|| "parcel".to_string());
+    let delivery_type = payload.delivery_type.clone().unwrap_or_else(|| "parcel".to_string());
     let mut ai_service_mut = ai_service;
     match ai_service_mut
         .predict_eta_with_ai(
@@ -171,16 +168,13 @@ pub async fn get_recommendations(
         user_id: params.user_id,
         current_cart: params.current_cart.unwrap_or_default(),
         delivery_location: params.delivery_location,
-        delivery_type: params
-            .delivery_type
-            .unwrap_or_else(|| "shopping".to_string()),
+        delivery_type: params.delivery_type.unwrap_or_else(|| "shopping".to_string()),
         budget_range: params.budget_range,
         preferences: params.preferences.unwrap_or_default(),
     };
 
-    let recommendations = service
-        .get_recommendations(context, params.max_results.unwrap_or(10))
-        .await?;
+    let recommendations =
+        service.get_recommendations(context, params.max_results.unwrap_or(10)).await?;
 
     Ok((StatusCode::OK, Json(recommendations)))
 }

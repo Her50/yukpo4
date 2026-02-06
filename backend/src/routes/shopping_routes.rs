@@ -180,11 +180,7 @@ async fn estimate_shopping_order(
     let service = state.delivery_service.clone();
     let result = service
         .estimate_shopping_order(ShoppingEstimateInput {
-            items: payload
-                .items
-                .into_iter()
-                .map(ShoppingBasketItemInput::from)
-                .collect(),
+            items: payload.items.into_iter().map(ShoppingBasketItemInput::from).collect(),
             currency: payload.currency,
         })
         .await?;
@@ -201,11 +197,7 @@ async fn create_shopping_order(
     let result = service
         .create_shopping_order(CreateShoppingOrderParams {
             creator_id: user.id,
-            items: payload
-                .items
-                .into_iter()
-                .map(ShoppingBasketItemInput::from)
-                .collect(),
+            items: payload.items.into_iter().map(ShoppingBasketItemInput::from).collect(),
             store: ShoppingStoreInput {
                 name: payload.store.name,
                 latitude: payload.store.latitude,

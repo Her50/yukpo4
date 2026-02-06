@@ -52,10 +52,7 @@ pub async fn ocr_image_base64(base64: &str) -> Option<String> {
         Ok(resp) => {
             if resp.status().is_success() {
                 match resp.json::<serde_json::Value>().await {
-                    Ok(val) => val
-                        .get("text")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string()),
+                    Ok(val) => val.get("text").and_then(|v| v.as_str()).map(|s| s.to_string()),
                     Err(e) => {
                         log::warn!("[OCR] Erreur parsing r?ponse: {}", e);
                         None

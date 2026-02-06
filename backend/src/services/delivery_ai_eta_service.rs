@@ -173,8 +173,7 @@ impl DeliveryAIETAService {
                     };
 
                     // Mettre en cache
-                    self.cache
-                        .insert(cache_key, (final_eta.clone(), Utc::now()));
+                    self.cache.insert(cache_key, (final_eta.clone(), Utc::now()));
 
                     log::info!(
                         "[AI ETA] Prédiction IA+ML réussie (IA: {}, ML: {}, Cache: {})",
@@ -220,8 +219,7 @@ impl DeliveryAIETAService {
         };
 
         // Mettre en cache
-        self.cache
-            .insert(cache_key, (ml_prediction.clone(), Utc::now()));
+        self.cache.insert(cache_key, (ml_prediction.clone(), Utc::now()));
 
         log::info!(
             "[AI ETA] Prédiction ML réussie (IA: {}, ML: {}, Fallback: {}, Cache: {})",
@@ -316,9 +314,7 @@ impl DeliveryAIETAService {
             ));
         }
         // 1. Récupérer l'historique depuis la DB
-        let historical = self
-            .get_historical_deliveries(origin, destination, 30)
-            .await?;
+        let historical = self.get_historical_deliveries(origin, destination, 30).await?;
 
         // 2. Récupérer données météo et trafic RÉELLES
         let weather = {
@@ -461,10 +457,7 @@ impl DeliveryAIETAService {
 
         // Ajouter les coordonnées et statistiques pour contexte enrichi avec données réelles
         let avg_historical_duration = if !historical.is_empty() {
-            historical
-                .iter()
-                .map(|h| h.actual_duration_minutes as f64)
-                .sum::<f64>()
+            historical.iter().map(|h| h.actual_duration_minutes as f64).sum::<f64>()
                 / historical.len() as f64
         } else {
             0.0
@@ -537,11 +530,7 @@ IMPORTANT:
         traffic: &crate::services::delivery_traffic_service::TrafficConditions,
     ) -> AppResult<EstimatedTime> {
         // Nettoyer la réponse (enlever markdown si présent)
-        let cleaned = response
-            .replace("```json", "")
-            .replace("```", "")
-            .trim()
-            .to_string();
+        let cleaned = response.replace("```json", "").replace("```", "").trim().to_string();
 
         let json: Value = serde_json::from_str(&cleaned).map_err(|e| {
             log::error!("[AI ETA] Erreur parsing JSON: {}", e);
@@ -557,13 +546,9 @@ IMPORTANT:
 
         let confidence = json["confidence"].as_f64().unwrap_or(0.7) as f32;
 
-        let lower_bound = json["lower_bound_minutes"]
-            .as_f64()
-            .unwrap_or(estimated_minutes * 0.8);
+        let lower_bound = json["lower_bound_minutes"].as_f64().unwrap_or(estimated_minutes * 0.8);
 
-        let upper_bound = json["upper_bound_minutes"]
-            .as_f64()
-            .unwrap_or(estimated_minutes * 1.2);
+        let upper_bound = json["upper_bound_minutes"].as_f64().unwrap_or(estimated_minutes * 1.2);
 
         // Extraire les facteurs
         let mut factors = HashMap::new();
@@ -586,11 +571,7 @@ IMPORTANT:
         // Extraire les facteurs de risque
         let risk_factors = json["risk_factors"]
             .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
             .unwrap_or_default();
 
         Ok(EstimatedTime {
@@ -612,10 +593,8 @@ IMPORTANT:
         }
 
         // Complexité basée sur variance des durées historiques
-        let durations: Vec<f64> = historical
-            .iter()
-            .map(|h| h.actual_duration_minutes as f64)
-            .collect();
+        let durations: Vec<f64> =
+            historical.iter().map(|h| h.actual_duration_minutes as f64).collect();
         let avg = durations.iter().sum::<f64>() / durations.len() as f64;
         let variance =
             durations.iter().map(|d| (d - avg).powi(2)).sum::<f64>() / durations.len() as f64;
@@ -685,10 +664,7 @@ IMPORTANT:
             .await
             .unwrap_or_default();
         let historical_avg = if !historical.is_empty() {
-            historical
-                .iter()
-                .map(|h| h.actual_duration_minutes as f64)
-                .sum::<f64>()
+            historical.iter().map(|h| h.actual_duration_minutes as f64).sum::<f64>()
                 / historical.len() as f64
         } else {
             distance_km / 30.0 * 60.0

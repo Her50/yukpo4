@@ -294,10 +294,7 @@ pub async fn check_redis_health_with_error(client: &RedisClient) -> (bool, Optio
         if is_available {
             log::info!("✅ [Redis] Health check réussi - Redis disponible");
         } else {
-            let error_detail = error_msg
-                .as_ref()
-                .map(|e| format!(" - {}", e))
-                .unwrap_or_default();
+            let error_detail = error_msg.as_ref().map(|e| format!(" - {}", e)).unwrap_or_default();
             log::warn!(
                 "⚠️ [Redis] Health check échoué - Redis non disponible{} (fallback gracieux activé)",
                 error_detail
@@ -363,10 +360,7 @@ pub async fn delete_pattern(client: &RedisClient, pattern: &str) -> RedisResult<
     execute_with_retry(
         client,
         |mut conn| async move {
-            let keys: Vec<String> = redis::cmd("KEYS")
-                .arg(pattern)
-                .query_async(&mut conn)
-                .await?;
+            let keys: Vec<String> = redis::cmd("KEYS").arg(pattern).query_async(&mut conn).await?;
             if keys.is_empty() {
                 Ok(0)
             } else {

@@ -41,11 +41,8 @@ impl MultimodalProcessor {
             }
         });
 
-        for (_i, ((file_data, file_name), mime_type)) in files
-            .iter()
-            .zip(file_names.iter())
-            .zip(mime_types.iter())
-            .enumerate()
+        for (_i, ((file_data, file_name), mime_type)) in
+            files.iter().zip(file_names.iter()).zip(mime_types.iter()).enumerate()
         {
             let file_id = Uuid::new_v4().to_string();
             let file_extension = self.get_file_extension(file_name);
@@ -59,9 +56,7 @@ impl MultimodalProcessor {
             let public_url = format!("{}/uploads/{}.{}", self.upload_url, file_id, file_extension);
 
             // 3. Analyse locale pour m?tadonn?es et r?sum?
-            let local_analysis = self
-                .analyze_file_locally(file_data, mime_type, file_name)
-                .await?;
+            let local_analysis = self.analyze_file_locally(file_data, mime_type, file_name).await?;
 
             // 4. Classification du type de fichier
             match self.classify_file_type(mime_type, &file_extension) {
@@ -105,16 +100,13 @@ impl MultimodalProcessor {
             }
 
             // 5. Ajout de l'URL pour analyse compl?te par l'IA
-            processed_data["data_sources"]["urls"]
-                .as_array_mut()
-                .unwrap()
-                .push(json!({
-                    "url": public_url,
-                    "file_name": file_name,
-                    "mime_type": mime_type,
-                    "file_id": file_id,
-                    "local_analysis": local_analysis
-                }));
+            processed_data["data_sources"]["urls"].as_array_mut().unwrap().push(json!({
+                "url": public_url,
+                "file_name": file_name,
+                "mime_type": mime_type,
+                "file_id": file_id,
+                "local_analysis": local_analysis
+            }));
         }
 
         // 6. G?n?ration du r?sum? global
@@ -268,18 +260,9 @@ impl MultimodalProcessor {
 
     /// ?? G?n?ration du r?sum? global
     async fn generate_global_summary(&self, processed_data: &mut Value) -> AppResult<()> {
-        let total_files = processed_data["data_sources"]["images"]
-            .as_array()
-            .unwrap()
-            .len()
-            + processed_data["data_sources"]["documents"]
-                .as_array()
-                .unwrap()
-                .len()
-            + processed_data["data_sources"]["audio"]
-                .as_array()
-                .unwrap()
-                .len();
+        let total_files = processed_data["data_sources"]["images"].as_array().unwrap().len()
+            + processed_data["data_sources"]["documents"].as_array().unwrap().len()
+            + processed_data["data_sources"]["audio"].as_array().unwrap().len();
 
         let mut extracted_text = String::new();
         let mut key_insights = Vec::new();

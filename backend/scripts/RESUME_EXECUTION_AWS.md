@@ -82,3 +82,5 @@ postgresql://yukpo_db_user:SztViedrXvuBDyj16TWaIAs25FfUColh@yukpomnang-db.cy3e2i
 - `DIAGNOSTIC_MIGRATIONS_AWS_2026_01_30.md` - Détails des problèmes identifiés
 
 
+
+

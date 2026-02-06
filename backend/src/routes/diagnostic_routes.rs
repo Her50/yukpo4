@@ -62,10 +62,8 @@ pub async fn diagnostic_autocomplete_table(
     .await
     .unwrap_or_default();
 
-    let columns: Vec<String> = column_rows
-        .iter()
-        .map(|row| row.get::<String, _>("column_name"))
-        .collect();
+    let columns: Vec<String> =
+        column_rows.iter().map(|row| row.get::<String, _>("column_name")).collect();
 
     let has_product_labels = columns.contains(&"product_labels".to_string());
     let has_location_labels = columns.contains(&"location_labels".to_string());

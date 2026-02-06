@@ -55,14 +55,9 @@ pub async fn compute_score(
     {
         if let Ok(bson) = mongodb::bson::to_bson(&doc) {
             if let Ok(json) = serde_json::to_value(bson) {
-                avg_rating = json
-                    .get("avg_rating")
-                    .and_then(|v| v.as_f64())
-                    .unwrap_or(0.0);
-                total_reviews = json
-                    .get("total_reviews")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0) as i32;
+                avg_rating = json.get("avg_rating").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                total_reviews =
+                    json.get("total_reviews").and_then(|v| v.as_u64()).unwrap_or(0) as i32;
             }
         }
     }
@@ -174,10 +169,8 @@ pub async fn get_score(
     let mut latest_score: Option<ServiceScore> = None;
     let mut latest_timestamp = chrono::DateTime::<Utc>::MIN_UTC;
 
-    while let Some(doc) = cursor
-        .try_next()
-        .await
-        .map_err(|e| format!("Erreur it?ration score: {}", e))?
+    while let Some(doc) =
+        cursor.try_next().await.map_err(|e| format!("Erreur it?ration score: {}", e))?
     {
         if let Ok(bson) = mongodb::bson::to_bson(&doc) {
             if let Ok(json) = serde_json::to_value(bson) {
@@ -230,10 +223,8 @@ pub async fn get_scoring_stats(mongo_history: Arc<MongoHistoryService>) -> Resul
         .map_err(|e| format!("Erreur agr?gation stats: {}", e))?;
 
     let mut stats = serde_json::Map::new();
-    if let Some(doc) = cursor
-        .try_next()
-        .await
-        .map_err(|e| format!("Erreur it?ration stats: {}", e))?
+    if let Some(doc) =
+        cursor.try_next().await.map_err(|e| format!("Erreur it?ration stats: {}", e))?
     {
         if let Ok(bson) = mongodb::bson::to_bson(&doc) {
             if let Ok(json) = serde_json::to_value(bson) {

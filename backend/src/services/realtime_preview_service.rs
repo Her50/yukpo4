@@ -60,26 +60,17 @@ impl RealtimePreviewService {
 
         // Parser la timeline
         let timeline = request.timeline;
-        let scenes = timeline
-            .get("scenes")
-            .and_then(|s| s.as_array())
-            .ok_or_else(|| {
-                AppError::BadRequest("Timeline invalide: 'scenes' manquant".to_string())
-            })?;
+        let scenes = timeline.get("scenes").and_then(|s| s.as_array()).ok_or_else(|| {
+            AppError::BadRequest("Timeline invalide: 'scenes' manquant".to_string())
+        })?;
 
         // Trouver la scène active
         let mut active_scene_index = 0;
         let mut active_scene = None;
 
         for (index, scene) in scenes.iter().enumerate() {
-            let start_time = scene
-                .get("start_time")
-                .and_then(|s| s.as_f64())
-                .unwrap_or(0.0);
-            let duration = scene
-                .get("duration")
-                .and_then(|d| d.as_f64())
-                .unwrap_or(0.0);
+            let start_time = scene.get("start_time").and_then(|s| s.as_f64()).unwrap_or(0.0);
+            let duration = scene.get("duration").and_then(|d| d.as_f64()).unwrap_or(0.0);
 
             if request.current_time >= start_time && request.current_time < start_time + duration {
                 active_scene_index = index;
@@ -120,14 +111,9 @@ impl RealtimePreviewService {
             .to_string();
 
         let transition_duration = 0.5; // Durée par défaut
-        let scene_start_time = active_scene
-            .get("start_time")
-            .and_then(|s| s.as_f64())
-            .unwrap_or(0.0);
-        let scene_duration = active_scene
-            .get("duration")
-            .and_then(|d| d.as_f64())
-            .unwrap_or(0.0);
+        let scene_start_time =
+            active_scene.get("start_time").and_then(|s| s.as_f64()).unwrap_or(0.0);
+        let scene_duration = active_scene.get("duration").and_then(|d| d.as_f64()).unwrap_or(0.0);
         let scene_end_time = scene_start_time + scene_duration;
         let transition_start_time = scene_end_time - transition_duration as f64;
 
@@ -145,10 +131,8 @@ impl RealtimePreviewService {
             };
 
         // Extraire l'URL média
-        let media_url = active_scene
-            .get("media_url")
-            .and_then(|u| u.as_str())
-            .map(|s| s.to_string());
+        let media_url =
+            active_scene.get("media_url").and_then(|u| u.as_str()).map(|s| s.to_string());
 
         Ok(RealtimePreviewResponse {
             success: true,

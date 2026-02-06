@@ -56,25 +56,31 @@ const IconPreview: React.FC<IconPreviewProps> = ({
                             <Stop offset="100%" stopColor="#6366F1" stopOpacity="1" />
                         </SvgLinearGradient>
 
-                        {/* Motif Ndop - Losanges */}
+                        {/* Motif Ndop - Losanges (COULEURS TRADITIONNELLES : INDIGO/BLEU FONCÉ) */}
                         <Pattern id="ndop" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
                             <Path
                                 d="M 40 0 L 80 40 L 40 80 L 0 40 Z"
                                 fill="none"
-                                stroke="#334155"
-                                strokeWidth="1.5"
-                                opacity="0.3"
+                                stroke="#1A1D5A"
+                                strokeWidth="4"
+                                opacity="0.9"
                             />
                             <Path
                                 d="M 40 20 L 60 40 L 40 60 L 20 40 Z"
                                 fill="none"
-                                stroke="#475569"
-                                strokeWidth="1"
-                                opacity="0.4"
+                                stroke="#334155"
+                                strokeWidth="3.5"
+                                opacity="0.85"
                             />
-                            <Line x1="0" y1="0" x2="80" y2="80" stroke="#1E293B" strokeWidth="1" opacity="0.2" />
-                            <Line x1="80" y1="0" x2="0" y2="80" stroke="#1E293B" strokeWidth="1" opacity="0.2" />
-                            <Circle cx="40" cy="40" r="2" fill="#6366F1" opacity="0.5" />
+                            <Line x1="0" y1="0" x2="80" y2="80" stroke="#1A1D5A" strokeWidth="3.5" opacity="0.8" />
+                            <Line x1="80" y1="0" x2="0" y2="80" stroke="#1A1D5A" strokeWidth="3.5" opacity="0.8" />
+                            <Line x1="20" y1="0" x2="60" y2="80" stroke="#334155" strokeWidth="2.5" opacity="0.7" />
+                            <Line x1="60" y1="0" x2="20" y2="80" stroke="#334155" strokeWidth="2.5" opacity="0.7" />
+                            <Circle cx="40" cy="40" r="4" fill="#F8F9FA" opacity="0.9" />
+                            <Circle cx="20" cy="20" r="3" fill="#E2E8F0" opacity="0.8" />
+                            <Circle cx="60" cy="60" r="3" fill="#E2E8F0" opacity="0.8" />
+                            <Circle cx="20" cy="60" r="2.5" fill="#CBD5E1" opacity="0.75" />
+                            <Circle cx="60" cy="20" r="2.5" fill="#CBD5E1" opacity="0.75" />
                         </Pattern>
 
                         {/* Ombre */}
@@ -97,9 +103,9 @@ const IconPreview: React.FC<IconPreviewProps> = ({
                     {/* Motif Ndop */}
                     <Rect width="1024" height="1024" fill="url(#ndop)" rx="180" />
 
-                    {/* Cercle central */}
-                    <Circle cx="512" cy="512" r="380" fill="#1E293B" opacity="0.3" />
-                    <Circle cx="512" cy="512" r="380" fill="none" stroke="url(#yGrad)" strokeWidth="2" opacity="0.4" />
+                    {/* Cercle central très subtil (opacité réduite pour laisser voir le ndop) */}
+                    <Circle cx="512" cy="512" r="380" fill="#1E293B" opacity="0.08" />
+                    <Circle cx="512" cy="512" r="380" fill="none" stroke="url(#yGrad)" strokeWidth="2" opacity="0.2" />
 
                     {/* Lettre Y */}
                     <G filter="url(#shadow)">

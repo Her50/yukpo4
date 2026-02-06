@@ -239,11 +239,8 @@ impl BrollService {
             if !path.is_file() {
                 continue;
             }
-            let filename = path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("")
-                .to_lowercase();
+            let filename =
+                path.file_name().and_then(|name| name.to_str()).unwrap_or("").to_lowercase();
             if filename.contains(&category.to_lowercase()) {
                 let variants = self.create_variants(&path).await?;
                 return Ok(Some(BrollClip {
@@ -309,11 +306,7 @@ impl BrollService {
             return Ok(None);
         };
 
-        let url = video
-            .get("url")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
+        let url = video.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string();
 
         if url.is_empty() {
             return Ok(None);
@@ -362,10 +355,7 @@ impl BrollService {
                 continue;
             };
 
-            match self
-                .call_ai_provider(provider_id, url, key, request)
-                .await?
-            {
+            match self.call_ai_provider(provider_id, url, key, request).await? {
                 Some(remote_url) => {
                     let local_path = self.download_video(&remote_url).await?;
                     let variants = self.create_variants(&local_path).await?;
@@ -515,9 +505,7 @@ impl BrollService {
         for (label, _res, filter) in profiles {
             let variant_path = base_dir.join(format!(
                 "{}_{}.mp4",
-                path.file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("variant"),
+                path.file_stem().and_then(|s| s.to_str()).unwrap_or("variant"),
                 label
             ));
 

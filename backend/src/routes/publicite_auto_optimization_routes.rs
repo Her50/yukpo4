@@ -45,10 +45,7 @@ pub async fn get_auto_optimization_settings(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<ResponseJson<AutoOptimizationSettingsResponse>, StatusCode> {
     let pool = &state.pg;
-    let user_id: i32 = params
-        .get("user_id")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
+    let user_id: i32 = params.get("user_id").and_then(|v| v.parse().ok()).unwrap_or(0);
 
     let campaign_id: Option<i32> = params.get("campaign_id").and_then(|v| v.parse().ok());
 
@@ -73,11 +70,7 @@ pub async fn get_auto_optimization_settings(
     };
 
     match if let Some(cid) = campaign_id {
-        sqlx::query(query)
-            .bind(cid)
-            .bind(user_id)
-            .fetch_optional(pool)
-            .await
+        sqlx::query(query).bind(cid).bind(user_id).fetch_optional(pool).await
     } else {
         sqlx::query(query).bind(user_id).fetch_optional(pool).await
     } {

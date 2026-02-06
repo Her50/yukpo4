@@ -243,12 +243,7 @@ impl SpecializedServicesCache {
         let pattern_stats = format!("specialized_services:stats:{}:*", user_id);
 
         // Utiliser le client Redis directement avec Script
-        match self
-            .state
-            .redis_client
-            .get_multiplexed_async_connection()
-            .await
-        {
+        match self.state.redis_client.get_multiplexed_async_connection().await {
             Ok(mut conn) => {
                 let script = redis::Script::new(
                     r#"

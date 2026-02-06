@@ -34,10 +34,8 @@ pub async fn upload_chat_media(
         StatusCode::BAD_REQUEST
     })? {
         let field_name = field.name().unwrap_or("file").to_string();
-        let file_name = field
-            .file_name()
-            .unwrap_or(&format!("file_{}", Uuid::new_v4()))
-            .to_string();
+        let file_name =
+            field.file_name().unwrap_or(&format!("file_{}", Uuid::new_v4())).to_string();
 
         // Lire les données du fichier (collecter tous les chunks)
         let mut file_data = Vec::new();

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Script postinstall qui s'adapte à l'environnement (local vs EAS Build)
+// Script postinstall simplifié - applique uniquement les fixes essentiels
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 console.log('📦 Running postinstall script...\n');
 
-// Détecter si on est sur EAS Build (plusieurs variables possibles)
+// Détecter si on est sur EAS Build
 const isEASBuild = 
     process.env.EAS_BUILD === 'true' || 
     process.env.CI === 'true' || 
@@ -14,116 +14,55 @@ const isEASBuild =
     process.env.EAS_BUILD_RUNNER === 'eas-build' ||
     !!process.env.EAS_BUILD_ID;
 
-// Afficher les variables d'environnement pour debug
-console.log('🔍 Environment detection:');
-console.log(`  EAS_BUILD: ${process.env.EAS_BUILD || 'not set'}`);
-console.log(`  CI: ${process.env.CI || 'not set'}`);
-console.log(`  EXPO_CI: ${process.env.EXPO_CI || 'not set'}`);
-console.log(`  EAS_BUILD_RUNNER: ${process.env.EAS_BUILD_RUNNER || 'not set'}`);
-console.log(`  EAS_BUILD_ID: ${process.env.EAS_BUILD_ID || 'not set'}`);
-console.log(`  Detected as EAS Build: ${isEASBuild}\n`);
-
-if (isEASBuild) {
-    console.log('🏗️  Detected EAS Build environment - applying critical fixes...');
-} else {
-    console.log('💻 Detected local environment - applying fixes...');
-}
-
 try {
-    // Fix @expo/cli module manquant
-    if (fs.existsSync(path.join(__dirname, 'fix-expo-cli.js'))) {
-        console.log('\n🔧 Fixing @expo/cli missing module...');
-        execSync('node fix-expo-cli.js', { stdio: 'inherit' });
+    // ✅ ÉTAPE 1: Appliquer patch-package (CRITIQUE pour expo-crypto)
+    console.log('🔧 Applying patches...');
+    execSync('npx patch-package', { stdio: 'inherit' });
+    console.log('✅ Patches applied\n');
+
+    // ✅ ÉTAPE 2: Fix expo-modules-core kotlinVersion (DÉSACTIVÉ - cause des duplications)
+    // Le script fix-expo-modules-core-kotlin-version.js cause des duplications dans build.gradle
+    // Les patches via patch-package sont suffisants
+    // if (fs.existsSync(path.join(__dirname, 'fix-expo-modules-core-kotlin-version.js'))) {
+    //     console.log('🔧 Fixing expo-modules-core kotlinVersion...');
+    //     try {
+    //         execSync('node fix-expo-modules-core-kotlin-version.js', { stdio: 'inherit' });
+    //         console.log('✅ expo-modules-core kotlinVersion fixed\n');
+    //     } catch (error) {
+    //         console.log('⚠️  expo-modules-core kotlinVersion fix failed (non-critical):', error.message);
+    //     }
+    // }
+
+    // ✅ ÉTAPE 3: Fix expo-publishing release variant
+    if (fs.existsSync(path.join(__dirname, 'fix-expo-publishing-release.js'))) {
+        console.log('🔧 Fixing expo-publishing release variant...');
+        execSync('node fix-expo-publishing-release.js', { stdio: 'inherit' });
+        console.log('✅ expo-publishing fixed\n');
     }
 
-    // Fix react-native-worklets-core plugin.js (CRITIQUE pour EAS Build)
-    if (fs.existsSync(path.join(__dirname, 'fix-worklets-core-plugin.js'))) {
-        console.log('\n🔧 Fixing react-native-worklets-core plugin.js...');
-        execSync('node fix-worklets-core-plugin.js', { stdio: 'inherit' });
-    }
-
-    // Fix metro-cache-key default export (CRITIQUE - doit être fait AVANT les autres)
-    if (fs.existsSync(path.join(__dirname, 'fix-metro-cache-key.js'))) {
-        execSync('node fix-metro-cache-key.js', { stdio: 'inherit' });
-    }
-
-    // Fix react-native-reanimated worklets dependency
-    if (fs.existsSync(path.join(__dirname, 'fix-reanimated-worklets.js'))) {
-        execSync('node fix-reanimated-worklets.js', { stdio: 'inherit' });
-    }
-
-    // Toujours exécuter le fix Metro (CRITIQUE pour EAS Build)
+    // ✅ ÉTAPE 4: Fix Metro (si nécessaire)
     if (fs.existsSync(path.join(__dirname, 'fix-metro-exports-comprehensive.js'))) {
-        console.log('\n🔧 Fixing Metro exports (CRITICAL for EAS Build)...');
+        console.log('🔧 Fixing Metro exports...');
         try {
             execSync('node fix-metro-exports-comprehensive.js', { 
                 stdio: 'inherit',
                 env: { ...process.env, NODE_ENV: 'production' }
             });
-            console.log('✅ Metro exports fixed successfully');
+            console.log('✅ Metro fixed\n');
         } catch (error) {
-            console.error('❌ Metro exports fix failed:', error.message);
-            if (isEASBuild) {
-                // Sur EAS Build, c'est critique, on doit échouer
-                throw error;
-            }
-        }
-    } else {
-        console.log('⚠️  Metro fix script not found!');
-        if (isEASBuild) {
-            console.error('❌ CRITICAL: Metro fix script missing on EAS Build!');
-            process.exit(1);
+            console.log('⚠️  Metro fix failed (non-critical):', error.message);
         }
     }
 
-    // Créer les liens symboliques (uniquement en local, peut échouer sur certains systèmes)
-    if (fs.existsSync(path.join(__dirname, 'create-metro-private-links.js'))) {
-        console.log('\n🔗 Creating Metro private symlinks...');
-        try {
-            execSync('node create-metro-private-links.js', { stdio: 'inherit' });
-        } catch (err) {
-            console.log('⚠️  Symlink creation failed (may not be needed on this environment)');
-        }
-    }
-
-    // ✅ CORRIGÉ: Créer gradle.properties dans expo-modules-core/android pour définir kotlinVersion et Android SDK
-    const expoModulesCoreAndroidPath = path.join(__dirname, 'node_modules', 'expo-modules-core', 'android');
-    const gradlePropertiesPath = path.join(expoModulesCoreAndroidPath, 'gradle.properties');
-    if (fs.existsSync(expoModulesCoreAndroidPath)) {
-        console.log('\n🔧 Creating gradle.properties in expo-modules-core/android for kotlinVersion and Android SDK...');
-        try {
-            const gradlePropertiesContent = `# Auto-generated by postinstall.js
-# Defines kotlinVersion and Android SDK versions for expo-modules-core build
-kotlinVersion=1.9.25
-android.kotlinVersion=1.9.25
-android.buildToolsVersion=35.0.0
-android.minSdkVersion=24
-android.compileSdkVersion=35
-android.targetSdkVersion=35
-`;
-            fs.writeFileSync(gradlePropertiesPath, gradlePropertiesContent, 'utf8');
-            console.log('✅ gradle.properties created in expo-modules-core/android');
-        } catch (error) {
-            console.log('⚠️  Failed to create gradle.properties in expo-modules-core/android:', error.message);
-        }
-    }
-
-    // ✅ CORRIGÉ: Ajouter le plugin Kotlin dans le buildscript de expo-modules-core/android/build.gradle
-    if (fs.existsSync(path.join(__dirname, 'fix-expo-modules-core-kotlin.js'))) {
-        console.log('\n🔧 Adding Kotlin plugin to expo-modules-core/android/build.gradle...');
-        try {
-            execSync('node fix-expo-modules-core-kotlin.js', { stdio: 'inherit' });
-        } catch (error) {
-            console.log('⚠️  Failed to add Kotlin plugin:', error.message);
-        }
-    }
-
-    console.log('\n✅ Postinstall completed successfully!\n');
+    console.log('✅ Postinstall completed successfully!\n');
     process.exit(0);
 } catch (error) {
     console.error('❌ Postinstall error:', error.message);
-    // Ne pas faire échouer le build si postinstall échoue
+    // Sur EAS Build, échouer si c'est critique
+    if (isEASBuild && error.message.includes('patch-package')) {
+        process.exit(1);
+    }
+    // Sinon, continuer
     console.log('⚠️  Continuing despite postinstall errors...\n');
     process.exit(0);
 }
-

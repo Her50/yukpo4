@@ -63,3 +63,5 @@ CREATE TRIGGER trg_studio_sessions_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_studio_sessions_updated_at();
 
+
+

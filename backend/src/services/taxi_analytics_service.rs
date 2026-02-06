@@ -109,9 +109,8 @@ impl TaxiAnalyticsService {
         .ok()
         .flatten();
 
-        let total_revenue_f64 = total_revenue
-            .and_then(|d| d.to_string().parse::<f64>().ok())
-            .unwrap_or(0.0);
+        let total_revenue_f64 =
+            total_revenue.and_then(|d| d.to_string().parse::<f64>().ok()).unwrap_or(0.0);
 
         // Conducteurs actifs
         let active_drivers: i64 = sqlx::query_scalar(
@@ -153,10 +152,7 @@ impl TaxiAnalyticsService {
         };
 
         // Stats heures de pic
-        let peak_hours = self
-            .get_peak_hours_stats(start, end)
-            .await
-            .unwrap_or_default();
+        let peak_hours = self.get_peak_hours_stats(start, end).await.unwrap_or_default();
 
         // Tendance revenus
         let revenue_trend = self.get_revenue_trend().await.unwrap_or(RevenueTrend {
@@ -168,10 +164,7 @@ impl TaxiAnalyticsService {
         });
 
         // Top zones
-        let top_zones = self
-            .get_top_zones(start, end, Some(10))
-            .await
-            .unwrap_or_default();
+        let top_zones = self.get_top_zones(start, end, Some(10)).await.unwrap_or_default();
 
         Ok(AnalyticsOverview {
             total_trips,

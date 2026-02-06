@@ -122,8 +122,7 @@ impl AudioMasteringService {
         }
         .to_string();
 
-        self.insert_job(job_id, &provider_label, input, video_job_id)
-            .await?;
+        self.insert_job(job_id, &provider_label, input, video_job_id).await?;
         if let Some(video_job_id) = video_job_id {
             self.set_video_job_audio_status(
                 video_job_id,
@@ -146,8 +145,7 @@ impl AudioMasteringService {
             }
             PremiumAudioProvider::AudioShake => {
                 if let Some(cfg) = &self.config.audioshake {
-                    self.master_with_audioshake(job_id, cfg, input, output_dir)
-                        .await
+                    self.master_with_audioshake(job_id, cfg, input, output_dir).await
                 } else {
                     Err(AppError::Internal(
                         "Configuration AudioShake manquante pour premium audio.".to_string(),
@@ -156,8 +154,7 @@ impl AudioMasteringService {
             }
             PremiumAudioProvider::Auphonic => {
                 if let Some(cfg) = &self.config.auphonic {
-                    self.master_with_auphonic(job_id, cfg, input, output_dir)
-                        .await
+                    self.master_with_auphonic(job_id, cfg, input, output_dir).await
                 } else {
                     Err(AppError::Internal(
                         "Configuration Auphonic manquante pour premium audio.".to_string(),
@@ -178,10 +175,7 @@ impl AudioMasteringService {
                 }
 
                 if let Some(cfg) = &self.config.auphonic {
-                    match self
-                        .master_with_auphonic(job_id, cfg, input, output_dir)
-                        .await
-                    {
+                    match self.master_with_auphonic(job_id, cfg, input, output_dir).await {
                         Ok(res) => return Ok(res),
                         Err(err) => {
                             warn!(
@@ -193,9 +187,7 @@ impl AudioMasteringService {
                 }
 
                 if let Some(cfg) = &self.config.audioshake {
-                    return self
-                        .master_with_audioshake(job_id, cfg, input, output_dir)
-                        .await;
+                    return self.master_with_audioshake(job_id, cfg, input, output_dir).await;
                 }
 
                 Err(last_error.unwrap_or_else(|| {
@@ -234,8 +226,7 @@ impl AudioMasteringService {
                 warn!("[AudioMastering] Fallback local (service premium indisponible): {err}");
                 self.update_job_failed(job_id, &err.to_string()).await?;
                 let local_result = self.local_master(input, output_dir).await?;
-                self.update_job_completed(job_id, "completed_local", &local_result)
-                    .await?;
+                self.update_job_completed(job_id, "completed_local", &local_result).await?;
                 if let Some(video_job_id) = video_job_id {
                     self.set_video_job_audio_status(
                         video_job_id,
@@ -266,15 +257,11 @@ impl AudioMasteringService {
 
         if let Some(ref provider_job_id) = payload.provider_job_id {
             if job_record.provider_job_id.as_deref() != Some(provider_job_id.as_str()) {
-                self.set_provider_job_id(job_record.job_id, provider_job_id)
-                    .await?;
+                self.set_provider_job_id(job_record.job_id, provider_job_id).await?;
             }
         }
 
-        let status = payload
-            .status
-            .unwrap_or_else(|| "completed".to_string())
-            .to_lowercase();
+        let status = payload.status.unwrap_or_else(|| "completed".to_string()).to_lowercase();
 
         match status.as_str() {
             "completed" | "finished" | "success" => {
@@ -293,8 +280,7 @@ impl AudioMasteringService {
                     )
                     .await?;
 
-                self.update_job_completed(job_record.job_id, "completed", &result)
-                    .await?;
+                self.update_job_completed(job_record.job_id, "completed", &result).await?;
 
                 if let Some(video_job_id) = job_record.video_job_id {
                     self.set_video_job_audio_status(
@@ -307,11 +293,9 @@ impl AudioMasteringService {
                 }
             }
             "failed" | "error" => {
-                let error_message = payload
-                    .error_message
-                    .unwrap_or_else(|| "Audio mastering failed".to_string());
-                self.update_job_failed(job_record.job_id, &error_message)
-                    .await?;
+                let error_message =
+                    payload.error_message.unwrap_or_else(|| "Audio mastering failed".to_string());
+                self.update_job_failed(job_record.job_id, &error_message).await?;
 
                 if let Some(video_job_id) = job_record.video_job_id {
                     self.set_video_job_audio_status(
@@ -607,10 +591,7 @@ impl AudioMasteringService {
         let storage_prefix = self.config.storage_prefix.trim_start_matches('/');
         let storage_key = format!("{}/{}.wav", storage_prefix, Uuid::new_v4());
 
-        let location = self
-            .storage
-            .store_file(&temp_path, &storage_key, Some("audio/wav"))
-            .await?;
+        let location = self.storage.store_file(&temp_path, &storage_key, Some("audio/wav")).await?;
 
         if !self.config.keep_local_copy {
             let _ = tokio::fs::remove_file(&temp_path).await;
@@ -666,10 +647,8 @@ impl AudioMasteringService {
         let file_bytes = tokio::fs::read(input)
             .await
             .map_err(|err| AppError::Internal(format!("Impossible de lire audio source: {err}")))?;
-        let file_name = input
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("source_audio.wav");
+        let file_name =
+            input.file_name().and_then(|name| name.to_str()).unwrap_or("source_audio.wav");
 
         let file_part = Part::bytes(file_bytes).file_name(file_name.to_string());
 
@@ -755,13 +734,10 @@ impl AudioMasteringService {
             Ok(AudioMasteringOutcome::Completed(MasteringResult {
                 mastered_path,
                 provider: "dolby".to_string(),
-                metadata: payload
-                    .metadata
-                    .unwrap_or_else(|| json!({ "provider": "dolby" })),
+                metadata: payload.metadata.unwrap_or_else(|| json!({ "provider": "dolby" })),
             }))
         } else {
-            self.mark_job_pending(job_id, "dolby", payload.metadata.clone())
-                .await?;
+            self.mark_job_pending(job_id, "dolby", payload.metadata.clone()).await?;
             Ok(AudioMasteringOutcome::Pending { job_id })
         }
     }
@@ -781,10 +757,8 @@ impl AudioMasteringService {
         let file_bytes = tokio::fs::read(input)
             .await
             .map_err(|err| AppError::Internal(format!("Impossible de lire audio source: {err}")))?;
-        let file_name = input
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("source_audio.wav");
+        let file_name =
+            input.file_name().and_then(|name| name.to_str()).unwrap_or("source_audio.wav");
 
         let mut form = Form::new().part(
             "input_file",

@@ -278,9 +278,7 @@ impl CourierVerificationService {
             .fetch_optional(&self.pool)
             .await?;
 
-            order_provider_id
-                .map(|id| id == provider_user_id)
-                .unwrap_or(false)
+            order_provider_id.map(|id| id == provider_user_id).unwrap_or(false)
         } else {
             // Vérifier via deliveries (si pas de product_order)
             let delivery_creator_id: Option<i32> = sqlx::query_scalar::<_, i32>(
@@ -294,9 +292,7 @@ impl CourierVerificationService {
             .fetch_optional(&self.pool)
             .await?;
 
-            delivery_creator_id
-                .map(|id| id == provider_user_id)
-                .unwrap_or(false)
+            delivery_creator_id.map(|id| id == provider_user_id).unwrap_or(false)
         };
 
         if !is_authorized {

@@ -70,10 +70,7 @@ pub async fn get_session(
     Extension(user): Extension<AuthenticatedUser>,
     Path(session_id): Path<Uuid>,
 ) -> AppResult<Json<StudioSessionAggregate>> {
-    let session = state
-        .studio_service
-        .get_session(session_id, user.id)
-        .await?;
+    let session = state.studio_service.get_session(session_id, user.id).await?;
     Ok(Json(session))
 }
 
@@ -83,10 +80,7 @@ pub async fn update_session(
     Path(session_id): Path<Uuid>,
     Json(payload): Json<UpdateStudioSessionPayload>,
 ) -> AppResult<Json<StudioSessionAggregate>> {
-    let session = state
-        .studio_service
-        .update_session(session_id, user.id, payload)
-        .await?;
+    let session = state.studio_service.update_session(session_id, user.id, payload).await?;
     Ok(Json(session))
 }
 
@@ -96,10 +90,7 @@ pub async fn save_timeline(
     Path(session_id): Path<Uuid>,
     Json(clips): Json<Vec<TimelineClipPayload>>,
 ) -> AppResult<Json<Vec<StudioTimelineClipRecord>>> {
-    let timeline = state
-        .studio_service
-        .save_timeline(session_id, user.id, clips)
-        .await?;
+    let timeline = state.studio_service.save_timeline(session_id, user.id, clips).await?;
     Ok(Json(timeline))
 }
 
@@ -109,10 +100,7 @@ pub async fn attach_asset(
     Path(session_id): Path<Uuid>,
     Json(payload): Json<AttachAssetPayload>,
 ) -> AppResult<Json<StudioDynamicAssetRecord>> {
-    let asset = state
-        .studio_service
-        .attach_dynamic_asset(session_id, user.id, payload)
-        .await?;
+    let asset = state.studio_service.attach_dynamic_asset(session_id, user.id, payload).await?;
     Ok(Json(asset))
 }
 
@@ -121,10 +109,7 @@ pub async fn trigger_preview(
     Extension(user): Extension<AuthenticatedUser>,
     Path(session_id): Path<Uuid>,
 ) -> AppResult<Json<PreviewResponse>> {
-    let preview = state
-        .studio_service
-        .trigger_preview(session_id, user.id)
-        .await?;
+    let preview = state.studio_service.trigger_preview(session_id, user.id).await?;
     Ok(Json(preview))
 }
 
@@ -171,10 +156,7 @@ pub async fn publish_session(
     Extension(user): Extension<AuthenticatedUser>,
     Path(session_id): Path<Uuid>,
 ) -> AppResult<Json<PublishResponse>> {
-    let result = state
-        .studio_service
-        .publish_session(session_id, user.id)
-        .await?;
+    let result = state.studio_service.publish_session(session_id, user.id).await?;
     Ok(Json(result))
 }
 
@@ -256,10 +238,7 @@ pub async fn recommend_templates(
     Json(payload): Json<TemplateRecommendationPayload>,
 ) -> AppResult<Json<TemplateRecommendationResponse>> {
     // Ensure the user owns the session before computing recommendations
-    state
-        .studio_service
-        .get_session(session_id, user.id)
-        .await?;
+    state.studio_service.get_session(session_id, user.id).await?;
 
     let script_outline = if payload.script_outline.is_empty() {
         vec![
@@ -352,10 +331,7 @@ pub async fn generate_suggestions(
     Json(payload): Json<GenerateSuggestionsPayload>,
 ) -> AppResult<Json<SuggestionsResponse>> {
     // Vérifier que la session existe et appartient à l'utilisateur
-    state
-        .studio_service
-        .get_session(session_id, user.id)
-        .await?;
+    state.studio_service.get_session(session_id, user.id).await?;
 
     // ✅ Phase 7 - Amélioration 22 : Générer des suggestions basées sur le brief avec IA
     let suggestions = if payload.brief.trim().is_empty() {
@@ -522,10 +498,7 @@ pub async fn generate_storyboard(
     Path(session_id): Path<Uuid>,
     Json(payload): Json<TemplateRecommendationPayload>,
 ) -> AppResult<Json<StoryboardResponse>> {
-    state
-        .studio_service
-        .get_session(session_id, user.id)
-        .await?;
+    state.studio_service.get_session(session_id, user.id).await?;
 
     let script_outline = if payload.script_outline.is_empty() {
         vec![
@@ -556,9 +529,7 @@ pub async fn generate_storyboard(
     };
 
     let orchestrator = ImmersiveOrchestrator::new(state.clone());
-    let timeline_result = orchestrator
-        .generate_timeline(timeline_request.clone())
-        .await?;
+    let timeline_result = orchestrator.generate_timeline(timeline_request.clone()).await?;
     let storyboard = orchestrator.build_storyboard(&timeline_request, &timeline_result);
 
     // ✅ CORRIGÉ: Sauvegarder automatiquement la timeline générée
@@ -566,10 +537,7 @@ pub async fn generate_storyboard(
         .studio_service
         .convert_immersive_timeline_to_clips(&timeline_result.timeline)?;
     if !clips.is_empty() {
-        let _ = state
-            .studio_service
-            .save_timeline(session_id, user.id, clips)
-            .await;
+        let _ = state.studio_service.save_timeline(session_id, user.id, clips).await;
         log::info!(
             "[StudioController] ✅ Timeline sauvegardée automatiquement pour session {}",
             session_id
@@ -584,10 +552,7 @@ pub async fn list_preview_events(
     Extension(user): Extension<AuthenticatedUser>,
     Path(session_id): Path<Uuid>,
 ) -> AppResult<Json<Vec<StudioPreviewEventRecord>>> {
-    let events = state
-        .studio_service
-        .list_preview_events(session_id, user.id)
-        .await?;
+    let events = state.studio_service.list_preview_events(session_id, user.id).await?;
     Ok(Json(events))
 }
 
@@ -596,10 +561,7 @@ pub async fn preview_metrics(
     Extension(user): Extension<AuthenticatedUser>,
     Path(session_id): Path<Uuid>,
 ) -> AppResult<Json<StudioPreviewMetrics>> {
-    let metrics = state
-        .studio_service
-        .preview_metrics(session_id, user.id)
-        .await?;
+    let metrics = state.studio_service.preview_metrics(session_id, user.id).await?;
     Ok(Json(metrics))
 }
 
@@ -610,10 +572,7 @@ pub async fn set_dependencies(
     Path(session_id): Path<Uuid>,
     Json(payload): Json<SetDependenciesPayload>,
 ) -> AppResult<Json<Vec<VideoDependency>>> {
-    let deps = state
-        .studio_service
-        .set_dependencies(session_id, user.id, payload)
-        .await?;
+    let deps = state.studio_service.set_dependencies(session_id, user.id, payload).await?;
     Ok(Json(deps))
 }
 

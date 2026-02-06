@@ -110,10 +110,7 @@ impl SpotifyIntegrationService {
         {
             let token_guard = self.access_token.read().await;
             if let Some(token) = token_guard.as_ref() {
-                let now = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
+                let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
                 if now < token.expires_at {
                     return Ok(token.access_token.clone());
                 }
@@ -147,22 +144,12 @@ impl SpotifyIntegrationService {
             .map_err(|e| AppError::Internal(format!("Erreur parsing token Spotify: {}", e)))?;
 
         let expires_in = token_data["expires_in"].as_u64().unwrap_or(3600);
-        let expires_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-            + expires_in
-            - 300; // Marge de 5 minutes
+        let expires_at =
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + expires_in - 300; // Marge de 5 minutes
 
         let access_token = SpotifyAccessToken {
-            access_token: token_data["access_token"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
-            token_type: token_data["token_type"]
-                .as_str()
-                .unwrap_or("Bearer")
-                .to_string(),
+            access_token: token_data["access_token"].as_str().unwrap_or("").to_string(),
+            token_type: token_data["token_type"].as_str().unwrap_or("Bearer").to_string(),
             expires_in,
             expires_at,
         };

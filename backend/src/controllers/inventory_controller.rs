@@ -78,10 +78,7 @@ pub async fn sync_stock(
         ));
     }
 
-    state
-        .inventory
-        .ensure_service_owner(user.id, service_id)
-        .await?;
+    state.inventory.ensure_service_owner(user.id, service_id).await?;
 
     let signal = state
         .inventory
@@ -103,15 +100,9 @@ pub async fn get_stock_status(
     Extension(user): Extension<AuthenticatedUser>,
     Path((service_id, product_index)): Path<(i32, i32)>,
 ) -> AppResult<Json<StockStatusResponse>> {
-    state
-        .inventory
-        .ensure_service_owner(user.id, service_id)
-        .await?;
+    state.inventory.ensure_service_owner(user.id, service_id).await?;
 
-    let signal = state
-        .inventory
-        .latest_signal(service_id, product_index)
-        .await?;
+    let signal = state.inventory.latest_signal(service_id, product_index).await?;
 
     if let Some(signal) = signal {
         return Ok(Json(StockStatusResponse::from_signal(signal)));

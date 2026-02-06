@@ -128,10 +128,8 @@ pub async fn create_schedule(
     }
 
     // Convertir en TIME[] pour PostgreSQL
-    let times_array: Vec<String> = validated_times
-        .iter()
-        .map(|t| t.format("%H:%M:%S").to_string())
-        .collect();
+    let times_array: Vec<String> =
+        validated_times.iter().map(|t| t.format("%H:%M:%S").to_string()).collect();
 
     // Insérer l'horaire
     let schedule_id: String = sqlx::query_scalar(
@@ -266,10 +264,8 @@ pub async fn get_agency_schedules(
     for row in rows {
         let departure_times: Vec<chrono::NaiveTime> =
             row.get::<Vec<chrono::NaiveTime>, _>("departure_times");
-        let times_str: Vec<String> = departure_times
-            .iter()
-            .map(|t| t.format("%H:%M").to_string())
-            .collect();
+        let times_str: Vec<String> =
+            departure_times.iter().map(|t| t.format("%H:%M").to_string()).collect();
 
         schedules.push(ScheduleResponse {
             id: row.get::<i32, _>("id").to_string(),
@@ -280,12 +276,8 @@ pub async fn get_agency_schedules(
             day_of_week: row.get::<Option<i32>, _>("day_of_week"),
             is_active: row.get::<bool, _>("is_active"),
             notes: row.get::<Option<String>, _>("notes"),
-            created_at: row
-                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                .to_rfc3339(),
-            updated_at: row
-                .get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
-                .to_rfc3339(),
+            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
+            updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at").to_rfc3339(),
         });
     }
 
@@ -575,10 +567,8 @@ async fn get_schedule_by_id(
         Some(row) => {
             let departure_times: Vec<chrono::NaiveTime> =
                 row.get::<Vec<chrono::NaiveTime>, _>("departure_times");
-            let times_str: Vec<String> = departure_times
-                .iter()
-                .map(|t| t.format("%H:%M").to_string())
-                .collect();
+            let times_str: Vec<String> =
+                departure_times.iter().map(|t| t.format("%H:%M").to_string()).collect();
 
             Ok(ScheduleResponse {
                 id: row.get::<i32, _>("id").to_string(),
@@ -589,12 +579,8 @@ async fn get_schedule_by_id(
                 day_of_week: row.get::<Option<i32>, _>("day_of_week"),
                 is_active: row.get::<bool, _>("is_active"),
                 notes: row.get::<Option<String>, _>("notes"),
-                created_at: row
-                    .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                    .to_rfc3339(),
-                updated_at: row
-                    .get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
-                    .to_rfc3339(),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
+                updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at").to_rfc3339(),
             })
         }
         None => Err(AppError::NotFound("Horaire non trouvé".to_string())),

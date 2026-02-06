@@ -336,10 +336,7 @@ impl OffresEmploiService {
             request.query.as_deref().unwrap_or("all"),
             request.secteur.as_deref().unwrap_or("all"),
             serde_json::to_string(&request.type_contrat).unwrap_or_default(),
-            request
-                .salaire_min
-                .map(|s| s.to_string())
-                .unwrap_or_default(),
+            request.salaire_min.map(|s| s.to_string()).unwrap_or_default(),
             request.lieu_travail.as_deref().unwrap_or("all"),
             request.gps.as_deref().unwrap_or("all"),
             request.page.unwrap_or(1),

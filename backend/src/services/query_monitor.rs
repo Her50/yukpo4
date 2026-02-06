@@ -73,19 +73,17 @@ impl QueryMonitor {
         let query_hash = self.hash_query(query_summary);
 
         let mut metrics_map = self.metrics.write().await;
-        let metrics = metrics_map
-            .entry(query_hash.clone())
-            .or_insert_with(|| QueryMetrics {
-                query_hash: query_hash.clone(),
-                query_summary: query_summary.to_string(),
-                execution_count: 0,
-                total_duration_ms: 0.0,
-                avg_duration_ms: 0.0,
-                min_duration_ms: f64::MAX,
-                max_duration_ms: 0.0,
-                last_executed: chrono::Utc::now(),
-                slow_count: 0,
-            });
+        let metrics = metrics_map.entry(query_hash.clone()).or_insert_with(|| QueryMetrics {
+            query_hash: query_hash.clone(),
+            query_summary: query_summary.to_string(),
+            execution_count: 0,
+            total_duration_ms: 0.0,
+            avg_duration_ms: 0.0,
+            min_duration_ms: f64::MAX,
+            max_duration_ms: 0.0,
+            last_executed: chrono::Utc::now(),
+            slow_count: 0,
+        });
 
         metrics.execution_count += 1;
         metrics.total_duration_ms += duration_ms;
@@ -161,11 +159,8 @@ impl QueryMonitor {
     /// Obtenir les requêtes les plus lentes
     pub async fn get_slow_queries(&self, limit: usize) -> Vec<QueryMetrics> {
         let metrics_map = self.metrics.read().await;
-        let mut queries: Vec<QueryMetrics> = metrics_map
-            .values()
-            .filter(|m| m.slow_count > 0)
-            .cloned()
-            .collect();
+        let mut queries: Vec<QueryMetrics> =
+            metrics_map.values().filter(|m| m.slow_count > 0).cloned().collect();
 
         queries.sort_by(|a, b| {
             b.max_duration_ms
@@ -263,9 +258,7 @@ impl Drop for QueryTimer {
 
         // Enregistrer de manière asynchrone
         tokio::spawn(async move {
-            monitor
-                .record_query(&query_summary, duration, endpoint.as_deref())
-                .await;
+            monitor.record_query(&query_summary, duration, endpoint.as_deref()).await;
         });
     }
 }

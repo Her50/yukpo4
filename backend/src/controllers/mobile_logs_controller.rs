@@ -255,25 +255,15 @@ async fn process_mobile_logs_async(logs: Vec<MobileLogEntry>, batch_id: String) 
 fn log_error_group(logs: &[MobileLogEntry], _batch_id: &str) {
     for log in logs {
         let component = log.component.as_deref().unwrap_or("unknown");
-        let user_info = log
-            .user_id
-            .as_ref()
-            .map(|u| format!("User:{}", u))
-            .unwrap_or_default();
+        let user_info = log.user_id.as_ref().map(|u| format!("User:{}", u)).unwrap_or_default();
         let device_info = log
             .device_info
             .as_ref()
             .map(|d| {
-                let platform = d
-                    .platform
-                    .as_deref()
-                    .or_else(|| d.os_name.as_deref())
-                    .unwrap_or("unknown");
-                let version = d
-                    .version
-                    .as_deref()
-                    .or_else(|| d.os_version.as_deref())
-                    .unwrap_or("unknown");
+                let platform =
+                    d.platform.as_deref().or_else(|| d.os_name.as_deref()).unwrap_or("unknown");
+                let version =
+                    d.version.as_deref().or_else(|| d.os_version.as_deref()).unwrap_or("unknown");
                 format!("Device:{}/{}", platform, version)
             })
             .unwrap_or_default();
@@ -342,25 +332,15 @@ fn log_error_group(logs: &[MobileLogEntry], _batch_id: &str) {
 fn log_warn_group(logs: &[MobileLogEntry], _batch_id: &str) {
     for log in logs {
         let component = log.component.as_deref().unwrap_or("unknown");
-        let user_info = log
-            .user_id
-            .as_ref()
-            .map(|u| format!("User:{}", u))
-            .unwrap_or_default();
+        let user_info = log.user_id.as_ref().map(|u| format!("User:{}", u)).unwrap_or_default();
         let device_info = log
             .device_info
             .as_ref()
             .map(|d| {
-                let platform = d
-                    .platform
-                    .as_deref()
-                    .or_else(|| d.os_name.as_deref())
-                    .unwrap_or("unknown");
-                let version = d
-                    .version
-                    .as_deref()
-                    .or_else(|| d.os_version.as_deref())
-                    .unwrap_or("unknown");
+                let platform =
+                    d.platform.as_deref().or_else(|| d.os_name.as_deref()).unwrap_or("unknown");
+                let version =
+                    d.version.as_deref().or_else(|| d.os_version.as_deref()).unwrap_or("unknown");
                 format!("Device:{}/{}", platform, version)
             })
             .unwrap_or_default();

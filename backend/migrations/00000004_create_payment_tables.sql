@@ -35,3 +35,5 @@ CREATE INDEX IF NOT EXISTS idx_payment_transactions_created_at ON payment_transa
 CREATE INDEX IF NOT EXISTS idx_token_transactions_user_id ON token_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_token_transactions_type ON token_transactions(transaction_type);
 
+
+

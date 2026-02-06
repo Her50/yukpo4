@@ -135,10 +135,8 @@ impl SearchCacheService {
                     cache_key.to_string(),
                     CachedSearchResult {
                         results: cached.clone(),
-                        cached_at: SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .unwrap()
-                            .as_millis() as i64,
+                        cached_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
+                            as i64,
                         access_count: 1,
                     },
                 );
@@ -177,18 +175,12 @@ impl SearchCacheService {
     ) -> AppResult<()> {
         let cached = CachedSearchResult {
             results: results.clone(),
-            cached_at: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as i64,
+            cached_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64,
             access_count: 0,
         };
 
         // L1: Toujours mettre en cache mémoire
-        self.l1_memory_cache
-            .write()
-            .await
-            .put(cache_key.to_string(), cached.clone());
+        self.l1_memory_cache.write().await.put(cache_key.to_string(), cached.clone());
 
         // L2: Mettre en cache Redis avec TTL adaptatif
         if let Some(ref redis) = self.l2_redis_cache {

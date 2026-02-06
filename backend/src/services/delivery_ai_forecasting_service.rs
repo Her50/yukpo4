@@ -180,8 +180,7 @@ impl DeliveryAIForecastingService {
 
         // Sinon, moyenne basique
         let time_period_clone = time_period.clone();
-        self.forecast_basic(zone, &time_period_clone, product_id)
-            .await
+        self.forecast_basic(zone, &time_period_clone, product_id).await
     }
 
     /// Prédit avec l'IA (utilise AppIA comme dans DeliveryAIRecommendationsService)
@@ -274,10 +273,7 @@ impl DeliveryAIForecastingService {
             let mut daily_data: HashMap<String, Vec<f64>> = HashMap::new();
             for sale in sales_history {
                 let day_key = sale.date.format("%Y-%m-%d").to_string();
-                daily_data
-                    .entry(day_key)
-                    .or_insert_with(Vec::new)
-                    .push(sale.quantity);
+                daily_data.entry(day_key).or_insert_with(Vec::new).push(sale.quantity);
             }
 
             daily_data
@@ -333,11 +329,7 @@ impl DeliveryAIForecastingService {
         sales_history: &[SalesData],
     ) -> AppResult<DemandForecast> {
         // Nettoyer la réponse (enlever markdown si présent)
-        let cleaned = response
-            .replace("```json", "")
-            .replace("```", "")
-            .trim()
-            .to_string();
+        let cleaned = response.replace("```json", "").replace("```", "").trim().to_string();
 
         let json: Value = serde_json::from_str(&cleaned).map_err(|e| {
             log::error!("[AI Forecasting] Erreur parsing JSON: {}", e);
@@ -411,21 +403,10 @@ impl DeliveryAIForecastingService {
 
         // Calculer tendance
         let historical_trend = if sales_history.len() >= 7 {
-            let recent: f64 = sales_history
-                .iter()
-                .rev()
-                .take(3)
-                .map(|s| s.quantity)
-                .sum::<f64>()
-                / 3.0;
-            let older: f64 = sales_history
-                .iter()
-                .rev()
-                .skip(3)
-                .take(3)
-                .map(|s| s.quantity)
-                .sum::<f64>()
-                / 3.0;
+            let recent: f64 =
+                sales_history.iter().rev().take(3).map(|s| s.quantity).sum::<f64>() / 3.0;
+            let older: f64 =
+                sales_history.iter().rev().skip(3).take(3).map(|s| s.quantity).sum::<f64>() / 3.0;
             if older > 0.0 {
                 (recent - older) / older
             } else {

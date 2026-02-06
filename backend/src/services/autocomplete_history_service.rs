@@ -209,10 +209,8 @@ pub async fn get_sub_characteristics(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération sous-caractéristiques: {}", e)))?;
 
-    let sub_chars: Vec<String> = rows
-        .iter()
-        .map(|row| row.get::<String, _>("sous_caracteristique"))
-        .collect();
+    let sub_chars: Vec<String> =
+        rows.iter().map(|row| row.get::<String, _>("sous_caracteristique")).collect();
     Ok(sub_chars)
 }
 
@@ -237,10 +235,7 @@ pub async fn get_all_values(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération valeurs: {}", e)))?;
 
-    let values: Vec<String> = rows
-        .iter()
-        .map(|row| row.get::<String, _>("valeur"))
-        .collect();
+    let values: Vec<String> = rows.iter().map(|row| row.get::<String, _>("valeur")).collect();
     Ok(values)
 }
 

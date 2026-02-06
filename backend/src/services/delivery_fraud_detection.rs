@@ -71,18 +71,13 @@ impl DeliveryFraudDetectionService {
         let mut signals = Vec::new();
 
         // 1. Détecter fake delivery
-        if let Some(signal) = self
-            .detect_fake_delivery(&delivery_data, user_id, courier_id)
-            .await?
+        if let Some(signal) = self.detect_fake_delivery(&delivery_data, user_id, courier_id).await?
         {
             signals.push(signal);
         }
 
         // 2. Détecter collusion
-        if let Some(signal) = self
-            .detect_collusion(user_id, courier_id, &delivery_data)
-            .await?
-        {
+        if let Some(signal) = self.detect_collusion(user_id, courier_id, &delivery_data).await? {
             signals.push(signal);
         }
 
@@ -175,10 +170,7 @@ impl DeliveryFraudDetectionService {
         if let Some(timestamps) = pattern {
             // Si plus de 10 livraisons en 24h entre mêmes personnes
             let now = Utc::now();
-            let recent = timestamps
-                .iter()
-                .filter(|t| (now - **t).num_hours() < 24)
-                .count();
+            let recent = timestamps.iter().filter(|t| (now - **t).num_hours() < 24).count();
 
             if recent > 10 {
                 return Ok(Some(FraudSignal {

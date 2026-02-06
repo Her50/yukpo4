@@ -103,11 +103,7 @@ impl VideoRenderExecutor for LocalRenderExecutor {
     ) -> Result<RenderJobResponse, RenderError> {
         let job_hint = request.job_id.as_ref().map(|value| value.to_string());
 
-        match self
-            .service
-            .render(&request.timeline, job_hint.as_deref())
-            .await
-        {
+        match self.service.render(&request.timeline, job_hint.as_deref()).await {
             Ok(rendered) => Ok(convert_rendered_video(
                 rendered,
                 RenderExecutionMode::Offline,
@@ -382,9 +378,8 @@ impl VideoRenderDispatcher {
         let max_retries = self.max_retries();
 
         if let Some(primary) = &self.primary {
-            let result = self
-                .attempt_with_retries(primary.clone(), request, timeout, max_retries)
-                .await;
+            let result =
+                self.attempt_with_retries(primary.clone(), request, timeout, max_retries).await;
             match result {
                 Ok(response) => return Ok(response),
                 Err(err) => {

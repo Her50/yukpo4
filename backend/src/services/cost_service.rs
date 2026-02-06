@@ -98,9 +98,8 @@ impl CostEstimator {
         user_id: i32,
         script_outline_len: usize,
     ) -> AppResult<CostEstimation> {
-        let estimation = self
-            .estimate_video_generation_cost_only(user_id, script_outline_len)
-            .await?;
+        let estimation =
+            self.estimate_video_generation_cost_only(user_id, script_outline_len).await?;
 
         if !estimation.affordable {
             return Err(AppError::Forbidden(format!(
@@ -118,9 +117,8 @@ impl CostEstimator {
         user_id: i32,
         script_outline_len: usize,
     ) -> AppResult<CostEstimation> {
-        let mut estimation = self
-            .estimate_video_generation_cost(user_id, script_outline_len)
-            .await?;
+        let mut estimation =
+            self.estimate_video_generation_cost(user_id, script_outline_len).await?;
 
         #[derive(sqlx::FromRow)]
         struct UserBalanceRow {

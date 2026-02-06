@@ -298,10 +298,7 @@ impl ProfilsCandidatsService {
             count_query.push_str(&format!(" AND disponible_immediatement = {}", disp));
         }
 
-        let total: i64 = sqlx::query_scalar(&count_query)
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
+        let total: i64 = sqlx::query_scalar(&count_query).fetch_one(&self.pool).await.unwrap_or(0);
 
         Ok((candidats, total))
     }

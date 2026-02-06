@@ -62,12 +62,10 @@ impl RateLimiter {
             limits.retain(|_, entry| entry.reset_at > now);
         }
 
-        let entry = limits
-            .entry(key.to_string())
-            .or_insert_with(|| RateLimitEntry {
-                count: 0,
-                reset_at: now + Duration::from_secs(self.window_seconds),
-            });
+        let entry = limits.entry(key.to_string()).or_insert_with(|| RateLimitEntry {
+            count: 0,
+            reset_at: now + Duration::from_secs(self.window_seconds),
+        });
 
         // Réinitialiser si la fenêtre est expirée
         if now >= entry.reset_at {
@@ -187,11 +185,7 @@ pub async fn user_rate_limit_middleware(
     use crate::middlewares::jwt::AuthenticatedUser;
 
     // Extraire user_id depuis le token JWT (si authentifié)
-    let user_id = request
-        .extensions()
-        .get::<AuthenticatedUser>()
-        .map(|user| user.id)
-        .unwrap_or(0);
+    let user_id = request.extensions().get::<AuthenticatedUser>().map(|user| user.id).unwrap_or(0);
 
     // Si non authentifié, utiliser l'IP comme fallback
     if user_id == 0 {

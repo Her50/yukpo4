@@ -60,15 +60,30 @@ nginx/
 # ============================================
 node_modules/
 **/node_modules/
-# Exemples et builds dans node_modules (volumineux)
+# Exemples et builds dans node_modules (volumineux - CRITIQUE!)
 node_modules/**/example/
 node_modules/**/examples/
 node_modules/**/example/**
 node_modules/**/examples/**
+# Tous les dossiers build dans node_modules (très volumineux!)
 node_modules/**/android/app/build/
+node_modules/**/android/app/build/**
+node_modules/**/android/build/
+node_modules/**/android/build/**
 node_modules/**/ios/build/
+node_modules/**/ios/build/**
 node_modules/**/build/
 node_modules/**/build/**
+node_modules/**/build/intermediates/
+node_modules/**/build/intermediates/**
+node_modules/**/build/outputs/
+node_modules/**/build/outputs/**
+node_modules/**/build/tmp/
+node_modules/**/build/tmp/**
+node_modules/**/build/kotlin/
+node_modules/**/build/kotlin/**
+node_modules/**/.gradle/
+node_modules/**/.gradle/**
 # Source maps volumineux (TensorFlow, etc.)
 node_modules/**/*.map
 # Binaires non-Android (win64, osx, etc.)
@@ -87,15 +102,40 @@ node_modules/**/*.tbz
 node_modules/**/*.tar.gz
 
 # ============================================
-# BUILD DIRECTORIES
+# BUILD DIRECTORIES (CRITIQUE - 603MB!)
 # ============================================
+# Exclusion absolue de tous les dossiers de build Android
 android/.gradle/
+android/.gradle/**
 android/build/
+android/build/**
 android/app/build/
+android/app/build/**
+android/app/**/build/
+android/app/**/build/**
 android/.idea/
 .gradle/
+.gradle/**
 build/
+build/**
 *.iml
+# Lock files (peuvent causer des erreurs EBUSY)
+**/*.lock
+**/.lock
+android/**/*.lock
+android/**/.lock
+# Artefacts de build Android (APK, AAB, etc.)
+android/**/*.apk
+android/**/*.aab
+android/**/*.apks
+android/**/*.dex
+android/**/*.class
+android/**/intermediates/
+android/**/intermediates/**
+android/**/outputs/
+android/**/outputs/**
+android/**/generated/
+android/**/generated/**
 
 # ============================================
 # EXPO & DIST

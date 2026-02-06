@@ -378,17 +378,9 @@ async fn get_engagement_based_recommendations_enhanced(
             .fetch_all(pool)
             .await
     } else if !categories.is_empty() {
-        sqlx::query(&query)
-            .bind(categories)
-            .bind(limit)
-            .fetch_all(pool)
-            .await
+        sqlx::query(&query).bind(categories).bind(limit).fetch_all(pool).await
     } else if !exclude_ids.is_empty() {
-        sqlx::query(&query)
-            .bind(exclude_ids)
-            .bind(limit)
-            .fetch_all(pool)
-            .await
+        sqlx::query(&query).bind(exclude_ids).bind(limit).fetch_all(pool).await
     } else {
         sqlx::query(&query).bind(limit).fetch_all(pool).await
     };
@@ -446,9 +438,8 @@ async fn get_engagement_based_recommendations_enhanced(
                         row.get::<Option<String>, _>("thumbnail_raw");
 
                     let video_url = build_media_url_with_fallback(state, &video_url_raw);
-                    let thumbnail = thumbnail_raw
-                        .as_ref()
-                        .map(|t| build_media_url_with_fallback(state, t));
+                    let thumbnail =
+                        thumbnail_raw.as_ref().map(|t| build_media_url_with_fallback(state, t));
 
                     MLRecommendedVideo {
                         id: row.get::<String, _>("id"),
@@ -463,9 +454,7 @@ async fn get_engagement_based_recommendations_enhanced(
                         recency_score,
                         total_score,
                         is_sponsored: row.get::<bool, _>("is_sponsored"),
-                        hashtags: row
-                            .get::<Option<Vec<String>>, _>("hashtags")
-                            .unwrap_or_default(),
+                        hashtags: row.get::<Option<Vec<String>>, _>("hashtags").unwrap_or_default(),
                         created_at: row
                             .get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at")
                             .map(|dt| dt.to_rfc3339())
@@ -634,9 +623,8 @@ async fn get_collaborative_recommendations(
             let thumbnail_raw: Option<String> = row.get::<Option<String>, _>("thumbnail_raw");
 
             let video_url = build_media_url_with_fallback(&state, &video_url_raw);
-            let thumbnail = thumbnail_raw
-                .as_ref()
-                .map(|t| build_media_url_with_fallback(&state, t));
+            let thumbnail =
+                thumbnail_raw.as_ref().map(|t| build_media_url_with_fallback(&state, t));
 
             MLRecommendedVideo {
                 id: row.get::<String, _>("id"),
@@ -652,9 +640,7 @@ async fn get_collaborative_recommendations(
                 total_score: collaborative_score,
                 is_sponsored: false,
                 hashtags: row.get::<Vec<String>, _>("hashtags"),
-                created_at: row
-                    .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                    .to_rfc3339(),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
             }
         })
         .collect())
@@ -667,17 +653,13 @@ fn deduplicate_and_sort_videos(
 ) -> Vec<MLRecommendedVideo> {
     // Dédupliquer par content_id
     videos.sort_by(|a, b| {
-        b.total_score
-            .partial_cmp(&a.total_score)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        b.total_score.partial_cmp(&a.total_score).unwrap_or(std::cmp::Ordering::Equal)
     });
     videos.dedup_by(|a, b| a.content_id == b.content_id);
 
     // Trier par score total décroissant
     videos.sort_by(|a, b| {
-        b.total_score
-            .partial_cmp(&a.total_score)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        b.total_score.partial_cmp(&a.total_score).unwrap_or(std::cmp::Ordering::Equal)
     });
 
     videos.into_iter().take(limit as usize).collect()

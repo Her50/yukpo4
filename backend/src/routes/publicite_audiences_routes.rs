@@ -156,10 +156,7 @@ pub async fn list_audiences(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<ResponseJson<ListAudiencesResponse>, StatusCode> {
     let pool = &state.pg;
-    let user_id: i32 = params
-        .get("user_id")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(1); // Temporaire
+    let user_id: i32 = params.get("user_id").and_then(|v| v.parse().ok()).unwrap_or(1); // Temporaire
 
     // TODO: Créer la table si elle n'existe pas
     let query = r#"
@@ -169,11 +166,7 @@ pub async fn list_audiences(
         ORDER BY created_at DESC
     "#;
 
-    match sqlx::query_as::<_, AudienceRow>(query)
-        .bind(user_id)
-        .fetch_all(pool)
-        .await
-    {
+    match sqlx::query_as::<_, AudienceRow>(query).bind(user_id).fetch_all(pool).await {
         Ok(rows) => {
             let audiences: Vec<Audience> = rows
                 .into_iter()

@@ -605,10 +605,7 @@ impl GlobalPromoService {
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         // Si une recherche a été effectuée
-        let search_was_performed = search
-            .as_ref()
-            .map(|s| !s.trim().is_empty())
-            .unwrap_or(false);
+        let search_was_performed = search.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false);
         if search_was_performed {
             crate::metrics::GLOBAL_PROMO_METRICS
                 .catalog_searches_total
@@ -1105,15 +1102,9 @@ fn map_product_from_row(row: &PgRow) -> AppResult<Option<GlobalPromoProductSnaps
         id: id.unwrap(),
         promo_entry_id: row.get::<Uuid, _>("product_entry_id"),
         availability: row.get::<String, _>("product_availability"),
-        snapshot: row
-            .get::<Option<Value>, _>("product_snapshot")
-            .unwrap_or_else(|| json!({})),
-        priority_score: row
-            .get::<Option<i32>, _>("product_priority_score")
-            .unwrap_or(0),
-        highlighted: row
-            .get::<Option<bool>, _>("product_highlighted")
-            .unwrap_or(false),
+        snapshot: row.get::<Option<Value>, _>("product_snapshot").unwrap_or_else(|| json!({})),
+        priority_score: row.get::<Option<i32>, _>("product_priority_score").unwrap_or(0),
+        highlighted: row.get::<Option<bool>, _>("product_highlighted").unwrap_or(false),
         created_at: row.get::<DateTime<Utc>, _>("product_created_at"),
         updated_at: row.get::<DateTime<Utc>, _>("product_updated_at"),
     }))

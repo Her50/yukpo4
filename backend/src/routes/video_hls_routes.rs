@@ -100,10 +100,7 @@ async fn generate_dash_variants(
     let output_dir = std::env::var("HLS_OUTPUT_DIR").unwrap_or_else(|_| "./hls_output".to_string());
     let hls_service = HLSDashService::new(output_dir.clone());
 
-    match hls_service
-        .generate_dash_variants(&video_path.unwrap(), &video_id)
-        .await
-    {
+    match hls_service.generate_dash_variants(&video_path.unwrap(), &video_id).await {
         Ok(manifest_url) => Ok(Json(serde_json::json!({
             "success": true,
             "manifest_url": manifest_url
@@ -122,9 +119,7 @@ async fn get_master_playlist(Path(video_id): Path<String>) -> Result<String, Sta
 
     if let Some(_url) = hls_service.get_master_playlist_url(&video_id) {
         // Lire et retourner le contenu du master playlist
-        let playlist_path = std::path::Path::new(&output_dir)
-            .join(&video_id)
-            .join("master.m3u8");
+        let playlist_path = std::path::Path::new(&output_dir).join(&video_id).join("master.m3u8");
 
         match tokio::fs::read_to_string(playlist_path).await {
             Ok(content) => Ok(content),
@@ -156,9 +151,7 @@ async fn get_variant_playlist(
 async fn get_dash_manifest(Path(video_id): Path<String>) -> Result<String, StatusCode> {
     let output_dir = std::env::var("HLS_OUTPUT_DIR").unwrap_or_else(|_| "./hls_output".to_string());
 
-    let manifest_path = std::path::Path::new(&output_dir)
-        .join(&video_id)
-        .join("manifest.mpd");
+    let manifest_path = std::path::Path::new(&output_dir).join(&video_id).join("manifest.mpd");
 
     match tokio::fs::read_to_string(manifest_path).await {
         Ok(content) => Ok(content),

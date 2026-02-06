@@ -175,8 +175,7 @@ impl PaymentService {
                 .await?
             }
             PaymentMethod::PayPal { email } => {
-                self.process_paypal_payment(&transaction_id, email, request.amount)
-                    .await?
+                self.process_paypal_payment(&transaction_id, email, request.amount).await?
             }
             PaymentMethod::BankTransfer {
                 account_number,
@@ -207,8 +206,7 @@ impl PaymentService {
 
         // Si le paiement est réussi, ajouter les tokens
         if matches!(status, PaymentStatus::Completed) {
-            self.add_tokens_to_user(request.user_id, request.amount)
-                .await?;
+            self.add_tokens_to_user(request.user_id, request.amount).await?;
         }
 
         Ok(PaymentResponse {
@@ -547,12 +545,10 @@ impl PaymentService {
                 bonus_tokens: payment.bonus_tokens.unwrap_or(0),
                 total_tokens: payment.total_tokens.unwrap_or(0),
                 reference: payment.gateway_response.and_then(|gr| {
-                    serde_json::from_value::<serde_json::Value>(gr)
-                        .ok()
-                        .and_then(|v| {
-                            v.get("transaction_reference")
-                                .and_then(|r| r.as_str().map(|s| s.to_string()))
-                        })
+                    serde_json::from_value::<serde_json::Value>(gr).ok().and_then(|v| {
+                        v.get("transaction_reference")
+                            .and_then(|r| r.as_str().map(|s| s.to_string()))
+                    })
                 }),
             })
             .collect();
@@ -602,12 +598,10 @@ impl PaymentService {
                 bonus_tokens: payment.bonus_tokens.unwrap_or(0),
                 total_tokens: payment.total_tokens.unwrap_or(0),
                 reference: payment.gateway_response.and_then(|gr| {
-                    serde_json::from_value::<serde_json::Value>(gr)
-                        .ok()
-                        .and_then(|v| {
-                            v.get("transaction_reference")
-                                .and_then(|r| r.as_str().map(|s| s.to_string()))
-                        })
+                    serde_json::from_value::<serde_json::Value>(gr).ok().and_then(|v| {
+                        v.get("transaction_reference")
+                            .and_then(|r| r.as_str().map(|s| s.to_string()))
+                    })
                 }),
             }))
         } else {

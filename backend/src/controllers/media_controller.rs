@@ -112,11 +112,7 @@ pub async fn upload_media(
     }
     // ✅ CORRIGÉ: Utiliser MediaStorageService (S3/Wasabi) au lieu du stockage local
     create_dir_all("logs").ok();
-    let mut log_file = match OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("logs/media.log")
-    {
+    let mut log_file = match OpenOptions::new().create(true).append(true).open("logs/media.log") {
         Ok(f) => f,
         Err(e) => {
             error!("[upload_media] log file open error: {e:?}");
@@ -431,11 +427,7 @@ pub async fn delete_media(
         return Err(AppError::from(e));
     }
     create_dir_all("logs").ok();
-    let mut log_file = match OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("logs/media.log")
-    {
+    let mut log_file = match OpenOptions::new().create(true).append(true).open("logs/media.log") {
         Ok(f) => f,
         Err(e) => {
             error!("[delete_media] log file open error: {e:?}");
@@ -545,9 +537,7 @@ pub async fn list_effects(
 ) -> AppResult<Json<serde_json::Value>> {
     let service = EffectLibraryService::new(state.pg.clone());
 
-    let tags = query
-        .tags
-        .map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
+    let tags = query.tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
 
     let params = crate::services::effect_library_service::EffectSearchParams {
         category: query.category.clone(),

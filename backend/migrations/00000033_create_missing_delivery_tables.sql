@@ -237,3 +237,5 @@ COMMENT ON TABLE external_delivery_providers IS 'Fournisseurs de livraison exter
 COMMENT ON TABLE public_tracking_tokens IS 'Tokens de suivi public pour livraisons externes';
 COMMENT ON TABLE delivery_payment_reservations IS 'Réservations de paiement pour livraisons';
 
+
+

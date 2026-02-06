@@ -163,18 +163,16 @@ impl ProgrammesScolairesService {
             .fetch_all(&*self.pool)
             .await
             .map_err(|e| {
-                error!("[PROGRAMMES_SCOLAIRES] Erreur search: {}", e);
-                AppError::Internal(format!("Erreur recherche programmes: {}", e))
-            })?;
+            error!("[PROGRAMMES_SCOLAIRES] Erreur search: {}", e);
+            AppError::Internal(format!("Erreur recherche programmes: {}", e))
+        })?;
 
         let count_query = format!(
             "SELECT COUNT(*)::bigint FROM programmes_scolaires WHERE {}",
             conditions.join(" AND ")
         );
-        let total: i64 = sqlx::query_scalar(&count_query)
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|e| {
+        let total: i64 =
+            sqlx::query_scalar(&count_query).fetch_one(&*self.pool).await.map_err(|e| {
                 error!("[PROGRAMMES_SCOLAIRES] Erreur count: {}", e);
                 AppError::Internal(format!("Erreur count programmes: {}", e))
             })?;

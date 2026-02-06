@@ -184,3 +184,5 @@ pub async fn run_auto_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
 **Solution** : Exécuter la migration consolidée **AVANT** `sqlx::migrate!()` ou dans `run_auto_migrations()` (comme sur Render) pour qu'elle s'exécute toujours, indépendamment du résultat de `sqlx::migrate!()`.
 
 
+
+

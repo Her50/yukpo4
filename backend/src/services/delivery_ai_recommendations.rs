@@ -82,8 +82,7 @@ impl DeliveryAIRecommendationsService {
         let recommendations = self.generate_recommendations(&context, max_results).await?;
 
         // Mettre en cache
-        self.cache
-            .insert(cache_key, (recommendations.clone(), chrono::Utc::now()));
+        self.cache.insert(cache_key, (recommendations.clone(), chrono::Utc::now()));
 
         Ok(recommendations)
     }
@@ -96,18 +95,14 @@ impl DeliveryAIRecommendationsService {
     ) -> AppResult<Vec<RecommendedProduct>> {
         // ✅ NOUVEAU: Utiliser l'IA si disponible
         if let Some(app_ia) = &self.app_ia {
-            return self
-                .generate_recommendations_with_ai(context, max_results, app_ia)
-                .await;
+            return self.generate_recommendations_with_ai(context, max_results, app_ia).await;
         }
 
         // Fallback: logique basique si pas d'IA
         let mut recommendations = Vec::new();
 
         // 1. Recommandations basées sur le panier (produits complémentaires)
-        let complementary = self
-            .get_complementary_products(&context.current_cart)
-            .await?;
+        let complementary = self.get_complementary_products(&context.current_cart).await?;
         recommendations.extend(complementary);
 
         // 2. Recommandations basées sur l'historique utilisateur
@@ -176,17 +171,11 @@ impl DeliveryAIRecommendationsService {
             .replace("{location}", &location_str)
             .replace(
                 "{lat}",
-                &context
-                    .delivery_location
-                    .map(|(l, _)| l.to_string())
-                    .unwrap_or_default(),
+                &context.delivery_location.map(|(l, _)| l.to_string()).unwrap_or_default(),
             )
             .replace(
                 "{lng}",
-                &context
-                    .delivery_location
-                    .map(|(_, l)| l.to_string())
-                    .unwrap_or_default(),
+                &context.delivery_location.map(|(_, l)| l.to_string()).unwrap_or_default(),
             )
             .replace("{delivery_type}", &context.delivery_type)
             .replace("{budget_range}", &budget_str)
@@ -212,10 +201,7 @@ impl DeliveryAIRecommendationsService {
 
         // Extraire les recommandations
         let mut recommendations = Vec::new();
-        if let Some(recs_array) = json_response
-            .get("recommendations")
-            .and_then(|v| v.as_array())
-        {
+        if let Some(recs_array) = json_response.get("recommendations").and_then(|v| v.as_array()) {
             for rec in recs_array {
                 if let Ok(product) = serde_json::from_value::<RecommendedProduct>(rec.clone()) {
                     recommendations.push(product);

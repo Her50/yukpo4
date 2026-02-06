@@ -177,3 +177,5 @@ Les builds EAS (preview/production) utilisent **automatiquement** les variables 
 Le problème concerne uniquement le **mode développement local** qui nécessite un fichier `.env` pour utiliser AWS au lieu du fallback Render.
 
 
+
+

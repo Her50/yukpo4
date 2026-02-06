@@ -13,10 +13,7 @@ pub async fn detect_intention(
     app_ia: &AppIA,
     input: &Value, // ? Attendu : un JSON context enrichi
 ) -> Result<IntentionResult, Box<dyn std::error::Error + Send + Sync>> {
-    let message = input
-        .get("texte_libre")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
+    let message = input.get("texte_libre").and_then(Value::as_str).unwrap_or_default();
 
     let prompt = format!(
         r#"

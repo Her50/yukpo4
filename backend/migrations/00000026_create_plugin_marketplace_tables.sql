@@ -113,3 +113,5 @@ CREATE TRIGGER trigger_update_plugin_rating
     FOR EACH ROW
     EXECUTE FUNCTION update_plugin_rating();
 
+
+

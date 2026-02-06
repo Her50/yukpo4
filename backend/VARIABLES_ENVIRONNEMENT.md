@@ -193,9 +193,47 @@ Au moins une clé API IA est nécessaire pour les fonctionnalités d'intelligenc
 
 ---
 
+### 15. `BOOTSTRAP_SUPER_ADMIN_TOKEN` (Temporaire - Sécurité)
+**Type:** String (Secure)  
+**Description:** Token secret pour l'endpoint temporaire `/api/auth/bootstrap-super-admin` qui permet de créer/mettre à jour le compte super admin.  
+**⚠️ IMPORTANT:** 
+- Cette variable est **temporaire** et doit être supprimée après la création du compte admin
+- Utilisez un token fort et aléatoire (minimum 32 caractères)
+- Stockez-le dans AWS SSM Parameter Store ou Secrets Manager
+- Ne commitez JAMAIS ce token dans git
+
+**Configuration:**
+```bash
+# Générer un token aléatoire
+openssl rand -hex 32
+
+# Stocker dans SSM (via script)
+.\scripts\setup_bootstrap_token.ps1
+
+# Ou manuellement
+aws ssm put-parameter \
+  --name /yukpomnang/production/BOOTSTRAP_SUPER_ADMIN_TOKEN \
+  --value "your-secret-token-here" \
+  --type "SecureString" \
+  --region us-east-1
+```
+
+**Usage:**
+```bash
+# Appeler l'endpoint pour créer le super admin
+.\scripts\call_bootstrap_super_admin.ps1
+```
+
+**Identifiants créés:**
+- Email: `admin@yukpo.dev`
+- Mot de passe: `Hernandez87`
+- Rôle: `super_admin`
+
+---
+
 ## ⚙️ PRIORITÉ 6 - Configuration Application
 
-### 15. `ENVIRONMENT`
+### 16. `ENVIRONMENT`
 **Type:** String  
 **Valeurs:** `production`, `development`, `staging`  
 **Défaut:** `production`  
@@ -203,7 +241,7 @@ Au moins une clé API IA est nécessaire pour les fonctionnalités d'intelligenc
 
 ---
 
-### 16. `RUST_LOG`
+### 17. `RUST_LOG`
 **Type:** String  
 **Valeurs:** `trace`, `debug`, `info`, `warn`, `error`  
 **Défaut:** `info`  
@@ -211,7 +249,7 @@ Au moins une clé API IA est nécessaire pour les fonctionnalités d'intelligenc
 
 ---
 
-### 17. `LOG_FORMAT`
+### 18. `LOG_FORMAT`
 **Type:** String  
 **Valeurs:** `plain`, `json`  
 **Défaut:** `plain`  

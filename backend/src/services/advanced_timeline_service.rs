@@ -42,13 +42,7 @@ impl AdvancedTimelineService {
         .bind(request.timeline.duration)
         .bind(request.timeline.fps.map(|f| f as i32))
         .bind(request.timeline.resolution.as_ref().map(|r| r.width as i32))
-        .bind(
-            request
-                .timeline
-                .resolution
-                .as_ref()
-                .map(|r| r.height as i32),
-        )
+        .bind(request.timeline.resolution.as_ref().map(|r| r.height as i32))
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
@@ -170,13 +164,7 @@ impl AdvancedTimelineService {
         .bind(request.timeline.duration)
         .bind(request.timeline.fps.map(|f| f as i32))
         .bind(request.timeline.resolution.as_ref().map(|r| r.width as i32))
-        .bind(
-            request
-                .timeline
-                .resolution
-                .as_ref()
-                .map(|r| r.height as i32),
-        )
+        .bind(request.timeline.resolution.as_ref().map(|r| r.height as i32))
         .bind(timeline_id)
         .bind(user_id)
         .fetch_optional(&self.pool)

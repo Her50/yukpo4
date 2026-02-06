@@ -149,9 +149,8 @@ RÉPONSE ATTENDUE (JSON strict) :
         nb_pieces: i32,
         services_additionnels: Option<serde_json::Value>, // {"emballage": true, "demontage": true}
     ) -> AppResult<MovingCostEstimate> {
-        let distance_str = distance_km
-            .map(|d| d.to_string())
-            .unwrap_or_else(|| "À calculer".to_string());
+        let distance_str =
+            distance_km.map(|d| d.to_string()).unwrap_or_else(|| "À calculer".to_string());
         let services_str = services_additionnels
             .as_ref()
             .and_then(|s| serde_json::to_string(s).ok())

@@ -317,11 +317,8 @@ impl ConferencesLivesService {
             count_query.push(" AND is_annule = false");
         }
 
-        let total: i64 = count_query
-            .build_query_scalar()
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|e| {
+        let total: i64 =
+            count_query.build_query_scalar().fetch_one(&*self.pool).await.map_err(|e| {
                 error!("[CONFERENCES_LIVES] Erreur count: {}", e);
                 AppError::Internal(format!("Erreur count conférences: {}", e))
             })?;

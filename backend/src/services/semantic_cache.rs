@@ -145,8 +145,7 @@ impl SemanticCache {
             .map_err(|e| format!("Erreur parsing r?ponse embedding: {}", e))?;
 
         // Mettre en cache l'embedding
-        self.cache_embedding(&cache_key, &embedding_response.embedding)
-            .await;
+        self.cache_embedding(&cache_key, &embedding_response.embedding).await;
 
         log_info(&format!(
             "[SemanticCache] Embedding g?n?r? en {}s",

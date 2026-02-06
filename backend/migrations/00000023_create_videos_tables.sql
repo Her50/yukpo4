@@ -124,3 +124,5 @@ COMMENT ON COLUMN videos.hashtags IS 'Array de hashtags extraits automatiquement
 COMMENT ON COLUMN videos.embedding IS 'Vecteur d''embedding pour recommandations ML (stocké en TEXT, JSON array ou base64)';
 COMMENT ON COLUMN videos.studio_session_id IS 'ID de session studio pour chaînage vidéos';
 
+
+

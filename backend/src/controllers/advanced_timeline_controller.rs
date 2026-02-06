@@ -66,9 +66,7 @@ pub async fn list_timelines(
 ) -> AppResult<Json<serde_json::Value>> {
     let service = AdvancedTimelineService::new(state.pg.clone());
 
-    let (timelines, total) = service
-        .list_timelines(user.id, query.limit, query.offset)
-        .await?;
+    let (timelines, total) = service.list_timelines(user.id, query.limit, query.offset).await?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -88,9 +86,7 @@ pub async fn update_timeline(
 ) -> AppResult<Json<AdvancedTimelineResponse>> {
     let service = AdvancedTimelineService::new(state.pg.clone());
 
-    let timeline_row = service
-        .update_timeline(&timeline_id, user.id, request)
-        .await?;
+    let timeline_row = service.update_timeline(&timeline_id, user.id, request).await?;
 
     Ok(Json(AdvancedTimelineResponse {
         success: true,

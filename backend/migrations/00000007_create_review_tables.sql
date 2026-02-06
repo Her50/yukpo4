@@ -161,3 +161,5 @@ FROM product_comments pc
 LEFT JOIN users u ON u.id = pc.user_id
 WHERE pc.is_deleted = FALSE;
 
+
+

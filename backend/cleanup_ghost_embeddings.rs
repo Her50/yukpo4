@@ -15,10 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env::var("YUKPO_API_KEY").unwrap_or_else(|_| "yukpo_embedding_key_2024".to_string());
 
     println!("🔍 Connexion à la base de données...");
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await?;
+    let pool = PgPoolOptions::new().max_connections(5).connect(&database_url).await?;
 
     println!("✅ Connexion réussie !");
 
@@ -69,9 +66,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n📈 Statistiques après nettoyage:");
 
     // Compter tous les services
-    let total_count = sqlx::query!("SELECT COUNT(*) as count FROM services")
-        .fetch_one(&pool)
-        .await?;
+    let total_count =
+        sqlx::query!("SELECT COUNT(*) as count FROM services").fetch_one(&pool).await?;
     println!(
         "   Total des services en base: {}",
         total_count.count.unwrap_or(0)

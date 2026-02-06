@@ -143,3 +143,5 @@ Le fichier consolidé `0000_create_all_tables.sql` (5638 lignes) a été divisé
 - `ALTERNATIVES_STRUCTURE_MIGRATIONS.md` : Alternatives pour éviter les problèmes de parsing
 - `ANALYSE_ORIGINE_ERREURS_MIGRATIONS.md` : Analyse de l'origine des erreurs
 
+
+

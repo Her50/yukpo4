@@ -166,9 +166,8 @@ pub async fn reactivate_single_product(
         .map_err(|e| format!("Erreur DB: {}", e))?;
 
     // Parser le résultat JSON
-    let json_value: sqlx::types::JsonValue = row
-        .try_get("result")
-        .map_err(|e| format!("Erreur extraction result: {}", e))?;
+    let json_value: sqlx::types::JsonValue =
+        row.try_get("result").map_err(|e| format!("Erreur extraction result: {}", e))?;
     let response: ReactivationResult =
         serde_json::from_value(json_value).map_err(|e| format!("Erreur parsing: {}", e))?;
 
@@ -209,9 +208,8 @@ pub async fn reactivate_multiple_products(
         .map_err(|e| format!("Erreur DB: {}", e))?;
 
     // Parser le résultat JSON
-    let json_value: sqlx::types::JsonValue = row
-        .try_get("result")
-        .map_err(|e| format!("Erreur extraction result: {}", e))?;
+    let json_value: sqlx::types::JsonValue =
+        row.try_get("result").map_err(|e| format!("Erreur extraction result: {}", e))?;
     let response: MultipleReactivationResult =
         serde_json::from_value(json_value).map_err(|e| format!("Erreur parsing: {}", e))?;
 

@@ -60,8 +60,5 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
-    Router::new()
-        .merge(public_routes)
-        .merge(protected_routes)
-        .with_state(state)
+    Router::new().merge(public_routes).merge(protected_routes).with_state(state)
 }

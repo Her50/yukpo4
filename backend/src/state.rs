@@ -592,10 +592,7 @@ impl AppState {
         let cache_service = Arc::new(CacheService::new(Some(redis_client.clone())));
 
         // Pour les tests, on essaie d'utiliser Redis si disponible, sinon None
-        let redis_available_for_ws = redis_client
-            .get_multiplexed_async_connection()
-            .await
-            .is_ok();
+        let redis_available_for_ws = redis_client.get_multiplexed_async_connection().await.is_ok();
         let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(
             16,
             if redis_available_for_ws {
@@ -636,9 +633,7 @@ impl AppState {
                 pool_cfg.max_size = 8;
                 // Note: min_idle n'existe pas dans PoolConfig de deadpool-redis 0.15
             }
-            cfg.create_pool(Some(deadpool_redis::Runtime::Tokio1))
-                .ok()
-                .map(Arc::new)
+            cfg.create_pool(Some(deadpool_redis::Runtime::Tokio1)).ok().map(Arc::new)
         };
 
         // ✅ NOUVEAU 2025-12-01: Service de métriques pour tests
@@ -739,10 +734,8 @@ impl AppState {
             // ✅ NOUVEAU 2025-01-27: Manager WebSocket chat pour tests
             chat_ws_manager: {
                 let redis_client_clone = redis_client.clone();
-                let redis_available_for_ws = redis_client_clone
-                    .get_multiplexed_async_connection()
-                    .await
-                    .is_ok();
+                let redis_available_for_ws =
+                    redis_client_clone.get_multiplexed_async_connection().await.is_ok();
                 Some(Arc::new(
                     crate::websocket::chat_websocket::ChatWebSocketManager::new(
                         32,
@@ -757,10 +750,8 @@ impl AppState {
             // ✅ NOUVEAU: Manager WebSocket chat de livraison pour tests
             delivery_chat_ws_manager: {
                 let redis_client_for_delivery = redis_client.clone();
-                let redis_available_for_ws = redis_client_for_delivery
-                    .get_multiplexed_async_connection()
-                    .await
-                    .is_ok();
+                let redis_available_for_ws =
+                    redis_client_for_delivery.get_multiplexed_async_connection().await.is_ok();
                 Some(Arc::new(
                     crate::websocket::delivery_chat::DeliveryChatWebSocketManager::new(
                         64,

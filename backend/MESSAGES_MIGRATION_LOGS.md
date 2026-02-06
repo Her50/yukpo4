@@ -161,3 +161,5 @@ Les migrations sont considérées comme réussies si vous voyez **TOUS** ces mes
 - En production (AWS), vérifiez les logs CloudWatch pour voir tous les messages
 
 
+
+

@@ -515,10 +515,8 @@ impl AppIA {
                             .and_then(|v| v.as_str())
                             .unwrap_or(&response_json)
                             .to_string();
-                        let tokens = cached_data
-                            .get("tokens")
-                            .and_then(|v| v.as_u64())
-                            .unwrap_or(0) as u32;
+                        let tokens =
+                            cached_data.get("tokens").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
                         return Ok((model_name, response, tokens));
                     }
                 }
@@ -574,10 +572,8 @@ impl AppIA {
             .await
             {
                 Ok(Ok((model_name, response, tokens))) => {
-                    let processing_time = SystemTime::now()
-                        .duration_since(start_time)
-                        .unwrap()
-                        .as_millis();
+                    let processing_time =
+                        SystemTime::now().duration_since(start_time).unwrap().as_millis();
                     log::info!(
                         "[AppIA] ? Succ?s avec {} en {}ms ({} tokens)",
                         model_name,
@@ -597,9 +593,8 @@ impl AppIA {
                         if let Ok(mut conn) =
                             self.redis_client.get_multiplexed_async_connection().await
                         {
-                            if let Err(e) = conn
-                                .set_ex::<_, _, ()>(&cache_key, &cache_json, cache_ttl)
-                                .await
+                            if let Err(e) =
+                                conn.set_ex::<_, _, ()>(&cache_key, &cache_json, cache_ttl).await
                             {
                                 log::warn!("[AppIA] Erreur mise en cache Redis: {}", e);
                             } else {
@@ -629,8 +624,7 @@ impl AppIA {
         let (model_name, response_json) = self.generate_fallback_response(prompt)?;
         let response_string = response_json.to_string();
         // Mise ? jour des m?triques pour le fallback
-        self.update_metrics_with_tokens(&model_name, true, start_time, 5)
-            .await;
+        self.update_metrics_with_tokens(&model_name, true, start_time, 5).await;
         self.record_interaction(&interaction_id, prompt, &response_string, &model_name)
             .await;
         // ?? CORRECTION : L'ordre de retour doit être (model_name, response, tokens)
@@ -663,10 +657,8 @@ impl AppIA {
 
         // 1. S?lection intelligente du mod?le (priorit? aux mod?les multimodaux)
         let models = self.models.read().await;
-        let mut enabled_models: Vec<&ModelConfig> = models
-            .iter()
-            .filter(|m| m.enabled && self.supports_multimodal(m))
-            .collect();
+        let mut enabled_models: Vec<&ModelConfig> =
+            models.iter().filter(|m| m.enabled && self.supports_multimodal(m)).collect();
         enabled_models.sort_by(|a, b| b.priority.cmp(&a.priority));
 
         if enabled_models.is_empty() {
@@ -694,10 +686,7 @@ impl AppIA {
 
             match timeout_future.await {
                 Ok(Ok((model_name, response, tokens_used))) => {
-                    let elapsed = SystemTime::now()
-                        .duration_since(start_time)
-                        .unwrap()
-                        .as_millis();
+                    let elapsed = SystemTime::now().duration_since(start_time).unwrap().as_millis();
                     log::info!(
                         "[AppIA] ? Mod?le multimodal {} r?ussi en {}ms",
                         model_name,
@@ -705,8 +694,7 @@ impl AppIA {
                     );
                     self.update_metrics_with_tokens(&model_name, true, start_time, tokens_used)
                         .await;
-                    self.record_interaction(&interaction_id, prompt, &response, &model_name)
-                        .await;
+                    self.record_interaction(&interaction_id, prompt, &response, &model_name).await;
                     return Ok((model_name, response.to_string(), tokens_used));
                 }
                 Ok(Err(e)) => {
@@ -868,12 +856,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             }
         };
 
-        let subtitles = parsed
-            .get("subtitles")
-            .and_then(Value::as_array)
-            .ok_or_else(|| {
-                AppError::Internal("JSON sous-titres IA sans champ 'subtitles'".to_string())
-            })?;
+        let subtitles = parsed.get("subtitles").and_then(Value::as_array).ok_or_else(|| {
+            AppError::Internal("JSON sous-titres IA sans champ 'subtitles'".to_string())
+        })?;
 
         if subtitles.is_empty() {
             return Ok(None);
@@ -881,11 +866,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         let mut srt = String::new();
         for (idx, entry) in subtitles.iter().enumerate() {
-            let text = entry
-                .get("text")
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .trim();
+            let text = entry.get("text").and_then(Value::as_str).unwrap_or_default().trim();
             if text.is_empty() {
                 continue;
             }
@@ -972,11 +953,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .and_then(Value::as_str)
             .ok_or_else(|| AppError::Internal("Réponse TTS IA sans audio_base64".to_string()))?;
 
-        let format = parsed
-            .get("format")
-            .and_then(Value::as_str)
-            .unwrap_or("mp3")
-            .to_string();
+        let format = parsed.get("format").and_then(Value::as_str).unwrap_or("mp3").to_string();
 
         let decoded = STANDARD
             .decode(audio_b64.trim())
@@ -1008,10 +985,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         for attempt in 0..model.retry_count {
             match self.call_model_implementation(model, prompt).await {
                 Ok((response, tokens_used)) => {
-                    let response_time = SystemTime::now()
-                        .duration_since(start_time)
-                        .unwrap()
-                        .as_millis() as f64;
+                    let response_time =
+                        SystemTime::now().duration_since(start_time).unwrap().as_millis() as f64;
 
                     // ✅ Log structuré avec contexte
                     log::info!(
@@ -1072,15 +1047,10 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         let start_time = SystemTime::now();
 
         for attempt in 0..2.min(model.retry_count) {
-            match self
-                .call_model_multimodal_implementation(model, prompt, images)
-                .await
-            {
+            match self.call_model_multimodal_implementation(model, prompt, images).await {
                 Ok((response, tokens_used)) => {
-                    let response_time = SystemTime::now()
-                        .duration_since(start_time)
-                        .unwrap()
-                        .as_millis() as f64;
+                    let response_time =
+                        SystemTime::now().duration_since(start_time).unwrap().as_millis() as f64;
 
                     log::info!(
                         "[AppIA] ? Mod?le multimodal {} r?ussi en {}ms, {} tokens (tentative {})",
@@ -1225,10 +1195,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             return Err(format!("OpenAI API error: {}", error_text).into());
         }
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("OpenAI JSON parse error: {}", e))?;
+        let body: Value =
+            response.json().await.map_err(|e| format!("OpenAI JSON parse error: {}", e))?;
 
         // ✅ CORRECTION: Vérification robuste de la structure de réponse
         let content = body
@@ -1250,14 +1218,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // Extraire les tokens r?ellement consomm?s depuis la r?ponse OpenAI
         let tokens_used = if let Some(usage) = body.get("usage") {
-            let prompt_tokens = usage
-                .get("prompt_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            let completion_tokens = usage
-                .get("completion_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let prompt_tokens = usage.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            let completion_tokens =
+                usage.get("completion_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
             let total_tokens = usage
                 .get("total_tokens")
                 .and_then(|v| v.as_u64())
@@ -1323,10 +1286,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             return Err(format!("Mistral API error: {}", error_text).into());
         }
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Mistral JSON parse error: {}", e))?;
+        let body: Value =
+            response.json().await.map_err(|e| format!("Mistral JSON parse error: {}", e))?;
 
         // ✅ CORRECTION: Vérification robuste de la structure de réponse
         let content = body
@@ -1348,10 +1309,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // Extraire les tokens pour Mistral (m?me format qu'OpenAI)
         let tokens_used = if let Some(usage) = body.get("usage") {
-            let total_tokens = usage
-                .get("total_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let total_tokens = usage.get("total_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
             log::info!("[Mistral] Tokens utilis?s: {}", total_tokens);
             total_tokens as u32
         } else {
@@ -1408,10 +1366,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             return Err(format!("DeepSeek API error: {}", error_text).into());
         }
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("DeepSeek JSON parse error: {}", e))?;
+        let body: Value =
+            response.json().await.map_err(|e| format!("DeepSeek JSON parse error: {}", e))?;
 
         // ✅ CORRECTION: Vérification robuste de la structure de réponse
         let content = body
@@ -1432,14 +1388,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             })?;
 
         let tokens_used = if let Some(usage) = body.get("usage") {
-            let prompt_tokens = usage
-                .get("prompt_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            let completion_tokens = usage
-                .get("completion_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let prompt_tokens = usage.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            let completion_tokens =
+                usage.get("completion_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
             let total_tokens = usage
                 .get("total_tokens")
                 .and_then(|v| v.as_u64())
@@ -1521,10 +1472,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             return Err(format!("Gemini API error: {}", error_text).into());
         }
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Gemini JSON parse error: {}", e))?;
+        let body: Value =
+            response.json().await.map_err(|e| format!("Gemini JSON parse error: {}", e))?;
 
         // ✅ CORRECTION: Vérification robuste de la structure de réponse Gemini
         let content = body
@@ -1549,14 +1498,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // Extraire les tokens pour Gemini
         let tokens_used = if let Some(usage) = body.get("usageMetadata") {
-            let prompt_tokens = usage
-                .get("promptTokenCount")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            let candidate_tokens = usage
-                .get("candidatesTokenCount")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let prompt_tokens = usage.get("promptTokenCount").and_then(|v| v.as_u64()).unwrap_or(0);
+            let candidate_tokens =
+                usage.get("candidatesTokenCount").and_then(|v| v.as_u64()).unwrap_or(0);
             let total_tokens = usage
                 .get("totalTokenCount")
                 .and_then(|v| v.as_u64())
@@ -1613,14 +1557,10 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             return Err(format!("Ollama API error: {}", error_text).into());
         }
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Ollama JSON parse error: {}", e))?;
+        let body: Value =
+            response.json().await.map_err(|e| format!("Ollama JSON parse error: {}", e))?;
 
-        let content = body["response"]
-            .as_str()
-            .ok_or("Ollama response missing content")?;
+        let content = body["response"].as_str().ok_or("Ollama response missing content")?;
 
         // Estimation pour Ollama (pas d'info tokens native)
         let tokens_used = (prompt.len() / 4).max(10) + (content.len() / 4).max(5);
@@ -1688,14 +1628,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // Extraire les tokens pour Anthropic
         let tokens_used = if let Some(usage) = body.get("usage") {
-            let input_tokens = usage
-                .get("input_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            let output_tokens = usage
-                .get("output_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let input_tokens = usage.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            let output_tokens = usage.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
             let total_tokens = input_tokens + output_tokens;
 
             log::info!(
@@ -1748,10 +1682,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             return Err(format!("Cohere API error: {}", error_text).into());
         }
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Cohere JSON parse error: {}", e))?;
+        let body: Value =
+            response.json().await.map_err(|e| format!("Cohere JSON parse error: {}", e))?;
 
         let content = body["generations"][0]["text"]
             .as_str()
@@ -1760,14 +1692,10 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         // Extraire les tokens pour Cohere
         let tokens_used = if let Some(meta) = body.get("meta") {
             if let Some(billed_units) = meta.get("billed_units") {
-                let input_tokens = billed_units
-                    .get("input_tokens")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
-                let output_tokens = billed_units
-                    .get("output_tokens")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
+                let input_tokens =
+                    billed_units.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                let output_tokens =
+                    billed_units.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
                 let total_tokens = input_tokens + output_tokens;
 
                 log::info!(
@@ -1889,14 +1817,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // Extraire les tokens r?ellement consomm?s depuis la r?ponse OpenAI
         let tokens_used = if let Some(usage) = body.get("usage") {
-            let prompt_tokens = usage
-                .get("prompt_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            let completion_tokens = usage
-                .get("completion_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let prompt_tokens = usage.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            let completion_tokens =
+                usage.get("completion_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
             let total_tokens = usage
                 .get("total_tokens")
                 .and_then(|v| v.as_u64())
@@ -2003,14 +1926,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // Extraire les tokens pour Gemini
         let tokens_used = if let Some(usage) = body.get("usageMetadata") {
-            let prompt_tokens = usage
-                .get("promptTokenCount")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            let candidate_tokens = usage
-                .get("candidatesTokenCount")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let prompt_tokens = usage.get("promptTokenCount").and_then(|v| v.as_u64()).unwrap_or(0);
+            let candidate_tokens =
+                usage.get("candidatesTokenCount").and_then(|v| v.as_u64()).unwrap_or(0);
             let total_tokens = usage
                 .get("totalTokenCount")
                 .and_then(|v| v.as_u64())
@@ -2094,14 +2012,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         // Extraire les tokens pour Anthropic
         let tokens_used = if let Some(usage) = body.get("usage") {
-            let input_tokens = usage
-                .get("input_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            let output_tokens = usage
-                .get("output_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let input_tokens = usage.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            let output_tokens = usage.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
             let total_tokens = input_tokens + output_tokens;
 
             log::info!(
@@ -2155,15 +2067,12 @@ Réponds SEULEMENT le JSON, rien d'autre.",
     /// ?? Mise ? jour des m?triques de performance
     #[allow(dead_code)]
     async fn update_metrics(&self, model_name: &str, success: bool, start_time: SystemTime) {
-        let response_time = SystemTime::now()
-            .duration_since(start_time)
-            .unwrap()
-            .as_millis() as f64;
+        let response_time =
+            SystemTime::now().duration_since(start_time).unwrap().as_millis() as f64;
 
         let mut metrics = self.metrics.write().await;
-        let model_metrics = metrics
-            .entry(model_name.to_string())
-            .or_insert_with(ModelMetrics::default);
+        let model_metrics =
+            metrics.entry(model_name.to_string()).or_insert_with(ModelMetrics::default);
 
         model_metrics.total_requests += 1;
         if success {
@@ -2178,12 +2087,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             + response_time;
         model_metrics.average_response_time = total_time / model_metrics.total_requests as f64;
 
-        model_metrics.last_used = Some(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        );
+        model_metrics.last_used =
+            Some(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs());
         model_metrics.success_rate =
             model_metrics.successful_requests as f64 / model_metrics.total_requests as f64;
     }
@@ -2196,15 +2101,12 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         start_time: SystemTime,
         tokens_used: u32,
     ) {
-        let response_time = SystemTime::now()
-            .duration_since(start_time)
-            .unwrap()
-            .as_millis() as f64;
+        let response_time =
+            SystemTime::now().duration_since(start_time).unwrap().as_millis() as f64;
 
         let mut metrics = self.metrics.write().await;
-        let model_metrics = metrics
-            .entry(model_name.to_string())
-            .or_insert_with(ModelMetrics::default);
+        let model_metrics =
+            metrics.entry(model_name.to_string()).or_insert_with(ModelMetrics::default);
 
         model_metrics.total_requests += 1;
         model_metrics.total_tokens_used += tokens_used as u64;
@@ -2226,12 +2128,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             model_metrics.successful_requests as f64 / model_metrics.total_requests as f64 * 100.0;
 
         // Mise ? jour de la derni?re utilisation
-        model_metrics.last_used = Some(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        );
+        model_metrics.last_used =
+            Some(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs());
 
         log::info!(
             "[AppIA] M?triques mises ? jour pour {}: {} tokens, {}ms, {}% succ?s",
@@ -2258,10 +2156,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             model_used: model_name.to_string(),
             user_feedback: None,
             quality_score: 0.0,
-            created_at: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+            created_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
         };
 
         let mut training_queue = self.training_data.lock().await;
@@ -2291,9 +2186,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         while let Some(feedback) = feedback_queue.pop() {
             // Mise ? jour des donn?es d'entra?nement
-            if let Some(training_data) = training_queue
-                .iter_mut()
-                .find(|td| td.id == feedback.interaction_id)
+            if let Some(training_data) =
+                training_queue.iter_mut().find(|td| td.id == feedback.interaction_id)
             {
                 training_data.user_feedback = Some(feedback.clone());
                 training_data.quality_score = feedback.rating as f64 / 5.0;
@@ -2421,11 +2315,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
     /// ?? Nettoyage des donn?es anciennes
     pub async fn cleanup_old_data(&self) -> AppResult<()> {
-        let cutoff_time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-            - (30 * 24 * 3600); // 30 jours
+        let cutoff_time =
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() - (30 * 24 * 3600); // 30 jours
 
         let mut training_queue = self.training_data.lock().await;
         training_queue.retain(|td| td.created_at > cutoff_time);
@@ -2713,22 +2604,15 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         let mut results: Vec<VideoBrief> = Vec::new();
         for entry in variants {
             let mut brief = VideoBrief::default();
-            brief.headline = entry
-                .get("headline")
-                .and_then(Value::as_str)
-                .map(|s| s.trim().to_string());
+            brief.headline =
+                entry.get("headline").and_then(Value::as_str).map(|s| s.trim().to_string());
             brief.call_to_action = entry
                 .get("call_to_action")
                 .and_then(Value::as_str)
                 .map(|s| s.trim().to_string());
-            brief.hook = entry
-                .get("hook")
-                .and_then(Value::as_str)
-                .map(|s| s.trim().to_string());
-            brief.voiceover = entry
-                .get("voiceover")
-                .and_then(Value::as_str)
-                .map(|s| s.trim().to_string());
+            brief.hook = entry.get("hook").and_then(Value::as_str).map(|s| s.trim().to_string());
+            brief.voiceover =
+                entry.get("voiceover").and_then(Value::as_str).map(|s| s.trim().to_string());
             brief.hashtags = entry
                 .get("hashtags")
                 .and_then(Value::as_array)
@@ -3578,12 +3462,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         };
 
         // Extraire les scènes
-        let scenes_array = parsed
-            .get("scenes")
-            .and_then(Value::as_array)
-            .ok_or_else(|| {
-                AppError::Internal("JSON timeline IA sans champ 'scenes'".to_string())
-            })?;
+        let scenes_array = parsed.get("scenes").and_then(Value::as_array).ok_or_else(|| {
+            AppError::Internal("JSON timeline IA sans champ 'scenes'".to_string())
+        })?;
 
         let mut scenes: Vec<TimelineScene> = Vec::new();
         let mut current_time = 0.0;
@@ -3602,10 +3483,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 })
                 .clamp(1.0, 10.0);
 
-            let start_time = entry
-                .get("start_time")
-                .and_then(Value::as_f64)
-                .unwrap_or(current_time);
+            let start_time =
+                entry.get("start_time").and_then(Value::as_f64).unwrap_or(current_time);
 
             let scene = TimelineScene {
                 scene_index: entry
@@ -3732,11 +3611,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         if !request.available_media.is_empty() {
             log::debug!(
                 "[AppIA::generate_video_timeline] 📋 IDs disponibles: {:?}",
-                request
-                    .available_media
-                    .iter()
-                    .map(|m| &m.id)
-                    .collect::<Vec<_>>()
+                request.available_media.iter().map(|m| &m.id).collect::<Vec<_>>()
             );
         }
 
@@ -3844,10 +3719,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         }
 
         // Calculer la durée totale réelle
-        let total_duration = scenes
-            .iter()
-            .map(|s| s.start_time + s.duration)
-            .fold(0.0, f64::max);
+        let total_duration = scenes.iter().map(|s| s.start_time + s.duration).fold(0.0, f64::max);
 
         Ok(VideoTimeline {
             total_duration: total_duration.max(duration),

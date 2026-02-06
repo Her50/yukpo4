@@ -11,10 +11,7 @@ pub async fn gestion_fournitures_scolaires(
     payload: &Value,
     _pool: &sqlx::PgPool,
 ) -> AppResult<Value> {
-    let etablissement = payload
-        .get("etablissement")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let etablissement = payload.get("etablissement").and_then(|v| v.as_str()).unwrap_or("");
     let classe = payload.get("classe").and_then(|v| v.as_str()).unwrap_or("");
     let _image = payload.get("image_base64").and_then(|v| v.as_str());
     // 1. OCR/NLP si image fournie (fonction extract_livres_from_image ? impl?menter)

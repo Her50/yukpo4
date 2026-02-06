@@ -379,11 +379,7 @@ impl DeliveryTrackingManager {
         })?;
 
         let mut conn = client.get_multiplexed_async_connection().await?;
-        redis::cmd("PUBLISH")
-            .arg(&channel)
-            .arg(payload)
-            .query_async(&mut conn)
-            .await
+        redis::cmd("PUBLISH").arg(&channel).arg(payload).query_async(&mut conn).await
     }
 
     async fn redis_listener_loop(

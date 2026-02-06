@@ -5,7 +5,7 @@ buildscript {
         buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
         minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
         compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
-        targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '35')
+        targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
         kotlinVersion = findProperty('android.kotlinVersion') ?: '1.9.25'
 
         ndkVersion = "26.1.10909125"
@@ -13,28 +13,32 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://www.jitpack.io' }
+        // Repositories alternatifs en cas de problème réseau
+        maven { url 'https://repo1.maven.org/maven2' }
+        maven { url 'https://maven.aliyun.com/repository/public' } // Mirror chinois (backup)
     }
     dependencies {
         classpath 'com.google.gms:google-services:4.4.1'
-        // ✅ CORRIGÉ: Version AGP 8.6.0 compatible avec Gradle 8.10.2 et React Native
-        classpath('com.android.tools.build:gradle:8.6.0')
+        classpath('com.android.tools.build:gradle')
         classpath('com.facebook.react:react-native-gradle-plugin')
-        // ✅ CORRIGÉ: Version explicite de Kotlin pour éviter les problèmes de résolution
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
     }
 }
 
 apply plugin: "com.facebook.react.rootproject"
 
+// Définir compileSdkVersion dans rootProject.ext pour que les modules Expo puissent y accéder
+// via safeExtGet("compileSdkVersion", ...)
+ext {
+    compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
+    minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
+    targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
+    buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
+    kotlinVersion = findProperty('android.kotlinVersion') ?: '1.9.25'
+}
+
 allprojects {
     repositories {
-        // ✅ CORRIGÉ: Ordre important - repositories publics en premier
-        google()
-        mavenCentral()
-        maven { url 'https://www.jitpack.io' }
-        
-        // React Native repositories locaux (après les repositories publics)
         maven {
             // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
             url(new File(['node', '--print', "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), '../android'))
@@ -43,5 +47,12 @@ allprojects {
             // Android JSC is installed from npm
             url(new File(['node', '--print', "require.resolve('jsc-android/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim(), '../dist'))
         }
+
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+        // Repositories alternatifs en cas de problème réseau
+        maven { url 'https://repo1.maven.org/maven2' }
+        maven { url 'https://maven.aliyun.com/repository/public' } // Mirror chinois (backup)
     }
 }

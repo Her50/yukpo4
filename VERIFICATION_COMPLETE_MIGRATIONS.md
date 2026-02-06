@@ -134,3 +134,5 @@ Les fichiers `00000001` à `00000033` doivent être exécutés par SQLx dans l'o
 
 **33 fichiers de migration** couvrant **100% des tables, fonctions, index et vues** du fichier original, organisés logiquement et sans redondances d'index.
 
+
+

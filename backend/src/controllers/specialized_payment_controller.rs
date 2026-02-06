@@ -64,10 +64,7 @@ pub async fn refund_reservation_payment(
     Path(reservation_id): Path<i32>,
     Json(payload): Json<serde_json::Value>,
 ) -> AppResult<impl IntoResponse> {
-    let reason = payload
-        .get("reason")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let reason = payload.get("reason").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     // Vérifier que la réservation appartient à l'utilisateur
     let exists: bool = sqlx::query_scalar(
@@ -88,9 +85,7 @@ pub async fn refund_reservation_payment(
     }
 
     let payment_service = SpecializedPaymentService::new(Arc::new(state.pg.clone()));
-    payment_service
-        .refund_reservation_payment(reservation_id, reason)
-        .await?;
+    payment_service.refund_reservation_payment(reservation_id, reason).await?;
 
     Ok(Json(json!({
         "success": true,

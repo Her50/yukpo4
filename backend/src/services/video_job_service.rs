@@ -499,18 +499,14 @@ pub async fn try_store_progress(
     status: &str,
     steps: &[ProgressStep],
 ) -> Result<(), crate::core::types::AppError> {
-    state
-        .video_jobs
-        .store_progress(job_id, status, steps)
-        .await
-        .map_err(|err| {
-            warn!(
-                "[VideoJobs] ❌ Impossible de mettre à jour la progression du job {}: {}",
-                job_id, err
-            );
-            crate::core::types::AppError::Internal(format!(
-                "Impossible de mettre à jour la progression du job {}: {}",
-                job_id, err
-            ))
-        })
+    state.video_jobs.store_progress(job_id, status, steps).await.map_err(|err| {
+        warn!(
+            "[VideoJobs] ❌ Impossible de mettre à jour la progression du job {}: {}",
+            job_id, err
+        );
+        crate::core::types::AppError::Internal(format!(
+            "Impossible de mettre à jour la progression du job {}: {}",
+            job_id, err
+        ))
+    })
 }

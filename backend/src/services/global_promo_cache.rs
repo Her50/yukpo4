@@ -106,9 +106,8 @@ impl GlobalPromoCache {
             .map_err(|e| AppError::Internal(format!("Redis GET failed: {}", e)))?;
 
         if let Some(str) = price_str {
-            let price: f64 = str
-                .parse()
-                .map_err(|e| AppError::Internal(format!("Parse failed: {}", e)))?;
+            let price: f64 =
+                str.parse().map_err(|e| AppError::Internal(format!("Parse failed: {}", e)))?;
             Ok(Some(price))
         } else {
             Ok(None)

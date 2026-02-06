@@ -369,16 +369,8 @@ async fn handle_direct_search(
     // Extraire le texte de l'input
     let mut user_text = input.texte.clone().unwrap_or_default();
     let has_text = !user_text.trim().is_empty();
-    let has_images = input
-        .base64_image
-        .as_ref()
-        .map(|imgs| !imgs.is_empty())
-        .unwrap_or(false);
-    let has_audio = input
-        .audio_base64
-        .as_ref()
-        .map(|audios| !audios.is_empty())
-        .unwrap_or(false);
+    let has_images = input.base64_image.as_ref().map(|imgs| !imgs.is_empty()).unwrap_or(false);
+    let has_audio = input.audio_base64.as_ref().map(|audios| !audios.is_empty()).unwrap_or(false);
 
     log_info(&format!(
         "[DIRECT_SEARCH] Contenu: texte={}, images={}, audio={}",
@@ -386,6 +378,7 @@ async fn handle_direct_search(
     ));
 
     // ✅ NOUVEAU 2025-01-01: Si audio présent, transcrire et utiliser pour la recherche
+    // ✅ CORRIGÉ 2026-01-30: Gestion améliorée des erreurs de transcription
     if has_audio {
         use crate::services::audio_transcription_service::AudioTranscriptionService;
         use crate::utils::log::log_error;
@@ -408,10 +401,13 @@ async fn handle_direct_search(
                     transcription.confidence
                 ));
 
-                // ✅ Utiliser le texte transcrit pour la recherche (combiner avec texte existant si présent)
-                if !transcribed_text.is_empty()
-                    && transcribed_text != "[Audio non transcrit - API non configurée]"
-                {
+                // ✅ CORRIGÉ: Vérifier si la transcription est valide (pas un message d'erreur)
+                let is_error_message = transcribed_text.starts_with("[Audio non transcrit")
+                    || transcribed_text.starts_with("[Erreur transcription")
+                    || transcribed_text.is_empty();
+
+                if !is_error_message {
+                    // ✅ Transcription valide : utiliser pour la recherche
                     if has_text {
                         // Combiner texte existant + transcription
                         user_text = format!("{} {}", user_text, transcribed_text);
@@ -424,7 +420,34 @@ async fn handle_direct_search(
                         log_info("[DIRECT_SEARCH] Utilisation de la transcription audio comme texte de recherche");
                     }
                 } else {
-                    log_error("[DIRECT_SEARCH] ⚠️ Transcription audio vide ou échouée, utilisation du texte original uniquement");
+                    // ✅ CORRIGÉ: Si transcription échouée et pas de texte, retourner une erreur claire
+                    log_error(&format!(
+                        "[DIRECT_SEARCH] ⚠️ Transcription audio échouée: '{}'",
+                        transcribed_text
+                    ));
+
+                    if !has_text {
+                        // Pas de texte et transcription échouée : retourner erreur explicite
+                        let error_message = if transcribed_text.contains("API non configurée") {
+                            "La transcription audio n'est pas configurée. Veuillez configurer OPENAI_API_KEY ou utiliser la recherche par texte."
+                        } else if transcribed_text.starts_with("[Erreur transcription") {
+                            "Erreur lors de la transcription audio. Veuillez réessayer ou utiliser la recherche par texte."
+                        } else {
+                            "Impossible de transcrire l'audio. Veuillez utiliser la recherche par texte."
+                        };
+
+                        let response = serde_json::json!({
+                            "status": "error",
+                            "message": error_message,
+                            "error": "audio_transcription_failed",
+                            "resultats": [],
+                            "nombre_matchings": 0
+                        });
+                        return Ok(Json(response));
+                    } else {
+                        // Il y a du texte : continuer avec le texte uniquement
+                        log_info("[DIRECT_SEARCH] Transcription audio échouée, utilisation du texte original uniquement");
+                    }
                 }
             }
             Err(e) => {
@@ -432,14 +455,19 @@ async fn handle_direct_search(
                     "[DIRECT_SEARCH] ❌ Erreur transcription audio: {:?}",
                     e
                 ));
-                // Continuer avec le texte original si disponible
+                // ✅ CORRIGÉ: Si pas de texte et erreur de transcription, retourner erreur claire
                 if !has_text {
                     let response = serde_json::json!({
                         "status": "error",
-                        "message": format!("Erreur transcription audio: {}", e),
-                        "error": "audio_transcription_failed"
+                        "message": format!("Erreur lors de la transcription audio: {}. Veuillez utiliser la recherche par texte.", e),
+                        "error": "audio_transcription_failed",
+                        "resultats": [],
+                        "nombre_matchings": 0
                     });
                     return Ok(Json(response));
+                } else {
+                    // Il y a du texte : continuer avec le texte uniquement
+                    log_info("[DIRECT_SEARCH] Erreur transcription audio, utilisation du texte original uniquement");
                 }
             }
         }
@@ -456,11 +484,7 @@ async fn handle_direct_search(
 
         // Extraire le base64 pur
         let image_base64 = if first_image.contains("base64,") {
-            first_image
-                .split("base64,")
-                .nth(1)
-                .unwrap_or(first_image)
-                .to_string()
+            first_image.split("base64,").nth(1).unwrap_or(first_image).to_string()
         } else {
             first_image.clone()
         };
@@ -648,18 +672,13 @@ async fn handle_direct_search(
         resultats.sort_by(|a, b| {
             let score_a = a.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0);
             let score_b = b.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0);
-            score_b
-                .partial_cmp(&score_a)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
         });
     }
 
     // ✅ AMÉLIORÉ: S'assurer que resultats est toujours un array dans la réponse
-    let resultats_array = result
-        .get("resultats")
-        .and_then(|r| r.as_array())
-        .cloned()
-        .unwrap_or_else(|| {
+    let resultats_array =
+        result.get("resultats").and_then(|r| r.as_array()).cloned().unwrap_or_else(|| {
             log::warn!("[DIRECT_SEARCH] ⚠️ resultats n'est pas un array, conversion en array vide");
             Vec::new()
         });
@@ -817,10 +836,8 @@ async fn handle_yukpo(
                 };
 
             // Extraire les tokens consomm?s depuis le r?sultat si disponible
-            let tokens_consumed = result
-                .get("tokens_consumed")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(5); // D?faut conservateur
+            let tokens_consumed =
+                result.get("tokens_consumed").and_then(|v| v.as_i64()).unwrap_or(5); // D?faut conservateur
 
             // Construire la r?ponse avec les donn?es normalis?es et headers personnalis?s
             let mut final_result = result.clone();
@@ -946,26 +963,11 @@ async fn handle_creation_service_direct(
     log::info!("[handle_creation_service_direct] Input: {:?}", input);
 
     // ?? NOUVEAU : Vérifier s'il y a des fichiers à traiter
-    let has_images = input
-        .base64_image
-        .as_ref()
-        .map_or(false, |images| !images.is_empty());
-    let has_audios = input
-        .audio_base64
-        .as_ref()
-        .map_or(false, |audios| !audios.is_empty());
-    let has_videos = input
-        .video_base64
-        .as_ref()
-        .map_or(false, |videos| !videos.is_empty());
-    let has_docs = input
-        .doc_base64
-        .as_ref()
-        .map_or(false, |docs| !docs.is_empty());
-    let has_excels = input
-        .excel_base64
-        .as_ref()
-        .map_or(false, |excels| !excels.is_empty());
+    let has_images = input.base64_image.as_ref().map_or(false, |images| !images.is_empty());
+    let has_audios = input.audio_base64.as_ref().map_or(false, |audios| !audios.is_empty());
+    let has_videos = input.video_base64.as_ref().map_or(false, |videos| !videos.is_empty());
+    let has_docs = input.doc_base64.as_ref().map_or(false, |docs| !docs.is_empty());
+    let has_excels = input.excel_base64.as_ref().map_or(false, |excels| !excels.is_empty());
 
     let total_files = (has_images as usize)
         + (has_audios as usize)
@@ -1061,9 +1063,7 @@ Format JSON attendu :
             "[handle_creation_service_direct] Appel multimodal avec {} image(s)",
             input.base64_image.as_ref().map_or(0, |v| v.len())
         );
-        app_ia
-            .predict_multimodal(&prompt, input.base64_image.clone())
-            .await?
+        app_ia.predict_multimodal(&prompt, input.base64_image.clone()).await?
     } else {
         log::info!("[handle_creation_service_direct] Appel texte uniquement (pas d'images)");
         app_ia.predict(&prompt).await?
@@ -1433,10 +1433,7 @@ async fn serve_media_file(Path(file_path): Path<String>) -> Result<Response<Body
         file_path
     } else if file_path.starts_with("files/uploads/services/") {
         // Préfixe "files/" à retirer
-        file_path
-            .strip_prefix("files/")
-            .unwrap_or(&file_path)
-            .to_string()
+        file_path.strip_prefix("files/").unwrap_or(&file_path).to_string()
     } else if file_path.starts_with("uploads/") {
         // Déjà avec uploads/
         file_path
@@ -1584,10 +1581,7 @@ RÉPONSE UNIQUEMENT EN JSON VALIDE."#,
         });
 
     // ✅ UTILISER LE SYSTÈME IA RÉEL avec appels véritables
-    let has_images = input
-        .base64_image
-        .as_ref()
-        .map_or(false, |imgs| !imgs.is_empty());
+    let has_images = input.base64_image.as_ref().map_or(false, |imgs| !imgs.is_empty());
 
     log::info!(
         "[handle_creation_offre_emploi_direct] Appel IA avec prompt spécifique (images: {})",
@@ -1600,9 +1594,7 @@ RÉPONSE UNIQUEMENT EN JSON VALIDE."#,
             "[handle_creation_offre_emploi_direct] Appel multimodal avec {} image(s)",
             input.base64_image.as_ref().map_or(0, |v| v.len())
         );
-        app_ia
-            .predict_multimodal(&prompt, input.base64_image.clone())
-            .await?
+        app_ia.predict_multimodal(&prompt, input.base64_image.clone()).await?
     } else {
         log::info!("[handle_creation_offre_emploi_direct] Appel texte uniquement");
         app_ia.predict(&prompt).await?

@@ -117,9 +117,7 @@ pub async fn update_livre_scolaire(
     );
 
     let service = Service::new(Arc::new(state.pg.clone()));
-    let livre = service
-        .update_livre_scolaire(livre_id, user_id, payload)
-        .await?;
+    let livre = service.update_livre_scolaire(livre_id, user_id, payload).await?;
 
     Ok(Json(json!({ "success": true, "livre": livre })))
 }
@@ -500,14 +498,11 @@ RÉPONSE ATTENDUE (JSON strict) :
     };
 
     let images = vec![image_base64];
-    let (model_name, response, tokens) = state
-        .ia
-        .predict_multimodal(&prompt, Some(images))
-        .await
-        .map_err(|e| {
-        error!("[analyze_book_image] Erreur IA multimodale: {}", e);
-        AppError::Internal("Erreur analyse IA multimodale".to_string())
-    })?;
+    let (model_name, response, tokens) =
+        state.ia.predict_multimodal(&prompt, Some(images)).await.map_err(|e| {
+            error!("[analyze_book_image] Erreur IA multimodale: {}", e);
+            AppError::Internal("Erreur analyse IA multimodale".to_string())
+        })?;
 
     info!(
         "[analyze_book_image] Analyse effectuée avec {} (tokens: {})",

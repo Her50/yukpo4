@@ -109,12 +109,7 @@ pub async fn chat_ai(
             let medications = context_value
                 .get("medications")
                 .and_then(|m| m.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                })
+                .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
                 .unwrap_or_default();
 
             let location_info = if let Some(loc) = context_value.get("location") {

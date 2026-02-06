@@ -63,3 +63,5 @@ CREATE INDEX IF NOT EXISTS idx_social_publication_jobs_publication ON social_pub
 CREATE INDEX IF NOT EXISTS idx_social_publication_jobs_status ON social_publication_jobs(job_status);
 CREATE INDEX IF NOT EXISTS idx_social_publication_jobs_scheduled ON social_publication_jobs(scheduled_for) WHERE job_status IN ('pending', 'processing');
 
+
+

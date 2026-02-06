@@ -186,10 +186,7 @@ impl NativeSearchService {
 
             // Fusionner les résultats en évitant les doublons
             for result in fulltext_fallback_results {
-                if !fulltext_results
-                    .iter()
-                    .any(|r| r.service_id == result.service_id)
-                {
+                if !fulltext_results.iter().any(|r| r.service_id == result.service_id) {
                     fulltext_results.push(result);
                 }
             }
@@ -216,10 +213,7 @@ impl NativeSearchService {
 
             // Fusionner les résultats en évitant les doublons
             for result in trigram_results {
-                if !fulltext_results
-                    .iter()
-                    .any(|r| r.service_id == result.service_id)
-                {
+                if !fulltext_results.iter().any(|r| r.service_id == result.service_id) {
                     fulltext_results.push(result);
                 }
             }
@@ -233,10 +227,8 @@ impl NativeSearchService {
         // Priorité: score de pertinence (DESC), puis distance (ASC si disponible)
         fulltext_results.sort_by(|a, b| {
             // Comparer d'abord par score (score le plus élevé en premier)
-            let score_cmp = b
-                .total_score
-                .partial_cmp(&a.total_score)
-                .unwrap_or(std::cmp::Ordering::Equal);
+            let score_cmp =
+                b.total_score.partial_cmp(&a.total_score).unwrap_or(std::cmp::Ordering::Equal);
 
             // Si les scores sont égaux ou très proches (différence < 0.1), utiliser la distance
             if score_cmp == std::cmp::Ordering::Equal || (a.total_score - b.total_score).abs() < 0.1
@@ -413,10 +405,8 @@ impl NativeSearchService {
                 })?;
 
             // ✅ CORRIGÉ CRITIQUE 2025-12-20: Éliminer N+1 queries - batch query pour récupérer tous les services en UNE requête
-            let service_ids: Vec<i32> = results
-                .iter()
-                .map(|row| row.get::<i32, _>("service_id"))
-                .collect();
+            let service_ids: Vec<i32> =
+                results.iter().map(|row| row.get::<i32, _>("service_id")).collect();
 
             let services_data_map: std::collections::HashMap<i32, Value> =
                 if !service_ids.is_empty() {
@@ -465,9 +455,7 @@ impl NativeSearchService {
                     recency_score: 0.0,
                     category_score: 0.0,
                     distance_km,
-                    gps_coords: gps_coords
-                        .map(|s| serde_json::Value::String(s))
-                        .or(gps_from_data),
+                    gps_coords: gps_coords.map(|s| serde_json::Value::String(s)).or(gps_from_data),
                     search_method: "gps_optimized".to_string(),
                     matched_fields: vec!["gps".to_string()],
                 });
@@ -498,10 +486,8 @@ impl NativeSearchService {
         // ✅ AMÉLIORÉ 2026-01-13: Matching vectoriel avec test vectoriel unique (équivalent %in% en R)
         // Utiliser extract_keywords_from_text pour filtrer les stop words de manière générique
         let keywords = extract_keywords_from_text(query);
-        let search_keywords_normalized: Vec<String> = keywords
-            .iter()
-            .map(|w| self.normalize_word_for_vector_matching(w))
-            .collect();
+        let search_keywords_normalized: Vec<String> =
+            keywords.iter().map(|w| self.normalize_word_for_vector_matching(w)).collect();
 
         log_info(&format!(
             "[NativeSearch] Mots-clés extraits (après filtrage stop words): {:?} -> normalisés: {:?}", 
@@ -1063,9 +1049,7 @@ LIMIT 100
                     recency_score: 0.0,
                     category_score: 0.0,
                     distance_km,
-                    gps_coords: gps_coords
-                        .map(|s| serde_json::Value::String(s))
-                        .or(gps_from_data),
+                    gps_coords: gps_coords.map(|s| serde_json::Value::String(s)).or(gps_from_data),
                     search_method: "trigram_gps_optimized".to_string(),
                     matched_fields: vec!["trigram".to_string(), "gps".to_string()],
                 });
@@ -1202,10 +1186,8 @@ LIMIT 100
                 })?;
 
             // ✅ CORRIGÉ CRITIQUE 2025-12-20: Éliminer N+1 queries - batch query pour récupérer tous les services en UNE requête
-            let service_ids: Vec<i32> = results
-                .iter()
-                .map(|row| row.get::<i32, _>("service_id"))
-                .collect();
+            let service_ids: Vec<i32> =
+                results.iter().map(|row| row.get::<i32, _>("service_id")).collect();
 
             let services_data_map: std::collections::HashMap<i32, Value> =
                 if !service_ids.is_empty() {
@@ -1254,9 +1236,7 @@ LIMIT 100
                     recency_score: 0.0,
                     category_score: relevance_score,
                     distance_km,
-                    gps_coords: gps_coords
-                        .map(|s| serde_json::Value::String(s))
-                        .or(gps_from_data),
+                    gps_coords: gps_coords.map(|s| serde_json::Value::String(s)).or(gps_from_data),
                     search_method: "keywords_gps_optimized".to_string(),
                     matched_fields: vec!["keywords".to_string(), "gps".to_string()],
                 });
@@ -1927,20 +1907,13 @@ LIMIT 100
                    ORDER BY s.created_at DESC
                "#;
 
-        let results = sqlx::query(sql)
-            .bind(category)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| {
-                log_error(&format!(
-                    "[NativeSearch] Erreur recherche par catégorie: {}",
-                    e
-                ));
-                crate::core::types::AppError::Internal(format!(
-                    "Erreur recherche par catégorie: {}",
-                    e
-                ))
-            })?;
+        let results = sqlx::query(sql).bind(category).fetch_all(&self.pool).await.map_err(|e| {
+            log_error(&format!(
+                "[NativeSearch] Erreur recherche par catégorie: {}",
+                e
+            ));
+            crate::core::types::AppError::Internal(format!("Erreur recherche par catégorie: {}", e))
+        })?;
 
         let mut search_results = Vec::new();
         for row in results {
@@ -2060,12 +2033,7 @@ LIMIT 100
         };
 
         let results = if let (Some(lat), Some(lng)) = (user_lat, user_lng) {
-            sqlx::query(sql)
-                .bind(location)
-                .bind(lat)
-                .bind(lng)
-                .fetch_all(&self.pool)
-                .await
+            sqlx::query(sql).bind(location).bind(lat).bind(lng).fetch_all(&self.pool).await
         } else {
             sqlx::query(sql).bind(location).fetch_all(&self.pool).await
         }

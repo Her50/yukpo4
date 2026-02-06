@@ -197,3 +197,5 @@ COMMENT ON TABLE hospital_emergencies IS 'Urgences médicales traitées dans les
 COMMENT ON TABLE hospital_slots IS 'Créneaux horaires disponibles pour consultations';
 COMMENT ON TABLE hospital_analytics IS 'Statistiques quotidiennes des hôpitaux pour analytics';
 
+
+

@@ -207,10 +207,8 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
 
         // Essayer les modèles supportant la vision par ordre de priorité
         let models = app_ia.models.read().await;
-        let mut vision_models: Vec<&ModelConfig> = models
-            .iter()
-            .filter(|m| m.enabled && Self::supports_vision(&m.name))
-            .collect();
+        let mut vision_models: Vec<&ModelConfig> =
+            models.iter().filter(|m| m.enabled && Self::supports_vision(&m.name)).collect();
 
         // Trier par priorité décroissante
         vision_models.sort_by(|a, b| b.priority.cmp(&a.priority));
@@ -346,12 +344,9 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
             .to_string();
 
         let usage = TokensUsage {
-            prompt_tokens: response_json["usage"]["prompt_tokens"]
-                .as_u64()
-                .unwrap_or(0) as u32,
-            completion_tokens: response_json["usage"]["completion_tokens"]
-                .as_u64()
-                .unwrap_or(0) as u32,
+            prompt_tokens: response_json["usage"]["prompt_tokens"].as_u64().unwrap_or(0) as u32,
+            completion_tokens: response_json["usage"]["completion_tokens"].as_u64().unwrap_or(0)
+                as u32,
             total_tokens: response_json["usage"]["total_tokens"].as_u64().unwrap_or(0) as u32,
         };
 
@@ -396,13 +391,10 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
 
         let usage = TokensUsage {
             prompt_tokens: response_json["usage"]["input_tokens"].as_u64().unwrap_or(0) as u32,
-            completion_tokens: response_json["usage"]["output_tokens"]
-                .as_u64()
-                .unwrap_or(0) as u32,
+            completion_tokens: response_json["usage"]["output_tokens"].as_u64().unwrap_or(0) as u32,
             total_tokens: (response_json["usage"]["input_tokens"].as_u64().unwrap_or(0)
-                + response_json["usage"]["output_tokens"]
-                    .as_u64()
-                    .unwrap_or(0)) as u32,
+                + response_json["usage"]["output_tokens"].as_u64().unwrap_or(0))
+                as u32,
         };
 
         Ok((content, usage))
@@ -506,17 +498,10 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
 
         let tags: Vec<String> = parsed["tags"]
             .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_lowercase()))
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_lowercase())).collect())
             .unwrap_or_default();
 
-        let category_detected = parsed["category_detected"]
-            .as_str()
-            .unwrap_or("autre")
-            .to_string();
+        let category_detected = parsed["category_detected"].as_str().unwrap_or("autre").to_string();
 
         let marque = parsed["marque"]
             .as_str()
@@ -525,11 +510,7 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
 
         let couleurs: Vec<String> = parsed["couleurs"]
             .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_lowercase()))
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_lowercase())).collect())
             .unwrap_or_default();
 
         let caracteristiques_cles: HashMap<String, String> = parsed["caracteristiques_cles"]
@@ -543,10 +524,7 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
 
         let confiance = parsed["confiance"].as_f64().unwrap_or(0.5) as f32;
 
-        let search_query = parsed["search_query"]
-            .as_str()
-            .unwrap_or(&description)
-            .to_string();
+        let search_query = parsed["search_query"].as_str().unwrap_or(&description).to_string();
 
         Ok(ImageAnalysis {
             description,

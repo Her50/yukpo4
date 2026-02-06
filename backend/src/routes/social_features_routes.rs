@@ -16,9 +16,7 @@ pub fn social_features_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // Duet
         .route(
             "/api/duets",
-            post(create_duet)
-                .layer(middleware::from_fn(optional_jwt_auth))
-                .get(get_duets),
+            post(create_duet).layer(middleware::from_fn(optional_jwt_auth)).get(get_duets),
         )
         // Remix
         .route(

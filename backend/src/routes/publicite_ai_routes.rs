@@ -108,10 +108,8 @@ pub async fn generate_ad_suggestions(
 
         if let Some(interests) = audience.get("interests").and_then(|i| i.as_array()) {
             if !interests.is_empty() {
-                let interests_str: Vec<String> = interests
-                    .iter()
-                    .filter_map(|i| i.as_str().map(|s| s.to_string()))
-                    .collect();
+                let interests_str: Vec<String> =
+                    interests.iter().filter_map(|i| i.as_str().map(|s| s.to_string())).collect();
                 if !interests_str.is_empty() {
                     context_parts.push(format!("Intérêts: {}", interests_str.join(", ")));
                 }
@@ -189,11 +187,7 @@ Objectif de la campagne: {goal_context}{audience_context}
                 .filter(|line| !line.is_empty())
                 .filter(|line| {
                     !line.starts_with("Suggestion")
-                        && !line
-                            .chars()
-                            .next()
-                            .map(|c| c.is_ascii_digit())
-                            .unwrap_or(false)
+                        && !line.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false)
                 })
                 .take(count as usize)
                 .map(|text| AdSuggestion {

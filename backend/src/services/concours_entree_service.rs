@@ -240,11 +240,8 @@ impl ConcoursEntreeService {
             count_query.push_bind(today);
         }
 
-        let total: i64 = count_query
-            .build_query_scalar()
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|e| {
+        let total: i64 =
+            count_query.build_query_scalar().fetch_one(&*self.pool).await.map_err(|e| {
                 error!("[CONCOURS_ENTREE] Erreur count: {}", e);
                 AppError::Internal(format!("Erreur count concours: {}", e))
             })?;

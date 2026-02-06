@@ -468,10 +468,7 @@ async fn test_concurrent_reservations() {
         let pid = *passenger_id;
 
         let handle = tokio::spawn(async move {
-            let mut tx = pool_clone
-                .begin()
-                .await
-                .expect("Failed to begin transaction");
+            let mut tx = pool_clone.begin().await.expect("Failed to begin transaction");
 
             // SELECT FOR UPDATE pour éviter race condition
             let places: i32 = sqlx::query_scalar(
@@ -556,10 +553,7 @@ async fn test_cache_redis() {
 
     // Test cache Redis pour recherche
     if let Some(ref redis_pool) = state.redis_pool {
-        let mut conn = redis_pool
-            .get()
-            .await
-            .expect("Failed to get Redis connection");
+        let mut conn = redis_pool.get().await.expect("Failed to get Redis connection");
 
         let cache_key = "covoiturage:search:3.8480:11.5021:50:1";
         let cache_value = r#"{"results":[],"total":0}"#;

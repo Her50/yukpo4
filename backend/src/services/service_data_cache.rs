@@ -49,11 +49,7 @@ impl ServiceDataCache {
         let cache_key = Self::cache_key(service_id);
 
         // 1. Essayer de récupérer depuis le cache
-        if let Ok(Some(cached)) = self
-            .cache_service
-            .get::<CachedServiceData>(&cache_key)
-            .await
-        {
+        if let Ok(Some(cached)) = self.cache_service.get::<CachedServiceData>(&cache_key).await {
             log::info!(
                 "[ServiceDataCache] ✅ Cache hit pour service {} (taille: {} bytes, cached_at: {})",
                 service_id,
@@ -84,11 +80,7 @@ impl ServiceDataCache {
             cached_at: chrono::Utc::now().timestamp(),
         };
 
-        if let Err(e) = self
-            .cache_service
-            .set_with_ttl(&cache_key, &cached_data, ttl)
-            .await
-        {
+        if let Err(e) = self.cache_service.set_with_ttl(&cache_key, &cached_data, ttl).await {
             log::warn!(
                 "[ServiceDataCache] ⚠️ Erreur mise en cache service {}: {}",
                 service_id,

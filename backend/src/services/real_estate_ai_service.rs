@@ -442,10 +442,7 @@ RÉPONSE ATTENDUE (JSON strict) :
         let anomalies: Vec<String> = match serde_json::from_str::<serde_json::Value>(&response) {
             Ok(v) => {
                 if let Some(anoms) = v.get("anomalies").and_then(|a| a.as_array()) {
-                    anoms
-                        .iter()
-                        .filter_map(|a| a.as_str().map(|s| s.to_string()))
-                        .collect()
+                    anoms.iter().filter_map(|a| a.as_str().map(|s| s.to_string())).collect()
                 } else {
                     vec![]
                 }

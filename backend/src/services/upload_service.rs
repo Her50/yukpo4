@@ -56,11 +56,7 @@ pub async fn store_uploaded_file(
     fs::create_dir_all(&temp_dir).await?;
 
     // Générer un nom de fichier unique
-    let ext = filename
-        .split('.')
-        .next_back()
-        .unwrap_or("bin")
-        .to_lowercase();
+    let ext = filename.split('.').next_back().unwrap_or("bin").to_lowercase();
     let unique_name = format!("{}.{}", Uuid::new_v4(), ext);
     let file_path = temp_dir.join(&unique_name);
 
@@ -78,10 +74,7 @@ pub async fn store_uploaded_file(
 
     // ✅ NOUVEAU: Upload vers S3/Wasabi via MediaStorageService
     let storage_key = format!("temp/{}/{}", user_id, unique_name);
-    let final_path = match media_storage
-        .store_bytes(bytes, &storage_key, content_type)
-        .await
-    {
+    let final_path = match media_storage.store_bytes(bytes, &storage_key, content_type).await {
         Ok(location) => {
             info!(
                 "[upload_service] ✅ Fichier uploadé vers S3: {} ({} bytes, type: {})",

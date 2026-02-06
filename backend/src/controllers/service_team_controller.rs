@@ -158,20 +158,12 @@ pub async fn get_team_members(
             Ok(ServiceTeamMember {
                 id: row.get::<Uuid, _>("id").to_string(),
                 service_id: row.get::<Option<_>, _>("service_id"),
-                user_id: row
-                    .try_get("user_id")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
-                username: row
-                    .try_get("username")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
-                email: row
-                    .try_get("email")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                user_id: row.try_get("user_id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                username: row.try_get("username").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                email: row.try_get("email").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
                 avatar_url: row.get::<Option<_>, _>("avatar_url"),
                 role: ServiceTeamRole {
-                    id: row
-                        .try_get("role_id")
-                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    id: row.try_get("role_id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
                     name: row
                         .try_get("role_name")
                         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
@@ -273,13 +265,9 @@ pub async fn get_team_members(
             Ok(ServiceTeamInvitation {
                 id: row.get::<Uuid, _>("id").to_string(),
                 service_id: row.get::<Option<_>, _>("service_id"),
-                email: row
-                    .try_get("email")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                email: row.try_get("email").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
                 role: ServiceTeamRole {
-                    id: row
-                        .try_get("role_id")
-                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    id: row.try_get("role_id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
                     name: row
                         .try_get("role_name")
                         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
@@ -306,12 +294,8 @@ pub async fn get_team_members(
                     .try_get::<chrono::DateTime<chrono::Utc>, _>("expires_at")
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                     .to_rfc3339(),
-                status: row
-                    .try_get("status")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
-                token: row
-                    .try_get("token")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                status: row.try_get("status").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                token: row.try_get("token").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
                 accepted_at: row
                     .try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("accepted_at")
                     .ok()
@@ -480,24 +464,14 @@ pub async fn get_available_roles(
         .into_iter()
         .map(|row| {
             Ok(ServiceTeamRole {
-                id: row
-                    .try_get("id")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
-                name: row
-                    .try_get("name")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                id: row.try_get("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                name: row.try_get("name").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
                 description: row
                     .try_get("description")
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
-                level: row
-                    .try_get("level")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
-                color: row
-                    .try_get("color")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
-                icon: row
-                    .try_get("icon")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                level: row.try_get("level").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                color: row.try_get("color").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                icon: row.try_get("icon").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
             })
         })
         .collect();
@@ -525,18 +499,12 @@ pub async fn get_available_permissions(
         .into_iter()
         .map(|row| {
             Ok(ServicePermission {
-                id: row
-                    .try_get("id")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
-                name: row
-                    .try_get("name")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                id: row.try_get("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                name: row.try_get("name").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
                 description: row
                     .try_get("description")
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
-                category: row
-                    .try_get("category")
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                category: row.try_get("category").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
             })
         })
         .collect();
@@ -582,15 +550,9 @@ pub async fn get_team_stats(
     };
 
     let team_stats = TeamStats {
-        total_members: stats_row
-            .get::<Option<i64>, _>("total_members")
-            .unwrap_or(0),
-        pending_invitations: stats_row
-            .get::<Option<i64>, _>("pending_invitations")
-            .unwrap_or(0),
-        active_services: stats_row
-            .get::<Option<i64>, _>("active_services")
-            .unwrap_or(0),
+        total_members: stats_row.get::<Option<i64>, _>("total_members").unwrap_or(0),
+        pending_invitations: stats_row.get::<Option<i64>, _>("pending_invitations").unwrap_or(0),
+        active_services: stats_row.get::<Option<i64>, _>("active_services").unwrap_or(0),
     };
 
     Ok(Json(serde_json::json!({

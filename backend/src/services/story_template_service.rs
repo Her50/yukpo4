@@ -115,8 +115,6 @@ impl StoryTemplateService {
     }
 
     pub fn get(&self, id: &str) -> Option<&StoryTemplateSpec> {
-        self.templates
-            .iter()
-            .find(|spec| spec.id.eq_ignore_ascii_case(id))
+        self.templates.iter().find(|spec| spec.id.eq_ignore_ascii_case(id))
     }
 }

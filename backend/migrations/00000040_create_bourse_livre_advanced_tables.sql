@@ -240,3 +240,5 @@ COMMENT ON COLUMN book_recommendations.score_recommendation IS 'Score de recomma
 COMMENT ON COLUMN book_price_history.source_type IS 'Source du prix: echange, achat, vente, estimation_ia, marche';
 COMMENT ON COLUMN book_analytics.score_popularite IS 'Score de popularité calculé (0-100)';
 
+
+

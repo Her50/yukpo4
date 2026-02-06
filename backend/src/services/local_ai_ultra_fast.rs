@@ -156,8 +156,7 @@ impl LocalAIUltraFast {
         };
 
         // 5. Cache le r?sultat
-        self.cache_result(prompt, &result, confidence, &model_type)
-            .await;
+        self.cache_result(prompt, &result, confidence, &model_type).await;
 
         self.update_metrics(start_time, false, true).await;
         let elapsed = start_time.elapsed().as_millis();
@@ -183,14 +182,11 @@ impl LocalAIUltraFast {
         let optimized_prompt = self.build_optimized_prompt(&enriched_context, &template);
 
         // IA ultra-rapide (1-2s)
-        let (ai_response, _confidence) = self
-            .predict_ultra_fast(&optimized_prompt, ModelType::ServiceCreation)
-            .await?;
+        let (ai_response, _confidence) =
+            self.predict_ultra_fast(&optimized_prompt, ModelType::ServiceCreation).await?;
 
         // Validation et structure (100ms)
-        let result = self
-            .validate_and_structure_service(&ai_response, &template)
-            .await?;
+        let result = self.validate_and_structure_service(&ai_response, &template).await?;
 
         let elapsed = start_time.elapsed().as_millis();
         log_info(&format!(
@@ -219,22 +215,16 @@ impl LocalAIUltraFast {
         let query_embedding = self.compute_query_embedding(query).await?;
 
         // Recherche vectorielle optimis?e (200ms)
-        let vector_matches = self
-            .vector_search_optimized(&query_embedding, location)
-            .await?;
+        let vector_matches = self.vector_search_optimized(&query_embedding, location).await?;
 
         // Classification de l'intention (50ms)
         let intent = self.classify_search_intent(query).await?;
 
         // Filtrage intelligent (100ms)
-        let filtered_results = self
-            .intelligent_filter_results(vector_matches, &intent)
-            .await?;
+        let filtered_results = self.intelligent_filter_results(vector_matches, &intent).await?;
 
         // Ranking final (50ms)
-        let ranked_results = self
-            .rank_results_ultra_fast(filtered_results, query)
-            .await?;
+        let ranked_results = self.rank_results_ultra_fast(filtered_results, query).await?;
 
         let elapsed = start_time.elapsed().as_millis();
         log_info(&format!(
@@ -352,10 +342,7 @@ impl LocalAIUltraFast {
 
     /// ?? Classification ultra-rapide de cat?gorie
     async fn classify_service_category(&self, input: &Value) -> AppResult<String> {
-        let text = input
-            .get("texte")
-            .and_then(|t| t.as_str())
-            .unwrap_or_default();
+        let text = input.get("texte").and_then(|t| t.as_str()).unwrap_or_default();
 
         // Classification par mots-cl?s ultra-rapide (simulation ML)
         let category = if text.contains("voiture") || text.contains("auto") || text.contains("moto")
@@ -524,16 +511,15 @@ impl LocalAIUltraFast {
     }
     async fn get_or_create_template(&self, category: &str) -> AppResult<ServiceTemplate> {
         let templates = self.service_templates.read().await;
-        Ok(templates
-            .get(category)
-            .cloned()
-            .unwrap_or_else(|| ServiceTemplate {
+        Ok(
+            templates.get(category).cloned().unwrap_or_else(|| ServiceTemplate {
                 category: category.to_string(),
                 base_structure: json!({}),
                 required_fields: vec![],
                 default_values: HashMap::new(),
                 confidence: 0.5,
-            }))
+            }),
+        )
     }
     async fn enrich_context_with_template(
         &self,
@@ -561,11 +547,7 @@ impl LocalAIUltraFast {
     ) {
     }
     fn extract_title_from_prompt(&self, prompt: &str) -> String {
-        prompt
-            .split_whitespace()
-            .take(5)
-            .collect::<Vec<_>>()
-            .join(" ")
+        prompt.split_whitespace().take(5).collect::<Vec<_>>().join(" ")
     }
     fn extract_description_from_prompt(&self, prompt: &str) -> String {
         prompt.chars().take(100).collect()

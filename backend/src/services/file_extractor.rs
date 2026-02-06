@@ -119,32 +119,25 @@ impl UniversalFileExtractor {
         // 2. Extraction selon le type
         match content_type.as_str() {
             "excel" => {
-                self.extract_excel_content(file_data, &mut extracted_data)
-                    .await?;
+                self.extract_excel_content(file_data, &mut extracted_data).await?;
             }
             "csv" => {
-                self.extract_csv_content(file_data, &mut extracted_data)
-                    .await?;
+                self.extract_csv_content(file_data, &mut extracted_data).await?;
             }
             "pdf" => {
-                self.extract_pdf_content(file_data, &mut extracted_data)
-                    .await?;
+                self.extract_pdf_content(file_data, &mut extracted_data).await?;
             }
             "word" => {
-                self.extract_word_content(file_data, &mut extracted_data)
-                    .await?;
+                self.extract_word_content(file_data, &mut extracted_data).await?;
             }
             "image" => {
-                self.extract_image_content(file_data, &mut extracted_data)
-                    .await?;
+                self.extract_image_content(file_data, &mut extracted_data).await?;
             }
             "json" => {
-                self.extract_json_content(file_data, &mut extracted_data)
-                    .await?;
+                self.extract_json_content(file_data, &mut extracted_data).await?;
             }
             _ => {
-                self.extract_generic_content(file_data, &mut extracted_data)
-                    .await?;
+                self.extract_generic_content(file_data, &mut extracted_data).await?;
             }
         }
 

@@ -52,7 +52,7 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
     if !current.trim().is_empty() {
         commands.push(current.trim().to_string());
     }
-    
+
     // Exécuter chaque commande
     for (i, cmd) in commands.iter().enumerate() {
         if cmd.trim().is_empty() || cmd.trim().starts_with("--") {
@@ -85,8 +85,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
 
     // Récupérer DATABASE_URL
-    let mut database_url = env::var("DATABASE_URL")
-        .map_err(|_| "DATABASE_URL doit être définie. Utilisez: export DATABASE_URL='***host:port/db'")?;
+    let mut database_url = env::var("DATABASE_URL").map_err(|_| {
+        "DATABASE_URL doit être définie. Utilisez: export DATABASE_URL='***host:port/db'"
+    })?;
 
     // Ajouter sslmode=require si pas déjà présent (requis pour AWS RDS)
     if !database_url.contains("sslmode=") {

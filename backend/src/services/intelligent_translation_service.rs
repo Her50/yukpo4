@@ -49,11 +49,7 @@ impl IntelligentTranslationService {
         context: &str,
     ) -> Result<String, AppError> {
         // Si la langue est déjà l'anglais ou non supportée, retourner le prompt original
-        if user_language == "en"
-            || !self
-                .supported_languages
-                .contains(&user_language.to_string())
-        {
+        if user_language == "en" || !self.supported_languages.contains(&user_language.to_string()) {
             info!("🌍 [IntelligentTranslation] Langue {} non supportée ou déjà en anglais, retour du prompt original", user_language);
             return Ok(prompt.to_string());
         }
@@ -78,9 +74,8 @@ impl IntelligentTranslationService {
         }
 
         // Traduire le prompt
-        let translated_prompt = self
-            .translate_text(prompt, &detected_language, user_language)
-            .await?;
+        let translated_prompt =
+            self.translate_text(prompt, &detected_language, user_language).await?;
 
         // Mettre en cache
         self.cache.insert(cache_key, translated_prompt.clone());
@@ -202,8 +197,7 @@ impl IntelligentTranslationService {
         let mut translated_response = response.clone();
 
         // Traduire les champs de texte
-        self.translate_json_object(&mut translated_response, user_language)
-            .await?;
+        self.translate_json_object(&mut translated_response, user_language).await?;
 
         Ok(translated_response)
     }
@@ -263,11 +257,7 @@ impl IntelligentTranslationService {
         }
 
         // Ne pas traduire les codes, IDs, etc.
-        if text
-            .chars()
-            .all(|c| c.is_alphanumeric() || c.is_whitespace())
-            && text.len() < 10
-        {
+        if text.chars().all(|c| c.is_alphanumeric() || c.is_whitespace()) && text.len() < 10 {
             return false;
         }
 
@@ -358,9 +348,7 @@ pub async fn translate_ai_prompt_for_user(
     context: &str,
 ) -> Result<String, AppError> {
     let mut service = IntelligentTranslationService::new()?;
-    service
-        .translate_ai_prompt(prompt, user_language, context)
-        .await
+    service.translate_ai_prompt(prompt, user_language, context).await
 }
 
 /// 🎯 Fonction utilitaire pour traduire une réponse IA

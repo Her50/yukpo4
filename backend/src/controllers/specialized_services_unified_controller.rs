@@ -119,11 +119,7 @@ pub async fn list_user_specialized_services(
     );
 
     // Vérifier le cache via ScalabilityService (cache multi-niveaux)
-    if let Ok(Some(cached_result)) = state
-        .scalability
-        .get_cached_search_results(&cache_key)
-        .await
-    {
+    if let Ok(Some(cached_result)) = state.scalability.get_cached_search_results(&cache_key).await {
         specialized_services_metrics::record_cache_hit();
         let duration = start_time.elapsed().as_secs_f64();
         specialized_services_metrics::record_latency(duration);
@@ -673,9 +669,7 @@ pub async fn list_user_specialized_services(
 
         // Mettre en cache les statistiques
         let stats_json = serde_json::to_value(&calculated_stats).unwrap_or(json!({}));
-        let _ = cache
-            .set_statistics(user_id, query.status.as_deref(), &stats_json)
-            .await;
+        let _ = cache.set_statistics(user_id, query.status.as_deref(), &stats_json).await;
 
         calculated_stats
     };
@@ -724,10 +718,8 @@ pub async fn list_user_specialized_services(
     };
 
     // ✅ NOUVEAU: Mettre en cache les résultats
-    let services_json: Vec<serde_json::Value> = services
-        .iter()
-        .map(|s| serde_json::to_value(s).unwrap_or(json!({})))
-        .collect();
+    let services_json: Vec<serde_json::Value> =
+        services.iter().map(|s| serde_json::to_value(s).unwrap_or(json!({}))).collect();
     let pagination_json = serde_json::to_value(&pagination).unwrap_or(json!({}));
     let _ = cache
         .set_services_list(
@@ -768,9 +760,7 @@ pub async fn list_user_specialized_services(
     // ✅ Phase 7.4: Métriques latence et taille réponse
     let duration = start_time.elapsed().as_secs_f64();
     specialized_services_metrics::record_latency(duration);
-    let response_size = serde_json::to_string(&response)
-        .map(|s| s.len() as f64)
-        .unwrap_or(0.0);
+    let response_size = serde_json::to_string(&response).map(|s| s.len() as f64).unwrap_or(0.0);
     specialized_services_metrics::record_response_size(response_size);
 
     Ok((StatusCode::OK, Json(response)))
@@ -834,9 +824,8 @@ async fn calculate_statistics(
     let row = sqlx::query(&sql).bind(user_id).fetch_one(pool).await?;
 
     // ✅ CORRIGÉ: Gestion robuste du JSON avec fallback
-    let by_type: serde_json::Value = row
-        .try_get::<serde_json::Value, _>("by_type")
-        .unwrap_or_else(|_| json!({}));
+    let by_type: serde_json::Value =
+        row.try_get::<serde_json::Value, _>("by_type").unwrap_or_else(|_| json!({}));
 
     Ok(ServicesStatistics {
         total: row.get::<i64, _>("total"),
@@ -1039,10 +1028,7 @@ pub async fn save_search_history(
     let query = payload.get("query").and_then(|v| v.as_str()).unwrap_or("");
     let specialized_type = payload.get("specialized_type").and_then(|v| v.as_str());
     let filters = payload.get("filters");
-    let results_count = payload
-        .get("results_count")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0);
+    let results_count = payload.get("results_count").and_then(|v| v.as_i64()).unwrap_or(0);
 
     info!(
         "[save_search_history] Sauvegarde recherche pour user_id={}, query={}",
@@ -1080,10 +1066,7 @@ pub async fn get_search_history(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> AppResult<impl IntoResponse> {
-    let limit = params
-        .get("limit")
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(20);
+    let limit = params.get("limit").and_then(|v| v.parse::<i64>().ok()).unwrap_or(20);
 
     info!(
         "[get_search_history] Récupération historique pour user_id={}, limit={}",
@@ -1972,10 +1955,8 @@ pub async fn sync_services(
             "toggle_status" => {
                 if let Some(service_id) = action.service_id {
                     if let Some(data) = &action.data {
-                        let is_active = data
-                            .get("is_active")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false);
+                        let is_active =
+                            data.get("is_active").and_then(|v| v.as_bool()).unwrap_or(false);
 
                         let result = sqlx::query(
                             r#"
@@ -2082,28 +2063,26 @@ pub async fn resolve_conflict(
         .unwrap_or_else(|| chrono::Utc::now() - chrono::Duration::hours(1));
 
     // Détecter le conflit
-    let conflict = match conflict_service
-        .detect_conflict(payload.service_id, local_updated_at)
-        .await
-    {
-        Ok(Some(c)) => c,
-        Ok(None) => {
-            return Ok((
-                StatusCode::OK,
-                Json(json!({
-                    "success": true,
-                    "message": "Aucun conflit détecté"
-                })),
-            ));
-        }
-        Err(e) => {
-            error!("[resolve_conflict] Erreur détection: {}", e);
-            return Err(AppError::Internal(format!(
-                "Erreur détection conflit: {}",
-                e
-            )));
-        }
-    };
+    let conflict =
+        match conflict_service.detect_conflict(payload.service_id, local_updated_at).await {
+            Ok(Some(c)) => c,
+            Ok(None) => {
+                return Ok((
+                    StatusCode::OK,
+                    Json(json!({
+                        "success": true,
+                        "message": "Aucun conflit détecté"
+                    })),
+                ));
+            }
+            Err(e) => {
+                error!("[resolve_conflict] Erreur détection: {}", e);
+                return Err(AppError::Internal(format!(
+                    "Erreur détection conflit: {}",
+                    e
+                )));
+            }
+        };
 
     // Résoudre selon la stratégie choisie
     let resolution = match payload.resolution.as_str() {
@@ -2119,10 +2098,7 @@ pub async fn resolve_conflict(
         }
     };
 
-    match conflict_service
-        .resolve_conflict(conflict, resolution, user_id)
-        .await
-    {
+    match conflict_service.resolve_conflict(conflict, resolution, user_id).await {
         Ok(success) => {
             if success {
                 // Invalider le cache

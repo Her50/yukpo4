@@ -250,10 +250,7 @@ pub async fn orchestrer_intention_ia(
             .zip(all_mime_types.iter())
             .enumerate()
         {
-            match file_extractor
-                .extract_universal_content(file_data, file_name, mime_type)
-                .await
-            {
+            match file_extractor.extract_universal_content(file_data, file_name, mime_type).await {
                 Ok(extracted_data) => {
                     extracted_files_data.push(extracted_data);
                     log_info(&format!(
@@ -342,10 +339,7 @@ pub async fn orchestrer_intention_ia(
 
     // 4. Injection des donn?es extraites des fichiers dans le contexte IA
     if let Some(extracted_data) = &multimodal_data {
-        if let Some(files) = extracted_data
-            .get("extracted_files")
-            .and_then(|f| f.as_array())
-        {
+        if let Some(files) = extracted_data.get("extracted_files").and_then(|f| f.as_array()) {
             let mut file_contents = Vec::new();
             for file_data in files {
                 if let Some(content) = file_data.get("content") {
@@ -437,10 +431,8 @@ pub async fn orchestrer_intention_ia(
     let ia_response = serde_json::to_string(&result)?;
 
     // Extraire les vrais tokens consomm?s depuis le r?sultat IA
-    let tokens_consumed = result
-        .get("tokens_consumed")
-        .and_then(|v| v.as_u64())
-        .unwrap_or_else(|| {
+    let tokens_consumed =
+        result.get("tokens_consumed").and_then(|v| v.as_u64()).unwrap_or_else(|| {
             // Fallback : estimation bas?e sur la longueur de la r?ponse
             let response_length = ia_response.len();
             let estimated_tokens = (response_length / 4).max(100) as u64;
@@ -737,10 +729,7 @@ pub async fn orchestrer_intention_ia_simple(
     // 6. Ajout des m?triques minimales
     if let Some(obj) = final_result.as_object_mut() {
         // Pr?server les tokens retourn?s par OptimizedIAService au lieu de les ?craser
-        let tokens_consumed = data
-            .get("tokens_consumed")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(1500); // Fallback seulement si pas de tokens dans la r?ponse
+        let tokens_consumed = data.get("tokens_consumed").and_then(|v| v.as_u64()).unwrap_or(1500); // Fallback seulement si pas de tokens dans la r?ponse
 
         obj.insert("tokens_consumed".to_string(), json!(tokens_consumed));
         obj.insert("ia_model_used".to_string(), json!("optimized_ia"));
@@ -834,10 +823,7 @@ pub async fn orchestrer_intention_ia_hybride(
     .await?;
 
     // 7. HISTORISATION (ESSENTIELLE pour l'apprentissage)
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
     let input_context = json!({
         "timestamp": timestamp,
         "user_id": user_id,
@@ -1004,9 +990,7 @@ pub async fn orchestrer_intention_ia_ultra_optimisee(
             .await?
     } else {
         log_info("[orchestration_ia] ?? Pipeline CPU activ?");
-        optimized_ia
-            .process_user_request_immediate_response(&enriched_input)
-            .await?
+        optimized_ia.process_user_request_immediate_response(&enriched_input).await?
     };
 
     let ia_processing_time = ia_start_time.elapsed();
@@ -1062,10 +1046,7 @@ pub async fn orchestrer_intention_ia_ultra_optimisee(
     // 8. Ajout des m?triques minimales avec info GPU
     if let Some(obj) = final_result.as_object_mut() {
         // Pr?server les tokens retourn?s par OptimizedIAService au lieu de les ?craser
-        let tokens_consumed = data
-            .get("tokens_consumed")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(1500); // Fallback seulement si pas de tokens dans la r?ponse
+        let tokens_consumed = data.get("tokens_consumed").and_then(|v| v.as_u64()).unwrap_or(1500); // Fallback seulement si pas de tokens dans la r?ponse
 
         obj.insert("tokens_consumed".to_string(), json!(tokens_consumed));
         obj.insert("ia_model_used".to_string(), json!("ultra_optimized_ia"));
@@ -1101,10 +1082,7 @@ pub async fn orchestrer_intention_ia_ultra_optimisee(
     ));
 
     // 10. Traitements en arri?re-plan (non-bloquant pour UX)
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
     let input_context = json!({
         "timestamp": timestamp,
         "user_id": user_id,
@@ -1195,10 +1173,7 @@ async fn construire_input_context_ultra_avance(
     _config: &OrchestrationConfig,
     _app_ia: Option<&AppIA>,
 ) -> Value {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
     let mut context = json!({
         "timestamp": timestamp,
         "input_type": "multimodal_ultra",
@@ -1423,10 +1398,7 @@ IMPORTANT:
     }
 
     // ✅ NOUVEAU: Validation des types et plages de valeurs
-    if let Some(confidence) = json_value
-        .get("user_intent_confidence")
-        .and_then(|v| v.as_f64())
-    {
+    if let Some(confidence) = json_value.get("user_intent_confidence").and_then(|v| v.as_f64()) {
         if !(0.0..=1.0).contains(&confidence) {
             return Err(crate::core::types::AppError::Internal(
                 "user_intent_confidence doit être entre 0.0 et 1.0".to_string(),
@@ -1923,9 +1895,7 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
     let mut seen_words = std::collections::HashSet::new();
 
     for word in words {
-        let clean_word = word
-            .trim_matches(|c: char| !c.is_alphanumeric())
-            .to_string();
+        let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric()).to_string();
 
         // ✅ CORRIGÉ 2026-01-22: Permettre TOUS les mots de 2+ caractères (générique)
         // La recherche SQL peut matcher des mots courts comme "tv", "pc", "hd", etc.
@@ -1999,10 +1969,7 @@ async fn router_metier_ultra_optimise(
 
             // Extraire directement le tableau des résultats de la structure imbriquée
             let results_array = if let Some(r) = result.as_object() {
-                r.get("resultats")
-                    .and_then(|v| v.as_array())
-                    .cloned()
-                    .unwrap_or_default()
+                r.get("resultats").and_then(|v| v.as_array()).cloned().unwrap_or_default()
             } else {
                 vec![]
             };
@@ -2065,10 +2032,7 @@ async fn enregistrer_apprentissage_autonome_ultra_avance(
         model_used: source.to_string(),
         user_feedback: None,
         quality_score: _context_analysis.user_intent_confidence,
-        created_at: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
+        created_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
     };
 
     // Ajouter aux donn?es d'entra?nement
@@ -2076,14 +2040,9 @@ async fn enregistrer_apprentissage_autonome_ultra_avance(
     training_queue.push(training_data);
 
     // Si assez de donn?es de haute qualit?, g?n?rer un dataset
-    let high_quality_count = training_queue
-        .iter()
-        .filter(|td| td.quality_score >= 0.8)
-        .count();
+    let high_quality_count = training_queue.iter().filter(|td| td.quality_score >= 0.8).count();
     if high_quality_count >= 100 {
-        if let Err(e) = app_ia
-            .generate_training_dataset("datasets/yukpo_training_data.json")
-            .await
+        if let Err(e) = app_ia.generate_training_dataset("datasets/yukpo_training_data.json").await
         {
             log::error!("[AppIA] Erreur g?n?ration dataset: {}", e);
         }
@@ -2093,11 +2052,9 @@ async fn enregistrer_apprentissage_autonome_ultra_avance(
 pub fn extraire_intention(data: &Value) -> String {
     match data.get("intention") {
         Some(Value::String(s)) => s.clone(),
-        Some(Value::Object(obj)) => obj
-            .get("valeur")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string(),
+        Some(Value::Object(obj)) => {
+            obj.get("valeur").and_then(|v| v.as_str()).unwrap_or("").to_string()
+        }
         _ => String::new(),
     }
 }

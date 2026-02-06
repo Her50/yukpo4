@@ -546,8 +546,6 @@ fn format_product_creation_metrics(
     let encoder = prometheus::TextEncoder::new();
     let metric_families = prometheus::gather();
     let mut buffer = Vec::new();
-    encoder
-        .encode(&metric_families, &mut buffer)
-        .unwrap_or_default();
+    encoder.encode(&metric_families, &mut buffer).unwrap_or_default();
     String::from_utf8(buffer).unwrap_or_default()
 }

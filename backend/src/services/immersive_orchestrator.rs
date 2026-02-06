@@ -488,19 +488,16 @@ impl ImmersiveOrchestrator {
         }
 
         let templates = self.state.story_templates.list();
-        let mut best = templates
-            .first()
-            .cloned()
-            .unwrap_or_else(|| StoryTemplateSpec {
-                id: "blog".into(),
-                label: "Blog / Chronicle".into(),
-                description: "Défaut".into(),
-                recommended_categories: vec![],
-                tones: vec![],
-                ctas: vec![],
-                default_duration_seconds: 30,
-                suggested_scenes: 3,
-            });
+        let mut best = templates.first().cloned().unwrap_or_else(|| StoryTemplateSpec {
+            id: "blog".into(),
+            label: "Blog / Chronicle".into(),
+            description: "Défaut".into(),
+            recommended_categories: vec![],
+            tones: vec![],
+            ctas: vec![],
+            default_duration_seconds: 30,
+            suggested_scenes: 3,
+        });
         let mut best_score = i32::MIN;
 
         for spec in templates {
@@ -512,9 +509,7 @@ impl ImmersiveOrchestrator {
             {
                 let bonus = ((ai_hints.len() - position) as i32).saturating_mul(3);
                 evaluation.score += bonus;
-                evaluation
-                    .reasons
-                    .push(format!("hint_ia_rank_{}", position + 1));
+                evaluation.reasons.push(format!("hint_ia_rank_{}", position + 1));
             }
             if evaluation.score > best_score {
                 best_score = evaluation.score;
@@ -629,11 +624,7 @@ impl ImmersiveOrchestrator {
             .to_string();
 
             let headline = scene.assets.headline.clone();
-            let body = scene
-                .assets
-                .body
-                .clone()
-                .or_else(|| scene.assets.subheadline.clone());
+            let body = scene.assets.body.clone().or_else(|| scene.assets.subheadline.clone());
 
             let media_hint = scene
                 .assets
@@ -669,33 +660,21 @@ impl ImmersiveOrchestrator {
         let mut reasons = Vec::new();
 
         if let Some(category) = &context.service_category {
-            if spec
-                .recommended_categories
-                .iter()
-                .any(|cat| cat.eq_ignore_ascii_case(category))
-            {
+            if spec.recommended_categories.iter().any(|cat| cat.eq_ignore_ascii_case(category)) {
                 score += 6;
                 reasons.push(format!("category:{}", category));
             }
         }
 
         if let Some(tone) = &context.tone {
-            if spec
-                .tones
-                .iter()
-                .any(|value| value.eq_ignore_ascii_case(tone))
-            {
+            if spec.tones.iter().any(|value| value.eq_ignore_ascii_case(tone)) {
                 score += 4;
                 reasons.push(format!("tone:{}", tone));
             }
         }
 
         if let Some(cta) = &context.cta_label {
-            if spec
-                .ctas
-                .iter()
-                .any(|value| value.eq_ignore_ascii_case(cta))
-            {
+            if spec.ctas.iter().any(|value| value.eq_ignore_ascii_case(cta)) {
                 score += 3;
                 reasons.push(format!("cta:{}", cta));
             }
@@ -804,10 +783,7 @@ impl ImmersiveOrchestrator {
 
         let mut deduped: Vec<String> = Vec::new();
         for hint in hints {
-            if !deduped
-                .iter()
-                .any(|value| value.eq_ignore_ascii_case(&hint))
-            {
+            if !deduped.iter().any(|value| value.eq_ignore_ascii_case(&hint)) {
                 deduped.push(hint);
             }
         }

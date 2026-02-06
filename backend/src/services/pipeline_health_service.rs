@@ -175,9 +175,7 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
     if !stale_jobs.is_empty() || failed_last_24h > 0 {
         status = "degraded".to_string();
     }
-    if stale_jobs
-        .iter()
-        .any(|job| job.updated_at < Utc::now() - Duration::hours(2))
+    if stale_jobs.iter().any(|job| job.updated_at < Utc::now() - Duration::hours(2))
         || failed_total > 10
     {
         status = "critical".to_string();

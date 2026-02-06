@@ -192,10 +192,7 @@ Réponds SEULEMENT le JSON, rien d'autre."#,
     let parsed: Value = serde_json::from_str(&json_block)
         .map_err(|e| AppError::Internal(format!("JSON malformé: {}", e)))?;
 
-    let sync_type_str = parsed
-        .get("sync_type")
-        .and_then(|v| v.as_str())
-        .unwrap_or("auto");
+    let sync_type_str = parsed.get("sync_type").and_then(|v| v.as_str()).unwrap_or("auto");
 
     let sync_type = match sync_type_str {
         "lip_sync" => AudioSyncType::LipSync,
@@ -276,42 +273,25 @@ Réponds SEULEMENT le JSON, rien d'autre."#,
     let parsed: Value = serde_json::from_str(&json_block)
         .map_err(|e| AppError::Internal(format!("JSON malformé: {}", e)))?;
 
-    let sync_offset = parsed
-        .get("sync_offset")
-        .and_then(|v| v.as_f64())
-        .unwrap_or(0.0);
+    let sync_offset = parsed.get("sync_offset").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
-    let confidence = parsed
-        .get("confidence")
-        .and_then(|v| v.as_f64())
-        .unwrap_or(0.8);
+    let confidence = parsed.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.8);
 
     let empty_vec: Vec<serde_json::Value> = vec![];
-    let adjustments_array = parsed
-        .get("adjustments")
-        .and_then(|a| a.as_array())
-        .unwrap_or(&empty_vec);
+    let adjustments_array =
+        parsed.get("adjustments").and_then(|a| a.as_array()).unwrap_or(&empty_vec);
 
     let mut adjustments = Vec::new();
     for adj_json in adjustments_array {
         adjustments.push(SyncAdjustment {
-            timestamp: adj_json
-                .get("timestamp")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0),
-            offset: adj_json
-                .get("offset")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0),
+            timestamp: adj_json.get("timestamp").and_then(|v| v.as_f64()).unwrap_or(0.0),
+            offset: adj_json.get("offset").and_then(|v| v.as_f64()).unwrap_or(0.0),
             reason: adj_json
                 .get("reason")
                 .and_then(|v| v.as_str())
                 .unwrap_or("Ajustement")
                 .to_string(),
-            confidence: adj_json
-                .get("confidence")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.8),
+            confidence: adj_json.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.8),
         });
     }
 
@@ -349,8 +329,7 @@ async fn apply_sync_adjustment(
             cmd.arg("-itsoffset").arg(format!("{}", offset));
         } else {
             // Audio en retard, l'avancer (nécessite réencodage)
-            cmd.arg("-af")
-                .arg(format!("adelay={}S", (-offset * 1000.0) as i64));
+            cmd.arg("-af").arg(format!("adelay={}S", (-offset * 1000.0) as i64));
         }
     }
 

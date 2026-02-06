@@ -20,6 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { modernColors, modernStyles, modernTheme } from '../../theme/modernTheme';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import * as Linking from 'expo-linking';
 import { API_BASE_URL } from '../../config/api';
 
 // Configuration WebBrowser pour OAuth
@@ -41,12 +42,29 @@ const LoginScreen: React.FC = () => {
   // Configuration Google OAuth
   // Note: Le GOOGLE_CLIENT_ID doit être configuré dans les variables d'environnement
   // Pour mobile, utilisez le client ID Android ou iOS selon la plateforme
+  // ✅ CORRECTION ALIGNEMENT: Utiliser Linking.createURL() pour garantir l'alignement avec app.config.js
+  const redirectUri = Linking.createURL('/');
+  
   const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
     expoClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com',
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com',
+    redirectUri: redirectUri, // ✅ Forcer le redirect URI pour garantir l'alignement
   });
+
+  // 🔍 Debug: Log de la configuration OAuth
+  useEffect(() => {
+    if (googleRequest) {
+      console.log('[OAuth Debug] Request:', JSON.stringify(googleRequest, null, 2));
+      console.log('[OAuth Debug] Redirect URI (forcé):', redirectUri);
+      console.log('[OAuth Debug] Redirect URI (request):', googleRequest.redirectUri);
+      console.log('[OAuth Debug] Platform:', Platform.OS);
+      console.log('[OAuth Debug] Android Client ID:', process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID);
+      console.log('[OAuth Debug] Expo Client ID:', process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID);
+      console.log('[OAuth Debug] Linking.createURL("/"):', Linking.createURL('/'));
+    }
+  }, [googleRequest, redirectUri]);
 
   // Gérer la réponse Google OAuth
   useEffect(() => {
@@ -56,8 +74,27 @@ const LoginScreen: React.FC = () => {
         handleOAuthLogin('google', id_token);
       }
     } else if (googleResponse?.type === 'error') {
-      console.error('[LoginScreen] Erreur Google OAuth:', googleResponse.error);
-      setError('Erreur de connexion Google. Veuillez réessayer.');
+      console.error('[LoginScreen] Erreur Google OAuth complète:', JSON.stringify(googleResponse, null, 2));
+      console.error('[LoginScreen] Code erreur:', googleResponse.error?.code);
+      console.error('[LoginScreen] Message erreur:', googleResponse.error?.message);
+      console.error('[LoginScreen] URL erreur:', googleResponse.error?.url);
+      
+      // Messages d'erreur spécifiques selon le type d'erreur
+      let errorMessage = 'Erreur de connexion Google. Veuillez réessayer.';
+      
+      if (googleResponse.error?.code === 'invalid_request' || 
+          googleResponse.error?.message?.includes('Custom URI scheme') ||
+          googleResponse.error?.message?.includes('invalid_request')) {
+        errorMessage = 'Configuration OAuth manquante. Le schéma URI personnalisé n\'est pas activé pour Android.\n\n' +
+          'URI utilisée: ' + (googleRequest?.redirectUri || 'non définie') + '\n\n' +
+          'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
+      } else if (googleResponse.error?.code === 'access_denied') {
+        errorMessage = 'Connexion Google annulée.';
+      } else if (googleResponse.error?.code === 'popup_closed') {
+        errorMessage = 'La fenêtre de connexion a été fermée.';
+      }
+      
+      setError(errorMessage);
       setFormLoading(false);
     }
   }, [googleResponse]);
@@ -117,10 +154,30 @@ const LoginScreen: React.FC = () => {
     try {
       setFormLoading(true);
       setError(null);
+      
+      // Vérifier que le Client ID Android est configuré sur Android
+      if (Platform.OS === 'android' && !process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) {
+        const errorMsg = 'Configuration OAuth Android manquante.\n\n' +
+          'Veuillez définir EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID dans vos variables d\'environnement.\n\n' +
+          'Consultez: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
+        setError(errorMsg);
+        Alert.alert('Configuration requise', errorMsg);
+        setFormLoading(false);
+        return;
+      }
+      
       await googlePromptAsync();
     } catch (error: any) {
       console.error('[LoginScreen] Erreur lors du lancement Google OAuth:', error);
-      setError('Impossible de lancer la connexion Google. Veuillez réessayer.');
+      let errorMessage = 'Impossible de lancer la connexion Google. Veuillez réessayer.';
+      
+      if (error?.message?.includes('Custom URI scheme') || error?.message?.includes('invalid_request')) {
+        errorMessage = 'Configuration OAuth manquante. Le schéma URI personnalisé n\'est pas activé pour Android.\n\n' +
+          'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
+      }
+      
+      setError(errorMessage);
+      Alert.alert('Erreur OAuth', errorMessage);
       setFormLoading(false);
     }
   };

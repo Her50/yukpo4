@@ -261,10 +261,7 @@ async fn test_stress_reservations() {
         let pid = passenger_id;
 
         let handle = tokio::spawn(async move {
-            let mut tx = pool_clone
-                .begin()
-                .await
-                .expect("Failed to begin transaction");
+            let mut tx = pool_clone.begin().await.expect("Failed to begin transaction");
 
             // SELECT FOR UPDATE
             let places: Option<i32> = sqlx::query_scalar(
@@ -383,10 +380,7 @@ async fn test_cache_performance() {
     if let Some(ref redis_pool) = state.redis_pool {
         println!("🚀 Test performance cache Redis");
 
-        let mut conn = redis_pool
-            .get()
-            .await
-            .expect("Failed to get Redis connection");
+        let mut conn = redis_pool.get().await.expect("Failed to get Redis connection");
 
         let cache_key = "covoiturage:search:test";
         let cache_value = r#"{"results":[],"total":0}"#;
@@ -433,11 +427,7 @@ async fn test_cache_performance() {
         // Nettoyer
         for i in 0..1000 {
             let key = format!("{}:{}", cache_key, i);
-            redis::cmd("DEL")
-                .arg(&key)
-                .query_async::<_, ()>(&mut *conn)
-                .await
-                .ok();
+            redis::cmd("DEL").arg(&key).query_async::<_, ()>(&mut *conn).await.ok();
         }
 
         assert!(set_duration.as_millis() < 5000, "SET doit être rapide");

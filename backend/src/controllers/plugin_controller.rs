@@ -79,17 +79,14 @@ pub async fn search_marketplace(
 ) -> AppResult<Json<PluginListResponse>> {
     info!("[PluginController] Recherche marketplace: {:?}", params.q);
 
-    let category = params
-        .category
-        .as_deref()
-        .and_then(|c| match c.to_lowercase().as_str() {
-            "effect" => Some(PluginCategory::Effect),
-            "transition" => Some(PluginCategory::Transition),
-            "filter" => Some(PluginCategory::Filter),
-            "export" => Some(PluginCategory::Export),
-            "integration" => Some(PluginCategory::Integration),
-            _ => None,
-        });
+    let category = params.category.as_deref().and_then(|c| match c.to_lowercase().as_str() {
+        "effect" => Some(PluginCategory::Effect),
+        "transition" => Some(PluginCategory::Transition),
+        "filter" => Some(PluginCategory::Filter),
+        "export" => Some(PluginCategory::Export),
+        "integration" => Some(PluginCategory::Integration),
+        _ => None,
+    });
 
     let plugin_service = crate::services::plugin_service::PluginService::new(None)
         .map_err(|e| AppError::Internal(format!("Erreur création PluginService: {}", e)))?;

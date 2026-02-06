@@ -27,16 +27,11 @@ pub async fn match_services(
     besoin_json: &serde_json::Value,
     __embedding_client: &EmbeddingClient,
 ) -> anyhow::Result<Vec<MatchedService>> {
-    let besoin_obj = besoin_json
-        .as_object()
-        .ok_or_else(|| anyhow::anyhow!("Besoin non objet"))?;
+    let besoin_obj = besoin_json.as_object().ok_or_else(|| anyhow::anyhow!("Besoin non objet"))?;
 
     // Extraction du point de r?f?rence g?ospatial (gps_souhaite ou gps)
     let mut _point_ref: Option<(f64, f64)> = None;
-    if let Some(gps) = besoin_obj
-        .get("gps_souhaite")
-        .or_else(|| besoin_obj.get("gps"))
-    {
+    if let Some(gps) = besoin_obj.get("gps_souhaite").or_else(|| besoin_obj.get("gps")) {
         if let Some(arr) = gps.as_array() {
             if arr.len() == 2 {
                 let lon = arr[0].as_f64().unwrap_or(0.0);
@@ -181,28 +176,18 @@ pub async fn match_services(
         .unwrap_or_else(|_| "0.40".to_string())
         .parse::<f64>()
         .unwrap_or(0.40);
-    let mut results: Vec<_> = results
-        .into_iter()
-        .filter(|r| r.score >= seuil_final)
-        .collect();
+    let mut results: Vec<_> = results.into_iter().filter(|r| r.score >= seuil_final).collect();
     if results.is_empty() {
         log::info!(
             "[MATCHING][DEBUG] Aucun service match? (score final < seuil: {:.2})",
             seuil_final
         );
     }
-    results.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
     results.truncate(10);
     log::info!(
         "[MATCHING][DEBUG] R?sultats finaux (apr?s filtrage/tri): {:?}",
-        results
-            .iter()
-            .map(|r| (r.service_id, r.score))
-            .collect::<Vec<_>>()
+        results.iter().map(|r| (r.service_id, r.score)).collect::<Vec<_>>()
     );
     Ok(results)
 }

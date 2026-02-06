@@ -142,10 +142,7 @@ mod tests {
         let promotion_value = "-20%";
 
         // Parser promotion
-        let discount_pct = promotion_value
-            .replace("%", "")
-            .parse::<f64>()
-            .unwrap_or(0.0);
+        let discount_pct = promotion_value.replace("%", "").parse::<f64>().unwrap_or(0.0);
 
         let final_price = base_price * (1.0 - discount_pct / 100.0);
         let final_price_cents = (final_price * 100.0) as i64;

@@ -29,9 +29,7 @@ impl AlertesEmploiService {
             candidat_id
         );
 
-        let frequence = request
-            .frequence
-            .unwrap_or_else(|| "quotidienne".to_string());
+        let frequence = request.frequence.unwrap_or_else(|| "quotidienne".to_string());
 
         let alerte = sqlx::query_as::<_, AlerteEmploi>(
             r#"

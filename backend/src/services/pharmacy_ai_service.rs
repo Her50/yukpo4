@@ -57,9 +57,7 @@ impl PharmacyAIService {
         medical_conditions: Option<Vec<String>>,
     ) -> AppResult<MedicationInteraction> {
         let medications_str = medications.join(", ");
-        let age_str = age
-            .map(|a| a.to_string())
-            .unwrap_or_else(|| "Non spécifié".to_string());
+        let age_str = age.map(|a| a.to_string()).unwrap_or_else(|| "Non spécifié".to_string());
         let conditions_str = medical_conditions
             .as_ref()
             .map(|c| c.join(", "))
@@ -133,12 +131,9 @@ RÉPONSE ATTENDUE (JSON strict) :
         weight: Option<f32>,
         medical_condition: Option<&str>,
     ) -> AppResult<DosageRecommendation> {
-        let age_str = age
-            .map(|a| a.to_string())
-            .unwrap_or_else(|| "Non spécifié".to_string());
-        let weight_str = weight
-            .map(|w| w.to_string())
-            .unwrap_or_else(|| "Non spécifié".to_string());
+        let age_str = age.map(|a| a.to_string()).unwrap_or_else(|| "Non spécifié".to_string());
+        let weight_str =
+            weight.map(|w| w.to_string()).unwrap_or_else(|| "Non spécifié".to_string());
         let condition_str = medical_condition.unwrap_or("Non spécifiée");
 
         let prompt = format!(
@@ -257,9 +252,7 @@ RÉPONSE ATTENDUE (JSON strict) :
             match serde_json::from_str::<serde_json::Value>(&response) {
                 Ok(v) => {
                     if let Some(alts) = v.get("alternatives").and_then(|a| a.as_array()) {
-                        alts.iter()
-                            .filter_map(|a| serde_json::from_value(a.clone()).ok())
-                            .collect()
+                        alts.iter().filter_map(|a| serde_json::from_value(a.clone()).ok()).collect()
                     } else {
                         vec![]
                     }
@@ -280,9 +273,7 @@ pub async fn check_medication_interactions(
     medications: Vec<String>,
 ) -> AppResult<String> {
     let service = PharmacyAIService::new(app_ia);
-    let interaction = service
-        .check_medication_interactions(medications, None, None)
-        .await?;
+    let interaction = service.check_medication_interactions(medications, None, None).await?;
 
     Ok(interaction.recommendation)
 }

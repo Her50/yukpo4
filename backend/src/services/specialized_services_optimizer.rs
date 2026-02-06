@@ -28,10 +28,7 @@ impl SpecializedServicesOptimizer {
         info!("[Optimizer] Préchargement données pour user_id={}", user_id);
 
         // Précharger la liste des services (première page)
-        let _ = self
-            .cache
-            .get_services_list(user_id, None, None, 1, 20)
-            .await;
+        let _ = self.cache.get_services_list(user_id, None, None, 1, 20).await;
 
         // Précharger les statistiques
         let _ = self.cache.get_statistics(user_id, None).await;

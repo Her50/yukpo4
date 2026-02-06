@@ -78,8 +78,7 @@ impl DeliveryMLETAService {
         let prediction = self.calculate_ml_eta(&features, courier_id).await?;
 
         // Mettre en cache
-        self.prediction_cache
-            .insert(cache_key, (prediction.clone(), Utc::now()));
+        self.prediction_cache.insert(cache_key, (prediction.clone(), Utc::now()));
 
         Ok(prediction)
     }
@@ -209,14 +208,9 @@ impl DeliveryMLETAService {
         log::info!(
             "[ML ETA] Actual time: {:.2} min, Predicted: {:.2} min, Error: {:.2}%",
             actual_minutes,
-            self.predict_eta(features.clone(), courier_id)
-                .await?
-                .estimated_minutes,
+            self.predict_eta(features.clone(), courier_id).await?.estimated_minutes,
             ((actual_minutes
-                - self
-                    .predict_eta(features.clone(), courier_id)
-                    .await?
-                    .estimated_minutes)
+                - self.predict_eta(features.clone(), courier_id).await?.estimated_minutes)
                 .abs()
                 / actual_minutes)
                 * 100.0
@@ -252,10 +246,7 @@ mod tests {
             route_complexity: 0.3,
         };
 
-        let prediction = service
-            .predict_eta(features, Some(1))
-            .await
-            .expect("Should predict ETA");
+        let prediction = service.predict_eta(features, Some(1)).await.expect("Should predict ETA");
 
         assert!(prediction.estimated_minutes > 0.0);
         assert!(prediction.confidence > 0.0 && prediction.confidence <= 1.0);

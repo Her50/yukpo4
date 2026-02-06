@@ -147,3 +147,5 @@ psql "$DATABASE_URL" -c "SELECT version();"
 **Solution** : Installer AWS CLI ou définir DATABASE_URL manuellement
 
 
+
+

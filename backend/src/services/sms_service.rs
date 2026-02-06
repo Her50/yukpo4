@@ -151,10 +151,8 @@ impl SmsService {
                 .await
                 .map_err(|e| AppError::Internal(format!("Erreur parsing réponse Twilio: {}", e)))?;
 
-            let message_id = response_json
-                .get("sid")
-                .and_then(|s| s.as_str())
-                .map(|s| s.to_string());
+            let message_id =
+                response_json.get("sid").and_then(|s| s.as_str()).map(|s| s.to_string());
 
             log::info!(
                 "[SmsService] ✅ SMS envoyé avec succès. Message ID: {:?}",
@@ -167,10 +165,8 @@ impl SmsService {
                 error: None,
             })
         } else {
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Erreur inconnue".to_string());
+            let error_text =
+                response.text().await.unwrap_or_else(|_| "Erreur inconnue".to_string());
 
             log::error!(
                 "[SmsService] ❌ Erreur envoi SMS Twilio (status {}): {}",

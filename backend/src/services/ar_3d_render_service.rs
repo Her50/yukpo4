@@ -34,19 +34,14 @@ impl AR3DRenderService {
         );
 
         // 1. Créer un fichier de scène 3D (format JSON/GLTF)
-        let scene_file = self
-            .create_scene_file(&request.timeline_id, scene_data)
-            .await?;
+        let scene_file = self.create_scene_file(&request.timeline_id, scene_data).await?;
 
         // 2. Rendre la scène en vidéo preview
-        let preview_url = self
-            .render_scene_to_video(&request.timeline_id, &scene_file, &request)
-            .await?;
+        let preview_url =
+            self.render_scene_to_video(&request.timeline_id, &scene_file, &request).await?;
 
         // 3. Générer une thumbnail
-        let thumbnail_url = self
-            .generate_thumbnail(&request.timeline_id, &preview_url)
-            .await?;
+        let thumbnail_url = self.generate_thumbnail(&request.timeline_id, &preview_url).await?;
 
         Ok(ARPreviewResponse {
             preview_url,
@@ -217,9 +212,7 @@ impl AR3DRenderService {
                     timeline_id
                 );
                 // Créer un thumbnail mock
-                fs::write(&thumbnail_path, b"mock_thumbnail_data")
-                    .await
-                    .ok();
+                fs::write(&thumbnail_path, b"mock_thumbnail_data").await.ok();
                 Ok(format!("/api/ar/previews/{}.jpg", timeline_id))
             }
             Err(e) => {
@@ -228,9 +221,7 @@ impl AR3DRenderService {
                     e
                 );
                 // Créer un thumbnail mock
-                fs::write(&thumbnail_path, b"mock_thumbnail_data")
-                    .await
-                    .ok();
+                fs::write(&thumbnail_path, b"mock_thumbnail_data").await.ok();
                 Ok(format!("/api/ar/previews/{}.jpg", timeline_id))
             }
         }

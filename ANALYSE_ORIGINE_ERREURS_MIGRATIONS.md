@@ -199,3 +199,5 @@ Les corrections appliquées :
    - Tester la division sur des fichiers SQL complexes
    - Vérifier que tous les cas sont gérés correctement
 
+
+

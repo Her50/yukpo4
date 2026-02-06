@@ -767,8 +767,29 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         characteristic_vector: prefill.characteristic_vector ?? suggestionData?.characteristic_vector ?? null,
         combinaison_brute: prefill.combinaison_brute ?? suggestionData?.combinaison_brute ?? null,
         // ✅ NOUVEAU: Initialiser product_vector et product_labels depuis prefill en priorité
-        product_vector: prefill.product_vector ?? (suggestionData.produits?.product_vector && Array.isArray(suggestionData.produits.product_vector) ? suggestionData.produits.product_vector : undefined),
-        product_labels: prefill.product_labels ?? (suggestionData.produits?.product_labels && Array.isArray(suggestionData.produits.product_labels) ? suggestionData.produits.product_labels : undefined),
+        // ✅ CORRECTION CRITIQUE: Extraire product_labels depuis suggestionData.produits même si produits est un objet structuré (type_donnee: 'autocomplete')
+        product_vector: prefill.product_vector ?? (() => {
+            // Vérifier si produits est un objet structuré avec type_donnee
+            if (suggestionData.produits && typeof suggestionData.produits === 'object' && 'type_donnee' in suggestionData.produits) {
+                // Si c'est un objet structuré, extraire depuis characteristic_vector ou product_vector
+                return (suggestionData.produits.characteristic_vector && Array.isArray(suggestionData.produits.characteristic_vector) ? suggestionData.produits.characteristic_vector : undefined) ||
+                       (suggestionData.produits.product_vector && Array.isArray(suggestionData.produits.product_vector) ? suggestionData.produits.product_vector : undefined);
+            }
+            // Sinon, extraction directe
+            return (suggestionData.produits?.product_vector && Array.isArray(suggestionData.produits.product_vector) ? suggestionData.produits.product_vector : undefined);
+        })(),
+        product_labels: prefill.product_labels ?? (() => {
+            // ✅ CORRECTION CRITIQUE: Extraire product_labels depuis suggestionData.produits même si produits est un objet structuré (type_donnee: 'autocomplete')
+            // Vérifier si produits est un objet structuré avec type_donnee
+            if (suggestionData.produits && typeof suggestionData.produits === 'object' && 'type_donnee' in suggestionData.produits) {
+                // Si c'est un objet structuré, extraire product_labels directement
+                if (suggestionData.produits.product_labels && Array.isArray(suggestionData.produits.product_labels)) {
+                    return suggestionData.produits.product_labels;
+                }
+            }
+            // Sinon, extraction directe
+            return (suggestionData.produits?.product_labels && Array.isArray(suggestionData.produits.product_labels) ? suggestionData.produits.product_labels : undefined);
+        })(),
     };
 
     // ✅ DEBUG: Logger les valeurs initiales pour diagnostiquer le problème

@@ -38,6 +38,7 @@ import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { getFieldValue } from '../utils/productNormalizer';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
+import { generateProductShareMessage, generateSmartShareLink } from '../utils/productShareHelper';
 
 // ✅ CORRIGÉ: Utiliser getFieldValue standardisé au lieu d'extractValue locale
 const extractValue = (field: any): string | null => {
@@ -989,21 +990,33 @@ const MesProduitsScreen: React.FC = () => {
     // Partager un produit
     const handleShareProduct = async (product: ManagedProduct) => {
         try {
-            // Générer le lien deep link pour ouvrir l'app directement sur ce produit
-            const deepLink = `yukpomnang://product/${product.id}?serviceId=${product.serviceId}`;
-            const webLink = `https://yukpomnang.com/product/${product.id}`;
+            // ✅ NOUVEAU 2026-01-XX: Utiliser la fonction utilitaire pour générer le message de partage uniforme
+            // Extraire la localisation si disponible (depuis les données brutes du produit)
+            const location = product.location || product.lieu || product.adresse || product.address || undefined;
+            
+            // Préparer le prix (peut être string ou number)
+            const price = product.prix 
+                ? (typeof product.prix === 'string' ? parseFloat(product.prix) || undefined : product.prix)
+                : undefined;
 
-            const shareMessage = `🛍️ ${product.nom}\n\n` +
-                `💰 Prix: ${typeof product.prix === 'string' ? product.prix : product.prix.toLocaleString()} ${product.devise || 'FCFA'}\n\n` +
-                `${product.description || ''}\n\n` +
-                `📦 Service: ${product.serviceTitre}\n\n` +
-                `📱 Voir dans l'app: ${deepLink}\n` +
-                `🌐 Voir en ligne: ${webLink}`;
+            // Générer le message de partage avec le format uniforme (description avant prix, lieu, lien intelligent unique)
+            const shareMessage = generateProductShareMessage({
+                productName: product.nom,
+                productDescription: product.description,
+                price,
+                devise: product.devise || 'XAF',
+                location,
+                productId: product.id,
+                serviceId: product.serviceId,
+            });
+
+            // Générer le lien intelligent pour le paramètre url (pour réseaux sociaux)
+            const smartLink = generateSmartShareLink(product.id, product.serviceId);
 
             const result = await Share.share({
                 message: shareMessage,
                 title: `Découvrez: ${product.nom}`,
-                url: webLink, // URL pour partage sur réseaux sociaux
+                url: smartLink, // Lien intelligent pour partage sur réseaux sociaux
             });
 
             if (result.action === Share.sharedAction) {
@@ -2367,9 +2380,9 @@ const styles = StyleSheet.create({
         elevation: 12,
     },
     headerContainer: {
-        paddingTop: Platform.OS === 'ios' ? 32 : 16, // ✅ CORRIGÉ: Augmenté pour remonter le titre et éviter le masquage par les icônes
-        paddingBottom: 8,
-        paddingHorizontal: 16,
+        paddingTop: Platform.OS === 'ios' ? 8 : 8, // ✅ CORRIGÉ: Réduit pour remonter le titre et éviter le masquage par les icônes
+        paddingBottom: 12, // ✅ Augmenté pour compenser le paddingTop réduit
+        paddingHorizontal: 0, // ✅ Retiré car NavigatorToolbar gère déjà le padding horizontal
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',

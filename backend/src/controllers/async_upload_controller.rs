@@ -45,9 +45,7 @@ pub async fn start_async_upload(
 
     let upload_service = AsyncUploadService::new(Arc::new(state.pg.clone()), storage_root);
 
-    let upload_id = upload_service
-        .start_async_upload(user.id, multipart)
-        .await?;
+    let upload_id = upload_service.start_async_upload(user.id, multipart).await?;
 
     Ok((
         StatusCode::ACCEPTED,
@@ -76,9 +74,7 @@ pub async fn get_upload_status(
 
     let upload_service = AsyncUploadService::new(Arc::new(_state.pg.clone()), storage_root);
 
-    let upload = upload_service
-        .get_upload_status(&upload_id, user.id)
-        .await?;
+    let upload = upload_service.get_upload_status(&upload_id, user.id).await?;
 
     Ok(Json(UploadStatusResponse {
         success: true,

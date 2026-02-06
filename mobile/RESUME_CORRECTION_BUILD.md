@@ -1,91 +1,119 @@
-# ✅ Correction Build Android - compileSdk 35
+# ✅ Résumé de la correction du build Android
 
-## 🎯 Problème Résolu
+## 🎯 Problème initial
 
-**Erreur de build :**
+Le build local échouait systématiquement avec des erreurs de connexion réseau :
 ```
-Dependency 'androidx.core:core-splashscreen:1.2.0-alpha02' requires libraries and applications that depend on it to compile against version 35 or later of the Android APIs.
-
-:app is currently compiled against android-34.
+Could not HEAD 'https://plugins.gradle.org/m2/...'
+plugins.gradle.org (timeout ou connexion refusée)
 ```
 
----
+## 🔍 Cause racine identifiée
 
-## ✅ Corrections Appliquées
+**Le problème n'était PAS les erreurs de compilation Gradle**, mais un **problème de configuration réseau** :
 
-### 1. Configuration Expo (`mobile/app.config.js`)
+1. ❌ `pluginManagement` dans `settings.gradle` n'avait **aucun repository configuré**
+2. ❌ Gradle utilisait par défaut `plugins.gradle.org` qui n'était pas accessible
+3. ❌ Timeouts réseau trop courts (10 secondes)
+4. ❌ Pas de repositories alternatifs (fallback)
 
-**Mise à jour de `expo-build-properties` :**
-```javascript
-android: {
-    compileSdkVersion: 35,    // ✅ 34 → 35
-    targetSdkVersion: 35,     // ✅ 34 → 35
-    buildToolsVersion: "35.0.0", // ✅ 34.0.0 → 35.0.0
-    minSdkVersion: 23,        // ✅ Inchangé
-    kotlinVersion: "2.0.0"    // ✅ Inchangé
+## ✅ Corrections appliquées
+
+### 1. Repositories dans `pluginManagement` (`settings.gradle`)
+```gradle
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+        maven { url 'https://repo1.maven.org/maven2' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+    }
 }
 ```
 
-### 2. Configuration Gradle (`mobile/android/build.gradle`)
-
-**Mise à jour des valeurs par défaut :**
+### 2. Repositories dans `dependencyResolutionManagement` (`settings.gradle`)
 ```gradle
-compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35') // ✅ Déjà à 35
-targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '35')   // ✅ 34 → 35
-minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '23')        // ✅ 24 → 23 (cohérence)
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+        maven { url 'https://repo1.maven.org/maven2' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+    }
+}
 ```
 
----
+### 3. Repositories alternatifs dans `build.gradle`
+Ajout de mirrors dans `buildscript` et `allprojects`.
 
-## 📋 Résumé des Changements
-
-| Configuration | Avant | Après | Statut |
-|---------------|-------|-------|--------|
-| `compileSdkVersion` | 34 | 35 | ✅ |
-| `targetSdkVersion` | 34 | 35 | ✅ |
-| `buildToolsVersion` | 34.0.0 | 35.0.0 | ✅ |
-| `minSdkVersion` | 23 | 23 | ✅ Inchangé |
-
----
-
-## 🚀 Prochaines Étapes
-
-### Option 1 : Rebuild EAS (Recommandé)
-```bash
-eas build --platform android --profile production
+### 4. Timeouts réseau (`gradle-wrapper.properties`)
+```properties
+networkTimeout=120000  # 2 minutes au lieu de 10 secondes
 ```
 
-### Option 2 : Rebuild Local
-```bash
-cd mobile
-npx expo prebuild --clean
-cd android
-./gradlew clean
-./gradlew assembleRelease
+### 5. Configuration réseau (`gradle.properties`)
+```properties
+systemProp.org.gradle.internal.http.connectionTimeout=120000
+systemProp.org.gradle.internal.http.socketTimeout=120000
+systemProp.org.gradle.internal.repository.max.retries=5
+systemProp.org.gradle.internal.repository.initial.backoff=2000
 ```
 
----
+## 🎉 Résultat
 
-## ⚠️ Notes Importantes
+**BUILD SUCCESSFUL** ✅
 
-### Compatibilité
-- ✅ `minSdkVersion: 23` reste inchangé
-- ✅ L'app fonctionne toujours sur Android 6.0+ (API 23+)
-- ✅ Aucun impact sur les utilisateurs existants
+- **Temps de build** : 37 minutes 31 secondes (premier build complet)
+- **APK généré** : `mobile/android/app/build/outputs/apk/debug/app-debug.apk`
+- **Tâches exécutées** : 1909 tâches sur 1924
 
-### Impact des Changements
-- ✅ `compileSdkVersion: 35` permet d'utiliser les dernières APIs Android
-- ✅ `targetSdkVersion: 35` active les nouvelles fonctionnalités Android
-- ✅ Résout l'erreur avec `androidx.core:core-splashscreen:1.2.0-alpha02`
+## 📦 Fichiers modifiés
 
----
+1. ✅ `mobile/android/settings.gradle` - Repositories ajoutés
+2. ✅ `mobile/android/build.gradle` - Mirrors ajoutés
+3. ✅ `mobile/android/gradle-wrapper.properties` - Timeout augmenté
+4. ✅ `mobile/android/gradle.properties` - Configuration réseau complète
 
-## 📁 Fichiers Modifiés
+## 🚀 Utilisation
 
-1. ✅ `mobile/app.config.js` - Configuration expo-build-properties
-2. ✅ `mobile/android/build.gradle` - Valeurs par défaut Gradle
+### Build local (maintenant fonctionnel)
 
----
+```powershell
+cd mobile/android
+.\gradlew.bat assembleDebug
+```
 
-**Date :** $(Get-Date -Format "yyyy-MM-dd HH:mm")
-**Statut :** ✅ Configuration mise à jour - Prêt pour rebuild
+### Script automatisé
+
+```powershell
+cd mobile/android
+.\build-with-network-fix.ps1
+```
+
+### Installer l'APK sur un appareil
+
+```powershell
+adb install app\build\outputs\apk\debug\app-debug.apk
+```
+
+## 📝 Notes importantes
+
+1. **Premier build** : 37 minutes (téléchargement de toutes les dépendances)
+2. **Builds suivants** : Beaucoup plus rapides grâce au cache local
+3. **Alternative EAS** : Toujours disponible si besoin de build dans le cloud
+
+## 🔄 Prochaines étapes
+
+1. ✅ Build local fonctionnel
+2. 📱 Tester l'APK sur un appareil Android
+3. 🏗️ Build release pour production (si nécessaire)
+4. 📦 Configurer EAS Build pour les builds automatisés (optionnel)
+
+## 💡 Leçons apprises
+
+- **Ne pas tourner en rond** : Identifier la cause racine (réseau) plutôt que de corriger les symptômes (erreurs de compilation)
+- **Configuration Gradle** : Toujours configurer les repositories dans `pluginManagement` et `dependencyResolutionManagement`
+- **Timeouts réseau** : Augmenter les timeouts pour les connexions lentes
+- **Repositories multiples** : Ajouter des mirrors pour la résilience réseau

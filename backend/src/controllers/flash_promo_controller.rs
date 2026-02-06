@@ -329,10 +329,7 @@ pub async fn delete_flash_promo(
         if let Some(flash_promos) = promotion.get_mut("flash_promos") {
             if let Some(arr) = flash_promos.as_array_mut() {
                 arr.retain(|fp| {
-                    fp.get("id")
-                        .and_then(|id| id.as_str())
-                        .map(|id| id != promo_id)
-                        .unwrap_or(true)
+                    fp.get("id").and_then(|id| id.as_str()).map(|id| id != promo_id).unwrap_or(true)
                 });
             }
         }
@@ -367,15 +364,8 @@ pub async fn get_active_flash_promos(
     let pool = &state.pg;
 
     // ✅ NOUVEAU: Pagination pour limiter la mémoire
-    let limit = params
-        .get("limit")
-        .and_then(|s| s.parse::<i64>().ok())
-        .unwrap_or(100)
-        .min(500); // Max 500 services par requête
-    let offset = params
-        .get("offset")
-        .and_then(|s| s.parse::<i64>().ok())
-        .unwrap_or(0);
+    let limit = params.get("limit").and_then(|s| s.parse::<i64>().ok()).unwrap_or(100).min(500); // Max 500 services par requête
+    let offset = params.get("offset").and_then(|s| s.parse::<i64>().ok()).unwrap_or(0);
 
     info!(
         "[FlashPromo] Récupération flash promos actifs (limit={}, offset={})",
@@ -411,9 +401,7 @@ pub async fn get_active_flash_promos(
                 .get("titre_service")
                 .and_then(|v| v.as_str())
                 .or_else(|| {
-                    data.get("titre_service")
-                        .and_then(|v| v.get("valeur"))
-                        .and_then(|v| v.as_str())
+                    data.get("titre_service").and_then(|v| v.get("valeur")).and_then(|v| v.as_str())
                 })
                 .or_else(|| data.get("titre").and_then(|v| v.as_str()))
                 .or_else(|| data.get("nom").and_then(|v| v.as_str()))
@@ -442,20 +430,14 @@ pub async fn get_active_flash_promos(
 
         for promo in flash_promos {
             // Vérifier si la promo est active
-            let is_active = promo
-                .get("is_active")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
+            let is_active = promo.get("is_active").and_then(|v| v.as_bool()).unwrap_or(false);
 
             if !is_active {
                 continue;
             }
 
             // Vérifier les dates
-            let starts_at_str = promo
-                .get("starts_at")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let starts_at_str = promo.get("starts_at").and_then(|v| v.as_str()).unwrap_or("");
             let ends_at_str = promo.get("ends_at").and_then(|v| v.as_str()).unwrap_or("");
 
             let starts_at = chrono::DateTime::parse_from_rfc3339(starts_at_str)
@@ -482,10 +464,8 @@ pub async fn get_active_flash_promos(
                     .cloned()
                     .unwrap_or_else(|| Value::Array(Vec::new()));
 
-                let product_indexes_array = product_indexes_value
-                    .as_array()
-                    .cloned()
-                    .unwrap_or_else(Vec::new);
+                let product_indexes_array =
+                    product_indexes_value.as_array().cloned().unwrap_or_else(Vec::new);
 
                 let produits_value = service
                     .data

@@ -172,9 +172,7 @@ impl StockMediaService {
         }
 
         let page = request.page.unwrap_or(1);
-        let per_page = request
-            .per_page
-            .unwrap_or(self.config.max_results_per_query.min(30));
+        let per_page = request.per_page.unwrap_or(self.config.max_results_per_query.min(30));
 
         let mut url = format!(
             "https://api.unsplash.com/search/photos?query={}&page={}&per_page={}",
@@ -234,9 +232,7 @@ impl StockMediaService {
                     width: item["width"].as_u64()? as u32,
                     height: item["height"].as_u64()? as u32,
                     author: item["user"]["name"].as_str()?.to_string(),
-                    author_url: item["user"]["links"]["html"]
-                        .as_str()
-                        .map(|s| s.to_string()),
+                    author_url: item["user"]["links"]["html"].as_str().map(|s| s.to_string()),
                     license: "Unsplash License".to_string(),
                     tags: item["tags"]
                         .as_array()
@@ -272,9 +268,7 @@ impl StockMediaService {
         };
 
         let page = request.page.unwrap_or(1);
-        let per_page = request
-            .per_page
-            .unwrap_or(self.config.max_results_per_query.min(80));
+        let per_page = request.per_page.unwrap_or(self.config.max_results_per_query.min(80));
 
         let media_type = match request.media_type {
             StockMediaType::Photo => "photos",
@@ -371,9 +365,7 @@ impl StockMediaService {
         }
 
         let page = request.page.unwrap_or(1);
-        let per_page = request
-            .per_page
-            .unwrap_or(self.config.max_results_per_query.min(200));
+        let per_page = request.per_page.unwrap_or(self.config.max_results_per_query.min(200));
 
         let mut url = format!(
             "https://pixabay.com/api/?key={}&q={}&page={}&per_page={}&image_type=photo",

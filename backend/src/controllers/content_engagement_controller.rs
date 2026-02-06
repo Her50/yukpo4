@@ -141,10 +141,8 @@ pub async fn get_content_analytics(
         .try_get::<Option<i64>, _>("impressions")
         .unwrap_or(Some(0))
         .unwrap_or(0);
-    let clicks: i64 = summary_row
-        .try_get::<Option<i64>, _>("clicks")
-        .unwrap_or(Some(0))
-        .unwrap_or(0);
+    let clicks: i64 =
+        summary_row.try_get::<Option<i64>, _>("clicks").unwrap_or(Some(0)).unwrap_or(0);
     let avg_view_duration: f64 = summary_row
         .try_get::<Option<f64>, _>("avg_view_duration")
         .unwrap_or(Some(0.0))
@@ -178,14 +176,10 @@ pub async fn get_content_analytics(
         .into_iter()
         .filter_map(|row| {
             let content_type: String = row.try_get("content_type").ok()?;
-            let impressions: i64 = row
-                .try_get::<Option<i64>, _>("impressions")
-                .unwrap_or(Some(0))
-                .unwrap_or(0);
-            let clicks: i64 = row
-                .try_get::<Option<i64>, _>("clicks")
-                .unwrap_or(Some(0))
-                .unwrap_or(0);
+            let impressions: i64 =
+                row.try_get::<Option<i64>, _>("impressions").unwrap_or(Some(0)).unwrap_or(0);
+            let clicks: i64 =
+                row.try_get::<Option<i64>, _>("clicks").unwrap_or(Some(0)).unwrap_or(0);
             let avg_view_duration: f64 = row
                 .try_get::<Option<f64>, _>("avg_view_duration")
                 .unwrap_or(Some(0.0))
@@ -283,14 +277,9 @@ pub async fn get_content_analytics(
         .filter_map(|row| {
             let content_id = row.get::<Option<String>, _>("content_id")?;
             let content_type = row.get::<Option<String>, _>("content_type")?;
-            let impressions = row
-                .try_get::<Option<i64>, _>("impressions")
-                .unwrap_or(Some(0))
-                .unwrap_or(0);
-            let clicks = row
-                .try_get::<Option<i64>, _>("clicks")
-                .unwrap_or(Some(0))
-                .unwrap_or(0);
+            let impressions =
+                row.try_get::<Option<i64>, _>("impressions").unwrap_or(Some(0)).unwrap_or(0);
+            let clicks = row.try_get::<Option<i64>, _>("clicks").unwrap_or(Some(0)).unwrap_or(0);
             let avg_view_duration = row
                 .try_get::<Option<f64>, _>("avg_view_duration")
                 .unwrap_or(Some(0.0))

@@ -125,9 +125,8 @@ impl TrocIntelligentService {
                 None
             };
 
-            let score_proximite = distance_km
-                .map(|d| self.calculate_proximity_score(d))
-                .unwrap_or(0.5);
+            let score_proximite =
+                distance_km.map(|d| self.calculate_proximity_score(d)).unwrap_or(0.5);
 
             matchings.push(MatchingDirect {
                 livre_offert_id,

@@ -106,3 +106,5 @@ Une fois que les migrations isolées sont validées et fonctionnelles, supprimer
 - ⏳ Restructuration de auto_migrate.rs (à faire)
 - ⏳ Modification de main.rs (à faire)
 
+
+

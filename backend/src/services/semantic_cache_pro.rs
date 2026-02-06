@@ -196,14 +196,8 @@ impl SemanticCachePro {
         let cached_response = SmartCachedResponse {
             content: response.to_string(),
             confidence: 0.95, // Haute confiance pour r?ponse fra?che
-            created_at: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-            last_accessed: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+            created_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+            last_accessed: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
             access_count: 1,
             ttl: self.config.ttl_hours * 3600,
             embedding,
@@ -254,9 +248,7 @@ impl SemanticCachePro {
             return Ok(());
         }
 
-        let predictions = self
-            .generate_smart_predictions(user_context, current_input)
-            .await?;
+        let predictions = self.generate_smart_predictions(user_context, current_input).await?;
 
         // Stocker les pr?dictions
         {
@@ -328,10 +320,7 @@ impl SemanticCachePro {
 
     /// ?? Nettoyage intelligent du cache
     pub async fn cleanup_expired(&self) -> AppResult<usize> {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
         // let mut removed_count = 0; // supprim?
 
         // Nettoyage m?moire

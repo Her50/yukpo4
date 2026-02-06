@@ -133,3 +133,5 @@ COMMENT ON TABLE delivery_badges IS 'Badges obtenus par les utilisateurs';
 COMMENT ON TABLE delivery_points_history IS 'Historique des changements de points';
 COMMENT ON TABLE delivery_product_suggestions IS 'Suggestions de produits générées par IA';
 
+
+

@@ -39,10 +39,7 @@ impl PreviewMonitoring {
             state.total_latency_ms = state.total_latency_ms.saturating_add(latency_ms as u128);
             state.max_latency_ms = state.max_latency_ms.max(latency_ms);
 
-            let entry = state
-                .template_usage
-                .entry(template_label.clone())
-                .or_default();
+            let entry = state.template_usage.entry(template_label.clone()).or_default();
             entry.count = entry.count.saturating_add(1);
             entry.total_latency_ms = entry.total_latency_ms.saturating_add(latency_ms as u128);
 
@@ -77,9 +74,7 @@ impl PreviewMonitoring {
     }
 
     pub fn render_prometheus() -> String {
-        let state = PREVIEW_MONITORING_STATE
-            .lock()
-            .expect("preview monitoring lock poisoned");
+        let state = PREVIEW_MONITORING_STATE.lock().expect("preview monitoring lock poisoned");
         let mut metrics = String::new();
 
         metrics.push_str("# HELP studio_preview_requests_total Nombre total d'aperçus générés\n");
@@ -161,12 +156,7 @@ fn normalize_warnings(warnings: &[String]) -> Vec<String> {
         .map(|warning| {
             let trimmed = warning.trim();
             if trimmed.contains(':') {
-                trimmed
-                    .split(':')
-                    .next()
-                    .unwrap_or(trimmed)
-                    .trim()
-                    .to_lowercase()
+                trimmed.split(':').next().unwrap_or(trimmed).trim().to_lowercase()
             } else {
                 trimmed.to_lowercase()
             }

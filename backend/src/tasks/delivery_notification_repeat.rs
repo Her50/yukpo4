@@ -81,11 +81,7 @@ async fn repeat_pending_delivery_notifications(
         let notified_user_ids: Vec<i32> = metadata
             .get("notified_user_ids")
             .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_i64().map(|i| i as i32))
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_i64().map(|i| i as i32)).collect())
             .unwrap_or_default();
 
         if notified_user_ids.is_empty() {

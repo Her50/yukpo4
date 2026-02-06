@@ -215,18 +215,10 @@ impl RedisService {
         let mut conn = self.connection_manager.lock().await;
         let result: RedisResult<Option<(String, V)>> = match &mut *conn {
             RedisConnection::Multiplexed(conn) => {
-                redis::cmd("BRPOP")
-                    .arg(key)
-                    .arg(timeout)
-                    .query_async(conn)
-                    .await
+                redis::cmd("BRPOP").arg(key).arg(timeout).query_async(conn).await
             }
             RedisConnection::Standard(conn) => {
-                redis::cmd("BRPOP")
-                    .arg(key)
-                    .arg(timeout)
-                    .query_async(conn)
-                    .await
+                redis::cmd("BRPOP").arg(key).arg(timeout).query_async(conn).await
             }
         };
 

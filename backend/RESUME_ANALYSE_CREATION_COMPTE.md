@@ -150,3 +150,5 @@ Le frontend est correctement configuré :
 5. ✅ `backend/RESUME_ANALYSE_CREATION_COMPTE.md` - Ce document
 
 
+
+

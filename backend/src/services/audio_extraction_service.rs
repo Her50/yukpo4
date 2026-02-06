@@ -39,10 +39,7 @@ impl AudioExtractionService {
             .context("Impossible de créer le dossier de sortie")?;
 
         // Générer le nom du fichier de sortie
-        let video_name = local_video_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("audio");
+        let video_name = local_video_path.file_stem().and_then(|s| s.to_str()).unwrap_or("audio");
         let output_filename = format!(
             "{}_{}.{}",
             video_name,

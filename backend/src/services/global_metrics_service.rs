@@ -139,10 +139,8 @@ impl GlobalMetricsService {
         // Calculer moyenne par fonctionnalité (simplifié - utiliser response_time actuel)
         // Note: Pour une moyenne précise, il faudrait stocker les temps par fonctionnalité
         // Pour l'instant, on utilise une approximation
-        let function_count = history
-            .iter()
-            .filter(|(f, _, time)| *f == function && *time > cutoff)
-            .count();
+        let function_count =
+            history.iter().filter(|(f, _, time)| *f == function && *time > cutoff).count();
 
         // Mettre à jour la moyenne dans metrics
         if function_count > 0 {

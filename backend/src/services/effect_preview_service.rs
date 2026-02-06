@@ -1293,10 +1293,7 @@ pub fn normalize_effect_name(effect_name: &str) -> String {
 
 /// ✅ NOUVEAU 2026-01-04: Récupère la liste complète des noms d'effets disponibles
 pub fn get_available_effect_names() -> Vec<String> {
-    get_effect_definitions()
-        .keys()
-        .map(|k| k.to_string())
-        .collect()
+    get_effect_definitions().keys().map(|k| k.to_string()).collect()
 }
 
 /// Récupère la définition d'un effet (fallback hardcodé si DB non disponible)

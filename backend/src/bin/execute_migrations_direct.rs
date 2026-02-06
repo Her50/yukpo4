@@ -12,10 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = "postgresql://user:password@host:port/database";
 
     println!("🔧 Connexion à la base de données...");
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(database_url)
-        .await?;
+    let pool = PgPoolOptions::new().max_connections(5).connect(database_url).await?;
 
     println!("✅ Connecté à la base de données");
 

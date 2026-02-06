@@ -988,10 +988,7 @@ pub async fn toggle_service_status(
         service_id, user_id
     );
 
-    let is_active = payload
-        .get("actif")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let is_active = payload.get("actif").and_then(|v| v.as_bool()).unwrap_or(false);
 
     let result = sqlx::query(
         r#"UPDATE services SET is_active = $1 WHERE id = $2 AND user_id = $3 RETURNING id"#,
@@ -1108,9 +1105,7 @@ pub async fn get_service_by_id(
             let id: i32 = service.try_get("id").unwrap_or_default();
             let mut data: Value = service.try_get("data").unwrap_or(Value::Null);
             let is_active: bool = service.try_get("is_active").unwrap_or(false);
-            let created_at = service
-                .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                .ok();
+            let created_at = service.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok();
             let user_id_val: i32 = service.try_get("user_id").unwrap_or_default();
 
             // ✅ NOUVEAU 2026-01-03: Charger les produits depuis service_products
@@ -1241,9 +1236,7 @@ pub async fn get_services_batch(
             let id: i32 = r.try_get("id").unwrap_or_default();
             let data: Value = r.try_get("data").unwrap_or(Value::Null);
             let is_active: bool = r.try_get("is_active").unwrap_or(false);
-            let created_at = r
-                .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                .ok();
+            let created_at = r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok();
             let user_id_val: i32 = r.try_get("user_id").unwrap_or_default();
             let gps: Option<String> = r.try_get("gps").ok();
 
@@ -1342,10 +1335,8 @@ pub async fn get_services_for_prestataire(
     );
 
     // Log des IDs des services retourn?s pour debug
-    let service_ids: Vec<i32> = rows
-        .iter()
-        .map(|r| r.try_get::<i32, _>("id").unwrap_or_default())
-        .collect();
+    let service_ids: Vec<i32> =
+        rows.iter().map(|r| r.try_get::<i32, _>("id").unwrap_or_default()).collect();
     info!(
         "[get_services_for_prestataire] DEBUG - IDs des services retourn?s: {:?}",
         service_ids
@@ -1357,9 +1348,7 @@ pub async fn get_services_for_prestataire(
             let id: i32 = r.try_get("id").unwrap_or_default();
             let data: Value = r.try_get("data").unwrap_or(Value::Null);
             let is_active: bool = r.try_get("is_active").unwrap_or(false);
-            let created_at = r
-                .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                .ok();
+            let created_at = r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok();
             json!({
                 "id": id,
                 "data": serde_json::from_value(data).unwrap_or(Value::Null),
@@ -1433,9 +1422,7 @@ pub async fn get_services_by_user_id(
             let id: i32 = r.try_get("id").unwrap_or_default();
             let data: Value = r.try_get("data").unwrap_or(Value::Null);
             let is_active: bool = r.try_get("is_active").unwrap_or(false);
-            let created_at = r
-                .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                .ok();
+            let created_at = r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok();
             let user_id_val: i32 = r.try_get("user_id").unwrap_or_default();
             let gps: Option<String> = r.try_get("gps").ok();
 
@@ -1601,9 +1588,7 @@ pub async fn get_shared_service(
 
     // Retourner seulement les données nécessaires pour l'affichage public
     let service_id_val: i32 = service_row.try_get("id").unwrap_or_default();
-    let created_at = service_row
-        .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-        .ok();
+    let created_at = service_row.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok();
 
     let shared_data = json!({
         "id": service_id_val,

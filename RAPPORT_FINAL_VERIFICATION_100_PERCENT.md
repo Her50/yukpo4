@@ -177,3 +177,5 @@ Toutes les vues sont dans les fichiers isolés :
 
 **Chaque table de l'application a maintenant une migration clairement identifiable** pour une bonne maintenance.
 
+
+

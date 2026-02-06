@@ -62,20 +62,16 @@ impl TimeoutConfig {
     /// Charge la configuration depuis les variables d'environnement
     pub fn from_env() -> Self {
         // ✅ CORRIGÉ 2026-01-12: Valeurs par défaut augmentées pour gérer les requêtes longues
-        let request_timeout = std::env::var("REQUEST_TIMEOUT")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(60);
+        let request_timeout =
+            std::env::var("REQUEST_TIMEOUT").ok().and_then(|v| v.parse().ok()).unwrap_or(60);
 
         let database_timeout = std::env::var("DATABASE_TIMEOUT")
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(30);
 
-        let ai_timeout = std::env::var("AI_TIMEOUT")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(120);
+        let ai_timeout =
+            std::env::var("AI_TIMEOUT").ok().and_then(|v| v.parse().ok()).unwrap_or(120);
 
         let embedding_timeout = std::env::var("EMBEDDING_TIMEOUT_SECONDS")
             .ok()

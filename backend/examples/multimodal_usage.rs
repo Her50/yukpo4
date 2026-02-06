@@ -24,9 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let openai_image = openai_optimizer.optimize_image(image_data, "jpeg").await?;
     println!("✅ OpenAI - Taille optimisée: {} bytes", openai_image.size);
 
-    let openai_format = openai_optimizer
-        .prepare_for_openai_vision(&openai_image)
-        .await?;
+    let openai_format = openai_optimizer.prepare_for_openai_vision(&openai_image).await?;
     println!(
         "🎯 Format OpenAI Vision: {}",
         serde_json::to_string_pretty(&openai_format)?

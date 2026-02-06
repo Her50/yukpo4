@@ -252,12 +252,7 @@ pub async fn register_user(
             }
         }
 
-        if payload
-            .partner_name
-            .as_ref()
-            .map(|s| s.trim().is_empty())
-            .unwrap_or(true)
-        {
+        if payload.partner_name.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true) {
             error!("[register_user] ❌ partner_name manquant ou vide pour inscription partenaire");
             return Err(AppError::BadRequest(
                 "partner_name est requis pour un partenaire".into(),
@@ -760,10 +755,8 @@ pub async fn oauth_login_handler(
             })?;
 
             // Vérifier que le token est valide
-            if let Some(is_valid) = debug_data
-                .get("data")
-                .and_then(|d| d.get("is_valid"))
-                .and_then(|v| v.as_bool())
+            if let Some(is_valid) =
+                debug_data.get("data").and_then(|d| d.get("is_valid")).and_then(|v| v.as_bool())
             {
                 if !is_valid {
                     error!("[oauth_login_handler] Token Facebook marqué comme invalide");
@@ -827,10 +820,7 @@ pub async fn oauth_login_handler(
     };
 
     // ✅ NOUVEAU: Récupérer le nom depuis OAuth
-    let oauth_name = user_res
-        .get("name")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let oauth_name = user_res.get("name").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     let db = &state.pg;
 
@@ -916,5 +906,129 @@ pub async fn oauth_login_handler(
     Ok(Json(serde_json::json!({
         "token": jwt,
         "tokens_balance": balance
+    })))
+}
+
+/// ✅ TEMPORAIRE: Endpoint pour créer le super admin
+/// Sécurisé par un token secret dans les variables d'environnement
+/// Usage: POST /api/auth/bootstrap-super-admin
+/// Body: { "secret_token": "YOUR_SECRET_TOKEN" }
+#[derive(Deserialize)]
+pub struct BootstrapSuperAdminInput {
+    pub secret_token: String,
+}
+
+pub async fn bootstrap_super_admin(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<BootstrapSuperAdminInput>,
+) -> AppResult<Json<serde_json::Value>> {
+    // Vérifier le token secret
+    let expected_token = std::env::var("BOOTSTRAP_SUPER_ADMIN_TOKEN")
+        .unwrap_or_else(|_| "CHANGE_ME_IN_PRODUCTION".to_string());
+
+    if payload.secret_token != expected_token {
+        error!("[bootstrap_super_admin] Tentative avec token invalide");
+        return Err(AppError::Unauthorized("Token invalide".into()));
+    }
+
+    let db = &state.pg;
+    let admin_email = "admin@yukpo.dev";
+    let admin_name = "Super Super Admin";
+    // Hash pour le mot de passe: Hernandez87
+    let password_hash = "$2b$12$yi.th1fxm9Xrz6A.PjP9wuWyDrueHMZZBReIH7i7X.efPhGNV1Pii";
+
+    info!("[bootstrap_super_admin] Création/mise à jour du super admin...");
+
+    // Vérifier si l'utilisateur existe
+    let user_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)")
+            .bind(admin_email)
+            .fetch_one(db)
+            .await?;
+
+    if user_exists {
+        info!("[bootstrap_super_admin] Utilisateur existe déjà, mise à jour...");
+        sqlx::query(
+            r#"
+            UPDATE users 
+            SET 
+                password_hash = $1,
+                role = 'super_admin',
+                nom_complet = $2,
+                updated_at = NOW()
+            WHERE email = $3
+            "#,
+        )
+        .bind(password_hash)
+        .bind(admin_name)
+        .bind(admin_email)
+        .execute(db)
+        .await?;
+        info!("[bootstrap_super_admin] Utilisateur super admin mis à jour avec succès!");
+    } else {
+        info!("[bootstrap_super_admin] Création de l'utilisateur super admin...");
+        sqlx::query(
+            r#"
+            INSERT INTO users (
+                email, 
+                password_hash, 
+                role, 
+                nom_complet, 
+                tokens_balance, 
+                token_price_user, 
+                token_price_provider, 
+                commission_pct, 
+                preferred_lang, 
+                is_provider, 
+                created_at, 
+                updated_at
+            )
+            VALUES (
+                $1, $2, 'super_admin', $3, 1000000, 1.0, 1.0, 0.0, 'fr', false, NOW(), NOW()
+            )
+            "#,
+        )
+        .bind(admin_email)
+        .bind(password_hash)
+        .bind(admin_name)
+        .execute(db)
+        .await?;
+        info!("[bootstrap_super_admin] Utilisateur super admin créé avec succès!");
+    }
+
+    // Récupérer l'utilisateur créé
+    #[derive(FromRow)]
+    struct UserInfo {
+        id: i32,
+        email: String,
+        role: String,
+        nom_complet: Option<String>,
+        tokens_balance: i64,
+    }
+
+    let user = sqlx::query_as::<_, UserInfo>(
+        "SELECT id, email, role, nom_complet, tokens_balance 
+         FROM users 
+         WHERE email = $1",
+    )
+    .bind(admin_email)
+    .fetch_one(db)
+    .await?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Super admin créé/mis à jour avec succès",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+            "nom_complet": user.nom_complet,
+            "tokens_balance": user.tokens_balance
+        },
+        "credentials": {
+            "email": admin_email,
+            "password": "Hernandez87",
+            "role": "super_admin"
+        }
     })))
 }

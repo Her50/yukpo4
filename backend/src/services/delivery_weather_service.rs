@@ -69,8 +69,7 @@ impl DeliveryWeatherService {
         };
 
         // Mettre en cache
-        self.cache
-            .insert(cache_key, (weather.clone(), Instant::now()));
+        self.cache.insert(cache_key, (weather.clone(), Instant::now()));
         Ok(weather)
     }
 
@@ -89,12 +88,8 @@ impl DeliveryWeatherService {
         );
 
         let client = reqwest::Client::new();
-        let response = client
-            .get(&url)
-            .timeout(Duration::from_secs(5))
-            .send()
-            .await
-            .map_err(|e| {
+        let response =
+            client.get(&url).timeout(Duration::from_secs(5)).send().await.map_err(|e| {
                 log::warn!("[Weather] Erreur API: {}, fallback conditions normales", e);
                 crate::core::types::AppError::Internal(format!("Erreur API météo: {}", e))
             })?;
@@ -122,10 +117,7 @@ impl DeliveryWeatherService {
             .or_else(|| data["rain"]["3h"].as_f64().map(|v| v / 3.0))
             .unwrap_or(0.0);
         let visibility = data["visibility"].as_f64().unwrap_or(10000.0) / 1000.0; // m -> km
-        let condition = data["weather"][0]["main"]
-            .as_str()
-            .unwrap_or("Clear")
-            .to_lowercase();
+        let condition = data["weather"][0]["main"].as_str().unwrap_or("Clear").to_lowercase();
 
         // Calculer le facteur météo (1.0 = normal, >1.0 = ralentit, <1.0 = accélère)
         let factor =

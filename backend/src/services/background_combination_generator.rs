@@ -100,9 +100,7 @@ pub async fn generate_all_combinations_background(
 
     // 5. Marquer comme terminé
     {
-        mark_generation_completed(&state.redis_client, &session_id)
-            .await
-            .ok();
+        mark_generation_completed(&state.redis_client, &session_id).await.ok();
     }
 
     let total_time = start_time.elapsed();

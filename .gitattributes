@@ -1,0 +1,62 @@
+# Configuration Git pour gérer les fins de ligne de manière cohérente
+# Évite les problèmes de formatage entre Windows et Linux
+
+# Fichiers Rust : toujours LF (Unix)
+*.rs text eol=lf
+
+# Fichiers de configuration Rust
+Cargo.toml text eol=lf
+Cargo.lock text eol=lf
+rustfmt.toml text eol=lf
+
+# Fichiers TypeScript/JavaScript : toujours LF
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+
+# Fichiers JSON : toujours LF
+*.json text eol=lf
+
+# Fichiers YAML : toujours LF
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Fichiers Markdown : toujours LF
+*.md text eol=lf
+
+# Fichiers SQL : toujours LF
+*.sql text eol=lf
+
+# Fichiers de configuration
+*.toml text eol=lf
+*.ini text eol=lf
+*.conf text eol=lf
+
+# Scripts shell : toujours LF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Fichiers Windows : CRLF (normal)
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+
+# Fichiers binaires
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+
+# Fichiers de build (ignorer)
+target/ -text
+node_modules/ -text
+dist/ -text
+build/ -text
+

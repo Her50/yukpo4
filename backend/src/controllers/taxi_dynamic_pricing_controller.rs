@@ -74,9 +74,7 @@ pub async fn calculate_dynamic_price(
     };
 
     // Calculer prix
-    let dynamic_price = pricing_service
-        .calculate_dynamic_price(pricing_request)
-        .await?;
+    let dynamic_price = pricing_service.calculate_dynamic_price(pricing_request).await?;
 
     info!(
         "[calculate_dynamic_price] ✅ Prix calculé: {} → {} (×{:.2})",

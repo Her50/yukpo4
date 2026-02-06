@@ -84,9 +84,8 @@ impl VideoRendererConfig {
             .ok()
             .filter(|value| !value.trim().is_empty());
 
-        let browser_download_dir = env::var("VIDEO_RENDERER_BROWSER_DOWNLOAD_DIR")
-            .ok()
-            .map(PathBuf::from);
+        let browser_download_dir =
+            env::var("VIDEO_RENDERER_BROWSER_DOWNLOAD_DIR").ok().map(PathBuf::from);
 
         // ✅ DÉJÀ CORRIGÉ: rpc_endpoint est défini plus haut avec trim
 

@@ -2874,6 +2874,10 @@ CREATE TABLE IF NOT EXISTS product_delivery_config (
     billing_mode VARCHAR(50) DEFAULT 'standard',
     billing_partner_label TEXT,
     
+    -- ✅ Phase 9 - Amélioration 32 : Référence vers un lieu de stock
+    -- Migration: 20260130_add_storage_location_id_to_product_delivery_config.sql
+    storage_location_id INTEGER REFERENCES merchant_storage_locations(id) ON DELETE SET NULL,
+    
     -- Statut
     is_configured BOOLEAN DEFAULT FALSE,
     configured_at TIMESTAMPTZ,
@@ -2887,6 +2891,11 @@ CREATE TABLE IF NOT EXISTS product_delivery_config (
 
 CREATE INDEX IF NOT EXISTS idx_product_delivery_config_service ON product_delivery_config(service_id, product_index);
 CREATE INDEX IF NOT EXISTS idx_product_delivery_config_active ON product_delivery_config(is_configured) WHERE is_configured = TRUE;
+-- ✅ Phase 9 - Amélioration 32 : Index pour storage_location_id
+-- Migration: 20260130_add_storage_location_id_to_product_delivery_config.sql
+CREATE INDEX IF NOT EXISTS idx_product_delivery_config_storage_location 
+ON product_delivery_config(storage_location_id) 
+WHERE storage_location_id IS NOT NULL;
 
 -- Client delivery preferences table
 -- Migration: 20250127000002_create_client_delivery_preferences.sql

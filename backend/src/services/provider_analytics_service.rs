@@ -103,21 +103,16 @@ impl ProviderAnalyticsService {
             provider_user_id, period_start, period_end
         );
 
-        let order_stats = self
-            .get_order_stats(provider_user_id, period_start, period_end)
-            .await?;
+        let order_stats = self.get_order_stats(provider_user_id, period_start, period_end).await?;
         let preparation_time_stats = self
             .get_preparation_time_stats(provider_user_id, period_start, period_end)
             .await?;
-        let rejection_stats = self
-            .get_rejection_stats(provider_user_id, period_start, period_end)
-            .await?;
-        let cancellation_stats = self
-            .get_cancellation_stats(provider_user_id, period_start, period_end)
-            .await?;
-        let penalty_stats = self
-            .get_penalty_stats(provider_user_id, period_start, period_end)
-            .await?;
+        let rejection_stats =
+            self.get_rejection_stats(provider_user_id, period_start, period_end).await?;
+        let cancellation_stats =
+            self.get_cancellation_stats(provider_user_id, period_start, period_end).await?;
+        let penalty_stats =
+            self.get_penalty_stats(provider_user_id, period_start, period_end).await?;
 
         Ok(ProviderAnalytics {
             provider_user_id,

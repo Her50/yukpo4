@@ -116,9 +116,7 @@ impl RecurringTripsService {
         let mut total_instances = 0;
 
         for trip in recurring_trips {
-            let instances = self
-                .generate_instances_for_trip(&trip, start_date, end_date)
-                .await?;
+            let instances = self.generate_instances_for_trip(&trip, start_date, end_date).await?;
             total_instances += instances;
         }
 

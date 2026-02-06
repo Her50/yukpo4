@@ -158,10 +158,8 @@ impl CacheService {
         match redis_helper::execute_with_retry(
             client,
             |mut conn| async move {
-                let keys: Vec<String> = redis::cmd("KEYS")
-                    .arg(pattern)
-                    .query_async(&mut conn)
-                    .await?;
+                let keys: Vec<String> =
+                    redis::cmd("KEYS").arg(pattern).query_async(&mut conn).await?;
                 if keys.is_empty() {
                     Ok(0)
                 } else {

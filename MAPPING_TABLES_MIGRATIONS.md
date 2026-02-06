@@ -235,3 +235,5 @@ Ce document liste toutes les tables de l'application et leur fichier de migratio
 - Les tables marquées "-" sont nouvelles ou n'ont pas de correspondance exacte dans le fichier original
 - Toutes les tables sont maintenant dans des fichiers isolés pour une maintenance optimale
 
+
+

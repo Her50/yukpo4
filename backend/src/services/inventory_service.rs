@@ -29,13 +29,8 @@ pub struct StockSignal {
 impl StockSignal {
     pub fn is_stale(&self, threshold_hours: i64) -> bool {
         let threshold = Duration::hours(threshold_hours);
-        Utc::now()
-            .signed_duration_since(self.last_synced_at)
-            .gt(&threshold)
-            || self
-                .expires_at
-                .map(|expires| expires < Utc::now())
-                .unwrap_or(false)
+        Utc::now().signed_duration_since(self.last_synced_at).gt(&threshold)
+            || self.expires_at.map(|expires| expires < Utc::now()).unwrap_or(false)
     }
 }
 

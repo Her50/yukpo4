@@ -105,9 +105,7 @@ impl PharmacyProductService {
         }
 
         if updates.is_empty() {
-            return self
-                .get_product_by_id(product_id, pharmacy_service_id)
-                .await;
+            return self.get_product_by_id(product_id, pharmacy_service_id).await;
         }
 
         let sql = format!(
@@ -215,10 +213,8 @@ impl PharmacyProductService {
             sql.push_str(&format!(" LIMIT {}", l));
         }
 
-        let mut query_builder = sqlx::query(&sql)
-            .bind(&search_pattern)
-            .bind(user_lat)
-            .bind(user_lng);
+        let mut query_builder =
+            sqlx::query(&sql).bind(&search_pattern).bind(user_lat).bind(user_lng);
 
         if let Some(min) = min_price {
             query_builder = query_builder.bind(min);
@@ -343,25 +339,22 @@ impl PharmacyProductService {
             let _gps: Option<serde_json::Value> =
                 row.get::<Option<serde_json::Value>, _>("pharmacy_gps");
             let distance: Option<f64> = row.get::<Option<f64>, _>("distance_km");
-            let quantity = items
-                .iter()
-                .find(|(id, _)| *id == product.id)
-                .map(|(_, qty)| *qty)
-                .unwrap_or(1);
+            let quantity =
+                items.iter().find(|(id, _)| *id == product.id).map(|(_, qty)| *qty).unwrap_or(1);
 
             let prix_unitaire = product.prix;
             let prix_total = prix_unitaire * rust_decimal::Decimal::from(quantity);
 
-            let budget = pharmacy_budgets
-                .entry(product.pharmacy_service_id)
-                .or_insert_with(|| BudgetCalculation {
+            let budget = pharmacy_budgets.entry(product.pharmacy_service_id).or_insert_with(|| {
+                BudgetCalculation {
                     pharmacy_service_id: product.pharmacy_service_id,
                     pharmacy_nom: pharmacy_nom.clone().unwrap_or_default(),
                     items: Vec::new(),
                     total: rust_decimal::Decimal::ZERO,
                     distance_km: distance,
                     currency: "XOF".to_string(),
-                });
+                }
+            });
 
             budget.items.push(BudgetCalculationItem {
                 product_id: product.id,

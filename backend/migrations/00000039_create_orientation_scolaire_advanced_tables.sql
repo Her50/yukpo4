@@ -237,3 +237,5 @@ COMMENT ON COLUMN student_profiles.notes_moyennes IS 'Notes moyennes par matièr
 COMMENT ON COLUMN program_recommendations.score_total IS 'Score global de recommandation IA (0-100)';
 COMMENT ON COLUMN program_comparisons.comparison_results IS 'Résultats de comparaison détaillés en JSONB';
 
+
+

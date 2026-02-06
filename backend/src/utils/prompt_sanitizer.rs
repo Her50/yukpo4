@@ -87,10 +87,7 @@ pub fn detect_prompt_injection(input: &str) -> bool {
     ];
 
     // Vérifier si plusieurs patterns suspects sont présents
-    let matches = suspicious_patterns
-        .iter()
-        .filter(|pattern| lower.contains(*pattern))
-        .count();
+    let matches = suspicious_patterns.iter().filter(|pattern| lower.contains(*pattern)).count();
 
     // Si 2+ patterns suspects, considérer comme injection
     matches >= 2

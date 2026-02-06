@@ -201,10 +201,8 @@ async fn detect_scenes_with_ia(
         return Err(AppError::Internal(error_msg));
     }
 
-    let total_duration: f64 = String::from_utf8_lossy(&duration_output.stdout)
-        .trim()
-        .parse()
-        .unwrap_or(0.0);
+    let total_duration: f64 =
+        String::from_utf8_lossy(&duration_output.stdout).trim().parse().unwrap_or(0.0);
 
     if total_duration == 0.0 {
         let stderr = String::from_utf8_lossy(&duration_output.stderr);
@@ -281,14 +279,9 @@ Réponds SEULEMENT le JSON, rien d'autre."#,
 
     let mut scenes = Vec::new();
     for (_idx, scene_json) in scenes_array.iter().enumerate() {
-        let start_time = scene_json
-            .get("start_time")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
-        let end_time = scene_json
-            .get("end_time")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(start_time + 5.0);
+        let start_time = scene_json.get("start_time").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let end_time =
+            scene_json.get("end_time").and_then(|v| v.as_f64()).unwrap_or(start_time + 5.0);
         let duration = end_time - start_time;
 
         if duration < min_duration || duration > max_duration {
@@ -299,24 +292,15 @@ Réponds SEULEMENT le JSON, rien d'autre."#,
             start_time,
             end_time,
             duration,
-            confidence: scene_json
-                .get("confidence")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.8),
+            confidence: scene_json.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.8),
             scene_type: scene_json
                 .get("scene_type")
                 .and_then(|v| v.as_str())
                 .unwrap_or("transition")
                 .to_string(),
             thumbnail_url: None,
-            audio_level: scene_json
-                .get("audio_level")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(-20.0),
-            motion_score: scene_json
-                .get("motion_score")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.5),
+            audio_level: scene_json.get("audio_level").and_then(|v| v.as_f64()).unwrap_or(-20.0),
+            motion_score: scene_json.get("motion_score").and_then(|v| v.as_f64()).unwrap_or(0.5),
         });
     }
 
@@ -351,10 +335,8 @@ async fn detect_scenes_ffmpeg(
         .await
         .map_err(|e| AppError::Internal(format!("Erreur ffprobe: {}", e)))?;
 
-    let total_duration: f64 = String::from_utf8_lossy(&duration_output.stdout)
-        .trim()
-        .parse()
-        .unwrap_or(0.0);
+    let total_duration: f64 =
+        String::from_utf8_lossy(&duration_output.stdout).trim().parse().unwrap_or(0.0);
 
     if total_duration == 0.0 {
         return Err(AppError::Internal(
@@ -550,11 +532,7 @@ async fn detect_highlights_from_scenes(scenes: &[SceneCut]) -> AppResult<Vec<Hig
     }
 
     // Trier par score décroissant
-    highlights.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    highlights.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
 
     Ok(highlights)
 }

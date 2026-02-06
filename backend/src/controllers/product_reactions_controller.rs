@@ -91,9 +91,8 @@ pub async fn toggle_product_reaction(
 
     if let Some(reaction) = existing {
         // Retirer la réaction
-        let reaction_id: i32 = reaction
-            .try_get("id")
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let reaction_id: i32 =
+            reaction.try_get("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour DELETE
         retry_query(
@@ -175,11 +174,7 @@ pub async fn get_product_reactions(
     // ✅ CORRIGÉ: Gérer le format product_id "service_id_product_index" ou juste product_index
     let normalized_product_id = if product_id.contains('_') {
         // Format "service_id_product_index" - extraire juste le product_index
-        product_id
-            .split('_')
-            .last()
-            .unwrap_or(&product_id)
-            .to_string()
+        product_id.split('_').last().unwrap_or(&product_id).to_string()
     } else {
         product_id.clone()
     };

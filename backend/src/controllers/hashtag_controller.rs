@@ -245,11 +245,7 @@ pub async fn search_hashtags(
     };
 
     let result = if !query.is_empty() && !trending_only {
-        sqlx::query(sql)
-            .bind(format!("%{}%", query))
-            .bind(limit)
-            .fetch_all(pool)
-            .await
+        sqlx::query(sql).bind(format!("%{}%", query)).bind(limit).fetch_all(pool).await
     } else {
         sqlx::query(sql).bind(limit).fetch_all(pool).await
     };
@@ -326,10 +322,8 @@ pub async fn get_videos_by_hashtag(
         )
         "#;
 
-        let count_result = sqlx::query_scalar::<_, i64>(count_sql)
-            .bind(&hashtag)
-            .fetch_one(pool)
-            .await;
+        let count_result =
+            sqlx::query_scalar::<_, i64>(count_sql).bind(&hashtag).fetch_one(pool).await;
 
         let total = count_result.unwrap_or(0);
 
@@ -347,13 +341,9 @@ pub async fn get_videos_by_hashtag(
                     .iter()
                     .map(|row| VideoByHashtag {
                         id: row.get::<Option<String>, _>("id").unwrap_or_default(),
-                        content_id: row
-                            .get::<Option<String>, _>("content_id")
-                            .unwrap_or_default(),
+                        content_id: row.get::<Option<String>, _>("content_id").unwrap_or_default(),
                         titre: row.get::<Option<String>, _>("titre").unwrap_or_default(),
-                        video_url: row
-                            .get::<Option<String>, _>("video_url")
-                            .unwrap_or_default(),
+                        video_url: row.get::<Option<String>, _>("video_url").unwrap_or_default(),
                         thumbnail: row.get::<Option<String>, _>("thumbnail"),
                         service_id: row.get::<Option<i32>, _>("service_id"),
                         likes: row.get::<Option<i64>, _>("likes").unwrap_or(0),
@@ -363,9 +353,7 @@ pub async fn get_videos_by_hashtag(
                             .get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at")
                             .map(|dt| dt.to_rfc3339())
                             .unwrap_or_default(),
-                        hashtags: row
-                            .get::<Option<Vec<String>>, _>("hashtags")
-                            .unwrap_or_default(),
+                        hashtags: row.get::<Option<Vec<String>>, _>("hashtags").unwrap_or_default(),
                     })
                     .collect();
 
@@ -439,12 +427,7 @@ pub async fn get_videos_by_hashtag(
 
     let total = count_result.unwrap_or(0);
 
-    let result = sqlx::query(&sql)
-        .bind(&hashtag)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(pool)
-        .await;
+    let result = sqlx::query(&sql).bind(&hashtag).bind(limit).bind(offset).fetch_all(pool).await;
 
     match result {
         Ok(rows) => {
@@ -452,22 +435,18 @@ pub async fn get_videos_by_hashtag(
             let videos: Vec<VideoByHashtag> = rows
                 .iter()
                 .map(|row| {
-                    let video_url_raw: String = row
-                        .get::<Option<String>, _>("video_url_raw")
-                        .unwrap_or_default();
+                    let video_url_raw: String =
+                        row.get::<Option<String>, _>("video_url_raw").unwrap_or_default();
                     let thumbnail_raw: Option<String> =
                         row.get::<Option<String>, _>("thumbnail_raw");
 
                     let video_url = build_media_url_with_fallback(&state, &video_url_raw);
-                    let thumbnail = thumbnail_raw
-                        .as_ref()
-                        .map(|t| build_media_url_with_fallback(&state, t));
+                    let thumbnail =
+                        thumbnail_raw.as_ref().map(|t| build_media_url_with_fallback(&state, t));
 
                     VideoByHashtag {
                         id: row.get::<Option<String>, _>("id").unwrap_or_default(),
-                        content_id: row
-                            .get::<Option<String>, _>("content_id")
-                            .unwrap_or_default(),
+                        content_id: row.get::<Option<String>, _>("content_id").unwrap_or_default(),
                         titre: row.get::<Option<String>, _>("titre").unwrap_or_default(),
                         video_url,
                         thumbnail,
@@ -479,9 +458,7 @@ pub async fn get_videos_by_hashtag(
                             .get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at")
                             .map(|dt| dt.to_rfc3339())
                             .unwrap_or_default(),
-                        hashtags: row
-                            .get::<Option<Vec<String>>, _>("hashtags")
-                            .unwrap_or_default(),
+                        hashtags: row.get::<Option<Vec<String>>, _>("hashtags").unwrap_or_default(),
                     }
                 })
                 .collect();

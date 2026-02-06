@@ -205,10 +205,8 @@ impl EmailService {
                 error: None,
             })
         } else {
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Erreur inconnue".to_string());
+            let error_text =
+                response.text().await.unwrap_or_else(|_| "Erreur inconnue".to_string());
 
             log::error!(
                 "[EmailService] ❌ Erreur envoi email SendGrid (status {}): {}",

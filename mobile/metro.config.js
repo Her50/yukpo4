@@ -3,6 +3,16 @@ const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
+// ✅ CORRECTION: Forcer axios à utiliser la version browser au lieu de node
+// Axios a un export "react-native" qui pointe vers dist/browser/axios.cjs
+// Mais Metro ne le détecte pas toujours, donc on force avec un alias
+config.resolver.alias = {
+    ...config.resolver.alias,
+    'axios': path.resolve(__dirname, 'node_modules', 'axios', 'dist', 'browser', 'axios.cjs'),
+    // Bloquer aussi les imports directs vers la version node
+    'axios/dist/node/axios.cjs': path.resolve(__dirname, 'node_modules', 'axios', 'dist', 'browser', 'axios.cjs'),
+};
+
 // ✅ CORRECTION: Configuration simplifiée sans dépendance problématique
 config.resolver.platforms = ['ios', 'android', 'native', 'web'];
 
@@ -17,6 +27,44 @@ const defaultResolver = config.resolver.resolveRequest;
 const fs = require('fs');
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+    // ✅ CORRECTION: Bloquer l'accès à axios/dist/node/axios.cjs et forcer la version browser
+    // Intercepter TOUS les imports vers la version node d'axios
+    if (moduleName === 'axios/dist/node/axios.cjs' || moduleName.includes('axios/dist/node')) {
+        const browserPath = path.resolve(__dirname, 'node_modules', 'axios', 'dist', 'browser', 'axios.cjs');
+        if (fs.existsSync(browserPath)) {
+            return {
+                filePath: browserPath,
+                type: 'sourceFile',
+            };
+        }
+    }
+
+    // ✅ CORRECTION: Si on importe axios, forcer la version browser
+    if (moduleName === 'axios') {
+        const browserPath = path.resolve(__dirname, 'node_modules', 'axios', 'dist', 'browser', 'axios.cjs');
+        if (fs.existsSync(browserPath)) {
+            return {
+                filePath: browserPath,
+                type: 'sourceFile',
+            };
+        }
+    }
+
+    // ✅ CORRECTION: Résoudre crypto vers expo-crypto pour React Native
+    // Axios utilise require('crypto') qui n'existe pas dans React Native
+    if (moduleName === 'crypto') {
+        const expoCryptoPath = path.resolve(__dirname, 'node_modules', 'expo-crypto');
+        const cryptoJsPath = path.join(expoCryptoPath, 'build', 'Crypto.js');
+        if (fs.existsSync(cryptoJsPath)) {
+            return {
+                filePath: cryptoJsPath,
+                type: 'sourceFile',
+            };
+        }
+        // Fallback: créer un stub minimal si expo-crypto n'est pas disponible
+        console.warn('⚠️  expo-crypto not found, crypto polyfill may not work');
+    }
+
     // ✅ CORRECTION: Forcer la résolution de expo-modules-core
     if (moduleName === 'expo-modules-core') {
         const searchPaths = [

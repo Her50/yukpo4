@@ -125,9 +125,7 @@ impl ProductEnrichmentService {
         product_index: i32,
         product: &mut Value,
     ) -> AppResult<()> {
-        let availability_data = self
-            .get_availability_data(service_id, product_index)
-            .await?;
+        let availability_data = self.get_availability_data(service_id, product_index).await?;
 
         if let Some(availability) = availability_data {
             if let Some(product_obj) = product.as_object_mut() {
@@ -168,8 +166,7 @@ impl ProductEnrichmentService {
 
             if let Some(products_array) = products {
                 for (index, product) in products_array.iter_mut().enumerate() {
-                    self.enrich_product(service_id, index as i32, product)
-                        .await?;
+                    self.enrich_product(service_id, index as i32, product).await?;
                 }
             } else {
                 // Format alternatif : produits directement dans un array
@@ -177,8 +174,7 @@ impl ProductEnrichmentService {
 
                 if let Some(products_array) = products {
                     for (index, product) in products_array.iter_mut().enumerate() {
-                        self.enrich_product(service_id, index as i32, product)
-                            .await?;
+                        self.enrich_product(service_id, index as i32, product).await?;
                     }
                 }
             }
@@ -191,8 +187,7 @@ impl ProductEnrichmentService {
     pub async fn enrich_services(&self, services: &mut Vec<Value>) -> AppResult<()> {
         for service in services.iter_mut() {
             if let Some(service_id) = service.get("id").and_then(|v| v.as_i64()) {
-                self.enrich_service_products(service_id as i32, service)
-                    .await?;
+                self.enrich_service_products(service_id as i32, service).await?;
             }
         }
 

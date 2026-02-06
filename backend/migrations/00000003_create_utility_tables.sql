@@ -28,3 +28,5 @@ CREATE TABLE IF NOT EXISTS service_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
+

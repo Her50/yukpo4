@@ -31,6 +31,7 @@ import ServiceGalleryModal from './ServiceGalleryModal';
 import OrderDeliveryModal from './delivery/OrderDeliveryModal';
 import { productDeliveryService } from '../services/productDeliveryService';
 import SafeStorage from '../utils/safeStorage';
+import { generateProductShareMessage } from '../utils/productShareHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -1184,14 +1185,23 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       const productName = productData?.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
       // ✅ CORRIGÉ 2026-01-21: Utiliser UNIQUEMENT productData.description pour éviter confusion avec autres produits
       const productDesc = productData.description || productData.description_produit || '';
-      const price = displayPrice > 0 ? `${displayPrice.toLocaleString()} ${devise}` : '';
-      const location = chosenLocation || '';
+      const price = displayPrice > 0 ? displayPrice : undefined;
+      const location = chosenLocation || undefined;
 
-      const shareUrl = process.env.EXPO_PUBLIC_SHARE_URL
-        ? `${process.env.EXPO_PUBLIC_SHARE_URL}/service/${product.service_id || service?.id}`
-        : `https://yukpomnang.com/service/${product.service_id || service?.id}`;
+      // ✅ NOUVEAU 2026-01-XX: Utiliser la fonction utilitaire pour générer le message de partage uniforme
+      // Extraire productId et serviceId
+      const productId = product?.id || product?.product_id || product?.product_index || 'unknown';
+      const serviceId = product?.service_id || service?.id || 'unknown';
 
-      const shareMessage = `🛍️ ${productName}\n\n${productDesc ? `${productDesc}\n\n` : ''}${price ? `💰 Prix: ${price}\n` : ''}${location ? `📍 ${location}\n\n` : '\n'}🔗 Voir ce produit:\n${shareUrl}`;
+      const shareMessage = generateProductShareMessage({
+        productName,
+        productDescription: productDesc,
+        price,
+        devise,
+        location,
+        productId,
+        serviceId,
+      });
 
       const result = await Share.share({
         message: shareMessage,
@@ -1929,9 +1939,18 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 </TouchableOpacity>
               </View>
 
-              {/* ✅ CORRIGÉ 2026-01-24: Commentaires uniquement sur la page de détail du service, pas sur les cartes produits */}
-              {/* Les commentaires concernent le service entier, pas un produit spécifique */}
-              {/* Ils seront affichés uniquement sur ServiceDetail pour éviter la confusion */}
+              {/* ✅ NOUVEAU 2026-01-XX: Section commentaires/avis pour les produits */}
+              {serviceId && !isNaN(parseInt(String(serviceId))) && (
+                <View style={styles.commentsContainerCompact}>
+                  <ProductCommentsSection
+                    serviceId={typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId}
+                    serviceTitle={productData?.nom || service?.data?.titre_service?.valeur || 'Produit'}
+                    onOpenChat={handleChatPress}
+                    mode="inline"
+                    compact={true}
+                  />
+                </View>
+              )}
             </View>
           </TouchableOpacity>
         </NativeCard>

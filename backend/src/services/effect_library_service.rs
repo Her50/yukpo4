@@ -77,11 +77,8 @@ impl EffectLibraryService {
         query_builder.push(" OFFSET ");
         query_builder.push_bind(offset);
 
-        let effects: Vec<Effect> = query_builder
-            .build_query_as()
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| {
+        let effects: Vec<Effect> =
+            query_builder.build_query_as().fetch_all(&self.pool).await.map_err(|e| {
                 warn!("[EffectLibrary] Erreur requête effets: {}", e);
                 AppError::Database(format!("Erreur récupération effets: {}", e))
             })?;
@@ -91,10 +88,7 @@ impl EffectLibraryService {
             "SELECT COUNT(*) FROM effects WHERE 1=1{}",
             build_where_clause(&params)
         );
-        let total: i64 = sqlx::query_scalar(&total_query)
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
+        let total: i64 = sqlx::query_scalar(&total_query).fetch_one(&self.pool).await.unwrap_or(0);
 
         info!(
             "[EffectLibrary] ✅ {} effets trouvés (limit: {}, offset: {})",
@@ -200,11 +194,7 @@ fn build_where_clause(params: &EffectSearchParams) -> String {
 
     if let Some(ref tags) = params.tags {
         if !tags.is_empty() {
-            let tags_str = tags
-                .iter()
-                .map(|t| format!("'{}'", t))
-                .collect::<Vec<_>>()
-                .join(",");
+            let tags_str = tags.iter().map(|t| format!("'{}'", t)).collect::<Vec<_>>().join(",");
             clauses.push(format!(" AND tags && ARRAY[{}]", tags_str));
         }
     }

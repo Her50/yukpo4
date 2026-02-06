@@ -85,3 +85,5 @@ Tous les endpoints dans le code mobile utilisent maintenant :
 Même avec toutes ces corrections, si l'ALB n'est pas accessible (Security Groups, service ECS arrêté), les requêtes échoueront toujours. Il faut donc aussi vérifier l'infrastructure AWS.
 
 
+
+

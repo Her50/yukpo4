@@ -440,25 +440,14 @@ pub async fn test_webhook(
         .and_then(|v| v.as_str())
         .unwrap_or("test_txn_123");
 
-    let status = test_data
-        .get("status")
-        .and_then(|v| v.as_str())
-        .unwrap_or("SUCCESS");
+    let status = test_data.get("status").and_then(|v| v.as_str()).unwrap_or("SUCCESS");
 
-    let amount = test_data
-        .get("amount")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(1000);
+    let amount = test_data.get("amount").and_then(|v| v.as_i64()).unwrap_or(1000);
 
-    let currency = test_data
-        .get("currency")
-        .and_then(|v| v.as_str())
-        .unwrap_or("XAF");
+    let currency = test_data.get("currency").and_then(|v| v.as_str()).unwrap_or("XAF");
 
-    let phone_number = test_data
-        .get("phone_number")
-        .and_then(|v| v.as_str())
-        .unwrap_or("675123456");
+    let phone_number =
+        test_data.get("phone_number").and_then(|v| v.as_str()).unwrap_or("675123456");
 
     let payment_method = test_data
         .get("payment_method")

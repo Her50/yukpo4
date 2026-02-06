@@ -199,9 +199,7 @@ pub async fn get_user_conversations(
                 conversations.push(Conversation {
                     id: row.get::<Option<_>, _>("id").unwrap_or_default(),
                     client_id: row.get::<Option<_>, _>("client_id").unwrap_or_default(),
-                    prestataire_id: row
-                        .get::<Option<_>, _>("prestataire_id")
-                        .unwrap_or_default(),
+                    prestataire_id: row.get::<Option<_>, _>("prestataire_id").unwrap_or_default(),
                     client_name: row
                         .try_get("client_name")
                         .unwrap_or_else(|_| "Client".to_string()),
@@ -210,18 +208,14 @@ pub async fn get_user_conversations(
                         .unwrap_or_else(|_| "Prestataire".to_string()),
                     client_photo: row.get::<Option<_>, _>("client_photo"),
                     prestataire_photo: row.get::<Option<_>, _>("prestataire_photo"),
-                    last_message: row
-                        .try_get("last_message")
-                        .unwrap_or_else(|_| "".to_string()),
+                    last_message: row.try_get("last_message").unwrap_or_else(|_| "".to_string()),
                     last_message_time: row
                         .try_get("last_message_at")
                         .unwrap_or_else(|_| Utc::now()),
                     unread_count: row.get::<Option<_>, _>("unread_count").unwrap_or(0),
                     is_active: row.get::<Option<_>, _>("is_active").unwrap_or(true),
                     service_title: row.get::<Option<_>, _>("service_title"),
-                    status: row
-                        .try_get("status")
-                        .unwrap_or_else(|_| "active".to_string()),
+                    status: row.try_get("status").unwrap_or_else(|_| "active".to_string()),
                 });
             }
         }
@@ -306,15 +300,13 @@ pub async fn get_conversation_messages(
 
                 raw_messages.push((
                     row.get::<Option<_>, _>("id").unwrap_or_default(),
-                    row.get::<Option<_>, _>("conversation_id")
-                        .unwrap_or_default(),
+                    row.get::<Option<_>, _>("conversation_id").unwrap_or_default(),
                     from.to_string(),
                     row.get::<Option<_>, _>("content").unwrap_or_default(),
                     row.get::<Option<chrono::DateTime<Utc>>, _>("created_at")
                         .unwrap_or_else(|| Utc::now()),
                     from == "client",
-                    row.get::<Option<_>, _>("type")
-                        .unwrap_or_else(|| "text".to_string()),
+                    row.get::<Option<_>, _>("type").unwrap_or_else(|| "text".to_string()),
                     row.get::<Option<_>, _>("metadata"),
                 ));
             }

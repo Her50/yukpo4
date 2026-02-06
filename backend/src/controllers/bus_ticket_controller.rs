@@ -203,15 +203,9 @@ pub async fn get_seat_availability(
             AppError::Internal(format!("Erreur récupération disponibilité: {}", e))
         })?;
 
-    let success = result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
     let availability = result.get("availability").cloned();
-    let error = result
-        .get("error")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let error = result.get("error").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     let response = SeatAvailabilityResponse {
         success,
@@ -414,9 +408,8 @@ pub async fn get_agency_tickets(
 
     let mut tickets = Vec::new();
     for row in rows {
-        let reservation_ids: Vec<String> = row
-            .try_get::<Vec<String>, _>("reservation_ids")
-            .unwrap_or_default();
+        let reservation_ids: Vec<String> =
+            row.try_get::<Vec<String>, _>("reservation_ids").unwrap_or_default();
 
         let ticket = json!({
             "payment_id": row.get::<String, _>("payment_id"),
@@ -872,9 +865,7 @@ pub async fn cancel_reservation(
 
     // Calculer remboursement selon délai
     let now = chrono::Utc::now();
-    let hours_until_departure = departure_time
-        .map(|dt| (dt - now).num_hours())
-        .unwrap_or(24 * 365); // Si pas de date, considérer comme lointain
+    let hours_until_departure = departure_time.map(|dt| (dt - now).num_hours()).unwrap_or(24 * 365); // Si pas de date, considérer comme lointain
 
     let refund_percentage = if hours_until_departure > 24 {
         100.0 // Remboursement 100% si > 24h avant départ

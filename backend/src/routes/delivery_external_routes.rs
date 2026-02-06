@@ -49,10 +49,7 @@ async fn create_external_delivery(
 
     let internal_parcel = NewDeliveryParcelInput {
         type_id: Some(parcel_type_id),
-        weight_kg: payload
-            .parcel
-            .weight_kg
-            .and_then(|w| rust_decimal::Decimal::from_f64(w)),
+        weight_kg: payload.parcel.weight_kg.and_then(|w| rust_decimal::Decimal::from_f64(w)),
         volume_cm3: None,
         declared_value: None,
         notes: payload.parcel.description.clone(),

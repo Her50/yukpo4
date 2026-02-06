@@ -141,10 +141,7 @@ pub async fn create_signalement(
         "Type: {}\nService ID: {}\n{}",
         payload.type_signalement,
         payload.service_id,
-        payload
-            .motif_libre
-            .as_deref()
-            .unwrap_or("Pas de description")
+        payload.motif_libre.as_deref().unwrap_or("Pas de description")
     ))
     .bind(json!({
         "signalement_id": signalement_id,

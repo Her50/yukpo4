@@ -118,10 +118,8 @@ pub async fn process_product_creation(
     let products_service = ProductsService::new(pool.clone());
 
     // Récupérer les produits existants pour déterminer le prochain index
-    let existing_products = products_service
-        .get_products_by_service(service_id)
-        .await
-        .map_err(|e| {
+    let existing_products =
+        products_service.get_products_by_service(service_id).await.map_err(|e| {
             AppError::Internal(format!("Erreur récupération produits existants: {}", e))
         })?;
 
@@ -609,36 +607,24 @@ pub async fn add_product_to_service(
     // Chercher les images dans différents champs (comme dans creer_service)
     if let Some(prod_obj) = product_data_original.as_object() {
         if let Some(image_urls) = prod_obj.get("imageUrls").and_then(|v| v.as_array()) {
-            images_to_process.extend(
-                image_urls
-                    .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string())),
-            );
+            images_to_process
+                .extend(image_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
         }
         if let Some(product_images) = prod_obj.get("images").and_then(|v| v.as_array()) {
-            images_to_process.extend(
-                product_images
-                    .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string())),
-            );
+            images_to_process
+                .extend(product_images.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
         }
         if let Some(base64_image) = prod_obj.get("base64_image") {
             if let Some(base64_array) = base64_image.as_array() {
-                images_to_process.extend(
-                    base64_array
-                        .iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string())),
-                );
+                images_to_process
+                    .extend(base64_array.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
             } else if let Some(base64_str) = base64_image.as_str() {
                 images_to_process.push(base64_str.to_string());
             }
         }
         if let Some(images_base64) = prod_obj.get("images_base64").and_then(|v| v.as_array()) {
-            images_to_process.extend(
-                images_base64
-                    .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string())),
-            );
+            images_to_process
+                .extend(images_base64.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
         }
         if let Some(image_base64) = prod_obj.get("image_base64").and_then(|v| v.as_str()) {
             images_to_process.push(image_base64.to_string());
@@ -747,10 +733,8 @@ async fn _old_add_product_logic(
     clean_media_recursive_final(&mut product_data_cleaned, &mut removed_count);
 
     // Récupérer les produits existants pour déterminer le prochain index
-    let existing_products = products_service
-        .get_products_by_service(service_id)
-        .await
-        .map_err(|e| {
+    let existing_products =
+        products_service.get_products_by_service(service_id).await.map_err(|e| {
             AppError::Internal(format!("Erreur récupération produits existants: {}", e))
         })?;
 

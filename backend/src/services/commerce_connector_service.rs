@@ -287,10 +287,8 @@ fn extract_modalites<'a>(product: &'a Value) -> Option<Vec<&'a Value>> {
         "variations",
     ];
     for key in keys {
-        if let Some(array) = product
-            .get(key)
-            .and_then(|v| v.get("modalites"))
-            .and_then(|v| v.as_array())
+        if let Some(array) =
+            product.get(key).and_then(|v| v.get("modalites")).and_then(|v| v.as_array())
         {
             return Some(array.iter().collect());
         }
@@ -350,17 +348,12 @@ fn extract_string(value: &Value, keys: &[&str]) -> Option<String> {
 fn extract_array_strings(value: &Value, keys: &[&str]) -> Vec<String> {
     for key in keys {
         if let Some(array) = value.get(key).and_then(|v| v.as_array()) {
-            return array
-                .iter()
-                .filter_map(|item| item.as_str().map(|s| s.to_string()))
-                .collect();
+            return array.iter().filter_map(|item| item.as_str().map(|s| s.to_string())).collect();
         }
     }
     vec![]
 }
 
 fn parse_datetime(raw: String) -> Option<DateTime<Utc>> {
-    DateTime::parse_from_rfc3339(raw.trim())
-        .map(|dt| dt.with_timezone(&Utc))
-        .ok()
+    DateTime::parse_from_rfc3339(raw.trim()).map(|dt| dt.with_timezone(&Utc)).ok()
 }

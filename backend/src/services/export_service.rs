@@ -233,7 +233,6 @@ impl ExportService {
             formats.push(ultra_settings);
         }
 
-        self.start_multi_format_export(user_id, timeline_id, formats)
-            .await
+        self.start_multi_format_export(user_id, timeline_id, formats).await
     }
 }

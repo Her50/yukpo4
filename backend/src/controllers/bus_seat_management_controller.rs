@@ -109,16 +109,11 @@ pub async fn block_seat(
                 AppError::Internal(format!("Erreur blocage place: {}", e))
             })?;
 
-    let success = result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
 
     if !success {
-        let error_msg = result
-            .get("error")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Erreur blocage place");
+        let error_msg =
+            result.get("error").and_then(|v| v.as_str()).unwrap_or("Erreur blocage place");
         return Err(AppError::BadRequest(error_msg.to_string()));
     }
 
@@ -178,16 +173,11 @@ pub async fn unblock_seat(
             AppError::Internal(format!("Erreur déblocage place: {}", e))
         })?;
 
-    let success = result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
 
     if !success {
-        let error_msg = result
-            .get("error")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Erreur déblocage place");
+        let error_msg =
+            result.get("error").and_then(|v| v.as_str()).unwrap_or("Erreur déblocage place");
         return Err(AppError::BadRequest(error_msg.to_string()));
     }
 
@@ -275,9 +265,7 @@ pub async fn get_blocked_seats(
                 .unwrap_or_else(|| "maintenance".to_string()),
             reason_details: row.get::<Option<String>, _>("reason_details"),
             blocked_by: row.get::<i32, _>("blocked_by"),
-            blocked_at: row
-                .get::<chrono::DateTime<chrono::Utc>, _>("blocked_at")
-                .to_rfc3339(),
+            blocked_at: row.get::<chrono::DateTime<chrono::Utc>, _>("blocked_at").to_rfc3339(),
             blocked_by_name: row.get::<Option<String>, _>("blocked_by_name"),
             product_name: row.get::<Option<String>, _>("product_name"),
             bus_number: row.get::<Option<String>, _>("numero_bus"),

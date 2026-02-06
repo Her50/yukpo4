@@ -550,8 +550,7 @@ impl DeliveryMLModelsService {
                     {
                         Ok(session) => {
                             log::info!("[ML Models] ✅ Modèle ONNX chargé: {:?}", model_path);
-                            self.onnx_sessions
-                                .insert(model_type.clone(), Arc::new(session));
+                            self.onnx_sessions.insert(model_type.clone(), Arc::new(session));
                         }
                         Err(e) => {
                             log::warn!(

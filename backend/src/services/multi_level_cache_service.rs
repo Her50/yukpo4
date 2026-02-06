@@ -198,11 +198,8 @@ impl MultiLevelCacheService {
                 .data
                 .write()
                 .map_err(|e| AppError::Internal(format!("L1 cache lock error: {}", e)))?;
-            let keys_to_remove: Vec<String> = data
-                .keys()
-                .filter(|k| k.contains(pattern))
-                .cloned()
-                .collect();
+            let keys_to_remove: Vec<String> =
+                data.keys().filter(|k| k.contains(pattern)).cloned().collect();
             for key in keys_to_remove {
                 data.remove(&key);
             }

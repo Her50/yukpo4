@@ -130,9 +130,8 @@ pub async fn create_duet(
     })?;
 
     let original_video_url = if let Some(row) = original_video {
-        let video_url_raw: String = row
-            .get::<Option<String>, _>("video_url_raw")
-            .unwrap_or_default();
+        let video_url_raw: String =
+            row.get::<Option<String>, _>("video_url_raw").unwrap_or_default();
         // ✅ CORRIGÉ: Transformer path en URL S3/Wasabi avec fallback
         build_media_url_with_fallback(&state, &video_url_raw)
     } else {
@@ -160,9 +159,7 @@ pub async fn create_duet(
     let duet_type = request_payload.duet_type.clone();
 
     // Utiliser new_video_url ou générer depuis upload
-    let new_video_url = request_payload
-        .new_video_url
-        .unwrap_or_else(|| original_video_url.clone());
+    let new_video_url = request_payload.new_video_url.unwrap_or_else(|| original_video_url.clone());
 
     // Insérer dans table duets (à créer via migration)
     // Pour l'instant, utiliser une table temporaire ou media avec metadata
@@ -199,9 +196,7 @@ pub async fn create_duet(
 
     match result {
         Ok(row) => {
-            let content_id = row
-                .get::<Option<String>, _>("id")
-                .unwrap_or(duet_id.clone());
+            let content_id = row.get::<Option<String>, _>("id").unwrap_or(duet_id.clone());
 
             Ok(Json(CreateDuetResponse {
                 success: true,
@@ -240,11 +235,7 @@ pub async fn create_duet_multipart(
     let mut video_data: Option<Vec<u8>> = None;
 
     // Parser multipart
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|_| StatusCode::BAD_REQUEST)?
-    {
+    while let Some(field) = multipart.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
         match field.name() {
             Some("original_video_id") => {
                 request_payload.original_video_id = field.text().await.unwrap_or_default();
@@ -399,31 +390,17 @@ pub async fn get_duets(
     };
 
     let count_result = if let Some(video_id) = video_id_ref {
-        sqlx::query_scalar::<_, i64>(count_sql)
-            .bind(video_id)
-            .fetch_one(pool)
-            .await
+        sqlx::query_scalar::<_, i64>(count_sql).bind(video_id).fetch_one(pool).await
     } else {
-        sqlx::query_scalar::<_, i64>(count_sql)
-            .fetch_one(pool)
-            .await
+        sqlx::query_scalar::<_, i64>(count_sql).fetch_one(pool).await
     };
 
     let total = count_result.unwrap_or(0);
 
     let result = if let Some(video_id) = video_id_ref {
-        sqlx::query(sql)
-            .bind(video_id)
-            .bind(limit)
-            .bind(offset)
-            .fetch_all(pool)
-            .await
+        sqlx::query(sql).bind(video_id).bind(limit).bind(offset).fetch_all(pool).await
     } else {
-        sqlx::query(sql)
-            .bind(limit)
-            .bind(offset)
-            .fetch_all(pool)
-            .await
+        sqlx::query(sql).bind(limit).bind(offset).fetch_all(pool).await
     };
 
     match result {
@@ -432,29 +409,23 @@ pub async fn get_duets(
             let duets: Vec<DuetVideo> = rows
                 .iter()
                 .map(|row| {
-                    let video_url_raw: String = row
-                        .get::<Option<String>, _>("video_url_raw")
-                        .unwrap_or_default();
+                    let video_url_raw: String =
+                        row.get::<Option<String>, _>("video_url_raw").unwrap_or_default();
                     let thumbnail_raw: Option<String> =
                         row.get::<Option<String>, _>("thumbnail_raw");
 
                     let video_url = build_media_url_with_fallback(&state, &video_url_raw);
-                    let thumbnail = thumbnail_raw
-                        .as_ref()
-                        .map(|t| build_media_url_with_fallback(&state, t));
+                    let thumbnail =
+                        thumbnail_raw.as_ref().map(|t| build_media_url_with_fallback(&state, t));
 
                     DuetVideo {
                         id: row.get::<Option<String>, _>("id").unwrap_or_default(),
-                        content_id: row
-                            .get::<Option<String>, _>("content_id")
-                            .unwrap_or_default(),
+                        content_id: row.get::<Option<String>, _>("content_id").unwrap_or_default(),
                         titre: row.get::<Option<String>, _>("titre").unwrap_or_default(),
                         video_url,
                         thumbnail,
                         service_id: row.get::<Option<i32>, _>("service_id"),
-                        duet_type: row
-                            .get::<Option<String>, _>("duet_type")
-                            .unwrap_or_default(),
+                        duet_type: row.get::<Option<String>, _>("duet_type").unwrap_or_default(),
                         original_video_id: row
                             .get::<Option<String>, _>("original_video_id")
                             .unwrap_or_default(),

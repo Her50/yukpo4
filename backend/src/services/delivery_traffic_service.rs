@@ -71,13 +71,11 @@ impl DeliveryTrafficService {
                 .await?
         } else {
             // Fallback: estimer selon l'heure
-            self.estimate_traffic_by_time(origin_lat, origin_lng, dest_lat, dest_lng)
-                .await
+            self.estimate_traffic_by_time(origin_lat, origin_lng, dest_lat, dest_lng).await
         };
 
         // Mettre en cache
-        self.cache
-            .insert(cache_key, (traffic.clone(), Instant::now()));
+        self.cache.insert(cache_key, (traffic.clone(), Instant::now()));
         Ok(traffic)
     }
 
@@ -100,12 +98,8 @@ impl DeliveryTrafficService {
         );
 
         let client = reqwest::Client::new();
-        let response = client
-            .get(&url)
-            .timeout(Duration::from_secs(5))
-            .send()
-            .await
-            .map_err(|e| {
+        let response =
+            client.get(&url).timeout(Duration::from_secs(5)).send().await.map_err(|e| {
                 log::warn!("[Traffic] Erreur API: {}, fallback estimation", e);
                 crate::core::types::AppError::Internal(format!("Erreur API trafic: {}", e))
             })?;
@@ -139,9 +133,7 @@ impl DeliveryTrafficService {
 
                         // Calculer le facteur de trafic
                         let factor = if duration_normal > 0 {
-                            (duration_in_traffic as f64 / duration_normal as f64)
-                                .max(0.5)
-                                .min(2.0)
+                            (duration_in_traffic as f64 / duration_normal as f64).max(0.5).min(2.0)
                         } else {
                             1.0
                         };
@@ -170,9 +162,7 @@ impl DeliveryTrafficService {
         }
 
         // Fallback si parsing échoue
-        Ok(self
-            .estimate_traffic_by_time(origin_lat, origin_lng, dest_lat, dest_lng)
-            .await)
+        Ok(self.estimate_traffic_by_time(origin_lat, origin_lng, dest_lat, dest_lng).await)
     }
 
     /// Estime le trafic selon l'heure (fallback si pas d'API)

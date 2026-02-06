@@ -59,10 +59,7 @@ pub async fn generate_video_for_product(
         })?;
 
     // ✅ Créer le job seulement si la validation réussit
-    let job_id = state
-        .video_jobs
-        .create_job(user.id, service_id, product_index)
-        .await?;
+    let job_id = state.video_jobs.create_job(user.id, service_id, product_index).await?;
 
     state.video_jobs.mark_running(job_id).await?;
 

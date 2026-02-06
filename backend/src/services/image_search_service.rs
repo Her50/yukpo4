@@ -137,11 +137,8 @@ impl ImageSearchService {
             ORDER BY s.created_at DESC
         "#;
 
-        let results = sqlx::query(sql)
-            .bind(image_hash)
-            .fetch_all(&*self.pool)
-            .await
-            .map_err(|e| {
+        let results =
+            sqlx::query(sql).bind(image_hash).fetch_all(&*self.pool).await.map_err(|e| {
                 log_error(&format!("[ImageSearch] Erreur recherche par hash: {}", e));
                 AppError::Internal(format!("Erreur recherche par hash: {}", e))
             })?;

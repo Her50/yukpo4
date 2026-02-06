@@ -102,18 +102,14 @@ impl AnalyticsService {
         let period_start = Utc::now() - Duration::days(days as i64);
         let period_end = Utc::now();
 
-        let delivery_stats = self
-            .get_delivery_stats(provider_user_id, period_start, period_end)
-            .await?;
-        let service_stats = self
-            .get_service_stats(provider_user_id, period_start, period_end)
-            .await?;
-        let revenue_stats = self
-            .get_revenue_stats(provider_user_id, period_start, period_end)
-            .await?;
-        let top_products = self
-            .get_top_products(provider_user_id, period_start, period_end, 10)
-            .await?;
+        let delivery_stats =
+            self.get_delivery_stats(provider_user_id, period_start, period_end).await?;
+        let service_stats =
+            self.get_service_stats(provider_user_id, period_start, period_end).await?;
+        let revenue_stats =
+            self.get_revenue_stats(provider_user_id, period_start, period_end).await?;
+        let top_products =
+            self.get_top_products(provider_user_id, period_start, period_end, 10).await?;
         let top_delivery_zones = self
             .get_top_delivery_zones(provider_user_id, period_start, period_end, 10)
             .await?;
@@ -163,12 +159,8 @@ impl AnalyticsService {
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération stats livraisons: {}", e)))?;
 
-        let total = stats_row
-            .get::<Option<i64>, _>("total_deliveries")
-            .unwrap_or(0) as f64;
-        let completed = stats_row
-            .get::<Option<i64>, _>("completed_deliveries")
-            .unwrap_or(0) as f64;
+        let total = stats_row.get::<Option<i64>, _>("total_deliveries").unwrap_or(0) as f64;
+        let completed = stats_row.get::<Option<i64>, _>("completed_deliveries").unwrap_or(0) as f64;
         let success_rate = if total > 0.0 {
             (completed / total * 100.0).round() / 100.0
         } else {
@@ -184,18 +176,14 @@ impl AnalyticsService {
         };
 
         Ok(DeliveryStats {
-            total_deliveries: stats_row
-                .get::<Option<i64>, _>("total_deliveries")
-                .unwrap_or(0),
+            total_deliveries: stats_row.get::<Option<i64>, _>("total_deliveries").unwrap_or(0),
             completed_deliveries: stats_row
                 .get::<Option<i64>, _>("completed_deliveries")
                 .unwrap_or(0),
             cancelled_deliveries: stats_row
                 .get::<Option<i64>, _>("cancelled_deliveries")
                 .unwrap_or(0),
-            pending_deliveries: stats_row
-                .get::<Option<i64>, _>("pending_deliveries")
-                .unwrap_or(0),
+            pending_deliveries: stats_row.get::<Option<i64>, _>("pending_deliveries").unwrap_or(0),
             success_rate,
             avg_delivery_time_minutes: stats_row
                 .try_get::<Option<f64>, _>("avg_delivery_time_minutes")
@@ -238,12 +226,8 @@ impl AnalyticsService {
         let avg_rating = None::<f64>;
         let total_reviews = 0i64;
 
-        let total_services = stats_row
-            .get::<Option<i64>, _>("total_services")
-            .unwrap_or(0);
-        let active_services = stats_row
-            .get::<Option<i64>, _>("active_services")
-            .unwrap_or(0);
+        let total_services = stats_row.get::<Option<i64>, _>("total_services").unwrap_or(0);
+        let active_services = stats_row.get::<Option<i64>, _>("active_services").unwrap_or(0);
 
         Ok(ServiceStats {
             total_services,
@@ -420,10 +404,7 @@ impl AnalyticsService {
                     .map(|id| id.to_string()),
                 zone_name: row.try_get::<Option<String>, _>("zone_name").ok().flatten(),
                 delivery_count: row.get::<Option<i64>, _>("delivery_count").unwrap_or(0),
-                avg_distance_km: row
-                    .try_get::<Option<f64>, _>("avg_distance_km")
-                    .ok()
-                    .flatten(),
+                avg_distance_km: row.try_get::<Option<f64>, _>("avg_distance_km").ok().flatten(),
             })
             .collect())
     }

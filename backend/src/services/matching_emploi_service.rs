@@ -249,14 +249,10 @@ impl MatchingEmploiService {
     /// Calcule le score de salaire (10% du total)
     fn calculate_salaire_score(&self, offre: &OffreEmploi, profil: &ProfilCandidat) -> f64 {
         // Convertir BigDecimal en f64 via string
-        let salaire_min_offre = offre
-            .salaire_min
-            .as_ref()
-            .and_then(|s| s.to_string().parse::<f64>().ok());
-        let salaire_max_offre = offre
-            .salaire_max
-            .as_ref()
-            .and_then(|s| s.to_string().parse::<f64>().ok());
+        let salaire_min_offre =
+            offre.salaire_min.as_ref().and_then(|s| s.to_string().parse::<f64>().ok());
+        let salaire_max_offre =
+            offre.salaire_max.as_ref().and_then(|s| s.to_string().parse::<f64>().ok());
         let salaire_souhaite_min = profil
             .salaire_souhaite_min
             .as_ref()

@@ -132,10 +132,8 @@ pub async fn add_reaction(
                 .unwrap_or_else(|| format!("User {}", user.id));
 
                 // Mettre en cache pour 1 heure
-                let _ = state
-                    .global_cache
-                    .set(&user_cache_key, &name, Duration::from_secs(3600))
-                    .await;
+                let _ =
+                    state.global_cache.set(&user_cache_key, &name, Duration::from_secs(3600)).await;
                 name
             };
 
@@ -161,9 +159,7 @@ pub async fn add_reaction(
                     timestamp: chrono::Utc::now(),
                     instance_id: None, // Sera ajouté automatiquement par le manager
                 };
-                chat_manager
-                    .broadcast_message(&message_id, ws_message)
-                    .await;
+                chat_manager.broadcast_message(&message_id, ws_message).await;
             }
 
             Ok(Json(json!({
@@ -257,9 +253,7 @@ pub async fn remove_reaction(
                     timestamp: chrono::Utc::now(),
                     instance_id: None,
                 };
-                chat_manager
-                    .broadcast_message(&message_id, ws_message)
-                    .await;
+                chat_manager.broadcast_message(&message_id, ws_message).await;
             }
 
             Ok(Json(json!({

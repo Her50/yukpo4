@@ -236,10 +236,7 @@ pub async fn create_return_trip_request(
 
     // Si un match est trouvé, on le traitera dans un job séparé ou on notifie immédiatement
     if let Some(result) = matching_result {
-        let matched = result
-            .get("matched")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        let matched = result.get("matched").and_then(|v| v.as_bool()).unwrap_or(false);
         if matched {
             info!(
                 "[create_return_trip_request] Match trouvé immédiatement pour request_id: {}",
@@ -318,9 +315,7 @@ pub async fn list_return_trip_requests(
                 .ok()
                 .flatten(),
             number_of_seats: row.get::<i32, _>("number_of_seats"),
-            created_at: row
-                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                .to_rfc3339(),
+            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
         })
         .collect();
 
@@ -409,12 +404,8 @@ pub async fn get_return_trip_request(
                     .flatten()
                     .map(|dt| dt.to_rfc3339()),
                 notification_sent: row.get::<bool, _>("notification_sent"),
-                created_at: row
-                    .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                    .to_rfc3339(),
-                expires_at: row
-                    .get::<chrono::DateTime<chrono::Utc>, _>("expires_at")
-                    .to_rfc3339(),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
+                expires_at: row.get::<chrono::DateTime<chrono::Utc>, _>("expires_at").to_rfc3339(),
             };
             Ok((
                 StatusCode::OK,
@@ -480,9 +471,7 @@ pub async fn confirm_return_trip_request(
     let (matched_product_id, number_of_seats, status): (Option<String>, i32, String) =
         match request_row {
             Some(row) => (
-                row.try_get::<Option<String>, _>("matched_product_id")
-                    .ok()
-                    .flatten(),
+                row.try_get::<Option<String>, _>("matched_product_id").ok().flatten(),
                 row.get::<i32, _>("number_of_seats"),
                 row.get::<String, _>("status"),
             ),

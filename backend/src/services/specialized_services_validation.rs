@@ -216,10 +216,7 @@ pub fn validate_phone_format(phone: &str) -> Result<(), AppError> {
 pub fn validate_hospital_type(type_etablissement: &str) -> Result<(), AppError> {
     let valid_types = ["Hôpital", "Clinique", "Dispensaire", "Centre de santé"];
 
-    if !valid_types
-        .iter()
-        .any(|&t| t.eq_ignore_ascii_case(type_etablissement))
-    {
+    if !valid_types.iter().any(|&t| t.eq_ignore_ascii_case(type_etablissement)) {
         return Err(AppError::BadRequest(format!(
             "Type d'établissement invalide. Types valides: {}",
             valid_types.join(", ")
@@ -233,10 +230,7 @@ pub fn validate_hospital_type(type_etablissement: &str) -> Result<(), AppError> 
 pub fn validate_laboratory_type(type_laboratoire: &str) -> Result<(), AppError> {
     let valid_types = ["Laboratoire", "Centre d'imagerie", "Les deux"];
 
-    if !valid_types
-        .iter()
-        .any(|&t| t.eq_ignore_ascii_case(type_laboratoire))
-    {
+    if !valid_types.iter().any(|&t| t.eq_ignore_ascii_case(type_laboratoire)) {
         return Err(AppError::BadRequest(format!(
             "Type de laboratoire invalide. Types valides: {}",
             valid_types.join(", ")
@@ -250,10 +244,7 @@ pub fn validate_laboratory_type(type_laboratoire: &str) -> Result<(), AppError> 
 pub fn validate_covoiturage_status(statut: &str) -> Result<(), AppError> {
     let valid_statuses = ["ouvert", "complet", "annule", "termine"];
 
-    if !valid_statuses
-        .iter()
-        .any(|&s| s.eq_ignore_ascii_case(statut))
-    {
+    if !valid_statuses.iter().any(|&s| s.eq_ignore_ascii_case(statut)) {
         return Err(AppError::BadRequest(format!(
             "Statut invalide. Statuts valides: {}",
             valid_statuses.join(", ")

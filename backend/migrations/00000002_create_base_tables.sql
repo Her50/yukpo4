@@ -218,3 +218,5 @@ COMMENT ON COLUMN google_places_data.place_id IS 'Identifiant unique Google Plac
 COMMENT ON COLUMN google_places_data.editorial_summary IS 'Résumé éditorial complet (peut être long)';
 COMMENT ON COLUMN google_places_data.photos IS 'Array JSON des photos Google Places avec métadonnées';
 
+
+

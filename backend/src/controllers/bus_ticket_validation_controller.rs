@@ -100,10 +100,7 @@ pub async fn validate_ticket_qr(
             AppError::Internal(format!("Erreur validation ticket: {}", e))
         })?;
 
-    let success = result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
 
     if !success {
         let error_msg = result
@@ -111,10 +108,8 @@ pub async fn validate_ticket_qr(
             .and_then(|v| v.as_str())
             .unwrap_or("Erreur validation ticket");
 
-        let already_boarded = result
-            .get("already_boarded")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        let already_boarded =
+            result.get("already_boarded").and_then(|v| v.as_bool()).unwrap_or(false);
 
         let response = ValidateTicketResponse {
             success: false,
@@ -143,18 +138,9 @@ pub async fn validate_ticket_qr(
             .get("passenger_name")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string()),
-        seat_id: result
-            .get("seat_id")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string()),
-        seat_number: result
-            .get("seat_number")
-            .and_then(|v| v.as_i64())
-            .map(|v| v as i32),
-        validated_at: result
-            .get("validated_at")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string()),
+        seat_id: result.get("seat_id").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        seat_number: result.get("seat_number").and_then(|v| v.as_i64()).map(|v| v as i32),
+        validated_at: result.get("validated_at").and_then(|v| v.as_str()).map(|s| s.to_string()),
         already_boarded: Some(false),
         error: None,
     };
@@ -217,30 +203,15 @@ pub async fn get_boarding_summary(
         })?;
 
     let boarding_summary = BoardingSummary {
-        total_reservations: summary
-            .get("total_reservations")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0),
-        boarded_passengers: summary
-            .get("boarded_passengers")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0),
-        pending_passengers: summary
-            .get("pending_passengers")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0),
-        no_show_passengers: summary
-            .get("no_show_passengers")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0),
+        total_reservations: summary.get("total_reservations").and_then(|v| v.as_i64()).unwrap_or(0),
+        boarded_passengers: summary.get("boarded_passengers").and_then(|v| v.as_i64()).unwrap_or(0),
+        pending_passengers: summary.get("pending_passengers").and_then(|v| v.as_i64()).unwrap_or(0),
+        no_show_passengers: summary.get("no_show_passengers").and_then(|v| v.as_i64()).unwrap_or(0),
         completion_percentage: summary
             .get("completion_percentage")
             .and_then(|v| v.as_f64())
             .unwrap_or(0.0),
-        is_complete: summary
-            .get("is_complete")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false),
+        is_complete: summary.get("is_complete").and_then(|v| v.as_bool()).unwrap_or(false),
     };
 
     Ok((

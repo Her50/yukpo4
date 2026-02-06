@@ -61,14 +61,11 @@ pub async fn anti_bruteforce(
     };
 
     // Vérifier si l'IP est bloquée
-    let is_blocked: bool = match redis::cmd("EXISTS")
-        .arg(&block_key)
-        .query_async(&mut redis_conn)
-        .await
-    {
-        Ok(exists) => exists,
-        Err(_) => false,
-    };
+    let is_blocked: bool =
+        match redis::cmd("EXISTS").arg(&block_key).query_async(&mut redis_conn).await {
+            Ok(exists) => exists,
+            Err(_) => false,
+        };
 
     if is_blocked {
         error!(

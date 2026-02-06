@@ -44,12 +44,7 @@ impl RemotionRendererService {
             return Ok(());
         }
 
-        let entry_point = self
-            .config
-            .project_root
-            .join("dist")
-            .join("src")
-            .join("index.js");
+        let entry_point = self.config.project_root.join("dist").join("src").join("index.js");
 
         if entry_point.exists() {
             *guard = true;
@@ -118,9 +113,7 @@ impl RemotionRendererService {
     ) -> AppResult<RenderedVideo> {
         self.ensure_build().await?;
 
-        let job_id = job_hint
-            .map(|v| v.to_string())
-            .unwrap_or_else(|| Uuid::new_v4().to_string());
+        let job_id = job_hint.map(|v| v.to_string()).unwrap_or_else(|| Uuid::new_v4().to_string());
 
         let jobs_dir = self.config.jobs_root.clone();
         fs::create_dir_all(&jobs_dir).await.map_err(|err| {

@@ -73,10 +73,7 @@ async fn get_provider_analytics(
 ) -> impl IntoResponse {
     let analytics_service = AnalyticsService::new(state.pg.clone());
 
-    match analytics_service
-        .get_provider_analytics(user.id, params.days)
-        .await
-    {
+    match analytics_service.get_provider_analytics(user.id, params.days).await {
         Ok(analytics) => Json(serde_json::json!({
             "success": true,
             "data": analytics
@@ -111,10 +108,7 @@ async fn get_delivery_stats(
 
     let analytics_service = AnalyticsService::new(state.pg.clone());
 
-    match analytics_service
-        .get_delivery_stats(user.id, period_start, period_end)
-        .await
-    {
+    match analytics_service.get_delivery_stats(user.id, period_start, period_end).await {
         Ok(stats) => Json(serde_json::json!({
             "success": true,
             "data": stats
@@ -149,10 +143,7 @@ async fn get_revenue_stats(
 
     let analytics_service = AnalyticsService::new(state.pg.clone());
 
-    match analytics_service
-        .get_revenue_stats(user.id, period_start, period_end)
-        .await
-    {
+    match analytics_service.get_revenue_stats(user.id, period_start, period_end).await {
         Ok(stats) => Json(serde_json::json!({
             "success": true,
             "data": stats

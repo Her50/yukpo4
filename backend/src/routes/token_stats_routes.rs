@@ -273,9 +273,7 @@ pub async fn get_token_stats(
                     .map(|v| v as i32),
                 response_source: row.get::<Option<String>, _>("response_source"),
                 endpoint: row.get::<Option<String>, _>("endpoint"),
-                created_at: row
-                    .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                    .naive_utc(),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").naive_utc(),
             }
         })
         .collect();

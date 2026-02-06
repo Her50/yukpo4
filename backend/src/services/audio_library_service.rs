@@ -243,11 +243,9 @@ pub async fn attach_loop_to_service(
         })?;
     }
 
-    let mut file = tokio::fs::File::create(&absolute_path)
-        .await
-        .map_err(|err| {
-            AppError::Internal(format!("Impossible de créer le fichier audio: {err}"))
-        })?;
+    let mut file = tokio::fs::File::create(&absolute_path).await.map_err(|err| {
+        AppError::Internal(format!("Impossible de créer le fichier audio: {err}"))
+    })?;
     file.write_all(&bytes).await.map_err(|err| {
         AppError::Internal(format!("Impossible d'écrire le fichier audio: {err}"))
     })?;

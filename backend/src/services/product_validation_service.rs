@@ -165,16 +165,11 @@ fn validate_product_price(data: &Value, result: &mut ProductValidationResult) {
 /// Parse un prix depuis une chaîne (supporte formats variés)
 fn parse_price(price_str: &str) -> Result<f64, String> {
     // Nettoyer la chaîne (supprimer espaces, séparateurs)
-    let cleaned = price_str
-        .replace(' ', "")
-        .replace(',', ".")
-        .replace('\u{00A0}', ""); // Espace insécable
+    let cleaned = price_str.replace(' ', "").replace(',', ".").replace('\u{00A0}', ""); // Espace insécable
 
     // Supprimer les caractères non numériques sauf le point
-    let numeric_only: String = cleaned
-        .chars()
-        .filter(|c| c.is_ascii_digit() || *c == '.')
-        .collect();
+    let numeric_only: String =
+        cleaned.chars().filter(|c| c.is_ascii_digit() || *c == '.').collect();
 
     numeric_only
         .parse::<f64>()
@@ -369,11 +364,9 @@ fn extract_string_field(value: &Value, key: &str) -> Option<String> {
     value
         .get(key)
         .and_then(|v| {
-            v.as_str().map(|s| s.to_string()).or_else(|| {
-                v.get("valeur")
-                    .and_then(|v2| v2.as_str())
-                    .map(|s| s.to_string())
-            })
+            v.as_str()
+                .map(|s| s.to_string())
+                .or_else(|| v.get("valeur").and_then(|v2| v2.as_str()).map(|s| s.to_string()))
         })
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
@@ -473,12 +466,8 @@ pub async fn validate_product_for_activation(
         }
         // Vérifier la configuration de livraison si nécessaire
         if produit_obj.get("delivery_config").is_none() {
-            validation
-                .missing_fields
-                .push("delivery_config".to_string());
-            validation
-                .errors
-                .push("Configuration de livraison manquante".to_string());
+            validation.missing_fields.push("delivery_config".to_string());
+            validation.errors.push("Configuration de livraison manquante".to_string());
             validation.is_valid = false;
         }
     } else {

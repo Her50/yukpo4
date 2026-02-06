@@ -70,9 +70,7 @@ impl ProductPriceService {
                 metrics.product_promotion_applied_total.inc();
                 let discount_cents = ((base_price - product_promo_price) * 100.0) as i64;
                 if discount_cents > 0 {
-                    metrics
-                        .product_promotion_discount_cents_total
-                        .inc_by(discount_cents as f64);
+                    metrics.product_promotion_discount_cents_total.inc_by(discount_cents as f64);
                 }
             }
 
@@ -127,10 +125,8 @@ impl ProductPriceService {
     /// }
     fn get_product_promotion_price(product: &Value) -> Option<f64> {
         // Vérifier si la promotion est active
-        let promotion_active = product
-            .get("promotionActive")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        let promotion_active =
+            product.get("promotionActive").and_then(|v| v.as_bool()).unwrap_or(false);
 
         if !promotion_active {
             return None;
@@ -193,10 +189,8 @@ impl ProductPriceService {
             }
 
             // Cas 3 : Prix fixe (ex: "5000", "5000 FCFA")
-            if let Some(fixed_price) = valeur_str
-                .split_whitespace()
-                .next()
-                .and_then(|s| s.parse::<f64>().ok())
+            if let Some(fixed_price) =
+                valeur_str.split_whitespace().next().and_then(|s| s.parse::<f64>().ok())
             {
                 // Si le prix fixe est inférieur au prix de base, c'est une promotion
                 if fixed_price < base_price {

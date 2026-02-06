@@ -38,9 +38,7 @@ impl PublicitePixelService {
                 chrono::Utc::now().timestamp_millis()
             )
         });
-        let event_time = event
-            .event_time
-            .unwrap_or_else(|| chrono::Utc::now().timestamp());
+        let event_time = event.event_time.unwrap_or_else(|| chrono::Utc::now().timestamp());
 
         // Enregistrer dans la table pixel_events
         sqlx::query(

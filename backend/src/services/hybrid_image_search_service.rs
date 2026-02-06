@@ -232,11 +232,7 @@ impl HybridImageSearchService {
                 image_base64.to_string()
             } else if image_base64.starts_with("data:") {
                 // Data URI - extraire le base64 pur pour être cohérent avec la création
-                image_base64
-                    .split("base64,")
-                    .nth(1)
-                    .unwrap_or(image_base64)
-                    .to_string()
+                image_base64.split("base64,").nth(1).unwrap_or(image_base64).to_string()
             } else {
                 // Base64 pur - passer tel quel (format attendu comme lors de la création)
                 image_base64.to_string()
@@ -244,16 +240,12 @@ impl HybridImageSearchService {
 
         // ✅ Appeler l'IA avec le même format que la création (base64 pur dans Vec)
         // ✅ CORRECTION : L'ordre de retour est (model_name, response, tokens)
-        let (model_name, json_response, tokens_used) = app_ia
-            .predict_multimodal(&search_prompt, Some(vec![image_base64_pure]))
-            .await?;
+        let (model_name, json_response, tokens_used) =
+            app_ia.predict_multimodal(&search_prompt, Some(vec![image_base64_pure])).await?;
 
         // Parser le JSON
-        let cleaned_json = json_response
-            .replace("```json", "")
-            .replace("```", "")
-            .trim()
-            .to_string();
+        let cleaned_json =
+            json_response.replace("```json", "").replace("```", "").trim().to_string();
 
         let parsed_json: serde_json::Value = serde_json::from_str(&cleaned_json).map_err(|e| {
             log_error(&format!(
@@ -372,9 +364,8 @@ impl HybridImageSearchService {
             }
 
             // ✅ CRITIQUE: Extraire depuis sous_caracteristiques
-            if let Some(sous_caracs) = prod_obj
-                .get("sous_caracteristiques")
-                .and_then(|sc| sc.as_object())
+            if let Some(sous_caracs) =
+                prod_obj.get("sous_caracteristiques").and_then(|sc| sc.as_object())
             {
                 log_info(&format!(
                     "[HybridImageSearch] 📦 sous_caracteristiques trouvé avec {} clés",
@@ -387,10 +378,7 @@ impl HybridImageSearchService {
                     .or_else(|| sous_caracs.get("brand"))
                     .and_then(|m| m.as_array())
                 {
-                    marque = marques_arr
-                        .first()
-                        .and_then(|v| v.as_str())
-                        .map(|s| normalize_tag(s));
+                    marque = marques_arr.first().and_then(|v| v.as_str()).map(|s| normalize_tag(s));
                     for val in marques_arr.iter().filter_map(|v| v.as_str()) {
                         let normalized = normalize_tag(val);
                         if !normalized.is_empty() && !tags.contains(&normalized) {
@@ -405,10 +393,8 @@ impl HybridImageSearchService {
                     .or_else(|| sous_caracs.get("model"))
                     .and_then(|m| m.as_array())
                 {
-                    _modele = modeles_arr
-                        .first()
-                        .and_then(|v| v.as_str())
-                        .map(|s| normalize_tag(s));
+                    _modele =
+                        modeles_arr.first().and_then(|v| v.as_str()).map(|s| normalize_tag(s));
                     for val in modeles_arr.iter().filter_map(|v| v.as_str()) {
                         let normalized = normalize_tag(val);
                         if !normalized.is_empty() && !tags.contains(&normalized) {
@@ -493,12 +479,7 @@ impl HybridImageSearchService {
         log_info(&format!(
             "[HybridImageSearch] 🏷️ Tags extraits ({}): {:?}",
             tags.len(),
-            &tags
-                .iter()
-                .take(15)
-                .map(|s| s.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
+            &tags.iter().take(15).map(|s| s.as_str()).collect::<Vec<_>>().join(", ")
         ));
 
         // Construire les requêtes de recherche
@@ -756,11 +737,8 @@ impl HybridImageSearchService {
                 "[HybridImageSearch] ⚠️ Fallback: Utilisation de la description comme tag unique",
             );
             // Extraire mots-clés de la description comme fallback
-            let fallback_tags: Vec<String> = search_query
-                .split_whitespace()
-                .take(5)
-                .map(|s| s.to_lowercase())
-                .collect();
+            let fallback_tags: Vec<String> =
+                search_query.split_whitespace().take(5).map(|s| s.to_lowercase()).collect();
             log_info(&format!(
                 "[HybridImageSearch] 🔄 Tags fallback générés: {:?}",
                 fallback_tags
@@ -821,15 +799,13 @@ impl HybridImageSearchService {
             let product_description: String =
                 row.try_get("product_description").unwrap_or_default();
 
-            let product_tags: Vec<String> = row
-                .try_get::<Vec<String>, _>("product_tags")
-                .unwrap_or_default();
+            let product_tags: Vec<String> =
+                row.try_get::<Vec<String>, _>("product_tags").unwrap_or_default();
 
             let product_marque: Option<String> = row.try_get("product_marque").ok();
 
-            let product_couleurs: Vec<String> = row
-                .try_get::<Vec<String>, _>("product_couleurs")
-                .unwrap_or_default();
+            let product_couleurs: Vec<String> =
+                row.try_get::<Vec<String>, _>("product_couleurs").unwrap_or_default();
 
             let match_score: f64 = row.try_get("match_score").unwrap_or(0.0);
             let distance_km: Option<f64> = row.try_get("distance_km").ok();
@@ -1081,26 +1057,19 @@ impl HybridImageSearchService {
                     .get("tags")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
                     })
                     .unwrap_or_default();
 
-                let product_marque = sr
-                    .service_data
-                    .get("marque")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
+                let product_marque =
+                    sr.service_data.get("marque").and_then(|v| v.as_str()).map(|s| s.to_string());
 
                 let product_couleurs: Vec<String> = sr
                     .service_data
                     .get("couleurs")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
                     })
                     .unwrap_or_default();
 

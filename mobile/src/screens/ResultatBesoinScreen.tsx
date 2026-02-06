@@ -743,10 +743,15 @@ const ResultatBesoinScreen: React.FC = () => {
                                 // ✅ Préserver toutes les propriétés de product_data
                                 ...productData,
                                 // ✅ CRITIQUE: Garder product_data comme structure séparée pour ProductCard
-                                product_data: productData, // ✅ Structure complète de product_data
+                                product_data: productData, // ✅ Structure complète de product_data (inclut variants, has_variant, variation_prix, etc.)
                                 // ✅ CORRIGÉ 2026-01-21: S'assurer que les images/vidéos sont bien extraites depuis product_data
                                 images: productData.images || [],
                                 videos: productData.videos || [],
+                                // ✅ NOUVEAU 2026-01-XX: Préserver les variations de prix (variants, has_variant, variation_prix)
+                                has_variant: productData.has_variant || productFromAPI.has_variant || false,
+                                variants: productData.variants || productFromAPI.variants || [],
+                                variation_prix: productData.variation_prix || productData.variabilite_prix || productData.price_variant || productFromAPI.variation_prix,
+                                variant_dimension: productData.variant_dimension || productFromAPI.variant_dimension,
                                 // ✅ Ajouter les propriétés de l'API si elles ne sont pas dans product_data
                                 product_name: productName || productFromAPI.product_name,
                                 product_type: productFromAPI.product_type || productData.type || productData.product_type,
@@ -1815,18 +1820,34 @@ const ResultatBesoinScreen: React.FC = () => {
     }, [services, priceFilter, sortBy]);
 
     // ✅ CORRIGÉ 2026-01-14: Mémoriser la liste combinée avec clés STABLES (sans score qui change)
+    // ✅ CORRIGÉ 2026-01-XX: Éviter les doublons - ne pas afficher les services qui ont déjà des produits extraits
     const allResults = useMemo(() => {
         console.log('🔍 [ResultatBesoinScreen] allResults - Construction:', {
             filteredServicesCount: filteredServices.length,
             filteredProductsCount: filteredProducts.length
         });
         
-        const services = filteredServices.map(service => ({ 
-            type: 'service' as const, 
-            data: service,
-            // ✅ CORRIGÉ: Clé stable sans score pour éviter les re-renders
-            key: `service-${service.id}`
-        }));
+        // ✅ NOUVEAU: Créer un Set des serviceIds qui ont des produits pour éviter les doublons
+        const serviceIdsWithProducts = new Set(
+            filteredProducts.map(p => String(p._serviceId || p.service_id || ''))
+        );
+        
+        // ✅ CORRIGÉ: Ne pas afficher les services qui ont déjà des produits (éviter doublon)
+        const services = filteredServices
+            .filter(service => {
+                const serviceId = String(service.id);
+                const hasProducts = serviceIdsWithProducts.has(serviceId);
+                if (hasProducts) {
+                    console.log(`🔄 [ResultatBesoinScreen] Service ${serviceId} ignoré car il a déjà des produits extraits`);
+                }
+                return !hasProducts; // Afficher uniquement les services SANS produits
+            })
+            .map(service => ({ 
+                type: 'service' as const, 
+                data: service,
+                // ✅ CORRIGÉ: Clé stable sans score pour éviter les re-renders
+                key: `service-${service.id}`
+            }));
         const products = filteredProducts.map((product, idx) => {
             // ✅ CORRIGÉ: Clé stable basée uniquement sur des propriétés immuables (sans score)
             // Utiliser le même format d'ID que ProductCard pour garantir la cohérence

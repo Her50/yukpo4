@@ -213,16 +213,12 @@ pub async fn load_prompt_with_vars(
     prompt_name: &str,
     variables: &HashMap<String, String>,
 ) -> AppResult<String> {
-    PROMPT_LOADER
-        .load_prompt_with_vars(prompt_name, variables)
-        .await
+    PROMPT_LOADER.load_prompt_with_vars(prompt_name, variables).await
 }
 
 /// Fonction utilitaire pour charger une section de prompt
 pub async fn load_prompt_section(prompt_name: &str, section_name: &str) -> AppResult<String> {
-    PROMPT_LOADER
-        .load_prompt_section(prompt_name, section_name)
-        .await
+    PROMPT_LOADER.load_prompt_section(prompt_name, section_name).await
 }
 
 /// Fonction utilitaire pour charger une section avec variables

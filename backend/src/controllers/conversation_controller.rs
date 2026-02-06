@@ -335,9 +335,7 @@ pub async fn get_conversation_participants(
             user_name: row
                 .get::<Option<String>, _>("user_name")
                 .unwrap_or_else(|| format!("User {}", row.get::<i32, _>("user_id"))),
-            user_email: row
-                .get::<Option<String>, _>("user_email")
-                .unwrap_or_default(),
+            user_email: row.get::<Option<String>, _>("user_email").unwrap_or_default(),
             user_avatar: row.get::<Option<String>, _>("user_avatar"),
             role: row.get::<String, _>("role"),
             invited_by: row.get::<Option<i32>, _>("invited_by"),

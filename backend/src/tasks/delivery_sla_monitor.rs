@@ -115,8 +115,7 @@ impl DeliverySlaMonitor {
             }
 
             if actual_minutes > (promised_minutes as f64) * self.config.threshold_ratio {
-                self.send_alert(row.id, promised_minutes, actual_minutes)
-                    .await?;
+                self.send_alert(row.id, promised_minutes, actual_minutes).await?;
             }
         }
 

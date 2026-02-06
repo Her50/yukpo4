@@ -373,10 +373,7 @@ pub async fn persist_base64_media(
     const LARGE_FILE_THRESHOLD: usize = 5 * 1024 * 1024; // 5 MB
 
     let extension = infer_extension_from_data(base64_data, default_ext);
-    let service_dir = storage_root
-        .join("services")
-        .join(service_id.to_string())
-        .join(subdir);
+    let service_dir = storage_root.join("services").join(service_id.to_string()).join(subdir);
     fs::create_dir_all(&service_dir).await?;
 
     let file_name = format!(
@@ -492,10 +489,7 @@ pub async fn persist_base64_media(
         // ✅ OPTIMISÉ 2025-12-30: Upload directement depuis les bytes vers S3 (pas d'écriture locale inutile)
         let final_path = if media_storage.is_remote() {
             let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
-            match media_storage
-                .store_bytes(&decoded, &storage_key, content_type.as_deref())
-                .await
-            {
+            match media_storage.store_bytes(&decoded, &storage_key, content_type.as_deref()).await {
                 Ok(location) => {
                     log::info!(
                         "[persist_base64_media] ✅ Upload S3 direct depuis mémoire réussi: {}",
@@ -622,10 +616,7 @@ pub async fn download_and_save_image(
         .unwrap_or("jpg"); // Par défaut jpg
 
     // Sauvegarder le fichier
-    let service_dir = storage_root
-        .join("services")
-        .join(service_id.to_string())
-        .join(subdir);
+    let service_dir = storage_root.join("services").join(service_id.to_string()).join(subdir);
     fs::create_dir_all(&service_dir).await?;
 
     let file_name = format!(
@@ -767,9 +758,7 @@ fn build_location_label(value: &serde_json::Value) -> Option<String> {
                 if let Some(value) = components.get(key).and_then(|v| v.as_str()) {
                     let trimmed = value.trim();
                     if !trimmed.is_empty()
-                        && !parts
-                            .iter()
-                            .any(|existing| existing.eq_ignore_ascii_case(trimmed))
+                        && !parts.iter().any(|existing| existing.eq_ignore_ascii_case(trimmed))
                     {
                         parts.push(trimmed.to_string());
                     }
@@ -1055,18 +1044,12 @@ async fn enrich_service_with_google(
         query_parts.push(titre);
     }
     if let Some(nom_produit) = nom_produit.clone() {
-        if !query_parts
-            .iter()
-            .any(|q| q.eq_ignore_ascii_case(&nom_produit))
-        {
+        if !query_parts.iter().any(|q| q.eq_ignore_ascii_case(&nom_produit)) {
             query_parts.push(nom_produit);
         }
     }
     if let Some(nom_prestataire) = nom_prestataire.clone() {
-        if !query_parts
-            .iter()
-            .any(|q| q.eq_ignore_ascii_case(&nom_prestataire))
-        {
+        if !query_parts.iter().any(|q| q.eq_ignore_ascii_case(&nom_prestataire)) {
             query_parts.push(nom_prestataire);
         }
     }
@@ -1085,10 +1068,7 @@ async fn enrich_service_with_google(
     let location_label = lieu_value.and_then(|value| build_location_label(value));
     let country = lieu_value
         .and_then(|value| extract_country(value))
-        .or_else(|| {
-            map.get("location_vector")
-                .and_then(|vec| extract_value_string(vec))
-        });
+        .or_else(|| map.get("location_vector").and_then(|vec| extract_value_string(vec)));
     let coordinates = lieu_value.and_then(|value| extract_coordinates_from_value(value));
 
     let base_query = query_parts.join(" ").trim().to_string();
@@ -1716,11 +1696,7 @@ pub async fn creer_service(
     let ia_tokens_consumed = data_processed
         .get("tokens_ia_externe")
         .and_then(|v| v.as_u64())
-        .or_else(|| {
-            data_processed
-                .get("tokens_consumed")
-                .and_then(|v| v.as_u64())
-        })
+        .or_else(|| data_processed.get("tokens_consumed").and_then(|v| v.as_u64()))
         .unwrap_or(0) as i64;
 
     // ✅ CRITIQUE 2025-11-02 : VALIDER D'ABORD AVANT DE DÉBITER (éviter perte argent)
@@ -1936,10 +1912,7 @@ pub async fn creer_service(
     } else {
         None
     };
-    let is_tarissable = data_obj
-        .get("is_tarissable")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let is_tarissable = data_obj.get("is_tarissable").and_then(|v| v.as_bool()).unwrap_or(false);
 
     // ✅ NOUVEAU 2025-01-28: Validation obligatoire quantité > 0 pour les produits uniquement
     if is_tarissable {
@@ -2003,25 +1976,15 @@ pub async fn creer_service(
     }
     let gps = data_obj.get("gps").and_then(|v| v.as_bool());
     // Correction?: la colonne gps est TEXT en base, il faut passer "true"/"false" (string)
-    let gps_str = gps
-        .map(|b| if b { "true" } else { "false" })
-        .unwrap_or("false")
-        .to_string();
+    let gps_str = gps.map(|b| if b { "true" } else { "false" }).unwrap_or("false").to_string();
     // Correction?: forcer la valeur de gps dans data_obj à être une string (pour cohérence JSON stocké)
     if let Some(gps_val) = data_obj.get_mut("gps") {
         *gps_val = serde_json::Value::String(gps_str.clone());
     }
     let active_days = if is_tarissable {
-        data_obj
-            .get("active_days")
-            .and_then(|d| d.as_i64())
-            .unwrap_or(7)
-            .min(30)
+        data_obj.get("active_days").and_then(|d| d.as_i64()).unwrap_or(7).min(30)
     } else {
-        data_obj
-            .get("active_days")
-            .and_then(|d| d.as_i64())
-            .unwrap_or(7)
+        data_obj.get("active_days").and_then(|d| d.as_i64()).unwrap_or(7)
     };
     auto_fill_currencies(&mut data_obj);
 
@@ -2072,10 +2035,7 @@ pub async fn creer_service(
     if let Some(google_place) = data_obj.get_mut("google_place") {
         if let Some(gp_obj) = google_place.as_object_mut() {
             // Extraire seulement place_id pour garder la référence
-            let place_id = gp_obj
-                .get("place_id")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
+            let place_id = gp_obj.get("place_id").and_then(|v| v.as_str()).map(|s| s.to_string());
 
             // Remplacer l'objet complet par seulement place_id
             if let Some(pid) = place_id {
@@ -2083,9 +2043,7 @@ pub async fn creer_service(
                 log::info!("[creer_service] ✅ Google Places réduit à place_id seulement dans services.data");
             } else {
                 // Si pas de place_id, supprimer complètement
-                data_obj
-                    .as_object_mut()
-                    .and_then(|m| m.remove("google_place"));
+                data_obj.as_object_mut().and_then(|m| m.remove("google_place"));
                 log::warn!(
                     "[creer_service] ⚠️ Google Places sans place_id, supprimé de services.data"
                 );
@@ -2097,9 +2055,7 @@ pub async fn creer_service(
     // Les descriptions complètes sont maintenant conservées dans services.data
 
     // Vérifier la taille du JSON après nettoyage
-    let json_size = serde_json::to_string(&data_obj)
-        .map(|s| s.len())
-        .unwrap_or(0);
+    let json_size = serde_json::to_string(&data_obj).map(|s| s.len()).unwrap_or(0);
     log::info!(
         "[creer_service] 📊 Taille du JSON après nettoyage: {} bytes (max recommandé: ~8000 bytes)",
         json_size
@@ -2130,9 +2086,7 @@ pub async fn creer_service(
     // Extrait les codes d'erreur PostgreSQL et fournit des messages plus précis
     fn analyze_sql_error(e: &sqlx::Error) -> String {
         if let sqlx::Error::Database(db_err) = e {
-            let code = db_err
-                .code()
-                .and_then(|c| c.to_string().parse::<u32>().ok());
+            let code = db_err.code().and_then(|c| c.to_string().parse::<u32>().ok());
             let message = db_err.message();
             let constraint = db_err.constraint();
 
@@ -2315,13 +2269,9 @@ pub async fn creer_service(
             Ok(row) => row,
             Err(e) => {
                 // Log détaillé pour diagnostiquer l'erreur
-                let json_size = serde_json::to_string(data_obj)
-                    .map(|s| s.len())
-                    .unwrap_or(0);
-                let has_base64_image = data_obj
-                    .as_object()
-                    .and_then(|m| m.get("base64_image"))
-                    .is_some();
+                let json_size = serde_json::to_string(data_obj).map(|s| s.len()).unwrap_or(0);
+                let has_base64_image =
+                    data_obj.as_object().and_then(|m| m.get("base64_image")).is_some();
 
                 // ✅ AMÉLIORATION 2025-01-27 : Analyser l'erreur SQL pour extraire le code PostgreSQL
                 let error_message = analyze_sql_error(&e);
@@ -2373,9 +2323,8 @@ pub async fn creer_service(
             Ok(Some(service_row)) => {
                 let actual_id: i32 = service_row.get::<i32, _>("id");
                 let service_user_id: i32 = service_row.get::<i32, _>("user_id");
-                let service_created_at = service_row
-                    .try_get::<chrono::NaiveDateTime, _>("created_at")
-                    .ok();
+                let service_created_at =
+                    service_row.try_get::<chrono::NaiveDateTime, _>("created_at").ok();
 
                 // ✅ Vérifier que l'ID correspond
                 if actual_id != service_id {
@@ -2729,9 +2678,8 @@ pub async fn creer_service(
     }
 
     // Extraire la bannière
-    if let Some(banner_value) = data_processed
-        .get("banner")
-        .or_else(|| data_processed.get("banniere"))
+    if let Some(banner_value) =
+        data_processed.get("banner").or_else(|| data_processed.get("banniere"))
     {
         let banner_data = if let Some(banner_obj) = banner_value.as_object() {
             banner_obj.get("valeur")
@@ -2904,21 +2852,14 @@ pub async fn creer_service(
     let service_images: Vec<String> = {
         // Chercher d'abord dans imageUrls (upload préalable)
         if let Some(image_urls) = data_processed.get("imageUrls").and_then(|v| v.as_array()) {
-            image_urls
-                .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect()
+            image_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
         }
         // Fallback: base64_image (rétrocompatibilité)
         else {
             data_processed
                 .get("base64_image")
                 .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                        .collect()
-                })
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
                 .unwrap_or_default()
         }
     };
@@ -3232,16 +3173,12 @@ pub async fn creer_service(
                 product_id,
                 product_index,
                 product_record.id,
-                produit_obj
-                    .get("nom")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("Sans nom")
+                produit_obj.get("nom").and_then(|v| v.as_str()).unwrap_or("Sans nom")
             );
 
             // ✅ CRITIQUE: Extraire les médias depuis data_processed (non nettoyé) au lieu de data_obj
-            let produit_from_processed = produits_array_from_processed
-                .get(product_index)
-                .and_then(|v| v.as_object());
+            let produit_from_processed =
+                produits_array_from_processed.get(product_index).and_then(|v| v.as_object());
 
             let mut images_to_process: Vec<String> = Vec::new();
             if product_index == 0 && !service_images.is_empty() {
@@ -3267,9 +3204,7 @@ pub async fn creer_service(
                 {
                     let count = image_urls.len();
                     images_to_process.extend(
-                        image_urls
-                            .iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                        image_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
                     );
                     if count > 0 {
                         log::info!(
@@ -3285,9 +3220,7 @@ pub async fn creer_service(
                 {
                     let count = product_images.len();
                     images_to_process.extend(
-                        product_images
-                            .iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                        product_images.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
                     );
                     if count > 0 {
                         log::info!(
@@ -3302,9 +3235,7 @@ pub async fn creer_service(
                     if let Some(base64_array) = base64_image.as_array() {
                         let count = base64_array.len();
                         images_to_process.extend(
-                            base64_array
-                                .iter()
-                                .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                            base64_array.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
                         );
                         if count > 0 {
                             log::info!(
@@ -3322,15 +3253,12 @@ pub async fn creer_service(
                     }
                 }
                 // Chercher dans "images_base64" ou "image_base64" (base64)
-                if let Some(images_base64) = prod_processed
-                    .get("images_base64")
-                    .and_then(|v| v.as_array())
+                if let Some(images_base64) =
+                    prod_processed.get("images_base64").and_then(|v| v.as_array())
                 {
                     let count = images_base64.len();
                     images_to_process.extend(
-                        images_base64
-                            .iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                        images_base64.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
                     );
                     if count > 0 {
                         log::info!(
@@ -3503,14 +3431,9 @@ pub async fn creer_service(
             // ✅ Extraction des métadonnées produit pour mise à jour AI (une seule fois par produit)
             // Fait après traitement des images pour le premier produit
             if product_index == 0 && !saved_paths_for_product.is_empty() {
-                let product_name = produit_obj
-                    .get("nom")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let product_description = produit_obj
-                    .get("description")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                let product_name = produit_obj.get("nom").and_then(|v| v.as_str()).unwrap_or("");
+                let product_description =
+                    produit_obj.get("description").and_then(|v| v.as_str()).unwrap_or("");
                 let product_marque = produit_obj.get("marque").and_then(|v| v.as_str());
                 let product_category = produit_obj
                     .get("categorie")
@@ -3520,9 +3443,7 @@ pub async fn creer_service(
                     .get("couleurs")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
                     })
                     .unwrap_or_default();
 
@@ -3532,10 +3453,7 @@ pub async fn creer_service(
                     format!(
                         "{} - {}",
                         product_name,
-                        produit_obj
-                            .get("prix")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
+                        produit_obj.get("prix").and_then(|v| v.as_str()).unwrap_or("")
                     )
                 } else {
                     String::new()
@@ -3701,9 +3619,7 @@ pub async fn creer_service(
                 if let Some(video_urls) = prod_processed.get("videoUrls").and_then(|v| v.as_array())
                 {
                     videos_to_process.extend(
-                        video_urls
-                            .iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                        video_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
                     );
                     log::info!(
                         "[creer_service] ✅ Trouvé {} vidéo(s) dans champ 'videoUrls' (upload préalable) pour produit {}",
@@ -3716,18 +3632,14 @@ pub async fn creer_service(
                     prod_processed.get("videos").and_then(|v| v.as_array())
                 {
                     videos_to_process.extend(
-                        product_videos
-                            .iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                        product_videos.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
                     );
                 }
                 // Chercher dans "video_base64" (rétrocompatibilité)
                 if let Some(video_base64) = prod_processed.get("video_base64") {
                     if let Some(video_array) = video_base64.as_array() {
                         videos_to_process.extend(
-                            video_array
-                                .iter()
-                                .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                            video_array.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
                         );
                     } else if let Some(video_str) = video_base64.as_str() {
                         videos_to_process.push(video_str.to_string());
@@ -3934,14 +3846,9 @@ pub async fn creer_service(
 
     // ✅ FALLBACK : si aucune image de service n'a été sauvegardée via les produits
     if saved_service_images.is_empty() {
-        if let Some(images) = data_processed
-            .get("base64_image")
-            .and_then(|v| v.as_array())
-        {
-            let image_strings: Vec<String> = images
-                .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect();
+        if let Some(images) = data_processed.get("base64_image").and_then(|v| v.as_array()) {
+            let image_strings: Vec<String> =
+                images.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
 
             if !image_strings.is_empty() {
                 log::info!(
@@ -4085,19 +3992,12 @@ pub async fn creer_service(
     // ✅ NOUVEAU: Support audioUrls (upload préalable) > audio_base64 (rétrocompatibilité)
     let audio_strings: Vec<String> = {
         if let Some(audio_urls) = data_processed.get("audioUrls").and_then(|v| v.as_array()) {
-            audio_urls
-                .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect()
+            audio_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
         } else {
             data_processed
                 .get("audio_base64")
                 .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                        .collect()
-                })
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
                 .unwrap_or_default()
         }
     };
@@ -4185,19 +4085,12 @@ pub async fn creer_service(
     // ✅ NOUVEAU: Support videoUrls (upload préalable) > video_base64 (rétrocompatibilité)
     let video_strings: Vec<String> = {
         if let Some(video_urls) = data_processed.get("videoUrls").and_then(|v| v.as_array()) {
-            video_urls
-                .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect()
+            video_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
         } else {
             data_processed
                 .get("video_base64")
                 .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                        .collect()
-                })
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
                 .unwrap_or_default()
         }
     };
@@ -4286,19 +4179,12 @@ pub async fn creer_service(
     // ✅ NOUVEAU: Support docUrls (upload préalable) > doc_base64 (rétrocompatibilité)
     let doc_strings: Vec<String> = {
         if let Some(doc_urls) = data_processed.get("docUrls").and_then(|v| v.as_array()) {
-            doc_urls
-                .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect()
+            doc_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
         } else {
             data_processed
                 .get("doc_base64")
                 .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                        .collect()
-                })
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
                 .unwrap_or_default()
         }
     };
@@ -4387,14 +4273,9 @@ pub async fn creer_service(
     }
 
     // Excel
-    if let Some(excels) = data_processed
-        .get("excel_base64")
-        .and_then(|v| v.as_array())
-    {
-        let excel_strings: Vec<String> = excels
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect();
+    if let Some(excels) = data_processed.get("excel_base64").and_then(|v| v.as_array()) {
+        let excel_strings: Vec<String> =
+            excels.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
 
         if !excel_strings.is_empty() {
             log::info!(
@@ -4455,10 +4336,7 @@ pub async fn creer_service(
     if let Some(map) = data_obj.as_object_mut() {
         let to_json_array = |items: &Vec<String>| -> serde_json::Value {
             serde_json::Value::Array(
-                items
-                    .iter()
-                    .map(|p| serde_json::Value::String(p.clone()))
-                    .collect(),
+                items.iter().map(|p| serde_json::Value::String(p.clone())).collect(),
             )
         };
 
@@ -4654,10 +4532,7 @@ pub async fn creer_service(
                 (Some(lat), Some(lon))
             } else {
                 // 2. Si gps=true, on attend gps_coords (string lat,lon)
-                let gps_bool = data_obj
-                    .get("gps")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+                let gps_bool = data_obj.get("gps").and_then(|v| v.as_bool()).unwrap_or(false);
                 if gps_bool {
                     if let Some(gps_coords) = data_obj.get("gps_coords").and_then(|v| v.as_str()) {
                         let parts: Vec<&str> = gps_coords.split(',').map(|s| s.trim()).collect();
@@ -4697,10 +4572,7 @@ pub async fn creer_service(
             }
         } else {
             // 2. Si gps=true, on attend gps_coords (string lat,lon)
-            let gps_bool = data_obj
-                .get("gps")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
+            let gps_bool = data_obj.get("gps").and_then(|v| v.as_bool()).unwrap_or(false);
             if gps_bool {
                 if let Some(gps_coords) = data_obj.get("gps_coords").and_then(|v| v.as_str()) {
                     let parts: Vec<&str> = gps_coords.split(',').map(|s| s.trim()).collect();
@@ -4765,17 +4637,13 @@ pub async fn creer_service(
             continue;
         }
         let type_donnee_raw = if let Some(obj) = valeur.as_object() {
-            obj.get("type_donnee")
-                .and_then(|v| v.as_str())
-                .unwrap_or("texte")
+            obj.get("type_donnee").and_then(|v| v.as_str()).unwrap_or("texte")
         } else {
             "texte"
         };
         let type_donnee = map_type_for_pinecone(type_donnee_raw);
         let value_str = if let Some(obj) = valeur.as_object() {
-            obj.get("valeur")
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| valeur.to_string())
+            obj.get("valeur").map(|v| v.to_string()).unwrap_or_else(|| valeur.to_string())
         } else {
             valeur.to_string()
         };
@@ -4994,10 +4862,8 @@ pub async fn creer_service(
                                 .collect();
 
                             // Déterminer origine_champs
-                            let origine_champs = obj
-                                .get("origine_champs")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("ia");
+                            let origine_champs =
+                                obj.get("origine_champs").and_then(|v| v.as_str()).unwrap_or("ia");
 
                             // Historiser le champ autocomplete (en arrière-plan, ne bloque pas)
                             let pool_clone = pool.clone();
@@ -5045,84 +4911,55 @@ pub async fn creer_service(
     // ✅ NOUVEAU: Sauvegarder les données Google Places complètes dans la table dédiée
     if let Some(google_place_full) = google_place_full_data {
         if let Some(gp_obj) = google_place_full.as_object() {
-            let place_id = gp_obj
-                .get("place_id")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
+            let place_id = gp_obj.get("place_id").and_then(|v| v.as_str()).map(|s| s.to_string());
 
             if let Some(pid) = place_id {
                 // Extraire toutes les données Google Places
-                let display_name = gp_obj
-                    .get("display_name")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
-                let formatted_address = gp_obj
-                    .get("formatted_address")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
+                let display_name =
+                    gp_obj.get("display_name").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let formatted_address =
+                    gp_obj.get("formatted_address").and_then(|v| v.as_str()).map(|s| s.to_string());
                 let location_vector: Vec<String> = gp_obj
                     .get("location_vector")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
                     })
                     .unwrap_or_default();
                 let coordinates = gp_obj.get("coordinates").and_then(|v| v.as_object());
-                let latitude = coordinates
-                    .and_then(|c| c.get("lat"))
-                    .and_then(|v| v.as_f64());
-                let longitude = coordinates
-                    .and_then(|c| c.get("lng"))
-                    .and_then(|v| v.as_f64());
+                let latitude = coordinates.and_then(|c| c.get("lat")).and_then(|v| v.as_f64());
+                let longitude = coordinates.and_then(|c| c.get("lng")).and_then(|v| v.as_f64());
                 let types: Vec<String> = gp_obj
                     .get("types")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
                     })
                     .unwrap_or_default();
-                let primary_type = gp_obj
-                    .get("primary_type")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
+                let primary_type =
+                    gp_obj.get("primary_type").and_then(|v| v.as_str()).map(|s| s.to_string());
                 let primary_type_display_name = gp_obj
                     .get("primary_type_display_name")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
                 let rating = gp_obj.get("rating").and_then(|v| v.as_f64());
-                let rating_count = gp_obj
-                    .get("rating_count")
-                    .and_then(|v| v.as_i64())
-                    .map(|i| i as i32);
-                let price_level = gp_obj
-                    .get("price_level")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
-                let business_status = gp_obj
-                    .get("business_status")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
+                let rating_count =
+                    gp_obj.get("rating_count").and_then(|v| v.as_i64()).map(|i| i as i32);
+                let price_level =
+                    gp_obj.get("price_level").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let business_status =
+                    gp_obj.get("business_status").and_then(|v| v.as_str()).map(|s| s.to_string());
                 let serves_cuisine: Vec<String> = gp_obj
                     .get("serves_cuisine")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
                     })
                     .unwrap_or_default();
-                let website_uri = gp_obj
-                    .get("website_uri")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
-                let google_maps_uri = gp_obj
-                    .get("google_maps_uri")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
+                let website_uri =
+                    gp_obj.get("website_uri").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let google_maps_uri =
+                    gp_obj.get("google_maps_uri").and_then(|v| v.as_str()).map(|s| s.to_string());
                 let international_phone_number = gp_obj
                     .get("international_phone_number")
                     .and_then(|v| v.as_str())
@@ -5131,21 +4968,14 @@ pub async fn creer_service(
                     .get("national_phone_number")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let editorial_summary = gp_obj
-                    .get("editorial_summary")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
+                let editorial_summary =
+                    gp_obj.get("editorial_summary").and_then(|v| v.as_str()).map(|s| s.to_string());
                 let current_opening_hours = gp_obj.get("current_opening_hours").cloned();
                 let regular_opening_hours = gp_obj.get("regular_opening_hours").cloned();
                 let photos = gp_obj.get("photos").cloned();
-                let country = gp_obj
-                    .get("country")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
-                let country_code = gp_obj
-                    .get("country_code")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
+                let country = gp_obj.get("country").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let country_code =
+                    gp_obj.get("country_code").and_then(|v| v.as_str()).map(|s| s.to_string());
 
                 // Insérer dans google_places_data
                 if let Err(e) = sqlx::query(
@@ -5264,9 +5094,7 @@ pub async fn creer_service(
         }
         // Si produits est un objet avec "valeur" contenant l'array
         else if let Some(produits_obj) = produits_value.as_object() {
-            produits_obj
-                .get("valeur")
-                .and_then(|v| v.as_array().cloned())
+            produits_obj.get("valeur").and_then(|v| v.as_array().cloned())
         } else {
             None
         }
@@ -5323,9 +5151,7 @@ pub async fn creer_service(
     let duration = start_time.elapsed();
     if let Ok(metrics) = crate::metrics::product_creation_metrics::ProductCreationMetrics::new() {
         metrics.products_created_success.inc();
-        metrics
-            .product_creation_duration
-            .observe(duration.as_secs_f64());
+        metrics.product_creation_duration.observe(duration.as_secs_f64());
         metrics.products_creation_in_progress.dec();
     }
 
@@ -5448,10 +5274,7 @@ pub async fn save_ia_combinations_to_db(
     log::info!("[save_ia_combinations_to_db] Début sauvegarde combinaisons IA");
 
     // Extraire les combinaisons depuis produits.valeur
-    let separateur = produits_field
-        .get("separateur")
-        .and_then(|v| v.as_str())
-        .unwrap_or(",");
+    let separateur = produits_field.get("separateur").and_then(|v| v.as_str()).unwrap_or(",");
 
     let separateur_owned = separateur.to_string();
 
@@ -5542,9 +5365,7 @@ pub async fn save_ia_combinations_to_db(
                         return Some(as_str.to_string());
                     }
 
-                    value
-                        .as_object()
-                        .and_then(|obj| extract_combination_from_object(obj))
+                    value.as_object().and_then(|obj| extract_combination_from_object(obj))
                 })
                 .collect()
         } else if let Some(valeur_str) = produits_field.get("valeur").and_then(|v| v.as_str()) {
@@ -5559,10 +5380,8 @@ pub async fn save_ia_combinations_to_db(
         return Ok(());
     }
 
-    let ai_preferred_index = produits_field
-        .get("ai_preferred_index")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0) as usize;
+    let ai_preferred_index =
+        produits_field.get("ai_preferred_index").and_then(|v| v.as_i64()).unwrap_or(0) as usize;
 
     // Traiter chaque combinaison
     for (index, valeur_str) in valeurs.iter().enumerate() {
@@ -5591,9 +5410,8 @@ pub async fn save_ia_combinations_to_db(
         // ✅ CORRECTION DÉFINITIVE: Mapping intelligent des valeurs aux labels
         // Au lieu de créer des labels génériques, mapper chaque valeur à sa dimension correcte
         let (mut product_labels, mut mapped_product_vector): (Vec<String>, Vec<String>) =
-            if let Some(sous_caracs) = produits_field
-                .get("sous_caracteristiques")
-                .and_then(|v| v.as_object())
+            if let Some(sous_caracs) =
+                produits_field.get("sous_caracteristiques").and_then(|v| v.as_object())
             {
                 // Construire un index inversé : valeur -> liste des dimensions possibles
                 let mut value_to_dimensions: std::collections::HashMap<String, Vec<String>> =
@@ -5913,9 +5731,8 @@ pub async fn save_ia_combinations_to_db(
                 (final_labels, final_values)
             } else {
                 // Fallback si pas de sous_caracteristiques
-                let labels = (0..product_vector.len())
-                    .map(|i| format!("caracteristique_{}", i))
-                    .collect();
+                let labels =
+                    (0..product_vector.len()).map(|i| format!("caracteristique_{}", i)).collect();
                 (labels, product_vector.clone())
             };
 
@@ -5993,11 +5810,8 @@ pub fn extract_product_vector_from_object(
 
     // 2. Si combinaison_brute existe, la splitter
     if let Some(raw) = obj.get("combinaison_brute").and_then(|v| v.as_str()) {
-        let items: Vec<String> = raw
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
+        let items: Vec<String> =
+            raw.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
         if !items.is_empty() {
             return items;
         }
@@ -6108,15 +5922,12 @@ pub async fn save_autocomplete_combination(
 
     // ✅ PHASE 1: Récupérer les produits depuis la table products au lieu de JSONB
     let products_service = ProductsService::new(std::sync::Arc::new(pool.clone()));
-    let products = products_service
-        .get_products_by_service(service_id)
-        .await
-        .map_err(|e| {
-            AppError::Internal(format!(
-                "Erreur récupération produits depuis table products: {}",
-                e
-            ))
-        })?;
+    let products = products_service.get_products_by_service(service_id).await.map_err(|e| {
+        AppError::Internal(format!(
+            "Erreur récupération produits depuis table products: {}",
+            e
+        ))
+    })?;
 
     if products.is_empty() {
         log::warn!(
@@ -6230,9 +6041,8 @@ pub async fn save_autocomplete_combination(
                     .iter()
                     .filter_map(|label| label.as_str().map(|s| s.to_string()))
                     .collect();
-            } else if let Some(sous_caracs) = product_obj
-                .get("sous_caracteristiques")
-                .and_then(|v| v.as_object())
+            } else if let Some(sous_caracs) =
+                product_obj.get("sous_caracteristiques").and_then(|v| v.as_object())
             {
                 product_labels = sous_caracs.keys().map(|k| k.to_string()).collect();
             }
@@ -6269,10 +6079,8 @@ pub async fn save_autocomplete_combination(
         let variation_prix = variation_prix_node.as_ref();
 
         if let Some(variation) = variation_prix {
-            let variant_dimension = variation
-                .get("variable")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let variant_dimension =
+                variation.get("variable").and_then(|v| v.as_str()).unwrap_or("");
 
             let modalites = variation.get("modalites").and_then(|v| v.as_array());
 
@@ -6286,16 +6094,11 @@ pub async fn save_autocomplete_combination(
                 );
 
                 for (_variant_index, modalite) in modalites_array.iter().enumerate() {
-                    let variant_value = modalite
-                        .get("valeur")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
+                    let variant_value =
+                        modalite.get("valeur").and_then(|v| v.as_str()).unwrap_or("");
                     let prix = modalite.get("prix").and_then(|v| v.as_f64()).unwrap_or(0.0);
                     let stock = modalite.get("stock").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-                    let devise = modalite
-                        .get("devise")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("XAF");
+                    let devise = modalite.get("devise").and_then(|v| v.as_str()).unwrap_or("XAF");
 
                     // Vecteur produit avec variation (sans lieu)
                     let mut variant_product_vector = product_vector.clone();
@@ -6421,9 +6224,8 @@ pub async fn save_autocomplete_combination(
                     product_vector.len()
                 );
                 // Créer des labels par défaut pour correspondre à la longueur du vecteur
-                final_product_labels = (0..product_vector.len())
-                    .map(|i| format!("caracteristique_{}", i))
-                    .collect();
+                final_product_labels =
+                    (0..product_vector.len()).map(|i| format!("caracteristique_{}", i)).collect();
             }
 
             // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
@@ -6548,17 +6350,15 @@ pub async fn save_autocomplete_combination(
             // Extraire product_labels
             let mut product_labels: Vec<String> = Vec::new();
             if let Some(original_obj) = product.product_data.as_object() {
-                if let Some(labels_array) = original_obj
-                    .get("product_labels")
-                    .and_then(|v| v.as_array())
+                if let Some(labels_array) =
+                    original_obj.get("product_labels").and_then(|v| v.as_array())
                 {
                     product_labels = labels_array
                         .iter()
                         .filter_map(|label| label.as_str().map(|s| s.to_string()))
                         .collect();
-                } else if let Some(sous_caracs) = original_obj
-                    .get("sous_caracteristiques")
-                    .and_then(|v| v.as_object())
+                } else if let Some(sous_caracs) =
+                    original_obj.get("sous_caracteristiques").and_then(|v| v.as_object())
                 {
                     product_labels = sous_caracs.keys().map(|k| k.to_string()).collect();
                 }

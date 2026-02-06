@@ -64,10 +64,7 @@ impl AIImageGenerationService {
 
         // DALL-E 3 génère 1 image par requête, donc on fait plusieurs requêtes
         for i in 0..max_count {
-            match self
-                .generate_single_image(description, i + 1, max_count)
-                .await
-            {
+            match self.generate_single_image(description, i + 1, max_count).await {
                 Ok(image_bytes) => {
                     images.push(image_bytes);
                     info!("[AIImageGeneration] ✅ Image {} générée avec succès", i + 1);
@@ -211,9 +208,7 @@ pub async fn generate_and_save_ai_images(
     );
 
     let ai_service = AIImageGenerationService::new()?;
-    let images = ai_service
-        .generate_product_images(description, count)
-        .await?;
+    let images = ai_service.generate_product_images(description, count).await?;
 
     let mut saved_media_ids = Vec::new();
 
@@ -236,10 +231,7 @@ pub async fn generate_and_save_ai_images(
         let storage_key = format!("services/{}/{}", service_id, filename);
 
         // Sauvegarder le fichier
-        match storage_service
-            .store_bytes(image_bytes, &storage_key, Some("image/jpeg"))
-            .await
-        {
+        match storage_service.store_bytes(image_bytes, &storage_key, Some("image/jpeg")).await {
             Ok(stored_location) => {
                 // Insérer dans la table media
                 let media_id: i32 = sqlx::query_scalar(

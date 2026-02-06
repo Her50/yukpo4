@@ -134,9 +134,7 @@ pub async fn enrich_location(
         } else {
             "city"
         };
-        let children = african_service
-            .get_children(pool, &params.place_name, place_type)
-            .await;
+        let children = african_service.get_children(pool, &params.place_name, place_type).await;
 
         return (
             axum::http::StatusCode::OK,
@@ -245,9 +243,7 @@ pub async fn enrich_location(
                     vec![]
                 };
 
-                let children = african_service
-                    .get_children(pool, &params.place_name, "city")
-                    .await;
+                let children = african_service.get_children(pool, &params.place_name, "city").await;
 
                 return (
                     axum::http::StatusCode::OK,
@@ -341,20 +337,8 @@ pub async fn enrich_location(
     .bind(is_leaf)
     .bind(&parent_country)
     .bind(&parent_country_code)
-    .bind(
-        google_data
-            .coordinates
-            .as_ref()
-            .map(|c| c.lat)
-            .unwrap_or(0.0),
-    )
-    .bind(
-        google_data
-            .coordinates
-            .as_ref()
-            .map(|c| c.lng)
-            .unwrap_or(0.0),
-    )
+    .bind(google_data.coordinates.as_ref().map(|c| c.lat).unwrap_or(0.0))
+    .bind(google_data.coordinates.as_ref().map(|c| c.lng).unwrap_or(0.0))
     .execute(pool)
     .await
     {
@@ -384,9 +368,7 @@ pub async fn enrich_location(
     } else {
         "city"
     };
-    let children = african_service
-        .get_children(pool, &params.place_name, place_type_str)
-        .await;
+    let children = african_service.get_children(pool, &params.place_name, place_type_str).await;
 
     (
         axum::http::StatusCode::OK,
@@ -402,16 +384,8 @@ pub async fn enrich_location(
                 admin_level,
             },
             coordinates: Coordinates {
-                lat: google_data
-                    .coordinates
-                    .as_ref()
-                    .map(|c| c.lat)
-                    .unwrap_or(0.0),
-                lng: google_data
-                    .coordinates
-                    .as_ref()
-                    .map(|c| c.lng)
-                    .unwrap_or(0.0),
+                lat: google_data.coordinates.as_ref().map(|c| c.lat).unwrap_or(0.0),
+                lng: google_data.coordinates.as_ref().map(|c| c.lng).unwrap_or(0.0),
             },
             metadata: LocationMetadata {
                 country: parent_country,

@@ -121,10 +121,7 @@ pub async fn get_payment_history(
     let limit = params.limit.unwrap_or(20).min(100); // Limite max de 100
     let offset = params.offset.unwrap_or(0);
 
-    match payment_service
-        .get_payment_history(user_id, limit, offset)
-        .await
-    {
+    match payment_service.get_payment_history(user_id, limit, offset).await {
         Ok(history) => Json(PaymentHistoryResponse {
             success: true,
             data: Some(history),
@@ -250,14 +247,10 @@ pub async fn get_payment_stats(
             let total_transactions = history.len();
             let total_amount: f64 = history.iter().map(|p| p.amount).sum();
             let total_tokens: i32 = history.iter().map(|p| p.total_tokens).sum();
-            let successful_transactions = history
-                .iter()
-                .filter(|p| matches!(p.status, PaymentStatus::Completed))
-                .count();
-            let failed_transactions = history
-                .iter()
-                .filter(|p| matches!(p.status, PaymentStatus::Failed))
-                .count();
+            let successful_transactions =
+                history.iter().filter(|p| matches!(p.status, PaymentStatus::Completed)).count();
+            let failed_transactions =
+                history.iter().filter(|p| matches!(p.status, PaymentStatus::Failed)).count();
 
             let stats = serde_json::json!({
                 "success": true,

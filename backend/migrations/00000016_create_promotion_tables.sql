@@ -51,3 +51,5 @@ CREATE TABLE IF NOT EXISTS global_promo_products (
 CREATE INDEX IF NOT EXISTS idx_global_promo_products_entry ON global_promo_products(promo_entry_id);
 CREATE INDEX IF NOT EXISTS idx_global_promo_products_data_gin ON global_promo_products USING GIN(product_data);
 
+
+

@@ -39,11 +39,7 @@ mod end_to_end_workflow {
             "postgres://postgres:Hernandez87@localhost/yukpomnang_test".to_string()
         });
 
-        let pool = match PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&database_url)
-            .await
-        {
+        let pool = match PgPoolOptions::new().max_connections(5).connect(&database_url).await {
             Ok(pool) => pool,
             Err(err) => {
                 eprintln!(
@@ -474,10 +470,7 @@ mod end_to_end_workflow {
         .expect("[e2e] récupération catalogue Global Promo");
 
         assert!(
-            catalog
-                .items
-                .iter()
-                .any(|item| item.entry.service_id == service_id),
+            catalog.items.iter().any(|item| item.entry.service_id == service_id),
             "[e2e] le service doit apparaître dans le catalogue Global Promo"
         );
     }

@@ -279,3 +279,5 @@ sqlx::migrate!("./migrations").run(&pg_pool).await?;
 2. **Moyen terme** : Planifier la division du fichier consolidé
 3. **Long terme** : Migrer complètement vers SQLx standard
 
+
+

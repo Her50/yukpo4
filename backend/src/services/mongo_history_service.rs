@@ -287,11 +287,7 @@ impl MongoHistoryService {
         // Index sur service_id (critique pour get_service_stats et get_reviews)
         let service_id_index = IndexModel::builder()
             .keys(doc! { "service_id": 1 })
-            .options(
-                IndexOptions::builder()
-                    .name(Some("idx_service_id".to_string()))
-                    .build(),
-            )
+            .options(IndexOptions::builder().name(Some("idx_service_id".to_string())).build())
             .build();
 
         // Index composé pour les requêtes d'agrégation (service_id + event_type + interaction_type)
@@ -311,11 +307,7 @@ impl MongoHistoryService {
         // Index sur timestamp pour tri et nettoyage
         let timestamp_index = IndexModel::builder()
             .keys(doc! { "timestamp": -1 })
-            .options(
-                IndexOptions::builder()
-                    .name(Some("idx_timestamp".to_string()))
-                    .build(),
-            )
+            .options(IndexOptions::builder().name(Some("idx_timestamp".to_string())).build())
             .build();
 
         // Créer les index (ignore les erreurs si déjà existants)
@@ -398,13 +390,10 @@ impl MongoHistoryService {
 
     pub async fn ping(&self) -> AppResult<()> {
         let database = self.client.database(&self.database_name);
-        database
-            .run_command(doc! { "ping": 1 }, None)
-            .await
-            .map_err(|e| {
-                error!("[MongoHistory] Ping échoué: {}", e);
-                AppError::Internal(format!("MongoDB ping failed: {}", e))
-            })?;
+        database.run_command(doc! { "ping": 1 }, None).await.map_err(|e| {
+            error!("[MongoHistory] Ping échoué: {}", e);
+            AppError::Internal(format!("MongoDB ping failed: {}", e))
+        })?;
         Ok(())
     }
 

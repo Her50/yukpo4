@@ -8,10 +8,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/yukpo_db".to_string());
 
     println!("🔍 Connexion à la base de données...");
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await?;
+    let pool = PgPoolOptions::new().max_connections(5).connect(&database_url).await?;
 
     println!("✅ Connexion réussie !");
     println!("\n📊 Vérification des services...\n");
@@ -43,9 +40,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n📈 Statistiques générales:");
 
     // Compter tous les services
-    let total_count = sqlx::query!("SELECT COUNT(*) as count FROM services")
-        .fetch_one(&pool)
-        .await?;
+    let total_count =
+        sqlx::query!("SELECT COUNT(*) as count FROM services").fetch_one(&pool).await?;
     println!("   Total des services: {}", total_count.count.unwrap_or(0));
 
     // Compter les services actifs

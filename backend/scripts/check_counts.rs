@@ -15,18 +15,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Connexion à la base de données...");
 
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await?;
+    let pool = PgPoolOptions::new().max_connections(5).connect(&database_url).await?;
 
     info!("✅ Connexion PostgreSQL établie.");
     println!();
 
     // Compter les effets
-    let effects_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM effects")
-        .fetch_one(&pool)
-        .await?;
+    let effects_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM effects").fetch_one(&pool).await?;
     println!("📊 Total effets: {}", effects_count);
 
     if effects_count >= 100 {

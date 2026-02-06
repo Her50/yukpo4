@@ -141,17 +141,12 @@ impl TaxiDemandPredictionService {
         let historical_data = self.get_historical_data(zone, &period).await?;
 
         // 2. Calculer features
-        let features = self
-            .calculate_features(zone, &target, &historical_data)
-            .await?;
+        let features = self.calculate_features(zone, &target, &historical_data).await?;
 
         // 3. Prédiction (priorité: ML > IA > Fallback)
         let prediction = if let Some(ml_models) = &self.ml_models {
             // Essayer ML d'abord
-            match self
-                .predict_with_ml(ml_models, &features, zone, &target)
-                .await
-            {
+            match self.predict_with_ml(ml_models, &features, zone, &target).await {
                 Ok(pred) => {
                     self.ml_predictions.fetch_add(1, Ordering::Relaxed);
                     pred
@@ -254,10 +249,7 @@ impl TaxiDemandPredictionService {
         historical_data: &HistoricalData,
     ) -> AppResult<DemandPrediction> {
         if let Some(app_ia) = &self.app_ia {
-            match self
-                .predict_with_ai(app_ia, features, zone, target, historical_data)
-                .await
-            {
+            match self.predict_with_ai(app_ia, features, zone, target, historical_data).await {
                 Ok(pred) => {
                     self.ai_predictions.fetch_add(1, Ordering::Relaxed);
                     return Ok(pred);
@@ -270,8 +262,7 @@ impl TaxiDemandPredictionService {
 
         // Fallback: Prédiction basique basée sur historique
         self.fallback_predictions.fetch_add(1, Ordering::Relaxed);
-        self.predict_fallback(features, zone, target, historical_data)
-            .await
+        self.predict_fallback(features, zone, target, historical_data).await
     }
 
     /// Prédiction avec IA
@@ -352,11 +343,7 @@ Retourne UNIQUEMENT un JSON avec:
         let peak_hours: Vec<u8> = prediction_json
             .get("peak_hours")
             .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_u64().map(|u| u as u8))
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|u| u as u8)).collect())
             .unwrap_or_default();
 
         // Si peak_hours est vide, calculer avec identify_peak_hours
@@ -381,11 +368,7 @@ Retourne UNIQUEMENT un JSON avec:
         let factors = prediction_json
             .get("factors")
             .and_then(|v| v.as_object())
-            .map(|obj| {
-                obj.iter()
-                    .filter_map(|(k, v)| v.as_f64().map(|f| (k.clone(), f)))
-                    .collect()
-            })
+            .map(|obj| obj.iter().filter_map(|(k, v)| v.as_f64().map(|f| (k.clone(), f))).collect())
             .unwrap_or_default();
 
         Ok(DemandPrediction {
@@ -427,17 +410,14 @@ Retourne UNIQUEMENT un JSON avec:
             + weekend_adjustment)
             .max(0.0);
 
-        let peak_hours = self
-            .identify_peak_hours(features)
-            .await
-            .unwrap_or_else(|_| {
-                // Heures de pic par défaut
-                if features.is_weekend {
-                    vec![10, 11, 12, 18, 19, 20]
-                } else {
-                    vec![7, 8, 9, 17, 18, 19]
-                }
-            });
+        let peak_hours = self.identify_peak_hours(features).await.unwrap_or_else(|_| {
+            // Heures de pic par défaut
+            if features.is_weekend {
+                vec![10, 11, 12, 18, 19, 20]
+            } else {
+                vec![7, 8, 9, 17, 18, 19]
+            }
+        });
 
         Ok(DemandPrediction {
             zone: zone.clone(),
@@ -571,9 +551,7 @@ Retourne UNIQUEMENT un JSON avec:
         let is_holiday = false;
 
         // Facteur météo (utiliser service météo existant)
-        let weather_factor = self
-            .get_weather_factor(zone.latitude, zone.longitude)
-            .await?;
+        let weather_factor = self.get_weather_factor(zone.latitude, zone.longitude).await?;
 
         // Facteur événements (à implémenter avec base événements)
         let event_factor = self.get_event_factor(zone, target).await?;

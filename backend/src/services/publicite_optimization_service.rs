@@ -298,19 +298,14 @@ async fn analyze_placements(
 
     if !placement_perf.is_empty() {
         let best_placement: String = placement_perf[0].get::<String, _>("placement");
-        let best_conversion: f64 = placement_perf[0]
-            .get::<Option<f64>, _>("avg_conversion")
-            .unwrap_or(0.0);
+        let best_conversion: f64 =
+            placement_perf[0].get::<Option<f64>, _>("avg_conversion").unwrap_or(0.0);
 
         // Vérifier si le meilleur placement est utilisé
         let current_placements: Vec<String> = placements_array
             .unwrap()
             .iter()
-            .filter_map(|p| {
-                p.get("type")
-                    .and_then(|t| t.as_str())
-                    .map(|s| s.to_string())
-            })
+            .filter_map(|p| p.get("type").and_then(|t| t.as_str()).map(|s| s.to_string()))
             .collect();
 
         if !current_placements.contains(&best_placement) {
@@ -347,10 +342,7 @@ async fn analyze_bid_strategy(
     clics: i32,
     _campaign_id: i32,
 ) -> Result<Option<OptimizationSuggestion>, sqlx::Error> {
-    let strategy_type = bid_strategy
-        .get("type")
-        .and_then(|v| v.as_str())
-        .unwrap_or("auto");
+    let strategy_type = bid_strategy.get("type").and_then(|v| v.as_str()).unwrap_or("auto");
 
     // Si stratégie auto mais performances faibles, suggérer CPC manuel
     if strategy_type == "auto" && vues > 0 {

@@ -54,20 +54,16 @@ impl CovoiturageMatchingService {
 
         // Recherche de base (GPS si disponible, sinon texte)
         let base_trips = if let (Some(lat), Some(lng)) = (lat, lng) {
-            self.search_trips_gps(lat, lng, radius_km.unwrap_or(50.0), &date_depart)
-                .await?
+            self.search_trips_gps(lat, lng, radius_km.unwrap_or(50.0), &date_depart).await?
         } else {
-            self.search_trips_text(depart, destination, &date_depart)
-                .await?
+            self.search_trips_text(depart, destination, &date_depart).await?
         };
 
         // Calculer score de compatibilité pour chaque trajet
         let mut matches: Vec<TripMatch> = Vec::new();
 
         for trip in base_trips {
-            let score = self
-                .calculate_compatibility_score(&trip, passenger_prefs)
-                .await?;
+            let score = self.calculate_compatibility_score(&trip, passenger_prefs).await?;
 
             if score.compatibility_score > 0.0 {
                 matches.push(score);

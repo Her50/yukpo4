@@ -235,3 +235,5 @@ $$ LANGUAGE plpgsql;
 COMMENT ON TABLE pixel_events IS 'Événements de tracking pixel pour retargeting et audiences';
 COMMENT ON TABLE publicite_audiences IS 'Audiences personnalisées et lookalike pour publicités';
 
+
+

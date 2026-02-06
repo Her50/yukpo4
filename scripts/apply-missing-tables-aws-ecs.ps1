@@ -170,3 +170,4 @@ Write-Host "      cargo run --bin apply_missing_tables_aws --release" -Foregroun
 
 
 
+

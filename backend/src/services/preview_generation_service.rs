@@ -101,10 +101,7 @@ pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> Vid
         })
         .collect();
 
-    let total_duration = scenes
-        .iter()
-        .map(|s| s.start_time + s.duration)
-        .fold(0.0, f64::max);
+    let total_duration = scenes.iter().map(|s| s.start_time + s.duration).fold(0.0, f64::max);
 
     VideoTimeline {
         total_duration,
@@ -342,10 +339,7 @@ pub async fn generate_quick_preview(
     };
 
     // ✅ CORRIGÉ: Collecter tous les médias uniques et créer un mapping
-    let media_count = preview_scenes
-        .iter()
-        .filter(|scene| scene.media_url.is_some())
-        .count();
+    let media_count = preview_scenes.iter().filter(|scene| scene.media_url.is_some()).count();
 
     if media_count == 0 {
         let scene_details: Vec<String> = preview_scenes
@@ -557,11 +551,8 @@ pub async fn generate_quick_preview(
                     .output()
                     .await;
 
-                let preview_duration = preview_scenes
-                    .iter()
-                    .map(|s| s.duration)
-                    .sum::<f64>()
-                    .min(max_duration);
+                let preview_duration =
+                    preview_scenes.iter().map(|s| s.duration).sum::<f64>().min(max_duration);
 
                 info!("[QuickPreview] ✅ Preview généré en {}ms", processing_time);
 
@@ -589,19 +580,16 @@ pub async fn generate_quick_preview(
                     let ttl = get_preview_ttl(quality);
 
                     // Obtenir la taille du fichier si possible
-                    let file_size = fs::metadata(&output_path)
-                        .ok()
-                        .and_then(|m| m.len().try_into().ok());
+                    let file_size =
+                        fs::metadata(&output_path).ok().and_then(|m| m.len().try_into().ok());
 
                     let cached = CachedPreview {
                         preview_url: output_path,
                         preview_duration,
                         quality: quality.to_string(),
                         thumbnail_url: Some(thumbnail_path),
-                        created_at: SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs() as i64,
+                        created_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+                            as i64,
                         access_count: 0,
                         file_size,
                     };

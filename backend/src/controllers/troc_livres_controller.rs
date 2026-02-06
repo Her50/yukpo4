@@ -30,10 +30,7 @@ pub async fn find_matchings(
     let service = Service::new(Arc::new(state.pg.clone()));
 
     // Rechercher les matchings directs
-    let matchings_direct = service
-        .find_matching_direct(payload.livre_id)
-        .await
-        .unwrap_or_default();
+    let matchings_direct = service.find_matching_direct(payload.livre_id).await.unwrap_or_default();
 
     // Rechercher les chaînes si demandé
     let matchings_chaine = if payload.include_chaines.unwrap_or(true) {

@@ -167,3 +167,5 @@ Write-Host "Note: Pour une execution automatique, utilisez AWS Systems Manager R
 Write-Host "   ou connectez-vous manuellement via SSM Session Manager" -ForegroundColor Yellow
 
 
+
+

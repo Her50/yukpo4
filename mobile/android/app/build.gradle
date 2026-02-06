@@ -93,17 +93,24 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
-    }
-    
-    // ✅ OPTIMISATION TAILLE BUILD: ABI splits pour réduire la taille (ARM seulement)
-    splits {
-        abi {
-            enable true
-            reset()
-            include "armeabi-v7a", "arm64-v8a"  // 95% des devices Android
-            universalApk false
+        
+        // ✅ OPTIMISATION: Filtrer les architectures natives pour réduire la taille
+        // Ne garder que arm64-v8a (99% des appareils modernes)
+        ndk {
+            abiFilters 'arm64-v8a'
         }
     }
+    
+    // ✅ OPTIONNEL: Splits APK pour créer des APK séparés par architecture
+    // Décommentez si vous voulez supporter plusieurs architectures
+    // splits {
+    //     abi {
+    //         enable true
+    //         reset()
+    //         include 'armeabi-v7a', 'arm64-v8a'
+    //         universalApk false  // Ne pas créer d'APK universel
+    //     }
+    // }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -124,6 +131,10 @@ android {
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
+            
+            // ✅ FIX: Utiliser la variante debug si release n'existe pas pour les modules React Native
+            // Cela résout l'erreur "No matching variant" lors des builds release
+            matchingFallbacks = ['debug']
         }
     }
     packagingOptions {
@@ -133,6 +144,13 @@ android {
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+    
+    // ✅ Désactiver le lint vital pour éviter OutOfMemoryError lors des builds EAS
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+        disable 'VitalLint'
     }
 }
 

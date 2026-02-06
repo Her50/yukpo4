@@ -66,10 +66,8 @@ impl PaymentMatchingService {
         let merchant_methods = self.get_merchant_payment_methods(merchant_user_id).await?;
 
         // 2. Extraire type de paiement client
-        let client_type = client_payment_method
-            .get("type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("wallet");
+        let client_type =
+            client_payment_method.get("type").and_then(|v| v.as_str()).unwrap_or("wallet");
 
         // 3. Matching intelligent
         match client_type {
@@ -127,9 +125,7 @@ impl PaymentMatchingService {
                 .fetch_optional(&self.pool)
                 .await?;
 
-        let payment_methods_json = row
-            .and_then(|r| r.payment_methods)
-            .unwrap_or_else(|| json!({}));
+        let payment_methods_json = row.and_then(|r| r.payment_methods).unwrap_or_else(|| json!({}));
 
         let mtn_money = payment_methods_json.get("mtn_money").and_then(|v| {
             Some(MtnMoneyConfig {
@@ -349,17 +345,11 @@ impl PaymentMatchingService {
 
         if let Some(record) = row {
             if record.payment_method.is_none()
-                || record
-                    .payment_method
-                    .as_ref()
-                    .map(|v| v.is_null())
-                    .unwrap_or(true)
+                || record.payment_method.as_ref().map(|v| v.is_null()).unwrap_or(true)
             {
                 Ok(json!({"type": "wallet"}))
             } else {
-                Ok(record
-                    .payment_method
-                    .unwrap_or_else(|| json!({"type": "wallet"})))
+                Ok(record.payment_method.unwrap_or_else(|| json!({"type": "wallet"})))
             }
         } else {
             // Pas de transaction trouvée → par défaut wallet

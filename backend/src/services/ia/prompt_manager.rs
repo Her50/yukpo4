@@ -79,23 +79,18 @@ impl PromptManager {
 
     /// Obtient le prompt optimis? pour une intention
     pub async fn get_optimized_prompt(&self, intention: &str, user_input: &str) -> String {
-        self.get_intention_prompt(intention, user_input)
-            .unwrap_or_else(|| {
-                // Fallback vers le prompt g?n?ral si l'intention n'est pas trouv?e
-                self.prompts
-                    .get("assistance_generale")
-                    .map(|p| p.replace("{user_input}", user_input))
-                    .unwrap_or_else(|| format!("Question: {}", user_input))
-            })
+        self.get_intention_prompt(intention, user_input).unwrap_or_else(|| {
+            // Fallback vers le prompt g?n?ral si l'intention n'est pas trouv?e
+            self.prompts
+                .get("assistance_generale")
+                .map(|p| p.replace("{user_input}", user_input))
+                .unwrap_or_else(|| format!("Question: {}", user_input))
+        })
     }
 
     /// Liste toutes les intentions support?es
     pub fn get_supported_intentions(&self) -> Vec<String> {
-        self.prompts
-            .keys()
-            .filter(|k| *k != "intention_detection")
-            .cloned()
-            .collect()
+        self.prompts.keys().filter(|k| *k != "intention_detection").cloned().collect()
     }
 }
 

@@ -102,10 +102,7 @@ impl GeographicMatchingService {
         // Calculer la distance
         let result = if self.use_google_maps {
             // Essayer Google Maps Distance Matrix API pour une distance routière précise
-            match self
-                .calculate_distance_google_maps(origin, destination)
-                .await
-            {
+            match self.calculate_distance_google_maps(origin, destination).await {
                 Ok(google_result) => {
                     log::debug!(
                         "[GeographicMatching] Distance Google Maps: {}m",
@@ -244,12 +241,8 @@ impl GeographicMatchingService {
         }
 
         let client = reqwest::Client::new();
-        let response = client
-            .get(&url)
-            .timeout(Duration::from_secs(10))
-            .send()
-            .await
-            .map_err(|e| {
+        let response =
+            client.get(&url).timeout(Duration::from_secs(10)).send().await.map_err(|e| {
                 AppError::Internal(format!("Erreur requête Google Maps Directions: {}", e))
             })?;
 
@@ -268,12 +261,9 @@ impl GeographicMatchingService {
 
             if let Some(routes) = data.get("routes").and_then(|r| r.as_array()) {
                 if let Some(route) = routes.first() {
-                    let legs = route
-                        .get("legs")
-                        .and_then(|l| l.as_array())
-                        .ok_or_else(|| {
-                            AppError::Internal("Aucune étape trouvée dans la route".to_string())
-                        })?;
+                    let legs = route.get("legs").and_then(|l| l.as_array()).ok_or_else(|| {
+                        AppError::Internal("Aucune étape trouvée dans la route".to_string())
+                    })?;
 
                     let mut total_distance_meters = 0.0;
                     let mut total_duration_seconds = 0.0;
@@ -411,11 +401,7 @@ impl GeographicMatchingService {
         );
 
         // Essayer le cache (TTL court car les positions changent)
-        if let Some(cached) = self
-            .cache_service
-            .get::<Vec<CourierLocation>>(&cache_key)
-            .await?
-        {
+        if let Some(cached) = self.cache_service.get::<Vec<CourierLocation>>(&cache_key).await? {
             log::debug!(
                 "[GeographicMatching] Coursiers récupérés du cache: {}",
                 cached.len()

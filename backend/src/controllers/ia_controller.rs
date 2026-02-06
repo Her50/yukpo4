@@ -1150,10 +1150,7 @@ lazy_static::lazy_static! {
 pub async fn record_unsupported_effect(effect_name: &str) {
     let mut metrics = EFFECT_METRICS.write().await;
     metrics.total_unsupported_effects += 1;
-    *metrics
-        .unsupported_effects_by_name
-        .entry(effect_name.to_string())
-        .or_insert(0) += 1;
+    *metrics.unsupported_effects_by_name.entry(effect_name.to_string()).or_insert(0) += 1;
     metrics.last_updated = Some(chrono::Utc::now());
 }
 

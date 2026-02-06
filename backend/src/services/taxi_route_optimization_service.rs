@@ -88,9 +88,7 @@ impl TaxiRouteOptimizationService {
         // Si pas de waypoints, route simple
         let waypoints = waypoints.unwrap_or_default();
         if waypoints.is_empty() {
-            return self
-                .optimize_simple_route(origin, destination, preferences)
-                .await;
+            return self.optimize_simple_route(origin, destination, preferences).await;
         }
 
         // Optimisation multi-points (VRP)
@@ -117,24 +115,18 @@ impl TaxiRouteOptimizationService {
         let duration_minutes = (distance_km / 0.5) as i32; // 0.5 km/min = 30 km/h
 
         // Info trafic (simplifié)
-        let traffic_info = if preferences
-            .as_ref()
-            .and_then(|p| p.use_ml_prediction)
-            .unwrap_or(false)
-        {
-            Some(self.predict_traffic(origin, destination).await?)
-        } else {
-            None
-        };
+        let traffic_info =
+            if preferences.as_ref().and_then(|p| p.use_ml_prediction).unwrap_or(false) {
+                Some(self.predict_traffic(origin, destination).await?)
+            } else {
+                None
+            };
 
         Ok(OptimizedRoute {
             waypoints_order: vec![0],
             total_distance_km: distance_km,
             total_duration_minutes: duration_minutes
-                + traffic_info
-                    .as_ref()
-                    .map(|t| t.predicted_delay_minutes)
-                    .unwrap_or(0),
+                + traffic_info.as_ref().map(|t| t.predicted_delay_minutes).unwrap_or(0),
             estimated_cost: None,
             route_points: vec![origin.clone(), destination.clone()],
             polyline: None,
@@ -163,8 +155,7 @@ impl TaxiRouteOptimizationService {
         }
 
         // Fallback: Optimisation locale (greedy nearest neighbor)
-        self.optimize_local_vrp(origin, destination, waypoints, preferences)
-            .await
+        self.optimize_local_vrp(origin, destination, waypoints, preferences).await
     }
 
     /// Optimiser avec Google Maps API
@@ -256,11 +247,7 @@ impl TaxiRouteOptimizationService {
         let waypoint_order: Vec<usize> = route
             .get("waypoint_order")
             .and_then(|w| w.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_u64().map(|u| u as usize))
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|u| u as usize)).collect())
             .unwrap_or_else(|| (0..waypoints.len()).collect());
 
         let polyline = route

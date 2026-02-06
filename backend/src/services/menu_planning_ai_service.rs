@@ -22,26 +22,14 @@ fn clean_json_response(response: &str) -> String {
 
     // Enlever les markdown code blocks au début
     if cleaned.starts_with("```json") {
-        cleaned = cleaned
-            .strip_prefix("```json")
-            .unwrap_or(&cleaned)
-            .trim()
-            .to_string();
+        cleaned = cleaned.strip_prefix("```json").unwrap_or(&cleaned).trim().to_string();
     } else if cleaned.starts_with("```") {
-        cleaned = cleaned
-            .strip_prefix("```")
-            .unwrap_or(&cleaned)
-            .trim()
-            .to_string();
+        cleaned = cleaned.strip_prefix("```").unwrap_or(&cleaned).trim().to_string();
     }
 
     // Enlever les markdown code blocks à la fin
     if cleaned.ends_with("```") {
-        cleaned = cleaned
-            .strip_suffix("```")
-            .unwrap_or(&cleaned)
-            .trim()
-            .to_string();
+        cleaned = cleaned.strip_suffix("```").unwrap_or(&cleaned).trim().to_string();
     }
 
     // ✅ NOUVEAU: Compléter le JSON si tronqué
@@ -1054,11 +1042,7 @@ RÉPONSE ATTENDUE (JSON strict) :
         let suggestions: Vec<RecipeSuggestion> = result
             .get("suggestions")
             .and_then(|s| s.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| serde_json::from_value(v.clone()).ok())
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| serde_json::from_value(v.clone()).ok()).collect())
             .unwrap_or_default();
 
         Ok(suggestions)
@@ -1510,12 +1494,9 @@ IMPORTANT :
         })?;
 
         // Extraire les items de la liste
-        let items = parsed
-            .get("items")
-            .and_then(|v| v.as_array())
-            .ok_or_else(|| {
-                AppError::Internal("Format réponse IA invalide: items manquant".to_string())
-            })?;
+        let items = parsed.get("items").and_then(|v| v.as_array()).ok_or_else(|| {
+            AppError::Internal("Format réponse IA invalide: items manquant".to_string())
+        })?;
 
         let shopping_items: Vec<ShoppingListItem> = items
             .iter()

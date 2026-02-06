@@ -19,13 +19,10 @@ pub struct AuthUser {
 
 /// Extrait et valide le token d'authentification depuis les headers
 pub fn extract_auth_user(headers: &HeaderMap) -> Result<AuthUser, (StatusCode, String)> {
-    let auth_header = headers
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .ok_or((
-            StatusCode::UNAUTHORIZED,
-            "Missing Authorization header".to_string(),
-        ))?;
+    let auth_header = headers.get("Authorization").and_then(|h| h.to_str().ok()).ok_or((
+        StatusCode::UNAUTHORIZED,
+        "Missing Authorization header".to_string(),
+    ))?;
 
     let token = auth_header.strip_prefix("Bearer ").ok_or((
         StatusCode::UNAUTHORIZED,

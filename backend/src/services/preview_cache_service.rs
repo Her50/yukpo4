@@ -63,10 +63,7 @@ pub async fn get_cached_preview(
     pool: &PgPool,
     cache_key: &str,
 ) -> AppResult<Option<CachedPreview>> {
-    let _now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
+    let _now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
 
     // Vérifier si la preview est en cache et non expirée
     let result = sqlx::query_scalar::<_, Option<Value>>(

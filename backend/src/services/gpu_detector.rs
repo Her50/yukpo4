@@ -39,9 +39,7 @@ impl GPUDetector {
         let cuda_available =
             env::var("CUDA_HOME").is_ok() || env::var("CUDA_PATH").is_ok() || has_gpu;
 
-        let memory_gb = env::var("GPU_MEMORY_GB")
-            .ok()
-            .and_then(|s| s.parse::<u32>().ok());
+        let memory_gb = env::var("GPU_MEMORY_GB").ok().and_then(|s| s.parse::<u32>().ok());
 
         Self {
             has_gpu,

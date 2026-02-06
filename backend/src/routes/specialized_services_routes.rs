@@ -921,8 +921,5 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .with_state(state.clone());
 
     // Combiner routes publiques et protégées
-    Router::new()
-        .merge(public_routes)
-        .merge(protected_routes)
-        .with_state(state)
+    Router::new().merge(public_routes).merge(protected_routes).with_state(state)
 }

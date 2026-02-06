@@ -216,10 +216,7 @@ pub async fn get_ticket_rating_stats(
     Query(params): Query<serde_json::Value>,
 ) -> AppResult<impl IntoResponse> {
     let product_id = params.get("product_id").and_then(|v| v.as_str());
-    let agency_id = params
-        .get("agency_id")
-        .and_then(|v| v.as_i64())
-        .map(|v| v as i32);
+    let agency_id = params.get("agency_id").and_then(|v| v.as_i64()).map(|v| v as i32);
 
     info!(
         "[get_ticket_rating_stats] Product: {:?}, Agency: {:?}",
@@ -262,13 +259,10 @@ pub async fn get_ticket_rating_stats(
         "#,
     );
 
-    let row = sqlx::query(&query)
-        .fetch_one(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[get_ticket_rating_stats] Erreur: {}", e);
-            AppError::Internal(format!("Erreur récupération stats: {}", e))
-        })?;
+    let row = sqlx::query(&query).fetch_one(&state.pg).await.map_err(|e| {
+        error!("[get_ticket_rating_stats] Erreur: {}", e);
+        AppError::Internal(format!("Erreur récupération stats: {}", e))
+    })?;
 
     let average_rating: Option<f64> = row.get("average_rating");
     let total_ratings: i32 = row.get("total_ratings");

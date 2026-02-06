@@ -29,8 +29,5 @@ pub fn flash_promo_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .layer(middleware::from_fn(jwt_auth));
 
-    Router::new()
-        .merge(public_routes)
-        .merge(protected_routes)
-        .with_state(state)
+    Router::new().merge(public_routes).merge(protected_routes).with_state(state)
 }

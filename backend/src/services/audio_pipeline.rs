@@ -101,11 +101,7 @@ pub async fn mix_media_audio_tracks(
     let mut args: Vec<String> = vec![
         "-y".to_string(),
         "-i".to_string(),
-        base_video_path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string(),
+        base_video_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
     ];
 
     if let Some(track) = music_track {
@@ -213,11 +209,7 @@ pub async fn mix_media_audio_tracks(
         "[a_final]".to_string(),
         "-c:a".to_string(),
         "pcm_s16le".to_string(),
-        mixed_audio_path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string(),
+        mixed_audio_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
     ]);
 
     info!("[AudioPipeline] mix command: ffmpeg {}", args.join(" "));

@@ -217,9 +217,8 @@ pub async fn exchange_youtube_code(
 
     let payload: GoogleTokenResponse = response.json().await?;
 
-    let expires_at = payload
-        .expires_in
-        .map(|seconds| Utc::now() + Duration::seconds(seconds as i64));
+    let expires_at =
+        payload.expires_in.map(|seconds| Utc::now() + Duration::seconds(seconds as i64));
 
     let metadata = serde_json::json!({
         "token_type": payload.token_type,

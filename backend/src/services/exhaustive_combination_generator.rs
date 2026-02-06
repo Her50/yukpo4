@@ -68,11 +68,7 @@ impl ExhaustiveCombinationGenerator {
             .and_then(|s| s.as_array())
         {
             for dep in deps {
-                let id = dep
-                    .get("id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown")
-                    .to_string();
+                let id = dep.get("id").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
 
                 let dims: Vec<String> = dep["dimensions"]
                     .as_array()
@@ -84,10 +80,7 @@ impl ExhaustiveCombinationGenerator {
                     .map(String::from)
                     .collect();
 
-                let explanation = dep
-                    .get("explanation")
-                    .and_then(|v| v.as_str())
-                    .map(String::from);
+                let explanation = dep.get("explanation").and_then(|v| v.as_str()).map(String::from);
 
                 let combos: Vec<Vec<String>> = dep["valid_combinations"]
                     .as_array()
@@ -95,10 +88,7 @@ impl ExhaustiveCombinationGenerator {
                     .iter()
                     .filter_map(|combo| {
                         combo.as_array().map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str())
-                                .map(String::from)
-                                .collect()
+                            arr.iter().filter_map(|v| v.as_str()).map(String::from).collect()
                         })
                     })
                     .collect();
@@ -136,11 +126,8 @@ impl ExhaustiveCombinationGenerator {
 
     /// Estimer le nombre total de combinaisons
     pub fn estimate_total_combinations(&self) -> usize {
-        let dependent_dims: HashSet<String> = self
-            .dependencies
-            .iter()
-            .flat_map(|d| d.dimensions.clone())
-            .collect();
+        let dependent_dims: HashSet<String> =
+            self.dependencies.iter().flat_map(|d| d.dimensions.clone()).collect();
 
         // Calculer le produit cartésien des tuples dépendants
         let mut dependent_tuples_count = 1;
@@ -167,11 +154,8 @@ impl ExhaustiveCombinationGenerator {
         let mut result = Vec::new();
 
         // Identifier dimensions indépendantes
-        let dependent_dims: HashSet<String> = self
-            .dependencies
-            .iter()
-            .flat_map(|d| d.dimensions.clone())
-            .collect();
+        let dependent_dims: HashSet<String> =
+            self.dependencies.iter().flat_map(|d| d.dimensions.clone()).collect();
 
         let independent_dims: Vec<String> = self
             .dimensions

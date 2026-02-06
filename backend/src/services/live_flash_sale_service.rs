@@ -304,10 +304,7 @@ impl LiveFlashSaleService {
             "timestamp": chrono::Utc::now(),
         });
 
-        if let Err(e) = conn
-            .publish::<_, _, ()>(&channel, message.to_string())
-            .await
-        {
+        if let Err(e) = conn.publish::<_, _, ()>(&channel, message.to_string()).await {
             log::debug!(
                 "⚠️ Impossible de publier mise à jour stock flash_sale {}: {:?}",
                 flash_sale_id,
@@ -865,9 +862,8 @@ impl LiveFlashSaleService {
             }
         }
 
-        if let Some(flash_services) = flash_metadata
-            .get("linked_services")
-            .and_then(|value| value.as_array())
+        if let Some(flash_services) =
+            flash_metadata.get("linked_services").and_then(|value| value.as_array())
         {
             for item in flash_services {
                 if let Some(id) = item.as_i64() {

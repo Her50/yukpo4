@@ -89,10 +89,7 @@ impl VideoQualityService {
 
             let output_filename = format!(
                 "{}_{}.mp4",
-                local_video_path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("video"),
+                local_video_path.file_stem().and_then(|s| s.to_str()).unwrap_or("video"),
                 quality.name
             );
             let output_path = output_dir.join(&output_filename);
@@ -196,10 +193,7 @@ impl VideoQualityService {
 
         let output_filename = format!(
             "{}_{}.mp4",
-            local_video_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("video"),
+            local_video_path.file_stem().and_then(|s| s.to_str()).unwrap_or("video"),
             quality.name
         );
         let output_path = output_dir.join(&output_filename);

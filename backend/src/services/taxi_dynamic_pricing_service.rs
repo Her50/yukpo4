@@ -97,9 +97,7 @@ impl TaxiDynamicPricingService {
         let (demand_factor, supply_factor) =
             self.calculate_demand_supply_factors(&request.zone).await?;
         let time_factor = self.calculate_time_factor(request.time_of_day);
-        let surge_factor = self
-            .calculate_surge_factor(demand_factor, supply_factor)
-            .await?;
+        let surge_factor = self.calculate_surge_factor(demand_factor, supply_factor).await?;
 
         // 3. Multiplicateur dynamique
         let dynamic_multiplier =

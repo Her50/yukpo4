@@ -217,14 +217,8 @@ async fn list_livekit_rooms(
         .as_ref()
         .map(|url| url.trim_end_matches('/').to_string())
         .context("LIVEKIT_API_URL manquant")?;
-    let api_key = config
-        .livekit_api_key
-        .as_ref()
-        .context("LIVEKIT_API_KEY manquant")?;
-    let api_secret = config
-        .livekit_api_secret
-        .as_ref()
-        .context("LIVEKIT_API_SECRET manquant")?;
+    let api_key = config.livekit_api_key.as_ref().context("LIVEKIT_API_KEY manquant")?;
+    let api_secret = config.livekit_api_secret.as_ref().context("LIVEKIT_API_SECRET manquant")?;
 
     let list_endpoint = format!("{}/twirp/livekit.RoomService/ListRooms", base_url);
     let token = generate_server_access_token(api_key, api_secret).map_err(|err| anyhow!(err))?;
@@ -263,23 +257,14 @@ async fn list_livekit_rooms(
     }
 
     let payload: serde_json::Value = response.json().await.context("parse ListRooms")?;
-    let rooms = payload
-        .get("rooms")
-        .and_then(|v| v.as_array())
-        .cloned()
-        .unwrap_or_default();
+    let rooms = payload.get("rooms").and_then(|v| v.as_array()).cloned().unwrap_or_default();
 
     let result = rooms
         .into_iter()
         .map(|room| {
-            let name = room
-                .get("name")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
-            let num_participants = room
-                .get("num_participants")
-                .and_then(|v| v.as_i64())
-                .unwrap_or_default() as i32;
+            let name = room.get("name").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let num_participants =
+                room.get("num_participants").and_then(|v| v.as_i64()).unwrap_or_default() as i32;
 
             LiveKitRoom {
                 name,

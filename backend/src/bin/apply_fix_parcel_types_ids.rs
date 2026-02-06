@@ -69,9 +69,7 @@ async fn main() -> Result<(), sqlx::Error> {
     ];
 
     for parcel_type in &types {
-        let expected = expected_mapping
-            .iter()
-            .find(|(_, slug, _)| slug == &parcel_type.slug);
+        let expected = expected_mapping.iter().find(|(_, slug, _)| slug == &parcel_type.slug);
         match expected {
             Some((expected_id, _, _expected_name)) => {
                 if parcel_type.id == *expected_id {

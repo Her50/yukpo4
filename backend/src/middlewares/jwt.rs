@@ -20,10 +20,7 @@ pub async fn jwt_auth(
 ) -> Result<Response, (StatusCode, &'static str)> {
     eprintln!("[DEBUG] jwt_auth appel? pour: {}", req.uri());
 
-    let auth_header = req
-        .headers()
-        .get("Authorization")
-        .and_then(|v| v.to_str().ok());
+    let auth_header = req.headers().get("Authorization").and_then(|v| v.to_str().ok());
 
     if let Some(auth_header) = auth_header {
         eprintln!("[DEBUG] Authorization header trouv?: {}", auth_header);
@@ -109,10 +106,7 @@ pub fn extract_user_id_from_token(token: &str) -> Result<i32, String> {
 /// Middleware optionnel qui essaie d'extraire le JWT mais ne bloque pas si absent
 /// Utile pour les routes publiques qui peuvent être utilisées avec ou sans authentification
 pub async fn optional_jwt_auth(mut req: Request<Body>, next: Next) -> Response {
-    let auth_header = req
-        .headers()
-        .get("Authorization")
-        .and_then(|v| v.to_str().ok());
+    let auth_header = req.headers().get("Authorization").and_then(|v| v.to_str().ok());
 
     if let Some(auth_header) = auth_header {
         if let Some(token) = auth_header.strip_prefix("Bearer ") {

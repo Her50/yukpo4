@@ -7,10 +7,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL doit être défini");
 
     println!("🔍 Connexion à la base de données...");
-    let pool = PgPoolOptions::new()
-        .max_connections(1)
-        .connect(&database_url)
-        .await?;
+    let pool = PgPoolOptions::new().max_connections(1).connect(&database_url).await?;
 
     println!("✅ Connexion réussie !");
     println!("\n📊 Application de la migration d'optimisation...\n");

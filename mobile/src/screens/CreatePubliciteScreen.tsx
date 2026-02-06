@@ -1449,6 +1449,41 @@ const CreatePubliciteScreen: React.FC = () => {
                     selectedAssets={selectedAssets}
                 />
 
+                {/* ✅ NOUVEAU: Boutons de navigation entre les étapes */}
+                <View style={styles.navigationButtons}>
+                    {currentStep > 0 && (
+                        <TouchableOpacity
+                            style={[styles.navButton, styles.navButtonPrev]}
+                            onPress={() => {
+                                const prevStep = Math.max(0, currentStep - 1);
+                                setCurrentStep(prevStep);
+                                setTimeout(() => scrollToSection(prevStep), 150);
+                            }}
+                        >
+                            <SafeIcon name="chevron-left" size={20} color={modernColors.primary} />
+                            <Text style={styles.navButtonTextPrev}>Précédent</Text>
+                        </TouchableOpacity>
+                    )}
+                    {currentStep < STEPS.length - 1 && (
+                        <TouchableOpacity
+                            style={[styles.navButton, styles.navButtonNext]}
+                            onPress={() => {
+                                // Validation basique avant de passer à l'étape suivante
+                                if (currentStep === 0 && !titre.trim()) {
+                                    Alert.alert('Champ requis', 'Veuillez saisir un titre pour continuer');
+                                    return;
+                                }
+                                const nextStep = Math.min(STEPS.length - 1, currentStep + 1);
+                                setCurrentStep(nextStep);
+                                setTimeout(() => scrollToSection(nextStep), 150);
+                            }}
+                        >
+                            <Text style={styles.navButtonTextNext}>Suivant</Text>
+                            <SafeIcon name="chevron-right" size={20} color="#fff" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
                 {/* Bouton de création/modification */}
                 <NativeButton
                     title={loading ? t('message.loading') :
@@ -1917,6 +1952,44 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 12,
         color: modernColors.text,
+    },
+    // ✅ NOUVEAU: Styles pour les boutons de navigation
+    navigationButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginTop: 24,
+        marginBottom: 16,
+        paddingHorizontal: 4,
+    },
+    navButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        minHeight: 48,
+    },
+    navButtonPrev: {
+        backgroundColor: modernColors.surface,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+    },
+    navButtonNext: {
+        backgroundColor: modernColors.primary,
+    },
+    navButtonTextPrev: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    navButtonTextNext: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#fff',
     },
 });
 

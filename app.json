@@ -4,19 +4,19 @@
     "slug": "yukpomnang-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./mobile/assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./mobile/assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#0F172A"
     },
     "assetBundlePatterns": [
-      "assets/images/**/*",
-      "assets/fonts/**/*",
-      "assets/icons/**/*",
-      "!assets/**/*.md",
-      "!assets/**/*.txt",
+      "mobile/assets/images/**/*",
+      "mobile/assets/fonts/**/*",
+      "mobile/assets/icons/**/*",
+      "!mobile/assets/**/*.md",
+      "!mobile/assets/**/*.txt",
       "!node_modules/**/*"
     ],
     "ios": {
@@ -25,7 +25,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./mobile/assets/adaptive-icon.png",
         "backgroundColor": "#0F172A"
       },
       "package": "com.yukpomnang.mobile",
@@ -38,13 +38,12 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.INTERNET"
       ],
-      // ✅ CORRECTION ENCODAGE: Configuration UTF-8 pour Android
       "config": {
         "encoding": "UTF-8"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./mobile/assets/favicon.png"
     },
     "plugins": [
       "expo-location",

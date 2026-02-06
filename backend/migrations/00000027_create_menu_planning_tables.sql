@@ -150,3 +150,5 @@ COMMENT ON TABLE shopping_lists IS 'Listes de courses générées depuis menus';
 COMMENT ON TABLE shopping_list_items IS 'Items individuels dans liste courses';
 COMMENT ON TABLE nutrition_analytics IS 'Analytics nutrition hebdomadaires';
 
+
+

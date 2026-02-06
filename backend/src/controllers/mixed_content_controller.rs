@@ -164,9 +164,8 @@ async fn fetch_paid_content(pool: &PgPool, limit: i32) -> AppResult<Vec<ContentI
     for row in rows {
         let service_id: i32 = row.try_get("id")?;
         let data: Value = row.get::<Option<_>, _>("data").unwrap_or(json!({}));
-        let publicite_config: Value = row
-            .get::<Option<_>, _>("publicite_config")
-            .unwrap_or(json!({}));
+        let publicite_config: Value =
+            row.get::<Option<_>, _>("publicite_config").unwrap_or(json!({}));
 
         // Extraire le boost level
         let boost_level = publicite_config
@@ -268,14 +267,10 @@ async fn fetch_organic_content(
         category_filter, category_filter
     );
 
-    let rows = sqlx::query(&sql)
-        .bind(limit)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| {
-            log_error(&format!("[MixedContent] Erreur fetch organic: {}", e));
-            AppError::Internal(format!("Erreur fetch organic: {}", e))
-        })?;
+    let rows = sqlx::query(&sql).bind(limit).fetch_all(pool).await.map_err(|e| {
+        log_error(&format!("[MixedContent] Erreur fetch organic: {}", e));
+        AppError::Internal(format!("Erreur fetch organic: {}", e))
+    })?;
 
     let mut content = Vec::new();
 

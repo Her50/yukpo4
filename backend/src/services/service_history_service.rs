@@ -36,10 +36,7 @@ pub async fn enregistrer_consultation(
     service_id: i32,
 ) -> AppResult<String> {
     // 1. Protection : ne débite pas si même user/service < 10 min
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
     let should_debit = {
         let mut last_click = LAST_CLICK.lock().unwrap();
         if let Some(&last) = last_click.get(&(user_id, service_id)) {
@@ -184,12 +181,9 @@ pub async fn get_consultations_utilisateur(
     mongo_history: Arc<MongoHistoryService>,
     user_id: i32,
 ) -> AppResult<Vec<ConsultationHistorique>> {
-    let events = mongo_history
-        .get_service_consultations(user_id, Some(5))
-        .await
-        .map_err(|e| {
-            AppError::Internal(format!("Erreur récupération historique MongoDB: {}", e))
-        })?;
+    let events = mongo_history.get_service_consultations(user_id, Some(5)).await.map_err(|e| {
+        AppError::Internal(format!("Erreur récupération historique MongoDB: {}", e))
+    })?;
 
     let mut consultations = Vec::with_capacity(events.len());
     for event in events {
@@ -230,14 +224,9 @@ pub async fn get_service_consultation_stats(
         .filter_map(|event| event.user_id)
         .collect::<HashSet<_>>()
         .len();
-    let total_debit_tokens: i64 = filtered_events
-        .iter()
-        .map(|event| extract_token_cost(&event.data))
-        .sum();
-    let debit_events = filtered_events
-        .iter()
-        .filter(|event| debit_applied(&event.data))
-        .count();
+    let total_debit_tokens: i64 =
+        filtered_events.iter().map(|event| extract_token_cost(&event.data)).sum();
+    let debit_events = filtered_events.iter().filter(|event| debit_applied(&event.data)).count();
     let last_consultation = filtered_events
         .iter()
         .map(|event| bson_ts_to_chrono(&event.timestamp))
@@ -286,12 +275,9 @@ pub async fn get_global_consultation_stats(
     mongo_history: Arc<MongoHistoryService>,
     days: Option<i64>,
 ) -> AppResult<serde_json::Value> {
-    let stats = mongo_history
-        .get_global_consultation_stats(days)
-        .await
-        .map_err(|e| {
-            AppError::Internal(format!("Erreur récupération stats globales MongoDB: {}", e))
-        })?;
+    let stats = mongo_history.get_global_consultation_stats(days).await.map_err(|e| {
+        AppError::Internal(format!("Erreur récupération stats globales MongoDB: {}", e))
+    })?;
 
     Ok(stats)
 }
@@ -306,9 +292,7 @@ fn extract_token_cost(data: &Value) -> i64 {
 }
 
 fn debit_applied(data: &Value) -> bool {
-    data.get("debit_applied")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false)
+    data.get("debit_applied").and_then(|v| v.as_bool()).unwrap_or(false)
 }
 
 fn extract_event_id(event: &HistoryEvent) -> Option<String> {
@@ -318,11 +302,7 @@ fn extract_event_id(event: &HistoryEvent) -> Option<String> {
         }
     }
 
-    event
-        .data
-        .get("event_id")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
+    event.data.get("event_id").and_then(|v| v.as_str()).map(|s| s.to_string())
 }
 
 fn build_legacy_event_id(event: &HistoryEvent) -> String {

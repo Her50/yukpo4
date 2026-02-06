@@ -141,3 +141,5 @@ Après exécution, vérifiez :
 - `backend/scripts/fix_migrations_aws.sql` - Script SQL de correction
 
 
+
+

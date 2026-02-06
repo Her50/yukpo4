@@ -196,9 +196,8 @@ impl OrderPreparationService {
 
             if let Some(category) = service_category {
                 let dynamic_service = crate::services::dynamic_preparation_time_service::DynamicPreparationTimeService::new(self.pool.clone());
-                if let Ok(Some(dynamic_time)) = dynamic_service
-                    .get_preparation_time_for_category(&category)
-                    .await
+                if let Ok(Some(dynamic_time)) =
+                    dynamic_service.get_preparation_time_for_category(&category).await
                 {
                     preparation_time_minutes = Some(dynamic_time);
                     info!(
@@ -332,9 +331,7 @@ impl OrderPreparationService {
         } else {
             // Utiliser estimated_ready_at fourni ou calculer
             request.estimated_ready_at.or_else(|| {
-                order
-                    .preparation_time_minutes
-                    .map(|mins| now + Duration::minutes(mins as i64))
+                order.preparation_time_minutes.map(|mins| now + Duration::minutes(mins as i64))
             })
         };
 
@@ -346,9 +343,7 @@ impl OrderPreparationService {
 
         if is_tarissable {
             // Décrémenter le stock
-            stock_service
-                .decrement_stock(order.service_id, order.product_index, 1)
-                .await?;
+            stock_service.decrement_stock(order.service_id, order.product_index, 1).await?;
 
             info!(
                 "[OrderPreparation] Stock décrémenté pour service_id={}, product_index={}",
@@ -356,9 +351,8 @@ impl OrderPreparationService {
             );
 
             // ✅ NOUVEAU: Vérifier si stock = 0 après décrémentation et désactiver automatiquement
-            let is_zero = stock_service
-                .is_stock_zero(order.service_id, order.product_index)
-                .await?;
+            let is_zero =
+                stock_service.is_stock_zero(order.service_id, order.product_index).await?;
 
             if is_zero {
                 info!(
@@ -595,19 +589,10 @@ impl OrderPreparationService {
                 .try_get::<Option<DateTime<Utc>>, _>("estimated_ready_at")
                 .ok()
                 .flatten(),
-            validated_at: row
-                .try_get::<Option<DateTime<Utc>>, _>("validated_at")
-                .ok()
-                .flatten(),
+            validated_at: row.try_get::<Option<DateTime<Utc>>, _>("validated_at").ok().flatten(),
             validated_by: row.try_get::<Option<i32>, _>("validated_by").ok().flatten(),
-            rejected_at: row
-                .try_get::<Option<DateTime<Utc>>, _>("rejected_at")
-                .ok()
-                .flatten(),
-            rejection_reason: row
-                .try_get::<Option<String>, _>("rejection_reason")
-                .ok()
-                .flatten(),
+            rejected_at: row.try_get::<Option<DateTime<Utc>>, _>("rejected_at").ok().flatten(),
+            rejection_reason: row.try_get::<Option<String>, _>("rejection_reason").ok().flatten(),
             validation_deadline: row
                 .try_get::<Option<DateTime<Utc>>, _>("validation_deadline")
                 .ok()
@@ -688,10 +673,7 @@ impl OrderPreparationService {
                     .ok()
                     .flatten(),
                 validated_by: row.try_get::<Option<i32>, _>("validated_by").ok().flatten(),
-                rejected_at: row
-                    .try_get::<Option<DateTime<Utc>>, _>("rejected_at")
-                    .ok()
-                    .flatten(),
+                rejected_at: row.try_get::<Option<DateTime<Utc>>, _>("rejected_at").ok().flatten(),
                 rejection_reason: row
                     .try_get::<Option<String>, _>("rejection_reason")
                     .ok()
@@ -758,10 +740,7 @@ impl OrderPreparationService {
                     .ok()
                     .flatten(),
                 validated_by: row.try_get::<Option<i32>, _>("validated_by").ok().flatten(),
-                rejected_at: row
-                    .try_get::<Option<DateTime<Utc>>, _>("rejected_at")
-                    .ok()
-                    .flatten(),
+                rejected_at: row.try_get::<Option<DateTime<Utc>>, _>("rejected_at").ok().flatten(),
                 rejection_reason: row
                     .try_get::<Option<String>, _>("rejection_reason")
                     .ok()

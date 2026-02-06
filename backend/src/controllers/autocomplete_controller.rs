@@ -467,11 +467,7 @@ pub async fn search_product_suggestions(
     );
 
     // Vérifier le cache (TTL: 5 minutes pour autocomplete)
-    if let Ok(cached) = state
-        .cache_service
-        .get::<serde_json::Value>(&cache_key)
-        .await
-    {
+    if let Ok(cached) = state.cache_service.get::<serde_json::Value>(&cache_key).await {
         if let Some(cached_data) = cached {
             info!("✅ Suggestions autocomplete depuis cache");
             return Ok(Json(serde_json::json!({

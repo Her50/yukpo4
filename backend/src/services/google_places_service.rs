@@ -225,10 +225,7 @@ impl GooglePlacesService {
 
         if !search_response.status().is_success() {
             let status = search_response.status();
-            let text = search_response
-                .text()
-                .await
-                .unwrap_or_else(|_| "<no body>".to_string());
+            let text = search_response.text().await.unwrap_or_else(|_| "<no body>".to_string());
 
             let error_type =
                 if text.contains("BILLING_DISABLED") || text.contains("billing_disabled") {
@@ -300,10 +297,7 @@ impl GooglePlacesService {
 
         if !details_response.status().is_success() {
             let status = details_response.status();
-            let text = details_response
-                .text()
-                .await
-                .unwrap_or_else(|_| "<no body>".to_string());
+            let text = details_response.text().await.unwrap_or_else(|_| "<no body>".to_string());
 
             let error_type =
                 if text.contains("BILLING_DISABLED") || text.contains("billing_disabled") {
@@ -431,9 +425,7 @@ impl GooglePlacesService {
         language_code: Option<&str>,
         coordinates: Option<(f64, f64)>,
     ) -> Result<Option<GooglePlaceEnriched>, AppError> {
-        let places = self
-            .search_places(query, country_hint, language_code, coordinates)
-            .await?;
+        let places = self.search_places(query, country_hint, language_code, coordinates).await?;
 
         if places.is_empty() {
             return Ok(None);
@@ -463,9 +455,7 @@ impl GooglePlacesService {
         prestataire_name: Option<&str>,
         max_distance_km: f64,
     ) -> Result<Option<GooglePlaceEnriched>, AppError> {
-        let places = self
-            .search_places(query, country_hint, language_code, coordinates)
-            .await?;
+        let places = self.search_places(query, country_hint, language_code, coordinates).await?;
 
         if places.is_empty() {
             info!("[Places] Aucun résultat pour '{}'", query);
@@ -686,9 +676,7 @@ fn build_location_vector(components: Option<&Vec<AddressComponent>>) -> Vec<Stri
             {
                 let label = component.text.trim();
                 if !label.is_empty()
-                    && !vector
-                        .iter()
-                        .any(|existing: &String| existing.eq_ignore_ascii_case(label))
+                    && !vector.iter().any(|existing: &String| existing.eq_ignore_ascii_case(label))
                 {
                     vector.push(label.to_string());
                 }
@@ -705,9 +693,7 @@ mod tests {
     #[tokio::test]
     async fn test_search_makepe() {
         let service = GooglePlacesService::new();
-        let result = service
-            .search_and_enrich("Makepe", Some("Cameroun"), None, None)
-            .await;
+        let result = service.search_and_enrich("Makepe", Some("Cameroun"), None, None).await;
 
         if let Ok(Some(data)) = result {
             println!("Place: {}", data.display_name);

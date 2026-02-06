@@ -66,11 +66,7 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         "postgres://postgres:Hernandez87@localhost/yukpomnang_test".to_string()
     });
 
-    let pool = match PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await
-    {
+    let pool = match PgPoolOptions::new().max_connections(5).connect(&database_url).await {
         Ok(pool) => pool,
         Err(err) => {
             eprintln!(

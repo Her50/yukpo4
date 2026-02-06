@@ -228,9 +228,7 @@ async fn search_services_fallback(
         }
 
         // Bonus pour services récents
-        let days_old = chrono::Utc::now()
-            .signed_duration_since(service.created_at)
-            .num_days();
+        let days_old = chrono::Utc::now().signed_duration_since(service.created_at).num_days();
         if days_old <= 7 {
             score += 0.1; // Bonus pour services créés dans la semaine
         }
@@ -323,9 +321,8 @@ pub fn valider_besoin_json(data: &Value) -> Result<Value, crate::core::types::Ap
 
         let validation_result = instance.validate(&transformed_data);
         if let Err(errors) = validation_result {
-            let error_details: Vec<String> = errors
-                .map(|e| format!("{} à {}", e, e.instance_path))
-                .collect();
+            let error_details: Vec<String> =
+                errors.map(|e| format!("{} à {}", e, e.instance_path)).collect();
             log::error!(
                 "[valider_besoin_json] Erreurs de validation: {:?}",
                 error_details
@@ -417,9 +414,7 @@ pub async fn rechercher_besoin_direct(
     // ✅ CORRIGÉ 2026-01-13: Normaliser le texte de recherche pour la clé de cache
     // (lowercase, trim) pour éviter des clés différentes pour "Chaussures Nike" vs "chaussures nike"
     let normalized_query = primary_keyword.to_lowercase().trim().to_string();
-    let normalized_gps = gps_zone
-        .map(|g| g.trim().to_lowercase())
-        .unwrap_or_default();
+    let normalized_gps = gps_zone.map(|g| g.trim().to_lowercase()).unwrap_or_default();
 
     // Générer la clé de cache pour cette recherche (avec texte normalisé)
     let cache_key = GlobalCacheService::generate_key(
@@ -453,10 +448,8 @@ pub async fn rechercher_besoin_direct(
                 .unwrap_or(0)
         ));
 
-        let nombre_matchings = cached_result
-            .get("nombre_matchings")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as u32;
+        let nombre_matchings =
+            cached_result.get("nombre_matchings").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
 
         // ✅ Enregistrer métrique cache hit (singleton depuis AppState)
         if let Some(metrics_service) = &search_metrics {
@@ -597,11 +590,7 @@ pub async fn rechercher_besoin_direct(
         .collect();
 
     // Trier par score total décroissant (pertinence + proximité déjà inclus dans total_score)
-    matches.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    matches.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
 
     // ✅ OPTIMISÉ 2025-11-29: Enrichir les résultats avec batch queries au lieu de N requêtes séquentielles
     let service_ids: Vec<i32> = matches.iter().map(|m| m.service_id).collect();
@@ -828,9 +817,8 @@ pub async fn rechercher_besoin_direct(
                         }
                     } else {
                         // Médias globaux du service (sans product_index)
-                        let entry = media_map
-                            .entry(service_id)
-                            .or_insert_with(|| (Vec::new(), Vec::new()));
+                        let entry =
+                            media_map.entry(service_id).or_insert_with(|| (Vec::new(), Vec::new()));
                         match media_type.as_str() {
                             "image" => entry.0.push(path),
                             "video" => entry.1.push(path),
@@ -879,10 +867,7 @@ pub async fn rechercher_besoin_direct(
                         // ✅ NOUVEAU 2026-01-23: Ajouter product_name pour simplifier le frontend
                         obj.insert("product_name".to_string(), json!(row.product_name));
                     }
-                    products_map
-                        .entry(service_id)
-                        .or_insert_with(Vec::new)
-                        .push(product_data);
+                    products_map.entry(service_id).or_insert_with(Vec::new).push(product_data);
                 }
                 products_map
             })
@@ -1033,16 +1018,13 @@ pub async fn rechercher_besoin_direct(
             .get(&service_id)
             .map(|(id, nom, avatar)| (*id, nom.clone(), avatar.clone()));
         let product_info = product_info_map.get(&service_id).cloned();
-        let media_info = media_map
-            .get(&service_id)
-            .cloned()
-            .and_then(|(images, videos)| {
-                if !images.is_empty() || !videos.is_empty() {
-                    Some((images, videos))
-                } else {
-                    None
-                }
-            });
+        let media_info = media_map.get(&service_id).cloned().and_then(|(images, videos)| {
+            if !images.is_empty() || !videos.is_empty() {
+                Some((images, videos))
+            } else {
+                None
+            }
+        });
         // ✅ NOUVEAU 2026-01-23: Récupérer les statistiques dynamiques
         let stats_info = service_stats_map.get(&service_id).cloned();
 
@@ -1789,9 +1771,7 @@ async fn search_services_direct_fallback(
         let relevance_score: f64 = row.get::<f64, _>("relevance_score");
 
         // Bonus pour services récents
-        let days_old = chrono::Utc::now()
-            .signed_duration_since(created_at)
-            .num_days();
+        let days_old = chrono::Utc::now().signed_duration_since(created_at).num_days();
         let recency_bonus = if days_old <= 7 { 0.1 } else { 0.0 };
 
         let final_score = relevance_score + recency_bonus;
@@ -2292,11 +2272,7 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
     let matches: Vec<crate::services::matching_pipeline::MatchedService> = native_results
         .into_iter()
         .map(|r| {
-            let gps = r
-                .data
-                .get("gps_fixe")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
+            let gps = r.data.get("gps_fixe").and_then(|v| v.as_str()).map(|s| s.to_string());
             crate::services::matching_pipeline::MatchedService {
                 service_id: r.service_id,
                 data: r.data,
@@ -2361,10 +2337,7 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
     // Correction extraction intention (supporte string ou objet structur?)
     let intention = match obj.get("intention") {
         Some(Value::String(s)) => Some(s.clone()),
-        Some(Value::Object(o)) => o
-            .get("valeur")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string()),
+        Some(Value::Object(o)) => o.get("valeur").and_then(|v| v.as_str()).map(|s| s.to_string()),
         _ => None,
     };
     let zone_gps_utilisee = obj.get("zone_gps").cloned();

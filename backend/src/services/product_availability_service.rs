@@ -99,10 +99,8 @@ impl ProductAvailabilityService {
             let day_names = [
                 "Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi",
             ];
-            let available_days_str: Vec<String> = availability_days
-                .iter()
-                .map(|&d| day_names[d as usize].to_string())
-                .collect();
+            let available_days_str: Vec<String> =
+                availability_days.iter().map(|&d| day_names[d as usize].to_string()).collect();
 
             return Ok(AvailabilityCheckResult {
                 is_available: false,
@@ -211,9 +209,8 @@ impl ProductAvailabilityService {
         };
 
         // ✅ CORRIGÉ 2026-01-22: Utiliser directement Vec<i32> (déjà décodé depuis INTEGER[])
-        let availability_days: Vec<i32> = config
-            .availability_days
-            .unwrap_or_else(|| vec![0, 1, 2, 3, 4, 5, 6]);
+        let availability_days: Vec<i32> =
+            config.availability_days.unwrap_or_else(|| vec![0, 1, 2, 3, 4, 5, 6]);
         let now = Utc::now();
         let current_weekday = now.weekday().num_days_from_sunday() as i32;
         let is_available =
@@ -239,9 +236,8 @@ impl ProductAvailabilityService {
         let mut results = Vec::new();
 
         for (service_id, product_index) in products {
-            let result = self
-                .check_availability(*service_id, *product_index, requested_time)
-                .await?;
+            let result =
+                self.check_availability(*service_id, *product_index, requested_time).await?;
             results.push((*service_id, *product_index, result));
         }
 

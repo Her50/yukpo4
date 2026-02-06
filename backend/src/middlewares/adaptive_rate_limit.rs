@@ -64,13 +64,7 @@ impl AdaptiveRateLimit {
 
         // Vérifier limite minute
         let minute_key = format!("{}:minute", key);
-        let minute_count: u32 = self
-            .cache
-            .get(&minute_key)
-            .await
-            .ok()
-            .flatten()
-            .unwrap_or(0);
+        let minute_count: u32 = self.cache.get(&minute_key).await.ok().flatten().unwrap_or(0);
 
         if minute_count >= config.requests_per_minute + config.burst_allowance {
             return Err(AppError::TooManyRequests(format!(
@@ -122,13 +116,7 @@ impl AdaptiveRateLimit {
         let minute_key = format!("{}:minute", key);
         let hour_key = format!("{}:hour", key);
 
-        let minute_count: u32 = self
-            .cache
-            .get(&minute_key)
-            .await
-            .ok()
-            .flatten()
-            .unwrap_or(0);
+        let minute_count: u32 = self.cache.get(&minute_key).await.ok().flatten().unwrap_or(0);
 
         let hour_count: u32 = self.cache.get(&hour_key).await.ok().flatten().unwrap_or(0);
 

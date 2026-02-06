@@ -652,9 +652,7 @@ impl SchedulingSearchService {
 
         for (variations, specialized_type) in keyword_variations.iter() {
             // Vérifier si au moins une variation est présente dans la requête
-            let matches = variations
-                .iter()
-                .any(|variation| query_lower.contains(variation));
+            let matches = variations.iter().any(|variation| query_lower.contains(variation));
 
             if matches {
                 // Cas spéciaux pour agence_voyage (nécessite contexte)

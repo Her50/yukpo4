@@ -124,9 +124,7 @@ RÉPONSE ATTENDUE (JSON strict) :
         age: Option<i32>,
         vital_signs: Option<serde_json::Value>,
     ) -> AppResult<EmergencySeverityAnalysis> {
-        let age_str = age
-            .map(|a| a.to_string())
-            .unwrap_or_else(|| "Non spécifié".to_string());
+        let age_str = age.map(|a| a.to_string()).unwrap_or_else(|| "Non spécifié".to_string());
         let vital_signs_str = vital_signs
             .as_ref()
             .and_then(|v| serde_json::to_string(v).ok())
@@ -236,10 +234,7 @@ Retourne UNIQUEMENT le JSON, sans texte supplémentaire.
         let specialties: Vec<String> = match serde_json::from_str::<serde_json::Value>(&response) {
             Ok(v) => {
                 if let Some(specs) = v.get("specialties").and_then(|s| s.as_array()) {
-                    specs
-                        .iter()
-                        .filter_map(|s| s.as_str().map(|s| s.to_string()))
-                        .collect()
+                    specs.iter().filter_map(|s| s.as_str().map(|s| s.to_string())).collect()
                 } else {
                     vec![]
                 }
@@ -261,18 +256,15 @@ pub async fn generate_hospital_recommendations(
     location: Option<&str>,
 ) -> AppResult<String> {
     let service = HospitalAIService::new(app_ia);
-    let recommendation = service
-        .generate_hospital_recommendations(symptoms, location, None)
-        .await?;
+    let recommendation =
+        service.generate_hospital_recommendations(symptoms, location, None).await?;
 
     Ok(recommendation.recommendations)
 }
 
 pub async fn analyze_emergency_severity(app_ia: Arc<AppIA>, symptoms: &str) -> AppResult<i32> {
     let service = HospitalAIService::new(app_ia);
-    let analysis = service
-        .analyze_emergency_severity(symptoms, None, None)
-        .await?;
+    let analysis = service.analyze_emergency_severity(symptoms, None, None).await?;
 
     Ok(analysis.severity_level)
 }

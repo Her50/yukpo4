@@ -113,18 +113,10 @@ pub async fn list_users(
                 .fetch_one(&state.pg)
                 .await
         }
-        (Some(role), _) => {
-            sqlx::query_scalar(count_sql)
-                .bind(role)
-                .fetch_one(&state.pg)
-                .await
-        }
+        (Some(role), _) => sqlx::query_scalar(count_sql).bind(role).fetch_one(&state.pg).await,
         (_, Some(search)) if !search.is_empty() => {
             let search_pattern = format!("%{}%", search);
-            sqlx::query_scalar(count_sql)
-                .bind(&search_pattern)
-                .fetch_one(&state.pg)
-                .await
+            sqlx::query_scalar(count_sql).bind(&search_pattern).fetch_one(&state.pg).await
         }
         _ => sqlx::query_scalar(count_sql).fetch_one(&state.pg).await,
     }

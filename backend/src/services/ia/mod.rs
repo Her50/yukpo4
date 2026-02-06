@@ -115,8 +115,7 @@ impl OptimizedIAService {
         let step4_start = std::time::Instant::now();
         let semantic_result = tokio::time::timeout(
             Duration::from_millis(1500), // Timeout ?quilibr? : 1.5s pour la pr?cision
-            self.semantic_cache
-                .get_semantic_cache(&user_text, &intention),
+            self.semantic_cache.get_semantic_cache(&user_text, &intention),
         )
         .await;
         let step4_time = step4_start.elapsed();
@@ -148,10 +147,8 @@ impl OptimizedIAService {
 
         // 5. G?n?ration prompt optimis?
         let step5_start = std::time::Instant::now();
-        let enriched_prompt = self
-            .prompt_manager
-            .get_optimized_prompt(&intention, &user_text)
-            .await;
+        let enriched_prompt =
+            self.prompt_manager.get_optimized_prompt(&intention, &user_text).await;
         let step5_time = step5_start.elapsed();
         log::info!(
             "[OptimizedIAService][TIMING] ?tape 5 - G?n?ration prompt: {:?}",
@@ -181,11 +178,8 @@ impl OptimizedIAService {
 
         // 7. Nettoyage et parsing
         let step7_start = std::time::Instant::now();
-        let cleaned_json = json_response
-            .replace("```json", "")
-            .replace("```", "")
-            .trim()
-            .to_string();
+        let cleaned_json =
+            json_response.replace("```json", "").replace("```", "").trim().to_string();
 
         let parsed_json: Value = serde_json::from_str(&cleaned_json)
             .map_err(|e| format!("Erreur parsing JSON: {}", e))?;
@@ -313,8 +307,7 @@ impl OptimizedIAService {
             log::info!("[OptimizedIAService] ? Cache exact hit - r?ponse imm?diate!");
 
             // Traitements en arri?re-plan (non-bloquant)
-            self.spawn_background_tasks(&cache_key, &user_text, &intention, &cached)
-                .await;
+            self.spawn_background_tasks(&cache_key, &user_text, &intention, &cached).await;
 
             return Ok(cached);
         }
@@ -322,8 +315,7 @@ impl OptimizedIAService {
         // 4. V?rification cache s?mantique avec timeout ?quilibr?
         let semantic_result = tokio::time::timeout(
             Duration::from_millis(1500),
-            self.semantic_cache
-                .get_semantic_cache(&user_text, &intention),
+            self.semantic_cache.get_semantic_cache(&user_text, &intention),
         )
         .await;
 
@@ -341,10 +333,8 @@ impl OptimizedIAService {
         }
 
         // 6. G?n?ration prompt
-        let enriched_prompt = self
-            .prompt_manager
-            .get_optimized_prompt(&intention, &user_text)
-            .await;
+        let enriched_prompt =
+            self.prompt_manager.get_optimized_prompt(&intention, &user_text).await;
 
         // 7. Appel IA externe (le plus long) - Support multimodal UNIFI? - DEUXI?ME APPEL IA
         // ?? CORRECTION : L'ordre de retour est (model_name, response, tokens)
@@ -422,9 +412,7 @@ impl OptimizedIAService {
                     "#
                 );
 
-                self.app_ia
-                    .predict_multimodal(&multimodal_prompt, Some(all_images))
-                    .await?
+                self.app_ia.predict_multimodal(&multimodal_prompt, Some(all_images)).await?
             } else {
                 // Fallback : appel textuel classique
                 self.app_ia.predict(&enriched_prompt).await?
@@ -432,11 +420,8 @@ impl OptimizedIAService {
         };
 
         // 8. Nettoyage et parsing
-        let cleaned_json = json_response
-            .replace("```json", "")
-            .replace("```", "")
-            .trim()
-            .to_string();
+        let cleaned_json =
+            json_response.replace("```json", "").replace("```", "").trim().to_string();
 
         let parsed_json: Value = serde_json::from_str(&cleaned_json)
             .map_err(|e| format!("Erreur parsing JSON: {}", e))?;
@@ -517,8 +502,7 @@ impl OptimizedIAService {
             log::info!("[OptimizedIAService] ? Cache exact hit - r?ponse imm?diate!");
 
             // Traitements en arri?re-plan (non-bloquant)
-            self.spawn_background_tasks(&cache_key, &user_text, &intention, &cached)
-                .await;
+            self.spawn_background_tasks(&cache_key, &user_text, &intention, &cached).await;
 
             return Ok(cached);
         }
@@ -526,8 +510,7 @@ impl OptimizedIAService {
         // 4. V?rification cache s?mantique avec timeout ?quilibr?
         let semantic_result = tokio::time::timeout(
             Duration::from_millis(1500),
-            self.semantic_cache
-                .get_semantic_cache(&user_text, &intention),
+            self.semantic_cache.get_semantic_cache(&user_text, &intention),
         )
         .await;
 
@@ -545,18 +528,14 @@ impl OptimizedIAService {
         }
 
         // 6. G?n?ration prompt
-        let enriched_prompt = self
-            .prompt_manager
-            .get_optimized_prompt(&intention, &user_text)
-            .await;
+        let enriched_prompt =
+            self.prompt_manager.get_optimized_prompt(&intention, &user_text).await;
 
         // 7. Appel IA externe avec optimisations GPU - Support multimodal UNIFI? - DEUXI?ME APPEL IA
         // ?? CORRECTION : L'ordre de retour est (model_name, response, tokens)
         let (model_name, json_response, tokens_used) = {
             // ?? APPROCHE OPTIMALE GPU : Convertir tous les modaux en images optimis?es + un seul appel IA
-            let all_images = gpu_optimizer
-                .convert_all_modals_to_images_optimized(input)
-                .await;
+            let all_images = gpu_optimizer.convert_all_modals_to_images_optimized(input).await;
 
             if !all_images.is_empty() {
                 log::info!(
@@ -628,9 +607,7 @@ impl OptimizedIAService {
                     "#
                 );
 
-                self.app_ia
-                    .predict_multimodal(&multimodal_prompt, Some(all_images))
-                    .await?
+                self.app_ia.predict_multimodal(&multimodal_prompt, Some(all_images)).await?
             } else {
                 // Fallback : appel textuel classique
                 self.app_ia.predict(&enriched_prompt).await?
@@ -638,11 +615,8 @@ impl OptimizedIAService {
         };
 
         // 8. Nettoyage et parsing
-        let cleaned_json = json_response
-            .replace("```json", "")
-            .replace("```", "")
-            .trim()
-            .to_string();
+        let cleaned_json =
+            json_response.replace("```json", "").replace("```", "").trim().to_string();
 
         let parsed_json: Value = serde_json::from_str(&cleaned_json)
             .map_err(|e| format!("Erreur parsing JSON: {}", e))?;
@@ -725,10 +699,7 @@ impl OptimizedIAService {
         }
 
         // 3. Générer le prompt de création de service
-        let enriched_prompt = self
-            .prompt_manager
-            .get_optimized_prompt(&intention, user_text)
-            .await;
+        let enriched_prompt = self.prompt_manager.get_optimized_prompt(&intention, user_text).await;
         log::info!("[OptimizedIAService] ?? Prompt généré pour création de service");
 
         // 4. Appeler l'IA pour générer le JSON structuré

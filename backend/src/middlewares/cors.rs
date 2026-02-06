@@ -10,12 +10,8 @@ fn get_allowed_origins() -> Vec<String> {
 
     // Lire depuis la variable d'environnement
     if let Ok(env_origins) = env::var("ALLOWED_ORIGINS") {
-        origins.extend(
-            env_origins
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty()),
-        );
+        origins
+            .extend(env_origins.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()));
     }
 
     // ✅ SÉCURITÉ: En développement, ajouter localhost uniquement
@@ -81,9 +77,7 @@ pub async fn cors_middleware(request: Request, next: Next) -> Response {
 
         // Vérifier si l'origin est dans la liste autorisée
         if config.allowed_origins.contains(&origin_str.to_string()) {
-            response
-                .headers_mut()
-                .insert("access-control-allow-origin", origin.clone());
+            response.headers_mut().insert("access-control-allow-origin", origin.clone());
             response.headers_mut().insert(
                 "access-control-allow-credentials",
                 HeaderValue::from_static("true"),
@@ -106,9 +100,7 @@ pub async fn cors_middleware(request: Request, next: Next) -> Response {
         // Utiliser la première origine autorisée par défaut (ou ne rien mettre)
         if let Some(default_origin) = config.allowed_origins.first() {
             if let Ok(header_value) = HeaderValue::from_str(default_origin) {
-                response
-                    .headers_mut()
-                    .insert("access-control-allow-origin", header_value);
+                response.headers_mut().insert("access-control-allow-origin", header_value);
                 response.headers_mut().insert(
                     "access-control-allow-credentials",
                     HeaderValue::from_static("true"),
@@ -146,9 +138,7 @@ pub async fn cors_preflight_handler(req: Request<axum::body::Body>) -> Response 
     if let Some(origin) = origin {
         if let Ok(origin_str) = origin.to_str() {
             if allowed_origins.contains(&origin_str.to_string()) {
-                response
-                    .headers_mut()
-                    .insert("access-control-allow-origin", origin.clone());
+                response.headers_mut().insert("access-control-allow-origin", origin.clone());
                 response.headers_mut().insert(
                     "access-control-allow-credentials",
                     HeaderValue::from_static("true"),
@@ -167,9 +157,7 @@ pub async fn cors_preflight_handler(req: Request<axum::body::Body>) -> Response 
         // Pas d'origine dans preflight - utiliser la première autorisée
         if let Some(default_origin) = allowed_origins.first() {
             if let Ok(header_value) = HeaderValue::from_str(default_origin) {
-                response
-                    .headers_mut()
-                    .insert("access-control-allow-origin", header_value);
+                response.headers_mut().insert("access-control-allow-origin", header_value);
             }
         }
     }

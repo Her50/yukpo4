@@ -175,9 +175,7 @@ impl OptimizedMediaProcessor {
         }
 
         // 1. Sauvegarder le média sur disque
-        let file_path = self
-            .save_media_to_disk(service_id, &item.media_type, &item.data)
-            .await?;
+        let file_path = self.save_media_to_disk(service_id, &item.media_type, &item.data).await?;
         let original_size = item.data.len();
 
         // 2. Décoder si base64 pour obtenir les bytes
@@ -192,8 +190,7 @@ impl OptimizedMediaProcessor {
         // 3. Compression adaptative si image
         #[cfg(feature = "image")]
         let (compressed_bytes, compression_ratio) = if item.media_type == "image" {
-            self.compress_image_adaptive(&media_bytes, &file_path)
-                .await?
+            self.compress_image_adaptive(&media_bytes, &file_path).await?
         } else {
             (media_bytes, None)
         };
@@ -203,9 +200,7 @@ impl OptimizedMediaProcessor {
 
         // 4. Générer thumbnail si configuré
         let thumbnail_path = if self.config.generate_thumbnails && item.media_type == "image" {
-            self.generate_thumbnail(&compressed_bytes, service_id)
-                .await
-                .ok()
+            self.generate_thumbnail(&compressed_bytes, service_id).await.ok()
         } else {
             None
         };
@@ -409,11 +404,8 @@ impl OptimizedMediaProcessor {
             _ => "media",
         };
 
-        let service_dir = self
-            .storage_root
-            .join("services")
-            .join(service_id.to_string())
-            .join(subdir);
+        let service_dir =
+            self.storage_root.join("services").join(service_id.to_string()).join(subdir);
         tokio::fs::create_dir_all(&service_dir).await?;
 
         let extension = match media_type {
@@ -462,11 +454,7 @@ impl OptimizedMediaProcessor {
 
         // ✅ NOUVEAU: Upload vers S3/Wasabi via MediaStorageService
         let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
-        match self
-            .media_storage
-            .store_bytes(&decoded_bytes, &storage_key, content_type)
-            .await
-        {
+        match self.media_storage.store_bytes(&decoded_bytes, &storage_key, content_type).await {
             Ok(location) => {
                 log::debug!(
                     "[OptimizedMediaProcessor] ✅ Fichier uploadé vers S3: {}",

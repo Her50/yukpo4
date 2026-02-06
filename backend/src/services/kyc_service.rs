@@ -1037,10 +1037,8 @@ impl KYCService {
             };
 
         // Appel IA multimodal (analyse image + OCR)
-        let (model_name, response_text, tokens_used) = app_ia
-            .predict_multimodal(&prompt, Some(image_input))
-            .await
-            .map_err(|e| {
+        let (model_name, response_text, tokens_used) =
+            app_ia.predict_multimodal(&prompt, Some(image_input)).await.map_err(|e| {
                 error!("[KYCService] Erreur appel IA: {}", e);
                 AppError::Internal(format!("Erreur analyse IA: {}", e))
             })?;

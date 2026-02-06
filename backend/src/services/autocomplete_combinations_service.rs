@@ -219,10 +219,7 @@ pub async fn search_combinations(
     );
 
     // Diviser la requête en termes
-    let terms: Vec<String> = search_query
-        .split_whitespace()
-        .map(|s| s.to_lowercase())
-        .collect();
+    let terms: Vec<String> = search_query.split_whitespace().map(|s| s.to_lowercase()).collect();
 
     // ✅ CORRECTION: Si la requête est vide, charger les combinaisons populaires
     if terms.is_empty() {
@@ -467,10 +464,7 @@ pub fn extract_combinations_from_ai_response(
         .ok_or_else(|| AppError::BadRequest("Champ 'valeur' manquant ou invalide".to_string()))?;
 
     // Extraire le séparateur
-    let separateur = produits_field
-        .get("separateur")
-        .and_then(|s| s.as_str())
-        .unwrap_or(",");
+    let separateur = produits_field.get("separateur").and_then(|s| s.as_str()).unwrap_or(",");
 
     // ✅ NOUVEAU : Extraire les labels depuis sous_caracteristiques
     let sous_caracs = produits_field
@@ -543,9 +537,8 @@ pub fn extract_combinations_from_ai_response(
         .and_then(|e| e.as_str())
         .map(|s| s.to_string());
 
-    let preferred_confidence = preferred_match
-        .and_then(|pm| pm.get("confidence"))
-        .and_then(|c| c.as_f64());
+    let preferred_confidence =
+        preferred_match.and_then(|pm| pm.get("confidence")).and_then(|c| c.as_f64());
 
     if let Some(ref expl) = preferred_explanation {
         log::info!(
@@ -560,10 +553,8 @@ pub fn extract_combinations_from_ai_response(
     for (index, valeur_str) in valeurs.iter().enumerate() {
         if let Some(valeur_str) = valeur_str.as_str() {
             // Découper la valeur selon le séparateur
-            let parts: Vec<String> = valeur_str
-                .split(separateur)
-                .map(|s| s.trim().to_string())
-                .collect();
+            let parts: Vec<String> =
+                valeur_str.split(separateur).map(|s| s.trim().to_string()).collect();
 
             // Séparer product_vector et location_vector
             // Le dernier élément vide est réservé pour la localisation
@@ -595,10 +586,11 @@ pub fn extract_combinations_from_ai_response(
 
             // Récupérer prix, devise, stock depuis les modalités ou par défaut
             let (prix, devise, stock) = if let Some(ref var_val) = variant_value {
-                modalites
-                    .get(var_val)
-                    .map(|(p, d, s)| (Some(*p), d.clone(), *s))
-                    .unwrap_or((default_prix, default_devise.clone(), None))
+                modalites.get(var_val).map(|(p, d, s)| (Some(*p), d.clone(), *s)).unwrap_or((
+                    default_prix,
+                    default_devise.clone(),
+                    None,
+                ))
             } else {
                 (default_prix, default_devise.clone(), None)
             };

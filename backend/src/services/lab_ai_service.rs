@@ -50,9 +50,8 @@ impl LabAIService {
         patient_age: Option<i32>,
         patient_sex: Option<&str>,
     ) -> AppResult<LabAnalysisResult> {
-        let age_str = patient_age
-            .map(|a| a.to_string())
-            .unwrap_or_else(|| "Non spécifié".to_string());
+        let age_str =
+            patient_age.map(|a| a.to_string()).unwrap_or_else(|| "Non spécifié".to_string());
         let sex_str = patient_sex.unwrap_or("Non spécifié");
         let results_str = serde_json::to_string(&results).unwrap_or_else(|_| "{}".to_string());
 
@@ -180,10 +179,7 @@ RÉPONSE ATTENDUE (JSON strict) :
         let anomalies: Vec<Anomaly> = match serde_json::from_str::<serde_json::Value>(&response) {
             Ok(v) => {
                 if let Some(crits) = v.get("critical_anomalies").and_then(|a| a.as_array()) {
-                    crits
-                        .iter()
-                        .filter_map(|a| serde_json::from_value(a.clone()).ok())
-                        .collect()
+                    crits.iter().filter_map(|a| serde_json::from_value(a.clone()).ok()).collect()
                 } else {
                     vec![]
                 }
@@ -244,10 +240,7 @@ RÉPONSE ATTENDUE (JSON strict) :
         let exams: Vec<String> = match serde_json::from_str::<serde_json::Value>(&response) {
             Ok(v) => {
                 if let Some(suggs) = v.get("suggested_exams").and_then(|s| s.as_array()) {
-                    suggs
-                        .iter()
-                        .filter_map(|s| s.as_str().map(|s| s.to_string()))
-                        .collect()
+                    suggs.iter().filter_map(|s| s.as_str().map(|s| s.to_string())).collect()
                 } else {
                     vec![]
                 }
@@ -269,9 +262,8 @@ RÉPONSE ATTENDUE (JSON strict) :
         patient_age: Option<i32>,
         patient_sex: Option<&str>,
     ) -> AppResult<LabAnalysisResult> {
-        let age_str = patient_age
-            .map(|a| a.to_string())
-            .unwrap_or_else(|| "Non spécifié".to_string());
+        let age_str =
+            patient_age.map(|a| a.to_string()).unwrap_or_else(|| "Non spécifié".to_string());
         let sex_str = patient_sex.unwrap_or("Non spécifié");
 
         // Construire le prompt pour l'analyse d'image médicale
@@ -329,10 +321,8 @@ Réponds UNIQUEMENT le JSON, sans markdown, sans code blocks, sans texte avant o
         };
 
         // Utiliser predict_multimodal pour l'analyse d'image
-        let (model_name, response, tokens) = self
-            .app_ia
-            .predict_multimodal(&prompt, Some(vec![image_base64_clean]))
-            .await?;
+        let (model_name, response, tokens) =
+            self.app_ia.predict_multimodal(&prompt, Some(vec![image_base64_clean])).await?;
 
         log::info!(
             "[LabAIService] Analyse d'image effectuée avec {} (tokens: {})",

@@ -381,8 +381,7 @@ impl ScalabilityService {
                     let priority_clone = priority.clone();
                     async move {
                         // Traitement individuel (à adapter selon la logique métier)
-                        self.process_product_operation(&op_clone, &priority_clone)
-                            .await
+                        self.process_product_operation(&op_clone, &priority_clone).await
                     }
                 })
                 .collect();
@@ -425,10 +424,7 @@ impl ScalabilityService {
                 .map(|(op, priority)| {
                     let op_clone = op.clone();
                     let priority_clone = priority.clone();
-                    async move {
-                        self.process_delivery_operation(&op_clone, &priority_clone)
-                            .await
-                    }
+                    async move { self.process_delivery_operation(&op_clone, &priority_clone).await }
                 })
                 .collect();
 
@@ -471,8 +467,7 @@ impl ScalabilityService {
                     let op_clone = op.clone();
                     let priority_clone = priority.clone();
                     async move {
-                        self.process_specialized_service_operation(&op_clone, &priority_clone)
-                            .await
+                        self.process_specialized_service_operation(&op_clone, &priority_clone).await
                     }
                 })
                 .collect();

@@ -160,10 +160,8 @@ impl FournituresScolairesService {
             "SELECT COUNT(*)::bigint FROM fournitures_scolaires WHERE {}",
             conditions.join(" AND ")
         );
-        let total: i64 = sqlx::query_scalar(&count_query)
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|e| {
+        let total: i64 =
+            sqlx::query_scalar(&count_query).fetch_one(&*self.pool).await.map_err(|e| {
                 error!("[FOURNITURES_SCOLAIRES] Erreur count: {}", e);
                 AppError::Internal(format!("Erreur count fournitures: {}", e))
             })?;

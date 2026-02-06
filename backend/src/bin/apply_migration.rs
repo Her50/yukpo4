@@ -21,10 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("🔌 Connexion à la base de données...");
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&db_url)
-        .await?;
+    let pool = PgPoolOptions::new().max_connections(5).connect(&db_url).await?;
 
     println!("✅ Connexion réussie");
     println!("🔧 Application de la migration fix_product_creation_timeout...");

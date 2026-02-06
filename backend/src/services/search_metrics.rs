@@ -68,10 +68,7 @@ impl SearchMetricsService {
 
         // Enregistrer la catégorie
         if let Some(cat) = category {
-            *metrics
-                .searches_by_category
-                .entry(cat.to_string())
-                .or_insert(0) += 1;
+            *metrics.searches_by_category.entry(cat.to_string()).or_insert(0) += 1;
         }
 
         // Enregistrer la requête

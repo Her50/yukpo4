@@ -240,10 +240,8 @@ impl MobileMoneyService {
                         error: None,
                     })
                 } else {
-                    let error_text = resp
-                        .text()
-                        .await
-                        .unwrap_or_else(|_| "Erreur inconnue".to_string());
+                    let error_text =
+                        resp.text().await.unwrap_or_else(|_| "Erreur inconnue".to_string());
 
                     log::error!("[MobileMoney] ❌ Erreur API MTN: {}", error_text);
 
@@ -383,10 +381,8 @@ impl MobileMoneyService {
                         error: None,
                     })
                 } else {
-                    let error_text = resp
-                        .text()
-                        .await
-                        .unwrap_or_else(|_| "Erreur inconnue".to_string());
+                    let error_text =
+                        resp.text().await.unwrap_or_else(|_| "Erreur inconnue".to_string());
 
                     log::error!("[MobileMoney] ❌ Erreur API Orange Money: {}", error_text);
 
