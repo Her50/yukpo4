@@ -9,7 +9,7 @@ use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
-    response::{Html, Redirect},
+    response::{Html, IntoResponse, Redirect},
     Extension, Json,
 };
 use serde::{Deserialize, Serialize};

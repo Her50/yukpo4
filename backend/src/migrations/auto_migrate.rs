@@ -12083,7 +12083,7 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                 }
             }
             current.clear();
-            paren_depth = 0;
+            // paren_depth sera mis à jour plus bas avec new_paren_depth
         }
 
         // Maintenant ajouter la ligne actuelle

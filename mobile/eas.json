@@ -18,7 +18,6 @@
                                               "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY":  "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                                               "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY":  "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                                               "EXPO_PUBLIC_GOOGLE_CLIENT_ID":  "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
-                                              "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID":  "",
                                               "GRADLE_OPTS":  "-Xmx6144m -XX:MaxMetaspaceSize=1024m"
                                           },
                                   "android":  {
@@ -39,7 +38,6 @@
                                                  "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY":  "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                                                  "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY":  "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                                                  "EXPO_PUBLIC_GOOGLE_CLIENT_ID":  "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
-                                                 "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID":  "",
                                                  "GRADLE_OPTS":  "-Xmx6144m -XX:MaxMetaspaceSize=1024m",
                                                  "EXPO_ANDROID_ARCHITECTURES":  "arm64-v8a"
                                              },
