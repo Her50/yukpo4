@@ -158,12 +158,19 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
       "carburant": ["Essence", "Diesel", "Hybride"],
       "transmission": ["Manuelle", "Automatique"]
     },
+    "product_labels": ["marque", "modele", "annee", "carburant", "transmission"],
     "filtrable": true,
     "identifiant_base": "caracteristiques_vehicule",
     "origine_champs": "ia"
   }
 }
 ```
+
+**⚠️ CRITIQUE POUR L'ALIGNEMENT LABELS-VALEURS** : 
+- **TOUJOURS inclure `product_labels`** : Tableau des clés de `sous_caracteristiques` dans l'ordre exact correspondant à l'ordre des valeurs dans `valeur`
+- **ORDRE GARANTI** : L'ordre des labels dans `product_labels` DOIT correspondre à l'ordre des valeurs dans chaque chaîne de `valeur` (après séparation par le séparateur)
+- **EXEMPLE** : Si `valeur: ["Toyota,RAV4,2020"]` et `separateur: ","`, alors `product_labels: ["marque", "modele", "annee"]` garantit que "Toyota" → marque, "RAV4" → modèle, "2020" → année
+- **OBLIGATOIRE POUR PRODUITS ET PRESTATIONS** : Ce champ est CRITIQUE pour l'alignement correct dans le tableau des sous-caractéristiques
 
 ## RÈGLES D'ENRICHISSEMENT ET EXTRACTION PRODUITS
 
@@ -237,8 +244,15 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 **RÈGLES DE GÉNÉRATION** :
 1. **CRÉER D'ABORD** les `sous_caracteristiques` avec toutes les dimensions et leurs valeurs possibles
 2. **PUIS** générer `valeur` en utilisant UNIQUEMENT des valeurs présentes dans ces listes
-3. **VÉRIFIER** que chaque valeur dans `valeur` existe dans au moins une liste de `sous_caracteristiques`
-4. **AJOUTER** les valeurs manquantes dans `sous_caracteristiques` si nécessaire (ex: si "Importé" est dans `valeur`, l'ajouter à la liste "origine")
+3. **GÉNÉRER `product_labels`** : Tableau des clés de `sous_caracteristiques` dans l'ordre exact correspondant à l'ordre des valeurs dans chaque chaîne de `valeur` (après séparation par le séparateur)
+4. **VÉRIFIER** que chaque valeur dans `valeur` existe dans au moins une liste de `sous_caracteristiques`
+5. **AJOUTER** les valeurs manquantes dans `sous_caracteristiques` si nécessaire (ex: si "Importé" est dans `valeur`, l'ajouter à la liste "origine")
+
+**⚠️ CRITIQUE POUR `product_labels`** :
+- `product_labels` DOIT être un tableau de strings contenant les clés de `sous_caracteristiques` dans l'ordre exact
+- L'ordre dans `product_labels` DOIT correspondre à l'ordre des valeurs dans `valeur` (après split par le séparateur)
+- **EXEMPLE** : Si `valeur: ["Toyota,RAV4,2020"]` et `separateur: ","`, alors `product_labels: ["marque", "modele", "annee"]` garantit l'alignement correct
+- **OBLIGATOIRE** : Ce champ est CRITIQUE pour l'alignement labels-valeurs dans le tableau des sous-caractéristiques, surtout pour les prestations
 
 **EXEMPLES D'ENRICHISSEMENT** :
 
@@ -306,6 +320,7 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
         "nombre_de_portes": ["3", "5"],
         "nombre_de_places": ["5", "7"]
       },
+      "product_labels": ["marque", "modele", "annee", "version", "carburant", "transmission", "puissance", "kilometrage", "etat", "couleur", "nombre_de_portes", "nombre_de_places"],
       "filtrable": true,
       "identifiant_base": "produits",
       "origine_champs": "ia"
@@ -421,6 +436,7 @@ Avant de générer ta réponse JSON, vérifie que tu as bien inclus :
 
 ✅ **3. Si produit/prestation détecté :**
 - [ ] Champ `produits` avec autocomplete (8-12 caractéristiques minimum)
+- [ ] `product_labels` dans `produits` (tableau des clés de `sous_caracteristiques` dans l'ordre correspondant à `valeur`) ⚠️ CRITIQUE POUR ALIGNEMENT
 - [ ] `nom_produit` (string)
 - [ ] `categorie_produit` (string)
 - [ ] `description_produit` (string)

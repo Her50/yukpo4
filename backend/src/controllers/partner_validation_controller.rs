@@ -28,6 +28,7 @@ pub struct PendingPartner {
 }
 
 /// GET /api/admin/partners/pending - Lister les partenaires en attente
+/// ✅ CORRIGÉ 2026-02-07: Inclut tous les types de partenaires (généraux, spécialisés, courriers)
 pub async fn list_pending_partners(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -35,16 +36,54 @@ pub async fn list_pending_partners(
     // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
     crate::utils::role_helpers::ensure_admin_role(&user)?;
 
+    // ✅ NOUVEAU 2026-02-07: Requête UNION pour inclure tous les types de partenaires
+    // 1. Partenaires généraux (role = 'partenaire' avec partner_status = 'pending' ou NULL)
+    // 2. Utilisateurs avec services spécialisés récents (TOUS les types : pharmacies, taxis, agences_voyage, hôtels, meubles, immobilier, etc.)
+    //    qui n'ont pas encore role = 'partenaire' ou partner_status = 'approved'
     let partners: Vec<PendingPartner> = sqlx::query_as(
         r#"
+        WITH pending_general_partners AS (
+            -- Partenaires généraux en attente
+            SELECT DISTINCT u.id, u.email, u.nom_complet, u.partner_type, u.partner_status, u.created_at
+            FROM users u
+            WHERE u.role = 'partenaire' 
+              AND (u.partner_status = 'pending' OR u.partner_status IS NULL)
+        ),
+        specialized_service_users AS (
+            -- Utilisateurs avec services spécialisés récents (TOUS les types)
+            -- ✅ CORRIGÉ 2026-02-07: Ne pas filtrer par une liste explicite, inclure TOUS les specialized_type
+            SELECT DISTINCT 
+                u.id, 
+                u.email, 
+                u.nom_complet,
+                s.specialized_type::text as partner_type,
+                u.partner_status,
+                MAX(s.created_at) as created_at
+            FROM users u
+            INNER JOIN services s ON s.user_id = u.id
+            WHERE s.specialized_type IS NOT NULL
+              AND s.specialized_type != ''
+              AND (u.role != 'partenaire' OR u.partner_status IS NULL OR u.partner_status = 'pending')
+            GROUP BY u.id, u.email, u.nom_complet, s.specialized_type, u.partner_status
+        )
         SELECT id, email, nom_complet, partner_type, partner_status, created_at
-        FROM users
-        WHERE role = 'partenaire' AND (partner_status = 'pending' OR partner_status IS NULL)
+        FROM (
+            SELECT * FROM pending_general_partners
+            UNION
+            SELECT * FROM specialized_service_users
+            WHERE id NOT IN (SELECT id FROM pending_general_partners)
+        ) all_pending_partners
         ORDER BY created_at DESC
         "#,
     )
     .fetch_all(&state.pg)
     .await?;
+
+    log::info!(
+        "[list_pending_partners] {} partenaire(s) en attente trouvé(s) pour admin user_id={}",
+        partners.len(),
+        user.id
+    );
 
     Ok(Json(json!({
         "success": true,
@@ -77,18 +116,31 @@ pub async fn validate_partner(
     }
 
     // Récupérer les infos du partenaire
+    // ✅ CORRIGÉ 2026-02-07: Inclure aussi les partenaires spécialisés (pas seulement role = 'partenaire')
     #[derive(FromRow)]
     struct PartnerInfo {
         partner_type: Option<String>,
         email: String,
         nom_complet: Option<String>,
+        has_specialized_service: bool,
     }
 
     let partner_info: Option<PartnerInfo> = sqlx::query_as(
         r#"
-        SELECT partner_type, email, nom_complet
-        FROM users
-        WHERE id = $1 AND role = 'partenaire'
+        SELECT 
+            COALESCE(u.partner_type, s.specialized_type::text) as partner_type,
+            u.email,
+            u.nom_complet,
+            (s.specialized_type IS NOT NULL) as has_specialized_service
+        FROM users u
+        LEFT JOIN services s ON s.user_id = u.id AND s.specialized_type IS NOT NULL
+        WHERE u.id = $1 
+          AND (
+              u.role = 'partenaire' 
+              OR s.specialized_type IS NOT NULL
+          )
+        ORDER BY s.created_at DESC NULLS LAST
+        LIMIT 1
         "#,
     )
     .bind(user_id)
@@ -99,11 +151,22 @@ pub async fn validate_partner(
         partner_info.ok_or_else(|| AppError::NotFound("Partenaire non trouvé".into()))?;
 
     if action == "approve" {
-        // Mettre à jour le statut
-        sqlx::query("UPDATE users SET partner_status = 'approved' WHERE id = $1")
-            .bind(user_id)
-            .execute(&state.pg)
-            .await?;
+        // ✅ CORRIGÉ 2026-02-07: Mettre à jour le statut ET le rôle si nécessaire
+        // Si l'utilisateur n'a pas encore role = 'partenaire', l'ajouter
+        sqlx::query(
+            r#"
+            UPDATE users 
+            SET partner_status = 'approved',
+                role = CASE 
+                    WHEN role != 'partenaire' THEN 'partenaire'
+                    ELSE role
+                END
+            WHERE id = $1
+            "#,
+        )
+        .bind(user_id)
+        .execute(&state.pg)
+        .await?;
 
         // ✅ CRÉER AUTOMATIQUEMENT l'entrée dans delivery_partners
         if let Some(ref partner_type) = partner_info.partner_type {

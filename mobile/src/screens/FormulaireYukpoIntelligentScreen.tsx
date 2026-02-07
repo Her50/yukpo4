@@ -1536,6 +1536,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // Les produits sont maintenant chargés depuis service_products et ajoutés dans data.produits.valeur
             if (serviceData?.data?.produits) {
               const produitsData = serviceData.data.produits;
+              
+              // ✅ NOUVEAU 2026-02-07: Extraire product_labels depuis produitsData pour les prestations
+              if (produitsData.type_donnee === 'autocomplete' && Array.isArray(produitsData.product_labels)) {
+                formValues.product_labels = produitsData.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ product_labels chargé depuis produits:', formValues.product_labels);
+              }
+              
               // Extraire le tableau de produits (peut être dans .valeur ou directement)
               const produitsArray = Array.isArray(produitsData?.valeur) 
                 ? produitsData.valeur 
@@ -1596,6 +1603,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     if (produitsValue) {
                       formValues.produits = Array.isArray(produitsValue) ? produitsValue : [produitsValue];
                     }
+                  }
+                  // ✅ NOUVEAU 2026-02-07: Extraire product_labels depuis le premier produit si disponible
+                  if (firstProduct.product_labels && Array.isArray(firstProduct.product_labels)) {
+                    formValues.product_labels = firstProduct.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+                    console.log('[FormulaireYukpoIntelligentScreen] ✅ product_labels chargé depuis premier produit:', formValues.product_labels);
                   }
                 }
               }
@@ -3219,6 +3231,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               textAlignVertical="top"
               debounceMs={0}
               scrollEnabled={true}
+              // ✅ CORRECTION CRITIQUE: Propriétés pour permettre les retours à la ligne automatiques
+              textBreakStrategy="highQuality" // Android: permet les retours à la ligne de qualité
+              blurOnSubmit={false} // Empêche la fermeture du clavier lors de la touche Entrée
+              returnKeyType="default" // Type de touche retour par défaut pour multiline
               style={[
                 styles.fieldInput,
                 styles.textareaInput,
@@ -3226,6 +3242,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 isProductDescription && {
                   minHeight: 150, // Hauteur minimale augmentée pour description_produit (6 lignes * 24px + padding)
                   maxHeight: 300, // Hauteur maximale pour éviter que le champ prenne tout l'écran, avec scroll si nécessaire
+                },
+                // ✅ CORRECTION CRITIQUE: Forcer la largeur à 100% et s'assurer que le texte peut se retourner
+                {
+                  width: '100%',
+                  flexShrink: 1, // Permettre au textarea de rétrécir si nécessaire
                 }
               ]}
             />
@@ -5856,7 +5877,12 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut pour multiline
     // ✅ CORRECTION CRITIQUE: Permettre la croissance automatique et les retours à la ligne
-    // Note: flexWrap et overflow ne s'appliquent pas directement à TextInput, mais le scrollEnabled permet le scroll
+    width: '100%', // ✅ CORRECTION: S'assurer que le textarea prend toute la largeur disponible
+    // ✅ CORRECTION CRITIQUE: Surcharger les propriétés de fieldInput pour le multiline
+    // Note: Le multiline={true} avec width: '100%' devrait permettre les retours à la ligne automatiques
+    // Pas besoin de flexWrap car TextInput gère cela automatiquement avec multiline
+    // ✅ CORRECTION CRITIQUE: S'assurer qu'aucune propriété n'empêche le retour à la ligne
+    maxWidth: '100%', // S'assurer que le textarea ne dépasse pas la largeur disponible
   },
   // ✅ SUPPRIMÉ: productDescriptionInput et productDescriptionText - description_produit utilise maintenant les mêmes styles que description
   navigationButtons: {

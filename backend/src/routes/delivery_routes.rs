@@ -5491,12 +5491,8 @@ async fn create_delivery_partner(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<crate::models::delivery_model::DeliveryPartnerInput>,
 ) -> AppResult<Json<Value>> {
-    // Vérifier que l'utilisateur est admin
-    if user.role != "admin" {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".to_string(),
-        ));
-    }
+    // ✅ CORRECTION 2026-02-07: Vérifier admin OU super_admin
+    crate::utils::role_helpers::ensure_admin_role(&user)?;
 
     // Validation
     if payload.name.trim().is_empty() {
@@ -5570,12 +5566,8 @@ async fn get_delivery_partner(
     Extension(user): Extension<AuthenticatedUser>,
     Path(partner_id): Path<i32>,
 ) -> AppResult<Json<Value>> {
-    // Vérifier que l'utilisateur est admin
-    if user.role != "admin" {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".to_string(),
-        ));
-    }
+    // ✅ CORRECTION 2026-02-07: Vérifier admin OU super_admin
+    crate::utils::role_helpers::ensure_admin_role(&user)?;
 
     let partner: Option<crate::models::delivery_model::DeliveryPartner> = sqlx::query_as(
         r#"
@@ -5606,12 +5598,8 @@ async fn update_delivery_partner(
     Path(partner_id): Path<i32>,
     Json(payload): Json<crate::models::delivery_model::DeliveryPartnerInput>,
 ) -> AppResult<Json<Value>> {
-    // Vérifier que l'utilisateur est admin
-    if user.role != "admin" {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".to_string(),
-        ));
-    }
+    // ✅ CORRECTION 2026-02-07: Vérifier admin OU super_admin
+    crate::utils::role_helpers::ensure_admin_role(&user)?;
 
     // Validation
     if payload.name.trim().is_empty() {
@@ -5689,12 +5677,8 @@ async fn delete_delivery_partner(
     Extension(user): Extension<AuthenticatedUser>,
     Path(partner_id): Path<i32>,
 ) -> AppResult<Json<Value>> {
-    // Vérifier que l'utilisateur est admin
-    if user.role != "admin" {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".to_string(),
-        ));
-    }
+    // ✅ CORRECTION 2026-02-07: Vérifier admin OU super_admin
+    crate::utils::role_helpers::ensure_admin_role(&user)?;
 
     // Vérifier qu'aucun coursier n'utilise ce partenaire
     let courier_count: i64 =

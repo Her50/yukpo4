@@ -156,13 +156,57 @@ pub async fn get_products_by_service(
                 if !merged_videos.is_empty() {
                     obj.insert("videos".to_string(), json!(merged_videos));
                 }
+
+                // ✅ NOUVEAU 2026-01-XX: Enrichir avec variants si variation_prix existe
+                // Si has_variant/variants n'existent pas mais variation_prix existe
+                if !obj.contains_key("has_variant") && !obj.contains_key("variants") {
+                    if let Some(variation_prix) = obj.get("variation_prix")
+                        .or_else(|| obj.get("variabilite_prix"))
+                        .or_else(|| obj.get("price_variant"))
+                    {
+                        // Transformer variation_prix → has_variant + variants
+                        if let Some(variation_obj) = variation_prix.as_object() {
+                            if let Some(modalites) = variation_obj.get("modalites").and_then(|v| v.as_array()) {
+                                if !modalites.is_empty() {
+                                    let variants: Vec<serde_json::Value> = modalites
+                                        .iter()
+                                        .filter_map(|m| {
+                                            if let Some(modalite_obj) = m.as_object() {
+                                                Some(json!({
+                                                    "value": modalite_obj.get("valeur").or_else(|| modalite_obj.get("value")),
+                                                    "valeur": modalite_obj.get("valeur").or_else(|| modalite_obj.get("value")),
+                                                    "prix": modalite_obj.get("prix").or_else(|| modalite_obj.get("price")),
+                                                    "devise": modalite_obj.get("devise").or_else(|| modalite_obj.get("currency")).unwrap_or(&json!("XAF")),
+                                                    "stock": modalite_obj.get("stock").or_else(|| modalite_obj.get("quantite")),
+                                                    "image": modalite_obj.get("image"),
+                                                }))
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .collect();
+                                    
+                                    if !variants.is_empty() {
+                                        obj.insert("has_variant".to_string(), json!(true));
+                                        obj.insert("variants".to_string(), json!(variants));
+                                        
+                                        // Ajouter variant_dimension si disponible
+                                        if let Some(variable) = variation_obj.get("variable") {
+                                            obj.insert("variant_dimension".to_string(), variable.clone());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             ProductResponse {
                 id: p.id,
                 service_id: p.service_id,
                 product_index: p.product_index,
-                product_data, // ✅ product_data enrichi avec les médias CDN
+                product_data, // ✅ product_data enrichi avec les médias CDN et variants
                 product_name: p.product_name,
                 product_type: p.product_type,
                 product_price: p.product_price,

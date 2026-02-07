@@ -801,23 +801,52 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             return (suggestionData.produits?.product_vector && Array.isArray(suggestionData.produits.product_vector) ? suggestionData.produits.product_vector : undefined);
         })(),
         product_labels: prefill.product_labels ?? (() => {
-            // ✅ CORRECTION CRITIQUE: Extraire product_labels depuis suggestionData.produits même si produits est un objet structuré (type_donnee: 'autocomplete')
-            // PRIORITÉ 1: Vérifier si produits est un objet structuré avec type_donnee
+            // ✅ NOUVEAU 2026-02-07: PRIORITÉ 1: Extraire product_labels depuis prefill.produits (pour édition/duplication)
+            // Vérifier si prefill.produits est un objet structuré avec type_donnee (comme dans FormulaireYukpoIntelligentScreen)
+            if (prefill.produits && typeof prefill.produits === 'object' && 'type_donnee' in prefill.produits) {
+                if (prefill.produits.type_donnee === 'autocomplete' && Array.isArray(prefill.produits.product_labels)) {
+                    const labels = prefill.produits.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+                    if (labels.length > 0) {
+                        console.log('[AjouterProduitSimple] ✅ product_labels extrait depuis prefill.produits (objet structuré):', labels);
+                        return labels;
+                    }
+                }
+            }
+            // ✅ NOUVEAU 2026-02-07: PRIORITÉ 2: Extraire product_labels depuis le premier produit dans prefill.produits (si c'est un tableau)
+            if (Array.isArray(prefill.produits) && prefill.produits.length > 0) {
+                const firstProduct = prefill.produits[0];
+                if (firstProduct && typeof firstProduct === 'object' && firstProduct.product_labels && Array.isArray(firstProduct.product_labels)) {
+                    const labels = firstProduct.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+                    if (labels.length > 0) {
+                        console.log('[AjouterProduitSimple] ✅ product_labels extrait depuis premier produit dans prefill.produits:', labels);
+                        return labels;
+                    }
+                }
+            }
+            // ✅ PRIORITÉ 3: Extraire depuis prefill.sous_caracteristiques (pour édition/duplication)
+            if (prefill.sous_caracteristiques && typeof prefill.sous_caracteristiques === 'object') {
+                const keys = Object.keys(prefill.sous_caracteristiques);
+                if (keys.length > 0) {
+                    console.log('[AjouterProduitSimple] ✅ product_labels extrait depuis prefill.sous_caracteristiques (fallback):', keys);
+                    return keys;
+                }
+            }
+            // ✅ PRIORITÉ 4: Vérifier si suggestionData.produits est un objet structuré avec type_donnee
             if (suggestionData.produits && typeof suggestionData.produits === 'object' && 'type_donnee' in suggestionData.produits) {
                 // Si c'est un objet structuré, extraire product_labels directement
                 if (suggestionData.produits.product_labels && Array.isArray(suggestionData.produits.product_labels)) {
                     return suggestionData.produits.product_labels;
                 }
             }
-            // PRIORITÉ 2: Extraction directe depuis suggestionData.produits.product_labels
+            // ✅ PRIORITÉ 5: Extraction directe depuis suggestionData.produits.product_labels
             if (suggestionData.produits?.product_labels && Array.isArray(suggestionData.produits.product_labels)) {
                 return suggestionData.produits.product_labels;
             }
-            // PRIORITÉ 3: Vérifier au niveau racine de suggestionData (pour les prestations)
+            // ✅ PRIORITÉ 6: Vérifier au niveau racine de suggestionData (pour les prestations)
             if (suggestionData.product_labels && Array.isArray(suggestionData.product_labels)) {
                 return suggestionData.product_labels;
             }
-            // PRIORITÉ 4: Si on a des sous_caracteristiques, extraire les clés comme product_labels (fallback)
+            // ✅ PRIORITÉ 7: Si on a des sous_caracteristiques, extraire les clés comme product_labels (fallback)
             // ✅ CORRECTION CRITIQUE: Utiliser l'ordre des clés tel qu'elles apparaissent dans l'objet
             // pour garantir l'alignement correct entre labels et valeurs
             if (suggestionData.produits?.sous_caracteristiques && typeof suggestionData.produits.sous_caracteristiques === 'object') {
@@ -827,7 +856,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     return keys;
                 }
             }
-            // PRIORITÉ 5: Vérifier dans sous_caracteristiques au niveau racine
+            // ✅ PRIORITÉ 8: Vérifier dans sous_caracteristiques au niveau racine
             if (suggestionData.sous_caracteristiques && typeof suggestionData.sous_caracteristiques === 'object') {
                 const keys = Object.keys(suggestionData.sous_caracteristiques);
                 if (keys.length > 0) {

@@ -2287,7 +2287,9 @@ const ResultatBesoinScreen: React.FC = () => {
                                     </Text>
                                     <Text style={styles.modernHeaderSubtitle} numberOfLines={1}>
                                         {(() => {
-                                            const total = filteredProducts.length + filteredServices.length;
+                                            // ✅ CORRIGÉ 2026-02-07: Utiliser allResults.length au lieu de filteredProducts.length + filteredServices.length
+                                            // car allResults exclut les services qui ont déjà des produits extraits (évite doublon)
+                                            const total = allResults.length;
                                             const originalTotal = products.length + services.length;
                                             return `${total} résultat${total > 1 ? 's' : ''}${total !== originalTotal ? ` sur ${originalTotal}` : ''}`;
                                         })()}

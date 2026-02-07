@@ -633,8 +633,8 @@ const HomeScreen: React.FC = () => {
     };
 
     const statusBarHeight = getStatusBarHeight();
-    const headerPaddingTop = statusBarHeight + 4; // 4px de marge supplémentaire
-    const headerTotalHeight = headerPaddingTop + 56; // paddingTop + minHeight du header
+    const headerPaddingTop = statusBarHeight + 2; // ✅ RÉDUIT: De 4 à 2 pour réduire l'espace en haut
+    const headerTotalHeight = headerPaddingTop + 52; // ✅ RÉDUIT: De 56 à 52 pour correspondre au minHeight réduit
 
     return (
         <SafeNativeView style={styles.container}>
@@ -719,7 +719,7 @@ const HomeScreen: React.FC = () => {
                 contentInsetAdjustmentBehavior="automatic"
             >
                 {/* ✅ AJOUTÉ: Espace pour compenser la hauteur de l'en-tête fixe */}
-                <View style={{ height: headerTotalHeight }} />
+                <View style={{ height: headerTotalHeight - 8 }} /> {/* ✅ RÉDUIT: -8px pour remonter le contenu */}
 
                 {/* Sélecteur de mode */}
                 <View style={styles.modeSelector}>
@@ -906,11 +906,11 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingBottom: 8,
+        paddingBottom: 6, // ✅ RÉDUIT: De 8 à 6 pour compacter l'en-tête
         backgroundColor: modernColors.background,
         borderBottomWidth: 1,
         borderBottomColor: modernColors.border,
-        minHeight: 56, // Hauteur minimale du contenu du header
+        minHeight: 52, // ✅ RÉDUIT: De 56 à 52 pour réduire la hauteur de l'en-tête
         // Ombre discrète pour effet premium
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -1011,8 +1011,8 @@ const styles = StyleSheet.create({
     modeSelector: {
         flexDirection: 'row',
         marginHorizontal: 16,
-        marginTop: 8, // ✅ RÉDUIT: De 16 à 8 pour réduire l'espace en haut
-        marginBottom: 8, // ✅ RÉDUIT: De 16 à 8 pour réduire l'espace avec ChatInputMobile
+        marginTop: 4, // ✅ RÉDUIT: De 8 à 4 pour réduire encore l'espace en haut
+        marginBottom: 6, // ✅ RÉDUIT: De 8 à 6 pour réduire l'espace avec ChatInputMobile
         backgroundColor: '#F1F5F9',
         borderRadius: 12,
         padding: 5, // ✅ AUGMENTÉ: De 4 à 5 pour plus d'espace autour des boutons
@@ -1043,12 +1043,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc pour le corps de l'application
         marginHorizontal: 16,
         borderRadius: 16,
-        padding: 12, // ✅ RÉDUIT: De 16 à 12 pour compacter davantage
+        padding: 10, // ✅ RÉDUIT: De 12 à 10 pour compacter davantage
         marginTop: 0, // ✅ CORRIGÉ: Pas de marge en haut (gérée par modeSelector)
-        marginBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour remonter les éléments
+        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour remonter les éléments
     },
     inputContainer: {
-        marginBottom: 4, // ✅ RÉDUIT: De 8 à 4 pour réduire l'espace avec les promotions
+        marginBottom: 2, // ✅ RÉDUIT: De 4 à 2 pour réduire l'espace avec les promotions
     },
     carouselErrorContainer: {
         padding: 20,
@@ -1064,9 +1064,9 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     promotionsContainer: {
-        marginTop: 12, // ✅ RÉDUIT: De 16 à 12 pour remonter les éléments
+        marginTop: 8, // ✅ RÉDUIT: De 12 à 8 pour remonter les éléments
         marginHorizontal: 0, // Pas de marge horizontale car déjà dans le conteneur
-        marginBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour équilibrer
+        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour équilibrer
     },
     promotionsMainButton: {
         backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que les boutons des services spécialisés (#f8fafc)
@@ -1147,8 +1147,8 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     specializedServicesContainer: {
-        marginTop: 16, // ✅ RÉDUIT: De 24 à 16 pour remonter les éléments
-        marginBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour équilibrer
+        marginTop: 10, // ✅ RÉDUIT: De 16 à 10 pour remonter les éléments
+        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour équilibrer
     },
     specializedServicesTitle: {
         fontSize: 17, // ✅ AUGMENTÉ: De 15 à 17 pour meilleure visibilité

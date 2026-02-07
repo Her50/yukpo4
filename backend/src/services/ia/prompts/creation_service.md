@@ -69,9 +69,36 @@ Génère un JSON strictement conforme pour la création d'un service :
 - **Extrais EXACTEMENT** ce que tu vois, rien de plus, rien de moins
 - **FIDÉLITÉ TOTALE** : Reproduis fidèlement ce que tu observes, sans extrapolation
 
+**STRUCTURE OBLIGATOIRE POUR LES PRESTATIONS DE SERVICE (produits avec type_donnee: "autocomplete") :**
+Si le service contient des prestations (produits avec `type_donnee: "autocomplete"`), le champ `produits` DOIT avoir cette structure :
+```json
+{
+  "produits": {
+    "type_donnee": "autocomplete",
+    "valeur": ["<modalité1>", "<modalité2>", ...],
+    "sous_caracteristiques": {
+      "<label1>": ["<valeur1>", "<valeur2>", ...],
+      "<label2>": ["<valeur1>", "<valeur2>", ...],
+      ...
+    },
+    "product_labels": ["<label1>", "<label2>", ...],
+    "separateur": ",",
+    "origine_champs": "ia"
+  }
+}
+```
+
+**RÈGLE CRITIQUE POUR product_labels :**
+- `product_labels` : **OBLIGATOIRE** pour les prestations de service avec autocomplete
+- C'est un tableau de strings qui définit l'ordre exact des labels des sous-caractéristiques
+- L'ordre dans `product_labels` DOIT correspondre à l'ordre des clés dans `sous_caracteristiques`
+- Chaque label dans `product_labels` DOIT être une clé présente dans `sous_caracteristiques`
+- Exemple : Si `sous_caracteristiques = {"type": ["Consultation"], "duree": ["30 min"]}`, alors `product_labels = ["type", "duree"]` (dans cet ordre exact)
+
 **Champs conditionnels :**
 - Si `is_tarissable=true` : `vitesse_tarissement` obligatoire
-- Si produits détectés : `produits` avec structure listeproduit
+- Si produits détectés : `produits` avec structure listeproduit OU autocomplete
+- Si `produits.type_donnee = "autocomplete"` : `product_labels` OBLIGATOIRE pour garantir l'alignement correct des labels et valeurs
 
 **CHAMPS DE CONTACT OBLIGATOIRES :**
 - `whatsapp` : **OBLIGATOIRE** - Numéro WhatsApp du prestataire (format international)

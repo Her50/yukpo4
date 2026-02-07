@@ -59,10 +59,8 @@ const StableTextInput: React.FC<StableTextInputProps> = ({
       setLocalValue(externalValue);
       lastExternalValueRef.current = externalValue;
     }
-    // ✅ CORRECTION CRITIQUE: Forcer le focus sur l'input pour s'assurer que le clavier s'ouvre
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    // ✅ CORRECTION CRITIQUE: Ne pas forcer le focus pour éviter le double focus qui cause le scroll jusqu'en bas
+    // Le focus est déjà géré par React Native, pas besoin de le forcer
     props.onFocus?.(e);
   }, [props.onFocus, localValue, externalValue]);
 
@@ -110,6 +108,12 @@ const StableTextInput: React.FC<StableTextInputProps> = ({
 
   // ✅ Utiliser la valeur locale pour l'affichage
   // Cela évite les re-renders causés par les changements de la valeur externe pendant la saisie
+  // ✅ CORRECTION CRITIQUE: Pour les textarea multiline, ne pas appliquer le style par défaut qui pourrait interférer
+  const isMultiline = props.multiline === true;
+  const inputStyle = isMultiline 
+    ? props.style // Pour multiline, utiliser uniquement le style passé en props
+    : [styles.input, props.style]; // Pour les inputs normaux, combiner avec le style par défaut
+  
   return (
     <TextInput
       {...props}
@@ -118,7 +122,7 @@ const StableTextInput: React.FC<StableTextInputProps> = ({
       onChangeText={handleChangeText}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      style={[styles.input, props.style]}
+      style={inputStyle}
       // ✅ CORRECTION CRITIQUE: S'assurer que l'input peut recevoir le focus
       editable={props.editable !== false}
       // ✅ CORRECTION CRITIQUE: Éviter les problèmes de clavier sur Android

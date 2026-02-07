@@ -1110,6 +1110,7 @@ pub async fn get_service_by_id(
             let user_id_val: i32 = service.try_get("user_id").unwrap_or_default();
 
             // ✅ NOUVEAU 2026-01-03: Charger les produits depuis service_products
+            // ✅ CORRIGÉ 2026-02-07: Préserver la structure autocomplete avec product_labels si elle existe
             let products_service = &state.products_service;
             match products_service.get_products_by_service(service_id).await {
                 Ok(products) => {
@@ -1124,15 +1125,40 @@ pub async fn get_service_by_id(
                         let produits_array: Vec<Value> =
                             products.into_iter().map(|p| p.product_data).collect();
 
-                        // Ajouter les produits dans data.produits pour compatibilité
+                        // ✅ CORRIGÉ 2026-02-07: Vérifier si data.produits existe déjà et est de type autocomplete
                         if let Some(data_obj) = data.as_object_mut() {
-                            data_obj.insert(
-                                "produits".to_string(),
-                                json!({
-                                    "type_donnee": "array",
-                                    "valeur": produits_array
-                                }),
-                            );
+                            let mut should_use_autocomplete = false;
+                            if let Some(existing_produits) = data_obj.get("produits") {
+                                if let Some(produits_obj) = existing_produits.as_object() {
+                                    if produits_obj.get("type_donnee").and_then(|v| v.as_str())
+                                        == Some("autocomplete")
+                                    {
+                                        // Préserver la structure autocomplete avec product_labels
+                                        let mut produits_autocomplete = produits_obj.clone();
+                                        produits_autocomplete
+                                            .insert("valeur".to_string(), json!(produits_array));
+                                        data_obj.insert(
+                                            "produits".to_string(),
+                                            json!(produits_autocomplete),
+                                        );
+                                        info!(
+                                            "[get_service_by_id] ✅ Structure autocomplete préservée avec product_labels"
+                                        );
+                                        should_use_autocomplete = true;
+                                    }
+                                }
+                            }
+
+                            // Sinon, utiliser le format array par défaut
+                            if !should_use_autocomplete {
+                                data_obj.insert(
+                                    "produits".to_string(),
+                                    json!({
+                                        "type_donnee": "array",
+                                        "valeur": produits_array
+                                    }),
+                                );
+                            }
                         }
                     } else {
                         info!(

@@ -1472,6 +1472,26 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
                                     key
                                 )));
                             }
+                            // ✅ NOUVEAU: Vérifier et générer product_labels si manquant pour les prestations
+                            if key == "produits" && !obj.contains_key("product_labels") {
+                                if let Some(sous_caracs) =
+                                    obj.get("sous_caracteristiques").and_then(|v| v.as_object())
+                                {
+                                    let labels: Vec<String> =
+                                        sous_caracs.keys().map(|k| k.to_string()).collect();
+                                    if !labels.is_empty() {
+                                        obj.insert(
+                                            "product_labels".to_string(),
+                                            serde_json::json!(labels),
+                                        );
+                                        log::info!(
+                                            "[valider_service_json] ✅ product_labels généré automatiquement pour champ '{}': {:?}",
+                                            key,
+                                            labels
+                                        );
+                                    }
+                                }
+                            }
                             log::info!(
                                 "[valider_service_json] ✅ Champ '{}' autocomplete validé",
                                 key

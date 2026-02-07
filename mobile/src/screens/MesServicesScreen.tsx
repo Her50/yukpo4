@@ -1089,7 +1089,7 @@ const MesServicesScreen: React.FC = () => {
               <View style={dynamicStyles.logoContainer}>
                 <SafeIcon name="briefcase" size={18} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
-                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Mes Produits</Text>
+                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Produits</Text>
                 </View>
               </View>
             </View>
@@ -1114,7 +1114,7 @@ const MesServicesScreen: React.FC = () => {
         onPress: () => navigation.navigate('Home' as never),
       },
       {
-        label: 'Mes Produits',
+        label: 'Produits',
       },
     ];
     return items;
@@ -1135,12 +1135,12 @@ const MesServicesScreen: React.FC = () => {
           style={dynamicStyles.header}
         >
           <View style={dynamicStyles.headerContent}>
-            {/* ✅ CORRECTION: Titre "Mes Produits" sur sa propre ligne, plus haut */}
+            {/* ✅ CORRECTION: Titre "Produits" sur sa propre ligne, aligné à droite */}
             <View style={dynamicStyles.headerTitleRow}>
               <View style={dynamicStyles.logoContainer}>
                 <SafeIcon name="briefcase" size={22} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
-                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Mes Produits</Text>
+                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Produits</Text>
                 </View>
               </View>
             </View>
@@ -2127,7 +2127,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   headerTitleRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 12,
   },
