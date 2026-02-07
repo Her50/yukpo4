@@ -1353,13 +1353,16 @@ pub async fn rechercher_besoin_direct(
                     // Si has_variant/variants n'existent pas mais variation_prix existe
                     if let Some(obj) = enriched_product.as_object_mut() {
                         if !obj.contains_key("has_variant") && !obj.contains_key("variants") {
-                            if let Some(variation_prix) = obj
+                            // Extraire les valeurs nécessaires avant de faire les insertions pour éviter les conflits d'emprunt
+                            let variation_prix = obj
                                 .get("variation_prix")
                                 .or_else(|| obj.get("variabilite_prix"))
                                 .or_else(|| obj.get("price_variant"))
-                            {
+                                .cloned();
+
+                            if let Some(variation_prix_val) = variation_prix {
                                 // Transformer variation_prix → has_variant + variants
-                                if let Some(variation_obj) = variation_prix.as_object() {
+                                if let Some(variation_obj) = variation_prix_val.as_object() {
                                     if let Some(modalites) =
                                         variation_obj.get("modalites").and_then(|v| v.as_array())
                                     {
@@ -1383,16 +1386,18 @@ pub async fn rechercher_besoin_direct(
                                                 .collect();
 
                                             if !variants.is_empty() {
+                                                // Extraire variant_dimension avant les insertions
+                                                let variant_dimension =
+                                                    variation_obj.get("variable").cloned();
+
                                                 obj.insert("has_variant".to_string(), json!(true));
                                                 obj.insert("variants".to_string(), json!(variants));
 
                                                 // Ajouter variant_dimension si disponible
-                                                if let Some(variable) =
-                                                    variation_obj.get("variable")
-                                                {
+                                                if let Some(variable) = variant_dimension {
                                                     obj.insert(
                                                         "variant_dimension".to_string(),
-                                                        variable.clone(),
+                                                        variable,
                                                     );
                                                 }
                                             }

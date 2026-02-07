@@ -1440,8 +1440,8 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
         }
 
         // ✅ NOUVEAU : Validation spécifique des nouveaux types (autocomplete, price_variant, date, location)
-        for (key, value) in map.iter() {
-            if let Some(obj) = value.as_object() {
+        for (key, value) in map.iter_mut() {
+            if let Some(obj) = value.as_object_mut() {
                 if let Some(type_donnee) = obj.get("type_donnee").and_then(|v| v.as_str()) {
                     match type_donnee {
                         "autocomplete" => {
