@@ -491,11 +491,143 @@ pub async fn share_product_redirect(
             ))
         })?;
 
-    let _product_data = &product.product_data;
+    let product_data = &product.product_data;
     let product_name = &product.product_name;
     let product_price = product.product_price.as_ref().map(|p| p.to_string());
 
-    // Générer la page HTML
+    // ✅ NOUVEAU: Récupérer toutes les images du produit depuis la table media
+    let product_images_db: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
+        r#"
+        SELECT path
+        FROM media
+        WHERE service_id = $1
+        AND product_index = $2
+        AND (type = 'image' OR media_type = 'image')
+        ORDER BY 
+            COALESCE(is_main_image, FALSE) DESC,
+            COALESCE(display_order, 0) ASC, 
+            id ASC
+        "#,
+    )
+    .bind(final_service_id)
+    .bind(final_product_index)
+    .fetch_all(&state.pg)
+    .await
+    .ok()
+    .unwrap_or_default()
+    .into_iter()
+    .flatten()
+    .map(|path| {
+        if path.starts_with("http://") || path.starts_with("https://") {
+            path
+        } else {
+            state.media_storage.build_public_url(&path)
+        }
+    })
+    .collect();
+
+    // Récupérer aussi les images depuis product_data
+    let product_images_from_data: Vec<String> = product_data
+        .as_object()
+        .and_then(|obj| obj.get("images"))
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+        .unwrap_or_default();
+
+    // Fusionner les images (DB en priorité, puis product_data)
+    let mut all_product_images = product_images_db;
+    for img in product_images_from_data {
+        if !all_product_images.contains(&img) {
+            all_product_images.push(img);
+        }
+    }
+
+    // Image principale (première de la liste)
+    let product_image_url = all_product_images.first().cloned().unwrap_or_else(|| {
+        // Fallback final: logo Yukpomnang
+        std::env::var("PUBLIC_BASE_URL").unwrap_or_else(|_| "https://yukpomnang.com".to_string())
+            + "/logo.png"
+    });
+
+    // Générer le HTML pour la galerie d'images
+    let (images_gallery_html, images_js_array) = if all_product_images.len() > 1 {
+        let gallery_items: String = all_product_images
+            .iter()
+            .enumerate()
+            .map(|(idx, img_url)| {
+                let active_class = if idx == 0 { " active" } else { "" };
+                format!(
+                    r#"<img src="{}" alt="{} - Image {}" class="gallery-thumb{}" onclick="showImage({})" />"#,
+                    img_url,
+                    product_name,
+                    idx + 1,
+                    active_class,
+                    idx
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n            ");
+
+        // Générer le tableau JavaScript des images
+        let images_js = format!(
+            "[{}]",
+            all_product_images
+                .iter()
+                .map(|url| format!("\"{}\"", url.replace('"', "\\\"")))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+
+        let html = format!(
+            r#"
+        <div class="gallery-container">
+            <div class="gallery-main">
+                <img id="main-image" src="{}" alt="{}" />
+            </div>
+            <div class="gallery-thumbs">
+                {}
+            </div>
+        </div>"#,
+            all_product_images[0], product_name, gallery_items
+        );
+        (html, images_js)
+    } else {
+        let html = format!(
+            r#"<div class="product-image">
+            <img src="{}" alt="{}" />
+        </div>"#,
+            product_image_url, product_name
+        );
+        (html, "[]".to_string())
+    };
+
+    // ✅ NOUVEAU: Construire l'URL complète de partage
+    let share_url = format!(
+        "{}/product/{}?serviceId={}",
+        std::env::var("PUBLIC_BASE_URL").unwrap_or_else(|_| "https://yukpomnang.com".to_string()),
+        product_id,
+        service_id
+    );
+
+    // ✅ NOUVEAU: Description enrichie
+    let product_description = product_data
+        .as_object()
+        .and_then(|obj| obj.get("description"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("Découvrez ce produit exceptionnel sur Yukpomnang")
+        .chars()
+        .take(200)
+        .collect::<String>();
+
+    // ✅ NOUVEAU: Prix formaté pour Open Graph
+    let price_amount =
+        product.product_price.as_ref().and_then(|p| p.to_string().parse::<f64>().ok());
+    let price_currency = "XAF";
+
+    // Générer le deep link pour le fallback JavaScript
+    let deep_link = generate_deep_link(&product_id, service_id);
+
+    // ✅ AMÉLIORATION: Générer la page HTML avec tous les meta tags standards
     let html = format!(
         r#"
 <!DOCTYPE html>
@@ -503,10 +635,70 @@ pub async fn share_product_redirect(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- ✅ TITRE ET DESCRIPTION DE BASE -->
     <title>{} - Yukpomnang</title>
-    <meta property="og:title" content="{}" />
-    <meta property="og:description" content="Découvrez ce produit sur Yukpomnang" />
+    <meta name="description" content="{}" />
+    
+    <!-- ✅ OPEN GRAPH (Facebook, LinkedIn, WhatsApp, etc.) -->
     <meta property="og:type" content="product" />
+    <meta property="og:title" content="{}" />
+    <meta property="og:description" content="{}" />
+    <meta property="og:image" content="{}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="{}" />
+    <meta property="og:url" content="{}" />
+    <meta property="og:site_name" content="Yukpomnang" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    
+    <!-- ✅ OPEN GRAPH PRODUCT (Prix, devise, disponibilité) -->
+    {}
+    
+    <!-- ✅ TWITTER CARDS -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{}" />
+    <meta name="twitter:description" content="{}" />
+    <meta name="twitter:image" content="{}" />
+    <meta name="twitter:image:alt" content="{}" />
+    <meta name="twitter:site" content="@yukpomnang" />
+    <meta name="twitter:creator" content="@yukpomnang" />
+    
+    <!-- ✅ SCHEMA.ORG JSON-LD (Google, Rich Snippets) -->
+    <script type="application/ld+json">
+    {{
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "{}",
+        "description": "{}",
+        "image": "{}",
+        "offers": {{
+            "@type": "Offer",
+            "price": "{}",
+            "priceCurrency": "{}",
+            "availability": "https://schema.org/InStock",
+            "url": "{}"
+        }},
+        "brand": {{
+            "@type": "Brand",
+            "name": "Yukpomnang"
+        }}
+    }}
+    </script>
+    
+    <!-- ✅ APP LINKS (Deep Linking Mobile) -->
+    <meta name="apple-itunes-app" content="app-id=YOUR_APP_ID, app-argument={}">
+    <meta name="google-play-app" content="app-id=com.yukpomnang.mobile">
+    <meta property="al:ios:url" content="{}" />
+    <meta property="al:ios:app_store_id" content="YOUR_APP_ID" />
+    <meta property="al:android:url" content="{}" />
+    <meta property="al:android:package" content="com.yukpomnang.mobile" />
+    <meta property="al:android:app_name" content="Yukpomnang" />
+    
+    <!-- ✅ FAVICON -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -561,11 +753,64 @@ pub async fn share_product_redirect(
         .button:active {{
             transform: translateY(0);
         }}
+        /* ✅ GALERIE D'IMAGES */
+        .product-image {{
+            margin: 20px 0;
+            text-align: center;
+        }}
+        .product-image img {{
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }}
+        .gallery-container {{
+            margin: 20px 0;
+        }}
+        .gallery-main {{
+            margin-bottom: 16px;
+            text-align: center;
+        }}
+        .gallery-main img {{
+            max-width: 100%;
+            height: auto;
+            max-height: 500px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            object-fit: contain;
+        }}
+        .gallery-thumbs {{
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }}
+        .gallery-thumb {{
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            opacity: 0.7;
+        }}
+        .gallery-thumb:hover {{
+            opacity: 1;
+            border-color: #667eea;
+            transform: scale(1.05);
+        }}
+        .gallery-thumb.active {{
+            opacity: 1;
+            border-color: #667eea;
+        }}
     </style>
 </head>
 <body>
     <div class="container">
         <h1>{}</h1>
+        {}
         {}
         <div class="description">
             Découvrez ce produit et bien plus sur Yukpomnang
@@ -575,10 +820,34 @@ pub async fn share_product_redirect(
         </button>
     </div>
     <script>
+        // ✅ CORRECTION CRITIQUE: Redirection automatique vers l'app sur mobile
+        (function() {{
+            const deepLink = 'yukpomnang://product/{}?serviceId={}';
+            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            // Sur mobile, essayer d'ouvrir l'app automatiquement
+            if (isMobile) {{
+                // Essayer d'ouvrir l'app immédiatement
+                window.location.href = deepLink;
+                
+                // Fallback: Si l'app n'est pas installée, rediriger vers le store après 2.5s
+                setTimeout(() => {{
+                    const appStoreUrl = 'https://apps.apple.com/app/yukpomnang';
+                    const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';
+                    
+                    if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {{
+                        window.location.href = appStoreUrl;
+                    }} else {{
+                        window.location.href = playStoreUrl;
+                    }}
+                }}, 2500);
+            }}
+        }})();
+        
         function openApp() {{
             const deepLink = 'yukpomnang://product/{}?serviceId={}';
             const appStoreUrl = 'https://apps.apple.com/app/yukpomnang';
-            const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.yukpomnang.app';
+            const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';
             
             // Essayer d'ouvrir l'app
             window.location.href = deepLink;
@@ -592,19 +861,89 @@ pub async fn share_product_redirect(
                 }}
             }}, 2000);
         }}
+        
+        // ✅ GALERIE D'IMAGES
+        const productImages = {};
+        function showImage(index) {{
+            const mainImg = document.getElementById('main-image');
+            if (mainImg && productImages[index]) {{
+                mainImg.src = productImages[index];
+                // Mettre à jour les miniatures actives
+                document.querySelectorAll('.gallery-thumb').forEach((thumb, idx) => {{
+                    if (idx === index) {{
+                        thumb.classList.add('active');
+                    }} else {{
+                        thumb.classList.remove('active');
+                    }}
+                }});
+            }}
+        }}
+        // Initialiser le tableau d'images et la galerie
+        (function() {{
+            const images = {images_array};
+            // Copier les images dans productImages depuis le tableau
+            if (Array.isArray(images) && images.length > 0) {{
+                images.forEach((img, idx) => {{
+                    productImages[idx] = img;
+                }});
+            }}
+            const thumbs = document.querySelectorAll('.gallery-thumb');
+            if (thumbs.length > 0) {{
+                thumbs[0].classList.add('active');
+            }}
+        }})();
     </script>
 </body>
 </html>
 "#,
+        // Titre et description
         product_name,
+        &product_description,
+        // Open Graph
         product_name,
+        &product_description,
+        &product_image_url,
+        product_name,
+        &share_url,
+        // Open Graph Product (prix)
+        price_amount
+            .map(|p| format!(
+                r#"<meta property="product:price:amount" content="{}" />
+    <meta property="product:price:currency" content="{}" />
+    <meta property="product:availability" content="in stock" />"#,
+                p, price_currency
+            ))
+            .unwrap_or_else(|| "".to_string()),
+        // Twitter Cards
+        product_name,
+        &product_description,
+        &product_image_url,
+        product_name,
+        // Schema.org JSON-LD
+        product_name,
+        &product_description,
+        &product_image_url,
+        price_amount.map(|p| p.to_string()).unwrap_or_else(|| "0".to_string()),
+        price_currency,
+        &share_url,
+        // App Links
+        &deep_link,
+        &deep_link,
+        &deep_link,
+        // Body content
         product_name,
         product_price
             .map(|p| format!(r#"<div class="price">{} XAF</div>"#, p))
             .unwrap_or_else(|| "".to_string()),
+        &images_gallery_html,
+        product_id,
+        service_id,
         product_id,
         service_id
     );
+
+    // Remplacer le placeholder du tableau d'images dans le JavaScript
+    let html = html.replace("{images_array}", &images_js_array);
 
     log::info!(
         "🌐 Affichage page web produit: {} (User-Agent: {})",

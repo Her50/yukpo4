@@ -34,7 +34,13 @@ const linking: LinkingOptions<any> = {
           serviceId: (serviceId: string) => serviceId,
         },
       },
-      ProductDetail: 'product/:productId',  // ✅ NOUVEAU: Deep link produit
+      ProductDetail: {
+        path: 'product/:productId',
+        parse: {
+          productId: (productId: string) => productId,
+          serviceId: (serviceId: string) => serviceId ? parseInt(serviceId, 10) : undefined,
+        },
+      },  // ✅ AMÉLIORÉ: Deep link produit avec parsing des paramètres
       ServiceDetailShared: 'service/:id',
       SoldeDetail: 'balance',
       CreatePublicite: 'create-ad',

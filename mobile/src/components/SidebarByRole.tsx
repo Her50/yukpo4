@@ -4,6 +4,7 @@ import ResponsiveSidebar from "./ResponsiveSidebar";
 import ClientSidebar from "./ClientSidebar";
 import UserSidebar from "./UserSidebar";
 import { useAuth } from "../contexts/AuthContext";
+import { isAdminRole } from "../utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 const SidebarByRole: React.FC = () => {
   const { user } = useAuth();
@@ -12,7 +13,8 @@ const SidebarByRole: React.FC = () => {
 
   return (
     <>
-      {user.role === "admin" && <ResponsiveSidebar />}
+      {/* ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin */}
+      {isAdminRole(user.role) && <ResponsiveSidebar />}
       {user.role === "client" && <ClientSidebar />}
       {user.role === "user" && <UserSidebar />}
     </>

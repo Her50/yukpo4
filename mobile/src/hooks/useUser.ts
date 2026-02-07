@@ -4,6 +4,7 @@
  */
 
 import { useAuth } from '../contexts/AuthContext';
+import { isAdminUser } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 export const useUser = () => {
     const { user, loading } = useAuth();
@@ -12,7 +13,8 @@ export const useUser = () => {
         user,
         loading,
         isAuthenticated: !!user,
-        isAdmin: user?.role === 'admin',
+        // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+        isAdmin: isAdminUser(user),
         isPrestataire: user?.role === 'prestataire',
     };
 };

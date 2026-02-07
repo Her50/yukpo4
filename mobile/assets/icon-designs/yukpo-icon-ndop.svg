@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Fond bleu indigo traditionnel du ndop (DOMINANT et VISIBLE) -->
+    <!-- ✅ FOND MODERNE : Optimisé pour contraste avec le Y orange/jaune (#F7971E → #FFD200) -->
+    <!-- Option 1 : Gradient bleu foncé/indigo (meilleur contraste avec orange/jaune) -->
     <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E3A8A;stop-opacity:1" />  <!-- Bleu foncé moderne -->
+      <stop offset="50%" style="stop-color:#3B82F6;stop-opacity:1" />  <!-- Bleu vif (complémentaire de l'orange) -->
+      <stop offset="100%" style="stop-color:#6366F1;stop-opacity:1" /> <!-- Indigo moderne -->
+    </linearGradient>
+    
+    <!-- ✅ Option 2 (commentée) : Gradient violet/indigo/rose (alternative moderne) -->
+    <!--
+    <linearGradient id="bgGradientAlt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366F1;stop-opacity:1" />  <!-- Indigo moderne -->
+      <stop offset="50%" style="stop-color:#8B5CF6;stop-opacity:1" />  <!-- Violet moderne -->
+      <stop offset="100%" style="stop-color:#EC4899;stop-opacity:1" /> <!-- Rose moderne -->
+    </linearGradient>
+    -->
+    
+    <!-- ✅ ANCIEN FOND (commenté) : Fond bleu indigo traditionnel du ndop -->
+    <!--
+    <linearGradient id="bgGradientOld" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#1A237E;stop-opacity:1" />
       <stop offset="50%" style="stop-color:#283593;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#1A237E;stop-opacity:1" />
     </linearGradient>
+    -->
     
     <!-- Gradient pour le Y (plus contrasté) -->
     <linearGradient id="yGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -15,7 +34,8 @@
       <stop offset="100%" style="stop-color:#F7971E;stop-opacity:1" />
     </linearGradient>
     
-    <!-- Motif Ndop - Losanges avec TRAITS ÉPAIS et COULEURS CONTRASTÉES -->
+    <!-- ✅ MOTIF NDOP COMMENTÉ (pour version moderne sans motif traditionnel) -->
+    <!--
     <pattern id="ndopPattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
       <!-- Losange principal - BLANC/CRÈME pour contraste fort (traditionnel ndop) -->
       <path d="M 50 0 L 100 50 L 50 100 L 0 50 Z" 
@@ -44,8 +64,10 @@
       <circle cx="25" cy="25" r="4" fill="#283593" opacity="0.85"/>
       <circle cx="75" cy="75" r="4" fill="#283593" opacity="0.85"/>
     </pattern>
+    -->
     
-    <!-- Motif Ndop - Zigzags avec TRAITS ÉPAIS -->
+    <!-- ✅ MOTIF NDOP ZIGZAG COMMENTÉ -->
+    <!--
     <pattern id="ndopZigzag" x="0" y="0" width="80" height="50" patternUnits="userSpaceOnUse">
       <path d="M 0 25 L 20 0 L 40 25 L 60 0 L 80 25" 
             fill="none" 
@@ -60,8 +82,10 @@
             opacity="0.9"
             stroke-linecap="round"/>
     </pattern>
+    -->
     
-    <!-- Motif Ndop - Triangles simplifiés avec TRAITS ÉPAIS -->
+    <!-- ✅ MOTIF NDOP TRIANGLES COMMENTÉ -->
+    <!--
     <pattern id="ndopTriangles" x="0" y="0" width="120" height="120" patternUnits="userSpaceOnUse">
       <path d="M 60 0 L 120 60 L 60 120 L 0 60 Z" 
             fill="none" 
@@ -76,6 +100,7 @@
             opacity="0.85"
             stroke-linejoin="round"/>
     </pattern>
+    -->
     
     <!-- Ombre portée pour le Y -->
     <filter id="yShadow">
@@ -97,23 +122,21 @@
     </linearGradient>
   </defs>
   
-  <!-- Fond BLEU INDIGO DOMINANT (couleur traditionnelle du ndop) -->
+  <!-- ✅ FOND MODERNE : Gradient violet/indigo/rose (sans motif ndop) -->
   <rect width="1024" height="1024" fill="url(#bgGradient)" rx="180"/>
   
-  <!-- Couche de motif Ndop - Losanges (OPACITÉ MAXIMALE pour visibilité) -->
+  <!-- ✅ MOTIFS NDOP COMMENTÉS (pour version moderne sans motif traditionnel) -->
+  <!--
   <rect width="1024" height="1024" fill="url(#ndopPattern)" rx="180" opacity="1.0"/>
-  
-  <!-- Couche de motif Ndop - Triangles (pour plus de texture) -->
   <rect width="1024" height="1024" fill="url(#ndopTriangles)" rx="180" opacity="0.9"/>
-  
-  <!-- Couche de motif Ndop - Zigzags sur les bords (OPACITÉ MAXIMALE) -->
   <rect x="0" y="0" width="1024" height="300" fill="url(#ndopZigzag)" opacity="1.0"/>
   <rect x="0" y="724" width="1024" height="300" fill="url(#ndopZigzag)" opacity="1.0"/>
   <rect x="0" y="0" width="300" height="1024" fill="url(#ndopZigzag)" opacity="1.0"/>
   <rect x="724" y="0" width="300" height="1024" fill="url(#ndopZigzag)" opacity="1.0"/>
+  -->
   
-  <!-- Cercle central très subtil pour mettre en valeur le Y (OPACITÉ MINIMALE) -->
-  <circle cx="512" cy="512" r="400" fill="#1A237E" opacity="0.15"/>
+  <!-- ✅ Cercle central moderne avec gradient subtil pour mettre en valeur le Y orange/jaune -->
+  <circle cx="512" cy="512" r="400" fill="#1E3A8A" opacity="0.15"/>
   
   <!-- La lettre Y stylisée et moderne (PLUS ÉPAISSE pour visibilité) -->
   <g filter="url(#yShadow)">
@@ -150,7 +173,17 @@
           opacity="0.5"/>
   </g>
   
-  <!-- Accent subtil en bas (symbole Ndop de l'araignée - sagesse) -->
+  <!-- ✅ ACCENT MODERNE : Étoile moderne au lieu du symbole ndop traditionnel -->
+  <g opacity="0.6">
+    <circle cx="512" cy="920" r="8" fill="#FFD200"/>
+    <path d="M 512 900 L 516 910 L 526 910 L 518 916 L 520 926 L 512 920 L 504 926 L 506 916 L 498 910 L 508 910 Z" 
+          fill="#FFD200" 
+          stroke="#FFFFFF" 
+          stroke-width="2"/>
+  </g>
+  
+  <!-- ✅ ANCIEN ACCENT NDOP (commenté) : Symbole Ndop de l'araignée - sagesse -->
+  <!--
   <g opacity="0.4">
     <circle cx="512" cy="920" r="10" fill="#FFD200"/>
     <line x1="512" y1="920" x2="485" y2="945" stroke="#FFD200" stroke-width="3"/>
@@ -158,5 +191,6 @@
     <line x1="512" y1="920" x2="485" y2="895" stroke="#FFD200" stroke-width="3"/>
     <line x1="512" y1="920" x2="539" y2="895" stroke="#FFD200" stroke-width="3"/>
   </g>
+  -->
 </svg>
 

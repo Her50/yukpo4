@@ -1254,7 +1254,16 @@ impl DeliveryRepository {
     }
 
     /// Finalise l'activation d'un coursier
+    /// ✅ CORRIGÉ 2026-02-07: Utilise INSERT ... ON CONFLICT pour éviter les race conditions
+    /// Crée un nouveau coursier ou met à jour l'existant si un coursier existe déjà pour cet utilisateur
     pub async fn create_courier_profile(&self, payload: NewCourierProfile) -> AppResult<Courier> {
+        log::info!(
+            "[create_courier_profile] Création/mise à jour du coursier pour user_id={}",
+            payload.user_id
+        );
+
+        // Utiliser INSERT ... ON CONFLICT pour gérer à la fois la création et la mise à jour
+        // Cela évite les race conditions et simplifie la logique
         let row: CourierRow = sqlx::query_as(
             r#"
             INSERT INTO couriers (
@@ -1267,6 +1276,11 @@ impl DeliveryRepository {
                 hired_at
             )
             VALUES ($1, $2, $3, 0, 0, $4, NOW())
+            ON CONFLICT (user_id) DO UPDATE SET
+                application_id = COALESCE(EXCLUDED.application_id, couriers.application_id),
+                status = EXCLUDED.status,
+                bio = COALESCE(EXCLUDED.bio, couriers.bio),
+                updated_at = NOW()
             RETURNING
                 id,
                 user_id,
@@ -1283,10 +1297,45 @@ impl DeliveryRepository {
         )
         .bind(payload.user_id)
         .bind(payload.application_id)
-        .bind(DeliveryCourierStatus::Approved as DeliveryCourierStatus)
+        .bind(DeliveryCourierStatus::Approved)
         .bind(payload.bio.as_ref())
         .fetch_one(&self.pool)
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[create_courier_profile] ❌ Erreur lors de la création/mise à jour du coursier pour user_id={}: {}",
+                payload.user_id,
+                e
+            );
+            
+            // Analyser l'erreur pour fournir un message plus clair
+            let error_msg = e.to_string();
+            if error_msg.contains("duplicate key") 
+                || error_msg.contains("unique constraint")
+                || error_msg.contains("violates unique constraint") {
+                AppError::Conflict(format!(
+                    "Un coursier existe déjà pour cet utilisateur (user_id={})",
+                    payload.user_id
+                ))
+            } else if error_msg.contains("foreign key") 
+                || error_msg.contains("violates foreign key constraint") {
+                AppError::BadRequest(format!(
+                    "Référence invalide: user_id={} ou application_id invalide",
+                    payload.user_id
+                ))
+            } else {
+                AppError::Internal(format!(
+                    "Erreur lors de la création du coursier: {}",
+                    error_msg
+                ))
+            }
+        })?;
+
+        log::info!(
+            "[create_courier_profile] ✅ Coursier créé/mis à jour avec succès: id={}, user_id={}",
+            row.id,
+            row.user_id
+        );
 
         Ok(Courier {
             id: row.id,

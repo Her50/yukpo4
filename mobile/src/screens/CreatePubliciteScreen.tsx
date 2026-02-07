@@ -11,6 +11,7 @@ import {
     Alert,
     Dimensions,
     Image,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -978,18 +979,21 @@ const CreatePubliciteScreen: React.FC = () => {
             <KeyboardAwareScrollView
                 innerRef={scrollViewRef}
                 style={styles.content}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: Platform.OS === 'android' ? 400 : 350 }]}
                 showsVerticalScrollIndicator={true}
                 enableOnAndroid={true}
                 enableAutomaticScroll={true}
-                extraHeight={100}
-                extraScrollHeight={120}
+                // ✅ CORRECTION CRITIQUE: Augmenter les valeurs pour éviter que le clavier masque les éléments
+                extraHeight={Platform.OS === 'android' ? 350 : 0}
+                extraScrollHeight={Platform.OS === 'ios' ? 300 : 0}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
                 scrollEnabled={true}
                 bounces={true}
                 removeClippedSubviews={false}
                 nestedScrollEnabled={true}
+                enableResetScrollToCoords={false}
+                keyboardOpeningTime={0}
             >
                 {/* ✅ NOUVEAU: Section Templates */}
                 {!titre && !showTemplates && (

@@ -6,6 +6,7 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -964,11 +965,12 @@ const CourierRegistrationScreen: React.FC = () => {
             <KeyboardAwareScrollView
                 ref={scrollViewRef}
                 style={styles.scroll}
-                // ✅ AMÉLIORÉ: Configuration optimale pour éviter que le clavier masque les champs
+                // ✅ CORRECTION CRITIQUE: Configuration optimale pour éviter que le clavier masque les champs
                 enableOnAndroid={true}
                 enableAutomaticScroll={true}
-                extraHeight={120} // ✅ AUGMENTÉ: Plus d'espace pour Android
-                extraScrollHeight={150} // ✅ AUGMENTÉ: Plus d'espace pour iOS
+                // ✅ AUGMENTÉ: Valeurs significativement augmentées pour éviter que le clavier masque les éléments
+                extraHeight={Platform.OS === 'android' ? 350 : 0}
+                extraScrollHeight={Platform.OS === 'ios' ? 300 : 0}
                 enableResetScrollToCoords={false}
                 keyboardOpeningTime={0}
                 keyboardShouldPersistTaps="handled"
@@ -977,8 +979,8 @@ const CourierRegistrationScreen: React.FC = () => {
                 scrollEnabled={true}
                 bounces={true}
                 contentInsetAdjustmentBehavior="never"
-                // ✅ NOUVEAU: Padding supplémentaire en bas pour éviter que le clavier masque les boutons
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: 250 }]}
+                // ✅ CORRECTION CRITIQUE: Padding supplémentaire augmenté en bas pour éviter que le clavier masque les boutons
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: Platform.OS === 'android' ? 400 : 350 }]}
             >
                 <View style={styles.header}>
                     <Text style={styles.title}>Devenir coursier Yukpo</Text>

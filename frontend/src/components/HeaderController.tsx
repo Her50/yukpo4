@@ -6,6 +6,7 @@ import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 import { useUser } from "@/hooks/useUser";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 import { apiGet } from "@/services/apiService";
+import { isAdminUser } from "@/utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 import { Bell, MessageCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -332,7 +333,8 @@ const HeaderController: React.FC = () => {
                     <hr className="my-2 border-gray-200 dark:border-gray-700" />
                     
                     {/* ✅ AMÉLIORATION UX ADMIN: Menu simplifié pour les administrateurs */}
-                    {user.role === 'admin' ? (
+                    {/* ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin */}
+                    {isAdminUser(user) ? (
                       <>
                         {/* ✅ SECTION ADMIN: Liens d'administration en priorité */}
                         <Link

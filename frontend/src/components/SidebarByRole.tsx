@@ -4,6 +4,7 @@ import { useUser } from "@/hooks/useUser";
 import ResponsiveSidebar from "@/components/ResponsiveSidebar";
 import ClientSidebar from "@/components/ClientSidebar";
 import UserSidebar from "@/components/UserSidebar";
+import { isAdminRole } from "@/utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 const SidebarByRole: React.FC = () => {
   const { user } = useUser();
@@ -12,7 +13,8 @@ const SidebarByRole: React.FC = () => {
 
   return (
     <>
-      {user.role === "admin" && <ResponsiveSidebar />}
+      {/* ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin */}
+      {isAdminRole(user.role) && <ResponsiveSidebar />}
       {user.role === "client" && <ClientSidebar />}
       {user.role === "user" && <UserSidebar />}
     </>

@@ -628,6 +628,24 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 setLoading(false);
                 return;
             }
+            
+            // ✅ CORRIGÉ: Convertir les clés françaises en clés anglaises pour le backend
+            const dayMapping: { [key: string]: string } = {
+                'lundi': 'monday',
+                'mardi': 'tuesday',
+                'mercredi': 'wednesday',
+                'jeudi': 'thursday',
+                'vendredi': 'friday',
+                'samedi': 'saturday',
+                'dimanche': 'sunday'
+            };
+            
+            const convertedSchedule: { [key: string]: any } = {};
+            for (const [frenchKey, value] of Object.entries(finalSchedule)) {
+                const englishKey = dayMapping[frenchKey.toLowerCase()] || frenchKey;
+                convertedSchedule[englishKey] = value;
+            }
+            finalSchedule = convertedSchedule;
 
             // ✅ CORRIGÉ: Toujours envoyer preparation_time_minutes (même si 0, car backend le requiert pour is_complete)
             const payload = {

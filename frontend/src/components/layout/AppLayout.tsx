@@ -15,6 +15,7 @@ import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { useChatManager } from "@/hooks/useChatManager";
 import { useUser } from "@/hooks/useUser";
 import { useVideoCallNotifications } from "@/hooks/useVideoCallNotifications";
+import { isAdminUser } from "@/utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -99,7 +100,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
       {/* {import.meta.env.DEV && <DevFloatingMenu />} */}
 
       {/* 🧼 Bouton flush automatique admin (dev only) */}
-      {user?.role === "admin" && import.meta.env.DEV && (
+      {/* ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin */}
+      {isAdminUser(user) && import.meta.env.DEV && (
         <FlushFloatingButton
           onFlushSuccess={() => {
             // Son de confirmation

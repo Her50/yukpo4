@@ -1710,8 +1710,14 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 
                 {/* ✅ OPTIMISÉ 2026-01-14: Description juste sous le titre pour meilleure hiérarchie */}
                 {/* ✅ CORRIGÉ 2026-01-23: Utiliser UNIQUEMENT productData.description pour éviter confusion avec description du service */}
+                {/* ✅ CORRIGÉ 2026-02-06: Permettre l'affichage de la description sur plus de lignes (4 au lieu de 2) */}
                 {(productData.description || productData.description_produit || product.description || product.description_produit) && (
-                  <Text style={styles.productDescription} numberOfLines={2}>
+                  <Text 
+                    style={styles.productDescription}
+                    numberOfLines={4}
+                    // ✅ CORRECTION: Augmenté de 2 à 4 lignes pour permettre une meilleure lecture
+                    // tout en préservant la mise en forme existante
+                  >
                     {filterBooleanValue(
                       // ✅ CORRIGÉ 2026-01-23: PRIORITÉ ABSOLUE à la description du produit depuis productData
                       // Ne JAMAIS utiliser la description du service comme fallback
@@ -2240,6 +2246,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 16, // ✅ OPTIMISÉ: Line height augmenté pour meilleure lisibilité
     marginTop: 4, // ✅ OPTIMISÉ: 4px d'espacement après le titre
+    // ✅ CORRECTION: Permettre l'affichage multiline avec flexWrap pour préserver la mise en forme
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   // ✅ OPTIMISÉ 2026-01-14: Section prestataire et localisation - Ligne compacte et équilibrée
   prestataireLocationRow: {

@@ -42,11 +42,29 @@ const StableTextInput: React.FC<StableTextInputProps> = ({
     }
   }, [externalValue]);
 
+  // ✅ CORRECTION CRITIQUE: Initialiser la valeur locale au montage
+  useEffect(() => {
+    if (localValue !== externalValue && !isFocusedRef.current) {
+      setLocalValue(externalValue);
+      lastExternalValueRef.current = externalValue;
+    }
+  }, []);
+
   // ✅ Handler pour le focus
   const handleFocus = useCallback((e: any) => {
     isFocusedRef.current = true;
+    // ✅ CORRECTION CRITIQUE: S'assurer que la valeur locale est à jour au focus
+    // Cela évite les problèmes où le clavier ne s'ouvre pas ou le curseur saute
+    if (localValue !== externalValue) {
+      setLocalValue(externalValue);
+      lastExternalValueRef.current = externalValue;
+    }
+    // ✅ CORRECTION CRITIQUE: Forcer le focus sur l'input pour s'assurer que le clavier s'ouvre
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
     props.onFocus?.(e);
-  }, [props.onFocus]);
+  }, [props.onFocus, localValue, externalValue]);
 
   // ✅ Handler pour les changements de texte
   const handleChangeText = useCallback((text: string) => {
@@ -101,6 +119,10 @@ const StableTextInput: React.FC<StableTextInputProps> = ({
       onFocus={handleFocus}
       onBlur={handleBlur}
       style={[styles.input, props.style]}
+      // ✅ CORRECTION CRITIQUE: S'assurer que l'input peut recevoir le focus
+      editable={props.editable !== false}
+      // ✅ CORRECTION CRITIQUE: Éviter les problèmes de clavier sur Android
+      showSoftInputOnFocus={true}
     />
   );
 };

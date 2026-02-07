@@ -731,6 +731,18 @@ async fn save_product_delivery_config(
     // ✅ 5. Créer ou mettre à jour la configuration
     // ✅ CORRIGÉ 2026-01-30: Gestion d'erreur robuste pour éviter erreur 500
     // ✅ CORRIGÉ 2026-01-30: Vérifier que storage_location_id existe dans la table avant de l'utiliser
+
+    // ✅ AMÉLIORÉ: Logging détaillé avant insertion pour diagnostic
+    log::debug!(
+        "[save_product_delivery_config] 📝 Paramètres avant insertion SQL: service_id={}, product_index={}, vehicle_type_id={}, preparation_time_minutes={:?}, storage_location_id={:?}, schedule_keys={:?}",
+        payload.service_id,
+        payload.product_index,
+        payload_vehicle_type_id,
+        payload.preparation_time_minutes,
+        payload.storage_location_id,
+        payload.pickup_availability_schedule.as_object().map(|o| o.keys().collect::<Vec<_>>())
+    );
+
     let config_row = match sqlx::query(
         r#"
         INSERT INTO product_delivery_config (
@@ -794,10 +806,28 @@ async fn save_product_delivery_config(
     {
         Ok(row) => row,
         Err(e) => {
+            // ✅ AMÉLIORÉ: Logging détaillé de l'erreur SQL
+            let error_details = match &e {
+                sqlx::Error::Database(db_err) => {
+                    let code = db_err.code().map(|c| c.to_string());
+                    let constraint = db_err.constraint();
+                    let table = db_err.table();
+                    let column = db_err.column();
+                    format!(
+                        "Database error - code: {:?}, constraint: {:?}, table: {:?}, column: {:?}, message: {}",
+                        code, constraint, table, column, db_err.message()
+                    )
+                }
+                sqlx::Error::ColumnNotFound(col) => format!("Column not found: {}", col),
+                sqlx::Error::TypeNotFound(typ) => format!("Type not found: {}", typ),
+                _ => format!("SQLx error: {}", e)
+            };
+            
             log::error!(
-                "[save_product_delivery_config] ❌ Erreur SQL lors de la sauvegarde: {} | service_id: {} | product_index: {}",
-                e, payload.service_id, payload.product_index
+                "[save_product_delivery_config] ❌ Erreur SQL lors de la sauvegarde: {} | service_id: {} | product_index: {} | details: {}",
+                e, payload.service_id, payload.product_index, error_details
             );
+            
             // ✅ CORRIGÉ: Retourner une erreur BadRequest au lieu de 500 pour les erreurs de validation
             if let sqlx::Error::Database(db_err) = &e {
                 if let Some(code) = db_err.code() {
@@ -806,6 +836,13 @@ async fn save_product_delivery_config(
                     if code_str == "23503" || code_str == "23502" {
                         return Err(AppError::BadRequest(format!(
                             "Erreur de validation: {}",
+                            db_err.message()
+                        )));
+                    }
+                    // ✅ NOUVEAU: Erreur de colonne inexistante (42883)
+                    if code_str == "42883" || code_str == "42703" {
+                        return Err(AppError::Internal(format!(
+                            "Erreur de structure de base de données: {}. Veuillez contacter le support technique.",
                             db_err.message()
                         )));
                     }

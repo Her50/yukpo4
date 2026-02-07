@@ -3,6 +3,7 @@ import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-na
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
 import WeatherWidget from './WeatherWidget';
+import { isAdminUser } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 interface UserAvatarMenuProps {
     onNavigate: (route: string) => void;
@@ -16,7 +17,8 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
 
     // ✅ AMÉLIORATION UX ADMIN: Menu simplifié pour les administrateurs
     // Prioriser les liens d'administration et retirer les éléments inutiles
-    const isAdmin = user?.role === 'admin';
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    const isAdmin = isAdminUser(user);
     
     const menuItems = isAdmin ? [
         // ✅ SECTION ADMIN: Liens d'administration en priorité

@@ -1,6 +1,7 @@
 ﻿// @ts-check
 import React from 'react';
 import { ROUTES_CONFIG, Role } from "@/routes/routes";
+import { isAdminRole } from "@/utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 interface Props {
   role: Role;
@@ -15,7 +16,8 @@ const DynamicMenu: React.FC<Props> = ({ role }) => {
 
   return (
     <div className="space-y-6">
-      {role === 'admin' && (
+      {/* ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin */}
+      {isAdminRole(role) && (
         <section>
           <h3 className="font-bold text-sm text-gray-500 mb-1">🔐 Admin</h3>
           {routesByRole.admin.map((r) => (

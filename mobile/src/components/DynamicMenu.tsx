@@ -3,6 +3,7 @@ import React from 'react';
 import { Text } from 'react-native';
 import { View } from 'react-native';
 import { ROUTES_CONFIG, Role } from "@/routes/routes";
+import { isAdminRole } from "../utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 interface Props {
   role: Role;
@@ -17,7 +18,8 @@ const DynamicMenu: React.FC<Textrops> = ({ role }) => {
 
   return (
     <View style="space-y-6">
-      {role === 'admin' && (
+      {/* ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin */}
+      {isAdminRole(role) && (
         <section>
           <Text style="font-bold text-sm text-gray-500 mb-1">🔐 Admin</Text>
           {routesByRole.admin.map((r) => (

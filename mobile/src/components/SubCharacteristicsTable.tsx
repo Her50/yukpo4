@@ -108,12 +108,31 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             
             // Si aucun label valide dans productLabels, utiliser les clés de sousCaracteristiques (sans doublons)
             if (orderedLabels.length === 0) {
-                orderedLabels = Array.from(new Set(Object.keys(sousCaracteristiques)));
+                // ✅ CORRECTION CRITIQUE: Utiliser Object.keys() qui préserve l'ordre d'insertion en JavaScript moderne
+                // Mais s'assurer que toutes les clés sont présentes et dans le bon ordre
+                const allKeys = Object.keys(sousCaracteristiques);
+                orderedLabels = Array.from(new Set(allKeys));
                 console.log('[SubCharacteristicsTable] 🔍 Aucun label valide dans productLabels, utilisation des clés de sousCaracteristiques (sans doublons):', orderedLabels);
+                console.warn('[SubCharacteristicsTable] ⚠️ ATTENTION: productLabels non disponible, utilisation de Object.keys() comme fallback. L\'ordre peut ne pas être garanti.');
             }
             
             console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés depuis productLabels:', orderedLabels);
             console.log('[SubCharacteristicsTable] 🔍 Clés dans sousCaracteristiques:', Object.keys(sousCaracteristiques));
+            
+            // ✅ CORRECTION CRITIQUE: Vérifier que tous les labels ordonnés existent dans sousCaracteristiques
+            // et que toutes les clés de sousCaracteristiques sont présentes dans orderedLabels
+            const missingLabels = orderedLabels.filter(label => !sousCaracteristiques.hasOwnProperty(label));
+            const missingKeys = Object.keys(sousCaracteristiques).filter(key => !orderedLabels.includes(key));
+            
+            if (missingLabels.length > 0) {
+                console.warn('[SubCharacteristicsTable] ⚠️ Labels dans productLabels qui n\'existent pas dans sousCaracteristiques:', missingLabels);
+            }
+            if (missingKeys.length > 0) {
+                console.warn('[SubCharacteristicsTable] ⚠️ Clés dans sousCaracteristiques qui ne sont pas dans productLabels:', missingKeys);
+                // ✅ CORRECTION: Ajouter les clés manquantes à la fin pour garantir que toutes les caractéristiques sont affichées
+                orderedLabels = [...orderedLabels, ...missingKeys];
+                console.log('[SubCharacteristicsTable] ✅ Clés manquantes ajoutées à orderedLabels:', missingKeys);
+            }
             
             // ✅ NOUVEAU: Si on a une valeur parsée ET qu'elle est cohérente, l'utiliser pour pré-remplir les valeurs préférées par l'IA
             // Mais TOUJOURS vérifier que la valeur existe dans le tableau de sousCaracteristiques[label]

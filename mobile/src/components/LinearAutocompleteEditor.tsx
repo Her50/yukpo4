@@ -435,7 +435,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     {console.log('[LinearAutocompleteEditor] 🔍 Props passées à SubCharacteristicsTable:', {
                         sousCaracteristiques: JSON.stringify(sousCaracteristiques, null, 2),
                         separateur,
-                        hasInitialRows: tableRows.length > 0
+                        hasInitialRows: tableRows.length > 0,
+                        productLabels: productLabels,
+                        productLabelsLength: productLabels?.length || 0,
+                        sousCaracteristiquesKeys: Object.keys(sousCaracteristiques || {}),
+                        sousCaracteristiquesKeysLength: Object.keys(sousCaracteristiques || {}).length
                     })}
                     <SubCharacteristicsTable
                         sousCaracteristiques={sousCaracteristiques}

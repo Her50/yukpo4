@@ -818,9 +818,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 return suggestionData.product_labels;
             }
             // PRIORITÉ 4: Si on a des sous_caracteristiques, extraire les clés comme product_labels (fallback)
+            // ✅ CORRECTION CRITIQUE: Utiliser l'ordre des clés tel qu'elles apparaissent dans l'objet
+            // pour garantir l'alignement correct entre labels et valeurs
             if (suggestionData.produits?.sous_caracteristiques && typeof suggestionData.produits.sous_caracteristiques === 'object') {
                 const keys = Object.keys(suggestionData.produits.sous_caracteristiques);
                 if (keys.length > 0) {
+                    console.log('[AjouterProduitSimple] ✅ product_labels extrait depuis produits.sous_caracteristiques (fallback):', keys);
                     return keys;
                 }
             }
@@ -828,6 +831,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             if (suggestionData.sous_caracteristiques && typeof suggestionData.sous_caracteristiques === 'object') {
                 const keys = Object.keys(suggestionData.sous_caracteristiques);
                 if (keys.length > 0) {
+                    console.log('[AjouterProduitSimple] ✅ product_labels extrait depuis sous_caracteristiques (niveau racine, fallback):', keys);
                     return keys;
                 }
             }
@@ -2231,13 +2235,18 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         return suggestionData.product_labels;
                                     }
                                     // PRIORITÉ 5: Extraire depuis sous_caracteristiques disponibles (fallback)
+                                    // ✅ CORRECTION CRITIQUE: Utiliser l'ordre des clés tel qu'elles apparaissent dans l'objet
+                                    // pour garantir l'alignement correct entre labels et valeurs
                                     const sousCaracsComplets = formValues.produits?.sous_caracteristiques
                                         || formValues.sous_caracteristiques
                                         || suggestionData?.produits?.sous_caracteristiques
                                         || suggestionData?.sous_caracteristiques;
                                     if (sousCaracsComplets && typeof sousCaracsComplets === 'object') {
+                                        // ✅ CORRECTION: Utiliser Object.keys() qui préserve l'ordre d'insertion en JavaScript moderne
+                                        // Mais s'assurer que les clés correspondent exactement aux clés de sousCaracteristiques
                                         const keys = Object.keys(sousCaracsComplets);
                                         if (keys.length > 0) {
+                                            console.log('[AjouterProduitSimple] ✅ productLabels extrait depuis sous_caracteristiques (fallback):', keys);
                                             return keys;
                                         }
                                     }

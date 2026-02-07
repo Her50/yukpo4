@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { UtilisateurYukpo } from '@/types/user_types';
+import { isAdminRole } from '@/utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 export type Role = 'admin' | 'user' | 'client' | 'public';
 
@@ -65,7 +66,8 @@ export const useUser = () => {
             id: String(decoded.sub),
             email: decoded.email,
             role: decoded.role,
-            isAdmin: decoded.role === 'admin',
+            // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+            isAdmin: isAdminRole(decoded.role),
             isUser: decoded.role === 'user',
             name: decoded.name || '',
             photo: decoded.photo || decoded.picture || '',

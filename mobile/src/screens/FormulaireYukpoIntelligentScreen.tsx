@@ -1770,10 +1770,29 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 productLabels = suggestion.data.produits.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
               }
               // PRIORITÉ 5: Extraire depuis sous_caracteristiques disponibles (fallback)
+              // ✅ CORRECTION CRITIQUE: Utiliser l'ordre des clés tel qu'elles apparaissent dans l'objet
+              // pour garantir l'alignement correct entre labels et valeurs
               if (!productLabels && fieldData.sous_caracteristiques && typeof fieldData.sous_caracteristiques === 'object') {
                 const keys = Object.keys(fieldData.sous_caracteristiques);
                 if (keys.length > 0) {
                   productLabels = keys;
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis fieldData.sous_caracteristiques (fallback):', keys);
+                }
+              }
+              // PRIORITÉ 5B: Vérifier aussi dans suggestion.service_data.data.produits.sous_caracteristiques (pour prestations)
+              if (!productLabels && suggestion?.service_data?.data?.produits?.sous_caracteristiques && typeof suggestion.service_data.data.produits.sous_caracteristiques === 'object') {
+                const keys = Object.keys(suggestion.service_data.data.produits.sous_caracteristiques);
+                if (keys.length > 0) {
+                  productLabels = keys;
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis service_data.data.produits.sous_caracteristiques (fallback):', keys);
+                }
+              }
+              // PRIORITÉ 5C: Vérifier aussi dans suggestion.service_data.data.sous_caracteristiques (niveau racine)
+              if (!productLabels && suggestion?.service_data?.data?.sous_caracteristiques && typeof suggestion.service_data.data.sous_caracteristiques === 'object') {
+                const keys = Object.keys(suggestion.service_data.data.sous_caracteristiques);
+                if (keys.length > 0) {
+                  productLabels = keys;
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis service_data.data.sous_caracteristiques (niveau racine, fallback):', keys);
                 }
               }
               
@@ -2502,15 +2521,34 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         productLabels = suggestion.data.produits.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
       }
       // PRIORITÉ 6: Extraire depuis sous_caracteristiques disponibles (fallback)
+      // ✅ CORRECTION CRITIQUE: Utiliser l'ordre des clés tel qu'elles apparaissent dans l'objet
+      // pour garantir l'alignement correct entre labels et valeurs
       if (!productLabels && Object.keys(currentSousCaracs).length > 0) {
         // Essayer d'utiliser product_labels depuis valeursFormulaire si disponible et filtré par sous_caracteristiques
         if (valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels)) {
           productLabels = valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0 && currentSousCaracs[label]);
         }
-        // Dernier recours: utiliser Object.keys (ordre non garanti)
+        // ✅ CORRECTION: Vérifier aussi dans suggestion.service_data.data.produits.sous_caracteristiques (pour prestations)
+        if (!productLabels && suggestion?.service_data?.data?.produits?.sous_caracteristiques && typeof suggestion.service_data.data.produits.sous_caracteristiques === 'object') {
+          const keys = Object.keys(suggestion.service_data.data.produits.sous_caracteristiques);
+          if (keys.length > 0) {
+            productLabels = keys;
+            console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis service_data.data.produits.sous_caracteristiques (fallback):', keys);
+          }
+        }
+        // ✅ CORRECTION: Vérifier aussi dans suggestion.service_data.data.sous_caracteristiques (niveau racine)
+        if (!productLabels && suggestion?.service_data?.data?.sous_caracteristiques && typeof suggestion.service_data.data.sous_caracteristiques === 'object') {
+          const keys = Object.keys(suggestion.service_data.data.sous_caracteristiques);
+          if (keys.length > 0) {
+            productLabels = keys;
+            console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis service_data.data.sous_caracteristiques (niveau racine, fallback):', keys);
+          }
+        }
+        // Dernier recours: utiliser Object.keys() qui préserve l'ordre d'insertion en JavaScript moderne
         if (!productLabels) {
           productLabels = Object.keys(currentSousCaracs);
-          console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Utilisation Object.keys() pour productLabels - ordre non garanti');
+          console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Utilisation Object.keys() pour productLabels (fallback) - ordre préservé en JavaScript moderne');
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis currentSousCaracs (fallback):', productLabels);
         }
       }
 
@@ -2523,7 +2561,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         currentValues,
         nbSousCaracsDisponibles: Object.keys(currentSousCaracs).length,
         separateur: safeSeparateur,
-        productLabels: productLabels || 'non disponible'
+        productLabels: productLabels || 'non disponible',
+        productLabelsLength: productLabels?.length || 0,
+        sousCaracteristiquesKeys: Object.keys(currentSousCaracs || {}),
+        sousCaracteristiquesKeysLength: Object.keys(currentSousCaracs || {}).length,
+        // ✅ DEBUG: Vérifier l'alignement
+        alignmentCheck: productLabels && Object.keys(currentSousCaracs).length > 0 
+          ? (productLabels.length === Object.keys(currentSousCaracs).length 
+              ? '✅ Aligné' 
+              : `⚠️ Désaligné: ${productLabels.length} labels vs ${Object.keys(currentSousCaracs).length} clés`)
+          : 'N/A'
       });
 
       return (
@@ -3145,9 +3192,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
         
         // ✅ REFONTE: Utiliser les mêmes paramètres pour tous les textarea (comme description)
-        // ✅ CORRECTION CRITIQUE: Utiliser minimum 4 lignes pour description_produit pour permettre un meilleur affichage
+        // ✅ CORRECTION CRITIQUE: Utiliser minimum 6 lignes pour description_produit pour permettre un meilleur affichage
         const linesMinimum = field.name === 'description_produit' 
-          ? Math.max(field.minLines || 4, 4)  // Minimum 4 lignes pour description_produit
+          ? Math.max(field.minLines || 6, 6)  // Minimum 6 lignes pour description_produit (augmenté pour meilleure visibilité)
           : (field.minLines || 3); // 3 lignes pour description standard
         
         // ✅ CORRECTION CRITIQUE: S'assurer que description_produit a les mêmes styles et comportement que description
@@ -3171,13 +3218,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               numberOfLines={linesMinimum}
               textAlignVertical="top"
               debounceMs={0}
+              scrollEnabled={true}
               style={[
                 styles.fieldInput,
                 styles.textareaInput,
-                // ✅ CORRECTION CRITIQUE: S'assurer que description_produit a une hauteur suffisante
+                // ✅ CORRECTION CRITIQUE: S'assurer que description_produit a une hauteur suffisante pour afficher tout le contenu
                 isProductDescription && {
-                  minHeight: 120, // Hauteur minimale pour description_produit (4 lignes * 24px + padding)
-                  maxHeight: undefined, // Pas de limite maximale pour permettre la croissance
+                  minHeight: 150, // Hauteur minimale augmentée pour description_produit (6 lignes * 24px + padding)
+                  maxHeight: 300, // Hauteur maximale pour éviter que le champ prenne tout l'écran, avec scroll si nécessaire
                 }
               ]}
             />
@@ -5550,7 +5598,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 20,
-    paddingBottom: 300, // ✅ Espace supplémentaire pour le clavier
+    paddingBottom: Platform.OS === 'android' ? 450 : 400, // ✅ CORRIGÉ: Espace supplémentaire augmenté pour éviter que le clavier masque les éléments
   },
   blockContainer: {
     marginBottom: 24,
@@ -5808,8 +5856,7 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut pour multiline
     // ✅ CORRECTION CRITIQUE: Permettre la croissance automatique et les retours à la ligne
-    flexWrap: 'wrap',
-    overflow: 'visible', // Permettre l'affichage complet du texte
+    // Note: flexWrap et overflow ne s'appliquent pas directement à TextInput, mais le scrollEnabled permet le scroll
   },
   // ✅ SUPPRIMÉ: productDescriptionInput et productDescriptionText - description_produit utilise maintenant les mêmes styles que description
   navigationButtons: {

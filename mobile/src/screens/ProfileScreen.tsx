@@ -10,6 +10,7 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { apiPatch, servicesApi, userApi } from '../services/api';
 import { theme } from '../theme/theme';
+import { isAdminRole } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 // ✅ NOUVEAU: Fonction pour nettoyer le nom et supprimer les doublons
 const cleanUserName = (name: string | undefined | null): string => {
@@ -109,7 +110,8 @@ const ProfileScreen: React.FC = () => {
             year: 'numeric',
             month: 'long'
           }) : 'Non disponible',
-          accountType: profileData.role === 'admin' ? 'Administrateur' :
+          // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+          accountType: isAdminRole(profileData.role) ? 'Administrateur' :
             profileData.role === 'prestataire' ? 'Prestataire' : 'Utilisateur',
           status: profileData.is_active ? 'Actif' : 'Inactif'
         });
