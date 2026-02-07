@@ -105,7 +105,7 @@ pub async fn get_products_by_service(
     // ✅ Enrichir chaque produit avec ses médias
     let response: Vec<ProductResponse> = products
         .into_iter()
-        .map(|mut p| {
+        .map(|p| {
             let mut product_data = p.product_data.clone();
 
             // Récupérer les médias pour ce product_index
@@ -863,7 +863,7 @@ pub async fn share_product_redirect(
         }}
         
         // ✅ GALERIE D'IMAGES
-        const productImages = {};
+        const productImages = {{}};
         function showImage(index) {{
             const mainImg = document.getElementById('main-image');
             if (mainImg && productImages[index]) {{
@@ -880,7 +880,7 @@ pub async fn share_product_redirect(
         }}
         // Initialiser le tableau d'images et la galerie
         (function() {{
-            const images = {images_array};
+            const images = {{images_array}};
             // Copier les images dans productImages depuis le tableau
             if (Array.isArray(images) && images.length > 0) {{
                 images.forEach((img, idx) => {{

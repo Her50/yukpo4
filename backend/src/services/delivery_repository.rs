@@ -1307,7 +1307,7 @@ impl DeliveryRepository {
                 payload.user_id,
                 e
             );
-            
+
             // Analyser l'erreur pour fournir un message plus clair
             let error_msg = e.to_string();
             if error_msg.contains("duplicate key") 

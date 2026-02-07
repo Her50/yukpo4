@@ -812,22 +812,21 @@ async fn save_product_delivery_config(
                     let code = db_err.code().map(|c| c.to_string());
                     let constraint = db_err.constraint();
                     let table = db_err.table();
-                    let column = db_err.column();
                     format!(
-                        "Database error - code: {:?}, constraint: {:?}, table: {:?}, column: {:?}, message: {}",
-                        code, constraint, table, column, db_err.message()
+                        "Database error - code: {:?}, constraint: {:?}, table: {:?}, message: {}",
+                        code, constraint, table, db_err.message()
                     )
                 }
                 sqlx::Error::ColumnNotFound(col) => format!("Column not found: {}", col),
-                sqlx::Error::TypeNotFound(typ) => format!("Type not found: {}", typ),
+                sqlx::Error::TypeNotFound { type_name } => format!("Type not found: {}", type_name),
                 _ => format!("SQLx error: {}", e)
             };
-            
+
             log::error!(
                 "[save_product_delivery_config] ❌ Erreur SQL lors de la sauvegarde: {} | service_id: {} | product_index: {} | details: {}",
                 e, payload.service_id, payload.product_index, error_details
             );
-            
+
             // ✅ CORRIGÉ: Retourner une erreur BadRequest au lieu de 500 pour les erreurs de validation
             if let sqlx::Error::Database(db_err) = &e {
                 if let Some(code) = db_err.code() {
