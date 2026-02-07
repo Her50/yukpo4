@@ -14,6 +14,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sqlx::Row;
 use std::sync::Arc;
 
 /// Structure de réponse pour un produit
@@ -88,12 +89,8 @@ pub async fn get_products_by_service(
             .or_insert_with(|| (Vec::new(), Vec::new()));
 
         // Transformer le chemin en URL CDN si nécessaire
-        let media_url = if let Some(ref storage) = state.media_storage {
-            if !path.starts_with("http://") && !path.starts_with("https://") {
-                storage.build_public_url(&path)
-            } else {
-                path
-            }
+        let media_url = if !path.starts_with("http://") && !path.starts_with("https://") {
+            state.media_storage.build_public_url(&path)
         } else {
             path
         };
@@ -494,7 +491,7 @@ pub async fn share_product_redirect(
             ))
         })?;
 
-    let product_data = &product.product_data;
+    let _product_data = &product.product_data;
     let product_name = &product.product_name;
     let product_price = product.product_price.as_ref().map(|p| p.to_string());
 

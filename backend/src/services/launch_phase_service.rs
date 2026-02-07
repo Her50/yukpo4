@@ -4,7 +4,7 @@
 // - Réactiver leurs produits gratuitement
 
 use chrono::{DateTime, Utc};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use std::env;
 
 /// Date de début de la phase de lancement (configurable via variable d'environnement)

@@ -2186,6 +2186,7 @@ pub async fn creer_service(
         is_tarissable: bool,
         gps_str: &str,
         auto_deactivate_at: Option<chrono::NaiveDateTime>,
+        is_free: bool,
     ) -> AppResult<(sqlx::Transaction<'a, sqlx::Postgres>, i64, i64, i32)> {
         // Démarrer la transaction
         let mut tx = pool
@@ -2429,6 +2430,7 @@ pub async fn creer_service(
                 is_tarissable,
                 &gps_str,
                 Some(auto_deactivate_at),
+                is_free,
             )
             .await
             {

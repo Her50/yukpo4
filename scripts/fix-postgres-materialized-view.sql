@@ -8,20 +8,29 @@
 -- Vérifier d'abord si un index unique existe déjà
 DO $$
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM pg_indexes 
-        WHERE tablename = 'services_search_optimized_v2' 
-        AND indexdef LIKE '%UNIQUE%'
-    ) THEN
-        -- Créer un index unique sur la colonne id (ou une autre colonne unique)
-        -- Ajustez selon votre schéma
-        CREATE UNIQUE INDEX IF NOT EXISTS services_search_optimized_v2_id_unique_idx 
-        ON services_search_optimized_v2 (id);
+    -- Vérifier que la vue existe
+    IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'services_search_optimized_v2') THEN
+        -- Supprimer l'ancien index s'il existe avec une clause WHERE (non valide pour refresh concurrent)
+        DROP INDEX IF EXISTS idx_services_search_optimized_v2_unique;
+        DROP INDEX IF EXISTS services_search_optimized_v2_id_unique_idx;
         
-        RAISE NOTICE 'Index unique créé pour permettre REFRESH CONCURRENTLY';
+        -- Créer l'index unique sur service_id (requis pour REFRESH CONCURRENTLY)
+        -- Utiliser service_id car c'est la clé primaire de la table services
+        IF NOT EXISTS (
+            SELECT 1 
+            FROM pg_indexes 
+            WHERE tablename = 'services_search_optimized_v2' 
+            AND indexdef LIKE '%UNIQUE%'
+        ) THEN
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_services_search_optimized_v2_unique
+            ON services_search_optimized_v2 (service_id);
+            
+            RAISE NOTICE 'Index unique créé pour permettre REFRESH CONCURRENTLY';
+        ELSE
+            RAISE NOTICE 'Index unique existe déjà';
+        END IF;
     ELSE
-        RAISE NOTICE 'Index unique existe déjà';
+        RAISE WARNING 'Vue matérialisée services_search_optimized_v2 n''existe pas encore';
     END IF;
 END $$;
 
@@ -30,8 +39,25 @@ END $$;
 -- REFRESH MATERIALIZED VIEW services_search_optimized_v2;
 
 -- Option 3 : Refresh avec CONCURRENTLY (nécessite un index unique)
--- Décommenter après avoir créé l'index unique
--- REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2;
+-- Exécuter après avoir créé l'index unique
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'services_search_optimized_v2') THEN
+        IF EXISTS (
+            SELECT 1 
+            FROM pg_indexes 
+            WHERE tablename = 'services_search_optimized_v2' 
+            AND indexdef LIKE '%UNIQUE%'
+        ) THEN
+            REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2;
+            RAISE NOTICE 'Vue matérialisée rafraîchie avec CONCURRENTLY';
+        ELSE
+            -- Fallback: refresh sans CONCURRENTLY si l'index n'existe pas
+            REFRESH MATERIALIZED VIEW services_search_optimized_v2;
+            RAISE NOTICE 'Vue matérialisée rafraîchie (sans CONCURRENTLY)';
+        END IF;
+    END IF;
+END $$;
 
 -- Vérifier l'état de la vue
 SELECT 
