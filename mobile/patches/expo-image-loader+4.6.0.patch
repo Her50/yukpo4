@@ -1,0 +1,26 @@
+diff --git a/node_modules/expo-image-loader/android/build.gradle b/node_modules/expo-image-loader/android/build.gradle
+index 9d8b329..37d0497 100644
+--- a/node_modules/expo-image-loader/android/build.gradle
++++ b/node_modules/expo-image-loader/android/build.gradle
+@@ -22,7 +22,7 @@ buildscript {
+   // Ensures backward compatibility
+   ext.getKotlinVersion = {
+     if (ext.has("kotlinVersion")) {
+-      ext.kotlinVersion()
++      ext.get("kotlinVersion")
+     } else {
+       ext.safeExtGet("kotlinVersion", "1.8.10")
+     }
+@@ -59,9 +59,11 @@ if (!safeExtGet("expoProvidesDefaultConfig", false)) {
+ }
+ 
+ android {
++  // ✅ FIX: Définir compileSdkVersion directement AVANT toute condition
++  compileSdkVersion safeExtGet("compileSdkVersion", 35)
++  
+   // Remove this if and it's contents, when support for SDK49 is dropped
+   if (!safeExtGet("expoProvidesDefaultConfig", false)) {
+-    compileSdkVersion safeExtGet("compileSdkVersion", 34)
+ 
+     defaultConfig {
+       minSdkVersion safeExtGet("minSdkVersion", 23)

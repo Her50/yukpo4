@@ -1,0 +1,55 @@
+# Configuration optimisée pour TESTS - Réduction ~60% des coûts
+# ⚠️ ATTENTION : Cette configuration réduit les performances mais économise ~$100-135/mois
+# Utiliser uniquement pour phase de tests/développement
+
+# AWS Configuration
+aws_region  = "eu-west-1"  # ← Région corrigée
+project_name = "yukpomnang"
+environment  = "dev"  # ← Important : dev pour skip final snapshot et réduire coûts
+
+# Network Configuration - DÉSACTIVER NAT GATEWAY (économise ~$35/mois)
+vpc_cidr          = "10.0.0.0/16"
+enable_nat_gateway = false  # ← ÉCONOMIE : ~$35-45/mois
+
+# RDS Configuration - RÉDUIRE TAILLE (économise ~$40/mois)
+rds_instance_class      = "db.t3.micro"  # ← ÉCONOMIE : db.t3.medium ($60-80) → db.t3.micro ($15-20)
+rds_engine_version      = "15.15"  # ← Ajuster selon votre version actuelle
+rds_allocated_storage   = 20
+rds_max_allocated_storage = 50  # ← Réduire max storage (économise sur auto-scaling)
+rds_database_name        = "yukpomnang"
+rds_username            = "yukpo_admin"
+rds_password            = "CHANGE_ME_STRONG_PASSWORD_HERE"  # ← À mettre à jour avec votre mot de passe
+rds_backup_retention    = 3  # ← Réduire backups (économise ~$2/mois)
+
+# ElastiCache Configuration - RÉDUIRE TAILLE (économise ~$10/mois)
+redis_engine_version = "7.0"
+redis_node_type      = "cache.t3.micro"  # ← ÉCONOMIE : cache.t3.small ($15-20) → cache.t3.micro ($5-8)
+redis_num_nodes      = 1
+
+# ECS Configuration - RÉDUIRE RESSOURCES (économise ~$60/mois)
+ecs_cpu          = 512   # ← 0.5 vCPU au lieu de 1 vCPU (économise ~$15/mois)
+ecs_memory       = 1024  # ← 1 GB au lieu de 2 GB (économise ~$15/mois)
+ecs_desired_count = 1    # ← 1 task au lieu de 2 (économise ~$30/mois)
+ecs_min_count    = 1
+ecs_max_count    = 2     # ← Limiter auto-scaling (économise sur pics)
+
+# Application Configuration
+jwt_secret      = "CHANGE_ME_GENERATE_STRONG_JWT_SECRET"  # ← À mettre à jour
+rust_log_level  = "info"
+health_check_path = "/healthz"  # ← Ajuster selon votre endpoint actuel
+
+# SSL Certificate (optional - leave empty to skip HTTPS)
+# acm_certificate_arn = "arn:aws:acm:eu-west-1:123456789012:certificate/xxxxx"
+
+# Monitoring - RÉDUIRE RETENTION (économise ~$5-7/mois)
+enable_container_insights = false  # ← Désactiver Container Insights (économise ~$5/mois)
+log_retention_days        = 3       # ← Réduire retention logs (économise ~$2/mois)
+
+# RÉSUMÉ ÉCONOMIES :
+# - NAT Gateway désactivé : ~$35/mois
+# - RDS db.t3.micro : ~$40/mois économisés
+# - ElastiCache cache.t3.micro : ~$10/mois économisés
+# - ECS 1 task + ressources réduites : ~$60/mois économisés
+# - CloudWatch optimisé : ~$7/mois économisés
+# TOTAL ÉCONOMIE : ~$152/mois (de ~$200-265/mois → ~$96-130/mois)
+
