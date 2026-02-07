@@ -8652,6 +8652,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto product_creation_queue: {}", e),
     }
 
+    // ✅ NOUVEAU 2026-02-06 : Phase de lancement (3 mois gratuits)
+    match ensure_launch_phase_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: launch_phase_tables OK"),
+        Err(e) => error!("❌ Erreur migration auto launch_phase_tables: {}", e),
+    }
+
     info!("✅ Migrations automatiques terminées");
 }
 
@@ -15748,6 +15754,156 @@ pub async fn ensure_product_creation_queue(pool: &PgPool) -> Result<(), sqlx::Er
     .await?;
 
     info!("✅ Table product_creation_queue créée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-02-06: Phase de lancement (3 mois gratuits)
+/// Ajoute la colonne free_product_created dans users et crée la table launch_phase_config
+pub async fn ensure_launch_phase_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables phase de lancement...");
+
+    // 1. Ajouter colonne free_product_created dans users si elle n'existe pas
+    let column_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' 
+            AND column_name = 'free_product_created'
+        )",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !column_exists {
+        info!("🔄 Ajout de la colonne free_product_created dans users...");
+        sqlx::query("ALTER TABLE users ADD COLUMN free_product_created INTEGER DEFAULT 0")
+            .execute(pool)
+            .await?;
+        info!("✅ Colonne free_product_created ajoutée à users");
+    } else {
+        info!("✅ Colonne free_product_created existe déjà dans users");
+    }
+
+    // 2. Créer table launch_phase_config si elle n'existe pas
+    let table_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'launch_phase_config'
+        )",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !table_exists {
+        info!("🔄 Création de la table launch_phase_config...");
+        sqlx::query(
+            r#"
+            CREATE TABLE launch_phase_config (
+                id SERIAL PRIMARY KEY,
+                start_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                end_date TIMESTAMPTZ NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                description TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            "#,
+        )
+        .execute(pool)
+        .await?;
+
+        // Insérer la configuration par défaut (3 mois à partir de maintenant)
+        sqlx::query(
+            r#"
+            INSERT INTO launch_phase_config (start_date, end_date, is_active, description)
+            VALUES (NOW(), NOW() + INTERVAL '90 days', TRUE, 'Phase de lancement - 3 mois gratuits pour tous les prestataires')
+            "#,
+        )
+        .execute(pool)
+        .await?;
+
+        // Créer index
+        sqlx::query(
+            "CREATE INDEX idx_launch_phase_config_active ON launch_phase_config(is_active) WHERE is_active = TRUE"
+        )
+        .execute(pool)
+        .await?;
+
+        info!("✅ Table launch_phase_config créée avec succès");
+    } else {
+        info!("✅ Table launch_phase_config existe déjà");
+    }
+
+    // 3. Créer fonction is_launch_phase_active() si elle n'existe pas
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION is_launch_phase_active()
+        RETURNS BOOLEAN AS $$
+        DECLARE
+            v_end_date TIMESTAMPTZ;
+        BEGIN
+            SELECT end_date INTO v_end_date
+            FROM launch_phase_config
+            WHERE is_active = TRUE
+            ORDER BY id DESC
+            LIMIT 1;
+            
+            IF v_end_date IS NULL THEN
+                RETURN FALSE;
+            END IF;
+            
+            RETURN NOW() <= v_end_date;
+        END;
+        $$ LANGUAGE plpgsql STABLE
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 4. Créer fonction is_user_in_launch_phase() si elle n'existe pas
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION is_user_in_launch_phase(p_user_id INTEGER)
+        RETURNS BOOLEAN AS $$
+        DECLARE
+            v_user_created_at TIMESTAMPTZ;
+            v_end_date TIMESTAMPTZ;
+        BEGIN
+            -- Vérifier si la phase de lancement est active
+            IF NOT is_launch_phase_active() THEN
+                RETURN FALSE;
+            END IF;
+            
+            -- Récupérer la date de création de l'utilisateur
+            SELECT created_at INTO v_user_created_at
+            FROM users
+            WHERE id = p_user_id;
+            
+            IF v_user_created_at IS NULL THEN
+                RETURN FALSE;
+            END IF;
+            
+            -- Récupérer la date de fin de la phase de lancement
+            SELECT end_date INTO v_end_date
+            FROM launch_phase_config
+            WHERE is_active = TRUE
+            ORDER BY id DESC
+            LIMIT 1;
+            
+            IF v_end_date IS NULL THEN
+                RETURN FALSE;
+            END IF;
+            
+            -- L'utilisateur est dans la phase s'il a été créé avant la fin de la phase
+            RETURN v_user_created_at <= v_end_date;
+        END;
+        $$ LANGUAGE plpgsql STABLE
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Fonctions phase de lancement créées/vérifiées");
     Ok(())
 }
 

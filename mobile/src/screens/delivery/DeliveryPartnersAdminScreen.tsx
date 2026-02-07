@@ -19,6 +19,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiDelete, apiGet, apiPost, apiPut } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { isAdminUser } from '../../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 interface DeliveryPartner {
     id: number;
@@ -87,7 +88,8 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
 
 
     useEffect(() => {
-        if (user?.role !== 'admin') {
+        // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+        if (!user || !isAdminUser(user)) {
             Alert.alert('Accès refusé', 'Cette page est réservée aux administrateurs');
             navigation.goBack();
             return;

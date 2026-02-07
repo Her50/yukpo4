@@ -59,14 +59,9 @@ where
     }
 }
 
+// ✅ CORRECTION 2026-02-06: Utiliser le helper centralisé
 fn ensure_admin_role(user: &AuthenticatedUser) -> AppResult<()> {
-    if matches!(user.role.as_str(), "admin" | "super_admin") {
-        Ok(())
-    } else {
-        Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs Global Promo.".into(),
-        ))
-    }
+    crate::utils::role_helpers::ensure_admin_role(user)
 }
 
 pub async fn create_global_promo_event(

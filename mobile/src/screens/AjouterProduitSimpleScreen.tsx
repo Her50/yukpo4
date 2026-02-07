@@ -349,14 +349,36 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         )
         : prefilledDocuments;
 
-    const mergedImageSources = mergeImageSources(
+    // ✅ CORRECTION: S'assurer que les images de mediaData sont en première position
+    // Priorité 1: mediaData.base64_image (image utilisée pour la création)
+    // Priorité 2: Autres sources (suggestionData, etc.)
+    const mediaDataImages = normalizeMediaList(mediaData?.base64_image || mediaData?.image_base64 || []);
+    const otherImageSources = mergeImageSources(
         MAX_PRODUCT_IMAGES,
-        mediaData?.base64_image,
-        mediaData?.image_base64,
         suggestionData?.base64_image,
         suggestionData?.images,
         suggestionIA?.service_data?.base64_image
     );
+    
+    // Combiner en mettant mediaDataImages en premier
+    const mergedImageSources: string[] = [];
+    const seenImages = new Set<string>();
+    
+    // Ajouter d'abord les images de mediaData
+    mediaDataImages.forEach(img => {
+        if (img && !seenImages.has(img) && mergedImageSources.length < MAX_PRODUCT_IMAGES) {
+            mergedImageSources.push(img);
+            seenImages.add(img);
+        }
+    });
+    
+    // Puis ajouter les autres images
+    otherImageSources.forEach(img => {
+        if (img && !seenImages.has(img) && mergedImageSources.length < MAX_PRODUCT_IMAGES) {
+            mergedImageSources.push(img);
+            seenImages.add(img);
+        }
+    });
 
     const initialProductImages = prefilledImagesFromMediaData.length > 0 ? prefilledImagesFromMediaData : mergedImageSources;
 
@@ -780,15 +802,36 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         })(),
         product_labels: prefill.product_labels ?? (() => {
             // ✅ CORRECTION CRITIQUE: Extraire product_labels depuis suggestionData.produits même si produits est un objet structuré (type_donnee: 'autocomplete')
-            // Vérifier si produits est un objet structuré avec type_donnee
+            // PRIORITÉ 1: Vérifier si produits est un objet structuré avec type_donnee
             if (suggestionData.produits && typeof suggestionData.produits === 'object' && 'type_donnee' in suggestionData.produits) {
                 // Si c'est un objet structuré, extraire product_labels directement
                 if (suggestionData.produits.product_labels && Array.isArray(suggestionData.produits.product_labels)) {
                     return suggestionData.produits.product_labels;
                 }
             }
-            // Sinon, extraction directe
-            return (suggestionData.produits?.product_labels && Array.isArray(suggestionData.produits.product_labels) ? suggestionData.produits.product_labels : undefined);
+            // PRIORITÉ 2: Extraction directe depuis suggestionData.produits.product_labels
+            if (suggestionData.produits?.product_labels && Array.isArray(suggestionData.produits.product_labels)) {
+                return suggestionData.produits.product_labels;
+            }
+            // PRIORITÉ 3: Vérifier au niveau racine de suggestionData (pour les prestations)
+            if (suggestionData.product_labels && Array.isArray(suggestionData.product_labels)) {
+                return suggestionData.product_labels;
+            }
+            // PRIORITÉ 4: Si on a des sous_caracteristiques, extraire les clés comme product_labels (fallback)
+            if (suggestionData.produits?.sous_caracteristiques && typeof suggestionData.produits.sous_caracteristiques === 'object') {
+                const keys = Object.keys(suggestionData.produits.sous_caracteristiques);
+                if (keys.length > 0) {
+                    return keys;
+                }
+            }
+            // PRIORITÉ 5: Vérifier dans sous_caracteristiques au niveau racine
+            if (suggestionData.sous_caracteristiques && typeof suggestionData.sous_caracteristiques === 'object') {
+                const keys = Object.keys(suggestionData.sous_caracteristiques);
+                if (keys.length > 0) {
+                    return keys;
+                }
+            }
+            return undefined;
         })(),
     };
 
@@ -2167,7 +2210,39 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     }
                                 }}
                                 productVector={Array.isArray(formValues.product_vector) ? formValues.product_vector : undefined}
-                                productLabels={Array.isArray(formValues.product_labels) ? formValues.product_labels : undefined}
+                                productLabels={(() => {
+                                    // ✅ CORRECTION CRITIQUE: Extraire productLabels depuis plusieurs emplacements possibles
+                                    // PRIORITÉ 1: formValues.product_labels
+                                    if (Array.isArray(formValues.product_labels) && formValues.product_labels.length > 0) {
+                                        return formValues.product_labels;
+                                    }
+                                    // PRIORITÉ 2: suggestionData.produits.product_labels (objet structuré)
+                                    if (suggestionData?.produits && typeof suggestionData.produits === 'object' && 'type_donnee' in suggestionData.produits) {
+                                        if (Array.isArray(suggestionData.produits.product_labels) && suggestionData.produits.product_labels.length > 0) {
+                                            return suggestionData.produits.product_labels;
+                                        }
+                                    }
+                                    // PRIORITÉ 3: suggestionData.produits.product_labels (direct)
+                                    if (Array.isArray(suggestionData?.produits?.product_labels) && suggestionData.produits.product_labels.length > 0) {
+                                        return suggestionData.produits.product_labels;
+                                    }
+                                    // PRIORITÉ 4: suggestionData.product_labels (niveau racine pour prestations)
+                                    if (Array.isArray(suggestionData?.product_labels) && suggestionData.product_labels.length > 0) {
+                                        return suggestionData.product_labels;
+                                    }
+                                    // PRIORITÉ 5: Extraire depuis sous_caracteristiques disponibles (fallback)
+                                    const sousCaracsComplets = formValues.produits?.sous_caracteristiques
+                                        || formValues.sous_caracteristiques
+                                        || suggestionData?.produits?.sous_caracteristiques
+                                        || suggestionData?.sous_caracteristiques;
+                                    if (sousCaracsComplets && typeof sousCaracsComplets === 'object') {
+                                        const keys = Object.keys(sousCaracsComplets);
+                                        if (keys.length > 0) {
+                                            return keys;
+                                        }
+                                    }
+                                    return undefined;
+                                })()}
                                 sousCaracteristiques={(() => {
                                     // ✅ CORRIGÉ: Réextraction dynamique pour garantir que les sous-caractéristiques sont toujours à jour
                                     // 1. PRIORITÉ: Utiliser sous_caracteristiques complets si disponibles (contient TOUTES les valeurs)

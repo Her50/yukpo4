@@ -20,7 +20,9 @@ use crate::{
 
 use crate::state::AppState;
 
-const INITIAL_TOKENS: i64 = 100000;
+// ✅ NOUVEAU 2026-02-06: Plus de tokens initiaux - les utilisateurs commencent à 0
+// Les tokens seront gagnés via la phase de lancement (produits gratuits) ou achat
+const INITIAL_TOKENS: i64 = 0;
 
 #[derive(Deserialize)]
 pub struct LoginInput {

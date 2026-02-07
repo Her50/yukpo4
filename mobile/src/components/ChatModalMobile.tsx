@@ -801,11 +801,38 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             // ✅ CORRIGÉ : Éviter le doublon du nom du prestataire dans le message
                                             // Si le titre du service contient déjà le nom du prestataire, on ne le répète pas
                                             const serviceName = titreService || 'votre service';
-                                            let messageText = `Bonjour ${nomPrestataire}, je souhaite discuter de ${serviceName}.`;
+                                            
+                                            // ✅ AMÉLIORÉ: Vérifier si le nom du prestataire est déjà dans le titre du service
+                                            // Normaliser les noms pour la comparaison (enlever les accents, mettre en minuscule)
+                                            const normalizeName = (name: string) => name.toLowerCase()
+                                                .normalize('NFD')
+                                                .replace(/[\u0300-\u036f]/g, '')
+                                                .trim();
+                                            
+                                            const normalizedPrestataireName = normalizeName(nomPrestataire);
+                                            const normalizedServiceName = normalizeName(serviceName);
                                             
                                             // Vérifier si le nom du prestataire est déjà dans le titre du service
-                                            if (serviceName.toLowerCase().includes(nomPrestataire.toLowerCase())) {
+                                            const nameInService = normalizedServiceName.includes(normalizedPrestataireName);
+                                            
+                                            // ✅ CORRIGÉ: Construire le message sans doublon
+                                            let messageText: string;
+                                            if (nameInService) {
+                                                // Le nom est déjà dans le service, ne pas le répéter
                                                 messageText = `Bonjour, je souhaite discuter de ${serviceName}.`;
+                                            } else {
+                                                // Le nom n'est pas dans le service, l'inclure
+                                                messageText = `Bonjour ${nomPrestataire}, je souhaite discuter de ${serviceName}.`;
+                                            }
+                                            
+                                            // ✅ DEBUG: Logger pour diagnostiquer
+                                            if (__DEV__) {
+                                                console.log('[ChatModalMobile] 📱 WhatsApp message debug:', {
+                                                    nomPrestataire,
+                                                    serviceName,
+                                                    nameInService,
+                                                    messageText,
+                                                });
                                             }
                                             
                                             const message = encodeURIComponent(messageText);

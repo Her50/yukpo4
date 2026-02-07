@@ -644,6 +644,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "UPLOAD_BASE_URL"
         valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/UPLOAD_BASE_URL"
+      },
+      {
+        name      = "LAUNCH_PHASE_START_DATE"
+        valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/LAUNCH_PHASE_START_DATE"
       }
     ]
 

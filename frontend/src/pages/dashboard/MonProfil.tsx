@@ -33,7 +33,8 @@ const MonProfil: React.FC = () => {
   };
 
   const handlePasswordChange = () => {
-    alert("🔐 Redirection vers changement de mot de passe (à implémenter).");
+    // ✅ CORRECTION 2026-02-06: Rediriger vers UserSettingsPage avec l'onglet sécurité
+    window.location.href = '/settings?tab=security';
   };
 
   if (!user) {

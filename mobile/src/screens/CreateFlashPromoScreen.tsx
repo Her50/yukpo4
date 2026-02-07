@@ -257,18 +257,22 @@ const CreateFlashPromoScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={true}
+    >
       <View style={styles.content}>
         <Text style={[styles.title, { color: colors.text }]}>
           ⚡ Créer un Flash Promotionnel
         </Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        <Text style={[styles.subtitle, { color: colors.text, opacity: 0.85 }]}>
           Gratuit - Créez une promotion limitée dans le temps pour vos produits
         </Text>
 
         <NativeCard style={styles.card}>
-          <Text style={[styles.label, { color: colors.text }]}>Service</Text>
-          <Text style={[styles.value, { color: colors.textSecondary }]}>
+          <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>Service</Text>
+          <Text style={[styles.value, { color: colors.text, fontWeight: '600' }]}>
             {serviceTitle || `Service #${serviceId}`}
           </Text>
         </NativeCard>
@@ -276,7 +280,7 @@ const CreateFlashPromoScreen: React.FC = () => {
         {/* ✅ NOUVEAU: Sélection multiple de produits */}
         <NativeCard style={styles.card}>
           <View style={styles.productHeaderRow}>
-            <Text style={[styles.label, { color: colors.text }]}>
+            <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>
               Produits à promouvoir * {selectedProductIndexes.length > 0 && `(${selectedProductIndexes.length} sélectionné${selectedProductIndexes.length > 1 ? 's' : ''})`}
             </Text>
             {products.length > 0 && (
@@ -288,16 +292,16 @@ const CreateFlashPromoScreen: React.FC = () => {
                     setSelectedProductIndexes(products.map(p => p.index));
                   }
                 }}
-                style={styles.selectAllButton}
+                style={[styles.selectAllButton, { backgroundColor: colors.primary + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }]}
               >
-                <Text style={[styles.selectAllText, { color: colors.primary }]}>
+                <Text style={[styles.selectAllText, { color: colors.primary, fontWeight: '700' }]}>
                   {selectedProductIndexes.length === products.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                 </Text>
               </TouchableOpacity>
             )}
           </View>
           {products.length === 0 ? (
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            <Text style={[styles.emptyText, { color: colors.text, opacity: 0.7 }]}>
               Aucun produit trouvé dans ce service
             </Text>
           ) : (
@@ -320,18 +324,18 @@ const CreateFlashPromoScreen: React.FC = () => {
                   >
                     <View style={styles.productContent}>
                       <View style={styles.productHeader}>
-                        <SafeIcon name={isSelected ? 'check-circle' : 'circle'} size={20} color={isSelected ? colors.primary : colors.textSecondary} />
-                        <Text style={[styles.productName, { color: colors.text }]}>
+                        <SafeIcon name={isSelected ? 'check-circle' : 'circle'} size={22} color={isSelected ? colors.primary : colors.textSecondary} />
+                        <Text style={[styles.productName, { color: colors.text, fontWeight: '700' }]}>
                           {item.nom}
                         </Text>
                       </View>
                       {item.description && (
-                        <Text style={[styles.productDescription, { color: colors.textSecondary }]} numberOfLines={2}>
+                        <Text style={[styles.productDescription, { color: colors.text, opacity: 0.8 }]} numberOfLines={2}>
                           {item.description}
                         </Text>
                       )}
                       {item.prix && item.prix > 0 && (
-                        <Text style={[styles.productPrice, { color: colors.primary }]}>
+                        <Text style={[styles.productPrice, { color: colors.primary, fontWeight: '700' }]}>
                           {item.prix.toLocaleString()} FCFA
                         </Text>
                       )}
@@ -362,8 +366,8 @@ const CreateFlashPromoScreen: React.FC = () => {
         />
 
         <NativeCard style={styles.card}>
-          <Text style={[styles.label, { color: colors.text }]}>Type de réduction *</Text>
-          <View style={[styles.pickerContainer, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>Type de réduction *</Text>
+          <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}>
             <Picker
               selectedValue={discountType}
               onValueChange={(value) => {
@@ -372,11 +376,12 @@ const CreateFlashPromoScreen: React.FC = () => {
                   setDiscountValue('');
                 }
               }}
-              style={{ color: colors.text }}
+              style={{ color: colors.text, fontWeight: '600' }}
+              itemStyle={{ color: colors.text, fontWeight: '600' }}
             >
-              <Picker.Item label="Pourcentage (%)" value="percentage" />
-              <Picker.Item label="Montant fixe (FCFA)" value="fixed" />
-              <Picker.Item label="Gratuit" value="free" />
+              <Picker.Item label="Pourcentage (%)" value="percentage" color={colors.text} />
+              <Picker.Item label="Montant fixe (FCFA)" value="fixed" color={colors.text} />
+              <Picker.Item label="Gratuit" value="free" color={colors.text} />
             </Picker>
           </View>
 
@@ -394,8 +399,8 @@ const CreateFlashPromoScreen: React.FC = () => {
 
         {/* ✅ NOUVEAU: Disponibilité (online, live, both) */}
         <NativeCard style={styles.card}>
-          <Text style={[styles.label, { color: colors.text }]}>Disponibilité *</Text>
-          <View style={[styles.pickerContainer, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>Disponibilité *</Text>
+          <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}>
             <Picker
               selectedValue={availability}
               onValueChange={(value) => {
@@ -404,11 +409,12 @@ const CreateFlashPromoScreen: React.FC = () => {
                   setLiveSessionId('');
                 }
               }}
-              style={{ color: colors.text }}
+              style={{ color: colors.text, fontWeight: '600' }}
+              itemStyle={{ color: colors.text, fontWeight: '600' }}
             >
-              <Picker.Item label="📱 En ligne uniquement" value="online" />
-              <Picker.Item label="📺 Live uniquement" value="live" />
-              <Picker.Item label="📱📺 En ligne et Live" value="both" />
+              <Picker.Item label="📱 En ligne uniquement" value="online" color={colors.text} />
+              <Picker.Item label="📺 Live uniquement" value="live" color={colors.text} />
+              <Picker.Item label="📱📺 En ligne et Live" value="both" color={colors.text} />
             </Picker>
           </View>
           {(availability === 'live' || availability === 'both') && (
@@ -433,7 +439,7 @@ const CreateFlashPromoScreen: React.FC = () => {
         />
 
         <NativeCard style={styles.card}>
-          <Text style={[styles.label, { color: colors.text }]}>Date de début *</Text>
+          <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>Date de début *</Text>
           <NativeButton
             title={formatDate(startsAt)}
             onPress={() => setShowStartPicker(true)}
@@ -457,7 +463,7 @@ const CreateFlashPromoScreen: React.FC = () => {
         </NativeCard>
 
         <NativeCard style={styles.card}>
-          <Text style={[styles.label, { color: colors.text }]}>Date de fin *</Text>
+          <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>Date de fin *</Text>
           <NativeButton
             title={formatDate(endsAt)}
             onPress={() => setShowEndPicker(true)}
@@ -520,38 +526,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 32,
+  },
   content: {
     padding: 16,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '800',
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     marginBottom: 24,
+    lineHeight: 22,
+    opacity: 0.9,
   },
   card: {
     marginBottom: 16,
     padding: 16,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 10,
+    letterSpacing: 0.3,
   },
   value: {
     fontSize: 16,
+    fontWeight: '600',
+    marginTop: 4,
   },
   input: {
     marginBottom: 16,
   },
   pickerContainer: {
-    borderRadius: 8,
+    borderRadius: 10,
     marginTop: 8,
     marginBottom: 16,
     overflow: 'hidden',
+    minHeight: 50,
+    justifyContent: 'center',
   },
   dateButton: {
     marginTop: 8,
@@ -580,10 +597,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   productItem: {
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   productContent: {
     flex: 1,
@@ -608,20 +630,23 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
+    fontWeight: '700',
+    marginLeft: 10,
     flex: 1,
+    letterSpacing: 0.2,
   },
   productDescription: {
-    fontSize: 12,
-    marginLeft: 28,
-    marginTop: 4,
+    fontSize: 13,
+    marginLeft: 32,
+    marginTop: 6,
+    lineHeight: 18,
   },
   productPrice: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 28,
-    marginTop: 4,
+    fontSize: 15,
+    fontWeight: '700',
+    marginLeft: 32,
+    marginTop: 6,
+    letterSpacing: 0.3,
   },
 });
 

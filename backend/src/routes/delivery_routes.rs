@@ -141,6 +141,7 @@ struct ProductDeliveryConfigPickupLocationRow {
     pickup_longitude: Option<f64>,
 }
 
+use crate::utils::role_helpers::ensure_admin_role;
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::{jwt_auth, AuthenticatedUser},
@@ -3109,12 +3110,8 @@ async fn list_courier_applications(
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<serde_json::Value>,
 ) -> AppResult<Json<Value>> {
-    // Vérifier que l'utilisateur est admin
-    if user.role != "admin" {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".into(),
-        ));
-    }
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    ensure_admin_role(&user)?;
 
     let service = delivery_service(&state)?;
 
@@ -3303,12 +3300,8 @@ async fn approve_courier_application_endpoint(
     Extension(user): Extension<AuthenticatedUser>,
     Path(application_id): Path<Uuid>,
 ) -> AppResult<Json<Value>> {
-    // Vérifier que l'utilisateur est admin
-    if user.role != "admin" {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".into(),
-        ));
-    }
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    ensure_admin_role(&user)?;
 
     let service = delivery_service(&state)?;
 
@@ -3479,12 +3472,8 @@ async fn reject_courier_application_endpoint(
     Path(application_id): Path<Uuid>,
     Json(payload): Json<ApproveRejectPayload>,
 ) -> AppResult<Json<Value>> {
-    // Vérifier que l'utilisateur est admin
-    if user.role != "admin" {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".into(),
-        ));
-    }
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    ensure_admin_role(&user)?;
 
     let service = delivery_service(&state)?;
 

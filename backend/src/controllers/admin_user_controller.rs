@@ -11,6 +11,7 @@ use std::sync::Arc;
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;
+use crate::utils::role_helpers::ensure_admin_role_str;
 
 #[derive(Deserialize)]
 pub struct ListUsersQuery {
@@ -59,15 +60,14 @@ pub async fn list_users(
             AppError::Internal("Erreur vérification permissions".into())
         })?;
 
-    if user_role != "admin" {
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    ensure_admin_role_str(&user_role).map_err(|e| {
         warn!(
-            "[list_users] Tentative d'accès non autorisée par user_id={}",
-            user.id
+            "[list_users] Tentative d'accès non autorisée par user_id={}, role={}",
+            user.id, user_role
         );
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".into(),
-        ));
-    }
+        e
+    })?;
 
     let page = query.page.unwrap_or(1).max(1);
     let limit = query.limit.unwrap_or(20).min(100).max(1);
@@ -214,15 +214,14 @@ pub async fn update_user_role(
             AppError::Internal("Erreur vérification permissions".into())
         })?;
 
-    if user_role != "admin" {
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    ensure_admin_role_str(&user_role).map_err(|e| {
         warn!(
-            "[update_user_role] Tentative d'accès non autorisée par user_id={}",
-            user.id
+            "[update_user_role] Tentative d'accès non autorisée par user_id={}, role={}",
+            user.id, user_role
         );
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".into(),
-        ));
-    }
+        e
+    })?;
 
     // Valider le rôle
     let valid_roles = vec!["user", "admin", "client", "prestataire"];

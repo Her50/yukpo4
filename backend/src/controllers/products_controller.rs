@@ -34,30 +34,154 @@ pub struct ProductResponse {
 
 /// GET /api/services/{service_id}/products
 /// Retourne tous les produits d'un service (depuis table service_products)
+/// ✅ CORRIGÉ: Enrichit les produits avec les médias depuis la table media (CDN)
 pub async fn get_products_by_service(
     Path(service_id): Path<i32>,
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<Vec<ProductResponse>>> {
+    use crate::utils::log::log_info;
+    use std::collections::HashMap;
+
     let products_service = &state.products_service;
 
     let products = products_service.get_active_products_by_service(service_id).await?;
 
+    // ✅ NOUVEAU: Charger les médias depuis la table media pour enrichir les produits
+    // Structure: HashMap<product_index, (images, videos)>
+    // product_index = None pour les médias globaux du service
+    let mut product_media_map: HashMap<Option<i32>, (Vec<String>, Vec<String>)> = HashMap::new();
+
+    let media_rows = sqlx::query(
+        r#"
+        SELECT product_index, type, path
+        FROM media
+        WHERE service_id = $1
+        AND type IN ('image', 'video')
+        AND path IS NOT NULL
+        ORDER BY COALESCE(product_index, -1), uploaded_at ASC
+        "#,
+    )
+    .bind(service_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        AppError::Internal(format!(
+            "Erreur récupération médias pour service {}: {}",
+            service_id, e
+        ))
+    })?;
+
+    log_info(&format!(
+        "[get_products_by_service] {} médias trouvés pour service {}",
+        media_rows.len(),
+        service_id
+    ));
+
+    // Grouper les médias par product_index
+    for row in media_rows {
+        let product_index: Option<i32> = row.try_get("product_index").ok().flatten();
+        let media_type: String = row.get("type");
+        let path: String = row.get("path");
+
+        let entry = product_media_map
+            .entry(product_index)
+            .or_insert_with(|| (Vec::new(), Vec::new()));
+
+        // Transformer le chemin en URL CDN si nécessaire
+        let media_url = if let Some(ref storage) = state.media_storage {
+            if !path.starts_with("http://") && !path.starts_with("https://") {
+                storage.build_public_url(&path)
+            } else {
+                path
+            }
+        } else {
+            path
+        };
+
+        match media_type.as_str() {
+            "image" => entry.0.push(media_url),
+            "video" => entry.1.push(media_url),
+            _ => {}
+        }
+    }
+
+    // ✅ Enrichir chaque produit avec ses médias
     let response: Vec<ProductResponse> = products
         .into_iter()
-        .map(|p| ProductResponse {
-            id: p.id,
-            service_id: p.service_id,
-            product_index: p.product_index,
-            product_data: p.product_data,
-            product_name: p.product_name,
-            product_type: p.product_type,
-            product_price: p.product_price,
-            is_active: p.is_active,
-            created_at: p.created_at,
-            updated_at: p.updated_at,
-            auto_deactivate_at: p.auto_deactivate_at,
+        .map(|mut p| {
+            let mut product_data = p.product_data.clone();
+
+            // Récupérer les médias pour ce product_index
+            let (product_images, product_videos) = product_media_map
+                .get(&Some(p.product_index))
+                .or_else(|| product_media_map.get(&None)) // Fallback vers médias globaux du service
+                .cloned()
+                .unwrap_or_else(|| (Vec::new(), Vec::new()));
+
+            // ✅ Enrichir product_data avec les médias (fusionner avec existants)
+            if let Some(obj) = product_data.as_object_mut() {
+                // Fusionner les images
+                let existing_images: Vec<String> = obj
+                    .get("images")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                    })
+                    .unwrap_or_default();
+
+                let mut merged_images = existing_images;
+                for img in product_images {
+                    if !merged_images.contains(&img) {
+                        merged_images.push(img);
+                    }
+                }
+
+                if !merged_images.is_empty() {
+                    obj.insert("images".to_string(), json!(merged_images));
+                }
+
+                // Fusionner les vidéos
+                let existing_videos: Vec<String> = obj
+                    .get("videos")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                    })
+                    .unwrap_or_default();
+
+                let mut merged_videos = existing_videos;
+                for vid in product_videos {
+                    if !merged_videos.contains(&vid) {
+                        merged_videos.push(vid);
+                    }
+                }
+
+                if !merged_videos.is_empty() {
+                    obj.insert("videos".to_string(), json!(merged_videos));
+                }
+            }
+
+            ProductResponse {
+                id: p.id,
+                service_id: p.service_id,
+                product_index: p.product_index,
+                product_data, // ✅ product_data enrichi avec les médias CDN
+                product_name: p.product_name,
+                product_type: p.product_type,
+                product_price: p.product_price,
+                is_active: p.is_active,
+                created_at: p.created_at,
+                updated_at: p.updated_at,
+                auto_deactivate_at: p.auto_deactivate_at,
+            }
         })
         .collect();
+
+    log_info(&format!(
+        "[get_products_by_service] {} produits enrichis avec médias pour service {}",
+        response.len(),
+        service_id
+    ));
 
     Ok(Json(response))
 }

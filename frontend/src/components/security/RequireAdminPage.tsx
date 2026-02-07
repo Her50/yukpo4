@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/hooks/useUser';
 import { ROUTES } from '@/routes/AppRoutesRegistry'; // ✅ chemin correct au besoin
+import { isAdminUser } from '@/utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 function RequireAdminPage({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
@@ -11,7 +12,7 @@ function RequireAdminPage({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
+    if (!user || !isAdminUser(user)) {
       navigate(ROUTES.LOGIN);
     } else {
       setChecking(false);

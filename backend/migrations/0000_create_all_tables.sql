@@ -55,7 +55,9 @@ CREATE TABLE IF NOT EXISTS users (
     gps VARCHAR(255),
     gps_consent BOOLEAN DEFAULT TRUE,
     -- ✅ 2025-11-27 : Groupe sanguin (optionnel, peut être renseigné volontairement)
-    groupe_sanguin VARCHAR(5) CHECK (groupe_sanguin IS NULL OR groupe_sanguin IN ('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'))
+    groupe_sanguin VARCHAR(5) CHECK (groupe_sanguin IS NULL OR groupe_sanguin IN ('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-')),
+    -- ✅ NOUVEAU 2026-02-06 : Compteur de produits gratuits créés (1er produit toujours gratuit)
+    free_product_created INTEGER DEFAULT 0
 );
 ALTER TABLE users ALTER COLUMN gps_consent SET DEFAULT TRUE;
 

@@ -202,14 +202,36 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     return a.every((value, index) => value === b[index]);
   };
 
-  const initialProductImages = mergeImageSources(
+  // ✅ CORRECTION: S'assurer que les images de mediaData sont en première position
+  // Priorité 1: mediaData.base64_image (image utilisée pour la création)
+  // Priorité 2: Autres sources (suggestion, etc.)
+  const mediaDataImages = normalizeMediaList(mediaData?.base64_image || mediaData?.image_base64 || []);
+  const otherImageSources = mergeImageSources(
     MAX_PRODUCT_IMAGES,
-    mediaData?.base64_image,
-    mediaData?.image_base64,
     suggestion?.data?.base64_image,
     suggestion?.service_data?.base64_image,
     suggestion?.base64_image
   );
+  
+  // Combiner en mettant mediaDataImages en premier
+  const initialProductImages: string[] = [];
+  const seenImages = new Set<string>();
+  
+  // Ajouter d'abord les images de mediaData
+  mediaDataImages.forEach((img: string) => {
+    if (img && !seenImages.has(img) && initialProductImages.length < MAX_PRODUCT_IMAGES) {
+      initialProductImages.push(img);
+      seenImages.add(img);
+    }
+  });
+  
+  // Puis ajouter les autres images
+  otherImageSources.forEach((img: string) => {
+    if (img && !seenImages.has(img) && initialProductImages.length < MAX_PRODUCT_IMAGES) {
+      initialProductImages.push(img);
+      seenImages.add(img);
+    }
+  });
 
   const initialLogo = extractMediaValues(
     mediaData?.logo,
@@ -1726,10 +1748,34 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // ✅ NOUVEAU: Traitement spécial pour le champ produits (autocomplete)
             if (fieldName === 'produits' && typeDonnee === 'autocomplete') {
               // Pour autocomplete, garder toute la structure avec sous_caracteristiques
-              // ✅ CORRECTION CRITIQUE: Extraire product_labels pour garantir l'ordre correct des labels
-              const productLabels = Array.isArray(fieldData.product_labels) && fieldData.product_labels.length > 0
-                ? fieldData.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0)
-                : undefined;
+              // ✅ CORRECTION CRITIQUE: Extraire product_labels depuis plusieurs emplacements possibles
+              let productLabels: string[] | undefined = undefined;
+              
+              // PRIORITÉ 1: fieldData.product_labels (dans l'objet structuré du champ)
+              if (Array.isArray(fieldData.product_labels) && fieldData.product_labels.length > 0) {
+                productLabels = fieldData.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+              }
+              // PRIORITÉ 2: suggestion.data.product_labels au niveau racine (pour les prestations)
+              if (!productLabels && suggestion.data.product_labels && Array.isArray(suggestion.data.product_labels)) {
+                productLabels = suggestion.data.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+              }
+              // PRIORITÉ 3: suggestion.data.produits.product_labels (si produits est un objet structuré)
+              if (!productLabels && suggestion.data.produits && typeof suggestion.data.produits === 'object' && 'type_donnee' in suggestion.data.produits) {
+                if (Array.isArray(suggestion.data.produits.product_labels) && suggestion.data.produits.product_labels.length > 0) {
+                  productLabels = suggestion.data.produits.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+                }
+              }
+              // PRIORITÉ 4: suggestion.data.produits.product_labels (direct)
+              if (!productLabels && suggestion.data.produits?.product_labels && Array.isArray(suggestion.data.produits.product_labels)) {
+                productLabels = suggestion.data.produits.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+              }
+              // PRIORITÉ 5: Extraire depuis sous_caracteristiques disponibles (fallback)
+              if (!productLabels && fieldData.sous_caracteristiques && typeof fieldData.sous_caracteristiques === 'object') {
+                const keys = Object.keys(fieldData.sous_caracteristiques);
+                if (keys.length > 0) {
+                  productLabels = keys;
+                }
+              }
               
               initialValues[fieldName] = {
                 type_donnee: 'autocomplete',
@@ -2428,22 +2474,41 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ field.separateur manquant/invalide pour', field.name, '- utilisation fallback ","');
       }
 
-      // ✅ NOUVEAU: Extraire productLabels pour garantir l'ordre correct des labels
+      // ✅ CORRECTION CRITIQUE: Extraire productLabels depuis plusieurs emplacements possibles (comme AjouterProduitSimpleScreen)
       let productLabels: string[] | undefined = undefined;
+      // PRIORITÉ 1: fieldValue.product_labels (si fieldValue est un objet structuré)
       if (fieldValue && typeof fieldValue === 'object' && 'product_labels' in fieldValue) {
         const labels = fieldValue.product_labels;
         if (Array.isArray(labels) && labels.length > 0) {
           productLabels = labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
         }
-      } else if (valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels)) {
+      }
+      // PRIORITÉ 2: valeursFormulaire.product_labels (stocké au niveau racine)
+      if (!productLabels && valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels)) {
         productLabels = valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
-      } else if (Object.keys(currentSousCaracs).length > 0) {
-        // ✅ CORRECTION: Fallback - essayer d'utiliser product_labels depuis valeursFormulaire si disponible
-        // Sinon, utiliser Object.keys (mais ce n'est pas idéal car l'ordre n'est pas garanti)
+      }
+      // PRIORITÉ 3: suggestion.data.product_labels au niveau racine (pour les prestations)
+      if (!productLabels && suggestion?.data?.product_labels && Array.isArray(suggestion.data.product_labels)) {
+        productLabels = suggestion.data.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+      }
+      // PRIORITÉ 4: suggestion.data.produits.product_labels (objet structuré)
+      if (!productLabels && suggestion?.data?.produits && typeof suggestion.data.produits === 'object' && 'type_donnee' in suggestion.data.produits) {
+        if (Array.isArray(suggestion.data.produits.product_labels) && suggestion.data.produits.product_labels.length > 0) {
+          productLabels = suggestion.data.produits.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+        }
+      }
+      // PRIORITÉ 5: suggestion.data.produits.product_labels (direct)
+      if (!productLabels && suggestion?.data?.produits?.product_labels && Array.isArray(suggestion.data.produits.product_labels)) {
+        productLabels = suggestion.data.produits.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+      }
+      // PRIORITÉ 6: Extraire depuis sous_caracteristiques disponibles (fallback)
+      if (!productLabels && Object.keys(currentSousCaracs).length > 0) {
+        // Essayer d'utiliser product_labels depuis valeursFormulaire si disponible et filtré par sous_caracteristiques
         if (valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels)) {
           productLabels = valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0 && currentSousCaracs[label]);
-        } else {
-          // Dernier recours: utiliser Object.keys (ordre non garanti)
+        }
+        // Dernier recours: utiliser Object.keys (ordre non garanti)
+        if (!productLabels) {
           productLabels = Object.keys(currentSousCaracs);
           console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Utilisation Object.keys() pour productLabels - ordre non garanti');
         }

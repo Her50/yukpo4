@@ -434,10 +434,11 @@ pub async fn update_token_debit(
     Extension(user): Extension<AuthenticatedUser>,
     Json(req): Json<UpdateTokenDebitRequest>,
 ) -> axum::response::Response {
-    if user.role != "admin" {
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    if let Err(_) = crate::utils::role_helpers::ensure_admin_role(&user) {
         return axum::response::IntoResponse::into_response((
             axum::http::StatusCode::FORBIDDEN,
-            Json(serde_json::json!({"error": "Acc?s r?serv? ? l'admin"})),
+            Json(serde_json::json!({"error": "Accès réservé aux administrateurs"})),
         ));
     }
     if req.new_value < 1 || req.new_value > 10000 {

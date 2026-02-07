@@ -32,11 +32,8 @@ pub async fn list_pending_partners(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<Json<serde_json::Value>> {
-    if user.role != "admin" {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".into(),
-        ));
-    }
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    crate::utils::role_helpers::ensure_admin_role(&user)?;
 
     let partners: Vec<PendingPartner> = sqlx::query_as(
         r#"
@@ -69,11 +66,8 @@ pub async fn validate_partner(
     Path(user_id): Path<i32>,
     Json(payload): Json<ApproveRejectPartnerRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
-    if user.role != "admin" {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux administrateurs".into(),
-        ));
-    }
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    crate::utils::role_helpers::ensure_admin_role(&user)?;
 
     let action = payload.action.as_str();
     if action != "approve" && action != "reject" {

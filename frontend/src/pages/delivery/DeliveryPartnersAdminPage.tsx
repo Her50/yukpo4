@@ -10,6 +10,7 @@ import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { API_ENDPOINTS, buildUrl } from "../../config/api.config";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import { isAdminUser } from "@/utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 interface DeliveryPartner {
     id: number;
@@ -76,12 +77,13 @@ const DeliveryPartnersAdminPage = () => {
     });
 
     useEffect(() => {
-        if (!isLoading && (!user || user.role !== 'admin')) {
+        // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+        if (!isLoading && (!user || !isAdminUser(user))) {
             toast.error('Accès réservé aux administrateurs');
             navigate('/dashboard', { replace: true });
             return;
         }
-        if (user?.role === 'admin') {
+        if (isAdminUser(user)) {
             if (activeTab === 'pending') {
                 loadPendingPartners();
             } else {

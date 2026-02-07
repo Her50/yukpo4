@@ -956,8 +956,9 @@ const ResultatBesoinScreen: React.FC = () => {
                                 // ✅ CORRIGÉ 2026-01-22: S'assurer que les images/vidéos depuis la table media sont bien incluses
                                 // ✅ Les URLs CDN sont déjà des URLs complètes (https://...) depuis le backend via build_public_url()
                                 // ✅ Priorité: productImages/productVideos (depuis product_data enrichi) > product.images/videos
-                                images: productImages.length > 0 ? productImages : (product.images || []),
-                                videos: productVideos.length > 0 ? productVideos : (product.videos || []),
+                                // ✅ CORRIGÉ: Toujours utiliser productImages/productVideos car ils sont déjà extraits avec la bonne priorité
+                                images: productImages,
+                                videos: productVideos,
                                 score: finalScore, // ✅ Score ajusté avec bonus promo
                                 en_promotion: isPromo, // Passer le flag
                                 promotion_active: isPromo
@@ -1828,9 +1829,23 @@ const ResultatBesoinScreen: React.FC = () => {
         });
         
         // ✅ NOUVEAU: Créer un Set des serviceIds qui ont des produits pour éviter les doublons
+        // ✅ CORRIGÉ: Vérifier aussi service_id en plus de _serviceId
         const serviceIdsWithProducts = new Set(
-            filteredProducts.map(p => String(p._serviceId || p.service_id || ''))
+            filteredProducts
+                .map(p => {
+                    const serviceId = p._serviceId || p.service_id || p._service?.id || '';
+                    return String(serviceId);
+                })
+                .filter(id => id && id !== 'undefined' && id !== 'null' && id !== '')
         );
+        
+        // ✅ DEBUG: Logger pour diagnostiquer la comptabilisation
+        console.log('🔍 [ResultatBesoinScreen] Comptabilisation debug:', {
+            filteredProductsCount: filteredProducts.length,
+            filteredServicesCount: filteredServices.length,
+            serviceIdsWithProducts: Array.from(serviceIdsWithProducts),
+            serviceIdsWithProductsSize: serviceIdsWithProducts.size,
+        });
         
         // ✅ CORRIGÉ: Ne pas afficher les services qui ont déjà des produits (éviter doublon)
         const services = filteredServices

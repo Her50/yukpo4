@@ -2,6 +2,7 @@
 // @ts-check
 import { useUser } from "./useUser";
 import { useUserPlan } from "./useUserPlan";
+import { isAdminRole } from "@/utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 export interface Permissions {
   canRead: boolean;
@@ -21,7 +22,8 @@ export const usePermissions = (): Permissions => {
 
   const role = user?.role || "public";
 
-  const isAdmin = role === "admin";
+  // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+  const isAdmin = isAdminRole(role);
   const isClient = role === "client";
   const isPro = plan === "pro" || plan === "enterprise";
 

@@ -2,15 +2,16 @@
 // Migration vers des composants React Native natifs pour éviter les crashes
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactNative from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native'; // ✅ NOUVEAU 2026-02-06: Pour gérer les paramètres de route
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { apiPatch } from '../services/api';
+import { apiPatch, apiPost } from '../services/api'; // ✅ NOUVEAU 2026-02-06: Ajouter apiPost pour changement de mot de passe
 import { theme } from '../theme/theme';
 import SafeStorage from '../utils/safeStorage';
-const { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } = ReactNative;
+const { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, Modal } = ReactNative;
 
 interface UserSettings {
   // Profil
@@ -46,9 +47,20 @@ interface UserSettings {
 }
 
 const SettingsScreen: React.FC = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
   const { user, updateUser } = useAuth();
   const { themeMode, setThemeMode, isDark } = useTheme(); // ✅ NOUVEAU: Utiliser ThemeContext
   const [loading, setLoading] = useState(false);
+  
+  // ✅ NOUVEAU 2026-02-06: État pour le changement de mot de passe
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
   const [settings, setSettings] = useState<UserSettings>({
     // Profil
     firstName: user?.name?.split(' ')[0] || '',
@@ -82,7 +94,44 @@ const SettingsScreen: React.FC = () => {
     loginAlerts: true,
   });
 
+  // ✅ NOUVEAU 2026-02-06: État pour le changement de mot de passe
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
+
   const [activeSection, setActiveSection] = useState<string>('profile');
+  
+  // ✅ NOUVEAU 2026-02-06: Vérifier les paramètres de route au montage
+  useEffect(() => {
+    // @ts-ignore - route peut avoir des paramètres
+    const routeParams = (route as any)?.params;
+    if (routeParams) {
+      if (routeParams.initialSection) {
+        setActiveSection(routeParams.initialSection);
+      }
+      if (routeParams.showPasswordModal) {
+        setShowPasswordModal(true);
+      }
+    }
+  }, [route]);
+  
+  // ✅ NOUVEAU 2026-02-06: Vérifier les paramètres de route au montage
+  useEffect(() => {
+    // @ts-ignore - route peut avoir des paramètres
+    const routeParams = (route as any)?.params;
+    if (routeParams) {
+      if (routeParams.initialSection) {
+        setActiveSection(routeParams.initialSection);
+      }
+      if (routeParams.showPasswordModal) {
+        setShowPasswordModal(true);
+      }
+    }
+  }, [route]);
 
   const handleSave = async () => {
     try {
@@ -451,9 +500,64 @@ const SettingsScreen: React.FC = () => {
     </View>
   );
 
+  // ✅ NOUVEAU 2026-02-06: État pour le changement de mot de passe
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  // ✅ NOUVEAU 2026-02-06: Fonction pour changer le mot de passe
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 8 caractères');
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      
+      const response = await apiPost('/api/users/change-password', {
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword
+      });
+
+      if (response.success) {
+        Alert.alert('Succès', 'Votre mot de passe a été modifié avec succès', [
+          { text: 'OK', onPress: () => {
+            setShowPasswordModal(false);
+            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+          }}
+        ]);
+      } else {
+        throw new Error(response.error || 'Erreur lors du changement de mot de passe');
+      }
+    } catch (error: any) {
+      console.error('Erreur changement mot de passe:', error);
+      Alert.alert('Erreur', error.message || 'Impossible de modifier le mot de passe');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const renderSecuritySection = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>🛡️ Sécurité</Text>
+
+      {/* ✅ NOUVEAU 2026-02-06: Bouton pour changer le mot de passe */}
+      <TouchableOpacity
+        style={styles.passwordButton}
+        onPress={() => setShowPasswordModal(true)}
+      >
+        <Text style={styles.passwordButtonText}>🔐 Changer le mot de passe</Text>
+      </TouchableOpacity>
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
@@ -586,6 +690,76 @@ const SettingsScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* ✅ NOUVEAU 2026-02-06: Modal de changement de mot de passe */}
+      {showPasswordModal && (
+        <Modal
+          visible={showPasswordModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowPasswordModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>🔐 Changer le mot de passe</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Mot de passe actuel</Text>
+                <TextInput
+                  style={styles.input}
+                  value={passwordData.currentPassword}
+                  onChangeText={(value) => setPasswordData(prev => ({ ...prev, currentPassword: value }))}
+                  placeholder="Entrez votre mot de passe actuel"
+                  secureTextEntry
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Nouveau mot de passe</Text>
+                <TextInput
+                  style={styles.input}
+                  value={passwordData.newPassword}
+                  onChangeText={(value) => setPasswordData(prev => ({ ...prev, newPassword: value }))}
+                  placeholder="Entrez votre nouveau mot de passe"
+                  secureTextEntry
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Confirmer le mot de passe</Text>
+                <TextInput
+                  style={styles.input}
+                  value={passwordData.confirmPassword}
+                  onChangeText={(value) => setPasswordData(prev => ({ ...prev, confirmPassword: value }))}
+                  placeholder="Confirmez votre nouveau mot de passe"
+                  secureTextEntry
+                />
+              </View>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonCancel]}
+                  onPress={() => {
+                    setShowPasswordModal(false);
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  }}
+                >
+                  <Text style={styles.modalButtonTextCancel}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonSave]}
+                  onPress={handleChangePassword}
+                  disabled={changingPassword}
+                >
+                  <Text style={styles.modalButtonTextSave}>
+                    {changingPassword ? '⏳...' : '💾 Enregistrer'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </ReactNative.Modal>
+      )}
     </SafeNativeView>
   );
 };
@@ -745,6 +919,68 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  // ✅ NOUVEAU 2026-02-06: Styles pour le changement de mot de passe
+  passwordButton: {
+    backgroundColor: theme.colors.primary,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  passwordButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  modalButtonSave: {
+    backgroundColor: theme.colors.primary,
+  },
+  modalButtonTextCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  modalButtonTextSave: {
     fontSize: 16,
     fontWeight: '600',
     color: 'white',

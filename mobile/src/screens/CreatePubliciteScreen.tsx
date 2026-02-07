@@ -17,6 +17,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { ABTestingVariants } from '../components/ABTestingVariants';
 import { AdCreationStepper } from '../components/AdCreationStepper';
 import { AdPreviewCard } from '../components/AdPreviewCard';
@@ -239,7 +240,7 @@ const CreatePubliciteScreen: React.FC = () => {
     const [showTemplates, setShowTemplates] = useState(false);
 
     // ✅ NOUVEAU: Refs pour la navigation entre sections
-    const scrollViewRef = useRef<ScrollView>(null);
+    const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
     const sectionPositions = useRef<{ [key: string]: number }>({});
 
     // ✅ NOUVEAU: États pour fonctionnalités avancées (100% parité)
@@ -929,10 +930,15 @@ const CreatePubliciteScreen: React.FC = () => {
         if (position !== undefined && scrollViewRef.current) {
             // Scroll avec un offset pour ne pas coller au bord supérieur
             // On soustrait aussi la hauteur du header et du stepper (environ 120px)
-            scrollViewRef.current.scrollTo({
-                y: Math.max(0, position - 100),
-                animated: true,
-            });
+            const scrollY = Math.max(0, position - 100);
+            const scrollView = scrollViewRef.current as any;
+            
+            // KeyboardAwareScrollView supporte scrollToPosition
+            if (typeof scrollView.scrollToPosition === 'function') {
+                scrollView.scrollToPosition(0, scrollY, true);
+            } else if (typeof scrollView.scrollTo === 'function') {
+                scrollView.scrollTo({ x: 0, y: scrollY, animated: true });
+            }
         } else {
             console.warn('[CreatePublicite] Position non disponible pour la section:', stepId);
         }
@@ -969,10 +975,21 @@ const CreatePubliciteScreen: React.FC = () => {
                 />
             </View>
 
-            <ScrollView 
-                ref={scrollViewRef}
-                style={styles.content} 
-                showsVerticalScrollIndicator={false}
+            <KeyboardAwareScrollView
+                innerRef={scrollViewRef}
+                style={styles.content}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={true}
+                enableOnAndroid={true}
+                enableAutomaticScroll={true}
+                extraHeight={100}
+                extraScrollHeight={120}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                scrollEnabled={true}
+                bounces={true}
+                removeClippedSubviews={false}
+                nestedScrollEnabled={true}
             >
                 {/* ✅ NOUVEAU: Section Templates */}
                 {!titre && !showTemplates && (
@@ -1178,7 +1195,13 @@ const CreatePubliciteScreen: React.FC = () => {
                             <Text style={styles.emptySubtext}>Créez d'abord un service avec des produits</Text>
                         </View>
                     ) : (
-                        <ScrollView style={styles.productsList} nestedScrollEnabled>
+                        <ScrollView 
+                            style={styles.productsList} 
+                            nestedScrollEnabled={true}
+                            showsVerticalScrollIndicator={true}
+                            scrollEnabled={true}
+                            bounces={false}
+                        >
                             {produitsList.map((produit) => {
                                 const isSelected = selectedProduits.includes(produit.id);
                                 return (
@@ -1449,41 +1472,6 @@ const CreatePubliciteScreen: React.FC = () => {
                     selectedAssets={selectedAssets}
                 />
 
-                {/* ✅ NOUVEAU: Boutons de navigation entre les étapes */}
-                <View style={styles.navigationButtons}>
-                    {currentStep > 0 && (
-                        <TouchableOpacity
-                            style={[styles.navButton, styles.navButtonPrev]}
-                            onPress={() => {
-                                const prevStep = Math.max(0, currentStep - 1);
-                                setCurrentStep(prevStep);
-                                setTimeout(() => scrollToSection(prevStep), 150);
-                            }}
-                        >
-                            <SafeIcon name="chevron-left" size={20} color={modernColors.primary} />
-                            <Text style={styles.navButtonTextPrev}>Précédent</Text>
-                        </TouchableOpacity>
-                    )}
-                    {currentStep < STEPS.length - 1 && (
-                        <TouchableOpacity
-                            style={[styles.navButton, styles.navButtonNext]}
-                            onPress={() => {
-                                // Validation basique avant de passer à l'étape suivante
-                                if (currentStep === 0 && !titre.trim()) {
-                                    Alert.alert('Champ requis', 'Veuillez saisir un titre pour continuer');
-                                    return;
-                                }
-                                const nextStep = Math.min(STEPS.length - 1, currentStep + 1);
-                                setCurrentStep(nextStep);
-                                setTimeout(() => scrollToSection(nextStep), 150);
-                            }}
-                        >
-                            <Text style={styles.navButtonTextNext}>Suivant</Text>
-                            <SafeIcon name="chevron-right" size={20} color="#fff" />
-                        </TouchableOpacity>
-                    )}
-                </View>
-
                 {/* Bouton de création/modification */}
                 <NativeButton
                     title={loading ? t('message.loading') :
@@ -1497,8 +1485,43 @@ const CreatePubliciteScreen: React.FC = () => {
                     style={styles.createButton}
                 />
 
-                <View style={{ height: 100 }} />
-            </ScrollView>
+                <View style={{ height: 120 }} />
+            </KeyboardAwareScrollView>
+
+            {/* ✅ AMÉLIORÉ: Boutons de navigation sticky en bas de l'écran */}
+            <View style={styles.stickyNavigationButtons}>
+                {currentStep > 0 && (
+                    <TouchableOpacity
+                        style={[styles.navButton, styles.navButtonPrev]}
+                        onPress={() => {
+                            const prevStep = Math.max(0, currentStep - 1);
+                            setCurrentStep(prevStep);
+                            setTimeout(() => scrollToSection(prevStep), 150);
+                        }}
+                    >
+                        <SafeIcon name="chevron-left" size={20} color={modernColors.primary} />
+                        <Text style={styles.navButtonTextPrev}>Précédent</Text>
+                    </TouchableOpacity>
+                )}
+                {currentStep < STEPS.length - 1 && (
+                    <TouchableOpacity
+                        style={[styles.navButton, styles.navButtonNext]}
+                        onPress={() => {
+                            // Validation basique avant de passer à l'étape suivante
+                            if (currentStep === 0 && !titre.trim()) {
+                                Alert.alert('Champ requis', 'Veuillez saisir un titre pour continuer');
+                                return;
+                            }
+                            const nextStep = Math.min(STEPS.length - 1, currentStep + 1);
+                            setCurrentStep(nextStep);
+                            setTimeout(() => scrollToSection(nextStep), 150);
+                        }}
+                    >
+                        <Text style={styles.navButtonTextNext}>Suivant</Text>
+                        <SafeIcon name="chevron-right" size={20} color="#fff" />
+                    </TouchableOpacity>
+                )}
+            </View>
 
             <ProductVideoCreationModal
                 visible={videoCreatorVisible}
@@ -1525,7 +1548,10 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
+    },
+    scrollContent: {
         padding: 16,
+        paddingBottom: 120, // Espace pour les boutons sticky en bas
     },
     infoCard: {
         padding: 16,
@@ -1953,7 +1979,27 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.text,
     },
-    // ✅ NOUVEAU: Styles pour les boutons de navigation
+    // ✅ AMÉLIORÉ: Styles pour les boutons de navigation sticky
+    stickyNavigationButtons: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: 16,
+        paddingBottom: 20,
+        backgroundColor: modernColors.background,
+        borderTopWidth: 1,
+        borderTopColor: modernColors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    // ✅ ANCIEN: Navigation dans le scroll (conservé pour compatibilité)
     navigationButtons: {
         flexDirection: 'row',
         justifyContent: 'space-between',

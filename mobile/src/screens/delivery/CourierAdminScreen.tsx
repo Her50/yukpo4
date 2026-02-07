@@ -19,6 +19,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { isAdminUser } from '../../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 interface CourierApplication {
     id: string;
@@ -53,7 +54,8 @@ const CourierAdminScreen: React.FC = () => {
     const [processing, setProcessing] = useState<string | null>(null);
 
     useEffect(() => {
-        if (user?.role !== 'admin') {
+        // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+        if (!user || !isAdminUser(user)) {
             Alert.alert('Accès refusé', 'Cette page est réservée aux administrateurs', [
                 { text: 'OK', onPress: () => navigation.goBack() },
             ]);
@@ -300,7 +302,8 @@ const CourierAdminScreen: React.FC = () => {
         </TouchableOpacity>
     );
 
-    if (user?.role !== 'admin') {
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    if (!user || !isAdminUser(user)) {
         return null;
     }
 

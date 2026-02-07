@@ -2091,7 +2091,7 @@ const MesProduitsScreen: React.FC = () => {
                             tone="light"
                             showHandle={false}
                             density="comfortable"
-                            backIcon="back"
+                            backIcon={false}
                             title="Mes Produits"
                             subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
                             rightSlot={(

@@ -217,7 +217,16 @@ pub async fn reactivate_product(
 
     let now = Utc::now().naive_utc();
     let days_inactive = (now - deactivated_at).num_days();
-    let cost = reactivation_costs::calculate_reactivation_cost(days_inactive, deactivation_type);
+
+    // ✅ NOUVEAU 2026-02-06: Vérifier si la réactivation est gratuite (phase de lancement)
+    use crate::services::launch_phase_service::can_reactivate_product_free;
+    let is_free = can_reactivate_product_free(&state.pg, user.id).await.unwrap_or(false);
+
+    let cost = if is_free {
+        0 // ✅ NOUVEAU 2026-02-06: Gratuit pendant phase de lancement
+    } else {
+        reactivation_costs::calculate_reactivation_cost(days_inactive, deactivation_type)
+    };
 
     // Nom du produit pour les notifications
     let product_name: String = product_data
@@ -227,20 +236,24 @@ pub async fn reactivate_product(
         .unwrap_or_else(|| format!("Produit #{}", product_index + 1));
 
     log_info(&format!(
-        "[reactivate_product] 💰 Coût calculé: {} FCFA ({} jours)",
-        cost, days_inactive
+        "[reactivate_product] 💰 Coût calculé: {} FCFA ({} jours, gratuit: {})",
+        cost, days_inactive, is_free
     ));
 
-    // Vérifier le solde
-    let current_balance = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
-        .bind(user.id)
-        .fetch_one(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur récupération solde: {}", e)))?
-        .try_get::<i64, _>("tokens_balance")
-        .unwrap_or(0);
+    // Vérifier le solde seulement si ce n'est pas gratuit
+    let current_balance = if !is_free {
+        sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
+            .bind(user.id)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur récupération solde: {}", e)))?
+            .try_get::<i64, _>("tokens_balance")
+            .unwrap_or(0)
+    } else {
+        0 // Pas besoin de vérifier si c'est gratuit
+    };
 
-    if current_balance < cost {
+    if !is_free && current_balance < cost {
         log_error(&format!(
             "[reactivate_product] Solde insuffisant: {} < {}",
             current_balance, cost
@@ -251,17 +264,21 @@ pub async fn reactivate_product(
         )));
     }
 
-    // Débiter le solde
-    let new_balance = sqlx::query(
-        "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
-    )
-    .bind(cost)
-    .bind(user.id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur débit solde: {}", e)))?
-    .try_get::<i64, _>("tokens_balance")
-    .unwrap_or(0);
+    // Débiter le solde seulement si ce n'est pas gratuit
+    let new_balance = if is_free {
+        current_balance // Pas de débit si gratuit
+    } else {
+        sqlx::query(
+            "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
+        )
+        .bind(cost)
+        .bind(user.id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur débit solde: {}", e)))?
+        .try_get::<i64, _>("tokens_balance")
+        .unwrap_or(0)
+    };
 
     log_info(&format!(
         "[reactivate_product] ✅ Solde débité: {} FCFA (nouveau: {})",

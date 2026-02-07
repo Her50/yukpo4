@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useUser } from "@/hooks/useUser";
 import { useTranslation } from "react-i18next";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import { isAdminUser } from "@/utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 const MobileMenu: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -43,7 +44,8 @@ const MobileMenu: React.FC = () => {
   if (user) {
     extraLinks.push({ to: ROUTES.ESPACE, label: "Mon Espace" });
 
-    if (user.role === "admin") {
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    if (isAdminUser(user)) {
       extraLinks.push({ to: ROUTES.DASHBOARD_ADMIN_AUDIT, label: "Audit sécurité" });
     }
   }

@@ -1768,40 +1768,53 @@ pub async fn creer_service(
     // Si tokens_ia_externe = 0 : c'est un produit dupliqué (pas d'analyse IA)
     let is_first_product = ia_tokens_consumed > 0;
 
+    // ✅ NOUVEAU 2026-02-06: Vérifier si la création est gratuite (phase de lancement ou 1er produit)
+    use crate::services::launch_phase_service::can_create_product_free;
+    let is_free = can_create_product_free(pool, user_id).await.unwrap_or(false);
+
     // ✅ NOUVEAU 2025-11-01 : Calculer le coût réel avec le système configurable
-    let cout_reel_xaf =
-        service_costs::calculate_service_creation_cost(ia_tokens_consumed, is_first_product);
+    let cout_reel_xaf = if is_free {
+        0 // ✅ NOUVEAU 2026-02-06: Gratuit pendant phase de lancement ou 1er produit
+    } else {
+        service_costs::calculate_service_creation_cost(ia_tokens_consumed, is_first_product)
+    };
 
     log::info!(
-        "[creer_service] 💰 Coût calculé: {} FCFA (tokens IA: {}, premier produit: {})",
+        "[creer_service] 💰 Coût calculé: {} FCFA (tokens IA: {}, premier produit: {}, gratuit: {})",
         cout_reel_xaf,
         ia_tokens_consumed,
-        is_first_product
+        is_first_product,
+        is_free
     );
 
     // ✅ NOUVEAU 2025-11-01 : Vérifier le solde (mais NE PAS débiter encore)
-    let current_balance_result = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
-        .bind(user_id)
-        .fetch_one(pool)
-        .await;
+    // Sauter la vérification si c'est gratuit
+    let current_balance = if !is_free {
+        let current_balance_result = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(pool)
+            .await;
 
-    let current_balance = match current_balance_result {
-        Ok(row) => row.get::<i64, _>("tokens_balance"),
-        Err(e) => {
-            log::error!(
-                "[creer_service] ❌ Impossible de récupérer le solde utilisateur {}: {}",
-                user_id,
-                e
-            );
-            return Err(AppError::Internal(format!(
-                "Erreur récupération solde: {}",
-                e
-            )));
+        match current_balance_result {
+            Ok(row) => row.get::<i64, _>("tokens_balance"),
+            Err(e) => {
+                log::error!(
+                    "[creer_service] ❌ Impossible de récupérer le solde utilisateur {}: {}",
+                    user_id,
+                    e
+                );
+                return Err(AppError::Internal(format!(
+                    "Erreur récupération solde: {}",
+                    e
+                )));
+            }
         }
+    } else {
+        0 // Pas besoin de vérifier si c'est gratuit
     };
 
-    // Vérifier solde suffisant
-    if current_balance < cout_reel_xaf {
+    // Vérifier solde suffisant (seulement si ce n'est pas gratuit)
+    if !is_free && current_balance < cout_reel_xaf {
         // ✅ NOUVEAU 2025-01-27 : Métriques - Erreur solde insuffisant
         if let Ok(metrics) = crate::metrics::product_creation_metrics::ProductCreationMetrics::new()
         {
@@ -2182,29 +2195,34 @@ pub async fn creer_service(
 
         // ✅ AMÉLIORATION 2025-01-27 : Utiliser SELECT FOR UPDATE pour éviter les race conditions
         // Vérifier le solde dans la transaction avec FOR UPDATE pour éviter les débits simultanés
-        let balance_check_result =
-            sqlx::query("SELECT tokens_balance FROM users WHERE id = $1 FOR UPDATE")
-                .bind(user_id)
-                .fetch_one(&mut *tx)
-                .await;
+        // ✅ NOUVEAU 2026-02-06: Sauter si c'est gratuit
+        let verified_balance = if !is_free {
+            let balance_check_result =
+                sqlx::query("SELECT tokens_balance FROM users WHERE id = $1 FOR UPDATE")
+                    .bind(user_id)
+                    .fetch_one(&mut *tx)
+                    .await;
 
-        let verified_balance = match balance_check_result {
-            Ok(row) => row.get::<i64, _>("tokens_balance"),
-            Err(e) => {
-                let _ = tx.rollback().await;
-                log::error!(
-                    "[creer_service] ❌ Erreur récupération solde dans transaction: {}",
-                    e
-                );
-                return Err(AppError::Internal(format!(
-                    "Erreur récupération solde: {}",
-                    e
-                )));
+            match balance_check_result {
+                Ok(row) => row.get::<i64, _>("tokens_balance"),
+                Err(e) => {
+                    let _ = tx.rollback().await;
+                    log::error!(
+                        "[creer_service] ❌ Erreur récupération solde dans transaction: {}",
+                        e
+                    );
+                    return Err(AppError::Internal(format!(
+                        "Erreur récupération solde: {}",
+                        e
+                    )));
+                }
             }
+        } else {
+            0 // Pas besoin de vérifier si c'est gratuit
         };
 
-        // Vérifier à nouveau le solde dans la transaction (peut avoir changé)
-        if verified_balance < cout_reel_xaf {
+        // Vérifier à nouveau le solde dans la transaction (peut avoir changé) - seulement si ce n'est pas gratuit
+        if !is_free && verified_balance < cout_reel_xaf {
             let _ = tx.rollback().await;
             log::error!(
                 "[creer_service] ❌ Solde insuffisant dans transaction pour user {}: {} FCFA < {} FCFA requis",
@@ -2218,35 +2236,42 @@ pub async fn creer_service(
             )));
         }
 
-        // ✅ CRITIQUE 2025-01-27 : Débiter le solde DANS la transaction
-        // Cela garantit que le débit et l'insertion sont atomiques
-        let debit_result = sqlx::query(
-            "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
-        )
-            .bind(cout_reel_xaf)
-            .bind(user_id)
-            .fetch_one(&mut *tx)
-            .await;
+        // ✅ NOUVEAU 2026-02-06: Débiter le solde seulement si ce n'est pas gratuit
+        let new_balance = if is_free {
+            verified_balance // Pas de débit si gratuit
+        } else {
+            // ✅ CRITIQUE 2025-01-27 : Débiter le solde DANS la transaction
+            // Cela garantit que le débit et l'insertion sont atomiques
+            let debit_result = sqlx::query(
+                "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
+            )
+                .bind(cout_reel_xaf)
+                .bind(user_id)
+                .fetch_one(&mut *tx)
+                .await;
 
-        let new_balance = match debit_result {
-            Ok(row) => row.get::<i64, _>("tokens_balance"),
-            Err(e) => {
-                let _ = tx.rollback().await;
-                log::error!(
-                    "[creer_service] ❌ Échec débit solde dans transaction pour user {}: {}",
-                    user_id,
-                    e
-                );
-                return Err(AppError::Internal(format!("Erreur débit solde: {}", e)));
+            match debit_result {
+                Ok(row) => {
+                    let balance = row.get::<i64, _>("tokens_balance");
+                    log::info!(
+                        "[creer_service] ✅ Solde débité dans transaction : {} FCFA (ancien: {}, nouveau: {})",
+                        cout_reel_xaf,
+                        verified_balance,
+                        balance
+                    );
+                    balance
+                }
+                Err(e) => {
+                    let _ = tx.rollback().await;
+                    log::error!(
+                        "[creer_service] ❌ Échec débit solde dans transaction pour user {}: {}",
+                        user_id,
+                        e
+                    );
+                    return Err(AppError::Internal(format!("Erreur débit solde: {}", e)));
+                }
             }
         };
-
-        log::info!(
-            "[creer_service] ✅ Solde débité dans transaction : {} FCFA (ancien: {}, nouveau: {})",
-            cout_reel_xaf,
-            verified_balance,
-            new_balance
-        );
 
         // Ajout des champs dans la transaction SQL
         // Étape 1 : INSERT dans services et récupérer l'id
@@ -5061,6 +5086,9 @@ pub async fn creer_service(
         }
     }
 
+    // ✅ NOUVEAU 2026-02-06: Incrémenter le compteur de produits gratuits après le commit
+    let should_increment_free = is_free;
+
     // Commit de la transaction AVANT la réponse
     tx.commit().await.map_err(|e| {
         log::error!(
@@ -5074,6 +5102,22 @@ pub async fn creer_service(
 
         AppError::Internal(format!("Échec commit: {}", e))
     })?;
+
+    // ✅ NOUVEAU 2026-02-06: Incrémenter le compteur de produits gratuits après le commit
+    if should_increment_free {
+        use crate::services::launch_phase_service::increment_free_product_count;
+        if let Err(e) = increment_free_product_count(pool, user_id).await {
+            log::warn!(
+                "[creer_service] ⚠️ Erreur incrémentation compteur produit gratuit: {}",
+                e
+            );
+        } else {
+            log::info!(
+                "[creer_service] ✅ Compteur produit gratuit incrémenté pour user_id={}",
+                user_id
+            );
+        }
+    }
 
     // ✅ PHASE 1: Écriture UNIQUEMENT dans table products (JSONB supprimé)
     // Créer les produits dans la table products séparée pour améliorer les performances

@@ -353,7 +353,16 @@ const ProfileScreen: React.FC = () => {
       icon: 'settings', // ✅ CORRIGÉ: Icône Lucide pour paramètres
       color: '#757575',
       route: 'Settings',
+      params: { initialSection: 'security' }, // ✅ NOUVEAU 2026-02-06: Ouvrir directement l'onglet sécurité
       description: 'Configurer votre compte'
+    },
+    {
+      title: 'Changer le mot de passe',
+      icon: 'key', // ✅ NOUVEAU 2026-02-06: Icône pour changement de mot de passe
+      color: '#6366F1',
+      route: 'Settings',
+      params: { initialSection: 'security', showPasswordModal: true }, // ✅ NOUVEAU: Ouvrir le modal de changement de mot de passe
+      description: 'Modifier votre mot de passe'
     },
     {
       title: 'Contacter le Support',

@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 import { useUser } from "@/hooks/useUser";
 import classNames from "classnames";
+import { isAdminUser } from "@/utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 const DesktopMenu: React.FC = () => {
   const { user } = useUser();
@@ -23,7 +24,8 @@ const DesktopMenu: React.FC = () => {
   if (user?.id) {
     extraLinks.push({ path: ROUTES.ESPACE, label: "Espace Perso" });
 
-    if (user.role === "admin") {
+    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+    if (isAdminUser(user)) {
       extraLinks.push({ path: ROUTES.DASHBOARD_ADMIN_AUDIT, label: "Audit Sécurité" });
     }
   }

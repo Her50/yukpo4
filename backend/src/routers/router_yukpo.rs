@@ -620,12 +620,35 @@ async fn handle_direct_search(
     let gps_zone = input.gps_mobile.as_deref();
     let search_radius_km = Some(50); // Rayon par défaut de 50km
 
+    // ✅ NOUVEAU: Log détaillé du texte final utilisé pour la recherche
+    log_info(&format!(
+        "[DIRECT_SEARCH] 📝 Texte final utilisé pour la recherche: '{}' (longueur: {} caractères)",
+        &user_text.chars().take(200).collect::<String>(),
+        user_text.len()
+    ));
+
     log_info(&format!(
         "[DIRECT_SEARCH] Paramètres GPS extraits: zone={:?}, rayon={:?}km",
         gps_zone, search_radius_km
     ));
 
+    // ✅ NOUVEAU: Vérifier que le texte n'est pas vide avant la recherche
+    if user_text.trim().is_empty() {
+        log_error(
+            "[DIRECT_SEARCH] ❌ ERREUR: Texte de recherche vide après traitement audio/image",
+        );
+        let response = serde_json::json!({
+            "status": "error",
+            "message": "Aucun texte de recherche disponible. Veuillez fournir du texte, de l'audio ou une image.",
+            "error": "empty_search_text",
+            "resultats": [],
+            "nombre_matchings": 0
+        });
+        return Ok(Json(response));
+    }
+
     // Recherche directe sans détection d'intention, avec filtrage GPS
+    log_info("[DIRECT_SEARCH] 🔍 Démarrage de la recherche textuelle...");
     let (mut result, tokens_consumed) = rechercher_besoin_direct(
         &_state.pg,
         Some(_state.cache_service.clone()),
@@ -640,6 +663,17 @@ async fn handle_direct_search(
         None, // Pas de specialized_type pour cette recherche
     )
     .await?;
+
+    // ✅ NOUVEAU: Log du nombre de résultats trouvés
+    let nombre_resultats = result
+        .get("resultats")
+        .and_then(|r| r.as_array())
+        .map(|arr| arr.len())
+        .unwrap_or(0);
+    log_info(&format!(
+        "[DIRECT_SEARCH] ✅ Recherche terminée: {} résultat(s) trouvé(s)",
+        nombre_resultats
+    ));
 
     // ✅ ENRICHIR avec données de publicité et booster scores
     if let Some(resultats) = result.get_mut("resultats").and_then(|r| r.as_array_mut()) {

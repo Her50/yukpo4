@@ -497,6 +497,27 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   let hasVariant = productData.has_variant || product.has_variant || false;
   let variants = productData.variants || product.variants || [];
   
+  // ✅ DEBUG: Logger pour diagnostiquer les problèmes de variations
+  useEffect(() => {
+    if (__DEV__) {
+      const variationPrix = productData.variation_prix || productData.variabilite_prix || productData.price_variant
+        || product.variation_prix || product.variabilite_prix || product.price_variant;
+      if (variationPrix || hasVariant || variants.length > 0) {
+        console.log('[ProductCard] 💰 Variations debug:', {
+          hasVariant,
+          variantsCount: variants.length,
+          hasVariationPrix: !!variationPrix,
+          variationPrixType: typeof variationPrix,
+          isArray: Array.isArray(variationPrix),
+          productDataHasVariant: productData.has_variant,
+          productHasVariant: product.has_variant,
+          productDataVariants: Array.isArray(productData.variants) ? productData.variants.length : 'not-array',
+          productVariants: Array.isArray(product.variants) ? product.variants.length : 'not-array',
+        });
+      }
+    }
+  }, [hasVariant, variants.length, productData.variation_prix, product.variation_prix, productData.has_variant, product.has_variant]);
+  
   // Si pas de variants mais qu'on a variation_prix, le transformer
   if (!hasVariant && variants.length === 0) {
     // ✅ CORRIGÉ: Vérifier aussi dans product directement (pas seulement productData)
@@ -726,6 +747,24 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const normalizedVariantImage = variantImage ? normalizeMediaUrl(variantImage, 'image') : null;
   
   const hasMedia = (images?.length || 0) + (videos?.length || 0) > 0 || !!normalizedVariantImage;
+  
+  // ✅ DEBUG: Logger pour diagnostiquer les problèmes de médias
+  useEffect(() => {
+    if (__DEV__ && (rawImages.length > 0 || rawVideos.length > 0 || images.length > 0 || videos.length > 0)) {
+      console.log('[ProductCard] 📸 Media debug:', {
+        hasMedia,
+        imagesCount: images.length,
+        videosCount: videos.length,
+        rawImagesCount: rawImages.length,
+        rawVideosCount: rawVideos.length,
+        productImages: Array.isArray(product.images) ? product.images.length : 'not-array',
+        productVideos: Array.isArray(product.videos) ? product.videos.length : 'not-array',
+        productDataImages: Array.isArray(productData.images) ? productData.images.length : 'not-array',
+        productDataVideos: Array.isArray(productData.videos) ? productData.videos.length : 'not-array',
+        hasVariantImage: !!normalizedVariantImage,
+      });
+    }
+  }, [hasMedia, images.length, videos.length, rawImages.length, rawVideos.length, product.images, product.videos, productData.images, productData.videos, normalizedVariantImage]);
   
   // ✅ DEBUG 2026-01-13: Logger hasMedia pour diagnostiquer
   if (rawImages.length > 0 || rawVideos.length > 0) {
@@ -1029,7 +1068,24 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     return calculatedDistance;
   }, [product.distance_km, product.distanceKm, product.distance, product._gps, product.gps, productData.distance_km, productData.distanceKm, productData.distance, productData.distance_client, productData._gps, productData.gps, productData.gps_coords, productData.gps_fixe, service?.data?.gps_fixe?.valeur, service?.data?.gps?.valeur, effectiveUserLocation, locationCalculateDistance]);
   
+  // ✅ CORRIGÉ: Vérifier aussi si distanceKm est 0 (valide) et améliorer la logique
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm) && distanceKm >= 0;
+  
+  // ✅ DEBUG: Logger pour diagnostiquer les problèmes de distance
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('[ProductCard] 📍 Distance debug:', {
+        distanceKm,
+        hasDistance,
+        productDistanceKm: product.distance_km,
+        productDistance: product.distance,
+        productDataDistanceKm: productData.distance_km,
+        productDataDistance: productData.distance,
+        effectiveUserLocation: !!effectiveUserLocation,
+        hasLocationCalculateDistance: !!locationCalculateDistance,
+      });
+    }
+  }, [distanceKm, hasDistance, product.distance_km, product.distance, productData.distance_km, productData.distance, effectiveUserLocation, locationCalculateDistance]);
 
   // ✅ PROFESSIONNEL 2026-01-13: Variable simplifiée pour vérifier la présence de GPS
   const hasGPS = !!(product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur);

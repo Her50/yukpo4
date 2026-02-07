@@ -233,6 +233,7 @@ Update-SSMParameterWithDelay -Name "ENVIRONMENT" -Value "production" -Descriptio
 Update-SSMParameterWithDelay -Name "RUST_LOG" -Value "debug" -Description "Niveau de log Rust (debug pour diagnostic)"
 Update-SSMParameterWithDelay -Name "LOG_FORMAT" -Value "json" -Description "Format des logs"
 Update-SSMParameterWithDelay -Name "INSTANCE_ID" -Value "backend-1" -Description "ID de l'instance backend"
+Update-SSMParameterWithDelay -Name "LAUNCH_PHASE_START_DATE" -Value "2026-02-10T00:00:00Z" -Description "Date de debut de la phase de lancement - Apres 3 mois (10/05/2026), seuls les nouveaux utilisateurs auront droit a 1 produit gratuit"
 Write-Host ""
 
 # 5. Variables de Configuration API

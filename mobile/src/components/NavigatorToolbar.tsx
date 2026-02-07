@@ -15,7 +15,7 @@ interface NavigatorToolbarProps {
     tone?: NavigatorToolbarTone;
     showHandle?: boolean;
     density?: 'default' | 'compact';
-    backIcon?: 'close' | 'back';
+    backIcon?: 'close' | 'back' | false; // ✅ NOUVEAU 2026-02-06: false pour masquer le bouton retour
     backgroundColor?: string;
 }
 
@@ -39,6 +39,7 @@ export const NavigatorToolbar: React.FC<NavigatorToolbarProps> = ({
     const paddingVertical = density === 'compact' ? modernStyles.spacing.xs : modernStyles.spacing.sm;
     const actionSize = density === 'compact' ? 32 : 36;
     const iconName = backIcon === 'back' ? 'arrow-left' : 'x';
+    const showBackButton = backIcon !== false; // ✅ NOUVEAU 2026-02-06: Masquer le bouton si backIcon === false
 
     const handleClose = () => {
         if (onClose) {
@@ -77,23 +78,30 @@ export const NavigatorToolbar: React.FC<NavigatorToolbarProps> = ({
                 )}
 
                 <View style={[styles.toolbarRow, { marginTop: showHandle ? paddingVertical : 0 }]}>
-                    <TouchableOpacity
-                        onPress={handleClose}
-                        style={[
-                            styles.actionButton,
-                            {
-                                width: actionSize,
-                                height: actionSize,
-                                borderRadius: actionSize / 2,
-                                backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(15,23,42,0.06)',
-                            },
-                        ]}
-                        activeOpacity={0.8}
-                    >
-                        <SafeIcon name={iconName} size={18} color={textColor} />
-                    </TouchableOpacity>
+                    {/* ✅ NOUVEAU 2026-02-06: Afficher le bouton retour seulement si showBackButton est true */}
+                    {showBackButton && (
+                        <TouchableOpacity
+                            onPress={handleClose}
+                            style={[
+                                styles.actionButton,
+                                {
+                                    width: actionSize,
+                                    height: actionSize,
+                                    borderRadius: actionSize / 2,
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(15,23,42,0.06)',
+                                },
+                            ]}
+                            activeOpacity={0.8}
+                        >
+                            <SafeIcon name={iconName} size={18} color={textColor} />
+                        </TouchableOpacity>
+                    )}
 
-                    <View style={styles.titleContainer}>
+                    <View style={[
+                        styles.titleContainer,
+                        // ✅ NOUVEAU 2026-02-06: Décaler le titre plus à gauche si pas de bouton retour
+                        !showBackButton && styles.titleContainerNoBack
+                    ]}>
                         {title ? (
                             <Text
                                 style={[
@@ -161,6 +169,11 @@ const styles = StyleSheet.create({
         marginHorizontal: modernStyles.spacing.sm,
         justifyContent: 'flex-start', // ✅ CORRIGÉ: Aligner le contenu en haut
         paddingTop: 2, // ✅ CORRIGÉ: Ajouter un petit paddingTop pour remonter le titre
+    },
+    // ✅ NOUVEAU 2026-02-06: Style pour décaler le titre plus à gauche quand pas de bouton retour
+    titleContainerNoBack: {
+        marginLeft: 0, // Pas de marge à gauche, le titre commence au bord
+        paddingLeft: modernStyles.spacing.md, // Padding depuis le bord gauche de l'écran
     },
     title: {
         fontSize: 16,

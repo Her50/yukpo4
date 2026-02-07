@@ -695,6 +695,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // ✅ CORRECTION 2026-02-06: Migration de correction COMPLÈTE de toutes les erreurs critiques
+    // Cette migration corrige:
+    // - Vue matérialisée services_search_optimized_v2 (index unique)
+    // - Vue product_comments_view (FROM-clause)
+    // - Colonnes manquantes (retry_at, expiry_time, etc.)
+    // - Trigger duplicate
+    // - Erreurs de syntaxe SQL
+    // Exécutée AVANT sqlx::migrate!() pour corriger les problèmes avant les autres migrations
+    let migration_fix_all_critical_sql =
+        include_str!("../migrations/20260206_fix_all_critical_errors_complete.sql");
+    log::info!(
+        "🔍 [MIGRATION CORRECTION 20260206] Fichier chargé, taille: {} caractères",
+        migration_fix_all_critical_sql.len()
+    );
+    match execute_migration_sql(&pg_pool, migration_fix_all_critical_sql).await {
+        Ok(_) => {
+            log::info!("✅ [MIGRATION CORRECTION 20260206] Migration de correction COMPLÈTE appliquée avec succès");
+        }
+        Err(e) => {
+            log::error!(
+                "❌ [MIGRATION CORRECTION 20260206] Erreur lors de l'application: {}",
+                e
+            );
+            // Ne pas arrêter l'application, continuer
+        }
+    }
+
     // ✅ SOLUTION CAUSE RACINE 2026-01-29: Utiliser execute_multiple_sql_commands() pour la migration 0
     // au lieu de sqlx::migrate!() qui exécute tout dans une transaction unique (timeout dans AWS)
     // Cette approche était utilisée dans Render et fonctionnait car chaque commande est exécutée individuellement
