@@ -61,6 +61,7 @@ jobs:
 
       - name: Format Rust code (auto-fix on schedule)
         if: github.event_name == 'schedule'
+        shell: bash
         run: |
           cargo fmt
           if ! git diff --exit-code; then

@@ -26,7 +26,7 @@ SELECT
     d.recipient_user_id,
     d.recipient_contact_name,
     d.recipient_contact_phone,
-    d.created_at,
+    d.requested_at as created_at, -- deliveries n'a pas created_at, utiliser requested_at
     d.updated_at
 FROM deliveries d;
 

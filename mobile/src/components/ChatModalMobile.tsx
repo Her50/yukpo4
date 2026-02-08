@@ -990,11 +990,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                         {message.reply_to.sender_name || 'Message'}
                                                     </Text>
                                                     <Text style={styles.quotedMessageText} numberOfLines={2}>
-                                                        {message.reply_to.content_type === 'text' && message.reply_to.content}
-                                                        {message.reply_to.content_type === 'audio' && '🎤 Message audio'}
-                                                        {message.reply_to.content_type === 'image' && '🖼️ Image'}
-                                                        {message.reply_to.content_type === 'file' && '📄 Fichier'}
-                                                        {message.reply_to.content_type === 'video' && '🎥 Vidéo'}
+                                                        {message.reply_to.content_type === 'text' ? message.reply_to.content : null}
+                                                        {message.reply_to.content_type === 'audio' ? '🎤 Message audio' : null}
+                                                        {message.reply_to.content_type === 'image' ? '🖼️ Image' : null}
+                                                        {message.reply_to.content_type === 'file' ? '📄 Fichier' : null}
+                                                        {message.reply_to.content_type === 'video' ? '🎥 Vidéo' : null}
                                                     </Text>
                                                 </View>
                                             </View>
@@ -1446,11 +1446,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     </Text>
                                 </View>
                                 <Text style={styles.replyText} numberOfLines={2}>
-                                    {replyingTo.content_type === 'text' && replyingTo.content}
-                                    {replyingTo.content_type === 'audio' && '🎤 Message audio'}
-                                    {replyingTo.content_type === 'image' && '🖼️ Image'}
-                                    {replyingTo.content_type === 'file' && '📄 Fichier'}
-                                    {replyingTo.content_type === 'video' && '🎥 Vidéo'}
+                                    {replyingTo.content_type === 'text' ? replyingTo.content : null}
+                                    {replyingTo.content_type === 'audio' ? '🎤 Message audio' : null}
+                                    {replyingTo.content_type === 'image' ? '🖼️ Image' : null}
+                                    {replyingTo.content_type === 'file' ? '📄 Fichier' : null}
+                                    {replyingTo.content_type === 'video' ? '🎥 Vidéo' : null}
                                 </Text>
                             </View>
                             <TouchableOpacity
