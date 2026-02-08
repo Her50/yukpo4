@@ -2,21 +2,17 @@
 
 use axum::{
     extract::{Extension, Path, Query, State},
-    http::StatusCode,
     middleware,
-    response::{IntoResponse, Json},
+    response::Json,
     routing::{delete, get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::core::types::{AppError, AppResult};
-use crate::middlewares::jwt::AuthenticatedUser;
-use crate::middlewares::jwt_auth::jwt_auth;
-use crate::services::geographic_matching_service::GeographicMatchingService;
+use crate::middlewares::jwt::{jwt_auth, AuthenticatedUser};
 use crate::AppState;
 
 #[derive(Deserialize)]
@@ -520,24 +516,24 @@ async fn save_trip(
 ) -> AppResult<Json<serde_json::Value>> {
     let user_id = user.id;
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO navigation_trips (
             user_id, origin_lat, origin_lng, destination_lat, destination_lng,
             route_id, distance_meters, duration_seconds, waypoints, created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
         "#,
-        user_id as i32,
-        request.origin.lat,
-        request.origin.lng,
-        request.destination.lat,
-        request.destination.lng,
-        request.route_id,
-        request.distance_meters,
-        request.duration_seconds as i64,
-        serde_json::to_value(request.waypoints).ok()
     )
-    .execute(&state.pool)
+    .bind(user_id as i32)
+    .bind(request.origin.lat)
+    .bind(request.origin.lng)
+    .bind(request.destination.lat)
+    .bind(request.destination.lng)
+    .bind(&request.route_id)
+    .bind(request.distance_meters)
+    .bind(request.duration_seconds as i64)
+    .bind(serde_json::to_value(request.waypoints).ok())
+    .execute(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur sauvegarde trajet: {}", e)))?;
 
@@ -552,44 +548,44 @@ async fn get_stats(
     let user_id = user.id;
 
     // Statistiques globales
-    let stats = sqlx::query!(
+    let stats = sqlx::query_as::<_, (i64, i64, i64)>(
         r#"
         SELECT 
-            COUNT(*) as total_trips,
-            COALESCE(SUM(distance_meters), 0) as total_distance,
-            COALESCE(SUM(duration_seconds), 0) as total_duration
+            COUNT(*)::bigint as total_trips,
+            COALESCE(SUM(distance_meters), 0)::bigint as total_distance,
+            COALESCE(SUM(duration_seconds), 0)::bigint as total_duration
         FROM navigation_trips
         WHERE user_id = $1
         "#,
-        user_id as i32
     )
-    .fetch_one(&state.pool)
+    .bind(user_id as i32)
+    .fetch_one(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération stats: {}", e)))?;
 
     // Lieux les plus visités
-    let most_visited = sqlx::query!(
+    let most_visited = sqlx::query_as::<_, (Option<String>, i64)>(
         r#"
         SELECT 
             destination_lat || ',' || destination_lng as place_key,
-            COUNT(*) as visit_count
+            COUNT(*)::bigint as visit_count
         FROM navigation_trips
         WHERE user_id = $1
         GROUP BY destination_lat, destination_lng
         ORDER BY visit_count DESC
         LIMIT 5
         "#,
-        user_id as i32
     )
-    .fetch_all(&state.pool)
+    .bind(user_id as i32)
+    .fetch_all(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération lieux: {}", e)))?;
 
     let most_visited_places = most_visited
         .into_iter()
-        .map(|row| MostVisitedPlace {
-            name: format!("Destination {}", row.place_key.unwrap_or_default()),
-            visit_count: row.visit_count.unwrap_or(0),
+        .map(|(place_key, visit_count)| MostVisitedPlace {
+            name: format!("Destination {}", place_key.unwrap_or_default()),
+            visit_count,
         })
         .collect();
 
@@ -606,9 +602,9 @@ async fn get_stats(
     ];
 
     Ok(Json(NavigationStats {
-        total_trips: stats.total_trips.unwrap_or(0),
-        total_distance_km: (stats.total_distance.unwrap_or(0) as f64) / 1000.0,
-        total_duration_minutes: (stats.total_duration.unwrap_or(0) as f64) / 60.0,
+        total_trips: stats.0,
+        total_distance_km: (stats.1 as f64) / 1000.0,
+        total_duration_minutes: (stats.2 as f64) / 60.0,
         most_visited_places,
         favorite_poi_types,
     }))
@@ -641,6 +637,33 @@ struct SavedDestinationsResponse {
     destinations: Vec<SavedDestination>,
 }
 
+// Structures pour les résultats de requêtes SQL
+#[derive(sqlx::FromRow)]
+struct SavedDestinationRow {
+    id: i32,
+    label: String,
+    custom_label: Option<String>,
+    address: String,
+    latitude: f64,
+    longitude: f64,
+    place_id: Option<String>,
+    is_default: bool,
+}
+
+#[derive(sqlx::FromRow)]
+struct SavedDestinationIdRow {
+    id: i32,
+}
+
+#[derive(sqlx::FromRow)]
+struct SavedDestinationAutocompleteRow {
+    label: String,
+    custom_label: Option<String>,
+    address: String,
+    latitude: f64,
+    longitude: f64,
+}
+
 /// Enregistrer une destination favorite (domicile, bureau, etc.)
 async fn save_destination(
     State(state): State<Arc<AppState>>,
@@ -665,19 +688,19 @@ async fn save_destination(
     }
 
     // Marquer comme défaut si c'est le premier de ce type
-    let existing = sqlx::query!(
+    let existing = sqlx::query_as::<_, SavedDestinationIdRow>(
         "SELECT id FROM navigation_saved_destinations WHERE user_id = $1 AND label = $2",
-        user_id as i32,
-        request.label
     )
-    .fetch_optional(&state.pool)
+    .bind(user_id as i32)
+    .bind(&request.label)
+    .fetch_optional(&state.pg)
     .await?;
 
     let is_default = existing.is_none();
 
     // Si un autre existe, le mettre à jour (ou le supprimer et créer le nouveau)
     if let Some(existing_row) = existing {
-        let result = sqlx::query!(
+        let result = sqlx::query_as::<_, SavedDestinationIdRow>(
             r#"
             UPDATE navigation_saved_destinations
             SET custom_label = $1, address = $2, latitude = $3, longitude = $4, 
@@ -685,15 +708,15 @@ async fn save_destination(
             WHERE id = $7
             RETURNING id
             "#,
-            request.custom_label,
-            request.address,
-            request.latitude,
-            request.longitude,
-            request.place_id,
-            is_default,
-            existing_row.id
         )
-        .fetch_one(&state.pool)
+        .bind(&request.custom_label)
+        .bind(&request.address)
+        .bind(request.latitude)
+        .bind(request.longitude)
+        .bind(&request.place_id)
+        .bind(is_default)
+        .bind(existing_row.id)
+        .fetch_one(&state.pg)
         .await?;
 
         return Ok(Json(SavedDestination {
@@ -709,23 +732,23 @@ async fn save_destination(
     }
 
     // Créer nouveau
-    let result = sqlx::query!(
+    let result = sqlx::query_as::<_, SavedDestinationIdRow>(
         r#"
         INSERT INTO navigation_saved_destinations (
             user_id, label, custom_label, address, latitude, longitude, place_id, is_default
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
         "#,
-        user_id as i32,
-        request.label,
-        request.custom_label,
-        request.address,
-        request.latitude,
-        request.longitude,
-        request.place_id,
-        is_default
     )
-    .fetch_one(&state.pool)
+    .bind(user_id as i32)
+    .bind(&request.label)
+    .bind(&request.custom_label)
+    .bind(&request.address)
+    .bind(request.latitude)
+    .bind(request.longitude)
+    .bind(&request.place_id)
+    .bind(is_default)
+    .fetch_one(&state.pg)
     .await?;
 
     Ok(Json(SavedDestination {
@@ -747,16 +770,16 @@ async fn list_destinations(
 ) -> AppResult<Json<SavedDestinationsResponse>> {
     let user_id = user.id;
 
-    let rows = sqlx::query!(
+    let rows = sqlx::query_as::<_, SavedDestinationRow>(
         r#"
         SELECT id, label, custom_label, address, latitude, longitude, place_id, is_default
         FROM navigation_saved_destinations
         WHERE user_id = $1
         ORDER BY is_default DESC, created_at DESC
         "#,
-        user_id as i32
     )
-    .fetch_all(&state.pool)
+    .bind(user_id as i32)
+    .fetch_all(&state.pg)
     .await?;
 
     let destinations = rows
@@ -784,17 +807,17 @@ async fn get_destination_by_label(
 ) -> AppResult<Json<SavedDestination>> {
     let user_id = user.id;
 
-    let row = sqlx::query!(
+    let row = sqlx::query_as::<_, SavedDestinationRow>(
         r#"
         SELECT id, label, custom_label, address, latitude, longitude, place_id, is_default
         FROM navigation_saved_destinations
         WHERE user_id = $1 AND label = $2
         LIMIT 1
         "#,
-        user_id as i32,
-        label
     )
-    .fetch_optional(&state.pool)
+    .bind(user_id as i32)
+    .bind(&label)
+    .fetch_optional(&state.pg)
     .await?
     .ok_or_else(|| AppError::NotFound(format!("Destination '{}' non trouvée", label)))?;
 
@@ -818,16 +841,16 @@ async fn delete_destination(
 ) -> AppResult<Json<serde_json::Value>> {
     let user_id = user.id;
 
-    let result = sqlx::query!(
+    let result = sqlx::query_as::<_, SavedDestinationIdRow>(
         r#"
         DELETE FROM navigation_saved_destinations
         WHERE id = $1 AND user_id = $2
         RETURNING id
         "#,
-        destination_id,
-        user_id as i32
     )
-    .fetch_optional(&state.pool)
+    .bind(destination_id)
+    .bind(user_id as i32)
+    .fetch_optional(&state.pg)
     .await?;
 
     if result.is_none() {
@@ -848,16 +871,16 @@ async fn autocomplete_with_saved(
 
     // Récupérer les destinations favorites
     let user_id = user.id;
-    let saved_destinations = sqlx::query!(
+    let saved_destinations = sqlx::query_as::<_, SavedDestinationAutocompleteRow>(
         r#"
         SELECT label, custom_label, address, latitude, longitude
         FROM navigation_saved_destinations
         WHERE user_id = $1
         ORDER BY is_default DESC
         "#,
-        user_id as i32
     )
-    .fetch_all(&state.pool)
+    .bind(user_id as i32)
+    .fetch_all(&state.pg)
     .await?;
 
     let mut results = Vec::new();
@@ -865,8 +888,8 @@ async fn autocomplete_with_saved(
     // Ajouter les destinations favorites qui correspondent
     for dest in saved_destinations {
         let display_label = match dest.label.as_str() {
-            "domicile" => "🏠 Domicile",
-            "bureau" => "💼 Bureau",
+            "domicile" => "🏠 Domicile".to_string(),
+            "bureau" => "💼 Bureau".to_string(),
             "autre" => format!("📍 {}", dest.custom_label.as_deref().unwrap_or("Autre")),
             _ => format!("📍 {}", dest.label),
         };
@@ -957,7 +980,7 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .route(
             "/api/navigation/destinations/:id",
-            axum::routing::delete(delete_destination).layer(middleware::from_fn(jwt_auth)),
+            delete(delete_destination).layer(middleware::from_fn(jwt_auth)),
         )
         .route(
             "/api/navigation/autocomplete",
