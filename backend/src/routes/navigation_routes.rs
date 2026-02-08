@@ -68,6 +68,7 @@ struct RoutesResponse {
 
 #[derive(Deserialize)]
 struct PointsOfInterestRequest {
+    #[allow(dead_code)]
     route_id: String,
     origin_lat: f64,
     origin_lng: f64,
@@ -127,7 +128,7 @@ struct FavoritePOIType {
 /// Géocoder une adresse en coordonnées GPS
 async fn geocode_address(
     Query(params): Query<GeocodeRequest>,
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> AppResult<Json<GeocodeResponse>> {
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
         .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;
@@ -195,7 +196,7 @@ async fn geocode_address(
 
 /// Obtenir plusieurs routes avec embouteillages
 async fn get_routes(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Json(request): Json<RoutesRequest>,
 ) -> AppResult<Json<RoutesResponse>> {
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
@@ -395,7 +396,7 @@ async fn get_routes(
 /// Obtenir les points d'intérêt le long d'une route
 async fn get_points_of_interest(
     Query(params): Query<PointsOfInterestRequest>,
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> AppResult<Json<PointsOfInterestResponse>> {
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
         .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;

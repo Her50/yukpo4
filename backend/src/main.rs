@@ -752,11 +752,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     match sqlx::migrate!("./migrations").run(&pg_pool).await {
-        Ok(applied) => {
-            log::info!(
-                "✅ Migrations SQLx standard appliquées avec succès ({} migrations traitées)",
-                applied
-            );
+        Ok(_) => {
+            log::info!("✅ Migrations SQLx standard appliquées avec succès");
 
             // ✅ NOUVEAU 2026-02-08: Vérifier quelles migrations ont été appliquées
             let applied_migrations: Vec<String> = sqlx::query_scalar(
