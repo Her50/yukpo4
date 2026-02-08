@@ -735,9 +735,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // SQLx gère automatiquement les fichiers SQL complets, les blocs DO $$, les fonctions, etc.
     // Plus besoin de run_individual_migrations ou execute_multiple_sql_commands
     log::info!("🔄 [MIGRATIONS SQLX] Application de toutes les migrations SQLx standard...");
+
+    // ✅ NOUVEAU 2026-02-08: Vérifier si _sqlx_migrations est vide avant d'appliquer
+    let migration_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM _sqlx_migrations")
+        .fetch_one(&pg_pool)
+        .await
+        .unwrap_or(0);
+
+    if migration_count == 0 {
+        log::warn!("⚠️ [MIGRATIONS] Table _sqlx_migrations est vide - Toutes les migrations seront appliquées");
+    } else {
+        log::info!(
+            "📊 [MIGRATIONS] {} migrations déjà enregistrées dans _sqlx_migrations",
+            migration_count
+        );
+    }
+
     match sqlx::migrate!("./migrations").run(&pg_pool).await {
-        Ok(_) => {
-            log::info!("✅ Migrations SQLx standard appliquées avec succès");
+        Ok(applied) => {
+            log::info!(
+                "✅ Migrations SQLx standard appliquées avec succès ({} migrations traitées)",
+                applied
+            );
+
+            // ✅ NOUVEAU 2026-02-08: Vérifier quelles migrations ont été appliquées
+            let applied_migrations: Vec<String> = sqlx::query_scalar(
+                "SELECT version::text || ' - ' || description FROM _sqlx_migrations ORDER BY installed_on DESC LIMIT 10"
+            )
+            .fetch_all(&pg_pool)
+            .await
+            .unwrap_or_default();
+
+            if !applied_migrations.is_empty() {
+                log::info!("📋 [MIGRATIONS] Dernières migrations appliquées:");
+                for migration in &applied_migrations {
+                    log::info!("   - {}", migration);
+                }
+            }
+
             log::info!("🔍 [MIGRATION CONSOLIDÉE] Vérification des tables critiques après migrations SQLx...");
 
             // Vérifier si la migration 20251125_fix_idx_services_search_optimized a été appliquée
@@ -855,10 +890,122 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log::info!("✅ Tables de base (users, services) vérifiées après migrations SQLx");
             }
 
+            // ✅ NOUVEAU 2026-02-08: Vérifier les nouvelles tables critiques créées récemment
+            let user_saved_addresses_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'user_saved_addresses'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            let courier_profiles_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'courier_profiles'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            let delivery_requests_view_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM pg_views 
+                    WHERE schemaname = 'public' 
+                    AND viewname = 'delivery_requests'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            // ✅ NOUVEAU 2026-02-08: Vérifier les fonctions critiques
+            let calculate_best_vector_match_score_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM pg_proc p
+                    LEFT JOIN pg_namespace n ON n.oid = p.pronamespace
+                    WHERE n.nspname = 'public'
+                    AND p.proname = 'calculate_best_vector_match_score'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            let product_combination_exists_func: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM pg_proc p
+                    LEFT JOIN pg_namespace n ON n.oid = p.pronamespace
+                    WHERE n.nspname = 'public'
+                    AND p.proname = 'product_combination_exists'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            log::info!(
+                "🔍 [MIGRATIONS] Vérification tables/fonctions critiques récentes: user_saved_addresses={}, courier_profiles={}, delivery_requests={}, calculate_best_vector_match_score={}, product_combination_exists={}",
+                user_saved_addresses_exists,
+                courier_profiles_exists,
+                delivery_requests_view_exists,
+                calculate_best_vector_match_score_exists,
+                product_combination_exists_func
+            );
+
+            // ✅ NOUVEAU 2026-02-08: Alerter si tables/fonctions critiques manquantes
+            let mut missing_critical_items = Vec::new();
+            if !user_saved_addresses_exists {
+                missing_critical_items.push("user_saved_addresses");
+            }
+            if !courier_profiles_exists {
+                missing_critical_items.push("courier_profiles");
+            }
+            if !delivery_requests_view_exists {
+                missing_critical_items.push("delivery_requests (vue)");
+            }
+            if !calculate_best_vector_match_score_exists {
+                missing_critical_items.push("calculate_best_vector_match_score (fonction)");
+            }
+            if !product_combination_exists_func {
+                missing_critical_items.push("product_combination_exists (fonction)");
+            }
+
+            if !missing_critical_items.is_empty() {
+                log::warn!(
+                    "⚠️ [MIGRATIONS] Éléments critiques manquants: {:?}",
+                    missing_critical_items
+                );
+                log::warn!(
+                    "⚠️ [MIGRATIONS] Ces éléments devraient être créés par les migrations SQLx"
+                );
+                log::warn!(
+                    "⚠️ [MIGRATIONS] Vérifiez que les migrations 20260207_* ont été appliquées"
+                );
+
+                // En production, on peut choisir d'arrêter l'application
+                let app_env = env::var("APP_ENV").unwrap_or_default();
+                if app_env == "production" {
+                    log::error!("❌ [MIGRATIONS] PRODUCTION: Éléments critiques manquants - Application peut ne pas fonctionner correctement");
+                    // Note: On ne panique pas car les migrations peuvent être appliquées manuellement
+                }
+            } else {
+                log::info!(
+                    "✅ [MIGRATIONS] Toutes les tables/fonctions critiques récentes sont présentes"
+                );
+            }
+
             // ✅ NOUVEAU 2026-01-29: Vérifier toutes les tables critiques manquantes dans les logs AWS
             let critical_tables = vec![
                 ("deliveries", deliveries_exists),
                 ("product_creation_queue", product_creation_queue_exists),
+                ("user_saved_addresses", user_saved_addresses_exists),
+                ("courier_profiles", courier_profiles_exists),
                 (
                     "delivery_matching_queue",
                     sqlx::query_scalar(
@@ -1071,12 +1218,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log::error!("   Source: {}", source);
             }
 
+            // ✅ NOUVEAU 2026-02-08: Vérifier l'état de _sqlx_migrations après erreur
+            let migration_count_after_error: i64 =
+                sqlx::query_scalar("SELECT COUNT(*) FROM _sqlx_migrations")
+                    .fetch_one(&pg_pool)
+                    .await
+                    .unwrap_or(0);
+
+            log::error!(
+                "❌ [MIGRATIONS] Nombre de migrations enregistrées après erreur: {}",
+                migration_count_after_error
+            );
+
+            // ✅ NOUVEAU 2026-02-08: Vérifier les tables critiques même après erreur
+            let users_exists_after_error: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'users'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            if !users_exists_after_error {
+                log::error!(
+                    "❌ [MIGRATIONS] CRITIQUE: Table 'users' manquante après échec des migrations"
+                );
+                let app_env = env::var("APP_ENV").unwrap_or_default();
+                if app_env == "production" {
+                    log::error!("❌ [MIGRATIONS] PRODUCTION: Application ne peut pas démarrer sans table 'users'");
+                    // On continue quand même pour permettre l'application manuelle des migrations
+                }
+            }
+
             // ✅ SUPPRIMÉ 2026-01-31: Migration consolidée redondante supprimée
             // ✅ NOUVEAU 2026-01-31: Utilisation de sqlx::migrate!() pour toutes les migrations
             log::warn!(
                 "⚠️ [MIGRATIONS] SQLx a échoué. Vérifiez les logs ci-dessus pour plus de détails."
             );
             log::warn!("⚠️ [MIGRATIONS] Les migrations individuelles doivent être appliquées avant sqlx::migrate!()");
+            log::warn!("⚠️ [MIGRATIONS] Action recommandée: Appliquer les migrations manuellement via psql ou script PowerShell");
 
             // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
             if error_str.contains("migration 0 was previously applied but has been modified") {
@@ -1644,6 +1827,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => {
             log::warn!("⚠️ Erreur création cache_table: {}", e);
+        }
+    }
+
+    // ✅ NOUVEAU 2026-02-08: Création de la table navigation_saved_destinations pour destinations favorites
+    match yukpomnang_backend::migrations::auto_migrate::ensure_navigation_saved_destinations_table(
+        &app_state.pg,
+    )
+    .await
+    {
+        Ok(_) => {
+            log::info!("✅ Table navigation_saved_destinations créée/appliquée");
+        }
+        Err(e) => {
+            log::warn!("⚠️ Erreur création navigation_saved_destinations: {}", e);
+        }
+    }
+
+    // ✅ NOUVEAU 2026-02-08: Création de la table navigation_trips pour navigation intelligente
+    match yukpomnang_backend::migrations::auto_migrate::ensure_navigation_trips_table(&app_state.pg)
+        .await
+    {
+        Ok(_) => {
+            log::info!("✅ Table navigation_trips créée/appliquée");
+        }
+        Err(e) => {
+            log::warn!("⚠️ Erreur création navigation_trips: {}", e);
         }
     }
 

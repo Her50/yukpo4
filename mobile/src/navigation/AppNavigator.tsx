@@ -70,6 +70,7 @@ import ManageBusSeatsScreen from '../screens/ManageBusSeatsScreen';
 import MesProduitsScreen from '../screens/MesProduitsScreen';
 import MesServicesSpecialisesScreen from '../screens/MesServicesSpecialisesScreen';
 import MyBusTicketsScreen from '../screens/MyBusTicketsScreen';
+import NavigationScreen from '../screens/NavigationScreen'; // ✅ NOUVEAU: Écran navigation intelligente
 import OrderStatusScreen from '../screens/OrderStatusScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import GlobalPromoManagerScreen from '../screens/promo/GlobalPromoManagerScreen';
@@ -210,6 +211,7 @@ import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScr
 
 markNavigatorSafeAreaHandled(HomeScreen as any);
 markNavigatorSafeAreaHandled(ContactScreen as any);
+markNavigatorSafeAreaHandled(NavigationScreen as any);
 
 const LoginScreenWithSafeArea = withNavigatorSafeArea(LoginScreen);
 const RegisterScreenWithSafeArea = withNavigatorSafeArea(RegisterScreen);
@@ -222,6 +224,7 @@ const GestionServicesSpecialisesScreenWithSafeArea = withNavigatorSafeArea(Gesti
 const ServicesDashboardWithSafeArea = withNavigatorSafeArea(ServicesDashboard);
 const MesProduitsScreenWithSafeArea = withNavigatorSafeArea(MesProduitsScreen);
 const ContactScreenWithSafeArea = withNavigatorSafeArea(ContactScreen);
+const NavigationScreenWithSafeArea = withNavigatorSafeArea(NavigationScreen);
 const EnhancedSettingsScreenWithSafeArea = withNavigatorSafeArea(EnhancedSettingsScreen);
 const RechargeTokensScreenWithSafeArea = withNavigatorSafeArea(RechargeTokensScreen);
 const FormulaireYukpoIntelligentWithSafeArea = withNavigatorSafeArea(FormulaireYukpoIntelligentScreen);
@@ -895,6 +898,15 @@ const SecondaryStack = () => {
           ...transitionConfig.fade, // Transition fade pour l'écran principal
         }}
       />
+        <Stack.Screen
+          name="NavigationScreen"
+          component={NavigationScreenWithSafeArea}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Navigation Intelligente',
+            ...transitionConfig.slide, // Transition slide pour Navigation
+          }}
+        />
         <Stack.Screen
           name="Contact"
           component={ContactScreenWithSafeArea}

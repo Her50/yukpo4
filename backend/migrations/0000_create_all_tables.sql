@@ -5646,3 +5646,67 @@ ANALYZE deliveries;
 ANALYZE delivery_matching_queue;
 ANALYZE courier_availability_snapshots;
 ANALYZE courier_assets;
+
+-- =====================================================
+-- ✅ NOUVEAU 2026-02-08: Table navigation_trips pour navigation intelligente
+-- =====================================================
+
+-- Table pour enregistrer les trajets de navigation pour statistiques
+CREATE TABLE IF NOT EXISTS navigation_trips (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    origin_lat DOUBLE PRECISION NOT NULL,
+    origin_lng DOUBLE PRECISION NOT NULL,
+    destination_lat DOUBLE PRECISION NOT NULL,
+    destination_lng DOUBLE PRECISION NOT NULL,
+    route_id VARCHAR(255) NOT NULL,
+    distance_meters DOUBLE PRECISION NOT NULL,
+    duration_seconds BIGINT NOT NULL,
+    waypoints JSONB, -- Points d'arrêt optionnels
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    CONSTRAINT navigation_trips_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Index pour optimiser les requêtes de statistiques
+CREATE INDEX IF NOT EXISTS idx_navigation_trips_user_id ON navigation_trips(user_id);
+CREATE INDEX IF NOT EXISTS idx_navigation_trips_created_at ON navigation_trips(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_navigation_trips_destination ON navigation_trips(destination_lat, destination_lng);
+
+-- Index composite pour requêtes de statistiques par utilisateur et date
+CREATE INDEX IF NOT EXISTS idx_navigation_trips_user_created ON navigation_trips(user_id, created_at DESC);
+
+COMMENT ON TABLE navigation_trips IS 'Enregistre les trajets de navigation des utilisateurs pour générer des statistiques';
+COMMENT ON COLUMN navigation_trips.waypoints IS 'Points d''arrêt optionnels le long du trajet (JSON array de {lat, lng})';
+
+ANALYZE navigation_trips;
+
+-- =====================================================
+-- ✅ NOUVEAU 2026-02-08: Table navigation_saved_destinations pour destinations favorites
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS navigation_saved_destinations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    label VARCHAR(50) NOT NULL, -- 'domicile', 'bureau', 'autre', etc.
+    custom_label VARCHAR(100), -- Label personnalisé si label = 'autre'
+    address TEXT NOT NULL, -- Adresse complète
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    place_id VARCHAR(255), -- Google Place ID si disponible
+    is_default BOOLEAN DEFAULT FALSE, -- Destination par défaut pour ce label
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    CONSTRAINT navigation_saved_destinations_user_label_unique UNIQUE(user_id, label)
+);
+
+CREATE INDEX IF NOT EXISTS idx_navigation_saved_destinations_user_id ON navigation_saved_destinations(user_id);
+CREATE INDEX IF NOT EXISTS idx_navigation_saved_destinations_label ON navigation_saved_destinations(user_id, label);
+CREATE INDEX IF NOT EXISTS idx_navigation_saved_destinations_default ON navigation_saved_destinations(user_id, is_default) WHERE is_default = true;
+
+COMMENT ON TABLE navigation_saved_destinations IS 'Destinations favorites/enregistrées des utilisateurs (domicile, bureau, etc.)';
+COMMENT ON COLUMN navigation_saved_destinations.label IS 'Type de destination: domicile, bureau, autre';
+COMMENT ON COLUMN navigation_saved_destinations.custom_label IS 'Label personnalisé si label = autre';
+
+ANALYZE navigation_saved_destinations;

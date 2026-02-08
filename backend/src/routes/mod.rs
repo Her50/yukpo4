@@ -43,6 +43,7 @@ pub mod media_routes;
 pub mod metrics_routes;
 pub mod metrics_tracking_routes;
 pub mod mobile_logs_routes;
+pub mod navigation_routes; // ✅ NOUVEAU: Routes pour navigation intelligente
 pub mod nearby_services_routes;
 pub mod negotiated_price_routes;
 pub mod notification_routes; // ✅ Routes de notifications

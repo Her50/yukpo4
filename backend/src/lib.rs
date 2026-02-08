@@ -68,6 +68,7 @@ use crate::routes::{
     metrics_routes::metrics_routes,
     metrics_tracking_routes::metrics_tracking_routes,
     mobile_logs_routes::mobile_logs_routes,
+    navigation_routes::navigation_routes, // ✅ NOUVEAU: Routes pour navigation intelligente
     // nearby_services_routes::nearby_services_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     negotiated_price_routes::negotiated_price_routes,
     notification_routes::notification_routes,
@@ -270,6 +271,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let kyc_webhooks = kyc_webhook_routes(state.clone()); // ✅ NOUVEAU 2025-01-29: Routes webhook KYC
     let kyc_admin = kyc_admin_routes(state.clone()); // ✅ NOUVEAU 2025-01-29: Routes admin KYC
     let mobile_logs = mobile_logs_routes(state.clone());
+    let navigation = navigation_routes(state.clone()); // ✅ NOUVEAU: Routes navigation intelligente
     let delivery_external = delivery_external_routes(state.clone());
     let negotiated_prices = negotiated_price_routes(state.clone());
     let health = health_routes(state.clone());
@@ -398,6 +400,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(studio) // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
         .merge(feature_flags) // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
         .merge(mobile_logs)
+        .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente
         .merge(delivery_external)
         .merge(negotiated_prices)
         .merge(health)

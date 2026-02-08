@@ -64,7 +64,15 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         }
     ] : [
         // ✅ MENU UTILISATEUR STANDARD: Pour les non-admins
-        // ✅ AMÉLIORÉ 2026-01-23: Produits consultés en premier pour meilleure visibilité
+        // ✅ NOUVEAU 2026-01-XX: Navigation intelligente en premier pour visibilité maximale
+        {
+            title: 'Navigation intelligente',
+            icon: '🧭',
+            route: 'NavigationScreen',
+            description: 'Trouvez le meilleur chemin avec embouteillages et points d\'intérêt',
+            highlighted: true
+        },
+        // ✅ AMÉLIORÉ 2026-01-23: Produits consultés en deuxième position
         {
             title: 'Produits consultés',
             icon: '🕐',

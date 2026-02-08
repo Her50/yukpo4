@@ -9458,6 +9458,109 @@ pub async fn ensure_bus_reservations_table(pool: &PgPool) -> Result<(), sqlx::Er
     Ok(())
 }
 
+/// ✅ NOUVEAU 2026-02-08: Créer la table navigation_saved_destinations pour destinations favorites
+pub async fn ensure_navigation_saved_destinations_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table navigation_saved_destinations...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS navigation_saved_destinations (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            label VARCHAR(50) NOT NULL,
+            custom_label VARCHAR(100),
+            address TEXT NOT NULL,
+            latitude DOUBLE PRECISION NOT NULL,
+            longitude DOUBLE PRECISION NOT NULL,
+            place_id VARCHAR(255),
+            is_default BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            
+            CONSTRAINT navigation_saved_destinations_user_label_unique UNIQUE(user_id, label)
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_navigation_saved_destinations_user_id ON navigation_saved_destinations(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_navigation_saved_destinations_label ON navigation_saved_destinations(user_id, label)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_navigation_saved_destinations_default ON navigation_saved_destinations(user_id, is_default) WHERE is_default = true",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table navigation_saved_destinations créée/vérifiée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-02-08: Créer la table navigation_trips pour navigation intelligente
+pub async fn ensure_navigation_trips_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table navigation_trips...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS navigation_trips (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            origin_lat DOUBLE PRECISION NOT NULL,
+            origin_lng DOUBLE PRECISION NOT NULL,
+            destination_lat DOUBLE PRECISION NOT NULL,
+            destination_lng DOUBLE PRECISION NOT NULL,
+            route_id VARCHAR(255) NOT NULL,
+            distance_meters DOUBLE PRECISION NOT NULL,
+            duration_seconds BIGINT NOT NULL,
+            waypoints JSONB,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            
+            CONSTRAINT navigation_trips_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Index pour optimiser les requêtes de statistiques
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_navigation_trips_user_id ON navigation_trips(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_navigation_trips_created_at ON navigation_trips(created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_navigation_trips_destination ON navigation_trips(destination_lat, destination_lng)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_navigation_trips_user_created ON navigation_trips(user_id, created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table navigation_trips créée/vérifiée avec succès");
+    Ok(())
+}
+
 /// ✅ NOUVEAU 2025-11-06: Créer les fonctions SQL pour le système de visibilité et carousel mixte
 pub async fn ensure_visibility_functions(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Création/Mise à jour des fonctions de visibilité...");
@@ -16725,6 +16828,8 @@ pub async fn run_individual_migrations(pool: &PgPool) -> Result<(), sqlx::Error>
         "00000039_create_orientation_scolaire_advanced_tables.sql",
         "00000040_create_bourse_livre_advanced_tables.sql",
         "00000041_create_bus_ratings_return_trips_and_additional_tables.sql",
+        "20260208_create_navigation_trips_table.sql", // ✅ NOUVEAU 2026-02-08: Table navigation intelligente
+        "20260208_create_navigation_saved_destinations.sql", // ✅ NOUVEAU 2026-02-08: Table destinations favorites
     ];
 
     let mut success_count = 0;
@@ -16783,6 +16888,8 @@ pub async fn run_individual_migrations(pool: &PgPool) -> Result<(), sqlx::Error>
             "00000039_create_orientation_scolaire_advanced_tables.sql" => include_str!("../../migrations/00000039_create_orientation_scolaire_advanced_tables.sql"),
             "00000040_create_bourse_livre_advanced_tables.sql" => include_str!("../../migrations/00000040_create_bourse_livre_advanced_tables.sql"),
             "00000041_create_bus_ratings_return_trips_and_additional_tables.sql" => include_str!("../../migrations/00000041_create_bus_ratings_return_trips_and_additional_tables.sql"),
+            "20260208_create_navigation_trips_table.sql" => include_str!("../../migrations/20260208_create_navigation_trips_table.sql"),
+            "20260208_create_navigation_saved_destinations.sql" => include_str!("../../migrations/20260208_create_navigation_saved_destinations.sql"),
             _ => {
                 error!("❌ [MIGRATION {}] Fichier de migration inconnu: {}", migration_number, file_name);
                 error_count += 1;

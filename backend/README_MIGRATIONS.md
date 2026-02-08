@@ -8,8 +8,11 @@ Si vous avez `psql` installé (client PostgreSQL):
 
 ```bash
 cd backend
-psql "postgresql://user:password@host:port/database" -f run_all_migrations.sql
+# Pour AWS RDS, ajouter ?sslmode=require
+psql "postgresql://user:password@host:port/database?sslmode=require" -f run_all_migrations.sql
 ```
+
+**Note pour AWS**: Si la base de données est dans un VPC privé, vous devrez peut-être utiliser un tunnel SSH ou exécuter depuis une instance EC2 dans le même VPC.
 
 ## Méthode 2: Utiliser le script Rust
 
@@ -40,6 +43,8 @@ psql "postgresql://user:password@host:port/database" -f migrations/20250127_crea
 4. `20250127_create_bourse_livre_advanced_tables.sql` - Tables bourse livre
 5. `20250127_create_orientation_scolaire_advanced_tables.sql` - Tables orientation scolaire
 6. `20250127_create_offres_emploi_advanced_tables.sql` - Tables offres emploi
+7. `20260208_create_navigation_trips_table.sql` - ✅ NOUVEAU: Table navigation_trips pour navigation intelligente
+8. `20260208_create_navigation_saved_destinations.sql` - ✅ NOUVEAU: Table navigation_saved_destinations pour destinations favorites
 
 ## Notes
 

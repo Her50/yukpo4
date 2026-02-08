@@ -28,6 +28,14 @@
 \echo '📝 Exécution de offres_emploi_advanced_tables...'
 \i migrations/20250127_create_offres_emploi_advanced_tables.sql
 
+-- ✅ NOUVEAU 2026-02-08: Migration 7: navigation_trips
+\echo '📝 Exécution de navigation_trips...'
+\i migrations/20260208_create_navigation_trips_table.sql
+
+-- ✅ NOUVEAU 2026-02-08: Migration 8: navigation_saved_destinations
+\echo '📝 Exécution de navigation_saved_destinations...'
+\i migrations/20260208_create_navigation_saved_destinations.sql
+
 \echo ''
 \echo '✅ Toutes les migrations ont été exécutées'
 
