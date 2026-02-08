@@ -32,10 +32,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CORRECTION: Chemin relatif depuis src/bin/ vers migrations/ (remonter de 2 niveaux)
     let migration_sql = include_str!("../../migrations/20260129_create_missing_tables_aws.sql");
 
-    // ✅ Utiliser execute_multiple_sql_commands pour gérer les blocs DO $$
-    use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+    // ✅ Utiliser execute_migration_sql_safe pour gérer les blocs DO $$
+    use yukpomnang_backend::migrations::auto_migrate::execute_migration_sql_safe;
 
-    match execute_multiple_sql_commands(&pool, migration_sql).await {
+    match execute_migration_sql_safe(&pool, migration_sql).await {
         Ok(_) => {
             println!("✅ Migration SQL consolidée appliquée avec succès");
         }

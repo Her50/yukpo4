@@ -1097,7 +1097,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ("publicites", publicites_exists),
             ];
 
-            let mut missing_tables: Vec<&str> = critical_tables
+            let missing_tables: Vec<&str> = critical_tables
                 .iter()
                 .filter_map(|(name, exists)| if !exists { Some(*name) } else { None })
                 .collect();
@@ -1484,9 +1484,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     log::warn!("⚠️ Continuation du démarrage, mais certaines fonctionnalités peuvent être indisponibles");
                 }
             }
-        }
-        Err(e) => {
-            log::error!("❌ Erreur lors de l'application des migrations SQLx: {}", e);
         }
     }
 

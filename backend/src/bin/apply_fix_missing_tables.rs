@@ -1,4 +1,4 @@
-use sqlx::{PgPool, PgPoolOptions};
+use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::fs;
 
@@ -41,7 +41,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("");
 
     // Exécuter le script SQL
-    sqlx::raw_sql(&sql_content).execute(&pool).await?;
+    use yukpomnang_backend::migrations::auto_migrate::execute_migration_sql_safe;
+    execute_migration_sql_safe(&pool, &sql_content).await?;
 
     println!("✅ Script SQL exécuté avec succès!");
     println!("");

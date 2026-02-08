@@ -122,6 +122,7 @@ pub async fn validate_partner(
         partner_type: Option<String>,
         email: String,
         nom_complet: Option<String>,
+        #[allow(dead_code)]
         has_specialized_service: bool,
     }
 

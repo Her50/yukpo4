@@ -31,11 +31,11 @@ async fn main() -> Result<(), sqlx::Error> {
     );
     let migration_sql = include_str!("../../migrations/20260115_fix_parcel_types_ids_final.sql");
 
-    // ✅ CORRIGÉ: Utiliser execute_multiple_sql_commands pour gérer les blocs DO $$
+    // ✅ CORRIGÉ: Utiliser execute_migration_sql_safe pour gérer les blocs DO $$
     // Cette fonction gère correctement les blocs PL/pgSQL avec points-virgules internes
-    use yukpomnang_backend::migrations::auto_migrate::execute_multiple_sql_commands;
+    use yukpomnang_backend::migrations::auto_migrate::execute_migration_sql_safe;
 
-    execute_multiple_sql_commands(&pool, migration_sql).await?;
+    execute_migration_sql_safe(&pool, migration_sql).await?;
     println!("✅ Migration SQL appliquée avec succès");
 
     // Vérification finale
