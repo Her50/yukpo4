@@ -101,3 +101,5 @@ Le problème racine est **l'ordre d'exécution Gradle** :
 
 **La seule solution viable** : Modifier directement `expo-modules-core/android/build.gradle` ligne 13 pour utiliser `findProperty('android.kotlinVersion')` au lieu de `kotlinVersion`.
 
+
+

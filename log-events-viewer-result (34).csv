@@ -1,0 +1,1647 @@
+timestamp,message
+1770461199338,"[2m2026-02-07T10:46:39.337783Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461200070,"[2m2026-02-07T10:46:40.070524Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461203225,"[2m2026-02-07T10:46:43.225322Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461201989_yiji8hlly), traitement en arrière-plan"
+1770461203225,[2m2026-02-07T10:46:43.225465Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/notifications/user/3/unread-count
+1770461203225,[2m2026-02-07T10:46:43.225470Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461203225,"  ""Content-Type"": ""application/json"","
+1770461203225,"  ""Accept"": ""application/json"","
+1770461203225,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461203225,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461203225,}
+1770461203225,[2m2026-02-07T10:46:43.225475Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461203225,[2m2026-02-07T10:46:43.225477Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461203225,"  ""Content-Type"": ""application/json"","
+1770461203225,"  ""Accept"": ""application/json"","
+1770461203225,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461203225,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461203225,}
+1770461203225,[2m2026-02-07T10:46:43.225480Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] HomeScreen [HomeScreen] 📬 Notifications non lues: 0
+1770461203225,[2m2026-02-07T10:46:43.225482Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown 📨 [WebSocket] Message reçu: notification
+1770461203225,[2m2026-02-07T10:46:43.225483Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] WebSocketContext [WebSocketContext] 📨 Message reçu: notification
+1770461203225,[2m2026-02-07T10:46:43.225485Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] WebSocketContext [WebSocketContext] 🔔 Notification: Notification
+1770461203225,[2m2026-02-07T10:46:43.225487Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] ChatInputMobile [ChatInputMobile] 🔍 handleSubmit appelé: {
+1770461203225,"  ""finalText"": ""Électricien"","
+1770461203225,"  ""hasContent"": ""Électricien"","
+1770461203225,"  ""textLength"": 11,"
+1770461203225,"  ""imagesCount"": 0,"
+1770461203225,"  ""documentsCount"": 0"
+1770461203225,}
+1770461203225,[2m2026-02-07T10:46:43.225489Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] ChatInputMobile [ChatInputMobile] 📦 Payload construit: {
+1770461203225,"  ""texte"": ""Électricien"","
+1770461203225,"  ""texteLength"": 11,"
+1770461203225,"  ""images"": 0,"
+1770461203225,"  ""audios"": 0,"
+1770461203225,"  ""videos"": 0,"
+1770461203225,"  ""documents"": 0,"
+1770461203225,"  ""excel"": 0,"
+1770461203225,"  ""logo"": 0,"
+1770461203225,"  ""banner"": 0,"
+1770461203225,"  ""gps"": false"
+1770461203225,}
+1770461203225,[2m2026-02-07T10:46:43.225492Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461201989_yiji8hlly)
+1770461204729,[DEBUG] jwt_auth appel? pour: /api/ia/creation-service
+1770461204729,[DEBUG] Authorization header trouv?: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc
+1770461204729,[DEBUG] Token extrait (longueur: 297)
+1770461204729,"[DEBUG] JWT valide pour utilisateur: AuthenticatedUser { id: 3, role: ""super_admin"" }"
+1770461204729,[2m2026-02-07T10:46:44.729937Z[0m [32m INFO[0m [2myukpomnang_backend::middlewares::check_tokens[0m[2m:[0m [check_tokens] ?? Traitement requ?te pour utilisateur 3 (intention: assistance_generale)
+1770461204733,[2m2026-02-07T10:46:44.733605Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] ?? ==== Requête reçue sur /api/ia/creation-service ====
+1770461204733,[2m2026-02-07T10:46:44.733628Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] User ID: 3
+1770461204733,"[2m2026-02-07T10:46:44.733631Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Input: MultiModalInput { texte: Some(""Électricien""), base64_image: Some([]), audio_base64: Some([]), video_base64: Some([]), doc_base64: Some([]), excel_base64: Some([]), site_web: None, gps_mobile: None, specialized_type: None }"
+1770461204733,"[2m2026-02-07T10:46:44.733639Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Fichiers détectés: images=false, audios=false, vidéos=false, docs=false, excels=false"
+1770461204733,[2m2026-02-07T10:46:44.733704Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Appel texte uniquement (pas d'images)
+1770461204733,[2m2026-02-07T10:46:44.733720Z[0m [32m INFO[0m [2myukpomnang_backend::services::app_ia[0m[2m:[0m [AppIA] Tentative avec mod?les IA optimis?s
+1770461205642,"[2m2026-02-07T10:46:45.642728Z[0m [33m WARN[0m [2myukpomnang_backend::services::app_ia[0m[2m:[0m [AppIA] Erreur lecture cache Redis: An error was signalled by the server - ResponseError: Your database has been temporarily rate-limited, please contact support@upstash.com for further details. - continuation sans cache"
+1770461205642,[2m2026-02-07T10:46:45.642761Z[0m [32m INFO[0m [2myukpomnang_backend::services::app_ia[0m[2m:[0m [AppIA] Tentative avec mod?le: openai-gpt4o (timeout: 30s)
+1770461215323,"[2m2026-02-07T10:46:55.323224Z[0m [32m INFO[0m [2myukpomnang_backend::services::app_ia[0m[2m:[0m [OpenAI] Tokens utilis?s: prompt=5535, completion=684, total=6219"
+1770461215323,"[2m2026-02-07T10:46:55.323257Z[0m [32m INFO[0m [2myukpomnang_backend::services::app_ia[0m[2m:[0m [AppIA] ✅ Modèle openai-gpt4o réussi en 9680ms, 6219 tokens (tentative 1/2)"
+1770461215323,[2m2026-02-07T10:46:55.323311Z[0m [32m INFO[0m [2myukpomnang_backend::services::app_ia[0m[2m:[0m [AppIA] ? Succ?s avec openai-gpt4o en 10589ms (6219 tokens)
+1770461216229,"[2m2026-02-07T10:46:56.229542Z[0m [33m WARN[0m [2myukpomnang_backend::services::app_ia[0m[2m:[0m [AppIA] Erreur mise en cache Redis: An error was signalled by the server - ResponseError: Your database has been temporarily rate-limited, please contact support@upstash.com for further details."
+1770461216229,[2m2026-02-07T10:46:56.229578Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Model name: openai-gpt4o
+1770461216229,[2m2026-02-07T10:46:56.229581Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Response length: 2555
+1770461216229,[2m2026-02-07T10:46:56.229583Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Response preview: ```json
+1770461216229,{
+1770461216229,"  ""intention"": ""creation_service"","
+1770461216229,"  ""data"": {"
+1770461216229,"    ""titre_service"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Services d'Électricien Professionnel"","
+1770461216229,"      ""origine_champs"": ""texte_l"
+1770461216229,[2m2026-02-07T10:46:56.229588Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Réponse brute: ```json
+1770461216229,{
+1770461216229,"  ""intention"": ""creation_service"","
+1770461216229,"  ""data"": {"
+1770461216229,"    ""titre_service"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Services d'Électricien Professionnel"","
+1770461216229,"      ""origine_champs"": ""texte_libre"""
+1770461216229,"    },"
+1770461216229,"    ""category"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Services"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""description"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."","
+1770461216229,"      ""origine_champs"": ""texte_libre"""
+1770461216229,"    },"
+1770461216229,"    ""is_tarissable"": {"
+1770461216229,"      ""type_donnee"": ""boolean"","
+1770461216229,"      ""valeur"": false,"
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""type_offre"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""prestation"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""produits"": {"
+1770461216229,"      ""type_donnee"": ""autocomplete"","
+1770461216229,"      ""valeur"": [""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques""],"
+1770461216229,"      ""separateur"": "","","
+1770461216229,"      ""sous_caracteristiques"": {"
+1770461216229,"        ""type_de_service"": [""Installation"", ""Maintenance"", ""Réparation""],"
+1770461216229,"        ""secteur"": [""Électricité résidentielle"", ""Électricité commerciale"", ""Électricité industrielle""],"
+1770461216229,"        ""spécialité"": [""Éclairage"", ""Tableaux électriques"", ""Prises électriques"", ""Câblage""],"
+1770461216229,"        ""niveau_de_compétence"": [""Débutant"", ""Intermédiaire"", ""Expert""],"
+1770461216229,"        ""disponibilité"": [""Urgent"", ""Planifié""],"
+1770461216229,"        ""zone_de_service"": [""Locale"", ""Régionale""],"
+1770461216229,"        ""outils_utilisés"": [""Multimètre"", ""Tournevis"", ""Pince coupante""],"
+1770461216229,"        ""tarification"": [""À l'heure"", ""Forfait""]"
+1770461216229,"      },"
+1770461216229,"      ""filtrable"": true,"
+1770461216229,"      ""identifiant_base"": ""services_electricien"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""nom_produit"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Service d'Électricien"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""categorie_produit"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Service Électrique"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""description_produit"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""prix_produit"": {"
+1770461216229,"      ""type_donnee"": ""number"","
+1770461216229,"      ""valeur"": null,"
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""devise_produit"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""XAF"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,    }
+1770461216229,  }
+1770461216229,}
+1770461216229,```
+1770461216229,[2m2026-02-07T10:46:56.229599Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] JSON extrait: {
+1770461216229,"  ""intention"": ""creation_service"","
+1770461216229,"  ""data"": {"
+1770461216229,"    ""titre_service"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Services d'Électricien Professionnel"","
+1770461216229,"      ""origine_champs"": ""texte_libre"""
+1770461216229,"    },"
+1770461216229,"    ""category"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Services"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""description"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."","
+1770461216229,"      ""origine_champs"": ""texte_libre"""
+1770461216229,"    },"
+1770461216229,"    ""is_tarissable"": {"
+1770461216229,"      ""type_donnee"": ""boolean"","
+1770461216229,"      ""valeur"": false,"
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""type_offre"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""prestation"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""produits"": {"
+1770461216229,"      ""type_donnee"": ""autocomplete"","
+1770461216229,"      ""valeur"": [""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques""],"
+1770461216229,"      ""separateur"": "","","
+1770461216229,"      ""sous_caracteristiques"": {"
+1770461216229,"        ""type_de_service"": [""Installation"", ""Maintenance"", ""Réparation""],"
+1770461216229,"        ""secteur"": [""Électricité résidentielle"", ""Électricité commerciale"", ""Électricité industrielle""],"
+1770461216229,"        ""spécialité"": [""Éclairage"", ""Tableaux électriques"", ""Prises électriques"", ""Câblage""],"
+1770461216229,"        ""niveau_de_compétence"": [""Débutant"", ""Intermédiaire"", ""Expert""],"
+1770461216229,"        ""disponibilité"": [""Urgent"", ""Planifié""],"
+1770461216229,"        ""zone_de_service"": [""Locale"", ""Régionale""],"
+1770461216229,"        ""outils_utilisés"": [""Multimètre"", ""Tournevis"", ""Pince coupante""],"
+1770461216229,"        ""tarification"": [""À l'heure"", ""Forfait""]"
+1770461216229,"      },"
+1770461216229,"      ""filtrable"": true,"
+1770461216229,"      ""identifiant_base"": ""services_electricien"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""nom_produit"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Service d'Électricien"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""categorie_produit"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Service Électrique"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""description_produit"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""prix_produit"": {"
+1770461216229,"      ""type_donnee"": ""number"","
+1770461216229,"      ""valeur"": null,"
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,"    },"
+1770461216229,"    ""devise_produit"": {"
+1770461216229,"      ""type_donnee"": ""string"","
+1770461216229,"      ""valeur"": ""XAF"","
+1770461216229,"      ""origine_champs"": ""ia"""
+1770461216229,    }
+1770461216229,  }
+1770461216229,}
+1770461216229,"[2m2026-02-07T10:46:56.229655Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] JSON parsé avec succès: {""intention"":""creation_service"",""data"":{""titre_service"":{""type_donnee"":""string"",""valeur"":""Services d'Électricien Professionnel"",""origine_champs"":""texte_libre""},""category"":{""type_donnee"":""string"",""valeur"":""Services"",""origine_champs"":""ia""},""description"":{""type_donnee"":""string"",""valeur"":""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."",""origine_champs"":""texte_libre""},""is_tarissable"":{""type_donnee"":""boolean"",""valeur"":false,""origine_champs"":""ia""},""type_offre"":{""type_donnee"":""string"",""valeur"":""prestation"",""origine_champs"":""ia""},""produits"":{""type_donnee"":""autocomplete"",""valeur"":[""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques""],""separateur"":"","",""sous_caracteristiques"":{""type_de_service"":[""Installation"",""Maintenance"",""Réparation""],""secteur"":[""Électricité résidentielle"",""Électricité commerciale"",""Électricité industrielle""],""spécialité"":[""Éclairage"",""Tableaux électriques"",""Prises électriques"",""Câblage""],""niveau_de_compétence"":[""Débutant"",""Intermédiaire"",""Expert""],""disponibilité"":[""Urgent"",""Planifié""],""zone_de_service"":[""Locale"",""Régionale""],""outils_utilisés"":[""Multimètre"",""Tournevis"",""Pince coupante""],""tarification"":[""À l'heure"",""Forfait""]},""filtrable"":true,""identifiant_base"":""services_electricien"",""origine_champs"":""ia""},""nom_produit"":{""type_donnee"":""string"",""valeur"":""Service d'Électricien"",""origine_champs"":""ia""},""categorie_produit"":{""type_donnee"":""string"",""valeur"":""Service Électrique"",""origine_champs"":""ia""},""description_produit"":{""type_donnee"":""string"",""valeur"":""Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."",""origine_champs"":""ia""},""prix_produit"":{""type_donnee"":""number"",""valeur"":null,""origine_champs"":""ia""},""devise_produit"":{""type_donnee"":""string"",""valeur"":""XAF"",""origine_champs"":""ia""}}}"
+1770461216229,[2m2026-02-07T10:46:56.229676Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Session ID généré: f0dad2c7-3cde-4f0b-b250-e99ef9d175c4
+1770461216229,[2m2026-02-07T10:46:56.229691Z[0m [32m INFO[0m [2myukpomnang_backend::services::creer_service[0m[2m:[0m [save_ia_combinations_to_db] Début sauvegarde combinaisons IA
+1770461216232,"[2m2026-02-07T10:46:56.232600Z[0m [33m WARN[0m [2myukpomnang_backend::services::creer_service[0m[2m:[0m [save_ia_combinations_to_db] ⚠️ Dimensions avec plusieurs valeurs: spécialité: 3 valeurs (Éclairage, Tableaux électriques, Prises électriques); type_de_service: 3 valeurs (Installation, Maintenance, Réparation); secteur: 2 valeurs (Électricité résidentielle, Électricité commerciale)"
+1770461216232,[2m2026-02-07T10:46:56.232624Z[0m [33m WARN[0m [2myukpomnang_backend::services::creer_service[0m[2m:[0m [save_ia_combinations_to_db] ⚠️ Problèmes d'alignement détectés: Label 'niveau_de_compétence' [3] est vide alors qu'il y a des valeurs non mappées; Label 'disponibilité' [4] est vide alors qu'il y a des valeurs non mappées; Label 'zone_de_service' [5] est vide alors qu'il y a des valeurs non mappées; Label 'outils_utilisés' [6] est vide alors qu'il y a des valeurs non mappées; Label 'tarification' [7] est vide alors qu'il y a des valeurs non mappées
+1770461216232,"[2m2026-02-07T10:46:56.232629Z[0m [32m INFO[0m [2myukpomnang_backend::services::creer_service[0m[2m:[0m [save_ia_combinations_to_db] Mapping intelligent appliqué: 8 labels pour 8 valeurs. Mapping: [type_de_service:Installation, secteur:Électricité résidentielle, spécialité:Éclairage, niveau_de_compétence:(vide), disponibilité:(vide), zone_de_service:(vide), outils_utilisés:(vide), tarification:(vide)]"
+1770461216237,[2m2026-02-07T10:46:56.237208Z[0m [32m INFO[0m [2myukpomnang_backend::services::creer_service[0m[2m:[0m [save_ia_combinations_to_db] ✅ Combinaison 0 sauvegardée (IA)
+1770461216237,[2m2026-02-07T10:46:56.237285Z[0m [32m INFO[0m [2myukpomnang_backend::services::creer_service[0m[2m:[0m [save_ia_combinations_to_db] Fin sauvegarde combinaisons IA
+1770461216237,[2m2026-02-07T10:46:56.237298Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] ✅ Combinaisons IA sauvegardées avec session_id: f0dad2c7-3cde-4f0b-b250-e99ef9d175c4
+1770461216237,[2m2026-02-07T10:46:56.237348Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Données préparées pour le formulaire avec 0 types de fichiers...
+1770461216237,"[2m2026-02-07T10:46:56.237398Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Réponse finale construite: {""status"":""success"",""intention"":""creation_service"",""session_id"":""f0dad2c7-3cde-4f0b-b250-e99ef9d175c4"",""data"":{""titre_service"":{""type_donnee"":""string"",""valeur"":""Services d'Électricien Professionnel"",""origine_champs"":""ia""},""category"":{""type_donnee"":""string"",""valeur"":""Services"",""origine_champs"":""ia""},""description"":{""type_donnee"":""string"",""valeur"":""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."",""origine_champs"":""ia""},""is_tarissable"":{""type_donnee"":""boolean"",""valeur"":false,""origine_champs"":""ia""}},""tokens_consumed"":6219,""ia_model_used"":""openai-gpt4o"",""confidence"":1.0,""processing_mode"":""preparation_formulaire"",""interaction_id"":""prep-form-1770461216237"",""gpu_enabled"":false,""optimization_level"":""direct"",""files_prepared"":{""images"":false,""audios"":false,""videos"":false,""documents"":false,""excel"":false,""total_types"":0},""service_data"":{""data"":{""titre_service"":{""type_donnee"":""string"",""valeur"":""Services d'Électricien Professionnel"",""origine_champs"":""texte_libre""},""category"":{""type_donnee"":""string"",""valeur"":""Services"",""origine_champs"":""ia""},""description"":{""type_donnee"":""string"",""valeur"":""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."",""origine_champs"":""texte_libre""},""is_tarissable"":{""type_donnee"":""boolean"",""valeur"":false,""origine_champs"":""ia""},""type_offre"":{""type_donnee"":""string"",""valeur"":""prestation"",""origine_champs"":""ia""},""produits"":{""type_donnee"":""autocomplete"",""valeur"":[""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques""],""separateur"":"","",""sous_caracteristiques"":{""type_de_service"":[""Installation"",""Maintenance"",""Réparation""],""secteur"":[""Électricité résidentielle"",""Électricité commerciale"",""Électricité industrielle""],""spécialité"":[""Éclairage"",""Tableaux électriques"",""Prises électriques"",""Câblage""],""niveau_de_compétence"":[""Débutant"",""Intermédiaire"",""Expert""],""disponibilité"":[""Urgent"",""Planifié""],""zone_de_service"":[""Locale"",""Régionale""],""outils_utilisés"":[""Multimètre"",""Tournevis"",""Pince coupante""],""tarification"":[""À l'heure"",""Forfait""]},""filtrable"":true,""identifiant_base"":""services_electricien"",""origine_champs"":""ia""},""nom_produit"":{""type_donnee"":""string"",""valeur"":""Service d'Électricien"",""origine_champs"":""ia""},""categorie_produit"":{""type_donnee"":""string"",""valeur"":""Service Électrique"",""origine_champs"":""ia""},""description_produit"":{""type_donnee"":""string"",""valeur"":""Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."",""origine_champs"":""ia""},""prix_produit"":{""type_donnee"":""number"",""valeur"":null,""origine_champs"":""ia""},""devise_produit"":{""type_donnee"":""string"",""valeur"":""XAF"",""origine_champs"":""ia""}},""base64_image"":[],""audio_base64"":[],""video_base64"":[],""doc_base64"":[],""excel_base64"":[],""tokens_consumed"":6219,""ia_model_used"":""openai-gpt4o"",""session_id"":""f0dad2c7-3cde-4f0b-b250-e99ef9d175c4""},""note"":""Le service sera créé par le formulaire via /api/services/create""}"
+1770461216237,[2m2026-02-07T10:46:56.237432Z[0m [32m INFO[0m [2myukpomnang_backend::routers::router_yukpo[0m[2m:[0m [handle_creation_service_direct] Réponse générée avec succès
+1770461216246,"[2m2026-02-07T10:46:56.246136Z[0m [32m INFO[0m [2myukpomnang_backend::middlewares::check_tokens[0m[2m:[0m [check_tokens] ? 15 tokens IA consommés (0 XAF = 0 tokens) déduits pour utilisateur 3: 1000000 -> 1000000 (intention: assistance_generale, durée: 11516ms)"
+1770461216254,[2m2026-02-07T10:46:56.254721Z[0m [32m INFO[0m [2myukpomnang_backend::middlewares::check_tokens[0m[2m:[0m [check_tokens] ?? JWT mis ? jour avec le nouveau solde: 1000000
+1770461216254,[2m2026-02-07T10:46:56.254769Z[0m [32m INFO[0m [2myukpomnang_backend::middlewares::monitoring[0m[2m:[0m [Monitoring] POST /api/ia/creation-service -> 200 (11525 ms)
+1770461216254,[2m2026-02-07T10:46:56.254814Z[0m [33m WARN[0m [2myukpomnang_backend::middlewares::monitoring[0m[2m:[0m ⏱️ [SlowImageRequest] POST /api/ia/creation-service -> 200 (11525 ms) - Requête avec images (acceptable pour traitement IA)
+1770461216854,[DEBUG] jwt_auth appel? pour: /api/delivery/saved-addresses?address_type=both
+1770461216854,[DEBUG] Authorization header trouv?: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc
+1770461216854,[DEBUG] Token extrait (longueur: 297)
+1770461216854,"[DEBUG] JWT valide pour utilisateur: AuthenticatedUser { id: 3, role: ""super_admin"" }"
+1770461216856,"[2m2026-02-07T10:46:56.856126Z[0m [31mERROR[0m [2myukpomnang_backend::services::delivery_repository[0m[2m:[0m [DeliveryRepository::list_saved_addresses] Erreur SQL pour user_id=3, address_type='both': error returned from database: relation ""user_saved_addresses"" does not exist"
+1770461216856,"[2m2026-02-07T10:46:56.856151Z[0m [31mERROR[0m [2myukpomnang_backend::routes::delivery_routes[0m[2m:[0m [list_saved_addresses] Erreur lors de la récupération des adresses pour user_id=3: ?? Database error: Erreur lors de la récupération des adresses: error returned from database: relation ""user_saved_addresses"" does not exist"
+1770461217083,"[2m2026-02-07T10:46:57.083476Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461215391_y55emklqa), traitement en arrière-plan"
+1770461217083,[2m2026-02-07T10:46:57.083709Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] yukpoclient [yukpoclient] Appel /api/ia/creation-service (comme le frontend)...
+1770461217083,[2m2026-02-07T10:46:57.083726Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461217083,[2m2026-02-07T10:46:57.083729Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461217083,"  ""Content-Type"": ""application/json"","
+1770461217083,"  ""Accept"": ""application/json"","
+1770461217083,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461217083,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461217083,}
+1770461217083,[2m2026-02-07T10:46:57.083732Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown 📨 [WebSocket] Message reçu: notification
+1770461217083,[2m2026-02-07T10:46:57.083735Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] WebSocketContext [WebSocketContext] 📨 Message reçu: notification
+1770461217083,[2m2026-02-07T10:46:57.083737Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] WebSocketContext [WebSocketContext] 🔔 Notification: Notification
+1770461217083,[2m2026-02-07T10:46:57.083738Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] yukpoclient [yukpoclient] Suggestions générées: {
+1770461217083,"  ""status"": ""success"","
+1770461217083,"  ""intention"": ""creation_service"","
+1770461217083,"  ""session_id"": ""f0dad2c7-3cde-4f0b-b250-e99ef9d175c4"","
+1770461217083,"  ""data"": {"
+1770461217083,"    ""titre_service"": {"
+1770461217083,"      ""type_donnee"": ""string"","
+1770461217083,"      ""valeur"": ""Services d'Électricien Professionnel"","
+1770461217083,"      ""origine_champs"": ""ia"""
+1770461217083,"    },"
+1770461217083,"    ""category"": {"
+1770461217083,"      ""type_donnee"": ""string"","
+1770461217083,"      ""valeur"": ""Services"","
+1770461217083,"      ""origine_champs"": ""ia"""
+1770461217083,"    },"
+1770461217083,"    ""description"": {"
+1770461217083,"      ""type_donnee"": ""string"","
+1770461217083,"      ""valeur"": ""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."","
+1770461217083,"      ""origine_champs"": ""ia"""
+1770461217083,"    },"
+1770461217083,"    ""is_tarissable"": {"
+1770461217083,"      ""type_donnee"": ""boolean"","
+1770461217083,"      ""valeur"": false,"
+1770461217083,"      ""origine_champs"": ""ia"""
+1770461217083,    }
+1770461217083,"  },"
+1770461217083,"  ""tokens_consumed"": 6219,"
+1770461217083,"  ""ia_model_used"": ""openai-gpt4o"","
+1770461217083,"  ""confidence"": 1,"
+1770461217083,"  ""processing_mode"": ""preparation_formulaire"","
+1770461217083,"  ""interaction_id"": ""prep-form-1770461216237"","
+1770461217083,"  ""gpu_enabled"": false,"
+1770461217083,"  ""optimization_level"": ""direct"","
+1770461217083,"  ""files_prepared"": {"
+1770461217083,"    ""images"": false,"
+1770461217083,"    ""audios"": false,"
+1770461217083,"    ""videos"": false,"
+1770461217083,"    ""documents"": false,"
+1770461217083,"    ""excel"": false,"
+1770461217083,"    ""total_types"": 0"
+1770461217083,"  },"
+1770461217083,"  ""service_data"": {"
+1770461217083,"    ""data"": {"
+1770461217083,"      ""titre_service"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Services d'Électricien Professionnel"","
+1770461217083,"        ""origine_champs"": ""texte_libre"""
+1770461217083,"      },"
+1770461217083,"      ""category"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Services"","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""description"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."","
+1770461217083,"        ""origine_champs"": ""texte_libre"""
+1770461217083,"      },"
+1770461217083,"      ""is_tarissable"": {"
+1770461217083,"        ""type_donnee"": ""boolean"","
+1770461217083,"        ""valeur"": false,"
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""type_offre"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""prestation"","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""produits"": {"
+1770461217083,"        ""type_donnee"": ""autocomplete"","
+1770461217083,"        ""valeur"": ["
+1770461217083,"          ""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques"""
+1770461217083,"        ],"
+1770461217083,"        ""separateur"": "","","
+1770461217083,"        ""sous_caracteristiques"": {"
+1770461217083,"          ""type_de_service"": ["
+1770461217083,"            ""Installation"","
+1770461217083,"            ""Maintenance"","
+1770461217083,"            ""Réparation"""
+1770461217083,"          ],"
+1770461217083,"          ""secteur"": ["
+1770461217083,"            ""Électricité résidentielle"","
+1770461217083,"            ""Électricité commerciale"","
+1770461217083,"            ""Électricité industrielle"""
+1770461217083,"          ],"
+1770461217083,"          ""spécialité"": ["
+1770461217083,"            ""Éclairage"","
+1770461217083,"            ""Tableaux électriques"","
+1770461217083,"            ""Prises électriques"","
+1770461217083,"            ""Câblage"""
+1770461217083,"          ],"
+1770461217083,"          ""niveau_de_compétence"": ["
+1770461217083,"            ""Débutant"","
+1770461217083,"            ""Intermédiaire"","
+1770461217083,"            ""Expert"""
+1770461217083,"          ],"
+1770461217083,"          ""disponibilité"": ["
+1770461217083,"            ""Urgent"","
+1770461217083,"            ""Planifié"""
+1770461217083,"          ],"
+1770461217083,"          ""zone_de_service"": ["
+1770461217083,"            ""Locale"","
+1770461217083,"            ""Régionale"""
+1770461217083,"          ],"
+1770461217083,"          ""outils_utilisés"": ["
+1770461217083,"            ""Multimètre"","
+1770461217083,"            ""Tournevis"","
+1770461217083,"            ""Pince coupante"""
+1770461217083,"          ],"
+1770461217083,"          ""tarification"": ["
+1770461217083,"            ""À l'heure"","
+1770461217083,"            ""Forfait"""
+1770461217083,          ]
+1770461217083,"        },"
+1770461217083,"        ""filtrable"": true,"
+1770461217083,"        ""identifiant_base"": ""services_electricien"","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""nom_produit"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Service d'Électricien"","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""categorie_produit"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Service Électrique"","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""description_produit"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""prix_produit"": {"
+1770461217083,"        ""type_donnee"": ""number"","
+1770461217083,"        ""valeur"": null,"
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""devise_produit"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""XAF"","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,      }
+1770461217083,"    },"
+1770461217083,"    ""base64_image"": [],"
+1770461217083,"    ""audio_base64"": [],"
+1770461217083,"    ""video_base64"": [],"
+1770461217083,"    ""doc_base64"": [],"
+1770461217083,"    ""excel_base64"": [],"
+1770461217083,"    ""tokens_consumed"": 6219,"
+1770461217083,"    ""ia_model_used"": ""openai-gpt4o"","
+1770461217083,"    ""session_id"": ""f0dad2c7-3cde-4f0b-b250-e99ef9d175c4"""
+1770461217083,"  },"
+1770461217083,"  ""note"": ""Le service sera créé par le formulaire via /api/services/create"""
+1770461217083,}
+1770461217083,[2m2026-02-07T10:46:57.083765Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] HomeScreen [HomeScreen] Résultat génération suggestions: {
+1770461217083,"  ""data"": {"
+1770461217083,"    ""status"": ""success"","
+1770461217083,"    ""intention"": ""creation_service"","
+1770461217083,"    ""session_id"": ""f0dad2c7-3cde-4f0b-b250-e99ef9d175c4"","
+1770461217083,"    ""data"": {"
+1770461217083,"      ""titre_service"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Services d'Électricien Professionnel"","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""category"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Services"","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""description"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""is_tarissable"": {"
+1770461217083,"        ""type_donnee"": ""boolean"","
+1770461217083,"        ""valeur"": false,"
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,      }
+1770461217083,"    },"
+1770461217083,"    ""tokens_consumed"": 6219,"
+1770461217083,"    ""ia_model_used"": ""openai-gpt4o"","
+1770461217083,"    ""confidence"": 1,"
+1770461217083,"    ""processing_mode"": ""preparation_formulaire"","
+1770461217083,"    ""interaction_id"": ""prep-form-1770461216237"","
+1770461217083,"    ""gpu_enabled"": false,"
+1770461217083,"    ""optimization_level"": ""direct"","
+1770461217083,"    ""files_prepared"": {"
+1770461217083,"      ""images"": false,"
+1770461217083,"      ""audios"": false,"
+1770461217083,"      ""videos"": false,"
+1770461217083,"      ""documents"": false,"
+1770461217083,"      ""excel"": false,"
+1770461217083,"      ""total_types"": 0"
+1770461217083,"    },"
+1770461217083,"    ""service_data"": {"
+1770461217083,"      ""data"": {"
+1770461217083,"        ""titre_service"": {"
+1770461217083,"          ""type_donnee"": ""string"","
+1770461217083,"          ""valeur"": ""Services d'Électricien Professionnel"","
+1770461217083,"          ""origine_champs"": ""texte_libre"""
+1770461217083,"        },"
+1770461217083,"        ""category"": {"
+1770461217083,"          ""type_donnee"": ""string"","
+1770461217083,"          ""valeur"": ""Services"","
+1770461217083,"          ""origine_champs"": ""ia"""
+1770461217083,"        },"
+1770461217083,"        ""description"": {"
+1770461217083,"          ""type_donnee"": ""string"","
+1770461217083,"          ""valeur"": ""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."","
+1770461217083,"          ""origine_champs"": ""texte_libre"""
+1770461217083,"        },"
+1770461217083,"        ""is_tarissable"": {"
+1770461217083,"          ""type_donnee"": ""boolean"","
+1770461217083,"          ""valeur"": false,"
+1770461217083,"          ""origine_champs"": ""ia"""
+1770461217083,"        },"
+1770461217083,"        ""type_offre"": {"
+1770461217083,"          ""type_donnee"": ""string"","
+1770461217083,"          ""valeur"": ""prestation"","
+1770461217083,"          ""origine_champs"": ""ia"""
+1770461217083,"        },"
+1770461217083,"        ""produits"": {"
+1770461217083,"          ""type_donnee"": ""autocomplete"","
+1770461217083,"          ""valeur"": ["
+1770461217083,"            ""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques"""
+1770461217083,"          ],"
+1770461217083,"          ""separateur"": "","","
+1770461217083,"          ""sous_caracteristiques"": {"
+1770461217083,"            ""type_de_service"": ["
+1770461217083,"              ""Installation"","
+1770461217083,"              ""Maintenance"","
+1770461217083,"              ""Réparation"""
+1770461217083,"            ],"
+1770461217083,"            ""secteur"": ["
+1770461217083,"              ""Électricité résidentielle"","
+1770461217083,"              ""Électricité commerciale"","
+1770461217083,"              ""Électricité industrielle"""
+1770461217083,"            ],"
+1770461217083,"            ""spécialité"": ["
+1770461217083,"              ""Éclairage"","
+1770461217083,"              ""Tableaux électriques"","
+1770461217083,"              ""Prises électriques"","
+1770461217083,"              ""Câblage"""
+1770461217083,"            ],"
+1770461217083,"            ""niveau_de_compétence"": ["
+1770461217083,"              ""Débutant"","
+1770461217083,"              ""Intermédiaire"","
+1770461217083,"              ""Expert"""
+1770461217083,"            ],"
+1770461217083,"            ""disponibilité"": ["
+1770461217083,"              ""Urgent"","
+1770461217083,"              ""Planifié"""
+1770461217083,"            ],"
+1770461217083,"            ""zone_de_service"": ["
+1770461217083,"              ""Locale"","
+1770461217083,"              ""Régionale"""
+1770461217083,"            ],"
+1770461217083,"            ""outils_utilisés"": ["
+1770461217083,"              ""Multimètre"","
+1770461217083,"              ""Tournevis"","
+1770461217083,"              ""Pince coupante"""
+1770461217083,"            ],"
+1770461217083,"            ""tarification"": ["
+1770461217083,"              ""À l'heure"","
+1770461217083,"              ""Forfait"""
+1770461217083,            ]
+1770461217083,"          },"
+1770461217083,"          ""filtrable"": true,"
+1770461217083,"          ""identifiant_base"": ""services_electricien"","
+1770461217083,"          ""origine_champs"": ""ia"""
+1770461217083,"        },"
+1770461217083,"        ""nom_produit"": {"
+1770461217083,"          ""type_donnee"": ""string"","
+1770461217083,"          ""valeur"": ""Service d'Électricien"","
+1770461217083,"          ""origine_champs"": ""ia"""
+1770461217083,"        },"
+1770461217083,"        ""categorie_produit"": {"
+1770461217083,"          ""type_donnee"": ""string"","
+1770461217083,"          ""valeur"": ""Service Électrique"","
+1770461217083,"          ""origine_champs"": ""ia"""
+1770461217083,"        },"
+1770461217083,"        ""description_produit"": {"
+1770461217083,"          ""type_donnee"": ""string"","
+1770461217083,"          ""valeur"": ""Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."","
+1770461217083,"          ""origine_champs"": ""ia"""
+1770461217083,"        },"
+1770461217083,"        ""prix_produit"": {"
+1770461217083,"          ""type_donnee"": ""number"","
+1770461217083,"          ""valeur"": null,"
+1770461217083,"          ""origine_champs"": ""ia"""
+1770461217083,"        },"
+1770461217083,"        ""devise_produit"": {"
+1770461217083,"          ""type_donnee"": ""string"","
+1770461217083,"          ""valeur"": ""XAF"","
+1770461217083,"          ""origine_champs"": ""ia"""
+1770461217083,        }
+1770461217083,"      },"
+1770461217083,"      ""base64_image"": [],"
+1770461217083,"      ""audio_base64"": [],"
+1770461217083,"      ""video_base64"": [],"
+1770461217083,"      ""doc_base64"": [],"
+1770461217083,"      ""excel_base64"": [],"
+1770461217083,"      ""tokens_consumed"": 6219,"
+1770461217083,"      ""ia_model_used"": ""openai-gpt4o"","
+1770461217083,"      ""session_id"": ""f0dad2c7-3cde-4f0b-b250-e99ef9d175c4"""
+1770461217083,"    },"
+1770461217083,"    ""note"": ""Le service sera créé par le formulaire via /api/services/create"","
+1770461217083,"    ""suggestions"": {"
+1770461217083,"      ""titre_service"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Services d'Électricien Professionnel"","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""category"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Services"","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""description"": {"
+1770461217083,"        ""type_donnee"": ""string"","
+1770461217083,"        ""valeur"": ""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."","
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,"      },"
+1770461217083,"      ""is_tarissable"": {"
+1770461217083,"        ""type_donnee"": ""boolean"","
+1770461217083,"        ""valeur"": false,"
+1770461217083,"        ""origine_champs"": ""ia"""
+1770461217083,      }
+1770461217083,    }
+1770461217083,"  },"
+1770461217083,"  ""headers"": {"
+1770461217083,"    ""map"": {"
+1770461217083,"      ""content-type"": ""application/json"","
+1770461217083,"      ""date"": ""Sat, 07 Feb 2026 10:46:56 GMT"","
+1770461217083,"      ""permissions-policy"": ""geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=()"","
+1770461217083,"      ""referrer-policy"": ""strict-origin-when-cross-origin"","
+1770461217083,"      ""vary"": ""accept-encoding"","
+1770461217083,"      ""x-content-type-options"": ""nosniff"","
+1770461217083,"      ""x-frame-options"": ""DENY"","
+1770461217083,"      ""x-new-jwt"": ""eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYxMjE2LCJleHAiOjE3NzA1NDc2MTZ9.eJp6ED8SWwLh1kdmZv-Kp1hPD3FxVSx4lbt59_ldrIg"","
+1770461217083,"      ""x-processing-time-ms"": ""11516"","
+1770461217083,"      ""x-response-source"": ""external"","
+1770461217083,"      ""x-tokens-consumed"": ""15"","
+1770461217083,"      ""x-tokens-cost-xaf"": ""0"","
+1770461217083,"      ""x-tokens-remaining"": ""1000000"","
+1770461217083,"      ""x-xss-protection"": ""1; mode=block"""
+1770461217083,    }
+1770461217083,  }
+1770461217083,}
+1770461217083,[2m2026-02-07T10:46:57.083794Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] HomeScreen [HomeScreen] Données suggestion extraites: {
+1770461217083,"  ""titre_service"": {"
+1770461217083,"    ""type_donnee"": ""string"","
+1770461217083,"    ""valeur"": ""Services d'Électricien Professionnel"","
+1770461217083,"    ""origine_champs"": ""texte_libre"""
+1770461217083,"  },"
+1770461217083,"  ""category"": {"
+1770461217083,"    ""type_donnee"": ""string"","
+1770461217083,"    ""valeur"": ""Services"","
+1770461217083,"    ""origine_champs"": ""ia"""
+1770461217083,"  },"
+1770461217083,"  ""description"": {"
+1770461217083,"    ""type_donnee"": ""string"","
+1770461217083,"    ""valeur"": ""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."","
+1770461217083,"    ""origine_champs"": ""texte_libre"""
+1770461217083,"  },"
+1770461217083,"  ""is_tarissable"": {"
+1770461217083,"    ""type_donnee"": ""boolean"","
+1770461217083,"    ""valeur"": false,"
+1770461217083,"    ""origine_champs"": ""ia"""
+1770461217083,"  },"
+1770461217083,"  ""type_offre"": {"
+1770461217083,"    ""type_donnee"": ""string"","
+1770461217083,"    ""valeur"": ""prestation"","
+1770461217083,"    ""origine_champs"": ""ia"""
+1770461217083,"  },"
+1770461217083,"  ""produits"": {"
+1770461217083,"    ""type_donnee"": ""autocomplete"","
+1770461217083,"    ""valeur"": ["
+1770461217083,"      ""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques"""
+1770461217083,"    ],"
+1770461217083,"    ""separateur"": "","","
+1770461217083,"    ""sous_caracteristiques"": {"
+1770461217083,"      ""type_de_service"": ["
+1770461217083,"        ""Installation"","
+1770461217083,"        ""Maintenance"","
+1770461217083,"        ""Réparation"""
+1770461217083,"      ],"
+1770461217083,"      ""secteur"": ["
+1770461217083,"        ""Électricité résidentielle"","
+1770461217083,"        ""Électricité commerciale"","
+1770461217083,"        ""Électricité industrielle"""
+1770461217083,"      ],"
+1770461217083,"      ""spécialité"": ["
+1770461217083,"        ""Éclairage"","
+1770461217083,"        ""Tableaux électriques"","
+1770461217083,"        ""Prises électriques"","
+1770461217083,"        ""Câblage"""
+1770461217083,"      ],"
+1770461217083,"      ""niveau_de_compétence"": ["
+1770461217083,"        ""Débutant"","
+1770461217083,"        ""Intermédiaire"","
+1770461217083,"        ""Expert"""
+1770461217083,"      ],"
+1770461217083,"      ""disponibilité"": ["
+1770461217083,"        ""Urgent"","
+1770461217083,"        ""Planifié"""
+1770461217083,"      ],"
+1770461217083,"      ""zone_de_service"": ["
+1770461217083,"        ""Locale"","
+1770461217083,"        ""Régionale"""
+1770461217083,"      ],"
+1770461217083,"      ""outils_utilisés"": ["
+1770461217083,"        ""Multimètre"","
+1770461217083,"        ""Tournevis"","
+1770461217083,"        ""Pince coupante"""
+1770461217083,"      ],"
+1770461217083,"      ""tarification"": ["
+1770461217083,"        ""À l'heure"","
+1770461217083,"        ""Forfait"""
+1770461217083,      ]
+1770461217083,"    },"
+1770461217083,"    ""filtrable"": true,"
+1770461217083,"    ""identifiant_base"": ""services_electricien"","
+1770461217083,"    ""origine_champs"": ""ia"""
+1770461217083,"  },"
+1770461217083,"  ""nom_produit"": {"
+1770461217083,"    ""type_donnee"": ""string"","
+1770461217083,"    ""valeur"": ""Service d'Électricien"","
+1770461217083,"    ""origine_champs"": ""ia"""
+1770461217083,"  },"
+1770461217083,"  ""categorie_produit"": {"
+1770461217083,"    ""type_donnee"": ""string"","
+1770461217083,"    ""valeur"": ""Service Électrique"","
+1770461217083,"    ""origine_champs"": ""ia"""
+1770461217083,"  },"
+1770461217083,"  ""description_produit"": {"
+1770461217083,"    ""type_donnee"": ""string"","
+1770461217083,"    ""valeur"": ""Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."","
+1770461217083,"    ""origine_champs"": ""ia"""
+1770461217083,"  },"
+1770461217083,"  ""prix_produit"": {"
+1770461217083,"    ""type_donnee"": ""number"","
+1770461217083,"    ""valeur"": null,"
+1770461217083,"    ""origine_champs"": ""ia"""
+1770461217083,"  },"
+1770461217083,"  ""devise_produit"": {"
+1770461217083,"    ""type_donnee"": ""string"","
+1770461217083,"    ""valeur"": ""XAF"","
+1770461217083,"    ""origine_champs"": ""ia"""
+1770461217083,  }
+1770461217083,}
+1770461217083,[2m2026-02-07T10:46:57.083807Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] useEffect - Traitement des données IA au chargement
+1770461217083,[2m2026-02-07T10:46:57.083809Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461215391_y55emklqa)
+1770461217101,"[2m2026-02-07T10:46:57.101759Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461215421_xkqmwhwmz), traitement en arrière-plan"
+1770461217101,"[2m2026-02-07T10:46:57.101868Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Champ titre_service valide, création du composant"
+1770461217101,"[2m2026-02-07T10:46:57.101872Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Création champ titre_service: type=string, isMultiSelect=false, valeur= Services d'Électricien Professionnel"
+1770461217101,[2m2026-02-07T10:46:57.101874Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Composant créé pour titre_service: {
+1770461217101,"  ""type"": ""text"","
+1770461217101,"  ""label"": ""Titre du service"","
+1770461217101,"  ""name"": ""titre_service"","
+1770461217101,"  ""placeholder"": ""Entrez votre titre du service"","
+1770461217101,"  ""required"": true,"
+1770461217101,"  ""value"": ""Services d'Électricien Professionnel"""
+1770461217101,}
+1770461217101,[2m2026-02-07T10:46:57.101876Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Traitement du champ: category
+1770461217101,[2m2026-02-07T10:46:57.101878Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Données du champ category: {
+1770461217101,"  ""type_donnee"": ""string"","
+1770461217101,"  ""valeur"": ""Services"","
+1770461217101,"  ""origine_champs"": ""ia"""
+1770461217101,}
+1770461217101,"[2m2026-02-07T10:46:57.101879Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Champ category valide, création du composant"
+1770461217101,"[2m2026-02-07T10:46:57.101881Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Création champ category: type=string, isMultiSelect=false, valeur= Services"
+1770461217101,[2m2026-02-07T10:46:57.101882Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Composant créé pour category: {
+1770461217101,"  ""type"": ""text"","
+1770461217101,"  ""label"": ""Catégorie"","
+1770461217101,"  ""name"": ""category"","
+1770461217101,"  ""placeholder"": ""Entrez votre catégorie"","
+1770461217101,"  ""required"": true,"
+1770461217101,"  ""value"": ""Services"""
+1770461217101,}
+1770461217101,[2m2026-02-07T10:46:57.101884Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Traitement du champ: description
+1770461217101,[2m2026-02-07T10:46:57.101885Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Données du champ description: {
+1770461217101,"  ""type_donnee"": ""string"","
+1770461217101,"  ""valeur"": ""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."","
+1770461217101,"  ""origine_champs"": ""texte_libre"""
+1770461217101,}
+1770461217101,[2m2026-02-07T10:46:57.101887Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461215421_xkqmwhwmz)
+1770461217306,"[2m2026-02-07T10:46:57.305971Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461215429_v1ui5s9ri), traitement en arrière-plan"
+1770461217306,"[2m2026-02-07T10:46:57.306134Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Champ type_offre valide, création du composant"
+1770461217306,"[2m2026-02-07T10:46:57.306139Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Création champ type_offre: type=string, isMultiSelect=true, valeur= prestation"
+1770461217306,[2m2026-02-07T10:46:57.306141Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Composant créé pour type_offre: {
+1770461217306,"  ""type"": ""text"","
+1770461217306,"  ""label"": ""type_offre"","
+1770461217306,"  ""name"": ""type_offre"","
+1770461217306,"  ""placeholder"": ""Entrez votre type_offre"","
+1770461217306,"  ""required"": false,"
+1770461217306,"  ""value"": ""prestation"""
+1770461217306,}
+1770461217306,[2m2026-02-07T10:46:57.306143Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Traitement du champ: produits
+1770461217306,[2m2026-02-07T10:46:57.306144Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Données du champ produits: {
+1770461217306,"  ""type_donnee"": ""autocomplete"","
+1770461217306,"  ""valeur"": ["
+1770461217306,"    ""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques"""
+1770461217306,"  ],"
+1770461217306,"  ""separateur"": "","","
+1770461217306,"  ""sous_caracteristiques"": {"
+1770461217306,"    ""type_de_service"": ["
+1770461217306,"      ""Installation"","
+1770461217306,"      ""Maintenance"","
+1770461217306,"      ""Réparation"""
+1770461217306,"    ],"
+1770461217306,"    ""secteur"": ["
+1770461217306,"      ""Électricité résidentielle"","
+1770461217306,"      ""Électricité commerciale"","
+1770461217306,"      ""Électricité industrielle"""
+1770461217306,"    ],"
+1770461217306,"    ""spécialité"": ["
+1770461217306,"      ""Éclairage"","
+1770461217306,"      ""Tableaux électriques"","
+1770461217306,"      ""Prises électriques"","
+1770461217306,"      ""Câblage"""
+1770461217306,"    ],"
+1770461217306,"    ""niveau_de_compétence"": ["
+1770461217306,"      ""Débutant"","
+1770461217306,"      ""Intermédiaire"","
+1770461217306,"      ""Expert"""
+1770461217306,"    ],"
+1770461217306,"    ""disponibilité"": ["
+1770461217306,"      ""Urgent"","
+1770461217306,"      ""Planifié"""
+1770461217306,"    ],"
+1770461217306,"    ""zone_de_service"": ["
+1770461217306,"      ""Locale"","
+1770461217306,"      ""Régionale"""
+1770461217306,"    ],"
+1770461217306,"    ""outils_utilisés"": ["
+1770461217306,"      ""Multimètre"","
+1770461217306,"      ""Tournevis"","
+1770461217306,"      ""Pince coupante"""
+1770461217306,"    ],"
+1770461217306,"    ""tarification"": ["
+1770461217306,"      ""À l'heure"","
+1770461217306,"      ""Forfait"""
+1770461217306,    ]
+1770461217306,"  },"
+1770461217306,"  ""filtrable"": true,"
+1770461217306,"  ""identifiant_base"": ""services_electricien"","
+1770461217306,"  ""origine_champs"": ""ia"""
+1770461217306,}
+1770461217306,"[2m2026-02-07T10:46:57.306151Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Champ produits valide, création du composant"
+1770461217306,"[2m2026-02-07T10:46:57.306152Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Création champ produits: type=autocomplete, isMultiSelect=false, valeur= ["
+1770461217306,"  ""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques"""
+1770461217306,]
+1770461217306,[2m2026-02-07T10:46:57.306154Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Composant créé pour produits: {
+1770461217306,"  ""type"": ""autocomplete"","
+1770461217306,"  ""label"": ""produits"","
+1770461217306,"  ""name"": ""produits"","
+1770461217306,"  ""typeDonnee"": ""autocomplete"","
+1770461217306,"  ""value"": ["
+1770461217306,"    ""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques"""
+1770461217306,"  ],"
+1770461217306,"  ""separateur"": "","","
+1770461217306,"  ""sousCaracteristiques"": {"
+1770461217306,"    ""type_de_service"": ["
+1770461217306,"      ""Installation"","
+1770461217306,"      ""Maintenance"","
+1770461217306,"      ""Réparation"""
+1770461217306,"    ],"
+1770461217306,"    ""secteur"": ["
+1770461217306,"      ""Électricité résidentielle"","
+1770461217306,"      ""Électricité commerciale"","
+1770461217306,"      ""Électricité industrielle"""
+1770461217306,"    ],"
+1770461217306,"    ""spécialité"": ["
+1770461217306,"      ""Éclairage"","
+1770461217306,"      ""Tableaux électriques"","
+1770461217306,"      ""Prises électriques"","
+1770461217306,"      ""Câblage"""
+1770461217306,"    ],"
+1770461217306,"    ""niveau_de_compétence"": ["
+1770461217306,"      ""Débutant"","
+1770461217306,"      ""Intermédiaire"","
+1770461217306,"      ""Expert"""
+1770461217306,"    ],"
+1770461217306,"    ""disponibilité"": ["
+1770461217306,"      ""Urgent"","
+1770461217306,"      ""Planifié"""
+1770461217306,"    ],"
+1770461217306,"    ""zone_de_service"": ["
+1770461217306,"      ""Locale"","
+1770461217306,"      ""Régionale"""
+1770461217306,"    ],"
+1770461217306,"    ""outils_utilisés"": ["
+1770461217306,"      ""Multimètre"","
+1770461217306,"      ""Tournevis"","
+1770461217306,"      ""Pince coupante"""
+1770461217306,"    ],"
+1770461217306,"    ""tarification"": ["
+1770461217306,"      ""À l'heure"","
+1770461217306,"      ""Forfait"""
+1770461217306,    ]
+1770461217306,"  },"
+1770461217306,"  ""identifiantBase"": ""services_electricien"","
+1770461217306,"  ""filtrable"": true,"
+1770461217306,"  ""allowCustomModality"": true,"
+1770461217306,"  ""required"": false"
+1770461217306,}
+1770461217306,[2m2026-02-07T10:46:57.306166Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Traitement du champ: nom_produit
+1770461217306,[2m2026-02-07T10:46:57.306167Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Données du champ nom_produit: {
+1770461217306,"  ""type_donnee"": ""string"","
+1770461217306,"  ""valeur"": ""Service d'Électricien"","
+1770461217306,"  ""origine_champs"": ""ia"""
+1770461217306,}
+1770461217306,[2m2026-02-07T10:46:57.306169Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461215429_v1ui5s9ri)
+1770461217314,"[2m2026-02-07T10:46:57.314583Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461215437_sso9la2ig), traitement en arrière-plan"
+1770461217314,"[2m2026-02-07T10:46:57.314709Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Champ description_produit valide, création du composant"
+1770461217314,"[2m2026-02-07T10:46:57.314713Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Création champ description_produit: type=string, isMultiSelect=false, valeur= Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."
+1770461217314,[2m2026-02-07T10:46:57.314715Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Composant créé pour description_produit: {
+1770461217314,"  ""type"": ""text"","
+1770461217314,"  ""label"": ""Description du produit/prestation"","
+1770461217314,"  ""name"": ""description_produit"","
+1770461217314,"  ""placeholder"": ""Entrez votre description du produit/prestation"","
+1770461217314,"  ""required"": false,"
+1770461217314,"  ""value"": ""Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."""
+1770461217314,}
+1770461217314,[2m2026-02-07T10:46:57.314718Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Traitement du champ: prix_produit
+1770461217314,[2m2026-02-07T10:46:57.314720Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Données du champ prix_produit: {
+1770461217314,"  ""type_donnee"": ""number"","
+1770461217314,"  ""valeur"": null,"
+1770461217314,"  ""origine_champs"": ""ia"""
+1770461217314,}
+1770461217314,"[2m2026-02-07T10:46:57.314721Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Champ prix_produit valide, création du composant"
+1770461217314,"[2m2026-02-07T10:46:57.314723Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Création champ prix_produit: type=number, isMultiSelect=false, valeur= null"
+1770461217314,[2m2026-02-07T10:46:57.314724Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Composant créé pour prix_produit: {
+1770461217314,"  ""type"": ""number"","
+1770461217314,"  ""label"": ""Prix du produit/prestation"","
+1770461217314,"  ""name"": ""prix_produit"","
+1770461217314,"  ""placeholder"": ""Entrez votre prix du produit/prestation"","
+1770461217314,"  ""value"": """""
+1770461217314,}
+1770461217314,[2m2026-02-07T10:46:57.314726Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Traitement du champ: devise_produit
+1770461217314,[2m2026-02-07T10:46:57.314728Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] formDispatcher [formDispatcher] Données du champ devise_produit: {
+1770461217314,"  ""type_donnee"": ""string"","
+1770461217314,"  ""valeur"": ""XAF"","
+1770461217314,"  ""origine_champs"": ""ia"""
+1770461217314,}
+1770461217314,[2m2026-02-07T10:46:57.314729Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461215437_sso9la2ig)
+1770461217531,"[2m2026-02-07T10:46:57.531877Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461215442_l0d7wlz3a), traitement en arrière-plan"
+1770461217532,[2m2026-02-07T10:46:57.532043Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ product_labels extrait depuis IA: [
+1770461217532,"  ""type_de_service"","
+1770461217532,"  ""secteur"","
+1770461217532,"  ""spécialité"","
+1770461217532,"  ""niveau_de_compétence"","
+1770461217532,"  ""disponibilité"","
+1770461217532,"  ""zone_de_service"","
+1770461217532,"  ""outils_utilisés"","
+1770461217532,"  ""tarification"""
+1770461217532,]
+1770461217532,[2m2026-02-07T10:46:57.532052Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Champ produits (autocomplete) pré-rempli: {
+1770461217532,"  ""type_donnee"": ""autocomplete"","
+1770461217532,"  ""valeur"": ["
+1770461217532,"    ""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques"""
+1770461217532,"  ],"
+1770461217532,"  ""separateur"": "","","
+1770461217532,"  ""sous_caracteristiques"": {"
+1770461217532,"    ""type_de_service"": ["
+1770461217532,"      ""Installation"","
+1770461217532,"      ""Maintenance"","
+1770461217532,"      ""Réparation"""
+1770461217532,"    ],"
+1770461217532,"    ""secteur"": ["
+1770461217532,"      ""Électricité résidentielle"","
+1770461217532,"      ""Électricité commerciale"","
+1770461217532,"      ""Électricité industrielle"""
+1770461217532,"    ],"
+1770461217532,"    ""spécialité"": ["
+1770461217532,"      ""Éclairage"","
+1770461217532,"      ""Tableaux électriques"","
+1770461217532,"      ""Prises électriques"","
+1770461217532,"      ""Câblage"""
+1770461217532,"    ],"
+1770461217532,"    ""niveau_de_compétence"": ["
+1770461217532,"      ""Débutant"","
+1770461217532,"      ""Intermédiaire"","
+1770461217532,"      ""Expert"""
+1770461217532,"    ],"
+1770461217532,"    ""disponibilité"": ["
+1770461217532,"      ""Urgent"","
+1770461217532,"      ""Planifié"""
+1770461217532,"    ],"
+1770461217532,"    ""zone_de_service"": ["
+1770461217532,"      ""Locale"","
+1770461217532,"      ""Régionale"""
+1770461217532,"    ],"
+1770461217532,"    ""outils_utilisés"": ["
+1770461217532,"      ""Multimètre"","
+1770461217532,"      ""Tournevis"","
+1770461217532,"      ""Pince coupante"""
+1770461217532,"    ],"
+1770461217532,"    ""tarification"": ["
+1770461217532,"      ""À l'heure"","
+1770461217532,"      ""Forfait"""
+1770461217532,    ]
+1770461217532,"  },"
+1770461217532,"  ""product_labels"": ["
+1770461217532,"    ""type_de_service"","
+1770461217532,"    ""secteur"","
+1770461217532,"    ""spécialité"","
+1770461217532,"    ""niveau_de_compétence"","
+1770461217532,"    ""disponibilité"","
+1770461217532,"    ""zone_de_service"","
+1770461217532,"    ""outils_utilisés"","
+1770461217532,"    ""tarification"""
+1770461217532,"  ],"
+1770461217532,"  ""identifiant_base"": ""services_electricien"","
+1770461217532,"  ""filtrable"": true,"
+1770461217532,"  ""origine_champs"": ""ia"""
+1770461217532,}
+1770461217532,[2m2026-02-07T10:46:57.532060Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] Valeur pré-remplie automatiquement pour nom_produit: Service d'Électricien
+1770461217532,[2m2026-02-07T10:46:57.532062Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] Valeur pré-remplie automatiquement pour categorie_produit: Service Électrique
+1770461217532,"[2m2026-02-07T10:46:57.532063Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] Valeur pré-remplie automatiquement pour description_produit: Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."
+1770461217532,[2m2026-02-07T10:46:57.532065Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ 4 champs produits détectés depuis l'IA: [
+1770461217532,"  ""nom_produit"","
+1770461217532,"  ""categorie_produit"","
+1770461217532,"  ""description_produit"","
+1770461217532,"  ""produits"""
+1770461217532,]
+1770461217532,[2m2026-02-07T10:46:57.532067Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ nom_produit chargé: Service d'Électricien
+1770461217532,[2m2026-02-07T10:46:57.532069Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ categorie_produit chargé: Service Électrique
+1770461217532,"[2m2026-02-07T10:46:57.532070Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ description_produit chargé: Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."
+1770461217532,[2m2026-02-07T10:46:57.532078Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] Catégorie chargée: Services
+1770461217532,[2m2026-02-07T10:46:57.532085Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461215442_l0d7wlz3a)
+1770461217551,"[2m2026-02-07T10:46:57.551749Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461215453_ykcrvclic), traitement en arrière-plan"
+1770461217551,"[2m2026-02-07T10:46:57.551929Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Champ ""produits"" → Bloc 3 (Produits/ Prestations) (typeDonnee: autocomplete)"
+1770461217551,"[2m2026-02-07T10:46:57.551942Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Champ ""nom_produit"" → Bloc 3 (Produits/ Prestations) (typeDonnee: undefined)"
+1770461217551,"[2m2026-02-07T10:46:57.551944Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Champ ""categorie_produit"" → Bloc 3 (Produits/ Prestations) (typeDonnee: undefined)"
+1770461217551,"[2m2026-02-07T10:46:57.551946Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Champ ""description_produit"" → Bloc 3 (Produits/ Prestations) (typeDonnee: undefined)"
+1770461217551,"[2m2026-02-07T10:46:57.551948Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Champ ""prix_produit"" → Bloc 3 (Produits/ Prestations) (typeDonnee: undefined)"
+1770461217551,"[2m2026-02-07T10:46:57.551960Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Champ ""devise_produit"" → Bloc 3 (Produits/ Prestations) (typeDonnee: undefined)"
+1770461217551,[2m2026-02-07T10:46:57.551963Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Champs du bloc Produits triés: [
+1770461217551,"  ""nom_produit"","
+1770461217551,"  ""categorie_produit"","
+1770461217551,"  ""description_produit"","
+1770461217551,"  ""quantite_disponible"","
+1770461217551,"  ""produits"","
+1770461217551,"  ""lieu_produit"","
+1770461217551,"  ""prix_produit"","
+1770461217551,"  ""devise_produit"","
+1770461217551,"  ""_product_media_manager"""
+1770461217551,]
+1770461217551,[2m2026-02-07T10:46:57.551966Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] 📊 RÉSUMÉ DISTRIBUTION DES BLOCS:
+1770461217551,"[2m2026-02-07T10:46:57.551967Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown   Bloc 0 (general): 4 champs - titre_service, category, description, is_tarissable"
+1770461217551,"[2m2026-02-07T10:46:57.551969Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown   Bloc 1 (contact): 4 champs - whatsapp, telephone, email, website"
+1770461217551,[2m2026-02-07T10:46:57.551971Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461215453_ykcrvclic)
+1770461217778,"[2m2026-02-07T10:46:57.777902Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461215551_jjk3m3rwl), traitement en arrière-plan"
+1770461217778,"[2m2026-02-07T10:46:57.778053Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Valeur extraite de component: produits = Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques"
+1770461217778,[2m2026-02-07T10:46:57.778058Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Valeur extraite de component: nom_produit = Service d'Électricien
+1770461217778,[2m2026-02-07T10:46:57.778059Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Valeur extraite de component: categorie_produit = Service Électrique
+1770461217778,"[2m2026-02-07T10:46:57.778061Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Valeur extraite de component: description_produit = Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."
+1770461217778,[2m2026-02-07T10:46:57.778063Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Valeur extraite de component: devise_produit = XAF
+1770461217778,[2m2026-02-07T10:46:57.778064Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] NavigationContainer [NavigationContainer] 📍 Navigation changée
+1770461217778,[2m2026-02-07T10:46:57.778065Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] 📋 Affichage bloc: {
+1770461217778,"  ""currentDisplayIndex"": 0,"
+1770461217778,"  ""blockId"": ""general"","
+1770461217778,"  ""blockTitle"": ""Informations générales"","
+1770461217778,"  ""blockIcon"": ""📋"""
+1770461217778,}
+1770461217778,[2m2026-02-07T10:46:57.778067Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] NAVIGATION_SYNC [NAVIGATION_SYNC] ✅ Synchronisation OK: {
+1770461217778,"  ""currentDisplayIndex"": 0,"
+1770461217778,"  ""currentBlock"": 0,"
+1770461217778,"  ""blockId"": ""general"","
+1770461217778,"  ""blockTitle"": ""Informations générales"""
+1770461217778,}
+1770461217778,"[2m2026-02-07T10:46:57.778069Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Champ ""titre_service"" → Bloc 0 (Informations générales)"
+1770461217778,"[2m2026-02-07T10:46:57.778071Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] ✅ Champ ""category"" → Bloc 0 (Informations générales)"
+1770461217778,[2m2026-02-07T10:46:57.778072Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461215551_jjk3m3rwl)
+1770461217788,"[2m2026-02-07T10:46:57.788470Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461215608_pl0iryfmz), traitement en arrière-plan"
+1770461217788,[2m2026-02-07T10:46:57.788579Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] 📊 RÉSUMÉ DISTRIBUTION DES BLOCS:
+1770461217788,"[2m2026-02-07T10:46:57.788585Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown   Bloc 0 (general): 4 champs - titre_service, category, description, is_tarissable"
+1770461217788,"[2m2026-02-07T10:46:57.788586Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown   Bloc 1 (contact): 4 champs - whatsapp, telephone, email, website"
+1770461217788,[2m2026-02-07T10:46:57.788587Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown   Bloc 2 (location): 1 champs - gps_fixe
+1770461217788,"[2m2026-02-07T10:46:57.788589Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown   Bloc 3 (products): 9 champs - nom_produit, categorie_produit, description_produit, quantite_disponible, produits, lieu_produit, prix_produit, devise_produit, _product_media_manager"
+1770461217788,[2m2026-02-07T10:46:57.788590Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown   Bloc 4 (media): 1 champs - _media_manager
+1770461217788,[2m2026-02-07T10:46:57.788592Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown   Bloc 5 (payment): 1 champs - _payment_manager
+1770461217788,[2m2026-02-07T10:46:57.788594Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown   Bloc 6 (other): 1 champs - type_offre
+1770461217788,[2m2026-02-07T10:46:57.788596Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] Blocs organisés avec valeurs: [
+1770461217788,  {
+1770461217788,"    ""id"": ""general"","
+1770461217788,"    ""title"": ""Informations générales"","
+1770461217788,"    ""icon"": ""📋"","
+1770461217788,"    ""fields"": ["
+1770461217788,      {
+1770461217788,"        ""type"": ""text"","
+1770461217788,"        ""label"": ""Titre du service"","
+1770461217788,"        ""name"": ""titre_service"","
+1770461217788,"        ""placeholder"": ""Entrez votre titre du service"","
+1770461217788,"        ""required"": true,"
+1770461217788,"        ""value"": ""Services d'Électricien Professionnel"""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""type"": ""text"","
+1770461217788,"        ""label"": ""Catégorie"","
+1770461217788,"        ""name"": ""category"","
+1770461217788,"        ""placeholder"": ""Entrez votre catégorie"","
+1770461217788,"        ""required"": true,"
+1770461217788,"        ""value"": ""Services"""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""type"": ""textarea"","
+1770461217788,"        ""label"": ""Description"","
+1770461217788,"        ""name"": ""description"","
+1770461217788,"        ""placeholder"": ""Entrez votre description"","
+1770461217788,"        ""value"": ""Offre de services professionnels en électricité, incluant l'installation, la réparation et la maintenance de systèmes électriques pour particuliers et entreprises."""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""type"": ""checkbox"","
+1770461217788,"        ""label"": ""Service tarissable"","
+1770461217788,"        ""name"": ""is_tarissable"","
+1770461217788,"        ""value"": false"
+1770461217788,      }
+1770461217788,    ]
+1770461217788,"  },"
+1770461217788,  {
+1770461217788,"    ""id"": ""contact"","
+1770461217788,"    ""title"": ""Contact"","
+1770461217788,"    ""icon"": ""📞"","
+1770461217788,"    ""fields"": ["
+1770461217788,      {
+1770461217788,"        ""name"": ""whatsapp"","
+1770461217788,"        ""type"": ""text"","
+1770461217788,"        ""label"": ""WhatsApp"","
+1770461217788,"        ""required"": true,"
+1770461217788,"        ""placeholder"": ""+237 6XX XX XX XX"""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""name"": ""telephone"","
+1770461217788,"        ""type"": ""text"","
+1770461217788,"        ""label"": ""Téléphone"","
+1770461217788,"        ""required"": false,"
+1770461217788,"        ""placeholder"": ""+237 6XX XX XX XX"""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""name"": ""email"","
+1770461217788,"        ""type"": ""email"","
+1770461217788,"        ""label"": ""Email"","
+1770461217788,"        ""required"": false,"
+1770461217788,"        ""placeholder"": ""contact@exemple.com"""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""name"": ""website"","
+1770461217788,"        ""type"": ""url"","
+1770461217788,"        ""label"": ""Site web"","
+1770461217788,"        ""required"": false,"
+1770461217788,"        ""placeholder"": ""https://..."""
+1770461217788,      }
+1770461217788,    ]
+1770461217788,"  },"
+1770461217788,  {
+1770461217788,"    ""id"": ""location"","
+1770461217788,"    ""title"": ""Localisation"","
+1770461217788,"    ""icon"": ""📍"","
+1770461217788,"    ""fields"": ["
+1770461217788,      {
+1770461217788,"        ""name"": ""gps_fixe"","
+1770461217788,"        ""type"": ""custom"","
+1770461217788,"        ""label"": ""Position GPS fixe"","
+1770461217788,"        ""required"": false,"
+1770461217788,"        ""placeholder"": ""Sélectionner une position"""
+1770461217788,      }
+1770461217788,    ]
+1770461217788,"  },"
+1770461217788,  {
+1770461217788,"    ""id"": ""products"","
+1770461217788,"    ""title"": ""Produits / Prestations"","
+1770461217788,"    ""icon"": ""🛍️"","
+1770461217788,"    ""fields"": ["
+1770461217788,      {
+1770461217788,"        ""type"": ""text"","
+1770461217788,"        ""label"": ""Nom du produit/prestation"","
+1770461217788,"        ""name"": ""nom_produit"","
+1770461217788,"        ""placeholder"": ""Entrez votre nom du produit/prestation"","
+1770461217788,"        ""required"": false,"
+1770461217788,"        ""value"": ""Service d'Électricien"""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""type"": ""text"","
+1770461217788,"        ""label"": ""Catégorie du produit/prestation"","
+1770461217788,"        ""name"": ""categorie_produit"","
+1770461217788,"        ""placeholder"": ""Entrez votre catégorie du produit/prestation"","
+1770461217788,"        ""required"": false,"
+1770461217788,"        ""value"": ""Service Électrique"""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""type"": ""text"","
+1770461217788,"        ""label"": ""Description du produit/prestation"","
+1770461217788,"        ""name"": ""description_produit"","
+1770461217788,"        ""placeholder"": ""Entrez votre description du produit/prestation"","
+1770461217788,"        ""required"": false,"
+1770461217788,"        ""value"": ""Service professionnel d'électricien pour installation, maintenance et réparation de systèmes électriques."""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""name"": ""quantite_disponible"","
+1770461217788,"        ""type"": ""number"","
+1770461217788,"        ""typeDonnee"": ""number"","
+1770461217788,"        ""label"": ""Quantité disponible"","
+1770461217788,"        ""required"": false,"
+1770461217788,"        ""placeholder"": ""Ex: 50"","
+1770461217788,"        ""value"": """""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""type"": ""autocomplete"","
+1770461217788,"        ""label"": ""produits"","
+1770461217788,"        ""name"": ""produits"","
+1770461217788,"        ""typeDonnee"": ""autocomplete"","
+1770461217788,"        ""value"": ["
+1770461217788,"          ""Installation,Maintenance,Réparation,Électricité résidentielle,Électricité commerciale,Éclairage,Tableaux électriques,Prises électriques"""
+1770461217788,"        ],"
+1770461217788,"        ""separateur"": "","","
+1770461217788,"        ""sousCaracteristiques"": {"
+1770461217788,"          ""type_de_service"": ["
+1770461217788,"            ""Installation"","
+1770461217788,"            ""Maintenance"","
+1770461217788,"            ""Réparation"""
+1770461217788,"          ],"
+1770461217788,"          ""secteur"": ["
+1770461217788,"            ""Électricité résidentielle"","
+1770461217788,"            ""Électricité commerciale"","
+1770461217788,"            ""Électricité industrielle"""
+1770461217788,"          ],"
+1770461217788,"          ""spécialité"": ["
+1770461217788,"            ""Éclairage"","
+1770461217788,"            ""Tableaux électriques"","
+1770461217788,"            ""Prises électriques"","
+1770461217788,"            ""Câblage"""
+1770461217788,"          ],"
+1770461217788,"          ""niveau_de_compétence"": ["
+1770461217788,"            ""Débutant"","
+1770461217788,"            ""Intermédiaire"","
+1770461217788,"            ""Expert"""
+1770461217788,"          ],"
+1770461217788,"          ""disponibilité"": ["
+1770461217788,"            ""Urgent"","
+1770461217788,"            ""Planifié"""
+1770461217788,"          ],"
+1770461217788,"          ""zone_de_service"": ["
+1770461217788,"            ""Locale"","
+1770461217788,"            ""Régionale"""
+1770461217788,"          ],"
+1770461217788,"          ""outils_utilisés"": ["
+1770461217788,"            ""Multimètre"","
+1770461217788,"            ""Tournevis"","
+1770461217788,"            ""Pince coupante"""
+1770461217788,"          ],"
+1770461217788,"          ""tarification"": ["
+1770461217788,"            ""À l'heure"","
+1770461217788,"            ""Forfait"""
+1770461217788,          ]
+1770461217788,"        },"
+1770461217788,"        ""identifiantBase"": ""services_electricien"","
+1770461217788,"        ""filtrable"": true,"
+1770461217788,"        ""allowCustomModality"": true,"
+1770461217788,"        ""required"": false"
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""name"": ""lieu_produit"","
+1770461217788,"        ""type"": ""location"","
+1770461217788,"        ""typeDonnee"": ""location"","
+1770461217788,"        ""label"": ""Lieu de commercialisation"","
+1770461217788,"        ""required"": true,"
+1770461217788,"        ""placeholder"": ""Rechercher ville, quartier, pays, région..."","
+1770461217788,"        ""filtrable"": true"
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""type"": ""number"","
+1770461217788,"        ""label"": ""Prix du produit/prestation"","
+1770461217788,"        ""name"": ""prix_produit"","
+1770461217788,"        ""placeholder"": ""Entrez votre prix du produit/prestation"","
+1770461217788,"        ""value"": """""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""type"": ""text"","
+1770461217788,"        ""label"": ""Devise"","
+1770461217788,"        ""name"": ""devise_produit"","
+1770461217788,"        ""placeholder"": ""Entrez votre devise"","
+1770461217788,"        ""required"": false,"
+1770461217788,"        ""value"": ""XAF"""
+1770461217788,"      },"
+1770461217788,      {
+1770461217788,"        ""name"": ""_product_media_manager"","
+1770461217788,"        ""type"": ""custom"","
+1770461217788,"        ""label"": ""Photos et vidéos du produit"","
+1770461217788,"        ""required"": false"
+1770461217788,      }
+1770461217788,    ]
+1770461217788,"  },"
+1770461217788,  {
+1770461217788,"    ""id"": ""media"","
+1770461217788,"    ""title"": ""Identité Visuelle"","
+1770461217788,"    ""icon"": ""🎨"","
+1770461217788,"    ""fields"": ["
+1770461217788,      {
+1770461217788,"        ""name"": ""_media_manager"","
+1770461217788,"        ""type"": ""custom"","
+1770461217788,"        ""label"": ""Identité visuelle"","
+1770461217788,"        ""required"": false"
+1770461217788,      }
+1770461217788,    ]
+1770461217788,"  },"
+1770461217788,  {
+1770461217788,"    ""id"": ""payment"","
+1770461217788,"    ""title"": ""Paiement"","
+1770461217788,"    ""icon"": ""💳"","
+1770461217788,"    ""fields"": ["
+1770461217788,      {
+1770461217788,"        ""name"": ""_payment_manager"","
+1770461217788,"        ""type"": ""custom"","
+1770461217788,"        ""label"": ""Mode de paiement"","
+1770461217788,"        ""required"": false"
+1770461217788,      }
+1770461217788,    ]
+1770461217788,"  },"
+1770461217788,  {
+1770461217788,"    ""id"": ""other"","
+1770461217788,"    ""title"": ""Autres informations"","
+1770461217788,"    ""icon"": ""ℹ️"","
+1770461217788,"    ""fields"": ["
+1770461217788,      {
+1770461217788,"        ""type"": ""text"","
+1770461217788,"        ""label"": ""type_offre"","
+1770461217788,"        ""name"": ""type_offre"","
+1770461217788,"        ""placeholder"": ""Entrez votre type_offre"","
+1770461217788,"        ""required"": false,"
+1770461217788,"        ""value"": ""prestation"""
+1770461217788,      }
+1770461217788,    ]
+1770461217788,  }
+1770461217788,]
+1770461217788,[2m2026-02-07T10:46:57.788630Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] FormulaireYukpoIntelligentScreen [FormulaireYukpoIntelligentScreen] 📋 Affichage bloc: {
+1770461217788,"  ""currentDisplayIndex"": 0,"
+1770461217788,"  ""blockId"": ""general"","
+1770461217788,"  ""blockTitle"": ""Informations générales"","
+1770461217788,"  ""blockIcon"": ""📋"""
+1770461217788,}
+1770461217788,[2m2026-02-07T10:46:57.788637Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461215608_pl0iryfmz)
+1770461217991,"[2m2026-02-07T10:46:57.991737Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461215673_svjgmkr8c), traitement en arrière-plan"
+1770461217991,[2m2026-02-07T10:46:57.991901Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461217991,"  ""Content-Type"": ""application/json"","
+1770461217991,"  ""Accept"": ""application/json"","
+1770461217991,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461217991,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461217991,}
+1770461217991,[2m2026-02-07T10:46:57.991910Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461217991,[2m2026-02-07T10:46:57.991912Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461217991,"  ""Content-Type"": ""application/json"","
+1770461217991,"  ""Accept"": ""application/json"","
+1770461217991,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461217991,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461217991,}
+1770461217991,[2m2026-02-07T10:46:57.991915Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461217991,[2m2026-02-07T10:46:57.991916Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461217991,"  ""Content-Type"": ""application/json"","
+1770461217991,"  ""Accept"": ""application/json"","
+1770461217991,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461217991,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461217991,}
+1770461217991,[2m2026-02-07T10:46:57.991919Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461217991,[2m2026-02-07T10:46:57.991920Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461217991,"  ""Content-Type"": ""application/json"","
+1770461217991,"  ""Accept"": ""application/json"","
+1770461217991,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461217991,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461217991,}
+1770461217991,[2m2026-02-07T10:46:57.991923Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461217991,[2m2026-02-07T10:46:57.991925Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461217991,"  ""Content-Type"": ""application/json"","
+1770461217991,"  ""Accept"": ""application/json"","
+1770461217991,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461217991,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461217991,}
+1770461217991,[2m2026-02-07T10:46:57.991927Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461217991,[2m2026-02-07T10:46:57.991929Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461215673_svjgmkr8c)
+1770461218234,"[2m2026-02-07T10:46:58.234068Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461215816_p9lq72qia), traitement en arrière-plan"
+1770461218234,[2m2026-02-07T10:46:58.234227Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461218234,"  ""Content-Type"": ""application/json"","
+1770461218234,"  ""Accept"": ""application/json"","
+1770461218234,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461218234,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461218234,}
+1770461218234,[2m2026-02-07T10:46:58.234234Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461218234,[2m2026-02-07T10:46:58.234236Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461218234,"  ""Content-Type"": ""application/json"","
+1770461218234,"  ""Accept"": ""application/json"","
+1770461218234,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461218234,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461218234,}
+1770461218234,[2m2026-02-07T10:46:58.234239Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461218234,[2m2026-02-07T10:46:58.234240Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461218234,"  ""Content-Type"": ""application/json"","
+1770461218234,"  ""Accept"": ""application/json"","
+1770461218234,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461218234,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461218234,}
+1770461218234,[2m2026-02-07T10:46:58.234243Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461218234,[2m2026-02-07T10:46:58.234244Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461218234,"  ""Content-Type"": ""application/json"","
+1770461218234,"  ""Accept"": ""application/json"","
+1770461218234,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461218234,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461218234,}
+1770461218234,[2m2026-02-07T10:46:58.234248Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461218234,[2m2026-02-07T10:46:58.234249Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461218234,"  ""Content-Type"": ""application/json"","
+1770461218234,"  ""Accept"": ""application/json"","
+1770461218234,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461218234,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461218234,}
+1770461218234,[2m2026-02-07T10:46:58.234252Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461218234,[2m2026-02-07T10:46:58.234259Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461215816_p9lq72qia)
+1770461230309,"[2m2026-02-07T10:47:10.308302Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461230986,"[2m2026-02-07T10:47:10.986476Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461231249,"[2m2026-02-07T10:47:11.249556Z[0m [31mERROR[0m [2myukpomnang_backend::tasks::search_cache_refresh[0m[2m:[0m [SearchCacheRefresh] ❌ Erreur lors du rafraîchissement: ?? Internal error: Erreur rafraîchissement vue matérialisée: error returned from database: cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461231249,[2m2026-02-07T10:47:11.249584Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔄 Refresh de services_search_cache...
+1770461232172,"[2m2026-02-07T10:47:12.172319Z[0m [33m WARN[0m [2myukpomnang_backend::utils::redis_helper[0m[2m:[0m ⚠️ [Redis] Health check échoué - Redis non disponible - PING failed: An error was signalled by the server - ResponseError: Your database has been temporarily rate-limited, please contact support@upstash.com for further details. (fallback gracieux activé)"
+1770461261263,"[2m2026-02-07T10:47:41.263067Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461261889,"[2m2026-02-07T10:47:41.889531Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461267133,[2m2026-02-07T10:47:47.132715Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::chat_websocket[0m[2m:[0m [ChatWS] Tâche réception terminée
+1770461267133,"[2m2026-02-07T10:47:47.132743Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::chat_websocket[0m[2m:[0m [ChatWS] Connexion fermée - Conversation: 1_1_3, User: 3"
+1770461292191,"[2m2026-02-07T10:48:12.191525Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461292838,"[2m2026-02-07T10:48:12.838734Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461323126,"[2m2026-02-07T10:48:43.126616Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461323785,"[2m2026-02-07T10:48:43.785083Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461354124,"[2m2026-02-07T10:49:14.123484Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461354747,"[2m2026-02-07T10:49:14.747094Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461385038,"[2m2026-02-07T10:49:45.038335Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461385649,"[2m2026-02-07T10:49:45.648895Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461415992,"[2m2026-02-07T10:50:15.992244Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461416609,"[2m2026-02-07T10:50:16.609605Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461446942,"[2m2026-02-07T10:50:46.942340Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461447547,"[2m2026-02-07T10:50:47.547633Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461477906,"[2m2026-02-07T10:51:17.906021Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461478469,"[2m2026-02-07T10:51:18.468924Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461508828,"[2m2026-02-07T10:51:48.828532Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461509441,"[2m2026-02-07T10:51:49.441114Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461539744,"[2m2026-02-07T10:52:19.744410Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461540402,"[2m2026-02-07T10:52:20.402205Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461570650,"[2m2026-02-07T10:52:50.650730Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461571333,"[2m2026-02-07T10:52:51.333438Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461601583,"[2m2026-02-07T10:53:21.583516Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461602292,"[2m2026-02-07T10:53:22.292248Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461632535,"[2m2026-02-07T10:53:52.535265Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461633237,"[2m2026-02-07T10:53:53.237601Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461640616,"[2m2026-02-07T10:54:00.616562Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Accepté 10 logs mobile (batch: batch_1770461638642_ftobpxcrw), traitement en arrière-plan"
+1770461640616,[2m2026-02-07T10:54:00.616699Z[0m [31mERROR[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [ERROR] Mobile API | User:3 | Device:android/34 | Time:2026-02-07T10:53:54.188Z [Mobile API] Détails erreur: {
+1770461640616,"  ""name"": ""TypeError"","
+1770461640616,"  ""message"": ""Network request failed"","
+1770461640616,"  ""stack"": ""TypeError: Network request failed
+    at anonymous (address at index.android.bundle:1:545927)
+    at apply (native)
+    at anonymous (address at index.android.bundle:1:513532)
+    at _callTimer (addre"""
+1770461640616,}
+1770461640616,[2m2026-02-07T10:54:00.616706Z[0m [33m WARN[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [WARN] unknown | User:3 | Device:android/34 | Time:2026-02-07T10:53:58.638Z ⚠️ [useWebSocketChat] WebSocket non ouvert pour ping (état: 3)
+1770461640616,[2m2026-02-07T10:54:00.616709Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown 🔌 [WebSocket] Connexion fermée: 1006 Software caused connection abort
+1770461640616,[2m2026-02-07T10:54:00.616710Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] WebSocketContext [WebSocketContext] 📡 Statut connexion: offline
+1770461640616,[2m2026-02-07T10:54:00.616711Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown 🔄 [WebSocket] Reconnexion dans 3000ms (tentative 1/5)
+1770461640616,[2m2026-02-07T10:54:00.616713Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Making request to: https://api.yukpomnang.com/api/mobile-logs
+1770461640616,[2m2026-02-07T10:54:00.616714Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] Request headers: {
+1770461640616,"  ""Content-Type"": ""application/json"","
+1770461640616,"  ""Accept"": ""application/json"","
+1770461640616,"  ""User-Agent"": ""Yukpo-Mobile/1.0.0"","
+1770461640616,"  ""Authorization"": ""Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMsInJvbGUiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5AeXVrcG8uZGV2IiwibmFtZSI6IlN1cGVyIFN1cGVyIEFkbWluIiwidG9rZW5zX2JhbGFuY2UiOjEwMDAwMDAsInBhcnRuZXJfdHlwZSI6bnVsbCwiaWF0IjoxNzcwNDYwNzU2LCJleHAiOjE3NzA1NDcxNTZ9.2S_bryinriqmq2pSdRNbmwxvxNlHUS-6NUsoPK2XLhc"""
+1770461640616,}
+1770461640616,"[2m2026-02-07T10:54:00.616717Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] Mobile API [Mobile API] ⚠️ Retry 1/3 après 1000ms pour /api/mobile-logs (code: NETWORK_ERROR, status: N/A)"
+1770461640616,[2m2026-02-07T10:54:00.616718Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown 🔄 [useWebSocketChat] Tentative de reconnexion...
+1770461640616,[2m2026-02-07T10:54:00.616719Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE] [INFO] unknown 🔌 [useWebSocketChat] Connexion WebSocket...
+1770461640616,[2m2026-02-07T10:54:00.616721Z[0m [32m INFO[0m [2myukpomnang_backend::controllers::mobile_logs_controller[0m[2m:[0m 📱[MOBILE-BATCH] Traitement terminé pour 10 logs (batch: batch_1770461638642_ftobpxcrw)
+1770461640790,[2m2026-02-07T10:54:00.790660Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::websocket_handler[0m[2m:[0m WebSocket notifications ouvert pour l'utilisateur 3
+1770461640794,"[2m2026-02-07T10:54:00.794351Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::chat_websocket[0m[2m:[0m 🔌 [ChatWS] Connexion WebSocket chat - Conversation: 1_1_3, User: 3"
+1770461653667,[2m2026-02-07T10:54:13.666934Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::websocket_handler[0m[2m:[0m Tâche réception notifications terminée
+1770461653667,[2m2026-02-07T10:54:13.666961Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::websocket_handler[0m[2m:[0m WebSocket notifications fermé pour l'utilisateur 3
+1770461653673,[2m2026-02-07T10:54:13.673721Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::chat_websocket[0m[2m:[0m [ChatWS] Tâche réception terminée
+1770461653673,"[2m2026-02-07T10:54:13.673736Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::chat_websocket[0m[2m:[0m [ChatWS] Connexion fermée - Conversation: 1_1_3, User: 3"
+1770461663472,"[2m2026-02-07T10:54:23.472537Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461664193,"[2m2026-02-07T10:54:24.193816Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461670791,[2m2026-02-07T10:54:30.791677Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::websocket_handler[0m[2m:[0m WebSocket notifications fermé pour l'utilisateur 3 (connexion fermée détectée)
+1770461694418,"[2m2026-02-07T10:54:54.418146Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461695142,"[2m2026-02-07T10:54:55.142638Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461725335,"[2m2026-02-07T10:55:25.335147Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461726067,"[2m2026-02-07T10:55:26.067378Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461756272,"[2m2026-02-07T10:55:56.272286Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461757021,"[2m2026-02-07T10:55:57.021124Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461787221,"[2m2026-02-07T10:56:27.221256Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461787981,"[2m2026-02-07T10:56:27.981562Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461818187,"[2m2026-02-07T10:56:58.187029Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461818938,"[2m2026-02-07T10:56:58.938592Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461832165,"[2m2026-02-07T10:57:12.165309Z[0m [33m WARN[0m [2myukpomnang_backend::utils::redis_helper[0m[2m:[0m ⚠️ [Redis] Health check échoué - Redis non disponible - PING failed: An error was signalled by the server - ResponseError: Your database has been temporarily rate-limited, please contact support@upstash.com for further details. (fallback gracieux activé)"
+1770461849104,"[2m2026-02-07T10:57:29.103044Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461849892,"[2m2026-02-07T10:57:29.892194Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461880038,"[2m2026-02-07T10:58:00.038278Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461880806,"[2m2026-02-07T10:58:00.806638Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461910977,"[2m2026-02-07T10:58:30.976916Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461911732,"[2m2026-02-07T10:58:31.732350Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461941942,"[2m2026-02-07T10:59:01.941784Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461942666,"[2m2026-02-07T10:59:02.666736Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461972899,"[2m2026-02-07T10:59:32.898801Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770461973627,"[2m2026-02-07T10:59:33.627544Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462003834,"[2m2026-02-07T11:00:03.834784Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462004546,"[2m2026-02-07T11:00:04.546379Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462034760,"[2m2026-02-07T11:00:34.760157Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462035485,"[2m2026-02-07T11:00:35.484889Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462065678,"[2m2026-02-07T11:01:05.678309Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462066454,"[2m2026-02-07T11:01:06.453854Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462096619,"[2m2026-02-07T11:01:36.619133Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462097386,"[2m2026-02-07T11:01:37.385953Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462127576,"[2m2026-02-07T11:02:07.576677Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462128355,"[2m2026-02-07T11:02:08.354965Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462131188,[2m2026-02-07T11:02:11.188160Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m [Main] 🔔 Vérification pharmacies de garde...
+1770462131188,[2m2026-02-07T11:02:11.188180Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_notifications[0m[2m:[0m [check_and_notify_pharmacies_on_duty] Vérification pharmacies de garde...
+1770462131188,[2m2026-02-07T11:02:11.188382Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::publicite_expiration[0m[2m:[0m ⏰ [Cron] Vérification des publicités expirées...
+1770462131188,[2m2026-02-07T11:02:11.188527Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] 🔄 Démarrage tâche d'optimisation...
+1770462131188,[2m2026-02-07T11:02:11.188562Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Optimisation index base de données...
+1770462131194,[2m2026-02-07T11:02:11.194326Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_notifications[0m[2m:[0m [check_and_notify_pharmacies_on_duty] Aucune pharmacie de garde trouvée
+1770462131200,[2m2026-02-07T11:02:11.199808Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Table analysée: public.pharmacies (taille: 112 kB)
+1770462131200,[2m2026-02-07T11:02:11.199820Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Table analysée: public.agences_voyage (taille: 112 kB)
+1770462131200,[2m2026-02-07T11:02:11.199822Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Table analysée: public.covoiturages (taille: 112 kB)
+1770462131200,[2m2026-02-07T11:02:11.199834Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Table analysée: public.services (taille: 512 kB)
+1770462131204,[2m2026-02-07T11:02:11.204890Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: taxis_ville_pkey sur taxis_ville (unique: true)
+1770462131204,[2m2026-02-07T11:02:11.204907Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: unique_taxi_service sur taxis_ville (unique: true)
+1770462131204,[2m2026-02-07T11:02:11.204909Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_taxis_user_id sur taxis_ville (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204911Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_taxis_service_id sur taxis_ville (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204912Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_taxis_zone_gin sur taxis_ville (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204913Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_taxis_is_on_duty sur taxis_ville (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204914Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_taxis_is_available sur taxis_ville (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204916Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_taxis_available_composite sur taxis_ville (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204917Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_taxis_gps_active sur taxis_ville (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204918Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_taxis_type_vehicule sur taxis_ville (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204920Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: pharmacies_pkey sur pharmacies (unique: true)
+1770462131204,[2m2026-02-07T11:02:11.204921Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: unique_pharmacy_service sur pharmacies (unique: true)
+1770462131204,[2m2026-02-07T11:02:11.204922Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_pharmacies_is_active sur pharmacies (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204923Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_pharmacies_ville sur pharmacies (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204925Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_pharmacies_quartier sur pharmacies (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204926Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_pharmacies_services_gin sur pharmacies (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204956Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_pharmacies_service_id sur pharmacies (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204975Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_pharmacies_user_id sur pharmacies (unique: false)
+1770462131204,[2m2026-02-07T11:02:11.204986Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_pharmacies_is_on_duty sur pharmacies (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.204997Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_pharmacies_active_on_duty_nom sur pharmacies (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205008Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_pharmacies_on_duty_service_active sur pharmacies (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205018Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_pharmacies_service_id_active sur pharmacies (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205029Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hopitaux_user_id sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205040Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hopitaux_service_id sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205051Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hopitaux_type sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205062Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hopitaux_is_active sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205073Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hopitaux_planning_gin sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205083Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hopitaux_is_available sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205094Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hopitaux_prestations_gin sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205102Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: hopitaux_cliniques_pkey sur hopitaux_cliniques (unique: true)
+1770462131205,[2m2026-02-07T11:02:11.205107Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: unique_hospital_service sur hopitaux_cliniques (unique: true)
+1770462131205,[2m2026-02-07T11:02:11.205113Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hospitals_gps_active sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205123Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hospitals_prestations_gin sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205131Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hospitals_urgences sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205135Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hospitals_ville_quartier sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205141Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hospitals_type_etablissement sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205151Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_hospitals_available_composite sur hopitaux_cliniques (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205164Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_laboratoires_analyses_gin sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205174Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: laboratoires_imagerie_pkey sur laboratoires_imagerie (unique: true)
+1770462131205,[2m2026-02-07T11:02:11.205185Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: unique_laboratory_service sur laboratoires_imagerie (unique: true)
+1770462131205,[2m2026-02-07T11:02:11.205196Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_laboratoires_user_id sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205204Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_laboratoires_service_id sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205208Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_laboratoires_type sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205220Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_laboratoires_is_available sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205227Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_laboratoires_imagerie_gin sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205237Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_labs_available_composite sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205248Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_labs_gps_active sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205258Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_labs_imagerie_gin sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205269Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_labs_analyses_gin sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205277Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_labs_ville_quartier sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205281Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_labs_type_laboratoire sur laboratoires_imagerie (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205287Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_agences_destinations_gin sur agences_voyage (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205297Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_agences_bus_products_gin sur agences_voyage (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205305Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: agences_voyage_pkey sur agences_voyage (unique: true)
+1770462131205,[2m2026-02-07T11:02:11.205310Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: unique_agency_service sur agences_voyage (unique: true)
+1770462131205,[2m2026-02-07T11:02:11.205320Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_agences_service_id sur agences_voyage (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205328Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_agences_tickets_bus sur agences_voyage (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205332Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_agences_services_gin sur agences_voyage (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205338Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_agences_compagnies_gin sur agences_voyage (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205350Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_agences_user_id sur agences_voyage (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205356Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: covoiturages_pkey sur covoiturages (unique: true)
+1770462131205,[2m2026-02-07T11:02:11.205360Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: unique_covoiturage_service sur covoiturages (unique: true)
+1770462131205,[2m2026-02-07T11:02:11.205370Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoiturages_user_id sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205381Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoiturages_service_id sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205392Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoiturages_depart_destination sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205402Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoiturages_places_disponibles sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205413Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoiturages_date_depart sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205424Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoiturages_statut sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205432Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoit_user_date sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205437Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoit_date_future sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205447Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoit_depart_dest_date sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205454Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoit_places_available sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205459Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_covoit_prix_date sur covoiturages (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205469Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_user_id_created_at_desc sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205476Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_is_active sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205481Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: services_pkey sur services (unique: true)
+1770462131205,[2m2026-02-07T11:02:11.205491Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_id_for_updates sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205498Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_active_id sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205503Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_produits_valeur_gin sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205513Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_data_produits_partial sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205521Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_user_id sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205525Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_id_active sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205536Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_category sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205542Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_data_gin sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205546Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_titre_service_fts sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205552Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_user_id_created_at_desc_optimized_v2 sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205562Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_user_id_active_created_at_desc sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205573Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_specialized_type sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205584Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_produits_gin sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205594Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_products_array_gin sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205605Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_description_fts sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205616Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_data_search_gin sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205626Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_gps_btree sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205637Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_titre_service_search sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205648Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_active_category_gps sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205658Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_category_search sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205669Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_products_fulltext_gin sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205679Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_user_active_created sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205689Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_gps_gist sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205698Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_gps_search sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205702Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Index trouvé: idx_services_search_optimized sur services (unique: false)
+1770462131205,[2m2026-02-07T11:02:11.205707Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] ✅ Analyse index terminée
+1770462131214,[2m2026-02-07T11:02:11.214451Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔄 Refresh de active_products_cache...
+1770462131272,"[2m2026-02-07T11:02:11.272805Z[0m [31mERROR[0m [2myukpomnang_backend::tasks::search_cache_refresh[0m[2m:[0m [SearchCacheRefresh] ❌ Erreur lors du rafraîchissement: ?? Internal error: Erreur rafraîchissement vue matérialisée: error returned from database: cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462131272,[2m2026-02-07T11:02:11.272836Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔄 Refresh de services_search_cache...
+1770462158531,"[2m2026-02-07T11:02:38.531650Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462159290,"[2m2026-02-07T11:02:39.290278Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462189465,"[2m2026-02-07T11:03:09.465044Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462190228,"[2m2026-02-07T11:03:10.228317Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462220409,"[2m2026-02-07T11:03:40.409894Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462221192,"[2m2026-02-07T11:03:41.192343Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462251332,"[2m2026-02-07T11:04:11.331778Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462252150,"[2m2026-02-07T11:04:12.149916Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462282287,"[2m2026-02-07T11:04:42.286973Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462283065,"[2m2026-02-07T11:04:43.065545Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462313242,"[2m2026-02-07T11:05:13.242140Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462313987,"[2m2026-02-07T11:05:13.986896Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462344222,"[2m2026-02-07T11:05:44.220638Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462344928,"[2m2026-02-07T11:05:44.928373Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462375148,"[2m2026-02-07T11:06:15.148083Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462375875,"[2m2026-02-07T11:06:15.875521Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462406115,"[2m2026-02-07T11:06:46.114976Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462406821,"[2m2026-02-07T11:06:46.821066Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462432172,"[2m2026-02-07T11:07:12.172355Z[0m [33m WARN[0m [2myukpomnang_backend::utils::redis_helper[0m[2m:[0m ⚠️ [Redis] Health check échoué - Redis non disponible - PING failed: An error was signalled by the server - ResponseError: Your database has been temporarily rate-limited, please contact support@upstash.com for further details. (fallback gracieux activé)"
+1770462437055,"[2m2026-02-07T11:07:17.055186Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462437743,"[2m2026-02-07T11:07:17.742938Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462468022,"[2m2026-02-07T11:07:48.022581Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462468687,"[2m2026-02-07T11:07:48.686955Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462498968,"[2m2026-02-07T11:08:18.968220Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462499645,"[2m2026-02-07T11:08:19.645451Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462529907,"[2m2026-02-07T11:08:49.907433Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462530566,"[2m2026-02-07T11:08:50.566615Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462560871,"[2m2026-02-07T11:09:20.870848Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462561508,"[2m2026-02-07T11:09:21.508600Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462591806,"[2m2026-02-07T11:09:51.806482Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462592477,"[2m2026-02-07T11:09:52.477427Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462622754,"[2m2026-02-07T11:10:22.754234Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462623426,"[2m2026-02-07T11:10:23.426067Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462653711,"[2m2026-02-07T11:10:53.711341Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462654382,"[2m2026-02-07T11:10:54.382638Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462684636,"[2m2026-02-07T11:11:24.636540Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462685328,"[2m2026-02-07T11:11:25.327864Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462715608,"[2m2026-02-07T11:11:55.608539Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462716273,"[2m2026-02-07T11:11:56.273603Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462746523,"[2m2026-02-07T11:12:26.522994Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462747236,"[2m2026-02-07T11:12:27.236603Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462777475,"[2m2026-02-07T11:12:57.475081Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462778138,"[2m2026-02-07T11:12:58.138697Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462808415,"[2m2026-02-07T11:13:28.415642Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462809084,"[2m2026-02-07T11:13:29.084126Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462839365,"[2m2026-02-07T11:13:59.365422Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462840050,"[2m2026-02-07T11:14:00.050017Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462870314,"[2m2026-02-07T11:14:30.314423Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462871003,"[2m2026-02-07T11:14:31.003547Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462901238,"[2m2026-02-07T11:15:01.238544Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462901957,"[2m2026-02-07T11:15:01.957631Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462932201,"[2m2026-02-07T11:15:32.201190Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462932878,"[2m2026-02-07T11:15:32.878202Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462963117,"[2m2026-02-07T11:16:03.117513Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462963843,"[2m2026-02-07T11:16:03.842915Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462994088,"[2m2026-02-07T11:16:34.088815Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770462994784,"[2m2026-02-07T11:16:34.784824Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770463025005,"[2m2026-02-07T11:17:05.005518Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770463025726,"[2m2026-02-07T11:17:05.726504Z[0m [33m WARN[0m [2myukpomnang_backend::tasks::flash_sale_queue_worker[0m[2m:[0m ⚠️ Rate limiting détecté, attente de 30000ms avant retry"
+1770463031222,"[2m2026-02-07T11:17:11.222444Z[0m [31mERROR[0m [2myukpomnang_backend::tasks::search_cache_refresh[0m[2m:[0m [SearchCacheRefresh] ❌ Erreur lors du rafraîchissement: ?? Internal error: Erreur rafraîchissement vue matérialisée: error returned from database: cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770463031222,[2m2026-02-07T11:17:11.222476Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔄 Refresh de services_search_cache...
+1770463032136,"[2m2026-02-07T11:17:12.135899Z[0m [33m WARN[0m [2myukpomnang_backend::utils::redis_helper[0m[2m:[0m ⚠️ [Redis] Health check échoué - Redis non disponible - PING failed: An error was signalled by the server - ResponseError: Your database has been temporarily rate-limited, please contact support@upstash.com for further details. (fallback gracieux activé)"

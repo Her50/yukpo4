@@ -126,3 +126,5 @@ COMMENT ON COLUMN videos.studio_session_id IS 'ID de session studio pour chaîna
 
 
 
+
+

@@ -131,3 +131,5 @@ VÃ©rifier que la migration `20260104_apply_delivery_partners_migrations.sql` a Ã
    WHERE conrelid = 'courier_applications'::regclass;
    ```
 
+
+

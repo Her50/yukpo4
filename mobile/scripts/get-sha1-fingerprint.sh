@@ -71,3 +71,5 @@ echo "📚 Documentation:"
 echo "   Guide complet: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md"
 echo "   Google Cloud Console: https://console.cloud.google.com/apis/credentials"
 
+
+

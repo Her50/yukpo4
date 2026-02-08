@@ -220,3 +220,5 @@ COMMENT ON COLUMN google_places_data.photos IS 'Array JSON des photos Google Pla
 
 
 
+
+

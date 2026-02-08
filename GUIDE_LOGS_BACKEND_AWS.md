@@ -236,3 +236,5 @@ aws logs tail /ecs/yukpomnang-backend --since 24h --region us-east-1 > logs.txt
 - Les logs peuvent avoir un léger délai (quelques secondes)
 - Les logs sont facturés selon le volume (généralement ~$0.50/GB)
 
+
+

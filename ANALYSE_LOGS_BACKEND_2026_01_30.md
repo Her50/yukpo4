@@ -306,3 +306,5 @@ Les workers utilisent un **backoff exponentiel** avec un maximum de 30 secondes 
 
 
 
+
+

@@ -152,3 +152,5 @@ adb install app\build\outputs\apk\debug\app-debug.apk
 3. **Émulateurs** : Si vous testez sur un émulateur x86, utilisez un émulateur ARM ou activez ARM translation
 4. **Google Play** : Recommande fortement arm64-v8a minimum depuis 2019
 
+
+

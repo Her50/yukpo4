@@ -242,3 +242,5 @@ COMMENT ON COLUMN book_analytics.score_popularite IS 'Score de popularité calcu
 
 
 
+
+

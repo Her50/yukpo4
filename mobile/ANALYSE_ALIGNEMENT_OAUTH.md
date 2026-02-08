@@ -125,3 +125,5 @@ const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest
 
 Utiliser `Linking.createURL('/')` pour générer le redirect URI, ce qui garantit l'alignement avec la configuration Expo.
 
+
+

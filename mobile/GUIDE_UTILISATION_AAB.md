@@ -120,3 +120,5 @@ npx eas build --platform android --profile preview
 
 Le profil "preview" génère un APK installable directement sur les appareils Android.
 
+
+

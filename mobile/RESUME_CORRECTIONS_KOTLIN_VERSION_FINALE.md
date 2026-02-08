@@ -112,3 +112,5 @@ cd mobile/android
 
 **Statut**: Corrections appliquées, investigation supplémentaire nécessaire pour le problème de `compileSdkVersion`
 
+
+

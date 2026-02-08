@@ -81,3 +81,5 @@
 3. **Simplifie la configuration** : Configuration minimale et fiable
 4. **Évite les problèmes futurs** : La version standard est maintenue par Expo, pas de maintenance manuelle
 
+
+

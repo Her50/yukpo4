@@ -106,3 +106,5 @@ if (-not $errorFound) {
     Write-Host "=== FIN DE LA RECHERCHE ===" -ForegroundColor Cyan
 }
 
+
+

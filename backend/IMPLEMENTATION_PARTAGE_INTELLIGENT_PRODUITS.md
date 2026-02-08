@@ -139,3 +139,5 @@ La page web générée inclut :
 3. **Cache** : Mettre en cache les pages web pour améliorer les performances
 4. **SEO** : Améliorer les meta tags pour un meilleur référencement
 
+
+

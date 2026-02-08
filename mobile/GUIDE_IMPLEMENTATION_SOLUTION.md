@@ -185,3 +185,5 @@ git checkout HEAD -- patches/
 **Date**: 2025-01-XX
 **Status**: ✅ Guide prêt à l'implémentation
 
+
+

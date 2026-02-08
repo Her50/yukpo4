@@ -1,0 +1,21 @@
+﻿{
+    "events": [
+        {
+            "logStreamName": "backend/backend/8f359c2830ae4c358b48e931e5ccb46f",
+            "timestamp": 1770355495797,
+            "message": "\u001b[2m2026-02-06T05:24:55.797032Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::routes::delivery_routes\u001b[0m\u001b[2m:\u001b[0m [save_product_delivery_config] Slug 'motorcycle' converti en ID 2",
+            "ingestionTime": 1770355499126,
+            "eventId": "39480246822587248529761056699349173653615589236002127875"
+        },
+        {
+            "logStreamName": "backend/backend/8f359c2830ae4c358b48e931e5ccb46f",
+            "timestamp": 1770355495802,
+aws : 
+Au caractère C:\Users\23767\AppData\Local\Temp\ps-script-bd2a2733-b7d9-43bc-ae1a-14b8e9ee6098.ps1:85 : 100
++ ... S_PAGER=''; aws logs filter-log-events --log-group-name "/ecs/yukpomn ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+'charmap' codec can't encode character '\u274c' in position 184: character maps to <undefined>
+            "message": 

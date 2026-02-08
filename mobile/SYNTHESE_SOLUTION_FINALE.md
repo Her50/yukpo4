@@ -36,3 +36,5 @@ L'erreur `compileSdkVersion is not specified` persiste **même avec une valeur l
 
 Désactiver `useDefaultAndroidSdkVersions()` et définir toutes les valeurs directement dans le bloc android avec des valeurs littérales.
 
+
+

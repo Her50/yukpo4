@@ -1,0 +1,1400 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yukpo - SchÃ©ma DÃ©taillÃ© de la Base de DonnÃ©es</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+        }
+        h1 {
+            color: #6366F1;
+            border-bottom: 3px solid #6366F1;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            page-break-after: avoid;
+        }
+        h2 {
+            color: #4F46E5;
+            margin-top: 25px;
+            border-left: 4px solid #6366F1;
+            padding-left: 15px;
+            page-break-after: avoid;
+        }
+        h3 {
+            color: #5B21B6;
+            margin-top: 20px;
+            page-break-after: avoid;
+        }
+        h4 {
+            color: #7C3AED;
+            margin-top: 15px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            color: white;
+            border-radius: 10px;
+        }
+        .header h1 {
+            color: white;
+            border: none;
+            margin: 0;
+            padding: 0;
+        }
+        .section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            page-break-inside: avoid;
+            font-size: 0.9em;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        table th {
+            background-color: #6366F1;
+            color: white;
+            font-weight: bold;
+        }
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .table-schema {
+            background-color: #F9FAFB;
+            padding: 15px;
+            border-left: 4px solid #6366F1;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            overflow-x: auto;
+        }
+        .relationship-diagram {
+            background-color: #EEF2FF;
+            padding: 20px;
+            border: 2px solid #6366F1;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .highlight {
+            background-color: #FEF3C7;
+            padding: 15px;
+            border-left: 4px solid #F59E0B;
+            margin: 20px 0;
+        }
+        .info-box {
+            background-color: #ECFDF5;
+            padding: 15px;
+            border-left: 4px solid #10B981;
+            margin: 20px 0;
+        }
+        .warning-box {
+            background-color: #FEE2E2;
+            padding: 15px;
+            border-left: 4px solid #EF4444;
+            margin: 20px 0;
+        }
+        ul, ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+        li {
+            margin: 8px 0;
+        }
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+        code {
+            background-color: #F3F4F6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .toc {
+            background: #F9FAFB;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
+        }
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .toc li {
+            margin: 8px 0;
+        }
+        .toc a {
+            color: #6366F1;
+            text-decoration: none;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        .column-detail {
+            margin: 10px 0;
+            padding: 10px;
+            background: #F9FAFB;
+            border-left: 3px solid #6366F1;
+        }
+        .enum-value {
+            display: inline-block;
+            background: #EEF2FF;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin: 2px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>YUKPO</h1>
+        <p style="font-size: 1.2em; margin: 10px 0;">SchÃ©ma DÃ©taillÃ© de la Base de DonnÃ©es</p>
+        <p style="font-size: 1em; margin: 5px 0;"><strong>Documentation Technique ComplÃ¨te</strong></p>
+        <p style="font-size: 0.9em; margin: 5px 0;">Version 2.0 | Date: FÃ©vrier 2026</p>
+    </div>
+
+    <div class="toc">
+        <h2>Table des MatiÃ¨res</h2>
+        <ul>
+            <li><a href="#overview">1. Vue d'Ensemble</a></li>
+            <li><a href="#extensions">2. Extensions PostgreSQL</a></li>
+            <li><a href="#core-tables">3. Tables Principales (Core)</a></li>
+            <li><a href="#product-tables">4. Tables Produits</a></li>
+            <li><a href="#delivery-tables">5. Tables Livraison</a></li>
+            <li><a href="#specialized-tables">6. Tables Services SpÃ©cialisÃ©s</a></li>
+            <li><a href="#search-tables">7. Tables Recherche et Autocomplete</a></li>
+            <li><a href="#communication-tables">8. Tables Communication</a></li>
+            <li><a href="#payment-tables">9. Tables Paiement</a></li>
+            <li><a href="#video-tables">10. Tables VidÃ©o et MÃ©dias</a></li>
+            <li><a href="#functions">11. Fonctions SQL</a></li>
+            <li><a href="#indexes">12. Index et Optimisations</a></li>
+            <li><a href="#views">13. Vues et Vues MatÃ©rialisÃ©es</a></li>
+            <li><a href="#relationships">14. Relations et Contraintes</a></li>
+        </ul>
+    </div>
+
+    <section id="overview" class="section">
+        <h1>1. Vue d'Ensemble du SchÃ©ma</h1>
+
+        <div class="info-box">
+            <h3>ðŸ“Š Statistiques Globales</h3>
+            <ul>
+            <li><strong>Base de donnÃ©es</strong>: PostgreSQL 14+</li>
+            <li><strong>Nombre de tables</strong>: ~150+ tables</li>
+            <li><strong>Extensions utilisÃ©es</strong>: PostGIS, pgvector, pg_trgm, unaccent, pgcrypto</li>
+            <li><strong>Architecture</strong>: Relationnelle avec support JSONB pour flexibilitÃ©</li>
+            <li><strong>Index</strong>: ~200+ index pour optimisation des performances</li>
+            <li><strong>Services spÃ©cialisÃ©s</strong>: 12 services avec tables dÃ©diÃ©es</li>
+            </ul>
+        </div>
+
+        <h2>1.1. Architecture GÃ©nÃ©rale</h2>
+        <p>La base de donnÃ©es Yukpo suit une architecture modulaire avec les groupes suivants :</p>
+        <ul>
+            <li><strong>Core</strong>: Utilisateurs, services, mÃ©dias (tables de base)</li>
+            <li><strong>Produits</strong>: Gestion des produits et leur cycle de vie</li>
+            <li><strong>Livraison</strong>: SystÃ¨me complet de livraison avec coursiers</li>
+            <li><strong>Services SpÃ©cialisÃ©s</strong>: 12 services spÃ©cialisÃ©s (santÃ©, transport, immobilier, etc.)</li>
+            <li><strong>Recherche</strong>: Autocomplete, caractÃ©ristiques, combinaisons vectorielles</li>
+            <li><strong>Communication</strong>: Chat, notifications, conversations</li>
+            <li><strong>Paiement</strong>: Transactions, tokens, paiements</li>
+            <li><strong>VidÃ©o</strong>: GÃ©nÃ©ration vidÃ©o, templates, effets</li>
+        </ul>
+
+        <h2>1.2. Principes de Conception</h2>
+        <ul>
+            <li><strong>FlexibilitÃ©</strong>: Utilisation de JSONB pour donnÃ©es flexibles (ex: <code>services.data</code>)</li>
+            <li><strong>Performance</strong>: Index optimisÃ©s, vues matÃ©rialisÃ©es pour cache</li>
+            <li><strong>ScalabilitÃ©</strong>: Partitionnement possible, index partiels</li>
+            <li><strong>IntÃ©gritÃ©</strong>: Contraintes de clÃ©s Ã©trangÃ¨res, triggers pour cohÃ©rence</li>
+            <li><strong>GÃ©olocalisation</strong>: PostGIS pour requÃªtes spatiales</li>
+            <li><strong>Recherche</strong>: pgvector pour recherche vectorielle, pg_trgm pour recherche textuelle</li>
+        </ul>
+    </section>
+
+    <section id="extensions" class="section">
+        <h1>2. Extensions PostgreSQL</h1>
+
+        <table>
+            <tr>
+                <th>Extension</th>
+                <th>Version</th>
+                <th>Usage</th>
+                <th>CriticitÃ©</th>
+            </tr>
+            <tr>
+                <td><code>uuid-ossp</code></td>
+                <td>Standard</td>
+                <td>GÃ©nÃ©ration UUID pour identifiants uniques</td>
+                <td>âœ… Critique</td>
+            </tr>
+            <tr>
+                <td><code>pg_trgm</code></td>
+                <td>Standard</td>
+                <td>Recherche textuelle avec similaritÃ© (trigrammes)</td>
+                <td>âœ… Critique</td>
+            </tr>
+            <tr>
+                <td><code>unaccent</code></td>
+                <td>Standard</td>
+                <td>Normalisation texte (suppression accents)</td>
+                <td>âœ… Critique</td>
+            </tr>
+            <tr>
+                <td><code>pgcrypto</code></td>
+                <td>Standard</td>
+                <td>Chiffrement, hashage de mots de passe</td>
+                <td>âœ… Critique</td>
+            </tr>
+            <tr>
+                <td><code>postgis</code></td>
+                <td>3.0+</td>
+                <td>GÃ©olocalisation, requÃªtes spatiales (GEOGRAPHY, ST_DWithin)</td>
+                <td>âœ… Critique</td>
+            </tr>
+            <tr>
+                <td><code>vector</code> (pgvector)</td>
+                <td>0.5.0+</td>
+                <td>Recherche vectorielle pour embeddings IA</td>
+                <td>âš ï¸ Optionnel (fallback TEXT[])</td>
+            </tr>
+            <tr>
+                <td><code>imgsmlr</code></td>
+                <td>Standard</td>
+                <td>Recherche d'images similaires</td>
+                <td>âš ï¸ Optionnel</td>
+            </tr>
+        </table>
+
+        <div class="table-schema">
+-- Exemple d'activation des extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+CREATE EXTENSION IF NOT EXISTS "unaccent";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS vector; -- Optionnel, fallback si non disponible
+        </div>
+    </section>
+
+    <section id="core-tables" class="section">
+        <h1>3. Tables Principales (Core)</h1>
+
+        <h2>3.1. Table: <code>users</code></h2>
+        <div class="table-schema">
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL,
+    nom VARCHAR(255),
+    prenom VARCHAR(255),
+    nom_complet VARCHAR(255),
+    photo_profil VARCHAR(500),
+    avatar_url VARCHAR(500),
+    is_provider BOOLEAN NOT NULL DEFAULT FALSE,
+    tokens_balance BIGINT NOT NULL DEFAULT 0,
+    token_price_user DOUBLE PRECISION NOT NULL,
+    token_price_provider DOUBLE PRECISION NOT NULL,
+    commission_pct REAL NOT NULL,
+    preferred_lang TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    gps VARCHAR(255),
+    gps_consent BOOLEAN DEFAULT TRUE,
+    groupe_sanguin VARCHAR(5) CHECK (groupe_sanguin IN ('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-')),
+    free_product_created INTEGER DEFAULT 0
+);
+        </div>
+
+        <h3>Colonnes Principales</h3>
+        <table>
+            <tr>
+                <th>Colonne</th>
+                <th>Type</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>id</code></td>
+                <td>SERIAL</td>
+                <td>Identifiant unique auto-incrÃ©mentÃ©</td>
+            </tr>
+            <tr>
+                <td><code>email</code></td>
+                <td>TEXT UNIQUE</td>
+                <td>Email utilisateur (unique, utilisÃ© pour connexion)</td>
+            </tr>
+            <tr>
+                <td><code>role</code></td>
+                <td>TEXT</td>
+                <td>RÃ´le utilisateur: 'client', 'prestataire', 'partenaire', 'admin', 'super_admin'</td>
+            </tr>
+            <tr>
+                <td><code>tokens_balance</code></td>
+                <td>BIGINT</td>
+                <td>Solde de tokens (monnaie interne pour services premium)</td>
+            </tr>
+            <tr>
+                <td><code>gps</code></td>
+                <td>VARCHAR(255)</td>
+                <td>CoordonnÃ©es GPS au format "latitude,longitude"</td>
+            </tr>
+            <tr>
+                <td><code>groupe_sanguin</code></td>
+                <td>VARCHAR(5)</td>
+                <td>Groupe sanguin (pour systÃ¨me banque de sang)</td>
+            </tr>
+        </table>
+
+        <h3>Index</h3>
+        <ul>
+            <li><code>idx_users_email</code> : Index unique sur <code>email</code></li>
+            <li><code>idx_users_role</code> : Index sur <code>role</code> pour filtrage</li>
+            <li><code>idx_users_is_provider</code> : Index sur <code>is_provider</code></li>
+        </ul>
+
+        <h2>3.2. Table: <code>services</code></h2>
+        <div class="table-schema">
+CREATE TABLE services (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    data JSONB NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    auto_deactivate_at TIMESTAMPTZ,
+    last_reactivated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    is_tarissable BOOLEAN,
+    vitesse_tarissement VARCHAR(255),
+    active_days INTEGER,
+    category VARCHAR(255),
+    last_alert_sent_at TIMESTAMP,
+    specialized_type VARCHAR(100) -- 'pharmacie', 'hopital_clinique', 'immobilier', etc.
+);
+        </div>
+
+        <div class="info-box">
+            <h4>Structure JSONB <code>data</code></h4>
+            <p>Le champ <code>data</code> (JSONB) contient toutes les informations flexibles du service :</p>
+            <ul>
+                <li><code>nom</code>: Nom du service</li>
+                <li><code>description</code>: Description complÃ¨te</li>
+                <li><code>adresse</code>, <code>quartier</code>, <code>ville</code></li>
+                <li><code>telephone</code>, <code>whatsapp</code>, <code>email</code></li>
+                <li><code>horaires</code>: Horaires d'ouverture (JSON)</li>
+                <li><code>produits</code>: Liste des produits (JSON array)</li>
+                <li><code>metadata</code>: DonnÃ©es supplÃ©mentaires</li>
+            </ul>
+        </div>
+
+        <h3>Index</h3>
+        <ul>
+            <li><code>idx_services_user_id</code> : Index sur <code>user_id</code></li>
+            <li><code>idx_services_is_active</code> : Index partiel sur <code>is_active = TRUE</code></li>
+            <li><code>idx_services_category</code> : Index sur <code>category</code></li>
+            <li><code>idx_services_specialized_type</code> : Index sur <code>specialized_type</code></li>
+            <li><code>idx_services_data_gin</code> : Index GIN sur <code>data</code> (JSONB)</li>
+        </ul>
+
+        <h2>3.3. Table: <code>media</code></h2>
+        <div class="table-schema">
+CREATE TABLE media (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES service_products(id) ON DELETE SET NULL,
+    type TEXT NOT NULL, -- 'image', 'video', 'audio'
+    path TEXT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT NOW(),
+    media_type TEXT,
+    file_size BIGINT,
+    file_format TEXT,
+    url TEXT, -- URL publique
+    thumbnail_url TEXT,
+    embedding vector(1536), -- Embedding IA pour recherche d'images
+    image_signature TEXT -- Signature imgsmlr pour recherche similaire
+);
+        </div>
+
+        <h2>3.4. Table: <code>user_saved_addresses</code></h2>
+        <div class="table-schema">
+CREATE TABLE user_saved_addresses (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    label VARCHAR(100) NOT NULL, -- 'Domicile', 'Bureau', etc.
+    address_type VARCHAR(20) NOT NULL CHECK (address_type IN ('pickup', 'dropoff', 'both')),
+    address TEXT NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    location_data JSONB DEFAULT '{}'::jsonb, -- DonnÃ©es enrichies (quartier, ville, pays)
+    contact_name VARCHAR(255),
+    contact_phone VARCHAR(50),
+    instructions TEXT,
+    building_number VARCHAR(50),
+    floor VARCHAR(50),
+    apartment VARCHAR(50),
+    is_default_pickup BOOLEAN DEFAULT FALSE,
+    is_default_dropoff BOOLEAN DEFAULT FALSE,
+    usage_count INTEGER DEFAULT 0,
+    last_used_at TIMESTAMPTZ,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, label)
+);
+        </div>
+
+        <h3>Index Critiques</h3>
+        <ul>
+            <li><code>idx_user_saved_addresses_user_id</code> : Recherche par utilisateur</li>
+            <li><code>idx_user_saved_addresses_user_type</code> : Composite (user_id, address_type)</li>
+            <li><code>idx_user_saved_addresses_default</code> : Composite (user_id, is_default_pickup, is_default_dropoff)</li>
+            <li><code>idx_user_saved_addresses_active</code> : Composite (user_id, is_active)</li>
+            <li><code>idx_user_saved_addresses_location</code> : GIST sur (longitude, latitude) pour recherche spatiale</li>
+        </ul>
+    </section>
+
+    <section id="product-tables" class="section">
+        <h1>4. Tables Produits</h1>
+
+        <h2>4.1. Table: <code>service_products</code></h2>
+        <div class="table-schema">
+CREATE TABLE service_products (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    product_index INTEGER NOT NULL, -- Index dans la liste de produits
+    name TEXT NOT NULL,
+    description TEXT,
+    price NUMERIC(10,2),
+    currency VARCHAR(3) DEFAULT 'XAF',
+    characteristics_vector TEXT[], -- Vecteur normalisÃ© pour recherche
+    full_vector TEXT[], -- Vecteur complet (nom + description)
+    location_vector TEXT[], -- Vecteur localisation (quartier, ville)
+    is_active BOOLEAN DEFAULT TRUE,
+    stock_quantity INTEGER,
+    stock_managed BOOLEAN DEFAULT FALSE,
+    promotion_price NUMERIC(10,2),
+    promotion_end_date TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(service_id, product_index)
+);
+        </div>
+
+        <h3>Index</h3>
+        <ul>
+            <li><code>idx_service_products_service_id</code> : Index sur <code>service_id</code></li>
+            <li><code>idx_service_products_is_active</code> : Index partiel sur <code>is_active = TRUE</code></li>
+            <li><code>idx_service_products_characteristics_vector</code> : Index GIN sur <code>characteristics_vector</code></li>
+        </ul>
+
+        <h2>4.2. Table: <code>products_lifecycle</code></h2>
+        <div class="table-schema">
+CREATE TABLE products_lifecycle (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER NOT NULL REFERENCES service_products(id) ON DELETE CASCADE,
+    status TEXT NOT NULL, -- 'active', 'inactive', 'expired', 'sold_out'
+    status_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    reason TEXT,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+        </div>
+    </section>
+
+    <section id="delivery-tables" class="section">
+        <h1>5. Tables Livraison</h1>
+
+        <h2>5.1. Enums de Livraison</h2>
+        <div class="table-schema">
+CREATE TYPE delivery_status AS ENUM (
+    'requested',
+    'awaiting_courier_confirmation',
+    'accepted',
+    'en_route_pickup',
+    'arrival_pickup',
+    'picked_up',
+    'en_route_delivery',
+    'arrival_destination',
+    'delivered',
+    'completed',
+    'cancelled'
+);
+
+CREATE TYPE delivery_engine_type AS ENUM (
+    'moto', 'scooter', 'voiture', 'camionnette',
+    'velo_cargo', 'pieton', 'camion_leger', 'autre'
+);
+
+CREATE TYPE delivery_courier_status AS ENUM (
+    'pending_review', 'approved', 'rejected', 'suspended'
+);
+        </div>
+
+        <h2>5.2. Table: <code>deliveries</code></h2>
+        <div class="table-schema">
+CREATE TABLE deliveries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    creator_id INTEGER NOT NULL REFERENCES users(id),
+    courier_id INTEGER REFERENCES couriers(id),
+    status delivery_status NOT NULL,
+    requested_at TIMESTAMPTZ DEFAULT now(),
+    confirmed_at TIMESTAMPTZ,
+    accepted_at TIMESTAMPTZ,
+    picked_up_at TIMESTAMPTZ,
+    delivered_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    cancelled_at TIMESTAMPTZ,
+    pickup_location GEOGRAPHY(Point, 4326) NOT NULL,
+    dropoff_location GEOGRAPHY(Point, 4326) NOT NULL,
+    pickup_address TEXT,
+    dropoff_address TEXT,
+    distance_meters INTEGER,
+    estimated_duration_seconds INTEGER,
+    actual_duration_seconds INTEGER,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    tracking_token UUID UNIQUE
+);
+        </div>
+
+        <h3>Index GÃ©ographiques</h3>
+        <ul>
+            <li><code>idx_deliveries_pickup_location</code> : Index GIST sur <code>pickup_location</code></li>
+            <li><code>idx_deliveries_dropoff_location</code> : Index GIST sur <code>dropoff_location</code></li>
+            <li><code>idx_deliveries_status_requested</code> : Composite (status, requested_at)</li>
+        </ul>
+
+        <h2>5.3. Table: <code>couriers</code></h2>
+        <div class="table-schema">
+CREATE TABLE couriers (
+    id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    application_id UUID REFERENCES courier_applications(id),
+    status delivery_courier_status NOT NULL,
+    rating_average NUMERIC(3,2) DEFAULT 0,
+    rating_count INTEGER DEFAULT 0,
+    bio TEXT,
+    hired_at TIMESTAMPTZ,
+    suspended_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+        </div>
+
+        <h2>5.4. Table: <code>courier_profiles</code></h2>
+        <div class="table-schema">
+CREATE TABLE courier_profiles (
+    id UUID PRIMARY KEY REFERENCES couriers(id) ON DELETE CASCADE,
+    current_latitude DOUBLE PRECISION,
+    current_longitude DOUBLE PRECISION,
+    last_location_update TIMESTAMPTZ DEFAULT now(),
+    is_online BOOLEAN DEFAULT FALSE,
+    current_status TEXT, -- 'available', 'on_delivery', 'busy'
+    current_delivery_id UUID REFERENCES deliveries(id) ON DELETE SET NULL,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+        </div>
+
+        <h3>Index Critiques</h3>
+        <ul>
+            <li><code>idx_courier_profiles_location</code> : Composite (current_latitude, current_longitude) WHERE NOT NULL</li>
+            <li><code>idx_courier_profiles_online</code> : Index partiel sur <code>is_online = TRUE</code></li>
+            <li><code>idx_courier_profiles_status</code> : Index sur <code>current_status</code></li>
+            <li><code>idx_courier_profiles_delivery</code> : Index partiel sur <code>current_delivery_id IS NOT NULL</code></li>
+        </ul>
+
+        <h2>5.5. Table: <code>delivery_tracking_points</code></h2>
+        <div class="table-schema">
+CREATE TABLE delivery_tracking_points (
+    id BIGSERIAL PRIMARY KEY,
+    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    courier_id INTEGER NOT NULL REFERENCES couriers(id),
+    captured_at TIMESTAMPTZ NOT NULL,
+    location GEOGRAPHY(Point, 4326) NOT NULL,
+    speed_kmh NUMERIC(5,2),
+    bearing NUMERIC(6,2),
+    accuracy_meters NUMERIC(6,2)
+);
+        </div>
+
+        <h2>5.6. Vue: <code>delivery_requests</code></h2>
+        <div class="table-schema">
+CREATE VIEW delivery_requests AS
+SELECT
+    d.id,
+    d.creator_id as client_id,
+    d.courier_id,
+    NULL::INTEGER as service_id,
+    d.metadata,
+    d.status,
+    d.requested_at,
+    d.pickup_location,
+    d.dropoff_location,
+    d.pickup_address,
+    d.dropoff_address,
+    d.requested_at as created_at,
+    d.updated_at
+FROM deliveries d;
+        </div>
+        <div class="info-box">
+            <strong>Note</strong>: Cette vue mappe <code>deliveries</code> vers <code>delivery_requests</code> pour compatibilitÃ© avec le code backend.
+        </div>
+    </section>
+
+    <section id="specialized-tables" class="section">
+        <h1>6. Tables Services SpÃ©cialisÃ©s</h1>
+
+        <h2>6.1. Table: <code>pharmacies</code></h2>
+        <div class="table-schema">
+CREATE TABLE pharmacies (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    nom VARCHAR(255) NOT NULL,
+    adresse TEXT,
+    quartier VARCHAR(255),
+    ville VARCHAR(255),
+    telephone VARCHAR(50),
+    whatsapp VARCHAR(50),
+    email VARCHAR(255),
+    is_on_duty_now BOOLEAN DEFAULT FALSE,
+    permanent_24h BOOLEAN DEFAULT FALSE,
+    services JSONB DEFAULT '[]'::jsonb, -- Services offerts
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.2. Table: <code>banques_sang</code></h2>
+        <div class="table-schema">
+CREATE TABLE banques_sang (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    nom VARCHAR(255) NOT NULL,
+    adresse TEXT,
+    stock_sanguin JSONB DEFAULT '{}'::jsonb, -- { "O+": 10, "O-": 5, ... }
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.3. Table: <code>immobilier_properties</code></h2>
+        <div class="table-schema">
+CREATE TABLE real_estate_properties (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    property_type VARCHAR(50) NOT NULL, -- 'vente', 'location'
+    property_category VARCHAR(50), -- 'appartement', 'maison', 'terrain', etc.
+    price NUMERIC(12,2),
+    surface_m2 NUMERIC(8,2),
+    bedrooms INTEGER,
+    bathrooms INTEGER,
+    address TEXT,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    features JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.4. Table: <code>hopitaux_cliniques</code></h2>
+        <div class="table-schema">
+CREATE TABLE hopitaux_cliniques (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nom VARCHAR(255) NOT NULL,
+    type_etablissement VARCHAR(50) NOT NULL, -- 'hopital', 'clinique', 'centre_sante'
+    adresse TEXT,
+    quartier VARCHAR(255),
+    ville VARCHAR(255),
+    gps VARCHAR(255),
+    prestations_medicales TEXT[],
+    urgences_disponible BOOLEAN DEFAULT FALSE,
+    rdv_en_ligne BOOLEAN DEFAULT FALSE,
+    planning_hebdomadaire JSONB,
+    telephone VARCHAR(50),
+    telephone_urgence VARCHAR(50),
+    whatsapp VARCHAR(50),
+    email VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    is_available_now BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.5. Table: <code>laboratoires_imagerie</code></h2>
+        <div class="table-schema">
+CREATE TABLE laboratoires_imagerie (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nom VARCHAR(255) NOT NULL,
+    type_laboratoire VARCHAR(50) NOT NULL,
+    adresse TEXT,
+    quartier VARCHAR(255),
+    ville VARCHAR(255),
+    gps VARCHAR(255),
+    analyses_disponibles TEXT[],
+    imagerie_disponible TEXT[],
+    planning_hebdomadaire JSONB,
+    rdv_requis BOOLEAN DEFAULT TRUE,
+    resultats_en_ligne BOOLEAN DEFAULT FALSE,
+    telephone VARCHAR(50),
+    whatsapp VARCHAR(50),
+    email VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    is_available_now BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.6. Table: <code>taxis_ville</code></h2>
+        <div class="table-schema">
+CREATE TABLE taxis_ville (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nom_chauffeur VARCHAR(255),
+    telephone VARCHAR(50),
+    whatsapp VARCHAR(50),
+    zone_intervention JSONB, -- Zones couvertes
+    gps_actuel JSONB, -- Coordonnées GPS temps réel
+    is_on_duty BOOLEAN DEFAULT FALSE,
+    is_available_now BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.7. Table: <code>covoiturages</code></h2>
+        <div class="table-schema">
+CREATE TABLE covoiturages (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    depart TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    date_depart DATE NOT NULL,
+    heure_depart TIME NOT NULL,
+    nombre_places INTEGER NOT NULL,
+    places_disponibles INTEGER NOT NULL,
+    prix_par_place NUMERIC(10,2),
+    devise VARCHAR(3) DEFAULT 'XAF',
+    is_available_now BOOLEAN DEFAULT FALSE, -- Calculé: places > 0 ET date > NOW
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.8. Table: <code>agences_voyage</code></h2>
+        <div class="table-schema">
+CREATE TABLE agences_voyage (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nom_agence VARCHAR(255) NOT NULL,
+    adresse TEXT,
+    quartier VARCHAR(255),
+    ville VARCHAR(255),
+    peut_emettre_tickets_bus BOOLEAN DEFAULT FALSE,
+    telephone VARCHAR(50),
+    whatsapp VARCHAR(50),
+    email VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.9. Tables Immobilier</h2>
+        <div class="table-schema">
+-- Table principale
+CREATE TABLE real_estate_properties (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    property_type VARCHAR(50) NOT NULL, -- 'vente', 'location'
+    property_category VARCHAR(50), -- 'appartement', 'maison', 'terrain'
+    price NUMERIC(12,2),
+    surface_m2 NUMERIC(8,2),
+    bedrooms INTEGER,
+    bathrooms INTEGER,
+    address TEXT,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    features JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Table terrains
+CREATE TABLE land_properties (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    surface_m2 NUMERIC(10,2),
+    price NUMERIC(12,2),
+    land_type VARCHAR(50), -- 'residential', 'commercial', 'agricultural'
+    address TEXT,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Table réservations de visites
+CREATE TABLE property_visits (
+    id SERIAL PRIMARY KEY,
+    property_id INTEGER NOT NULL REFERENCES real_estate_properties(id),
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    visit_date TIMESTAMPTZ NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'confirmed', 'completed', 'cancelled'
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.10. Tables Éducation & Emploi</h2>
+
+        <h3>Table: <code>orientation_scolaire_etablissements</code></h3>
+        <div class="table-schema">
+CREATE TABLE orientation_scolaire_etablissements (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    nom_etablissement VARCHAR(255) NOT NULL,
+    type_etablissement VARCHAR(50), -- 'universite', 'lycee', 'ecole_primaire'
+    adresse TEXT,
+    programmes_offerts JSONB, -- Liste des programmes
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h3>Table: <code>offres_emploi</code></h3>
+        <div class="table-schema">
+CREATE TABLE offres_emploi (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    poste VARCHAR(255) NOT NULL,
+    entreprise VARCHAR(255),
+    secteur VARCHAR(100),
+    type_contrat VARCHAR(50), -- 'cdi', 'cdd', 'stage', 'freelance'
+    salaire_min NUMERIC(10,2),
+    salaire_max NUMERIC(10,2),
+    competences_requises TEXT[],
+    localisation TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h3>Table: <code>bourse_livre_scolaire</code></h3>
+        <div class="table-schema">
+CREATE TABLE bourse_livre_scolaire (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    titre_livre VARCHAR(255) NOT NULL,
+    classe VARCHAR(50), -- '6eme', '5eme', 'terminale', etc.
+    matiere VARCHAR(100),
+    etat VARCHAR(50), -- 'neuf', 'bon_etat', 'usage'
+    prix NUMERIC(10,2),
+    adresse TEXT,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    is_available BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.11. Table: <code>menu_planning</code></h2>
+        <div class="table-schema">
+CREATE TABLE menu_planning (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    week_start_date DATE NOT NULL,
+    menus JSONB NOT NULL, -- Menus par jour de la semaine
+    shopping_list JSONB, -- Liste de courses générée
+    budget NUMERIC(10,2),
+    preferences JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h2>6.12. Index pour Services Spécialisés</h2>
+        <div class="technical-box">
+            <strong>Index communs pour tous les services spécialisés</strong>:<br>
+            - idx_{table}_service_id : Index sur service_id<br>
+            - idx_{table}_user_id : Index sur user_id<br>
+            - idx_{table}_is_active : Index partiel sur is_active = TRUE<br>
+            - idx_{table}_ville : Index sur ville pour recherche géographique<br>
+            - idx_{table}_quartier : Index sur quartier<br><br>
+            <strong>Index spécifiques</strong>:<br>
+            - pharmacies : idx_pharmacies_is_on_duty (partiel WHERE is_on_duty_now = TRUE)<br>
+            - hopitaux : idx_hopitaux_type (sur type_etablissement)<br>
+            - covoiturages : idx_covoiturages_depart_dest (composite sur depart, destination)<br>
+            - real_estate_properties : idx_real_estate_location (GIST sur latitude, longitude)
+        </div>
+    </section>
+
+    <section id="search-tables" class="section">
+        <h1>7. Tables Recherche et Autocomplete</h1>
+
+        <h2>7.1. Table: <code>autocomplete_characteristics</code></h2>
+        <div class="table-schema">
+CREATE TABLE autocomplete_characteristics (
+    id SERIAL PRIMARY KEY,
+    characteristic TEXT NOT NULL,
+    normalized TEXT NOT NULL, -- Version normalisÃ©e (sans accents, minuscules)
+    category VARCHAR(100),
+    usage_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h3>Index</h3>
+        <ul>
+            <li><code>idx_autocomplete_characteristics_normalized</code> : Index GIN trigram sur <code>normalized</code></li>
+            <li><code>idx_autocomplete_characteristics_category</code> : Index sur <code>category</code></li>
+        </ul>
+
+        <h2>7.2. Table: <code>autocomplete_combinations</code></h2>
+        <div class="table-schema">
+CREATE TABLE autocomplete_combinations (
+    id SERIAL PRIMARY KEY,
+    product_vector TEXT[] NOT NULL, -- Vecteur produit normalisÃ©
+    location_vector TEXT[] NOT NULL, -- Vecteur localisation
+    full_vector TEXT[] NOT NULL, -- Vecteur complet
+    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES service_products(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h3>Index Vectoriels</h3>
+        <ul>
+            <li><code>idx_autocomplete_combinations_product_vector</code> : Index GIN sur <code>product_vector</code></li>
+            <li><code>idx_autocomplete_combinations_location_vector</code> : Index GIN sur <code>location_vector</code></li>
+            <li><code>idx_autocomplete_combinations_full_vector</code> : Index GIN sur <code>full_vector</code></li>
+        </ul>
+
+        <h2>7.3. Vue MatÃ©rialisÃ©e: <code>services_search_optimized_v2</code></h2>
+        <div class="table-schema">
+CREATE MATERIALIZED VIEW services_search_optimized_v2 AS
+SELECT
+    s.id as service_id,
+    s.user_id,
+    s.data->>'nom' as nom,
+    s.data->>'description' as description,
+    s.category,
+    s.specialized_type,
+    s.is_active,
+    -- DonnÃ©es gÃ©ographiques
+    (s.data->>'latitude')::DOUBLE PRECISION as latitude,
+    (s.data->>'longitude')::DOUBLE PRECISION as longitude,
+    -- Vecteurs pour recherche
+    array_agg(DISTINCT ac.product_vector) as product_vectors,
+    array_agg(DISTINCT ac.location_vector) as location_vectors
+FROM services s
+LEFT JOIN autocomplete_combinations ac ON ac.service_id = s.id
+WHERE s.is_active = TRUE
+GROUP BY s.id, s.user_id, s.data, s.category, s.specialized_type, s.is_active;
+        </div>
+
+        <div class="warning-box">
+            <strong>Index Unique Requis</strong>: La vue matÃ©rialisÃ©e nÃ©cessite un index unique sur <code>service_id</code> pour permettre <code>REFRESH CONCURRENTLY</code>.
+        </div>
+
+        <h3>Index</h3>
+        <ul>
+            <li><code>idx_services_search_optimized_v2_unique</code> : Index unique sur <code>service_id</code> (CRITIQUE)</li>
+        </ul>
+    </section>
+
+    <section id="communication-tables" class="section">
+        <h1>8. Tables Communication</h1>
+
+        <h2>8.1. Table: <code>private_conversations</code></h2>
+        <div class="table-schema">
+CREATE TABLE private_conversations (
+    id SERIAL PRIMARY KEY,
+    participant1_id INTEGER NOT NULL REFERENCES users(id),
+    participant2_id INTEGER NOT NULL REFERENCES users(id),
+    last_message_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(participant1_id, participant2_id)
+);
+        </div>
+
+        <h2>8.2. Table: <code>notifications</code></h2>
+        <div class="table-schema">
+CREATE TABLE notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL, -- 'delivery_update', 'new_message', 'service_approved', etc.
+    title TEXT NOT NULL,
+    body TEXT,
+    data JSONB DEFAULT '{}'::jsonb,
+    read_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h2>8.3. Table: <code>delivery_chat_messages</code></h2>
+        <div class="table-schema">
+CREATE TABLE delivery_chat_messages (
+    id SERIAL PRIMARY KEY,
+    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    sender_id INTEGER NOT NULL REFERENCES users(id),
+    sender_role VARCHAR(20) NOT NULL, -- 'client', 'courier', 'provider'
+    content TEXT NOT NULL,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+    </section>
+
+    <section id="payment-tables" class="section">
+        <h1>9. Tables Paiement</h1>
+
+        <h2>9.1. Table: <code>payment_transactions</code></h2>
+        <div class="table-schema">
+CREATE TABLE payment_transactions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    amount_cents BIGINT NOT NULL,
+    currency VARCHAR(3) DEFAULT 'XAF',
+    payment_method VARCHAR(50), -- 'mobile_money', 'card', 'bank_transfer'
+    status VARCHAR(20) NOT NULL, -- 'pending', 'completed', 'failed', 'refunded'
+    transaction_id TEXT UNIQUE,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+
+        <h2>9.2. Table: <code>token_transactions</code></h2>
+        <div class="table-schema">
+CREATE TABLE token_transactions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    amount BIGINT NOT NULL, -- Positif = crÃ©dit, nÃ©gatif = dÃ©bit
+    reason VARCHAR(100), -- 'purchase', 'service_creation', 'refund', etc.
+    reference_id INTEGER, -- ID de la transaction de rÃ©fÃ©rence
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+    </section>
+
+    <section id="video-tables" class="section">
+        <h1>10. Tables VidÃ©o et MÃ©dias</h1>
+
+        <h2>10.1. Table: <code>video_generation_jobs</code></h2>
+        <div class="table-schema">
+CREATE TABLE video_generation_jobs (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES service_products(id) ON DELETE SET NULL,
+    status VARCHAR(20) NOT NULL, -- 'pending', 'processing', 'completed', 'failed'
+    template_id INTEGER,
+    effects JSONB DEFAULT '[]'::jsonb,
+    output_url TEXT,
+    error_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+        </div>
+
+        <h2>10.2. Table: <code>video_templates</code></h2>
+        <div class="table-schema">
+CREATE TABLE video_templates (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(100), -- 'ecommerce', 'restaurant', 'services', etc.
+    template_data JSONB NOT NULL, -- Configuration Remotion
+    preview_url TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+        </div>
+    </section>
+
+    <section id="functions" class="section">
+        <h1>11. Fonctions SQL Critiques</h1>
+
+        <h2>11.1. Fonction: <code>calculate_vector_match_score_optimized()</code></h2>
+        <div class="table-schema">
+CREATE OR REPLACE FUNCTION calculate_vector_match_score_optimized(
+    vector_normalized TEXT[],
+    search_keywords_normalized TEXT[]
+)
+RETURNS REAL AS $$
+DECLARE
+    match_count INTEGER;
+    vector_size INTEGER;
+BEGIN
+    IF vector_normalized IS NULL OR array_length(vector_normalized, 1) IS NULL THEN
+        RETURN 0.0;
+    END IF;
+
+    vector_size := array_length(vector_normalized, 1);
+    
+    SELECT COUNT(*) INTO match_count
+    FROM unnest(vector_normalized) AS elem
+    WHERE elem = ANY(search_keywords_normalized);
+
+    RETURN (match_count::REAL / vector_size::REAL) * 100.0;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+        </div>
+
+        <h3>Usage</h3>
+        <p>Calcule le score de correspondance (0-100%) entre un vecteur normalisÃ© et des mots-clÃ©s de recherche.</p>
+
+        <h2>11.2. Fonction: <code>calculate_best_vector_match_score()</code></h2>
+        <div class="table-schema">
+CREATE OR REPLACE FUNCTION calculate_best_vector_match_score(
+    characteristic_vector_normalized TEXT[],
+    full_vector_normalized TEXT[],
+    search_keywords_normalized TEXT[]
+)
+RETURNS REAL AS $$
+DECLARE
+    characteristic_score REAL;
+    full_score REAL;
+BEGIN
+    characteristic_score := calculate_vector_match_score_optimized(
+        characteristic_vector_normalized,
+        search_keywords_normalized
+    );
+    
+    full_score := calculate_vector_match_score_optimized(
+        full_vector_normalized,
+        search_keywords_normalized
+    );
+    
+    RETURN GREATEST(characteristic_score, full_score);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+        </div>
+
+        <h2>11.3. Fonction: <code>product_combination_exists()</code></h2>
+        <div class="table-schema">
+CREATE OR REPLACE FUNCTION product_combination_exists(
+    p_product_vector TEXT[]
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1
+        FROM autocomplete_combinations
+        WHERE product_vector = p_product_vector
+    );
+END;
+$$ LANGUAGE plpgsql STABLE;
+        </div>
+
+        <h2>11.4. Fonction: <code>refresh_services_search_optimized()</code></h2>
+        <div class="table-schema">
+CREATE OR REPLACE FUNCTION refresh_services_search_optimized()
+RETURNS VOID AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2;
+END;
+$$ LANGUAGE plpgsql;
+        </div>
+
+        <div class="warning-box">
+            <strong>Note</strong>: Cette fonction nÃ©cessite un index unique sur la vue matÃ©rialisÃ©e pour fonctionner avec <code>CONCURRENTLY</code>.
+        </div>
+    </section>
+
+    <section id="indexes" class="section">
+        <h1>12. Index et Optimisations</h1>
+
+        <h2>12.1. Types d'Index</h2>
+        <table>
+            <tr>
+                <th>Type</th>
+                <th>Usage</th>
+                <th>Exemple</th>
+            </tr>
+            <tr>
+                <td><strong>B-tree</strong></td>
+                <td>Index standard pour Ã©galitÃ©, comparaison, tri</td>
+                <td><code>idx_users_email</code></td>
+            </tr>
+            <tr>
+                <td><strong>GIN</strong></td>
+                <td>Index pour tableaux, JSONB, recherche full-text</td>
+                <td><code>idx_services_data_gin</code></td>
+            </tr>
+            <tr>
+                <td><strong>GIST</strong></td>
+                <td>Index spatial pour PostGIS (GEOGRAPHY, GEOMETRY)</td>
+                <td><code>idx_deliveries_pickup_location</code></td>
+            </tr>
+            <tr>
+                <td><strong>Partiel</strong></td>
+                <td>Index avec condition WHERE (optimise espace)</td>
+                <code>idx_courier_profiles_online WHERE is_online = TRUE</code></td>
+            </tr>
+            <tr>
+                <td><strong>Composite</strong></td>
+                <td>Index sur plusieurs colonnes</td>
+                <td><code>idx_user_saved_addresses_user_type</code></td>
+            </tr>
+        </table>
+
+        <h2>12.2. Index Critiques par Table</h2>
+
+        <h3>Table <code>users</code></h3>
+        <ul>
+            <li><code>idx_users_email</code> : UNIQUE sur <code>email</code></li>
+            <li><code>idx_users_role</code> : Sur <code>role</code></li>
+            <li><code>idx_users_is_provider</code> : Sur <code>is_provider</code></li>
+        </ul>
+
+        <h3>Table <code>services</code></h3>
+        <ul>
+            <li><code>idx_services_user_id</code> : Sur <code>user_id</code></li>
+            <li><code>idx_services_is_active</code> : Partiel sur <code>is_active = TRUE</code></li>
+            <li><code>idx_services_data_gin</code> : GIN sur <code>data</code> (JSONB)</li>
+        </ul>
+
+        <h3>Table <code>deliveries</code></h3>
+        <ul>
+            <li><code>idx_deliveries_pickup_location</code> : GIST sur <code>pickup_location</code></li>
+            <li><code>idx_deliveries_dropoff_location</code> : GIST sur <code>dropoff_location</code></li>
+            <li><code>idx_deliveries_status_requested</code> : Composite (status, requested_at)</li>
+        </ul>
+
+        <h2>12.3. StratÃ©gies d'Optimisation</h2>
+        <ul>
+            <li><strong>Index partiels</strong> : RÃ©duisent la taille de 60-70% pour colonnes avec beaucoup de NULL</li>
+            <li><strong>Index composites</strong> : Optimisent les requÃªtes avec plusieurs filtres</li>
+            <li><strong>Vues matÃ©rialisÃ©es</strong> : Cache pour recherches frÃ©quentes</li>
+            <li><strong>Index GIN</strong> : Pour recherche dans JSONB et tableaux</li>
+            <li><strong>Index GIST</strong> : Pour requÃªtes spatiales (PostGIS)</li>
+        </ul>
+    </section>
+
+    <section id="views" class="section">
+        <h1>13. Vues et Vues MatÃ©rialisÃ©es</h1>
+
+        <h2>13.1. Vue: <code>delivery_requests</code></h2>
+        <p>Vue de compatibilitÃ© qui mappe <code>deliveries</code> vers <code>delivery_requests</code>.</p>
+
+        <h2>13.2. Vue MatÃ©rialisÃ©e: <code>services_search_optimized_v2</code></h2>
+        <p>Cache optimisÃ© pour recherches de services. RafraÃ®chie toutes les 2-3 minutes via fonction <code>refresh_services_search_optimized()</code>.</p>
+
+        <div class="info-box">
+            <h4>Avantages des Vues MatÃ©rialisÃ©es</h4>
+            <ul>
+                <li><strong>Performance</strong> : RÃ©sultats prÃ©-calculÃ©s, recherche ultra-rapide</li>
+                <li><strong>ScalabilitÃ©</strong> : Supporte des millions de services</li>
+                <li><strong>RafraÃ®chissement concurrent</strong> : Pas d'interruption de service</li>
+            </ul>
+        </div>
+    </section>
+
+    <section id="relationships" class="section">
+        <h1>14. Relations et Contraintes</h1>
+
+        <h2>14.1. Relations Principales</h2>
+        <div class="relationship-diagram">
+users (1) â”€â”€< (N) services
+services (1) â”€â”€< (N) service_products
+services (1) â”€â”€< (N) media
+users (1) â”€â”€< (N) user_saved_addresses
+users (1) â”€â”€< (1) couriers
+couriers (1) â”€â”€< (1) courier_profiles
+users (1) â”€â”€< (N) deliveries (creator_id)
+couriers (1) â”€â”€< (N) deliveries (courier_id)
+deliveries (1) â”€â”€< (N) delivery_tracking_points
+services (1) â”€â”€< (1) pharmacies (service_id)
+services (1) â”€â”€< (1) banques_sang (service_id)
+        </div>
+
+        <h2>14.2. Contraintes de ClÃ©s Ã‰trangÃ¨res</h2>
+        <table>
+            <tr>
+                <th>Table</th>
+                <th>Colonne</th>
+                <th>RÃ©fÃ©rence</th>
+                <th>Action DELETE</th>
+            </tr>
+            <tr>
+                <td><code>services</code></td>
+                <td><code>user_id</code></td>
+                <td><code>users(id)</code></td>
+                <td>CASCADE</td>
+            </tr>
+            <tr>
+                <td><code>service_products</code></td>
+                <td><code>service_id</code></td>
+                <td><code>services(id)</code></td>
+                <td>CASCADE</td>
+            </tr>
+            <tr>
+                <td><code>deliveries</code></td>
+                <td><code>creator_id</code></td>
+                <td><code>users(id)</code></td>
+                <td>RESTRICT</td>
+            </tr>
+            <tr>
+                <td><code>courier_profiles</code></td>
+                <td><code>id</code></td>
+                <td><code>couriers(id)</code></td>
+                <td>CASCADE</td>
+            </tr>
+        </table>
+
+        <h2>14.3. Triggers</h2>
+        <ul>
+            <li><code>trigger_update_user_saved_addresses_updated_at</code> : Met Ã  jour <code>updated_at</code> automatiquement</li>
+            <li><code>trigger_update_courier_profiles_updated_at</code> : Met Ã  jour <code>updated_at</code> automatiquement</li>
+            <li>Triggers similaires sur toutes les tables avec <code>updated_at</code></li>
+        </ul>
+
+        <h2>14.4. Contraintes CHECK</h2>
+        <ul>
+            <li><code>user_saved_addresses.address_type</code> : CHECK IN ('pickup', 'dropoff', 'both')</li>
+            <li><code>users.groupe_sanguin</code> : CHECK IN ('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-')</li>
+            <li>Contraintes sur enums (delivery_status, etc.)</li>
+        </ul>
+    </section>
+
+    <div class="footer">
+        <p><strong>Yukpo</strong> - SchÃ©ma DÃ©taillÃ© de la Base de DonnÃ©es</p>
+        <p>Documentation Technique | Version 2.0 | FÃ©vrier 2026</p>
+        <p>Ce document est destinÃ© Ã  la documentation technique et peut Ãªtre converti en PDF ou Word</p>
+    </div>
+</body>
+</html>
+
+

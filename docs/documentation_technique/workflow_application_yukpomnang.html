@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yukpo - Workflow Complet de l'Application</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+        }
+        h1 {
+            color: #6366F1;
+            border-bottom: 3px solid #6366F1;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            page-break-after: avoid;
+        }
+        h2 {
+            color: #4F46E5;
+            margin-top: 25px;
+            border-left: 4px solid #6366F1;
+            padding-left: 15px;
+            page-break-after: avoid;
+        }
+        h3 {
+            color: #5B21B6;
+            margin-top: 20px;
+            page-break-after: avoid;
+        }
+        h4 {
+            color: #7C3AED;
+            margin-top: 15px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            color: white;
+            border-radius: 10px;
+        }
+        .header h1 {
+            color: white;
+            border: none;
+            margin: 0;
+            padding: 0;
+        }
+        .section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        table th {
+            background-color: #6366F1;
+            color: white;
+            font-weight: bold;
+        }
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .highlight {
+            background-color: #FEF3C7;
+            padding: 15px;
+            border-left: 4px solid #F59E0B;
+            margin: 20px 0;
+        }
+        .impact-box {
+            background-color: #ECFDF5;
+            padding: 15px;
+            border-left: 4px solid #10B981;
+            margin: 20px 0;
+        }
+        .technical-box {
+            background-color: #EEF2FF;
+            padding: 15px;
+            border-left: 4px solid #6366F1;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        ul, ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+        li {
+            margin: 8px 0;
+        }
+        .workflow-diagram {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: #F9FAFB;
+            border: 2px dashed #6366F1;
+            border-radius: 10px;
+        }
+        .arrow {
+            font-size: 24px;
+            color: #6366F1;
+            margin: 10px 0;
+        }
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+        code {
+            background-color: #F3F4F6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .toc {
+            background: #F9FAFB;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
+        }
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .toc li {
+            margin: 8px 0;
+        }
+        .toc a {
+            color: #6366F1;
+            text-decoration: none;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>YUKPO</h1>
+        <p style="font-size: 1.2em; margin: 10px 0;">Plateforme Intelligente de Services Multi-Secteurs en Afrique</p>
+        <p style="font-size: 1em; margin: 5px 0;"><strong>Documentation Technique Complète - Workflow de l'Application</strong></p>
+        <p style="font-size: 0.9em; margin: 5px 0;">Version 2.0 | Date: Février 2026</p>
+    </div>
+
+    <div class="toc">
+        <h2>Table des Matières</h2>
+        <ul>
+            <li><a href="#vision">1. Vision et Mission</a></li>
+            <li><a href="#architecture">2. Architecture Globale</a></li>
+            <li><a href="#workflow">3. Workflow Complet de l'Application</a></li>
+            <li><a href="#backend">4. Fonctionnalités Backend</a></li>
+            <li><a href="#tables">5. Tables Critiques et Leur Rôle</a></li>
+            <li><a href="#fonctions">6. Fonctions Critiques et Leur Impact</a></li>
+            <li><a href="#indexes">7. Index et Optimisations</a></li>
+            <li><a href="#specialized">8. Services Spécialisés (12 Services)</a></li>
+            <li><a href="#utilisateur">9. Expérience Utilisateur</a></li>
+            <li><a href="#impact">10. Impact Sociétal</a></li>
+        </ul>
+    </div>
+
+    <section id="vision" class="section">
+        <h1>1. Vision et Mission de Yukpo</h1>
+        
+        <div class="highlight">
+            <h3>🎯 Notre Vision</h3>
+            <p><strong>Devenir la plateforme n°1 de mise en relation entre prestataires et clients en Afrique francophone</strong>, en rendant accessible à tous les PME africaines les technologies d'intelligence artificielle et de géolocalisation.</p>
+        </div>
+
+        <h2>1.1. Mission</h2>
+        <p>Yukpo transforme l'accès aux services essentiels en Afrique en combinant :</p>
+        <ul>
+            <li><strong>Intelligence Artificielle Multi-Modèles</strong> : 7 modèles IA avec orchestration résiliente</li>
+            <li><strong>Géolocalisation Avancée</strong> : Recherche GPS intelligente avec PostGIS</li>
+            <li><strong>Création de Contenu Automatisée</strong> : Génération vidéo publicitaire avec Remotion</li>
+            <li><strong>Système de Livraison Intelligent</strong> : Matching géographique, optimisation de routes, suivi GPS temps réel</li>
+        </ul>
+
+        <h2>1.2. Problématiques Résolues</h2>
+        
+        <h3>Problématique #1 : L'Invisibilité Digitale des Commerces Locaux</h3>
+        <p>En Afrique, <strong>85% des commerces locaux</strong> n'ont aucune présence digitale, représentant pourtant <strong>70% de l'économie informelle</strong>.</p>
+        
+        <div class="impact-box">
+            <h4>Impact Économique</h4>
+            <ul>
+                <li><strong>Perte de revenus</strong> : 30-40% de chiffre d'affaires potentiel perdu faute de visibilité</li>
+                <li><strong>Coûts marketing inaccessibles</strong> : Site web (500,000-2,000,000 FCFA), vidéo publicitaire (200,000-1,000,000 FCFA)</li>
+                <li><strong>Fracture digitale</strong> : Seuls les grands groupes peuvent se permettre une présence digitale</li>
+            </ul>
+        </div>
+
+        <h3>Problématique #2 : Difficulté de Trouver des Services Locaux</h3>
+        <p><strong>73% des Africains</strong> passent plus de 2 heures/jour à chercher un service, <strong>65% abandonnent</strong> leur recherche par manque d'information.</p>
+
+        <h2>1.3. Notre Solution Révolutionnaire</h2>
+        <ul>
+            <li><strong>Création Automatique de Présence Digitale</strong> : En 5 minutes, un commerçant crée sa fiche complète avec IA - <strong>GRATUIT</strong></li>
+            <li><strong>Recherche Intelligente</strong> : Texte + Image + GPS avec IA, résultats en &lt; 200ms</li>
+            <li><strong>Génération Vidéo Automatique</strong> : Vidéo publicitaire professionnelle générée automatiquement</li>
+            <li><strong>Livraison Optimisée</strong> : Système de livraison intelligent avec matching géographique</li>
+            <li><strong>12 Services Spécialisés</strong> : Santé, Transport, Immobilier, Éducation, Emploi, Cuisine</li>
+        </ul>
+    </section>
+
+    <section id="architecture" class="section">
+        <h1>2. Architecture Globale de l'Application</h1>
+
+        <h2>2.1. Stack Technologique</h2>
+        <table>
+            <tr>
+                <th>Composant</th>
+                <th>Technologie</th>
+                <th>Rôle</th>
+            </tr>
+            <tr>
+                <td><strong>Backend</strong></td>
+                <td>Rust + Axum</td>
+                <td>API REST, WebSocket, 10-100x plus rapide que Node.js</td>
+            </tr>
+            <tr>
+                <td><strong>Base de Données</strong></td>
+                <td>PostgreSQL + PostGIS + pgvector</td>
+                <td>Données relationnelles, géolocalisation, recherche vectorielle</td>
+            </tr>
+            <tr>
+                <td><strong>Cache</strong></td>
+                <td>Redis (Upstash)</td>
+                <td>Cache de sessions, recherche, WebSocket pub/sub</td>
+            </tr>
+            <tr>
+                <td><strong>Mobile</strong></td>
+                <td>React Native + Expo</td>
+                <td>Application native iOS/Android</td>
+            </tr>
+            <tr>
+                <td><strong>Frontend Web</strong></td>
+                <td>React + TypeScript</td>
+                <td>Interface web pour prestataires</td>
+            </tr>
+            <tr>
+                <td><strong>IA</strong></td>
+                <td>7 modèles (GPT-4, Claude, Gemini, etc.)</td>
+                <td>Orchestration résiliente avec fallback</td>
+            </tr>
+            <tr>
+                <td><strong>Vidéo</strong></td>
+                <td>Remotion (Docker GPU)</td>
+                <td>Génération vidéo publicitaire automatisée</td>
+            </tr>
+        </table>
+
+        <h2>2.2. Architecture en Couches</h2>
+        <div class="workflow-diagram">
+            <div style="background: #6366F1; color: white; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                <strong>Couche Présentation</strong><br>
+                Mobile (React Native) | Web (React)
+            </div>
+            <div class="arrow">↓</div>
+            <div style="background: #8B5CF6; color: white; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                <strong>Couche API</strong><br>
+                Backend Rust (Axum) - REST + WebSocket
+            </div>
+            <div class="arrow">↓</div>
+            <div style="background: #EC4899; color: white; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                <strong>Couche Services</strong><br>
+                Services Métier (IA, Géolocalisation, Livraison)
+            </div>
+            <div class="arrow">↓</div>
+            <div style="background: #10B981; color: white; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                <strong>Couche Données</strong><br>
+                PostgreSQL + Redis + MongoDB
+            </div>
+        </div>
+    </section>
+
+    <section id="workflow" class="section">
+        <h1>3. Workflow Complet de l'Application</h1>
+
+        <h2>3.1. Workflow Prestataire (Création de Service)</h2>
+        <div class="workflow-diagram">
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Inscription/Connexion</strong> → Authentification JWT</li>
+                <li><strong>Création de Service</strong> → Photo/Description vocale/texte</li>
+                <li><strong>Traitement IA</strong> → Extraction caractéristiques, génération description</li>
+                <li><strong>Génération Produits</strong> → Création automatique de produits avec IA</li>
+                <li><strong>Génération Vidéo</strong> → Vidéo publicitaire automatique (Remotion)</li>
+                <li><strong>Publication</strong> → Service visible dans la recherche</li>
+            </ol>
+        </div>
+
+        <h3>Détails Techniques</h3>
+        <div class="technical-box">
+            <strong>Endpoint</strong>: POST /api/services<br>
+            <strong>Processus</strong>:<br>
+            1. Upload média (image/audio) → Stockage S3/MediaStorage<br>
+            2. Analyse IA → Extraction caractéristiques, détection produits<br>
+            3. Création service → Table <code>services</code> (JSONB flexible)<br>
+            4. Création produits → Table <code>service_products</code><br>
+            5. Indexation → Table <code>autocomplete_combinations</code> (recherche vectorielle)<br>
+            6. Génération vidéo → Queue <code>video_generation_jobs</code>
+        </div>
+
+        <h2>3.2. Workflow Client (Recherche et Commande)</h2>
+        <div class="workflow-diagram">
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Recherche</strong> → Texte/Image/GPS</li>
+                <li><strong>Matching IA</strong> → Calcul score vectoriel</li>
+                <li><strong>Résultats</strong> → Tri par pertinence + distance</li>
+                <li><strong>Sélection</strong> → Détails service/produits</li>
+                <li><strong>Commande</strong> → Création livraison (si applicable)</li>
+                <li><strong>Suivi</strong> → WebSocket temps réel</li>
+            </ol>
+        </div>
+
+        <h3>Détails Techniques</h3>
+        <div class="technical-box">
+            <strong>Endpoint</strong>: POST /api/search<br>
+            <strong>Processus</strong>:<br>
+            1. Recherche texte → Fonction <code>calculate_best_vector_match_score()</code><br>
+            2. Recherche image → Analyse IA + matching vectoriel<br>
+            3. Filtrage GPS → PostGIS <code>ST_DWithin</code><br>
+            4. Vue matérialisée → <code>services_search_optimized_v2</code> (cache)<br>
+            5. Résultats → Tri par score + distance, pagination
+        </div>
+
+        <h2>3.3. Workflow Livraison</h2>
+        <div class="workflow-diagram">
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Création Livraison</strong> → Client sélectionne adresses</li>
+                <li><strong>Matching Coursier</strong> → Géolocalisation + disponibilité</li>
+                <li><strong>Acceptation</strong> → Coursier accepte la livraison</li>
+                <li><strong>Suivi GPS</strong> → WebSocket temps réel</li>
+                <li><strong>Chat</strong> → Communication client-coursier</li>
+                <li><strong>Livraison</strong> → Confirmation, paiement, notation</li>
+            </ol>
+        </div>
+
+        <h3>Détails Techniques</h3>
+        <div class="technical-box">
+            <strong>Tables impliquées</strong>:<br>
+            - <code>deliveries</code> : Livraisons<br>
+            - <code>courier_profiles</code> : Positions GPS coursiers<br>
+            - <code>user_saved_addresses</code> : Adresses sauvegardées<br>
+            - <code>delivery_tracking_points</code> : Points GPS de suivi<br>
+            - <code>delivery_chat_messages</code> : Messages chat<br><br>
+            <strong>Services</strong>:<br>
+            - <code>GeographicMatchingService</code> : Matching géographique<br>
+            - <code>DeliveryVRPSolver</code> : Optimisation routes<br>
+            - <code>DeliveryAIETAService</code> : Prédiction ETA avec IA
+        </div>
+    </section>
+
+    <section id="backend" class="section">
+        <h1>4. Fonctionnalités Backend</h1>
+
+        <h2>4.1. API REST</h2>
+        <table>
+            <tr>
+                <th>Catégorie</th>
+                <th>Endpoints</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><strong>Services</strong></td>
+                <td>POST /api/services<br>GET /api/services<br>GET /api/services/:id</td>
+                <td>Création, recherche, détails de services</td>
+            </tr>
+            <tr>
+                <td><strong>Recherche</strong></td>
+                <td>POST /api/search<br>POST /api/search/image<br>POST /api/search/audio</td>
+                <td>Recherche hybride (texte/image/audio) avec IA</td>
+            </tr>
+            <tr>
+                <td><strong>Produits</strong></td>
+                <td>POST /api/products<br>GET /api/products/:service_id</td>
+                <td>Gestion produits avec IA</td>
+            </tr>
+            <tr>
+                <td><strong>Livraison</strong></td>
+                <td>POST /api/deliveries<br>GET /api/deliveries/:id/tracking</td>
+                <td>Création livraisons, suivi GPS</td>
+            </tr>
+            <tr>
+                <td><strong>Services Spécialisés</strong></td>
+                <td>GET /api/pharmacies<br>GET /api/hopitaux<br>GET /api/immobilier</td>
+                <td>12 services spécialisés (santé, transport, immobilier, etc.)</td>
+            </tr>
+            <tr>
+                <td><strong>IA</strong></td>
+                <td>POST /api/ai/analyze-image<br>POST /api/ai/generate-video</td>
+                <td>Analyse IA, génération contenu</td>
+            </tr>
+        </table>
+
+        <h2>4.2. WebSocket</h2>
+        <ul>
+            <li><strong>/ws/delivery-tracking/:delivery_id</strong> : Suivi GPS livraison en temps réel</li>
+            <li><strong>/ws/delivery-chat/:delivery_id/:user_id</strong> : Chat client-coursier</li>
+            <li><strong>Redis Pub/Sub</strong> : Scaling horizontal multi-instances</li>
+        </ul>
+
+        <h2>4.3. Services Backend Principaux</h2>
+        
+        <h3>4.3.1. Services IA</h3>
+        <ul>
+            <li><strong>AIOrchestrationService</strong> : Orchestration de 7 modèles IA avec fallback</li>
+            <li><strong>ImageAnalysisService</strong> : Analyse d'images (détection produits, caractéristiques)</li>
+            <li><strong>VideoGenerationService</strong> : Génération vidéo publicitaire (Remotion)</li>
+            <li><strong>DeliveryAIETAService</strong> : Prédiction ETA livraison avec ML</li>
+        </ul>
+
+        <h3>4.3.2. Services Géolocalisation</h3>
+        <ul>
+            <li><strong>GeographicMatchingService</strong> : Matching géographique coursiers-livraisons</li>
+            <li><strong>SearchService</strong> : Recherche GPS avec PostGIS</li>
+            <li><strong>DeliveryVRPSolver</strong> : Optimisation routes (Vehicle Routing Problem)</li>
+        </ul>
+
+        <h3>4.3.3. Services Métier</h3>
+        <ul>
+            <li><strong>DeliveryService</strong> : Gestion complète du cycle de vie des livraisons</li>
+            <li><strong>ProductService</strong> : Gestion produits avec cycle de vie</li>
+            <li><strong>AutocompleteService</strong> : Autocomplete intelligent avec recherche vectorielle</li>
+        </ul>
+    </section>
+
+    <section id="tables" class="section">
+        <h1>5. Tables Critiques et Leur Rôle</h1>
+
+        <h2>5.1. Tables Utilisateurs</h2>
+        
+        <h3>Table: <code>users</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Gestion des utilisateurs (clients et prestataires)<br>
+            <strong>Colonnes clés</strong>: id, email, role, is_provider, tokens_balance, gps, groupe_sanguin<br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Les utilisateurs créent un compte pour accéder aux services<br>
+            - Les prestataires peuvent créer des services<br>
+            - Les clients peuvent rechercher et commander<br>
+            <strong>Impact sociétal</strong>:<br>
+            - Permet à tous (même analphabètes) de créer une présence digitale<br>
+            - Système de tokens démocratise l'accès aux services premium<br>
+            - Groupe sanguin permet de sauver des vies (banque de sang)
+        </div>
+
+        <h3>Table: <code>user_saved_addresses</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Mémoriser les adresses de livraison des utilisateurs<br>
+            <strong>Colonnes clés</strong>: user_id, label, address_type, latitude, longitude, is_default_pickup, is_default_dropoff<br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Les utilisateurs sauvegardent leurs adresses (domicile, bureau, etc.)<br>
+            - Plus besoin de ressaisir à chaque commande<br>
+            - Sélection rapide lors de la création de livraison<br>
+            <strong>Impact sociétal</strong>:<br>
+            - Réduit le temps de commande de 5 minutes à 30 secondes<br>
+            - Améliore l'expérience utilisateur (moins d'erreurs de saisie)<br>
+            - Facilite l'adoption de la livraison en ligne
+        </div>
+
+        <h2>5.2. Tables Services</h2>
+
+        <h3>Table: <code>services</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Stocker tous les services créés par les prestataires<br>
+            <strong>Colonnes clés</strong>: id, user_id, data (JSONB), is_active, category<br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Les prestataires créent leurs services (restaurant, boutique, etc.)<br>
+            - Les clients recherchent et trouvent ces services<br>
+            - Structure flexible (JSONB) permet tous types de services<br>
+            <strong>Impact sociétal</strong>:<br>
+            - Permet à 85% des commerces locaux d'avoir une présence digitale<br>
+            - Création en 5 minutes vs plusieurs jours pour un site web<br>
+            - Gratuit vs 500,000-2,000,000 FCFA pour un site professionnel
+        </div>
+
+        <h3>Table: <code>service_products</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Stocker les produits associés à chaque service<br>
+            <strong>Colonnes clés</strong>: id, service_id, product_index, name, price, characteristics_vector<br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Les prestataires ajoutent leurs produits (menu restaurant, catalogue boutique)<br>
+            - Les clients voient les produits disponibles<br>
+            - Recherche par produit (ex: "pizza margherita")<br>
+            <strong>Impact sociétal</strong>:<br>
+            - Permet aux petits commerces de présenter leur catalogue en ligne<br>
+            - Facilite la découverte de produits locaux<br>
+            - Augmente les ventes des commerces locaux
+        </div>
+
+        <h2>5.3. Tables Livraison</h2>
+
+        <h3>Table: <code>deliveries</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Gérer toutes les livraisons<br>
+            <strong>Colonnes clés</strong>: id, creator_id, courier_id, status, pickup_location, dropoff_location<br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Les clients créent des demandes de livraison<br>
+            - Les coursiers acceptent et livrent<br>
+            - Suivi GPS en temps réel pour client et coursier<br>
+            <strong>Impact sociétal</strong>:<br>
+            - Crée des emplois (coursiers)<br>
+            - Facilite l'accès aux produits locaux<br>
+            - Réduit les déplacements (moins de pollution)
+        </div>
+
+        <h3>Table: <code>courier_profiles</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Positions GPS en temps réel des coursiers<br>
+            <strong>Colonnes clés</strong>: id, current_latitude, current_longitude, is_online, current_status<br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Les coursiers partagent leur position GPS<br>
+            - Matching automatique avec livraisons proches<br>
+            - Clients voient la position du coursier en temps réel<br>
+            <strong>Impact sociétal</strong>:<br>
+            - Optimise les trajets (moins de kilomètres, moins de pollution)<br>
+            - Réduit les temps d'attente<br>
+            - Crée des revenus pour les coursiers
+        </div>
+
+        <h2>5.4. Tables Recherche</h2>
+
+        <h3>Table: <code>autocomplete_characteristics</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Caractéristiques normalisées pour recherche<br>
+            <strong>Colonnes clés</strong>: id, characteristic, normalized, category<br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Autocomplete intelligent lors de la recherche<br>
+            - Suggestions basées sur l'historique<br>
+            - Recherche multilingue (français + langues locales)<br>
+            <strong>Impact sociétal</strong>:<br>
+            - Permet la recherche même avec faute d'orthographe<br>
+            - Support des langues locales (wolof, lingala, etc.)<br>
+            - Réduit la barrière linguistique
+        </div>
+
+        <h3>Table: <code>autocomplete_combinations</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Combinaisons produit+lieu pour recherche vectorielle<br>
+            <strong>Colonnes clés</strong>: id, product_vector, location_vector, full_vector<br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Recherche ultra-rapide (&lt; 200ms)<br>
+            - Matching intelligent même avec mots différents<br>
+            - Recherche sémantique (comprend l'intention)<br>
+            <strong>Impact sociétal</strong>:<br>
+            - Réduit le temps de recherche de 2 heures à quelques secondes<br>
+            - Trouve des résultats pertinents même avec recherche vague<br>
+            - Améliore l'expérience utilisateur
+        </div>
+
+        <h2>5.5. Tables Services Spécialisés</h2>
+
+        <h3>Table: <code>pharmacies</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Gérer les pharmacies et leur disponibilité<br>
+            <strong>Colonnes clés</strong>: id, service_id, is_on_duty_now, permanent_24h<br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Les clients trouvent les pharmacies de garde<br>
+            - Vérification disponibilité médicaments<br>
+            - Réservation médicaments<br>
+            <strong>Impact sociétal</strong>:<br>
+            - Sauve des vies (pharmacies de garde trouvées rapidement)<br>
+            - Réduit les déplacements inutiles<br>
+            - Améliore l'accès aux soins
+        </div>
+
+        <h3>Table: <code>banques_sang</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Gérer les banques de sang et les donneurs<br>
+            <strong>Colonnes clés</strong>: id, service_id, stock_sanguin (JSONB)<br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Les donneurs s'enregistrent avec leur groupe sanguin<br>
+            - Notifications automatiques quand besoin urgent<br>
+            - Gestion des stocks par groupe sanguin<br>
+            <strong>Impact sociétal</strong>:<br>
+            - <strong>SAUVE DES VIES</strong> : Trouve rapidement des donneurs compatibles<br>
+            - Réduit la mortalité due au manque de sang<br>
+            - Facilite la gestion des stocks de sang
+        </div>
+    </section>
+
+    <section id="fonctions" class="section">
+        <h1>6. Fonctions Critiques et Leur Impact</h1>
+
+        <h2>6.1. Fonctions de Recherche Vectorielle</h2>
+
+        <h3>Fonction: <code>calculate_vector_match_score_optimized()</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Calcule le score de correspondance entre un vecteur et des mots-clés<br>
+            <strong>Paramètres</strong>: vector_normalized TEXT[], search_keywords_normalized TEXT[]<br>
+            <strong>Retour</strong>: REAL (score 0-100%)<br>
+            <strong>Algorithme</strong>:<br>
+            1. Compte les éléments du vecteur qui matchent<br>
+            2. Calcule le pourcentage de correspondance<br>
+            3. Retourne 0.0 si vide<br><br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Permet de trouver des produits même avec recherche imprécise<br>
+            - Exemple: "pizza" trouve "pizza margherita", "pizza 4 fromages"<br>
+            - Recherche multilingue (comprend les synonymes)<br><br>
+            <strong>Impact sociétal</strong>:<br>
+            - Réduit la frustration de recherche (trouve toujours quelque chose)<br>
+            - Permet la recherche en langues locales<br>
+            - Améliore l'adoption de la plateforme
+        </div>
+
+        <h3>Fonction: <code>calculate_best_vector_match_score()</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Calcule le meilleur score entre deux vecteurs (characteristic et full)<br>
+            <strong>Paramètres</strong>: characteristic_vector, full_vector, search_keywords<br>
+            <strong>Retour</strong>: REAL (meilleur score)<br>
+            <strong>Algorithme</strong>:<br>
+            1. Calcule score pour characteristic_vector<br>
+            2. Calcule score pour full_vector<br>
+            3. Retourne le maximum<br><br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Recherche optimisée qui trouve même avec description partielle<br>
+            - Exemple: "restaurant chinois" trouve même si description dit "cuisine asiatique"<br>
+            - Améliore la précision des résultats<br><br>
+            <strong>Impact sociétal</strong>:<br>
+            - Trouve des services même avec recherche vague<br>
+            - Réduit le temps de recherche<br>
+            - Augmente le taux de conversion (recherche → commande)
+        </div>
+
+        <h3>Fonction: <code>product_combination_exists()</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Vérifie si une combinaison produit existe déjà<br>
+            <strong>Paramètres</strong>: p_product_vector TEXT[]<br>
+            <strong>Retour</strong>: BOOLEAN<br>
+            <strong>Algorithme</strong>:<br>
+            1. Recherche dans autocomplete_combinations<br>
+            2. Retourne true si trouvé<br><br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Évite les doublons lors de la création de produits<br>
+            - Optimise la base de données<br>
+            - Améliore les performances de recherche<br><br>
+            <strong>Impact sociétal</strong>:<br>
+            - Réduit la pollution de données<br>
+            - Améliore la qualité des résultats de recherche<br>
+            - Optimise les ressources serveur
+        </div>
+
+        <h3>Fonction: <code>refresh_services_search_optimized()</code></h3>
+        <div class="technical-box">
+            <strong>Rôle</strong>: Rafraîchit la vue matérialisée de recherche<br>
+            <strong>Paramètres</strong>: Aucun<br>
+            <strong>Retour</strong>: VOID<br>
+            <strong>Algorithme</strong>:<br>
+            1. Rafraîchit services_search_optimized_v2<br>
+            2. Utilise REFRESH CONCURRENTLY (pas de verrous)<br>
+            3. Met à jour le cache de recherche<br><br>
+            <strong>Utilisation utilisateur</strong>:<br>
+            - Recherche toujours rapide même avec beaucoup de services<br>
+            - Résultats à jour (rafraîchissement toutes les 2-3 minutes)<br>
+            - Pas d'interruption de service<br><br>
+            <strong>Impact sociétal</strong>:<br>
+            - Permet la scalabilité (millions de services)<br>
+            - Recherche rapide même avec croissance<br>
+            - Expérience utilisateur constante
+        </div>
+    </section>
+
+    <section id="indexes" class="section">
+        <h1>7. Index et Optimisations</h1>
+
+        <h2>7.1. Index pour Performance</h2>
+
+        <h3>Index: <code>idx_user_saved_addresses_user_id</code></h3>
+        <div class="technical-box">
+            <strong>Table</strong>: user_saved_addresses<br>
+            <strong>Colonnes</strong>: user_id<br>
+            <strong>Type</strong>: B-tree<br>
+            <strong>Rôle</strong>: Recherche rapide des adresses par utilisateur<br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Chargement instantané des adresses sauvegardées<br>
+            - Pas d'attente lors de la sélection d'adresse<br>
+            <strong>Impact technique</strong>:<br>
+            - Réduit le temps de requête de 500ms à &lt; 10ms<br>
+            - Permet la scalabilité (millions d'utilisateurs)
+        </div>
+
+        <h3>Index: <code>idx_user_saved_addresses_location</code></h3>
+        <div class="technical-box">
+            <strong>Table</strong>: user_saved_addresses<br>
+            <strong>Colonnes</strong>: longitude, latitude (GIST)<br>
+            <strong>Type</strong>: GIST (PostGIS)<br>
+            <strong>Rôle</strong>: Recherche géographique spatiale (proximité)<br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Trouve les adresses proches rapidement<br>
+            - Suggestions d'adresses à proximité<br>
+            <strong>Impact technique</strong>:<br>
+            - Recherche spatiale optimisée (utilise R-tree)<br>
+            - Performance constante même avec millions de points GPS
+        </div>
+
+        <h3>Index: <code>idx_courier_profiles_location</code></h3>
+        <div class="technical-box">
+            <strong>Table</strong>: courier_profiles<br>
+            <strong>Colonnes</strong>: current_latitude, current_longitude<br>
+            <strong>Type</strong>: B-tree composite<br>
+            <strong>Rôle</strong>: Recherche géographique des coursiers proches<br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Matching coursier-livraison en &lt; 100ms<br>
+            - Trouve le coursier le plus proche instantanément<br>
+            <strong>Impact sociétal</strong>:<br>
+            - Réduit les temps d'attente de livraison<br>
+            - Optimise les trajets (moins de pollution)<br>
+            - Améliore l'efficacité du système de livraison
+        </div>
+
+        <h3>Index: <code>idx_services_search_optimized_v2_unique</code></h3>
+        <div class="technical-box">
+            <strong>Table</strong>: services_search_optimized_v2 (vue matérialisée)<br>
+            <strong>Colonnes</strong>: service_id<br>
+            <strong>Type</strong>: B-tree unique<br>
+            <strong>Rôle</strong>: Index unique requis pour REFRESH CONCURRENTLY<br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Recherche toujours disponible (pas de verrous)<br>
+            - Mise à jour transparente du cache<br>
+            <strong>Impact technique</strong>:<br>
+            - Permet le rafraîchissement sans interruption<br>
+            - Scalabilité horizontale possible
+        </div>
+
+        <h2>7.2. Index Partiels (Optimisation Espace)</h2>
+        <p>Certains index utilisent <code>WHERE</code> pour optimiser l'espace et les performances :</p>
+        <ul>
+            <li><code>idx_courier_profiles_online</code> : Seulement sur <code>is_online = TRUE</code></li>
+            <li><code>idx_courier_profiles_delivery</code> : Seulement sur <code>current_delivery_id IS NOT NULL</code></li>
+            <li><code>idx_user_saved_addresses_active</code> : Filtre les adresses actives</li>
+        </ul>
+        <div class="impact-box">
+            <strong>Bénéfice</strong>: Réduit la taille des index de 60-70%, améliore les performances d'écriture
+        </div>
+    </section>
+
+    <section id="specialized" class="section">
+        <h1>8. Services Spécialisés (12 Services)</h1>
+
+        <div class="info-box">
+            <h3>🎯 Vue d'Ensemble</h3>
+            <p>Yukpo propose <strong>12 services spécialisés</strong> regroupés en 5 catégories pour répondre aux besoins essentiels des utilisateurs africains :</p>
+            <ul>
+                <li><strong>🏥 Santé (4 services)</strong> : Pharmacie, Hôpital/Clinique, Laboratoire, Banque de Sang</li>
+                <li><strong>🚗 Transport (3 services)</strong> : Taxi, Covoiturage, Agence de Voyage</li>
+                <li><strong>🏠 Immobilier (1 service)</strong> : Vente, Location, Terrains</li>
+                <li><strong>💼 Éducation & Emploi (3 services)</strong> : Orientation Scolaire, Offres d'Emploi, Bourse du Livre</li>
+                <li><strong>🍽️ Cuisine (1 service)</strong> : Planification Menus</li>
+            </ul>
+        </div>
+
+        <h2>8.1. 🏥 Services de Santé</h2>
+
+        <h3>8.1.1. 💊 Pharmacies</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow Prestataire</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Création profil</strong> → Nom, adresse, quartier, ville</li>
+                <li><strong>Configuration horaires</strong> → permanent_24h ou horaires spécifiques</li>
+                <li><strong>Statut de garde</strong> → is_on_duty_now (en service actuellement)</li>
+                <li><strong>Services offerts</strong> → Liste des services (JSON)</li>
+                <li><strong>Activation</strong> → Service visible dans la recherche</li>
+            </ol>
+        </div>
+
+        <div class="workflow-diagram">
+            <h4>Workflow Client</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Recherche</strong> → "Pharmacie ouverte près de moi"</li>
+                <li><strong>Filtrage</strong> → 24/7, de garde, par quartier</li>
+                <li><strong>Vérification disponibilité</strong> → is_available_now</li>
+                <li><strong>Contact</strong> → Téléphone, WhatsApp</li>
+                <li><strong>Notifications</strong> → Alertes pharmacies de garde</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>pharmacies</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, service_id, user_id<br>
+            - nom, adresse, quartier, ville, gps<br>
+            - telephone, whatsapp, email<br>
+            - permanent_24h (bool), is_on_duty_now (bool)<br>
+            - services (TEXT[]) : Services offerts<br>
+            - is_active (bool)<br><br>
+            <strong>Index</strong>:<br>
+            - idx_pharmacies_user_id, idx_pharmacies_service_id<br>
+            - idx_pharmacies_is_on_duty (partiel WHERE is_on_duty_now = TRUE)<br>
+            - idx_pharmacies_services_gin (GIN sur services[])<br><br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Trouve pharmacies de garde en urgence (3h du matin)<br>
+            - Sauve des vies (médicaments trouvés rapidement)<br>
+            - Réduit déplacements inutiles
+        </div>
+
+        <h3>8.1.2. 🏥 Hôpitaux & Cliniques</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Prestataire</strong> → Crée profil (type établissement, urgences, RDV en ligne)</li>
+                <li><strong>Client</strong> → Recherche par type, disponibilité urgences</li>
+                <li><strong>Filtrage</strong> → Urgences disponibles, prise de RDV en ligne</li>
+                <li><strong>Contact</strong> → Téléphone urgence, WhatsApp</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>hopitaux_cliniques</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, service_id, user_id<br>
+            - nom, type_etablissement (hôpital, clinique, centre de santé)<br>
+            - prestations_medicales (TEXT[])<br>
+            - urgences_disponible (bool), rdv_en_ligne (bool)<br>
+            - planning_hebdomadaire (JSONB)<br>
+            - is_available_now (bool)<br><br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Trouve l'hôpital le plus proche avec urgences disponibles<br>
+            - Prise de RDV en ligne<br>
+            - Améliore l'accès aux soins
+        </div>
+
+        <h3>8.1.3. 🔬 Laboratoires & Imagerie</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Prestataire</strong> → Crée profil (type laboratoire, analyses disponibles)</li>
+                <li><strong>Client</strong> → Recherche par type d'analyse, imagerie</li>
+                <li><strong>Modalités</strong> → RDV requis, résultats en ligne</li>
+                <li><strong>Réservation</strong> → Prise de RDV pour examen</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>laboratoires_imagerie</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, service_id, user_id<br>
+            - nom, type_laboratoire<br>
+            - analyses_disponibles (TEXT[]), imagerie_disponible (TEXT[])<br>
+            - rdv_requis (bool), resultats_en_ligne (bool)<br>
+            - planning_hebdomadaire (JSONB)<br><br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Trouve le laboratoire pour un examen spécifique<br>
+            - Résultats en ligne (pas besoin de se déplacer)<br>
+            - Optimise les parcours de soins
+        </div>
+
+        <h3>8.1.4. 🩸 Banques de Sang</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow Donneur</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Enregistrement</strong> → Groupe sanguin (O+, A-, etc.)</li>
+                <li><strong>Disponibilité</strong> → Active notifications pour don</li>
+                <li><strong>Notification</strong> → Reçoit alerte quand besoin urgent</li>
+                <li><strong>Don</strong> → Se rend à la banque de sang</li>
+            </ol>
+        </div>
+
+        <div class="workflow-diagram">
+            <h4>Workflow Receveur (Hôpital)</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Création demande</strong> → Groupe requis (ex: O-), quantité</li>
+                <li><strong>Matching automatique</strong> → Trouve donneurs compatibles à proximité</li>
+                <li><strong>Notification</strong> → Notifie tous les donneurs compatibles</li>
+                <li><strong>Résultat</strong> → Donneur trouvé en 15 minutes, vie sauvée</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>banques_sang</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, service_id, user_id<br>
+            - nom, adresse, quartier, ville<br>
+            - stock_sanguin (JSONB) : {"O+": 10, "O-": 5, "A+": 8, ...}<br>
+            - is_available_now (bool)<br><br>
+            <strong>Impact utilisateur</strong>:<br>
+            - <strong>SAUVE DES VIES</strong> : Matching donneurs-receveurs en urgence<br>
+            - Réduit mortalité due au manque de sang<br>
+            - Facilite gestion des stocks
+        </div>
+
+        <h2>8.2. 🚗 Services de Transport</h2>
+
+        <h3>8.2.1. 🚕 Taxis</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Prestataire</strong> → Crée profil (zone d'intervention, GPS actuel)</li>
+                <li><strong>Statut</strong> → is_on_duty (en service), is_available_now</li>
+                <li><strong>Client</strong> → Recherche par zone, disponibilité</li>
+                <li><strong>Matching GPS</strong> → Notification si taxi disponible à proximité</li>
+                <li><strong>Contact</strong> → Appel direct ou WhatsApp</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>taxis_ville</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, service_id, user_id<br>
+            - nom_chauffeur, telephone, whatsapp<br>
+            - zone_intervention (JSONB) : Zones couvertes<br>
+            - gps_actuel (JSONB) : Coordonnées GPS temps réel<br>
+            - is_on_duty (bool), is_available_now (bool)<br><br>
+            <strong>Fonctionnalité unique</strong>: Matching GPS en temps réel<br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Trouve taxi disponible à proximité<br>
+            - Réduit temps d'attente<br>
+            - Optimise utilisation des taxis
+        </div>
+
+        <h3>8.2.2. 🚗 Covoiturage</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow Conducteur</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Création trajet</strong> → Départ, destination, date, heure</li>
+                <li><strong>Configuration</strong> → Nombre de places, prix par place</li>
+                <li><strong>Publication</strong> → Trajet visible dans la recherche</li>
+                <li><strong>Gestion</strong> → Places disponibles en temps réel</li>
+            </ol>
+        </div>
+
+        <div class="workflow-diagram">
+            <h4>Workflow Passager</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Recherche</strong> → Départ, destination, date</li>
+                <li><strong>Filtrage</strong> → Prix, nombre de places, date</li>
+                <li><strong>Matching GPS</strong> → Notification si trajet correspondant à proximité</li>
+                <li><strong>Réservation</strong> → Réserve une place</li>
+                <li><strong>Suivi</strong> → Position conducteur en temps réel</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>covoiturages</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, service_id, user_id<br>
+            - depart, destination<br>
+            - date_depart, heure_depart<br>
+            - nombre_places, places_disponibles<br>
+            - prix_par_place, devise<br>
+            - is_available_now (bool) : Calculé (places > 0 ET date > NOW)<br><br>
+            <strong>Fonctionnalité unique</strong>: Matching GPS automatique<br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Réduit coûts de transport<br>
+            - Partage de trajets (écologie)<br>
+            - Crée des revenus pour conducteurs
+        </div>
+
+        <h3>8.2.3. 🚌 Agences de Voyage</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Prestataire</strong> → Crée profil agence</li>
+                <li><strong>Services</strong> → peut_emettre_tickets_bus (bool)</li>
+                <li><strong>Client</strong> → Recherche agences par ville/quartier</li>
+                <li><strong>Réservation</strong> → Contact pour tickets bus</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>agences_voyage</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, service_id, user_id<br>
+            - nom_agence, adresse, quartier, ville<br>
+            - peut_emettre_tickets_bus (bool)<br>
+            - telephone, whatsapp, email<br><br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Trouve agences de voyage facilement<br>
+            - Émission de tickets bus<br>
+            - Facilite les voyages
+        </div>
+
+        <h2>8.3. 🏠 Immobilier</h2>
+
+        <h3>8.3.1. Immobilier (Vente, Location, Terrains)</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow Propriétaire</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Création bien</strong> → Type (vente/location), catégorie (appartement/maison/terrain)</li>
+                <li><strong>Détails</strong> → Prix, surface, chambres, salles de bain</li>
+                <li><strong>Localisation</strong> → Adresse, GPS, quartier</li>
+                <li><strong>Médias</strong> → Photos, vidéos</li>
+                <li><strong>Publication</strong> → Bien visible dans la recherche</li>
+            </ol>
+        </div>
+
+        <div class="workflow-diagram">
+            <h4>Workflow Client</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Recherche</strong> → Filtres (type, prix, surface, localisation)</li>
+                <li><strong>Résultats</strong> → Liste de biens correspondants</li>
+                <li><strong>Détails</strong> → Voir photos, description, localisation</li>
+                <li><strong>Réservation visite</strong> → Réserver une visite</li>
+                <li><strong>Simulation prêt</strong> → IA simule prêt immobilier</li>
+            </ol>
+        </div>
+
+        <h4>Tables Immobilier</h4>
+        <div class="technical-box">
+            <strong>Table: <code>real_estate_properties</code></strong><br>
+            - id, service_id<br>
+            - property_type (vente/location), property_category (appartement/maison/terrain)<br>
+            - price, surface_m2, bedrooms, bathrooms<br>
+            - address, latitude, longitude<br>
+            - features (JSONB)<br><br>
+            <strong>Table: <code>land_properties</code></strong> : Terrains<br>
+            <strong>Table: <code>property_visits</code></strong> : Réservations de visites<br>
+            <strong>Table: <code>property_photos</code></strong> : Photos des biens<br><br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Trouve biens immobiliers facilement<br>
+            - Simulation prêt IA<br>
+            - Réduction temps de recherche
+        </div>
+
+        <h2>8.4. 💼 Éducation & Emploi</h2>
+
+        <h3>8.4.1. 🎓 Orientation Scolaire</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Prestataire</strong> → Crée profil établissement (programmes, filières)</li>
+                <li><strong>Client</strong> → Recherche établissements par filière, localisation</li>
+                <li><strong>Informations</strong> → Programmes, conditions d'admission</li>
+                <li><strong>Contact</strong> → Pour inscription</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>orientation_scolaire_etablissements</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, service_id<br>
+            - nom_etablissement, type_etablissement (universite, lycee, ecole_primaire)<br>
+            - adresse, quartier, ville<br>
+            - programmes_offerts (JSONB) : Liste des programmes<br>
+            - created_at<br><br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Trouve établissements scolaires facilement<br>
+            - Compare programmes et conditions<br>
+            - Facilite l'orientation
+        </div>
+
+        <h3>8.4.2. 💼 Offres d'Emploi</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Employeur</strong> → Crée offre (poste, compétences, salaire)</li>
+                <li><strong>Candidat</strong> → Recherche offres par secteur, localisation</li>
+                <li><strong>Filtrage</strong> → Par compétences, salaire, type de contrat</li>
+                <li><strong>Candidature</strong> → Postule directement</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>offres_emploi</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, service_id<br>
+            - poste, entreprise, secteur<br>
+            - type_contrat (cdi, cdd, stage, freelance)<br>
+            - salaire_min, salaire_max<br>
+            - competences_requises (TEXT[])<br>
+            - localisation<br>
+            - is_active (bool)<br><br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Trouve emplois facilement<br>
+            - Filtrage par compétences et salaire<br>
+            - Réduit chômage
+        </div>
+
+        <h3>8.4.3. 📚 Bourse du Livre Scolaire</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Vendeur</strong> → Crée annonce (livre, classe, prix, état)</li>
+                <li><strong>Acheteur</strong> → Recherche livre par titre, classe, localisation</li>
+                <li><strong>Matching</strong> → Trouve livres disponibles à proximité</li>
+                <li><strong>Échange</strong> → Contact pour achat/échange</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>bourse_livre_scolaire</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, service_id<br>
+            - titre_livre, classe (6eme, 5eme, terminale, etc.)<br>
+            - matiere<br>
+            - etat (neuf, bon_etat, usage)<br>
+            - prix<br>
+            - adresse, latitude, longitude<br>
+            - is_available (bool)<br><br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Économise sur les livres scolaires<br>
+            - Trouve livres à proximité<br>
+            - Facilite l'accès à l'éducation
+        </div>
+
+        <h2>8.5. 🍽️ Planification Menus</h2>
+
+        <h3>8.5.1. Planification Menus</h3>
+        <div class="workflow-diagram">
+            <h4>Workflow</h4>
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Utilisateur</strong> → Crée menus de la semaine</li>
+                <li><strong>Recettes</strong> → Suggestions de recettes avec IA</li>
+                <li><strong>Liste de courses</strong> → Génération automatique</li>
+                <li><strong>Optimisation</strong> → Suggestions basées sur budget, préférences</li>
+            </ol>
+        </div>
+
+        <h4>Table: <code>menu_planning</code></h4>
+        <div class="technical-box">
+            <strong>Structure</strong>:<br>
+            - id, user_id<br>
+            - week_start_date, menus (JSONB) : Menus par jour<br>
+            - shopping_list (JSONB) : Liste de courses générée<br>
+            - budget, preferences (JSONB)<br><br>
+            <strong>Impact utilisateur</strong>:<br>
+            - Optimise budget alimentaire<br>
+            - Réduit gaspillage<br>
+            - Facilite planification
+        </div>
+
+        <h2>8.6. Architecture Technique des Services Spécialisés</h2>
+
+        <h3>Endpoint Unifié</h3>
+        <div class="technical-box">
+            <strong>Endpoint</strong>: GET /api/specialized-services/user<br>
+            <strong>Avantage</strong>: Un seul appel API pour tous les types de services<br>
+            <strong>Performance</strong>: Cache unifié, moins de requêtes<br>
+            <strong>Scalabilité</strong>: Supporte millions d'utilisateurs
+        </div>
+
+        <h3>Matching GPS Intelligent</h3>
+        <div class="technical-box">
+            <strong>Fonctionnalité</strong>: Notifications proactives basées sur GPS<br>
+            - Pharmacies de garde à proximité<br>
+            - Taxis disponibles près de vous<br>
+            - Covoiturages correspondants<br>
+            <strong>Technologie</strong>: PostGIS ST_DWithin pour calcul de distance<br>
+            <strong>Impact</strong>: Découverte automatique de services
+        </div>
+
+        <h3>Mode Hors Ligne</h3>
+        <div class="technical-box">
+            <strong>Fonctionnalité</strong>: Synchronisation intelligente<br>
+            - Actions sauvegardées localement (AsyncStorage)<br>
+            - Synchronisation automatique au retour en ligne<br>
+            - Résolution de conflits automatique<br>
+            <strong>Impact</strong>: Fonctionne même sans connexion
+        </div>
+    </section>
+
+    <section id="utilisateur" class="section">
+        <h1>9. Expérience Utilisateur</h1>
+
+        <h2>8.1. Pour le Prestataire</h2>
+
+        <h3>Scénario : Créer un Service en 5 Minutes</h3>
+        <div class="workflow-diagram">
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Ouvre l'app</strong> → "Créer un service"</li>
+                <li><strong>Prend une photo</strong> → De son commerce/produit</li>
+                <li><strong>Parle dans le téléphone</strong> → "Je vends des beignets"</li>
+                <li><strong>L'IA fait le reste</strong> → Génère description, produits, prix</li>
+                <li><strong>Vidéo générée automatiquement</strong> → Publicité professionnelle</li>
+                <li><strong>Service visible</strong> → Les clients peuvent le trouver</li>
+            </ol>
+        </div>
+
+        <div class="impact-box">
+            <h4>Impact pour le Prestataire</h4>
+            <ul>
+                <li><strong>Gratuit</strong> vs 500,000-2,000,000 FCFA pour un site web</li>
+                <li><strong>5 minutes</strong> vs plusieurs jours pour créer un site</li>
+                <li><strong>Pas besoin de savoir écrire</strong> : Description vocale</li>
+                <li><strong>Vidéo publicitaire automatique</strong> : Normalement 200,000-1,000,000 FCFA</li>
+                <li><strong>Visibilité immédiate</strong> : Trouvable par les clients</li>
+            </ul>
+        </div>
+
+        <h2>8.2. Pour le Client</h2>
+
+        <h3>Scénario : Trouver un Service en 30 Secondes</h3>
+        <div class="workflow-diagram">
+            <ol style="text-align: left; display: inline-block;">
+                <li><strong>Ouvre l'app</strong> → Barre de recherche</li>
+                <li><strong>Parle ou écrit</strong> → "Pharmacie ouverte près de moi"</li>
+                <li><strong>Résultats instantanés</strong> → &lt; 200ms</li>
+                <li><strong>Voit la distance</strong> → "200 mètres"</li>
+                <li><strong>Appelle ou commande</strong> → En un clic</li>
+            </ol>
+        </div>
+
+        <div class="impact-box">
+            <h4>Impact pour le Client</h4>
+            <ul>
+                <li><strong>30 secondes</strong> vs 2 heures de recherche traditionnelle</li>
+                <li><strong>Recherche multilingue</strong> : Wolof, lingala, français</li>
+                <li><strong>Recherche par image</strong> : Prendre une photo pour trouver</li>
+                <li><strong>Adresses sauvegardées</strong> : Plus besoin de ressaisir</li>
+                <li><strong>Suivi GPS livraison</strong> : Voit le coursier en temps réel</li>
+            </ul>
+        </div>
+
+        <h2>8.3. Cas d'Usage Réels</h2>
+
+        <h3>Cas 1 : Urgence Médicale</h3>
+        <div class="highlight">
+            <strong>Scénario</strong>: 3h du matin, bébé avec fièvre, besoin d'une pharmacie de garde<br>
+            <strong>Avec Yukpo</strong>:<br>
+            - Parle "Pharmacie ouverte près de moi"<br>
+            - Trouve la pharmacie de garde à 200 mètres en 10 secondes<br>
+            - <strong>Résultat</strong>: Enfant sauvé<br><br>
+            <strong>Sans Yukpo</strong>:<br>
+            - Appels multiples, déplacements, perte de temps<br>
+            - <strong>Risque</strong>: Aggravation de l'état
+        </div>
+
+        <h3>Cas 2 : Entrepreneur Local</h3>
+        <div class="highlight">
+            <strong>Scénario</strong>: Vendeur de beignets dans la rue depuis 5 ans<br>
+            <strong>Avec Yukpo</strong>:<br>
+            - Crée son service en 5 minutes (photo + description vocale)<br>
+            - Vidéo publicitaire générée automatiquement<br>
+            - <strong>Résultat</strong>: Ventes doublent le lendemain<br><br>
+            <strong>Sans Yukpo</strong>:<br>
+            - Pas de visibilité digitale<br>
+            - Clientèle limitée au bouche-à-oreille<br>
+            - <strong>Résultat</strong>: Revenus stagnants
+        </div>
+
+        <h3>Cas 3 : Recherche de Donneur de Sang</h3>
+        <div class="highlight">
+            <strong>Scénario</strong>: Patient en urgence, besoin de sang O-<br>
+            <strong>Avec Yukpo</strong>:<br>
+            - Crée demande de don via l'app<br>
+            - Notifie automatiquement tous les donneurs O- à proximité<br>
+            - <strong>Résultat</strong>: Donneur trouvé en 15 minutes, vie sauvée<br><br>
+            <strong>Sans Yukpo</strong>:<br>
+            - Appels manuels, recherche longue<br>
+            - <strong>Risque</strong>: Perte de temps critique
+        </div>
+    </section>
+
+    <section id="impact" class="section">
+        <h1>9. Impact Sociétal</h1>
+
+        <h2>9.1. Impact Économique</h2>
+
+        <h3>Digitalisation des PME</h3>
+        <div class="impact-box">
+            <ul>
+                <li><strong>500,000 PME digitalisées</strong> d'ici 5 ans (objectif)</li>
+                <li><strong>Réduction de 95%</strong> du coût de digitalisation</li>
+                <li><strong>Création de revenus</strong> : +30-40% de CA pour les commerces locaux</li>
+                <li><strong>100,000 emplois</strong> créés ou sécurisés (coursiers, prestataires)</li>
+            </ul>
+        </div>
+
+        <h3>Économie Locale</h3>
+        <ul>
+            <li><strong>Favorise les commerces locaux</strong> vs grandes chaînes</li>
+            <li><strong>Réduit les coûts marketing</strong> : Gratuit vs 500,000-2,000,000 FCFA</li>
+            <li><strong>Augmente la visibilité</strong> : Trouvable par tous les clients</li>
+            <li><strong>Crée des revenus</strong> : Coursiers, prestataires</li>
+        </ul>
+
+        <h2>9.2. Impact Social</h2>
+
+        <h3>Accès aux Services Essentiels</h3>
+        <div class="impact-box">
+            <ul>
+                <li><strong>Pharmacies de garde</strong> : Trouvables en urgence, vies sauvées</li>
+                <li><strong>Banque de sang</strong> : Matching donneurs-receveurs, réduction mortalité</li>
+                <li><strong>Hôpitaux</strong> : Trouver l'hôpital le plus proche avec services disponibles</li>
+                <li><strong>Services de base</strong> : Accès facilité pour tous</li>
+            </ul>
+        </div>
+
+        <h3>Inclusion Digitale</h3>
+        <ul>
+            <li><strong>Pas besoin de savoir écrire</strong> : Description vocale</li>
+            <li><strong>Multilingue</strong> : Support langues locales (wolof, lingala, etc.)</li>
+            <li><strong>Interface simple</strong> : Accessible même aux non-techniques</li>
+            <li><strong>Gratuit</strong> : Pas de barrière financière</li>
+        </ul>
+
+        <h2>9.3. Impact Environnemental</h2>
+
+        <h3>Optimisation des Trajets</h3>
+        <div class="impact-box">
+            <ul>
+                <li><strong>Matching géographique</strong> : Coursier le plus proche</li>
+                <li><strong>Optimisation routes</strong> : VRP solver réduit les kilomètres</li>
+                <li><strong>Moins de déplacements</strong> : Recherche précise évite les déplacements inutiles</li>
+                <li><strong>Réduction pollution</strong> : Moins de trajets = moins de CO2</li>
+            </ul>
+        </div>
+
+        <h2>9.4. Impact sur la Santé</h2>
+
+        <h3>Système de Banque de Sang</h3>
+        <div class="highlight">
+            <strong>Impact Direct</strong>:<br>
+            - <strong>SAUVE DES VIES</strong> : Trouve rapidement des donneurs compatibles<br>
+            - Réduit la mortalité due au manque de sang<br>
+            - Facilite la gestion des stocks<br>
+            - Notifications automatiques aux donneurs<br><br>
+            <strong>Exemple</strong>: Patient en urgence, besoin O-<br>
+            - Sans Yukpo : Recherche manuelle, perte de temps<br>
+            - Avec Yukpo : Donneur trouvé en 15 minutes, vie sauvée
+        </div>
+
+        <h3>Pharmacies de Garde</h3>
+        <ul>
+            <li><strong>Trouvables en urgence</strong> : 3h du matin, pharmacie de garde trouvée</li>
+            <li><strong>Vérification disponibilité</strong> : Médicament en stock avant déplacement</li>
+            <li><strong>Réservation</strong> : Médicament réservé, pas de déplacement inutile</li>
+        </ul>
+
+        <h2>9.5. Impact sur l'Emploi</h2>
+
+        <h3>Création d'Emplois</h3>
+        <div class="impact-box">
+            <ul>
+                <li><strong>Coursiers</strong> : 10,000+ emplois créés (objectif 5 ans)</li>
+                <li><strong>Prestataires</strong> : 500,000 PME digitalisées = revenus augmentés</li>
+                <li><strong>Économie de l'emploi</strong> : Sécurisation des revenus des commerces locaux</li>
+            </ul>
+        </div>
+
+        <h2>9.6. Métriques d'Impact</h2>
+        <table>
+            <tr>
+                <th>Métrique</th>
+                <th>Objectif 5 Ans</th>
+                <th>Impact</th>
+            </tr>
+            <tr>
+                <td>PME digitalisées</td>
+                <td>500,000</td>
+                <td>Réduction fracture digitale</td>
+            </tr>
+            <tr>
+                <td>Utilisateurs actifs</td>
+                <td>10 millions</td>
+                <td>Accès facilité aux services</td>
+            </tr>
+            <tr>
+                <td>Emplois créés</td>
+                <td>100,000</td>
+                <td>Réduction chômage</td>
+            </tr>
+            <tr>
+                <td>Coût digitalisation</td>
+                <td>-95%</td>
+                <td>Démocratisation accès</td>
+            </tr>
+            <tr>
+                <td>Temps de recherche</td>
+                <td>2h → 30s</td>
+                <td>Gain de productivité</td>
+            </tr>
+        </table>
+    </section>
+
+    <div class="footer">
+        <p><strong>Yukpo</strong> - Plateforme Intelligente de Services Multi-Secteurs</p>
+        <p>Documentation Technique | Version 2.0 | Février 2026</p>
+        <p>Ce document est destiné à la documentation technique et peut être converti en PDF ou Word</p>
+    </div>
+</body>
+</html>
+

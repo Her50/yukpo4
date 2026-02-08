@@ -102,3 +102,5 @@ Write-Host "📚 Documentation:" -ForegroundColor Cyan
 Write-Host "   Guide complet: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md" -ForegroundColor White
 Write-Host "   Google Cloud Console: https://console.cloud.google.com/apis/credentials" -ForegroundColor White
 
+
+

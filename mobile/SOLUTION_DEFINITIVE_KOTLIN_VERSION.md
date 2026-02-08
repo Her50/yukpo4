@@ -76,3 +76,5 @@ rootProject.ext.kotlinVersion = ext.kotlinVersion
 2. ✅ `rootProject.ext.kotlinVersion` retiré de `android/build.gradle`
 3. ⏳ Relancer le build EAS pour vérifier
 
+
+

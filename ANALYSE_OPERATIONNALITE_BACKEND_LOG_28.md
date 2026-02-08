@@ -186,3 +186,5 @@ Vérifier si le backend :
 - 6 erreurs "column must appear in GROUP BY" : À corriger (priorité basse)
 
 
+
+

@@ -253,3 +253,5 @@ COMMENT ON COLUMN salary_predictions.salaire_predicted_median IS 'Salaire prédi
 
 
 
+
+

@@ -44,3 +44,5 @@ Write-Host "   2. git add ." -ForegroundColor White
 Write-Host "   3. git commit -m 'test'" -ForegroundColor White
 Write-Host "   4. Le hook devrait formater automatiquement" -ForegroundColor White
 
+
+

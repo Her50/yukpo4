@@ -64,3 +64,5 @@ if (oldPattern.test(content)) {
   console.log('⚠️  Pattern not found, fix may already be applied or file structure changed');
 }
 
+
+

@@ -75,3 +75,5 @@ pluginManagement {
 
 **Pourquoi c'était retiré** : Lors de la simplification, nous avions retiré le `includeBuild` pensant qu'il n'était plus nécessaire avec la version standard. Mais en fait, il est **toujours nécessaire** pour que `expo-module-gradle-plugin` soit disponible, quelle que soit la version d'`expo-modules-core`.
 
+
+

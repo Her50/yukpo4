@@ -112,3 +112,5 @@ Après avoir lancé l'application et consulté les logs :
 3. **Rebuild complètement** l'application
 4. **Tester** avec le nouveau client
 
+
+

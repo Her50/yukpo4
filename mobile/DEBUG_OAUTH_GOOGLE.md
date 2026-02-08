@@ -142,3 +142,5 @@ const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest
 3. **Rebuild complètement** l'application
 4. **Tester** avec le nouveau client
 
+
+

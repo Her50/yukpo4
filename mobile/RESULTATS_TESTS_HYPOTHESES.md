@@ -66,3 +66,5 @@ Le problème est **architectural** :
 2. ⏳ Tester Hypothèse 5 : Appeler useDefaultAndroidSdkVersions() AVANT android {}
 3. ⏳ Tester Hypothèse 6 : Utiliser afterEvaluate pour compileSdkVersion
 
+
+

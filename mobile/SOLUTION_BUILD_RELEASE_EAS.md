@@ -121,3 +121,5 @@ Assurez-vous que toutes les dépendances sont à jour et compatibles :
 2. Si ça échoue encore, utiliser le build preview (debug) sur EAS
 3. Pour la production, considérer le build local puis uploader l'APK manuellement
 
+
+

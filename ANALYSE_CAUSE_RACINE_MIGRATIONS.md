@@ -177,3 +177,5 @@ Vérifier que toutes les tables critiques existent après les migrations et arr�
 
 
 
+
+

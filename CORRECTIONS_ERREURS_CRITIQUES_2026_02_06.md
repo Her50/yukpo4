@@ -136,3 +136,5 @@ Après l'application de la migration :
 **Migration** : `20260206_fix_all_critical_errors_complete.sql`  
 **Statut** : ✅ Déployée et en attente d'exécution
 
+
+

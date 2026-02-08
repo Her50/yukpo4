@@ -148,3 +148,5 @@ SELECT is_user_in_launch_phase(1); -- Remplacer 1 par un user_id réel
 **Date** : 2026-02-06  
 **Statut** : ✅ **TOUTES LES CORRECTIONS APPLIQUÉES**
 
+
+

@@ -48,3 +48,5 @@ SELECT
 FROM pg_constraint
 WHERE conrelid = 'courier_applications'::regclass;
 
+
+

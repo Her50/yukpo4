@@ -155,3 +155,5 @@ cd mobile/android
    - Si vous uploadez un AAB, Google Play crée des APK par architecture
    - Les utilisateurs téléchargent uniquement leur architecture
 
+
+

@@ -290,3 +290,5 @@ END $$;
 COMMENT ON INDEX idx_services_search_optimized_v2_unique IS 
 'Index unique requis pour permettre REFRESH MATERIALIZED VIEW CONCURRENTLY sur services_search_optimized_v2 - Créé 2026-02-07';
 
+
+

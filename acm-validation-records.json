@@ -1,0 +1,11 @@
+﻿{
+    "DomainName":  "api.yukpomnang.com",
+    "ValidationDomain":  "api.yukpomnang.com",
+    "ValidationStatus":  "PENDING_VALIDATION",
+    "ResourceRecord":  {
+                           "Name":  "_07560c403145510b496c9b8313c6c600.api.yukpomnang.com.",
+                           "Type":  "CNAME",
+                           "Value":  "_91b2a9695a4220c151e8615cde4edbd2.jkddzztszm.acm-validations.aws."
+                       },
+    "ValidationMethod":  "DNS"
+}

@@ -113,3 +113,5 @@ Définir `kotlinVersion` directement dans `expo-modules-core/android/build.gradl
 2. Appliquer la solution appropriée
 3. Tester le build
 
+
+

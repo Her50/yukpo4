@@ -1,0 +1,251 @@
+timestamp,message
+1770461083000,"2026-02-07 10:44:43 UTC:10.0.3.135(42924):yukpo_db_user@postgres:[28516]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461083000,2026-02-07 10:44:43 UTC:10.0.3.135(42924):yukpo_db_user@postgres:[28516]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461083000,"2026-02-07 10:44:43 UTC:10.0.3.135(42924):yukpo_db_user@postgres:[28516]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461083000,2026-02-07 10:44:43 UTC:10.0.3.135(42924):yukpo_db_user@postgres:[28516]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461092000,"2026-02-07 10:44:52 UTC:10.0.3.160(41200):yukpo_db_user@postgres:[29129]:ERROR:  function calculate_best_vector_match_score(text[], text[], text[]) does not exist at character 296"
+1770461092000,2026-02-07 10:44:52 UTC:10.0.3.160(41200):yukpo_db_user@postgres:[29129]:HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+1770461092000,"2026-02-07 10:44:52 UTC:10.0.3.160(41200):yukpo_db_user@postgres:[29129]:STATEMENT:  
+	WITH autocomplete_matches AS (
+	    -- ✅ ÉTAPE 1: Filtrage rapide + calcul score en UNE SEULE PASSE (évite CROSS JOIN)
+	    SELECT 
+	        ac.service_id,
+	        ac.valeur,
+	        ac.usage_count,
+	        -- ✅ CALCUL SCORE EN UNE SEULE PASSE : Fonction optimisée calcule les deux scores
+	        calculate_best_vector_match_score(
+	            ac.normalized_characteristic_vector,
+	            ac.normalized_full_vector,
+	            $1::TEXT[]
+	        ) + (ac.usage_count::REAL * 0.5) as final_score
+	    FROM autocomplete_characteristics ac
+	    INNER JOIN services s ON s.id = ac.service_id
+	    INNER JOIN service_products p ON p.id = ac.product_id::INTEGER AND p.service_id = ac.service_id
+	    WHERE s.is_active = true
+	      AND p.is_active = true
+	      AND ac.identifiant_base = 'produits'
+	      AND ac.is_real_product = TRUE
+	      -- ✅ FILTRE RAPIDE : && utilise index GIN sur colonnes normalisées
+	      AND (
+	          ac.normalized_characteristic_vector && $1::TEXT[]
+	          OR ac.normalized_full_vector && $1::TEXT[]
+	      )
+	    -- ✅ LIMIT pour éviter de traiter trop de lignes
+	    LIMIT 500
+	),
+	best_autocomplete_per_service AS (
+	    -- ✅ ÉTAPE 2: Sélectionner le meilleur match par service
+	    SELECT DISTINCT ON (service_id)
+	        service_id,
+	        valeur,
+	        final_score
+	    FROM autocomplete_matches
+	    WHERE final_score > 0
+	    ORDER BY service_id, final_score DESC, usage_count DESC NULLS LAST
+	    -- ✅ LIMIT pour éviter trop de résultats
+	    LIMIT 100
+	)
+	SELECT 
+	    s.id,
+	    s.data,
+	    s.created_at,
+	    s.user_id,
+	    s.gps,
+	    s.category,
+	    -- ✅ SCORE FINAL : Priorité au score vectoriel, puis titre/description
+	    GREATEST(
+	        -- Score depuis matching vectoriel optimisé (priorité haute)
+	        COALESCE(ac.final_score, 0.0),
+	        -- Score depuis titre/description service (priorité basse) - seulement si pas de match vectoriel
+	        CASE 
+	            WHEN ac.final_score IS NULL THEN
+	                COALESCE(
+	                    CASE WHEN LOWER(COALESCE(s.data->'titre_service'->>'valeur', '')) = LOWER($2) THEN 50.0 ELSE 0.0 END +
+	                    CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE $2 || '%' THEN 35.0 ELSE 0.0 END +
+	                    CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $2 || '%' THEN 25.0 ELSE 0.0 END +
+	                    CASE WHEN COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $2 || '%' THEN 15.0 ELSE 0.0 END +
+	                    ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $2)) * 10.0 +
+	                    ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $2)) * 5.0,
+	                    0.0
+	                )
+	            ELSE 0.0
+	        END
+	    )::REAL as fulltext_score
+	FROM best_autocomplete_per_service ac
+	INNER JOIN services s ON s.id = ac.service_id
+	WHERE ($3::text IS NULL OR s.category = $3 OR s.data->'category'->>'valeur' = $3)
+	  AND ($4::text IS NULL OR s.gps IS NULL OR s.gps = $4 OR s.gps LIKE $4 || '%' OR s.gps LIKE '%' || $4)
+	ORDER BY ac.final_score DESC
+	LIMIT 100"
+1770461093000,"2026-02-07 10:44:53 UTC:10.0.3.160(36256):yukpo_db_user@postgres:[29036]:ERROR:  relation ""user_saved_addresses"" does not exist at character 419"
+1770461093000,"2026-02-07 10:44:53 UTC:10.0.3.160(36256):yukpo_db_user@postgres:[29036]:STATEMENT:  
+	                    SELECT id, user_id, label, address_type, address, latitude, longitude,
+	                           location_data, contact_name, contact_phone, instructions,
+	                           building_number, floor, apartment, is_default_pickup,
+	                           is_default_dropoff, usage_count, last_used_at, is_active,
+	                           created_at, updated_at
+	                    FROM user_saved_addresses
+	                    WHERE user_id = $1 
+	                      AND is_active = TRUE
+	                    ORDER BY 
+	                        CASE WHEN is_default_pickup = TRUE OR is_default_dropoff = TRUE THEN 0 ELSE 1 END,
+	                        last_used_at DESC NULLS LAST,
+	                        label ASC"
+1770461119000,"2026-02-07 10:45:19 UTC:10.0.2.110(57404):yukpo_db_user@postgres:[28838]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461119000,2026-02-07 10:45:19 UTC:10.0.2.110(57404):yukpo_db_user@postgres:[28838]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461119000,"2026-02-07 10:45:19 UTC:10.0.2.110(57404):yukpo_db_user@postgres:[28838]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461119000,2026-02-07 10:45:19 UTC:10.0.2.110(57404):yukpo_db_user@postgres:[28838]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461123000,2026-02-07 10:45:23 UTC:10.0.2.18(52532):yukpo_db_user@postgres:[29044]:ERROR:  function product_combination_exists(text[]) does not exist at character 8
+1770461123000,2026-02-07 10:45:23 UTC:10.0.2.18(52532):yukpo_db_user@postgres:[29044]:HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+1770461123000,2026-02-07 10:45:23 UTC:10.0.2.18(52532):yukpo_db_user@postgres:[29044]:STATEMENT:  SELECT product_combination_exists($1)
+1770461123000,"2026-02-07 10:45:23 UTC:10.0.2.18(34908):yukpo_db_user@postgres:[29077]:ERROR:  duplicate key value violates unique constraint ""unique_full_vector"""
+1770461123000,"2026-02-07 10:45:23 UTC:10.0.2.18(34908):yukpo_db_user@postgres:[29077]:DETAIL:  Key (full_vector)=({Installation,Débouchage,"""","""","""","""","""",""""}) already exists."
+1770461123000,"2026-02-07 10:45:23 UTC:10.0.2.18(34908):yukpo_db_user@postgres:[29077]:STATEMENT:  INSERT INTO autocomplete_combinations 
+	               (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
+	                session_id, is_ai_preferred, ai_confidence, usage_count)
+	               VALUES (NULL, $1, $2, '{}', '{}', $1, $3, $4, 0.7, 1)"
+1770461124000,"2026-02-07 10:45:24 UTC:10.0.2.18(46336):yukpo_db_user@postgres:[29126]:ERROR:  relation ""user_saved_addresses"" does not exist at character 419"
+1770461124000,"2026-02-07 10:45:24 UTC:10.0.2.18(46336):yukpo_db_user@postgres:[29126]:STATEMENT:  
+	                    SELECT id, user_id, label, address_type, address, latitude, longitude,
+	                           location_data, contact_name, contact_phone, instructions,
+	                           building_number, floor, apartment, is_default_pickup,
+	                           is_default_dropoff, usage_count, last_used_at, is_active,
+	                           created_at, updated_at
+	                    FROM user_saved_addresses
+	                    WHERE user_id = $1 
+	                      AND is_active = TRUE
+	                    ORDER BY 
+	                        CASE WHEN is_default_pickup = TRUE OR is_default_dropoff = TRUE THEN 0 ELSE 1 END,
+	                        last_used_at DESC NULLS LAST,
+	                        label ASC"
+1770461134000,"2026-02-07 10:45:34 UTC:10.0.2.18(46350):yukpo_db_user@postgres:[29130]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461134000,2026-02-07 10:45:34 UTC:10.0.2.18(46350):yukpo_db_user@postgres:[29130]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461134000,"2026-02-07 10:45:34 UTC:10.0.2.18(46350):yukpo_db_user@postgres:[29130]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461134000,2026-02-07 10:45:34 UTC:10.0.2.18(46350):yukpo_db_user@postgres:[29130]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461216000,2026-02-07 10:46:56 UTC:10.0.3.160(47512):yukpo_db_user@postgres:[29582]:ERROR:  function product_combination_exists(text[]) does not exist at character 8
+1770461216000,2026-02-07 10:46:56 UTC:10.0.3.160(47512):yukpo_db_user@postgres:[29582]:HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+1770461216000,2026-02-07 10:46:56 UTC:10.0.3.160(47512):yukpo_db_user@postgres:[29582]:STATEMENT:  SELECT product_combination_exists($1)
+1770461216000,"2026-02-07 10:46:56 UTC:10.0.3.160(58092):yukpo_db_user@postgres:[29417]:ERROR:  relation ""user_saved_addresses"" does not exist at character 419"
+1770461216000,"2026-02-07 10:46:56 UTC:10.0.3.160(58092):yukpo_db_user@postgres:[29417]:STATEMENT:  
+	                    SELECT id, user_id, label, address_type, address, latitude, longitude,
+	                           location_data, contact_name, contact_phone, instructions,
+	                           building_number, floor, apartment, is_default_pickup,
+	                           is_default_dropoff, usage_count, last_used_at, is_active,
+	                           created_at, updated_at
+	                    FROM user_saved_addresses
+	                    WHERE user_id = $1 
+	                      AND is_active = TRUE
+	                    ORDER BY 
+	                        CASE WHEN is_default_pickup = TRUE OR is_default_dropoff = TRUE THEN 0 ELSE 1 END,
+	                        last_used_at DESC NULLS LAST,
+	                        label ASC"
+1770461231000,"2026-02-07 10:47:11 UTC:10.0.3.160(52900):yukpo_db_user@postgres:[29049]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461231000,2026-02-07 10:47:11 UTC:10.0.3.160(52900):yukpo_db_user@postgres:[29049]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461231000,"2026-02-07 10:47:11 UTC:10.0.3.160(52900):yukpo_db_user@postgres:[29049]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461231000,2026-02-07 10:47:11 UTC:10.0.3.160(52900):yukpo_db_user@postgres:[29049]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461258000,2026-02-07 10:47:38 UTC::@:[1345]:LOG:  checkpoint starting: time
+1770461277000,"2026-02-07 10:47:57 UTC:10.0.2.41(55466):yukpo_db_user@postgres:[29505]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461277000,2026-02-07 10:47:57 UTC:10.0.2.41(55466):yukpo_db_user@postgres:[29505]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461277000,"2026-02-07 10:47:57 UTC:10.0.2.41(55466):yukpo_db_user@postgres:[29505]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461277000,2026-02-07 10:47:57 UTC:10.0.2.41(55466):yukpo_db_user@postgres:[29505]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461283000,"2026-02-07 10:48:03 UTC::@:[1345]:LOG:  checkpoint complete: wrote 253 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=25.338 s, sync=0.003 s, total=25.348 s; sync files=60, longest=0.002 s, average=0.001 s; distance=65719 kB, estimate=65719 kB"
+1770461291000,"2026-02-07 10:48:11 UTC:10.0.3.71(43864):yukpo_db_user@postgres:[29539]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461291000,2026-02-07 10:48:11 UTC:10.0.3.71(43864):yukpo_db_user@postgres:[29539]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461291000,"2026-02-07 10:48:11 UTC:10.0.3.71(43864):yukpo_db_user@postgres:[29539]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461291000,2026-02-07 10:48:11 UTC:10.0.3.71(43864):yukpo_db_user@postgres:[29539]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461444000,"2026-02-07 10:50:44 UTC:10.0.2.30(56262):yukpo_db_user@postgres:[29719]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461444000,2026-02-07 10:50:44 UTC:10.0.2.30(56262):yukpo_db_user@postgres:[29719]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461444000,"2026-02-07 10:50:44 UTC:10.0.2.30(56262):yukpo_db_user@postgres:[29719]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461444000,2026-02-07 10:50:44 UTC:10.0.2.30(56262):yukpo_db_user@postgres:[29719]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461467000,"2026-02-07 10:51:07 UTC:10.0.3.26(41798):yukpo_db_user@postgres:[29543]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461467000,2026-02-07 10:51:07 UTC:10.0.3.26(41798):yukpo_db_user@postgres:[29543]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461467000,"2026-02-07 10:51:07 UTC:10.0.3.26(41798):yukpo_db_user@postgres:[29543]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461467000,2026-02-07 10:51:07 UTC:10.0.3.26(41798):yukpo_db_user@postgres:[29543]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461477000,"2026-02-07 10:51:17 UTC:10.0.3.206(52838):yukpo_db_user@postgres:[29562]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461477000,2026-02-07 10:51:17 UTC:10.0.3.206(52838):yukpo_db_user@postgres:[29562]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461477000,"2026-02-07 10:51:17 UTC:10.0.3.206(52838):yukpo_db_user@postgres:[29562]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461477000,2026-02-07 10:51:17 UTC:10.0.3.206(52838):yukpo_db_user@postgres:[29562]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461493000,"2026-02-07 10:51:33 UTC:10.0.2.83(35786):yukpo_db_user@postgres:[30176]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461493000,2026-02-07 10:51:33 UTC:10.0.2.83(35786):yukpo_db_user@postgres:[30176]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461493000,"2026-02-07 10:51:33 UTC:10.0.2.83(35786):yukpo_db_user@postgres:[30176]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461493000,2026-02-07 10:51:33 UTC:10.0.2.83(35786):yukpo_db_user@postgres:[30176]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461558000,2026-02-07 10:52:38 UTC::@:[1345]:LOG:  checkpoint starting: time
+1770461585000,"2026-02-07 10:53:05 UTC::@:[1345]:LOG:  checkpoint complete: wrote 271 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=27.145 s, sync=0.003 s, total=27.155 s; sync files=47, longest=0.002 s, average=0.001 s; distance=65563 kB, estimate=65704 kB"
+1770461688000,"2026-02-07 10:54:48 UTC:10.0.2.174(43912):yukpo_db_user@postgres:[30330]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461688000,2026-02-07 10:54:48 UTC:10.0.2.174(43912):yukpo_db_user@postgres:[30330]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461688000,"2026-02-07 10:54:48 UTC:10.0.2.174(43912):yukpo_db_user@postgres:[30330]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461688000,2026-02-07 10:54:48 UTC:10.0.2.174(43912):yukpo_db_user@postgres:[30330]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770461858000,2026-02-07 10:57:38 UTC::@:[1345]:LOG:  checkpoint starting: time
+1770461875000,"2026-02-07 10:57:55 UTC::@:[1345]:LOG:  checkpoint complete: wrote 173 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=17.295 s, sync=0.002 s, total=17.304 s; sync files=39, longest=0.002 s, average=0.001 s; distance=65290 kB, estimate=65662 kB"
+1770461983000,"2026-02-07 10:59:43 UTC:10.0.3.135(33302):yukpo_db_user@postgres:[30895]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770461983000,2026-02-07 10:59:43 UTC:10.0.3.135(33302):yukpo_db_user@postgres:[30895]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770461983000,"2026-02-07 10:59:43 UTC:10.0.3.135(33302):yukpo_db_user@postgres:[30895]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770461983000,2026-02-07 10:59:43 UTC:10.0.3.135(33302):yukpo_db_user@postgres:[30895]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462019000,"2026-02-07 11:00:19 UTC:10.0.2.110(38574):yukpo_db_user@postgres:[30636]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462019000,2026-02-07 11:00:19 UTC:10.0.2.110(38574):yukpo_db_user@postgres:[30636]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770462019000,"2026-02-07 11:00:19 UTC:10.0.2.110(38574):yukpo_db_user@postgres:[30636]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770462019000,2026-02-07 11:00:19 UTC:10.0.2.110(38574):yukpo_db_user@postgres:[30636]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462034000,"2026-02-07 11:00:34 UTC:10.0.2.18(34830):yukpo_db_user@postgres:[31254]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462034000,2026-02-07 11:00:34 UTC:10.0.2.18(34830):yukpo_db_user@postgres:[31254]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770462034000,"2026-02-07 11:00:34 UTC:10.0.2.18(34830):yukpo_db_user@postgres:[31254]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770462034000,2026-02-07 11:00:34 UTC:10.0.2.18(34830):yukpo_db_user@postgres:[31254]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462131000,"2026-02-07 11:02:11 UTC:10.0.3.160(50756):yukpo_db_user@postgres:[31388]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462131000,2026-02-07 11:02:11 UTC:10.0.3.160(50756):yukpo_db_user@postgres:[31388]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770462131000,"2026-02-07 11:02:11 UTC:10.0.3.160(50756):yukpo_db_user@postgres:[31388]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770462131000,2026-02-07 11:02:11 UTC:10.0.3.160(50756):yukpo_db_user@postgres:[31388]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462158000,2026-02-07 11:02:38 UTC::@:[1345]:LOG:  checkpoint starting: time
+1770462177000,"2026-02-07 11:02:57 UTC:10.0.2.41(42822):yukpo_db_user@postgres:[30924]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462177000,2026-02-07 11:02:57 UTC:10.0.2.41(42822):yukpo_db_user@postgres:[30924]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770462177000,"2026-02-07 11:02:57 UTC:10.0.2.41(42822):yukpo_db_user@postgres:[30924]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770462177000,2026-02-07 11:02:57 UTC:10.0.2.41(42822):yukpo_db_user@postgres:[30924]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462182000,"2026-02-07 11:03:02 UTC::@:[1345]:LOG:  checkpoint complete: wrote 242 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=24.228 s, sync=0.003 s, total=24.238 s; sync files=40, longest=0.002 s, average=0.001 s; distance=65790 kB, estimate=65790 kB"
+1770462191000,"2026-02-07 11:03:11 UTC:10.0.3.71(54956):yukpo_db_user@postgres:[30964]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462191000,2026-02-07 11:03:11 UTC:10.0.3.71(54956):yukpo_db_user@postgres:[30964]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770462191000,"2026-02-07 11:03:11 UTC:10.0.3.71(54956):yukpo_db_user@postgres:[30964]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770462191000,2026-02-07 11:03:11 UTC:10.0.3.71(54956):yukpo_db_user@postgres:[30964]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462344000,"2026-02-07 11:05:44 UTC:10.0.2.30(34304):yukpo_db_user@postgres:[31633]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462344000,2026-02-07 11:05:44 UTC:10.0.2.30(34304):yukpo_db_user@postgres:[31633]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770462344000,"2026-02-07 11:05:44 UTC:10.0.2.30(34304):yukpo_db_user@postgres:[31633]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770462344000,2026-02-07 11:05:44 UTC:10.0.2.30(34304):yukpo_db_user@postgres:[31633]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462367000,"2026-02-07 11:06:07 UTC:10.0.3.26(52328):yukpo_db_user@postgres:[31253]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462367000,2026-02-07 11:06:07 UTC:10.0.3.26(52328):yukpo_db_user@postgres:[31253]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770462367000,"2026-02-07 11:06:07 UTC:10.0.3.26(52328):yukpo_db_user@postgres:[31253]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770462367000,2026-02-07 11:06:07 UTC:10.0.3.26(52328):yukpo_db_user@postgres:[31253]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462377000,"2026-02-07 11:06:17 UTC:10.0.3.206(48902):yukpo_db_user@postgres:[31932]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462377000,2026-02-07 11:06:17 UTC:10.0.3.206(48902):yukpo_db_user@postgres:[31932]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770462377000,"2026-02-07 11:06:17 UTC:10.0.3.206(48902):yukpo_db_user@postgres:[31932]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770462377000,2026-02-07 11:06:17 UTC:10.0.3.206(48902):yukpo_db_user@postgres:[31932]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462393000,"2026-02-07 11:06:33 UTC:10.0.2.83(60944):yukpo_db_user@postgres:[31606]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462393000,2026-02-07 11:06:33 UTC:10.0.2.83(60944):yukpo_db_user@postgres:[31606]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770462393000,"2026-02-07 11:06:33 UTC:10.0.2.83(60944):yukpo_db_user@postgres:[31606]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770462393000,2026-02-07 11:06:33 UTC:10.0.2.83(60944):yukpo_db_user@postgres:[31606]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462458000,2026-02-07 11:07:38 UTC::@:[1345]:LOG:  checkpoint starting: time
+1770462482000,"2026-02-07 11:08:02 UTC::@:[1345]:LOG:  checkpoint complete: wrote 235 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=23.529 s, sync=0.003 s, total=23.539 s; sync files=38, longest=0.002 s, average=0.001 s; distance=65405 kB, estimate=65752 kB"
+1770462588000,"2026-02-07 11:09:48 UTC:10.0.2.174(45932):yukpo_db_user@postgres:[31749]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1770462588000,2026-02-07 11:09:48 UTC:10.0.2.174(45932):yukpo_db_user@postgres:[31749]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1770462588000,"2026-02-07 11:09:48 UTC:10.0.2.174(45932):yukpo_db_user@postgres:[31749]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1770462588000,2026-02-07 11:09:48 UTC:10.0.2.174(45932):yukpo_db_user@postgres:[31749]:STATEMENT:  SELECT refresh_services_search_optimized()
+1770462758000,2026-02-07 11:12:38 UTC::@:[1345]:LOG:  checkpoint starting: time
+1770462779000,"2026-02-07 11:12:59 UTC::@:[1345]:LOG:  checkpoint complete: wrote 209 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=20.915 s, sync=0.003 s, total=20.924 s; sync files=41, longest=0.002 s, average=0.001 s; distance=65429 kB, estimate=65719 kB"

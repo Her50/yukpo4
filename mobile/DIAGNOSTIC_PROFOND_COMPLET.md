@@ -169,3 +169,5 @@ rootProject.ext.kotlinVersion = ext.kotlinVersion
 
 **La solution** : Définir `rootProject.ext.kotlinVersion` dans `settings.gradle` AVANT `pluginManagement`, pour qu'il soit disponible dès le début.
 
+
+

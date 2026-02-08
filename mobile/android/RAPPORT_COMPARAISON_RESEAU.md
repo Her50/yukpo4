@@ -182,3 +182,5 @@ cd C:\Users\23767\yukpomnang2\mobile\android
 
 Les améliorations apportées devraient résoudre la plupart des problèmes de connexion réseau intermittents. Si le problème persiste, il est probablement lié à l'environnement réseau plutôt qu'à la configuration Gradle.
 
+
+

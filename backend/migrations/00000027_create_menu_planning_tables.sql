@@ -152,3 +152,5 @@ COMMENT ON TABLE nutrition_analytics IS 'Analytics nutrition hebdomadaires';
 
 
 
+
+

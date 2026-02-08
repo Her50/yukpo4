@@ -49,3 +49,5 @@ Si `expo-crypto` n'est pas utilisé, l'exclure de l'autolinking.
 Tester la solution radicale qui définit `compileSdkVersion` AVANT le bloc `android {}`.
 
 
+
+

@@ -100,3 +100,5 @@ Assurez-vous que dans Google Cloud Console (client OAuth Android), les URI de re
 
 Les deux fichiers utilisent maintenant `Linking.createURL('/')` pour garantir l'alignement avec la configuration Expo.
 
+
+

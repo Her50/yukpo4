@@ -35,3 +35,5 @@ En retirant `includeBuild`, `expo-modules-core` sera utilisé depuis `node_modul
 
 Le build devrait maintenant réussir car `expo-modules-core` sera utilisé comme une dépendance normale, pas comme un projet inclus via `includeBuild` dans `pluginManagement`.
 
+
+

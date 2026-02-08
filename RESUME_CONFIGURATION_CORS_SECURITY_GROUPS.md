@@ -115,3 +115,5 @@ aws ecs describe-services `
 **L'application mobile devrait maintenant pouvoir se connecter au backend une fois le déploiement terminé.**
 
 
+
+

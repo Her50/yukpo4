@@ -150,3 +150,5 @@ Téléphone → APK installé → Code JavaScript inclus dans l'APK
 
 Le problème de serveur que vous rencontrez est **uniquement lié au Development Build** utilisé pour le développement. Une fois que vous générez un Production Build, ce problème disparaît complètement.
 
+
+

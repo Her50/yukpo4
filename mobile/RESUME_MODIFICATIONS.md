@@ -102,3 +102,5 @@ Si le build échoue toujours avec les mêmes erreurs (`compileSdkVersion` ou `ex
 
 **Un build Android qui fonctionne avec Expo SDK 52 sans modifications de expo-modules-core**
 
+
+

@@ -86,3 +86,5 @@ Maintenant, les utilisateurs avec le rôle `"super_admin"` ont **exactement les 
 **Date** : 2026-02-06  
 **Statut** : ✅ **CORRIGÉ ET TESTÉ**
 
+
+

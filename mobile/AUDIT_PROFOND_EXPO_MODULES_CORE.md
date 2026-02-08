@@ -265,3 +265,5 @@ Les deux builds (référence et actuel) échouent avec la même erreur car ils u
 
 **Action immédiate** : Restaurer le fichier `expo-modules-core/android/build.gradle` depuis une source propre (npm ou patch) et désactiver le script de correction automatique qui cause les duplications.
 
+
+

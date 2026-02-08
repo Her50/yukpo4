@@ -56,3 +56,5 @@ vous pouvez :
 - Utiliser le proxy uniquement pour le frontend
 - Configurer des règles de page pour désactiver le proxy sur certaines routes
 
+
+

@@ -116,3 +116,5 @@ aws ssm get-parameter --name /yukpomnang/production/BOOTSTRAP_SUPER_ADMIN_TOKEN 
 4. **Vérifier** que le compte est créé
 5. **Supprimer le token** de SSM après usage (optionnel)
 
+
+

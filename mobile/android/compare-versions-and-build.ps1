@@ -149,3 +149,5 @@ if ($LASTEXITCODE -eq 0) {
 
 Write-Host "`n=== COMPARAISON TERMINÉE ===" -ForegroundColor Cyan
 
+
+

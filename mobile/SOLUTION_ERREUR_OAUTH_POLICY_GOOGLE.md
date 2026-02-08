@@ -206,3 +206,5 @@ npx expo run:android
 
 4. **Propagation** : Les changements dans Google Cloud Console peuvent prendre **2-5 minutes** à se propager.
 
+
+

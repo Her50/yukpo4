@@ -17,3 +17,5 @@ Tester Expo SDK 51 pour vérifier si le problème est spécifique à SDK 52.
 
 À compléter après le test...
 
+
+

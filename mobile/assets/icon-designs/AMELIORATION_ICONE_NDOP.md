@@ -137,3 +137,5 @@ Lors de la génération des icônes à partir du SVG amélioré :
 3. **Tester en miniature** : Vérifier à 48x48px et 96x96px
 4. **Ajuster si nécessaire** : Augmenter encore l'épaisseur des traits si besoin
 
+
+

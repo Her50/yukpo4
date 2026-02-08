@@ -153,3 +153,5 @@ aws logs tail /ecs/yukpomnang-backend --region us-east-1 --follow
 **Date** : 2026-02-06  
 **Statut** : ✅ **CONFIGURATION COMPLÈTE ET PRÊTE POUR DÉPLOIEMENT**
 
+
+

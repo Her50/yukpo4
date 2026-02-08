@@ -133,3 +133,5 @@ COMMENT ON TABLE pharmacy_analytics IS 'Statistiques quotidiennes des pharmacies
 
 
 
+
+

@@ -180,3 +180,5 @@ Cette solution est **définitive** car :
 
 *Solution définitive implémentée le 2026-01-30*
 
+
+

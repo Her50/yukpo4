@@ -68,3 +68,5 @@ Quand `expo-modules-core` est inclus via `includeBuild` dans `pluginManagement` 
 **Date**: 2025-02-05
 **Status**: Bug documenté, arrêt des tentatives de contournement
 
+
+

@@ -118,3 +118,5 @@ Le build qui a réussi fonctionnait parce que :
 Le problème est probablement que le patch n'est pas appliqué correctement, ou que Gradle lit le fichier depuis un cache.
 
 
+
+

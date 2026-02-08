@@ -80,3 +80,5 @@ COMMENT ON TABLE _sqlx_migrations IS 'Table de suivi des migrations SQLx. Cette 
 
 
 
+
+

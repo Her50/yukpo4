@@ -69,3 +69,5 @@ Si on veut inclure le plugin dans `pluginManagement`, il faut utiliser le **vrai
 3. **Vérifier que l'ordre dans `settings.gradle` est correct**
 
 
+
+

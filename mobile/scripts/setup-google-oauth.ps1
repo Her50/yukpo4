@@ -133,3 +133,5 @@ Write-Host ""
 Write-Host "✅ Configuration terminée!" -ForegroundColor Green
 Write-Host "   N'oubliez pas de rebuild l'application après avoir configuré Google Cloud Console" -ForegroundColor Yellow
 
+
+

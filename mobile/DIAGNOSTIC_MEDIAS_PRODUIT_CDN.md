@@ -197,3 +197,5 @@ product = {
 2. Vérifier les logs à chaque étape du flux
 3. Si problème persiste, vérifier la configuration CDN (`media_storage`)
 
+
+

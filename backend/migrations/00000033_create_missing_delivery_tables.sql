@@ -239,3 +239,5 @@ COMMENT ON TABLE delivery_payment_reservations IS 'Réservations de paiement pou
 
 
 
+
+

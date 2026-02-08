@@ -126,3 +126,5 @@ COMMENT ON FUNCTION is_launch_phase_active() IS
 COMMENT ON FUNCTION is_user_in_launch_phase(INTEGER) IS 
 'Vérifie si un utilisateur est dans la phase de lancement (créé avant la fin de la phase)';
 
+
+

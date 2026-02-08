@@ -139,3 +139,5 @@ tail -f logs/backend.log | grep -i "courier\|error\|500"
 
 4. **Tester avec un partenaire réel** (pas Yukpo virtuel) pour isoler le problème
 
+
+

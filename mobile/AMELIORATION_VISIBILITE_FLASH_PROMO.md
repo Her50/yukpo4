@@ -245,3 +245,5 @@ productItem: {
 - Bordures et ombres pour délimiter les éléments
 - Couleurs adaptées au thème (clair/sombre) via `ThemeContext`
 
+
+

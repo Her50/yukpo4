@@ -98,3 +98,5 @@ eas build --platform android --profile preview
 
 Pour plus de détails, consultez : `mobile/SOLUTION_ERREUR_OAUTH_POLICY_GOOGLE.md`
 
+
+

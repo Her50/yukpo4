@@ -140,3 +140,5 @@ COMMENT ON TABLE lab_analytics IS 'Statistiques quotidiennes des laboratoires po
 
 
 
+
+

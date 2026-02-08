@@ -177,3 +177,5 @@ La variable est chargée automatiquement depuis SSM Parameter Store via la Task 
 **Date** : 2026-02-06  
 **Statut** : ✅ **CONFIGURATION COMPLÈTE ET PRÊTE**
 
+
+

@@ -125,3 +125,5 @@ Le patch corrige en :
 
 **Prochaine étape** : Vérifier que le patch est commité et sera appliqué lors du build EAS.
 
+
+

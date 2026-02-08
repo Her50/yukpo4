@@ -58,3 +58,5 @@ L'erreur avec SDK 51 est différente : problème de configuration React Native a
 
 **Recommandation**: Corriger le problème autolinking SDK 51 plutôt que de continuer à patcher SDK 52.
 
+
+

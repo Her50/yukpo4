@@ -32,3 +32,5 @@ Expo SDK 51 a un problème différent (autolinking) mais pas le problème `compi
 - Le problème `compileSdkVersion` est spécifique à SDK 52 ✅
 - SDK 51 a besoin d'une configuration différente pour autolinking
 
+
+

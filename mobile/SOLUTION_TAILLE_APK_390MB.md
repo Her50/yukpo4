@@ -110,3 +110,5 @@ Si vous téléchargez un **APK universel** depuis EAS, il contiendra toutes les 
 
 **Solution** : Utilisez l'**App Bundle (AAB)** et laissez Google Play gérer la distribution, ou téléchargez un APK spécifique à une architecture.
 
+
+

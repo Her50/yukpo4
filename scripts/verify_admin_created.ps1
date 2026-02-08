@@ -36,3 +36,5 @@ Write-Host "Task creee: $taskArn"
 Write-Host "Attendez 30 secondes puis verifiez les logs avec:"
 Write-Host "aws logs tail /ecs/yukpomnang-backend --region $REGION --follow"
 
+
+

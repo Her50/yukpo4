@@ -110,3 +110,5 @@ npx expo prebuild --platform android
 - ✅ Script postinstall applique les patches
 - ⚠️ Conflit avec @config-plugins/react-native-webrtc (non utilisé dans app.config.js)
 
+
+

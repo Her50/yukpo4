@@ -71,3 +71,5 @@ Script Node.js qui force cette configuration si le patch n'a pas été appliqué
 - La valeur par défaut est `35`, mais peut être surchargée via `gradle.properties` avec `android.compileSdkVersion=XX`
 
 
+
+

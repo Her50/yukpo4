@@ -194,3 +194,5 @@ Si les migrations SQLx échouent, les erreurs devraient apparaître dans les log
 
 
 
+
+

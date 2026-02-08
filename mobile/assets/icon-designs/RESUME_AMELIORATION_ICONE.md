@@ -109,3 +109,5 @@ splash: {
 - **Guide de génération** : `GUIDE_GENERATION_ICONES.md`
 - **Script amélioré** : `generate-icons-improved.ps1`
 
+
+

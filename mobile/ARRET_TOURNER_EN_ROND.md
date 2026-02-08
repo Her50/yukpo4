@@ -21,3 +21,5 @@ Tester le build. Si le plugin `expo-module-gradle-plugin` n'est pas trouvé, c'e
 
 **On arrête de modifier expo-modules-core.** Si ça ne fonctionne pas avec la config Expo standard, c'est un problème Expo, pas le nôtre.
 
+
+

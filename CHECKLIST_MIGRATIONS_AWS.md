@@ -43,3 +43,5 @@ La migration `20260206_fix_all_critical_errors_complete.sql` sera :
 
 **Prêt pour le push vers AWS !** 🚀
 
+
+

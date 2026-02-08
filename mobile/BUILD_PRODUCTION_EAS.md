@@ -55,3 +55,5 @@ Remove-Item -Recurse -Force android\.gradle
 
 Mais **EAS Build est fortement recommandé** pour la production.
 
+
+

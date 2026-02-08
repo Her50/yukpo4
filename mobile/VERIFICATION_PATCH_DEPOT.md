@@ -55,3 +55,5 @@ Le problème actuel est probablement que :
 3. L'ordre d'exécution est incorrect (solution : s'assurer que le patch est appliqué AVANT que Gradle ne lise le fichier)
 
 
+
+

@@ -52,3 +52,5 @@ Le build devrait maintenant réussir car :
 - `compileSdkVersion` et `minSdkVersion` sont définis directement dans le bloc `android {}` (déjà dans le patch)
 
 
+
+

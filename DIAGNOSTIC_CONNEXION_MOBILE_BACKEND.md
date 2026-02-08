@@ -188,3 +188,5 @@ console.log(`[Mobile API] Headers:`, headers);
 **Prochaine étape** : Vérifier et configurer `ALLOWED_ORIGINS` dans le backend ECS.
 
 
+
+

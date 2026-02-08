@@ -58,3 +58,5 @@ Le patch `patches/expo-modules-core+2.2.3.patch` contient toutes ces corrections
 
 Le build devrait maintenant réussir avec toutes ces corrections appliquées.
 
+
+

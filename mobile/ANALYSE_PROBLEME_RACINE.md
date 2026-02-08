@@ -113,3 +113,5 @@ Mais on ne peut pas mettre de code avant `pluginManagement {}`. Peut-être dans 
 4. **Tester avec une version différente d'Expo** : Vérifier si c'est un problème spécifique à Expo 52
 
 
+
+

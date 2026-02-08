@@ -51,3 +51,5 @@ Vérifier et ajouter si manquant une section "Sécurité" avec changement de mot
 **Frontend Web** : ⚠️ Partiellement implémenté (UserSettingsPage OK, MonProfil non)  
 **Frontend Mobile** : ❌ Non implémenté
 
+
+

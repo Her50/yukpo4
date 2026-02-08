@@ -138,3 +138,5 @@ Après avoir effectué les étapes ci-dessus :
 - [ ] Application rebuildée
 - [ ] Test de connexion Google effectué avec succès
 
+
+

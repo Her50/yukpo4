@@ -79,3 +79,5 @@ Dans votre liste DNS, cherchez :
 
 **L'important : C'est l'enregistrement A principal qui doit avoir le proxy désactivé !**
 
+
+

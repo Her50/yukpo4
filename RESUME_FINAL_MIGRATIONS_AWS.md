@@ -86,3 +86,5 @@ La migration `20260206_fix_all_critical_errors_complete.sql` corrige :
 
 **✅ TOUT EST OK POUR AWS !** 🚀
 
+
+

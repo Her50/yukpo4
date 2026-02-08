@@ -49,3 +49,5 @@
 - Les corrections nécessaires sont maintenant gérées via **patch-package** uniquement
 - Le patch `expo-modules-core+2.2.3.patch` a été régénéré proprement
 
+
+

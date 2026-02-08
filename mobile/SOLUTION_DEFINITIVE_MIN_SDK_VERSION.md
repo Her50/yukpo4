@@ -142,3 +142,5 @@ Le commit `16afbdb20d556b52139f58d8981a1ac6a4b834ee` qui fonctionnait n'avait pa
 Les modifications apportées garantissent que les propriétés sont disponibles **AVANT** que les plugins ne soient résolus, ce qui résout le problème de manière définitive.
 
 
+
+

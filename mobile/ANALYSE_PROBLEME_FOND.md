@@ -122,3 +122,5 @@ Le patch doit :
 
 **Le problème de fond** : `ExpoModulesCorePlugin.gradle` définit `kotlinVersion()` de manière qui n'est pas compatible avec l'ordre d'exécution du `buildscript`.
 
+
+

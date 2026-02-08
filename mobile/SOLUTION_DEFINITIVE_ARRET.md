@@ -50,3 +50,5 @@ npm install
 
 **ARRÊT des patchs. Utiliser Expo SDK 50 ou attendre correction Expo.**
 
+
+

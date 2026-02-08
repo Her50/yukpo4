@@ -35,3 +35,5 @@ Le problème est **architectural** : `expo-modules-core` ne peut pas être utili
 - ❌ Le problème persiste avec `includeBuild`
 - ✅ Le problème disparaît sans `includeBuild` (mais plugin non trouvé)
 
+
+

@@ -1,0 +1,8 @@
+﻿aws : 
+Au caractère C:\Users\23767\AppData\Local\Temp\ps-script-34b2cf29-0b4d-4a6d-b55b-7b6df2732864.ps1:85 : 78
++ ... ing]::UTF8; aws logs tail /ecs/yukpomnang-backend --since 30m --regio ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+'charmap' codec can't encode characters in position 203-204: character maps to <undefined>

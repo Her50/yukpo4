@@ -76,3 +76,5 @@ AND indexname IN (
 2. Si des migrations manquent, vérifier les logs du backend ECS pour voir si elles ont été appliquées
 3. Si nécessaire, forcer un redéploiement du backend pour appliquer les migrations
 
+
+

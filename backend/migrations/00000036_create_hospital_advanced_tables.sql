@@ -199,3 +199,5 @@ COMMENT ON TABLE hospital_analytics IS 'Statistiques quotidiennes des hôpitaux 
 
 
 
+
+

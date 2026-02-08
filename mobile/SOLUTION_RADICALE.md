@@ -95,3 +95,5 @@ ls mobile/patches/expo-modules-core+2.2.3.patch
 - Identifier les différences
 - Appliquer uniquement les changements nécessaires
 
+
+

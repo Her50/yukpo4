@@ -1,0 +1,39 @@
+﻿{
+    "cli":  {
+                "version":  "\u003e= 16.23.1",
+                "appVersionSource":  "local"
+            },
+    "build":  {
+                  "development":  {
+                                      "developmentClient":  true,
+                                      "distribution":  "internal"
+                                  },
+                  "preview":  {
+                                  "distribution":  "internal",
+                                  "env":  {
+                                              "EXPO_PUBLIC_API_URL":  "https://yukpomnang.onrender.com",
+                                              "EXPO_PUBLIC_WS_URL":  "wss://yukpomnang.onrender.com",
+                                              "EXPO_PUBLIC_SHARE_URL":  "https://yukpomnang.com",
+                                              "EXPO_PUBLIC_ENVIRONMENT":  "production",
+                                              "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY":  "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
+                                              "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY":  "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
+                                              "GRADLE_OPTS":  "-Xmx6144m -XX:MaxMetaspaceSize=1024m"
+                                          },
+                                  "android":  {
+                                                  "buildType":  "apk",
+                                                  "gradleCommand":  ":app:assembleRelease",
+                                                  "credentialsSource":  "remote",
+                                                  "image":  "latest",
+                                                  "withoutCredentials":  false
+                                              }
+                              },
+                  "production":  {
+                                     "autoIncrement":  true
+                                 }
+              },
+    "submit":  {
+                   "production":  {
+
+                                  }
+               }
+}

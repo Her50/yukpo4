@@ -75,3 +75,5 @@ buildscript {
 1. ✅ `rootProject.ext.kotlinVersion` ajouté dans `android/build.gradle`
 2. ⏳ Relancer le build EAS pour vérifier
 
+
+

@@ -164,3 +164,5 @@ stickyNavigationButtons: {
 - Les boutons sticky utilisent `position: 'absolute'` pour rester fixes
 - Le `paddingBottom` du contenu doit être ajusté selon la hauteur des boutons sticky
 
+
+

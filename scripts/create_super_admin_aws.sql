@@ -60,3 +60,5 @@ SELECT
 FROM users 
 WHERE email = 'admin@yukpo.dev';
 
+
+

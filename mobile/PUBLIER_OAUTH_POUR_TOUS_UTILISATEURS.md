@@ -161,3 +161,5 @@ Si vous préférez utiliser `eas.json`, ajoutez `EXPO_PUBLIC_GOOGLE_ANDROID_CLIE
 
 4. **Vérification automatique** : Pour certaines applications simples avec des scopes basiques (openid, profile, email), Google peut approuver automatiquement sans vérification manuelle.
 
+
+

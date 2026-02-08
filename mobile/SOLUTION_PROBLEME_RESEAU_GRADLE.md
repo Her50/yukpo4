@@ -179,3 +179,5 @@ eas build --platform android --profile preview
 2. **Cache local** : Les builds suivants seront plus rapides grâce au cache local
 3. **EAS Build** : Si vous avez des problèmes réseau récurrents, EAS Build est la meilleure solution
 
+
+

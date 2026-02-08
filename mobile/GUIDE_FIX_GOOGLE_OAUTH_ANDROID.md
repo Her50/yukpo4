@@ -182,3 +182,5 @@ L'URI de redirection utilisé par `expo-auth-session` devrait être visible dans
 - [ ] Application rebuildée après modifications
 - [ ] Test de connexion Google effectué avec succès
 
+
+

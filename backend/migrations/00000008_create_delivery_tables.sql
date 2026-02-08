@@ -535,3 +535,5 @@ SELECT setval('parcel_types_id_seq', 8, true);
 
 
 
+
+

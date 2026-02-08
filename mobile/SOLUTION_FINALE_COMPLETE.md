@@ -59,3 +59,5 @@ Le build devrait maintenant réussir car :
 3. ✅ `expo-module-gradle-plugin` est trouvé (includeBuild après pluginManagement)
 4. ✅ `expo-modules-core` est évalué dans un contexte normal
 
+
+

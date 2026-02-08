@@ -218,3 +218,5 @@ cd mobile/android
 - ⏳ Build RELEASE nécessaire pour réduire davantage (objectif : 30-40 MB)
 - ⏳ Optimisation des assets nécessaire
 
+
+

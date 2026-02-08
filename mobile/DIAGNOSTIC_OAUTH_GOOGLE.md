@@ -107,3 +107,5 @@ Si l'un de ces éléments manque, c'est la cause du problème.
 2. Vérifiez que le Client ID Android dans le code correspond à celui dans Google Cloud Console
 3. Vérifiez que le SHA-1 correspond au keystore utilisé pour signer l'application
 
+
+

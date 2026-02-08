@@ -106,3 +106,5 @@ curl -v https://api.yukpomnang.com/health
 - Le script attend automatiquement la validation du certificat (jusqu'à 20 minutes)
 
 
+
+

@@ -27,3 +27,5 @@ COMMENT ON TABLE navigation_saved_destinations IS 'Destinations favorites/enregi
 COMMENT ON COLUMN navigation_saved_destinations.label IS 'Type de destination: domicile, bureau, autre';
 COMMENT ON COLUMN navigation_saved_destinations.custom_label IS 'Label personnalisé si label = autre';
 
+
+

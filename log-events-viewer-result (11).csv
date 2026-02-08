@@ -1,0 +1,915 @@
+timestamp,message
+1769830125000,"2026-01-31 03:28:45 UTC:10.0.3.217(48420):yukpo_db_user@postgres:[27372]:DETAIL:  Key columns ""parcel_id"" and ""id"" are of incompatible types: integer and uuid."
+1769830125000,"2026-01-31 03:28:45 UTC:10.0.3.217(48420):yukpo_db_user@postgres:[27372]:STATEMENT:  
+	        CREATE TABLE IF NOT EXISTS delivery_media (
+	            id SERIAL PRIMARY KEY,
+	            delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+	            parcel_id INTEGER REFERENCES delivery_parcels(id) ON DELETE SET NULL,
+	            -- Informations média
+	            type TEXT NOT NULL CHECK (type IN ('image', 'video', 'audio', 'document')),
+	            path TEXT NOT NULL,
+	            media_type TEXT,
+	            file_size BIGINT,
+	            file_format TEXT,
+	            -- Métadonnées
+	            is_parcel_photo BOOLEAN NOT NULL DEFAULT TRUE,
+	            is_proof_media BOOLEAN NOT NULL DEFAULT FALSE,
+	            proof_type TEXT CHECK (proof_type IN ('pickup', 'delivery', NULL)),
+	            -- Ordre d'affichage
+	            display_order INTEGER NOT NULL DEFAULT 0,
+	            -- Analyse IA (optionnel)
+	            ai_description TEXT,
+	            ai_tags TEXT[],
+	            ai_metadata JSONB,
+	            ai_analyzed_at TIMESTAMPTZ,
+	            ai_model_used VARCHAR(100),
+	            ai_confidence DOUBLE PRECISION,
+	            -- Timestamps
+	            uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	            -- Métadonnées additionnelles
+	            metadata JSONB DEFAULT '{}'::jsonb
+	        )"
+1769830125000,"2026-01-31 03:28:45 UTC:10.0.3.217(48434):yukpo_db_user@postgres:[27373]:ERROR:  syntax error at or near "";"" at character 35"
+1769830125000,2026-01-31 03:28:45 UTC:10.0.3.217(48434):yukpo_db_user@postgres:[27373]:STATEMENT:  CREATE TABLE IF NOT EXISTS duets (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48512):yukpo_db_user@postgres:[27383]:ERROR:  syntax error at or near "";"" at character 42"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48512):yukpo_db_user@postgres:[27383]:STATEMENT:  CREATE MATERIALIZED VIEW mv_user_stats AS;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48534):yukpo_db_user@postgres:[27385]:ERROR:  syntax error at or near "";"" at character 65"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48534):yukpo_db_user@postgres:[27385]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_optimized;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48538):yukpo_db_user@postgres:[27386]:ERROR:  syntax error at or near "";"" at character 77"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48538):yukpo_db_user@postgres:[27386]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_services_user_id_created_at_desc_optimized_v2;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48382):yukpo_db_user@postgres:[27367]:ERROR:  syntax error at or near "";"" at character 57"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48382):yukpo_db_user@postgres:[27367]:STATEMENT:  CREATE OR REPLACE FUNCTION add_product_to_service_jsonb(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48398):yukpo_db_user@postgres:[27368]:ERROR:  syntax error at or near "";"" at character 57"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48398):yukpo_db_user@postgres:[27368]:STATEMENT:  CREATE OR REPLACE FUNCTION add_product_to_service_jsonb(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48402):yukpo_db_user@postgres:[27369]:ERROR:  syntax error at or near "";"" at character 60"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48402):yukpo_db_user@postgres:[27369]:STATEMENT:  CREATE OR REPLACE FUNCTION add_product_to_service_jsonb_v2(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48410):yukpo_db_user@postgres:[27371]:ERROR:  syntax error at or near "";"" at character 60"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48410):yukpo_db_user@postgres:[27371]:STATEMENT:  CREATE OR REPLACE FUNCTION add_product_to_service_jsonb_v2(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48408):yukpo_db_user@postgres:[27370]:ERROR:  syntax error at or near "";"" at character 69"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48408):yukpo_db_user@postgres:[27370]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_autocomplete_full_vector_tsvector_gin;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:ERROR:  syntax error at or near "";"" at character 67"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_deliveries_creator_status_requested;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48458):yukpo_db_user@postgres:[27377]:ERROR:  syntax error at or near "";"" at character 45"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48458):yukpo_db_user@postgres:[27377]:STATEMENT:  DELETE FROM parcel_types WHERE slug NOT IN (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:ERROR:  syntax error at or near "";"" at character 52"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:STATEMENT:  CREATE OR REPLACE FUNCTION update_service_products(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48408):yukpo_db_user@postgres:[27370]:ERROR:  syntax error at or near "";"" at character 48"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48408):yukpo_db_user@postgres:[27370]:STATEMENT:  CREATE OR REPLACE FUNCTION hybrid_image_search(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:ERROR:  syntax error at or near "";"" at character 48"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:STATEMENT:  CREATE OR REPLACE FUNCTION hybrid_image_search(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:ERROR:  syntax error at or near "";"" at character 37"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:STATEMENT:  CREATE FUNCTION hybrid_image_search(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48440):yukpo_db_user@postgres:[27375]:ERROR:  syntax error at or near "";"" at character 37"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48440):yukpo_db_user@postgres:[27375]:STATEMENT:  CREATE FUNCTION hybrid_image_search(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48486):yukpo_db_user@postgres:[27381]:ERROR:  syntax error at or near "";"" at character 37"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48486):yukpo_db_user@postgres:[27381]:STATEMENT:  CREATE FUNCTION hybrid_image_search(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:ERROR:  syntax error at or near "";"" at character 60"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_pharmacies_service_id_active;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:ERROR:  syntax error at or near "";"" at character 70"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_deliveries_return_pickup_location_gist;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48512):yukpo_db_user@postgres:[27383]:ERROR:  syntax error at or near "";"" at character 56"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48512):yukpo_db_user@postgres:[27383]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_publicites_active_filter;
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48434):yukpo_db_user@postgres:[27373]:ERROR:  no language specified
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48434):yukpo_db_user@postgres:[27373]:STATEMENT:  CREATE OR REPLACE FUNCTION check_specialized_type_consistency();
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48420):yukpo_db_user@postgres:[27372]:ERROR:  syntax error at or near ""RETURNS"" at character 1"
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48420):yukpo_db_user@postgres:[27372]:STATEMENT:  RETURNS TRIGGER AS $$
+	BEGIN
+	    -- Si specialized_type est défini, vérifier que l'entrée existe dans la table correspondante
+	    IF NEW.specialized_type = 'pharmacie' THEN
+	        IF NOT EXISTS (SELECT 1 FROM pharmacies WHERE service_id = NEW.id) THEN
+	            RAISE EXCEPTION 'Service avec specialized_type=pharmacie doit avoir entrée dans pharmacies (service_id=%)', NEW.id;
+	        END IF;
+	    ELSIF NEW.specialized_type = 'hopital_clinique' THEN
+	        IF NOT EXISTS (SELECT 1 FROM hopitaux_cliniques WHERE service_id = NEW.id) THEN
+	            RAISE EXCEPTION 'Service avec specialized_type=hopital_clinique doit avoir entrée dans hopitaux_cliniques (service_id=%)', NEW.id;
+	        END IF;
+	    ELSIF NEW.specialized_type = 'laboratoire_imagerie' THEN
+	        IF NOT EXISTS (SELECT 1 FROM laboratoires_imagerie WHERE service_id = NEW.id) THEN
+	            RAISE EXCEPTION 'Service avec specialized_type=laboratoire_imagerie doit avoir entrée dans laboratoires_imagerie (service_id=%)', NEW.id;
+	        END IF;
+	    ELSIF NEW.specialized_type = 'agence_voyage' THEN
+	        IF NOT EXISTS (SELECT 1 FROM agences_voyage WHERE service_id = NEW.id) THEN
+	            RAISE EXCEPTION 'Service avec specialized_type=agence_voyage doit avoir entrée dans agences_voyage (service_id=%)', NEW.id;
+	        END IF;
+	    ELSIF NEW.specialized_type = 'covoiturage' THEN
+	        IF NOT EXISTS (SELECT 1 FROM covoiturages WHERE service_id = NEW.id) THEN
+	            RAISE EXCEPTION 'Service avec specialized_type=covoiturage doit avoir entrée dans covoiturages (service_id=%)', NEW.id;
+	        END IF;
+	    ELSIF NEW.specialized_type = 'taxi_ville' THEN
+	        IF NOT EXISTS (SELECT 1 FROM taxis_ville WHERE service_id = NEW.id) THEN
+	            RAISE EXCEPTION 'Service avec specialized_type=taxi_ville doit avoir entrée dans taxis_ville (service_id=%)', NEW.id;
+	        END IF;
+	    ELSIF NEW.specialized_type = 'banque_sang' THEN
+	        IF NOT EXISTS (SELECT 1 FROM banques_sang WHERE service_id = NEW.id) THEN
+	            RAISE EXCEPTION 'Service avec specialized_type=banque_sang doit avoir entrée dans banques_sang (service_id=%)', NEW.id;
+	        END IF;
+	    END IF;
+	    RETURN NEW;
+	END;
+	$$ LANGUAGE plpgsql;"
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:ERROR:  syntax error at or near "";"" at character 69"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:STATEMENT:  COMMENT ON CONSTRAINT check_pharmacies_heures_valid ON pharmacies IS;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48458):yukpo_db_user@postgres:[27377]:ERROR:  syntax error at or near "";"" at character 57"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48458):yukpo_db_user@postgres:[27377]:STATEMENT:  CREATE TABLE IF NOT EXISTS specialized_services_drafts (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:ERROR:  syntax error at or near "";"" at character 44"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:STATEMENT:  CREATE TABLE IF NOT EXISTS search_history (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48468):yukpo_db_user@postgres:[27378]:ERROR:  syntax error at or near "";"" at character 72"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48468):yukpo_db_user@postgres:[27378]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_taxis_available_composite ON taxis_ville;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48440):yukpo_db_user@postgres:[27375]:ERROR:  syntax error at or near "";"" at character 74"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48440):yukpo_db_user@postgres:[27375]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_hospitals_gps_active ON hopitaux_cliniques;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48470):yukpo_db_user@postgres:[27379]:ERROR:  syntax error at or near "";"" at character 52"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48470):yukpo_db_user@postgres:[27379]:STATEMENT:  CREATE TABLE IF NOT EXISTS hospital_consultations (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48486):yukpo_db_user@postgres:[27381]:ERROR:  syntax error at or near "";"" at character 47"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48486):yukpo_db_user@postgres:[27381]:STATEMENT:  CREATE TABLE IF NOT EXISTS pharmacy_products (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:ERROR:  syntax error at or near "";"" at character 45"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:STATEMENT:  CREATE TABLE IF NOT EXISTS pharmacy_orders (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:ERROR:  syntax error at or near "";"" at character 51"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:STATEMENT:  CREATE TABLE IF NOT EXISTS lab_examination_types (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48526):yukpo_db_user@postgres:[27384]:ERROR:  syntax error at or near "";"" at character 44"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48526):yukpo_db_user@postgres:[27384]:STATEMENT:  CREATE TABLE IF NOT EXISTS book_exchanges (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48538):yukpo_db_user@postgres:[27386]:ERROR:  syntax error at or near "";"" at character 46"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48538):yukpo_db_user@postgres:[27386]:STATEMENT:  CREATE TABLE IF NOT EXISTS student_profiles (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48410):yukpo_db_user@postgres:[27371]:ERROR:  syntax error at or near "";"" at character 44"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48410):yukpo_db_user@postgres:[27371]:STATEMENT:  CREATE TABLE IF NOT EXISTS cv_ai_analyses (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48434):yukpo_db_user@postgres:[27373]:ERROR:  syntax error at or near "";"" at character 52"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48434):yukpo_db_user@postgres:[27373]:STATEMENT:  CREATE TABLE IF NOT EXISTS real_estate_properties (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48420):yukpo_db_user@postgres:[27372]:ERROR:  syntax error at or near "";"" at character 45"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48420):yukpo_db_user@postgres:[27372]:STATEMENT:  CREATE TABLE IF NOT EXISTS family_profiles (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48408):yukpo_db_user@postgres:[27370]:ERROR:  syntax error at or near "";"" at character 48"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48408):yukpo_db_user@postgres:[27370]:STATEMENT:  CREATE TABLE IF NOT EXISTS plugin_marketplace (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:ERROR:  syntax error at or near "";"" at character 46"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:STATEMENT:  CREATE TABLE IF NOT EXISTS livres_scolaires (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:ERROR:  syntax error at or near "";"" at character 43"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:STATEMENT:  CREATE TABLE IF NOT EXISTS offres_emploi (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48440):yukpo_db_user@postgres:[27375]:ERROR:  syntax error at or near "";"" at character 54"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48440):yukpo_db_user@postgres:[27375]:STATEMENT:  CREATE TABLE IF NOT EXISTS etablissements_scolaires (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48470):yukpo_db_user@postgres:[27379]:ERROR:  syntax error at or near "";"" at character 52"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48470):yukpo_db_user@postgres:[27379]:STATEMENT:  CREATE TABLE IF NOT EXISTS delivery_chat_messages (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48486):yukpo_db_user@postgres:[27381]:ERROR:  syntax error at or near "";"" at character 44"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48486):yukpo_db_user@postgres:[27381]:STATEMENT:  CREATE TABLE IF NOT EXISTS user_documents (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:ERROR:  syntax error at or near "";"" at character 51"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:STATEMENT:  CREATE TABLE IF NOT EXISTS covoiturage_insurance (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:ERROR:  syntax error at or near "";"" at character 50"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:STATEMENT:  CREATE TABLE IF NOT EXISTS loyalty_transactions (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48382):yukpo_db_user@postgres:[27367]:ERROR:  syntax error at or near "";"" at character 65"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48382):yukpo_db_user@postgres:[27367]:STATEMENT:  CREATE OR REPLACE FUNCTION search_bus_tickets_with_availability(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48410):yukpo_db_user@postgres:[27371]:ERROR:  syntax error at or near "";"" at character 71"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48410):yukpo_db_user@postgres:[27371]:STATEMENT:  CREATE OR REPLACE FUNCTION process_bus_ticket_payment_with_commission(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:ERROR:  syntax error at or near "";"" at character 54"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:STATEMENT:  CREATE OR REPLACE FUNCTION search_services_gps_final(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:ERROR:  syntax error at or near "";"" at character 54"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:STATEMENT:  CREATE OR REPLACE FUNCTION search_services_gps_final(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48526):yukpo_db_user@postgres:[27384]:ERROR:  syntax error at or near "";"" at character 54"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48526):yukpo_db_user@postgres:[27384]:STATEMENT:  CREATE OR REPLACE FUNCTION search_services_gps_final(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48538):yukpo_db_user@postgres:[27386]:ERROR:  syntax error at or near "";"" at character 37"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48538):yukpo_db_user@postgres:[27386]:STATEMENT:  CREATE FUNCTION hybrid_image_search(;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48382):yukpo_db_user@postgres:[27367]:ERROR:  syntax error at or near "";"" at character 56"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48382):yukpo_db_user@postgres:[27367]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_services_data_search_gin;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48398):yukpo_db_user@postgres:[27368]:ERROR:  syntax error at or near "";"" at character 66"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48398):yukpo_db_user@postgres:[27368]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_products_lifecycle_service_product;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48402):yukpo_db_user@postgres:[27369]:ERROR:  syntax error at or near "";"" at character 73"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48402):yukpo_db_user@postgres:[27369]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_active_category_gps;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48410):yukpo_db_user@postgres:[27371]:ERROR:  syntax error at or near "";"" at character 36"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48410):yukpo_db_user@postgres:[27371]:STATEMENT:  CREATE TABLE IF NOT EXISTS videos (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48434):yukpo_db_user@postgres:[27373]:ERROR:  syntax error at or near "";"" at character 75"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48434):yukpo_db_user@postgres:[27373]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_videos_hashtags_active_created;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48420):yukpo_db_user@postgres:[27372]:ERROR:  syntax error at or near "";"" at character 31"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48420):yukpo_db_user@postgres:[27372]:STATEMENT:  ALTER TABLE content_engagement;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:ERROR:  syntax error at or near "";"" at character 56"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_deliveries_active_status;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:ERROR:  syntax error at or near "";"" at character 48"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:STATEMENT:  CREATE TABLE IF NOT EXISTS deliveries_archive (;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:ERROR:  syntax error at or near "";"" at character 70"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_video_jobs_status_created;
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48470):yukpo_db_user@postgres:[27379]:ERROR:  syntax error at or near "";"" at character 47"
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48470):yukpo_db_user@postgres:[27379]:STATEMENT:  CREATE TABLE IF NOT EXISTS message_reactions (;
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48440):yukpo_db_user@postgres:[27375]:ERROR:  no language specified
+1769830126000,2026-01-31 03:28:46 UTC:10.0.3.217(48440):yukpo_db_user@postgres:[27375]:STATEMENT:  CREATE OR REPLACE FUNCTION match_return_trip_requests(p_product_id TEXT);
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48470):yukpo_db_user@postgres:[27379]:ERROR:  syntax error at or near ""RETURNS"" at character 1"
+1769830126000,"2026-01-31 03:28:46 UTC:10.0.3.217(48470):yukpo_db_user@postgres:[27379]:STATEMENT:  RETURNS TABLE(
+	    request_id TEXT,
+	    user_id INTEGER,
+	    passenger_names TEXT[],
+	    number_of_seats INTEGER,
+	    preferred_return_time TEXT
+	) AS $$
+	BEGIN
+	    -- Trouver les demandes de retour correspondantes
+	    -- Quand un nouveau bus est créé, on check s'il match des demandes
+	    RETURN QUERY
+	    SELECT 
+	        rtr.id as request_id,
+	        rtr.user_id,
+	        rtr.passenger_names,
+	        rtr.number_of_seats,
+	        rtr.preferred_return_time
+	    FROM return_trip_requests rtr
+	    JOIN products p ON p.id::text = p_product_id
+	    JOIN services s ON s.id = p.service_id
+	    LEFT JOIN bus_ticket_payments btp_outbound ON btp_outbound.id = rtr.outbound_payment_id
+	    WHERE rtr.status = 'pending'
+	        -- ✅ CRITIQUE: Match agence (le bus retour doit appartenir à la même agence que le bus aller)
+	        AND (
+	            -- Si outbound_payment_id existe, vérifier que l'agence du bus retour = agence du bus aller
+	            rtr.outbound_payment_id IS NULL
+	            OR btp_outbound.agency_user_id = s.user_id
+	        )
+	        -- Match route (inverse du voyage)
+	        AND rtr.return_from = p.depart
+	        AND rtr.return_to = p.destination
+	        -- Match date (avec flexibilité)
+	        AND p.date_depart BETWEEN 
+	            (rtr.preferred_return_date::date - INTERVAL '1 day' * rtr.date_flexibility_days)
+	            AND (rtr.preferred_return_date::date + INTERVAL '1 day' * rtr.date_flexibility_days)
+	        -- ✅ NOUVEAU: Match heure (si spécifiée, avec tolérance ±1h)
+	        AND (
+	            -- Si aucune heure préférée n'est spécifiée, on accepte tous les horaires
+	            rtr.preferred_return_time IS NULL 
+	            -- Si le bus n'a pas d'heure dans metadata, on accepte
+	            OR p.metadata->>'departure_time' IS NULL
+	            -- Sinon, on vérifie que l'heure du bus est dans la tolérance (±1h)
+	            OR ABS(
+	                EXTRACT(EPOCH FROM (
+	                    (p.metadata->>'departure_time')::TIME - rtr.preferred_return_time::TIME
+	                ))
+	            ) / 3600 <= 1  -- Tolérance de 1 heure (3600 secondes)
+	        )
+	        -- Vérifier qu'il y a assez de places
+	        AND p.total_seats >= rtr.number_of_seats;
+	END;
+	$$ LANGUAGE plpgsql;"
+1769830127000,2026-01-31 03:28:47 UTC:10.0.3.217(48408):yukpo_db_user@postgres:[27370]:ERROR:  cannot insert multiple commands into a prepared statement
+1769830127000,"2026-01-31 03:28:47 UTC:10.0.3.217(48408):yukpo_db_user@postgres:[27370]:STATEMENT:  -- Migration: Optimisation Recherche Image avec Matching Vectoriel Normalisé
+	-- Date: 2025-12-30
+	-- Description: Applique les optimisations de matching vectoriel (accents, mots tronqués, fuzzy) à la recherche par image
+	-- =====================================================
+	-- 1. Colonnes Calculées Normalisées pour Media
+	-- =====================================================
+	-- Ajouter colonnes normalisées (utilise les fonctions existantes de la migration vector matching)
+	ALTER TABLE media 
+	ADD COLUMN IF NOT EXISTS normalized_ai_tags TEXT[] 
+	GENERATED ALWAYS AS (
+	    CASE 
+	        WHEN ai_tags IS NULL OR array_length(ai_tags, 1) IS NULL 
+	        THEN ARRAY[]::TEXT[]
+	        ELSE normalize_word_array(ai_tags)
+	    END
+	) STORED;
+	ALTER TABLE media 
+	ADD COLUMN IF NOT EXISTS normalized_ai_description TEXT
+	GENERATED ALWAYS AS (
+	    CASE 
+	        WHEN ai_description IS NULL OR ai_description = ''
+	        THEN ''
+	        ELSE LOWER(
+	            translate(
+	                ai_description,
+	                'àâäéèêëîïôöùûüÿç',
+	                'aaaeeeeiiioouuuyc'
+	            )
+	        )
+	    END
+	) STORED;
+	-- =====================================================
+	-- 2. Index GIN sur Colonnes Normalisées
+	-- =====================================================
+	-- Index GIN pour accélérer l'opérateur && sur tags normalisés
+	CREATE INDEX IF NOT EXISTS idx_media_normalized_ai_tags_gin 
+	ON media USING GIN (normalized_ai_tags);
+	-- Index full-text sur description normalisée
+	CREATE INDEX IF NOT EXISTS idx_media_normalized_ai_description_fulltext 
+	ON media USING GIN (to_tsvector('french', COALESCE(normalized_ai_description, '')));
+	-- Index composite pour filtres fréquents
+	CREATE INDEX IF NOT EXISTS idx_media_ai_image_search_filters 
+	ON media (type, ai_category) 
+	WHERE type = 'image' AND ai_description IS NOT NULL;
+	-- =====================================================
+	-- 3. Fonction de Normalisation de Texte (si pas déjà créée)
+	-- =====================================================
+	-- Fonction pour normaliser un texte (supprimer accents, minuscules)
+	CREATE OR REPLACE FUNCTION normalize_text(text_input TEXT)
+	RETURNS TEXT AS $$
+	BEGIN
+	    IF text_input IS NULL OR text_input = '' THEN
+	        RETURN '';
+	    END IF;
+	    RETURN LOWER(
+	        translate(
+	            text_input,
+	            'àâäéèêëîïôöùûüÿç',
+	            'aaaeeeeiiioouuuyc'
+	        )
+	    );
+	END;
+	$$ LANGUAGE plpgsql IMMUTABLE;
+	-- =====================================================
+	-- 4. Mise à Jour de la Fonction search_images_by_ai_analysis
+	-- =====================================================
+	-- Supprimer l'ancienne version si elle existe (avec l'ancienne signature)
+	DROP FUNCTION IF EXISTS search_images_by_ai_analysis(TEXT, TEXT[], TEXT, TEXT, TEXT, FLOAT, FLOAT, INTEGER, INTEGER);
+	CREATE OR REPLACE FUNCTION search_images_by_ai_analysis(
+	    search_query TEXT,
+	    search_tags TEXT[],
+	    search_category TEXT DEFAULT NULL,
+	    search_marque TEXT DEFAULT NULL,
+	    search_couleur TEXT DEFAULT NULL,
+	    gps_lat FLOAT DEFAULT NULL,
+	    gps_lng FLOAT DEFAULT NULL,
+	    search_radius_km INTEGER DEFAULT 50,
+	    max_results INTEGER DEFAULT 20,
+	    detected_lang TEXT DEFAULT 'french'  -- ✅ NOUVEAU: Langue dynamique
+	)
+	RETURNS TABLE (
+	    service_id INTEGER,
+	    media_id INTEGER,
+	    media_path TEXT,
+	    product_name TEXT,
+	    ai_description TEXT,
+	    ai_tags TEXT[],
+	    match_score FLOAT,
+	    distance_km FLOAT,
+	    service_data JSONB
+	) AS $$
+	DECLARE
+	    normalized_search_query TEXT;
+	    normalized_search_tags TEXT[];
+	    normalized_search_marque TEXT;
+	    normalized_search_couleur TEXT;
+	BEGIN
+	    -- ✅ NOUVEAU: Normaliser les paramètres de recherche
+	    normalized_search_query := normalize_text(search_query);
+	    normalized_search_tags := normalize_word_array(search_tags);
+	    normalized_search_marque := CASE WHEN search_marque IS NOT NULL THEN normalize_text(search_marque) ELSE NULL END;
+	    normalized_search_couleur := CASE WHEN search_couleur IS NOT NULL THEN normalize_text(search_couleur) ELSE NULL END;
+	    RETURN QUERY
+	    WITH ranked_results AS (
+	        SELECT 
+	            s.id as service_id,
+	            m.id as media_id,
+	            m.path as media_path,
+	            COALESCE(
+	                product->>'nom',
+	                product->>'name',
+	                product->>'titre',
+	                'Produit'
+	            ) as product_name,
+	            m.ai_description,
+	            m.ai_tags,
+	            (
+	                -- ✅ AMÉLIORÉ: Score Full-Text avec langue dynamique
+	                COALESCE(
+	                    ts_rank(
+	                        to_tsvector(detected_lang, COALESCE(m.normalized_ai_description, '')),
+	                        plainto_tsquery(detected_lang, normalized_search_query)
+	                    ) * 50.0,
+	                    0.0
+	                ) +
+	                -- ✅ NOUVEAU: Matching vectoriel optimisé avec similarité (exact + partiel + fuzzy)
+	                COALESCE(
+	                    calculate_vector_match_score_optimized(
+	                        m.normalized_ai_tags,
+	                        normalized_search_tags
+	                    ) * 30.0,  -- Multiplicateur pour tags
+	                    0.0
+	                ) +
+	                -- ✅ AMÉLIORÉ: Matching partiel sur description normalisée (mots tronqués)
+	                CASE 
+	                    WHEN normalized_search_query != '' 
+	                         AND m.normalized_ai_description LIKE '%' || normalized_search_query || '%'
+	                    THEN 35.0
+	                    ELSE 0.0
+	                END +
+	                -- ✅ AMÉLIORÉ: Bonus tags communs avec normalisation
+	                (SELECT COUNT(*) * 20.0 
+	                 FROM unnest(COALESCE(m.normalized_ai_tags, ARRAY[]::TEXT[])) tag 
+	                 WHERE tag = ANY(normalized_search_tags)) +
+	                -- ✅ AMÉLIORÉ: Bonus marque exacte avec normalisation
+	                CASE 
+	                    WHEN normalized_search_marque IS NOT NULL 
+	                         AND normalize_text(COALESCE(m.ai_metadata->>'marque', '')) = normalized_search_marque
+	                    THEN 100.0 
+	                    ELSE 0.0 
+	                END +
+	                -- ✅ AMÉLIORÉ: Bonus couleur avec normalisation
+	                CASE 
+	                    WHEN normalized_search_couleur IS NOT NULL 
+	                         AND EXISTS (
+	                             SELECT 1 
+	                             FROM jsonb_array_elements_text(COALESCE(m.ai_metadata->'couleurs', '[]'::jsonb)) AS couleur
+	                             WHERE normalize_text(couleur) = normalized_search_couleur
+	                         )
+	                    THEN 30.0 
+	                    ELSE 0.0 
+	                END +
+	                -- Bonus catégorie identique
+	                CASE 
+	                    WHEN search_category IS NOT NULL 
+	                         AND m.ai_category = search_category 
+	                    THEN 40.0 
+	                    ELSE 0.0 
+	                END +
+	                -- Bonus confidence élevée
+	                (COALESCE(m.ai_confidence, 0.5) * 20.0)
+	            )::FLOAT as match_score,
+	            -- Calcul distance GPS si coordonnées fournies
+	            CASE 
+	                WHEN gps_lat IS NOT NULL AND gps_lng IS NOT NULL 
+	                     AND s.gps IS NOT NULL AND s.gps != '' 
+	                     AND s.gps ~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
+	                THEN
+	                    ST_Distance(
+	                        ST_Point(gps_lng, gps_lat)::geography,
+	                        ST_Point(
+	                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+	                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+	                        )::geography
+	                    ) / 1000.0  -- Convertir en km
+	                ELSE NULL
+	            END as distance_km,
+	            s.data as service_data,
+	            product
+	        FROM services s
+	        INNER JOIN media m ON m.service_id = s.id
+	        CROSS JOIN LATERAL jsonb_array_elements(
+	            CASE 
+	                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+	                THEN s.data->'produits'
+	                ELSE '[]'::jsonb
+	            END
+	        ) AS product
+	        WHERE s.is_active = true
+	        AND m.type = 'image'
+	        AND m.ai_description IS NOT NULL
+	        AND (
+	            -- ✅ AMÉLIORÉ: Conditions de recherche avec normalisation et matching vectoriel
+	            to_tsvector(detected_lang, COALESCE(m.normalized_ai_description, '')) @@ plainto_tsquery(detected_lang, normalized_search_query)
+	            OR m.normalized_ai_tags && normalized_search_tags  -- Overlap sur tags normalisés
+	            OR calculate_vector_match_score_optimized(m.normalized_ai_tags, normalized_search_tags) > 0.0  -- Matching vectoriel optimisé
+	            OR (normalized_search_query != '' AND m.normalized_ai_description LIKE '%' || normalized_search_query || '%')  -- Matching partiel
+	            OR (search_category IS NOT NULL AND m.ai_category = search_category)
+	        )
+	        -- Filtre GPS si coordonnées fournies
+	        AND (
+	            gps_lat IS NULL 
+	            OR gps_lng IS NULL
+	            OR search_radius_km IS NULL
+	            OR s.gps IS NULL
+	            OR s.gps = ''
+	            OR s.gps !~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
+	            OR ST_Distance(
+	                ST_Point(gps_lng, gps_lat)::geography,
+	                ST_Point(
+	                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+	                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+	                )::geography
+	            ) / 1000.0 <= search_radius_km
+	        )
+	    )
+	    SELECT 
+	        ranked_results.service_id,
+	        ranked_results.media_id,
+	        ranked_results.media_path,
+	        ranked_results.product_name,
+	        ranked_results.ai_description,
+	        ranked_results.ai_tags,
+	        ranked_results.match_score,
+	        ranked_results.distance_km,
+	        ranked_results.service_data
+	    FROM ranked_results
+	    ORDER BY 
+	        ranked_results.match_score DESC,
+	        ranked_results.distance_km ASC NULLS LAST
+	    LIMIT max_results;
+	END;
+	$$ LANGUAGE plpgsql STABLE;
+	COMMENT ON FUNCTION search_images_by_ai_analysis IS 'Recherche intelligente d''images par analyse IA avec matching vectoriel optimisé, gestion accents, matching partiel/fuzzy, et langue dynamique';
+	-- =====================================================
+	-- 5. Analyser les Tables pour Optimiser les Statistiques
+	-- =====================================================
+	ANALYZE media;
+	-- =====================================================
+	-- 6. Vérification
+	-- =====================================================
+	DO $$
+	BEGIN
+	    -- Vérifier que les colonnes existent
+	    IF NOT EXISTS (
+	        SELECT 1 FROM information_schema.columns 
+	        WHERE table_name = 'media' 
+	        AND column_name = 'normalized_ai_tags'
+	    ) THEN
+	        RAISE EXCEPTION 'Colonne normalized_ai_tags non créée';
+	    END IF;
+	    IF NOT EXISTS (
+	        SELECT 1 FROM information_schema.columns 
+	        WHERE table_name = 'media' 
+	        AND column_name = 'normalized_ai_description'
+	    ) THEN
+	        RAISE EXCEPTION 'Colonne normalized_ai_description non créée';
+	    END IF;
+	    -- Vérifier que les index existent
+	    IF NOT EXISTS (
+	        SELECT 1 FROM pg_indexes 
+	        WHERE indexname = 'idx_media_normalized_ai_tags_gin'
+	    ) THEN
+	        RAISE EXCEPTION 'Index idx_media_normalized_ai_tags_gin non créé';
+	    END IF;
+	    RAISE NOTICE '✅ Migration recherche image optimisée appliquée avec succès';
+	END $$;"
+1769830127000,2026-01-31 03:28:47 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:ERROR:  cannot insert multiple commands into a prepared statement
+1769830127000,"2026-01-31 03:28:47 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:STATEMENT:  -- Migration: Correction erreur to_tsvector avec langue dynamique
+	-- Date: 2026-01-14
+	-- Description: Corrige l'erreur ""function to_tsvector(text, text) does not exist"" 
+	--              en convertissant correctement le paramètre TEXT en regconfig
+	-- =====================================================
+	-- 1. Fonction Helper pour Convertir Langue TEXT -> regconfig
+	-- =====================================================
+	CREATE OR REPLACE FUNCTION get_text_search_config(lang_text TEXT)
+	RETURNS regconfig AS $$
+	BEGIN
+	    -- Convertir le texte de langue en regconfig valide
+	    -- Valeurs supportées: french, english, spanish, portuguese, arabic
+	    CASE 
+	        WHEN lang_text ILIKE 'french' OR lang_text ILIKE 'français' OR lang_text ILIKE 'fr' THEN
+	            RETURN 'french'::regconfig;
+	        WHEN lang_text ILIKE 'english' OR lang_text ILIKE 'anglais' OR lang_text ILIKE 'en' THEN
+	            RETURN 'english'::regconfig;
+	        WHEN lang_text ILIKE 'spanish' OR lang_text ILIKE 'espagnol' OR lang_text ILIKE 'es' THEN
+	            RETURN 'spanish'::regconfig;
+	        WHEN lang_text ILIKE 'portuguese' OR lang_text ILIKE 'portugais' OR lang_text ILIKE 'pt' THEN
+	            RETURN 'portuguese'::regconfig;
+	        WHEN lang_text ILIKE 'arabic' OR lang_text ILIKE 'arabe' OR lang_text ILIKE 'ar' THEN
+	            RETURN 'arabic'::regconfig;
+	        ELSE
+	            -- Français par défaut si langue non reconnue
+	            RETURN 'french'::regconfig;
+	    END CASE;
+	END;
+	$$ LANGUAGE plpgsql IMMUTABLE;
+	COMMENT ON FUNCTION get_text_search_config IS 'Convertit un texte de langue en regconfig PostgreSQL valide pour to_tsvector';
+	-- =====================================================
+	-- 2. Correction de la Fonction search_images_by_ai_analysis
+	-- =====================================================
+	CREATE OR REPLACE FUNCTION search_images_by_ai_analysis(
+	    search_query TEXT,
+	    search_tags TEXT[],
+	    search_category TEXT DEFAULT NULL,
+	    search_marque TEXT DEFAULT NULL,
+	    search_couleur TEXT DEFAULT NULL,
+	    gps_lat FLOAT DEFAULT NULL,
+	    gps_lng FLOAT DEFAULT NULL,
+	    search_radius_km INTEGER DEFAULT 50,
+	    max_results INTEGER DEFAULT 20,
+	    detected_lang TEXT DEFAULT 'french'  -- Langue dynamique
+	)
+	RETURNS TABLE (
+	    service_id INTEGER,
+	    media_id INTEGER,
+	    media_path TEXT,
+	    product_name TEXT,
+	    ai_description TEXT,
+	    ai_tags TEXT[],
+	    match_score FLOAT,
+	    distance_km FLOAT,
+	    service_data JSONB
+	) AS $$
+	DECLARE
+	    normalized_search_query TEXT;
+	    normalized_search_tags TEXT[];
+	    normalized_search_marque TEXT;
+	    normalized_search_couleur TEXT;
+	    lang_config regconfig;  -- ✅ CORRIGÉ: Variable regconfig au lieu de TEXT
+	BEGIN
+	    -- ✅ CORRIGÉ: Convertir la langue TEXT en regconfig
+	    lang_config := get_text_search_config(detected_lang);
+	    -- Normaliser les paramètres de recherche
+	    normalized_search_query := normalize_text(search_query);
+	    normalized_search_tags := normalize_word_array(search_tags);
+	    normalized_search_marque := CASE WHEN search_marque IS NOT NULL THEN normalize_text(search_marque) ELSE NULL END;
+	    normalized_search_couleur := CASE WHEN search_couleur IS NOT NULL THEN normalize_text(search_couleur) ELSE NULL END;
+	    RETURN QUERY
+	    WITH ranked_results AS (
+	        SELECT 
+	            s.id as service_id,
+	            m.id as media_id,
+	            m.path as media_path,
+	            COALESCE(
+	                product->>'nom',
+	                product->>'name',
+	                product->>'titre',
+	                'Produit'
+	            ) as product_name,
+	            m.ai_description,
+	            m.ai_tags,
+	            (
+	                -- ✅ CORRIGÉ: Utiliser lang_config (regconfig) au lieu de detected_lang (TEXT)
+	                COALESCE(
+	                    ts_rank(
+	                        to_tsvector(lang_config, COALESCE(m.normalized_ai_description, '')),
+	                        plainto_tsquery(lang_config, normalized_search_query)
+	                    ) * 50.0,
+	                    0.0
+	                ) +
+	                -- Matching vectoriel optimisé avec similarité (exact + partiel + fuzzy)
+	                COALESCE(
+	                    calculate_vector_match_score_optimized(
+	                        m.normalized_ai_tags,
+	                        normalized_search_tags
+	                    ) * 30.0,  -- Multiplicateur pour tags
+	                    0.0
+	                ) +
+	                -- Matching partiel sur description normalisée (mots tronqués)
+	                CASE 
+	                    WHEN normalized_search_query != '' 
+	                         AND m.normalized_ai_description LIKE '%' || normalized_search_query || '%'
+	                    THEN 35.0
+	                    ELSE 0.0
+	                END +
+	                -- Bonus tags communs avec normalisation
+	                (SELECT COUNT(*) * 20.0 
+	                 FROM unnest(COALESCE(m.normalized_ai_tags, ARRAY[]::TEXT[])) tag 
+	                 WHERE tag = ANY(normalized_search_tags)) +
+	                -- Bonus marque exacte avec normalisation
+	                CASE 
+	                    WHEN normalized_search_marque IS NOT NULL 
+	                         AND normalize_text(COALESCE(m.ai_metadata->>'marque', '')) = normalized_search_marque
+	                    THEN 100.0 
+	                    ELSE 0.0 
+	                END +
+	                -- Bonus couleur avec normalisation
+	                CASE 
+	                    WHEN normalized_search_couleur IS NOT NULL 
+	                         AND EXISTS (
+	                             SELECT 1 
+	                             FROM jsonb_array_elements_text(COALESCE(m.ai_metadata->'couleurs', '[]'::jsonb)) AS couleur
+	                             WHERE normalize_text(couleur) = normalized_search_couleur
+	                         )
+	                    THEN 30.0 
+	                    ELSE 0.0 
+	                END +
+	                -- Bonus catégorie identique
+	                CASE 
+	                    WHEN search_category IS NOT NULL 
+	                         AND m.ai_category = search_category 
+	                    THEN 40.0 
+	                    ELSE 0.0 
+	                END +
+	                -- Bonus confidence élevée
+	                (COALESCE(m.ai_confidence, 0.5) * 20.0)
+	            )::FLOAT as match_score,
+	            -- Calcul distance GPS si coordonnées fournies
+	            CASE 
+	                WHEN gps_lat IS NOT NULL AND gps_lng IS NOT NULL 
+	                     AND s.gps IS NOT NULL AND s.gps != '' 
+	                     AND s.gps ~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
+	                THEN
+	                    ST_Distance(
+	                        ST_Point(gps_lng, gps_lat)::geography,
+	                        ST_Point(
+	                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+	                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+	                        )::geography
+	                    ) / 1000.0  -- Convertir en km
+	                ELSE NULL
+	            END as distance_km,
+	            s.data as service_data,
+	            product
+	        FROM services s
+	        INNER JOIN media m ON m.service_id = s.id
+	        CROSS JOIN LATERAL jsonb_array_elements(
+	            CASE 
+	                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+	                THEN s.data->'produits'
+	                ELSE '[]'::jsonb
+	            END
+	        ) AS product
+	        WHERE s.is_active = true
+	        AND m.type = 'image'
+	        AND m.ai_description IS NOT NULL
+	        AND (
+	            -- ✅ CORRIGÉ: Utiliser lang_config (regconfig) au lieu de detected_lang (TEXT)
+	            to_tsvector(lang_config, COALESCE(m.normalized_ai_description, '')) @@ plainto_tsquery(lang_config, normalized_search_query)
+	            OR m.normalized_ai_tags && normalized_search_tags  -- Overlap sur tags normalisés
+	            OR calculate_vector_match_score_optimized(m.normalized_ai_tags, normalized_search_tags) > 0.0  -- Matching vectoriel optimisé
+	            OR (normalized_search_query != '' AND m.normalized_ai_description LIKE '%' || normalized_search_query || '%')  -- Matching partiel
+	            OR (search_category IS NOT NULL AND m.ai_category = search_category)
+	        )
+	        -- Filtre GPS si coordonnées fournies
+	        AND (
+	            gps_lat IS NULL 
+	            OR gps_lng IS NULL
+	            OR search_radius_km IS NULL
+	            OR s.gps IS NULL
+	            OR s.gps = ''
+	            OR s.gps !~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
+	            OR ST_Distance(
+	                ST_Point(gps_lng, gps_lat)::geography,
+	                ST_Point(
+	                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+	                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+	                )::geography
+	            ) / 1000.0 <= search_radius_km
+	        )
+	    )
+	    SELECT 
+	        ranked_results.service_id,
+	        ranked_results.media_id,
+	        ranked_results.media_path,
+	        ranked_results.product_name,
+	        ranked_results.ai_description,
+	        ranked_results.ai_tags,
+	        ranked_results.match_score,
+	        ranked_results.distance_km,
+	        ranked_results.service_data
+	    FROM ranked_results
+	    WHERE ranked_results.match_score > 0.0  -- ✅ AMÉLIORÉ: Filtrer les résultats avec score > 0
+	    ORDER BY 
+	        ranked_results.match_score DESC,
+	        ranked_results.distance_km ASC NULLS LAST
+	    LIMIT max_results;
+	END;
+	$$ LANGUAGE plpgsql STABLE;
+	COMMENT ON FUNCTION search_images_by_ai_analysis IS 'Recherche intelligente d''images par analyse IA avec matching vectoriel optimisé, gestion accents, matching partiel/fuzzy, et langue dynamique (CORRIGÉ: conversion TEXT->regconfig)';
+	-- =====================================================
+	-- 3. Vérification
+	-- =====================================================
+	DO $$
+	BEGIN
+	    -- Vérifier que la fonction helper existe
+	    IF NOT EXISTS (
+	        SELECT 1 FROM pg_proc 
+	        WHERE proname = 'get_text_search_config'
+	    ) THEN
+	        RAISE EXCEPTION 'Fonction get_text_search_config non créée';
+	    END IF;
+	    -- Vérifier que la fonction principale existe
+	    IF NOT EXISTS (
+	        SELECT 1 FROM pg_proc 
+	        WHERE proname = 'search_images_by_ai_analysis'
+	    ) THEN
+	        RAISE EXCEPTION 'Fonction search_images_by_ai_analysis non créée';
+	    END IF;
+	    RAISE NOTICE '✅ Migration correction to_tsvector appliquée avec succès';
+	END $$;"
+1769830127000,2026-01-31 03:28:47 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:ERROR:  cannot insert multiple commands into a prepared statement
+1769830127000,"2026-01-31 03:28:47 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:STATEMENT:  
+	        DROP FUNCTION IF EXISTS run_audio_cache_cleanup();
+	        CREATE OR REPLACE FUNCTION run_audio_cache_cleanup()
+	        RETURNS TABLE(
+	            deleted_count INTEGER,
+	            kept_count INTEGER,
+	            total_before INTEGER,
+	            total_after INTEGER
+	        ) AS $$
+	        DECLARE
+	            deleted_count_var INTEGER := 0;
+	            kept_count_var INTEGER := 0;
+	            total_before_var INTEGER := 0;
+	            total_after_var INTEGER := 0;
+	        BEGIN
+	            -- Vérifier si la fonction cleanup_old_audio_transcriptions existe
+	            IF EXISTS (
+	                SELECT 1 FROM pg_proc 
+	                WHERE proname = 'cleanup_old_audio_transcriptions'
+	            ) THEN
+	                -- Exécuter le nettoyage et récupérer les résultats dans des variables explicites
+	                -- Utiliser COALESCE pour garantir des valeurs non-NULL
+	                SELECT 
+	                    COALESCE(deleted_count, 0),
+	                    COALESCE(kept_count, 0),
+	                    COALESCE(total_before, 0),
+	                    COALESCE(total_after, 0)
+	                INTO 
+	                    deleted_count_var,
+	                    kept_count_var,
+	                    total_before_var,
+	                    total_after_var
+	                FROM cleanup_old_audio_transcriptions()
+	                LIMIT 1;
+	            ELSE
+	                -- Si la fonction n'existe pas, retourner des valeurs par défaut (0)
+	                RAISE NOTICE 'Fonction cleanup_old_audio_transcriptions non trouvée, retour de valeurs par défaut';
+	            END IF;
+	            -- Log (peut être envoyé à un système de monitoring)
+	            RAISE NOTICE 'Audio cache cleanup: deleted %, kept %, total before %, after %', 
+	                deleted_count_var, kept_count_var, total_before_var, total_after_var;
+	            -- Retourner les résultats comme une table (toujours des valeurs non-NULL)
+	            RETURN QUERY SELECT deleted_count_var, kept_count_var, total_before_var, total_after_var;
+	        END;
+	        $$ LANGUAGE plpgsql;"
+1769830127000,2026-01-31 03:28:47 UTC:10.0.3.217(48468):yukpo_db_user@postgres:[27378]:ERROR:  cannot insert multiple commands into a prepared statement
+1769830127000,"2026-01-31 03:28:47 UTC:10.0.3.217(48468):yukpo_db_user@postgres:[27378]:STATEMENT:  -- Migration: Optimisation Finale Performance Recherche
+	-- Date: 2025-12-30
+	-- Description: Réduire temps de recherche à < 2 secondes
+	-- =====================================================
+	-- 1. Fonction Optimisée : Calcul Meilleur Score Vectoriel
+	-- =====================================================
+	-- ✅ NOUVEAU: Fonction qui calcule les deux scores en une seule passe (évite double appel)
+	CREATE OR REPLACE FUNCTION calculate_best_vector_match_score(
+	    characteristic_vector_normalized TEXT[],
+	    full_vector_normalized TEXT[],
+	    search_keywords_normalized TEXT[]
+	)
+	RETURNS REAL AS $$
+	    SELECT GREATEST(
+	        COALESCE(calculate_vector_match_score_optimized(characteristic_vector_normalized, search_keywords_normalized), 0.0),
+	        COALESCE(calculate_vector_match_score_optimized(full_vector_normalized, search_keywords_normalized), 0.0)
+	    );
+	$$ LANGUAGE sql IMMUTABLE;
+	COMMENT ON FUNCTION calculate_best_vector_match_score IS 'Calcule le meilleur score vectoriel entre characteristic et full_vector en une seule passe';
+	-- =====================================================
+	-- 2. Index Composite pour Filtres Fréquents (si pas déjà créé)
+	-- =====================================================
+	-- Index composite pour accélérer les filtres fréquents
+	CREATE INDEX IF NOT EXISTS idx_autocomplete_search_filters_composite 
+	ON autocomplete_characteristics (is_real_product, identifiant_base, service_id) 
+	WHERE is_real_product = TRUE AND identifiant_base = 'produits';
+	-- Index sur service_id pour accélérer les jointures
+	CREATE INDEX IF NOT EXISTS idx_autocomplete_service_id_active 
+	ON autocomplete_characteristics (service_id) 
+	WHERE is_real_product = TRUE AND identifiant_base = 'produits';
+	-- =====================================================
+	-- 3. Vérification
+	-- =====================================================
+	DO $$
+	BEGIN
+	    IF NOT EXISTS (
+	        SELECT 1 FROM pg_proc WHERE proname = 'calculate_best_vector_match_score'
+	    ) THEN
+	        RAISE EXCEPTION 'Fonction calculate_best_vector_match_score non créée';
+	    END IF;
+	    RAISE NOTICE '✅ Migration optimisation performance recherche appliquée avec succès';
+	END $$;"
+1769830127000,2026-01-31 03:28:47 UTC:10.0.3.217(48402):yukpo_db_user@postgres:[27369]:ERROR:  cannot insert multiple commands into a prepared statement
+1769830127000,"2026-01-31 03:28:47 UTC:10.0.3.217(48402):yukpo_db_user@postgres:[27369]:STATEMENT:  
+	        CREATE INDEX IF NOT EXISTS idx_delivery_partners_name ON delivery_partners(name);
+	        CREATE INDEX IF NOT EXISTS idx_delivery_partners_active ON delivery_partners(is_active);
+	        CREATE INDEX IF NOT EXISTS idx_delivery_partners_created_by ON delivery_partners(created_by);
+	        CREATE INDEX IF NOT EXISTS idx_delivery_partners_type ON delivery_partners(partner_type);"
+1769830127000,"2026-01-31 03:28:47 UTC:10.0.3.217(48402):yukpo_db_user@postgres:[27369]:ERROR:  syntax error at or near "";"" at character 45"
+1769830127000,2026-01-31 03:28:47 UTC:10.0.3.217(48402):yukpo_db_user@postgres:[27369]:STATEMENT:  CREATE TABLE IF NOT EXISTS family_profiles (;
+1769830130000,2026-01-31 03:28:50 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:ERROR:  function run_audio_cache_cleanup() does not exist at character 24
+1769830130000,2026-01-31 03:28:50 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+1769830130000,"2026-01-31 03:28:50 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:STATEMENT:  
+	        SELECT * FROM run_audio_cache_cleanup()"
+1769830130000,2026-01-31 03:28:50 UTC:10.0.3.217(48534):yukpo_db_user@postgres:[27385]:ERROR:  function run_audio_cache_cleanup() does not exist at character 24
+1769830130000,2026-01-31 03:28:50 UTC:10.0.3.217(48534):yukpo_db_user@postgres:[27385]:HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+1769830130000,"2026-01-31 03:28:50 UTC:10.0.3.217(48534):yukpo_db_user@postgres:[27385]:STATEMENT:  
+	        SELECT * FROM run_audio_cache_cleanup()"
+1769830143000,2026-01-31 03:29:03 UTC::@:[1345]:LOG:  checkpoint starting: time
+1769830210000,"2026-01-31 03:30:10 UTC::@:[1345]:LOG:  checkpoint complete: wrote 669 buffers (0.3%); 0 WAL file(s) added, 0 removed, 2 recycled; write=66.941 s, sync=0.003 s, total=66.952 s; sync files=116, longest=0.002 s, average=0.001 s; distance=67276 kB, estimate=67276 kB"
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(32884):yukpo_db_user@postgres:[27570]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(53604):yukpo_db_user@postgres:[26987]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(44258):yukpo_db_user@postgres:[27541]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(47194):yukpo_db_user@postgres:[27559]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(46234):yukpo_db_user@postgres:[27321]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(46226):yukpo_db_user@postgres:[27311]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(59924):yukpo_db_user@postgres:[27402]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(59942):yukpo_db_user@postgres:[27404]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(59956):yukpo_db_user@postgres:[27405]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(37634):yukpo_db_user@postgres:[27492]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(38608):yukpo_db_user@postgres:[27265]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(44266):yukpo_db_user@postgres:[27543]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(55430):yukpo_db_user@postgres:[27514]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(46970):yukpo_db_user@postgres:[27337]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(56278):yukpo_db_user@postgres:[27298]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(59926):yukpo_db_user@postgres:[27403]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(59914):yukpo_db_user@postgres:[27401]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(37194):yukpo_db_user@postgres:[27441]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(59970):yukpo_db_user@postgres:[27406]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(44272):yukpo_db_user@postgres:[27544]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(46218):yukpo_db_user@postgres:[27310]:LOG:  could not receive data from client: Connection reset by peer
+1769830227000,2026-01-31 03:30:27 UTC:10.0.2.130(53614):yukpo_db_user@postgres:[26988]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48550):yukpo_db_user@postgres:[27388]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48538):yukpo_db_user@postgres:[27386]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48548):yukpo_db_user@postgres:[27387]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48496):yukpo_db_user@postgres:[27382]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48526):yukpo_db_user@postgres:[27384]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48474):yukpo_db_user@postgres:[27380]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48512):yukpo_db_user@postgres:[27383]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48440):yukpo_db_user@postgres:[27375]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48434):yukpo_db_user@postgres:[27373]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48458):yukpo_db_user@postgres:[27377]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48402):yukpo_db_user@postgres:[27369]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48410):yukpo_db_user@postgres:[27371]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48382):yukpo_db_user@postgres:[27367]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48408):yukpo_db_user@postgres:[27370]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48468):yukpo_db_user@postgres:[27378]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48470):yukpo_db_user@postgres:[27379]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48534):yukpo_db_user@postgres:[27385]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48398):yukpo_db_user@postgres:[27368]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48420):yukpo_db_user@postgres:[27372]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48436):yukpo_db_user@postgres:[27374]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48486):yukpo_db_user@postgres:[27381]:LOG:  could not receive data from client: Connection reset by peer
+1769830237000,2026-01-31 03:30:37 UTC:10.0.3.217(48456):yukpo_db_user@postgres:[27376]:LOG:  could not receive data from client: Connection reset by peer
+1769830443000,2026-01-31 03:34:03 UTC::@:[1345]:LOG:  checkpoint starting: time
+1769830466000,"2026-01-31 03:34:26 UTC::@:[1345]:LOG:  checkpoint complete: wrote 231 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=23.128 s, sync=0.002 s, total=23.136 s; sync files=40, longest=0.001 s, average=0.001 s; distance=63494 kB, estimate=66898 kB"
+1769830743000,2026-01-31 03:39:03 UTC::@:[1345]:LOG:  checkpoint starting: time
+1769830769000,"2026-01-31 03:39:29 UTC::@:[1345]:LOG:  checkpoint complete: wrote 261 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=26.145 s, sync=0.002 s, total=26.155 s; sync files=41, longest=0.002 s, average=0.001 s; distance=65799 kB, estimate=66788 kB"
+1769831043000,2026-01-31 03:44:03 UTC::@:[1345]:LOG:  checkpoint starting: time
+1769831072000,"2026-01-31 03:44:32 UTC::@:[1345]:LOG:  checkpoint complete: wrote 284 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=28.586 s, sync=0.003 s, total=28.598 s; sync files=42, longest=0.002 s, average=0.001 s; distance=65450 kB, estimate=66654 kB"
+1769831343000,2026-01-31 03:49:03 UTC::@:[1345]:LOG:  checkpoint starting: time
+1769831369000,"2026-01-31 03:49:29 UTC::@:[1345]:LOG:  checkpoint complete: wrote 261 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=26.141 s, sync=0.002 s, total=26.148 s; sync files=39, longest=0.002 s, average=0.001 s; distance=65581 kB, estimate=66547 kB"
+1769831643000,2026-01-31 03:54:03 UTC::@:[1345]:LOG:  checkpoint starting: time
+1769831664000,"2026-01-31 03:54:24 UTC::@:[1345]:LOG:  checkpoint complete: wrote 210 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=21.012 s, sync=0.003 s, total=21.021 s; sync files=38, longest=0.002 s, average=0.001 s; distance=65450 kB, estimate=66437 kB"

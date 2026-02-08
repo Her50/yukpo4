@@ -77,3 +77,5 @@ Cet override force la version 2.2.3, mais même avec d'autres versions (2.0.6, 2
 
 Les tests confirment que le problème est **architectural** et non lié aux versions ou à `useExpoPublishing()`. Le problème fondamental est l'ordre d'évaluation Gradle quand `expo-modules-core` est inclus dans `pluginManagement`.
 
+
+

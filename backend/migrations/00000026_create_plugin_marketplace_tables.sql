@@ -115,3 +115,5 @@ CREATE TRIGGER trigger_update_plugin_rating
 
 
 
+
+

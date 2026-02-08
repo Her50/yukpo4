@@ -373,3 +373,5 @@ refresh_services_search_optimized()
 
 **Document de référence**: `backend/GUIDE_MIGRATIONS_AUTOMATIQUES.md`
 
+
+

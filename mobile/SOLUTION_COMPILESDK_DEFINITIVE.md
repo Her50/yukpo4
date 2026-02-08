@@ -84,3 +84,5 @@ Le build devrait maintenant réussir car :
 3. Si le problème persiste, vérifier que le patch est bien appliqué avec `npx patch-package --check`
 
 
+
+

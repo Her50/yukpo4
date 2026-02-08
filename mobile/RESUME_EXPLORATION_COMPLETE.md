@@ -32,3 +32,5 @@ Chaque correction révèle la couche suivante, mais on progresse :
 
 Le problème nécessite une **restructuration complète** du fichier `expo-modules-core/android/build.gradle` pour qu'il fonctionne dans le contexte de `pluginManagement`. Toutes les corrections sont maintenant dans le patch.
 
+
+

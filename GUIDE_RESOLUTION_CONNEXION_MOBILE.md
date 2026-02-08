@@ -243,3 +243,5 @@ aws ecs describe-services \
 **Prochaine étape** : Configurer `ALLOWED_ORIGINS=*` dans la tâche ECS.
 
 
+
+

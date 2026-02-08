@@ -169,3 +169,5 @@ Une fois le compte créé, vous pouvez supprimer l'endpoint du code:
 
 Ou simplement laisser l'endpoint (il est protégé par le token secret).
 
+
+

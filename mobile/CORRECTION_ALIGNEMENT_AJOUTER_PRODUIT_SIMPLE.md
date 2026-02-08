@@ -146,3 +146,5 @@ Cette correction garantit que :
 
 *Correction effectuée le 2025-01-XX - Alignement avec FormulaireYukpoIntelligentScreen*
 
+
+

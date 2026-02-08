@@ -53,3 +53,5 @@ CREATE INDEX IF NOT EXISTS idx_global_promo_products_data_gin ON global_promo_pr
 
 
 
+
+

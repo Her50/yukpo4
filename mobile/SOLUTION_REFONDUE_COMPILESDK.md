@@ -54,3 +54,5 @@ Error resolving plugin [id: 'expo-module-gradle-plugin']
 Relancer le build EAS. Le problème devrait être résolu définitivement.
 
 
+
+

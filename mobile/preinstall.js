@@ -18,3 +18,5 @@ console.log('🔧 PREINSTALL: Preparing expo-modules-core fix...');
 console.log('✅ PREINSTALL: Script will ensure postinstall.js modifies build.gradle correctly');
 
 
+
+

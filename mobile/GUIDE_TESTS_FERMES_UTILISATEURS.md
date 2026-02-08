@@ -237,3 +237,5 @@ Une fois que vous avez l'accès en production, vous pourrez utiliser **"Tests ou
 
 Mais en attendant, les **tests fermés avec groupe Google public** fonctionnent très bien !
 
+
+

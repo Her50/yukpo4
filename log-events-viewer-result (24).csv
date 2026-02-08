@@ -1,0 +1,1392 @@
+timestamp,message
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57586):yukpo_db_user@postgres:[539]:ERROR:  syntax error at end of input at character 50
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57586):yukpo_db_user@postgres:[539]:STATEMENT:  COMMENT ON INDEX idx_products_lifecycle_active IS
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:ERROR:  syntax error at end of input at character 66
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_products_lifecycle_service_product
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57480):yukpo_db_user@postgres:[524]:ERROR:  syntax error at end of input at character 73
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57480):yukpo_db_user@postgres:[524]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_products_lifecycle_service_product_active
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:ERROR:  syntax error at end of input at character 64
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_services_user_id_created_at_desc
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57486):yukpo_db_user@postgres:[525]:ERROR:  syntax error at end of input at character 59
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57486):yukpo_db_user@postgres:[525]:STATEMENT:  COMMENT ON INDEX idx_products_lifecycle_service_product IS
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57500):yukpo_db_user@postgres:[527]:ERROR:  syntax error at end of input at character 66
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57500):yukpo_db_user@postgres:[527]:STATEMENT:  COMMENT ON INDEX idx_products_lifecycle_service_product_active IS
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57524):yukpo_db_user@postgres:[532]:ERROR:  syntax error at end of input at character 291
+1769979221000,"2026-02-01 20:53:41 UTC:10.0.3.204(57524):yukpo_db_user@postgres:[532]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_products_fulltext_gin
+	ON services USING GIN (
+	    to_tsvector('french', 
+	        COALESCE(data->'titre_service'->>'valeur', '') || ' ' ||
+	        COALESCE(data->'description'->>'valeur', '') || ' ' ||
+	        COALESCE(category, '')
+	    )"
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57522):yukpo_db_user@postgres:[531]:ERROR:  syntax error at end of input at character 368
+1769979221000,"2026-02-01 20:53:41 UTC:10.0.3.204(57522):yukpo_db_user@postgres:[531]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_products_array_gin
+	ON services USING GIN (
+	    (
+	        CASE 
+	            WHEN jsonb_typeof(data->'produits') = 'array' 
+	            THEN data->'produits'
+	            WHEN jsonb_typeof(data->'produits'->'valeur') = 'array'
+	            THEN data->'produits'->'valeur'
+	            ELSE '[]'::jsonb
+	        END
+	    )"
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57552):yukpo_db_user@postgres:[535]:ERROR:  syntax error at end of input at character 57
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57552):yukpo_db_user@postgres:[535]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_deliveries_creator_status
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57526):yukpo_db_user@postgres:[533]:ERROR:  syntax error at end of input at character 63
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57526):yukpo_db_user@postgres:[533]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_tracking_points_recent_delivery
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57586):yukpo_db_user@postgres:[539]:ERROR:  syntax error at end of input at character 54
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57586):yukpo_db_user@postgres:[539]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_video_jobs_user_status
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57462):yukpo_db_user@postgres:[521]:ERROR:  syntax error at end of input at character 70
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57462):yukpo_db_user@postgres:[521]:STATEMENT:  CREATE UNIQUE INDEX IF NOT EXISTS idx_services_search_cache_id_unique
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57464):yukpo_db_user@postgres:[522]:ERROR:  syntax error at end of input at character 60
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57464):yukpo_db_user@postgres:[522]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_services_search_cache_vector
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:ERROR:  syntax error at end of input at character 62
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_services_search_cache_category
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:ERROR:  syntax error at end of input at character 749
+1769979221000,"2026-02-01 20:53:41 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:STATEMENT:  CREATE MATERIALIZED VIEW IF NOT EXISTS active_products_cache AS
+	SELECT 
+	    (s.id::bigint * 1000000 + jsonb_array_elements.pos) as cache_id,
+	    s.id as service_id,
+	    s.user_id,
+	    s.category,
+	    s.gps,
+	    jsonb_array_elements.product,
+	    s.created_at
+	FROM services s
+	CROSS JOIN LATERAL jsonb_array_elements(
+	    CASE 
+	        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+	        THEN s.data->'produits'
+	        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+	        THEN s.data->'produits'->'valeur'
+	        ELSE '[]'::jsonb
+	    END
+	) WITH ORDINALITY AS jsonb_array_elements(product, pos)
+	WHERE s.is_active = TRUE
+	AND (
+	    jsonb_typeof(s.data->'produits') = 'array' OR
+	    jsonb_typeof(s.data->'produits'->'valeur') = 'array'"
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57486):yukpo_db_user@postgres:[525]:ERROR:  syntax error at end of input at character 70
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57486):yukpo_db_user@postgres:[525]:STATEMENT:  CREATE UNIQUE INDEX IF NOT EXISTS idx_active_products_cache_id_unique
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57500):yukpo_db_user@postgres:[527]:ERROR:  syntax error at end of input at character 64
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57500):yukpo_db_user@postgres:[527]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_active_products_service_category
+1769979221000,2026-02-01 20:53:41 UTC:10.0.3.204(57508):yukpo_db_user@postgres:[528]:ERROR:  syntax error at end of input at character 225
+1769979221000,"2026-02-01 20:53:41 UTC:10.0.3.204(57508):yukpo_db_user@postgres:[528]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_active_products_product_name
+	ON active_products_cache USING GIN (
+	    to_tsvector('french', 
+	        COALESCE(product->>'name', '') || ' ' ||
+	        COALESCE(product->>'description', '')
+	    )"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57514):yukpo_db_user@postgres:[529]:ERROR:  unterminated dollar-quoted string at or near ""$$
+	BEGIN
+	    REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_cache;
+	    REFRESH MATERIALIZED VIEW CONCURRENTLY active_products_cache;
+	END;"" at character 85"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57514):yukpo_db_user@postgres:[529]:STATEMENT:  CREATE OR REPLACE FUNCTION refresh_scalability_materialized_views()
+	RETURNS void AS $$
+	BEGIN
+	    REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_cache;
+	    REFRESH MATERIALIZED VIEW CONCURRENTLY active_products_cache;
+	END;"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57516):yukpo_db_user@postgres:[530]:ERROR:  syntax error at end of input at character 956
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57516):yukpo_db_user@postgres:[530]:STATEMENT:  CREATE TABLE IF NOT EXISTS videos (
+	    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+	    content_id TEXT NOT NULL UNIQUE,
+	    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+	    titre TEXT NOT NULL,
+	    description TEXT,
+	    video_url TEXT NOT NULL,
+	    thumbnail TEXT,
+	    hashtags TEXT[] DEFAULT ARRAY[]::TEXT[],
+	    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+	    is_sponsored BOOLEAN NOT NULL DEFAULT FALSE,
+	    studio_session_id TEXT,
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    -- Métadonnées vidéo
+	    duration_ms INTEGER,
+	    video_format TEXT,
+	    video_source TEXT,
+	    -- Embedding vectoriel pour ML (stocké en TEXT, pgvector non utilisé)
+	    embedding TEXT, -- JSON array ou base64 pour stockage temporaire
+	    -- Statistiques
+	    view_count INTEGER DEFAULT 0,
+	    like_count INTEGER DEFAULT 0,
+	    save_count INTEGER DEFAULT 0,
+	    share_count INTEGER DEFAULT 0"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57560):yukpo_db_user@postgres:[537]:ERROR:  syntax error at end of input at character 53
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57560):yukpo_db_user@postgres:[537]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_videos_title_fulltext
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57572):yukpo_db_user@postgres:[538]:ERROR:  syntax error at end of input at character 59
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57572):yukpo_db_user@postgres:[538]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_videos_description_fulltext
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57450):yukpo_db_user@postgres:[519]:ERROR:  unterminated dollar-quoted string at or near ""$$
+	BEGIN
+	    NEW.updated_at = NOW();
+	    RETURN NEW;
+	END;"" at character 71"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57450):yukpo_db_user@postgres:[519]:STATEMENT:  CREATE OR REPLACE FUNCTION set_videos_updated_at()
+	RETURNS TRIGGER AS $$
+	BEGIN
+	    NEW.updated_at = NOW();
+	    RETURN NEW;
+	END;"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57480):yukpo_db_user@postgres:[524]:ERROR:  column ""tag.tag"" must appear in the GROUP BY clause or be used in an aggregate function at character 82"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57480):yukpo_db_user@postgres:[524]:STATEMENT:  CREATE MATERIALIZED VIEW IF NOT EXISTS hashtag_stats_materialized AS
+	SELECT 
+	    tag,
+	    COUNT(DISTINCT v.id) as video_count,
+	    SUM(v.view_count) as total_views,
+	    SUM(v.like_count) as total_likes,
+	    SUM(v.save_count) as total_saves,
+	    (
+	        SUM(v.like_count * 2 + v.save_count * 1.5 + v.view_count * 0.1) 
+	        / GREATEST(EXTRACT(EPOCH FROM (NOW() - MIN(v.created_at))) / 3600, 1)
+	    ) as trend_score,
+	    MAX(v.created_at) as last_video_at
+	FROM videos v
+	CROSS JOIN LATERAL unnest(v.hashtags) tag
+	WHERE v.is_active = TRUE"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:ERROR:  syntax error at end of input at character 285
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:STATEMENT:  ALTER TABLE content_engagement 
+	ADD COLUMN IF NOT EXISTS watch_duration_ms INTEGER,
+	ADD COLUMN IF NOT EXISTS video_duration_ms INTEGER,
+	ADD COLUMN IF NOT EXISTS completion_rate REAL,
+	ADD COLUMN IF NOT EXISTS device_type VARCHAR(50),
+	ADD COLUMN IF NOT EXISTS location_gps VARCHAR(255),"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57508):yukpo_db_user@postgres:[528]:ERROR:  syntax error at end of input at character 673
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57508):yukpo_db_user@postgres:[528]:STATEMENT:  CREATE TABLE IF NOT EXISTS user_preferences (
+	    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+	    preferred_categories TEXT[] DEFAULT ARRAY[]::TEXT[],
+	    preferred_hashtags TEXT[] DEFAULT ARRAY[]::TEXT[],
+	    preferred_creators INTEGER[] DEFAULT ARRAY[]::INTEGER[],
+	    preferred_video_length_min INTEGER DEFAULT 0,
+	    preferred_video_length_max INTEGER DEFAULT 600000, -- 10 minutes max par défaut
+	    avg_watch_duration_ms INTEGER DEFAULT 0,
+	    most_active_hour INTEGER, -- Heure de la journée la plus active (0-23)
+	    most_active_day INTEGER,   -- Jour de la semaine le plus actif (0-6, dimanche=0)
+	    last_updated TIMESTAMPTZ DEFAULT NOW()"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57514):yukpo_db_user@postgres:[529]:ERROR:  syntax error at end of input at character 59
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57514):yukpo_db_user@postgres:[529]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_user_preferences_categories
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57522):yukpo_db_user@postgres:[531]:ERROR:  syntax error at end of input at character 57
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57522):yukpo_db_user@postgres:[531]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_user_preferences_hashtags
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57516):yukpo_db_user@postgres:[530]:ERROR:  unterminated dollar-quoted string at or near ""$$
+	DECLARE
+	    v_categories TEXT[];
+	    v_hashtags TEXT[];
+	    v_creators INTEGER[];
+	    v_avg_watch_duration INTEGER;
+	    v_most_active_hour INTEGER;
+	    v_most_active_day INTEGER;
+	BEGIN
+	    -- Calculer catégories préférées (depuis services likés)
+	    SELECT array_agg(DISTINCT s.category)
+	    INTO v_categories
+	    FROM content_engagement ce
+	    JOIN media m ON m.id::text = ce.content_id OR 'media_' || m.service_id || '_' || m.id = ce.content_id
+	    JOIN services s ON s.id = m.service_id
+	    WHERE ce.user_id = p_user_id
+	      AND ce.liked = TRUE
+	      AND ce.created_at > NOW() - INTERVAL '90 days'
+	      AND s.category IS NOT NULL;
+	    -- Calculer hashtags préférés (depuis vidéos likées)
+	    SELECT array_agg(DISTINCT tag)
+	    INTO v_hashtags
+	    FROM content_engagement ce
+	    JOIN media m ON m.id::text = ce.content_id OR 'media_' || m.service_id || '_' || m.id = ce.content_id
+	    CROSS JOIN LATERAL unnest(COALESCE(m.ai_tags, ARRAY[]::TEXT[])) tag
+	    WHERE ce.user_id = p_user_id
+	      AND ce.liked = TRUE
+	      AND ce.created_at > NOW() - INTERVAL '90 days';
+	    -- Calculer créateurs préférés (depuis services likés)
+	    SELECT array_agg(DISTINCT s.user_id)
+	    INTO v_creators
+	    FROM content_engagement ce
+	    JOIN media m ON m.id::text = ce.content_id OR 'media_' || m.service_id || '_' || m.id = ce.content_id
+	    JOIN services s ON s.id = m.service_id
+	    WHERE ce.user_id = p_user_id
+	      AND ce.liked = TRUE
+	      AND ce.created_at > NOW() - INTERVAL '90 days';
+	    -- Calculer durée moyenne de visionnage
+	    SELECT COALESCE(AVG(watch_duration_ms), 0)::INTEGER
+	    INTO v_avg_watch_duration
+	    FROM content_engagement
+	    WHERE user_id = p_user_id
+	      AND watch_duration_ms IS NOT NULL
+	      AND created_at > NOW() - INTERVAL '30 days';
+	    -- Calculer heure la plus active
+	    SELECT EXTRACT(HOUR FROM created_at)::INTEGER
+	    INTO v_most_active_hour
+	    FROM content_engagement
+	    WHERE user_id = p_user_id
+	      AND created_at > NOW() - INTERVAL '30 days'
+	    GROUP BY EXTRACT(HOUR FROM created_at)
+	    ORDER BY COUNT(*) DESC
+	    LIMIT 1;
+	    -- Calculer jour le plus actif
+	    SELECT EXTRACT(DOW FROM created_at)::INTEGER
+	    INTO v_most_active_day
+	    FROM content_engagement
+	    WHERE user_id = p_user_id
+	      AND created_at > NOW() - INTERVAL '30 days'
+	    GROUP BY EXTRACT(DOW FROM created_at)
+	    ORDER BY COUNT(*) DESC
+	    LIMIT 1;
+	    -- Insérer ou mettre à jour préférences
+	    INSERT INTO user_preferences (
+	        user_id, 
+	        preferred_categories, 
+	        preferred_hashtags, 
+	        preferred_creators,
+	        avg_watch_duration_ms,
+	        most_active_hour,
+	        most_active_day,
+	        last_updated
+	    )
+	    VALUES (
+	        p_user_id,
+	        COALESCE(v_categories, ARRAY[]::TEXT[]),
+	        COALESCE(v_hashtags, ARRAY[]::TEXT[]),
+	        COALESCE(v_creators, ARRAY[]::INTEGER[]),
+	        COALESCE(v_avg_watch_duration, 0),
+	        v_most_active_hour,
+	        v_most_active_day,
+	        NOW()
+	    )
+	    ON CONFLICT (user_id) DO UPDATE SET
+	        preferred_categories = EXCLUDED.preferred_categories,
+	        preferred_hashtags = EXCLUDED.preferred_hashtags,
+	        preferred_creators = EXCLUDED.preferred_creators,
+	        avg_watch_duration_ms = EXCLUDED.avg_watch_duration_ms,
+	        most_active_hour = EXCLUDED.most_active_hour,
+	        most_active_day = EXCLUDED.most_active_day,
+	        last_updated = NOW();
+	END;"" at character 87"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57516):yukpo_db_user@postgres:[530]:STATEMENT:  CREATE OR REPLACE FUNCTION update_user_preferences(p_user_id INTEGER)
+	RETURNS VOID AS $$
+	DECLARE
+	    v_categories TEXT[];
+	    v_hashtags TEXT[];
+	    v_creators INTEGER[];
+	    v_avg_watch_duration INTEGER;
+	    v_most_active_hour INTEGER;
+	    v_most_active_day INTEGER;
+	BEGIN
+	    -- Calculer catégories préférées (depuis services likés)
+	    SELECT array_agg(DISTINCT s.category)
+	    INTO v_categories
+	    FROM content_engagement ce
+	    JOIN media m ON m.id::text = ce.content_id OR 'media_' || m.service_id || '_' || m.id = ce.content_id
+	    JOIN services s ON s.id = m.service_id
+	    WHERE ce.user_id = p_user_id
+	      AND ce.liked = TRUE
+	      AND ce.created_at > NOW() - INTERVAL '90 days'
+	      AND s.category IS NOT NULL;
+	    -- Calculer hashtags préférés (depuis vidéos likées)
+	    SELECT array_agg(DISTINCT tag)
+	    INTO v_hashtags
+	    FROM content_engagement ce
+	    JOIN media m ON m.id::text = ce.content_id OR 'media_' || m.service_id || '_' || m.id = ce.content_id
+	    CROSS JOIN LATERAL unnest(COALESCE(m.ai_tags, ARRAY[]::TEXT[])) tag
+	    WHERE ce.user_id = p_user_id
+	      AND ce.liked = TRUE
+	      AND ce.created_at > NOW() - INTERVAL '90 days';
+	    -- Calculer créateurs préférés (depuis services likés)
+	    SELECT array_agg(DISTINCT s.user_id)
+	    INTO v_creators
+	    FROM content_engagement ce
+	    JOIN media m ON m.id::text = ce.content_id OR 'media_' || m.service_id || '_' || m.id = ce.content_id
+	    JOIN services s ON s.id = m.service_id
+	    WHERE ce.user_id = p_user_id
+	      AND ce.liked = TRUE
+	      AND ce.created_at > NOW() - INTERVAL '90 days';
+	    -- Calculer durée moyenne de visionnage
+	    SELECT COALESCE(AVG(watch_duration_ms), 0)::INTEGER
+	    INTO v_avg_watch_duration
+	    FROM content_engagement
+	    WHERE user_id = p_user_id
+	      AND watch_duration_ms IS NOT NULL
+	      AND created_at > NOW() - INTERVAL '30 days';
+	    -- Calculer heure la plus active
+	    SELECT EXTRACT(HOUR FROM created_at)::INTEGER
+	    INTO v_most_active_hour
+	    FROM content_engagement
+	    WHERE user_id = p_user_id
+	      AND created_at > NOW() - INTERVAL '30 days'
+	    GROUP BY EXTRACT(HOUR FROM created_at)
+	    ORDER BY COUNT(*) DESC
+	    LIMIT 1;
+	    -- Calculer jour le plus actif
+	    SELECT EXTRACT(DOW FROM created_at)::INTEGER
+	    INTO v_most_active_day
+	    FROM content_engagement
+	    WHERE user_id = p_user_id
+	      AND created_at > NOW() - INTERVAL '30 days'
+	    GROUP BY EXTRACT(DOW FROM created_at)
+	    ORDER BY COUNT(*) DESC
+	    LIMIT 1;
+	    -- Insérer ou mettre à jour préférences
+	    INSERT INTO user_preferences (
+	        user_id, 
+	        preferred_categories, 
+	        preferred_hashtags, 
+	        preferred_creators,
+	        avg_watch_duration_ms,
+	        most_active_hour,
+	        most_active_day,
+	        last_updated
+	    )
+	    VALUES (
+	        p_user_id,
+	        COALESCE(v_categories, ARRAY[]::TEXT[]),
+	        COALESCE(v_hashtags, ARRAY[]::TEXT[]),
+	        COALESCE(v_creators, ARRAY[]::INTEGER[]),
+	        COALESCE(v_avg_watch_duration, 0),
+	        v_most_active_hour,
+	        v_most_active_day,
+	        NOW()
+	    )
+	    ON CONFLICT (user_id) DO UPDATE SET
+	        preferred_categories = EXCLUDED.preferred_categories,
+	        preferred_hashtags = EXCLUDED.preferred_hashtags,
+	        preferred_creators = EXCLUDED.preferred_creators,
+	        avg_watch_duration_ms = EXCLUDED.avg_watch_duration_ms,
+	        most_active_hour = EXCLUDED.most_active_hour,
+	        most_active_day = EXCLUDED.most_active_day,
+	        last_updated = NOW();
+	END;"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57540):yukpo_db_user@postgres:[534]:ERROR:  unterminated dollar-quoted string at or near ""$$
+	BEGIN
+	    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_engine_type') THEN
+	        CREATE TYPE delivery_engine_type AS ENUM (
+	            'moto',
+	            'scooter',
+	            'voiture',
+	            'camionnette',
+	            'velo_cargo',
+	            'pieton',
+	            'camion_leger',
+	            'autre'
+	        );
+	    END IF;"" at character 4"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57540):yukpo_db_user@postgres:[534]:STATEMENT:  DO $$
+	BEGIN
+	    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_engine_type') THEN
+	        CREATE TYPE delivery_engine_type AS ENUM (
+	            'moto',
+	            'scooter',
+	            'voiture',
+	            'camionnette',
+	            'velo_cargo',
+	            'pieton',
+	            'camion_leger',
+	            'autre'
+	        );
+	    END IF;"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57552):yukpo_db_user@postgres:[535]:ERROR:  unterminated dollar-quoted string at or near ""$$
+	BEGIN
+	    -- Vérifier si deliveries est déjà partitionnée
+	    IF NOT EXISTS (
+	        SELECT 1 FROM pg_class c
+	        JOIN pg_namespace n ON n.oid = c.relnamespace
+	        WHERE c.relname = 'deliveries' 
+	        AND c.relkind = 'p'
+	    ) THEN
+	        -- Ne pas essayer de convertir une table existante en partitionnée
+	        -- Cela nécessite une migration complexe avec création d'une nouvelle table
+	        RAISE NOTICE 'Table deliveries existe déjà - partitionnement désactivé (nécessite migration manuelle)';
+	    ELSE
+	        RAISE NOTICE 'Table deliveries déjà partitionnée';
+	    END IF;"" at character 4"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57552):yukpo_db_user@postgres:[535]:STATEMENT:  DO $$
+	BEGIN
+	    -- Vérifier si deliveries est déjà partitionnée
+	    IF NOT EXISTS (
+	        SELECT 1 FROM pg_class c
+	        JOIN pg_namespace n ON n.oid = c.relnamespace
+	        WHERE c.relname = 'deliveries' 
+	        AND c.relkind = 'p'
+	    ) THEN
+	        -- Ne pas essayer de convertir une table existante en partitionnée
+	        -- Cela nécessite une migration complexe avec création d'une nouvelle table
+	        RAISE NOTICE 'Table deliveries existe déjà - partitionnement désactivé (nécessite migration manuelle)';
+	    ELSE
+	        RAISE NOTICE 'Table deliveries déjà partitionnée';
+	    END IF;"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57526):yukpo_db_user@postgres:[533]:ERROR:  syntax error at end of input at character 67
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57526):yukpo_db_user@postgres:[533]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_video_jobs_user_status
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57560):yukpo_db_user@postgres:[537]:ERROR:  syntax error at end of input at character 73
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57560):yukpo_db_user@postgres:[537]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_studio_sessions_user_updated
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57450):yukpo_db_user@postgres:[519]:ERROR:  syntax error at end of input at character 262
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57450):yukpo_db_user@postgres:[519]:STATEMENT:  CREATE TABLE IF NOT EXISTS video_generation_metrics (
+	    id BIGSERIAL,
+	    job_id UUID NOT NULL,
+	    user_id INTEGER NOT NULL,
+	    status TEXT NOT NULL,
+	    duration_ms BIGINT,
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    PRIMARY KEY (id, created_at)"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57462):yukpo_db_user@postgres:[521]:ERROR:  syntax error at end of input at character 103
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57462):yukpo_db_user@postgres:[521]:STATEMENT:  CREATE TABLE IF NOT EXISTS video_generation_metrics_2025_01 
+	    PARTITION OF video_generation_metrics"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57464):yukpo_db_user@postgres:[522]:ERROR:  syntax error at end of input at character 103
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57464):yukpo_db_user@postgres:[522]:STATEMENT:  CREATE TABLE IF NOT EXISTS video_generation_metrics_2025_02 
+	    PARTITION OF video_generation_metrics"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:ERROR:  syntax error at end of input at character 49
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_video_metrics_job
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57480):yukpo_db_user@postgres:[524]:ERROR:  syntax error at end of input at character 50
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57480):yukpo_db_user@postgres:[524]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_video_metrics_user
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:ERROR:  syntax error at end of input at character 331
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:STATEMENT:  CREATE TABLE IF NOT EXISTS rate_limit_tracking (
+	    id BIGSERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL,
+	    endpoint TEXT NOT NULL,
+	    request_count INTEGER NOT NULL DEFAULT 1,
+	    window_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    UNIQUE(user_id, endpoint, window_start)"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57486):yukpo_db_user@postgres:[525]:ERROR:  syntax error at end of input at character 56
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57486):yukpo_db_user@postgres:[525]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_rate_limit_user_endpoint
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57524):yukpo_db_user@postgres:[532]:ERROR:  unterminated dollar-quoted string at or near ""$$
+	BEGIN
+	    DELETE FROM rate_limit_tracking 
+	    WHERE window_start < NOW() - INTERVAL '1 hour';
+	END;"" at character 70"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57524):yukpo_db_user@postgres:[532]:STATEMENT:  CREATE OR REPLACE FUNCTION cleanup_old_rate_limits()
+	RETURNS void AS $$
+	BEGIN
+	    DELETE FROM rate_limit_tracking 
+	    WHERE window_start < NOW() - INTERVAL '1 hour';
+	END;"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:ERROR:  syntax error at end of input at character 430
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:STATEMENT:  CREATE TABLE IF NOT EXISTS message_reactions (
+	    id SERIAL PRIMARY KEY,
+	    message_id VARCHAR(255) NOT NULL,
+	    user_id INTEGER NOT NULL,
+	    emoji VARCHAR(10) NOT NULL,
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+	    -- Contrainte unique: un utilisateur ne peut réagir qu'une fois avec le même emoji sur un message
+	    UNIQUE(message_id, user_id, emoji)"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57524):yukpo_db_user@postgres:[532]:ERROR:  unterminated dollar-quoted string at or near ""$$
+	BEGIN
+	    NEW.updated_at = NOW();
+	    RETURN NEW;
+	END;"" at character 85"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57524):yukpo_db_user@postgres:[532]:STATEMENT:  CREATE OR REPLACE FUNCTION update_message_reactions_updated_at()
+	RETURNS TRIGGER AS $$
+	BEGIN
+	    NEW.updated_at = NOW();
+	    RETURN NEW;
+	END;"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57486):yukpo_db_user@postgres:[525]:ERROR:  unterminated dollar-quoted string at or near ""$$
+	BEGIN
+	    -- Trouver les demandes de retour correspondantes
+	    -- Quand un nouveau bus est créé, on check s'il match des demandes
+	    RETURN QUERY
+	    SELECT 
+	        rtr.id as request_id,
+	        rtr.user_id,
+	        rtr.passenger_names,
+	        rtr.number_of_seats,
+	        rtr.preferred_return_time
+	    FROM return_trip_requests rtr
+	    JOIN products p ON p.id::text = p_product_id
+	    JOIN services s ON s.id = p.service_id
+	    LEFT JOIN bus_ticket_payments btp_outbound ON btp_outbound.id = rtr.outbound_payment_id
+	    WHERE rtr.status = 'pending'
+	        -- ✅ CRITIQUE: Match agence (le bus retour doit appartenir à la même agence que le bus aller)
+	        AND (
+	            -- Si outbound_payment_id existe, vérifier que l'agence du bus retour = agence du bus aller
+	            rtr.outbound_payment_id IS NULL
+	            OR btp_outbound.agency_user_id = s.user_id
+	        )
+	        -- Match route (inverse du voyage)
+	        AND rtr.return_from = p.depart
+	        AND rtr.return_to = p.destination
+	        -- Match date (avec flexibilité)
+	        AND p.date_depart BETWEEN 
+	            (rtr.preferred_return_date::date - INTERVAL '1 day' * rtr.date_flexibility_days)
+	            AND (rtr.preferred_return_date::date + INTERVAL '1 day' * rtr.date_flexibility_days)
+	        -- ✅ NOUVEAU: Match heure (si spécifiée, avec tolérance ±1h)
+	        AND (
+	            -- Si aucune heure préférée n'est spécifiée, on accepte tous les horaires
+	            rtr.preferred_return_time IS NULL 
+	            -- Si le bus n'a pas d'heure dans metadata, on accepte
+	            OR p.metadata->>'departure_time' IS NULL
+	            -- Sinon, on vérifie que l'heure du bus est dans la tolérance (±1h)
+	            OR ABS(
+	                EXTRACT(EPOCH FROM (
+	                    (p.metadata->>'departure_time')::TIME - rtr.preferred_return_time::TIME
+	                ))
+	            ) / 3600 <= 1  -- Tolérance de 1 heure (3600 secondes)
+	        )
+	        -- Vérifier qu'il y a assez de places
+	        AND p.total_seats >= rtr.number_of_seats;
+	END;"" at character 224"
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57486):yukpo_db_user@postgres:[525]:STATEMENT:  CREATE OR REPLACE FUNCTION match_return_trip_requests(p_product_id TEXT)
+	RETURNS TABLE(
+	    request_id TEXT,
+	    user_id INTEGER,
+	    passenger_names TEXT[],
+	    number_of_seats INTEGER,
+	    preferred_return_time TEXT
+	) AS $$
+	BEGIN
+	    -- Trouver les demandes de retour correspondantes
+	    -- Quand un nouveau bus est créé, on check s'il match des demandes
+	    RETURN QUERY
+	    SELECT 
+	        rtr.id as request_id,
+	        rtr.user_id,
+	        rtr.passenger_names,
+	        rtr.number_of_seats,
+	        rtr.preferred_return_time
+	    FROM return_trip_requests rtr
+	    JOIN products p ON p.id::text = p_product_id
+	    JOIN services s ON s.id = p.service_id
+	    LEFT JOIN bus_ticket_payments btp_outbound ON btp_outbound.id = rtr.outbound_payment_id
+	    WHERE rtr.status = 'pending'
+	        -- ✅ CRITIQUE: Match agence (le bus retour doit appartenir à la même agence que le bus aller)
+	        AND (
+	            -- Si outbound_payment_id existe, vérifier que l'agence du bus retour = agence du bus aller
+	            rtr.outbound_payment_id IS NULL
+	            OR btp_outbound.agency_user_id = s.user_id
+	        )
+	        -- Match route (inverse du voyage)
+	        AND rtr.return_from = p.depart
+	        AND rtr.return_to = p.destination
+	        -- Match date (avec flexibilité)
+	        AND p.date_depart BETWEEN 
+	            (rtr.preferred_return_date::date - INTERVAL '1 day' * rtr.date_flexibility_days)
+	            AND (rtr.preferred_return_date::date + INTERVAL '1 day' * rtr.date_flexibility_days)
+	        -- ✅ NOUVEAU: Match heure (si spécifiée, avec tolérance ±1h)
+	        AND (
+	            -- Si aucune heure préférée n'est spécifiée, on accepte tous les horaires
+	            rtr.preferred_return_time IS NULL 
+	            -- Si le bus n'a pas d'heure dans metadata, on accepte
+	            OR p.metadata->>'departure_time' IS NULL
+	            -- Sinon, on vérifie que l'heure du bus est dans la tolérance (±1h)
+	            OR ABS(
+	                EXTRACT(EPOCH FROM (
+	                    (p.metadata->>'departure_time')::TIME - rtr.preferred_return_time::TIME
+	                ))
+	            ) / 3600 <= 1  -- Tolérance de 1 heure (3600 secondes)
+	        )
+	        -- Vérifier qu'il y a assez de places
+	        AND p.total_seats >= rtr.number_of_seats;
+	END;"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57450):yukpo_db_user@postgres:[519]:ERROR:  cannot insert multiple commands into a prepared statement
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57450):yukpo_db_user@postgres:[519]:STATEMENT:  -- Migration: Optimisation Recherche Image avec Matching Vectoriel Normalisé
+	-- Date: 2025-12-30
+	-- Description: Applique les optimisations de matching vectoriel (accents, mots tronqués, fuzzy) à la recherche par image
+	-- =====================================================
+	-- 1. Colonnes Calculées Normalisées pour Media
+	-- =====================================================
+	-- Ajouter colonnes normalisées (utilise les fonctions existantes de la migration vector matching)
+	ALTER TABLE media 
+	ADD COLUMN IF NOT EXISTS normalized_ai_tags TEXT[] 
+	GENERATED ALWAYS AS (
+	    CASE 
+	        WHEN ai_tags IS NULL OR array_length(ai_tags, 1) IS NULL 
+	        THEN ARRAY[]::TEXT[]
+	        ELSE normalize_word_array(ai_tags)
+	    END
+	) STORED;
+	ALTER TABLE media 
+	ADD COLUMN IF NOT EXISTS normalized_ai_description TEXT
+	GENERATED ALWAYS AS (
+	    CASE 
+	        WHEN ai_description IS NULL OR ai_description = ''
+	        THEN ''
+	        ELSE LOWER(
+	            translate(
+	                ai_description,
+	                'àâäéèêëîïôöùûüÿç',
+	                'aaaeeeeiiioouuuyc'
+	            )
+	        )
+	    END
+	) STORED;
+	-- =====================================================
+	-- 2. Index GIN sur Colonnes Normalisées
+	-- =====================================================
+	-- Index GIN pour accélérer l'opérateur && sur tags normalisés
+	CREATE INDEX IF NOT EXISTS idx_media_normalized_ai_tags_gin 
+	ON media USING GIN (normalized_ai_tags);
+	-- Index full-text sur description normalisée
+	CREATE INDEX IF NOT EXISTS idx_media_normalized_ai_description_fulltext 
+	ON media USING GIN (to_tsvector('french', COALESCE(normalized_ai_description, '')));
+	-- Index composite pour filtres fréquents
+	CREATE INDEX IF NOT EXISTS idx_media_ai_image_search_filters 
+	ON media (type, ai_category) 
+	WHERE type = 'image' AND ai_description IS NOT NULL;
+	-- =====================================================
+	-- 3. Fonction de Normalisation de Texte (si pas déjà créée)
+	-- =====================================================
+	-- Fonction pour normaliser un texte (supprimer accents, minuscules)
+	CREATE OR REPLACE FUNCTION normalize_text(text_input TEXT)
+	RETURNS TEXT AS $$
+	BEGIN
+	    IF text_input IS NULL OR text_input = '' THEN
+	        RETURN '';
+	    END IF;
+	    RETURN LOWER(
+	        translate(
+	            text_input,
+	            'àâäéèêëîïôöùûüÿç',
+	            'aaaeeeeiiioouuuyc'
+	        )
+	    );
+	END;
+	$$ LANGUAGE plpgsql IMMUTABLE;
+	-- =====================================================
+	-- 4. Mise à Jour de la Fonction search_images_by_ai_analysis
+	-- =====================================================
+	-- Supprimer l'ancienne version si elle existe (avec l'ancienne signature)
+	DROP FUNCTION IF EXISTS search_images_by_ai_analysis(TEXT, TEXT[], TEXT, TEXT, TEXT, FLOAT, FLOAT, INTEGER, INTEGER);
+	CREATE OR REPLACE FUNCTION search_images_by_ai_analysis(
+	    search_query TEXT,
+	    search_tags TEXT[],
+	    search_category TEXT DEFAULT NULL,
+	    search_marque TEXT DEFAULT NULL,
+	    search_couleur TEXT DEFAULT NULL,
+	    gps_lat FLOAT DEFAULT NULL,
+	    gps_lng FLOAT DEFAULT NULL,
+	    search_radius_km INTEGER DEFAULT 50,
+	    max_results INTEGER DEFAULT 20,
+	    detected_lang TEXT DEFAULT 'french'  -- ✅ NOUVEAU: Langue dynamique
+	)
+	RETURNS TABLE (
+	    service_id INTEGER,
+	    media_id INTEGER,
+	    media_path TEXT,
+	    product_name TEXT,
+	    ai_description TEXT,
+	    ai_tags TEXT[],
+	    match_score FLOAT,
+	    distance_km FLOAT,
+	    service_data JSONB
+	) AS $$
+	DECLARE
+	    normalized_search_query TEXT;
+	    normalized_search_tags TEXT[];
+	    normalized_search_marque TEXT;
+	    normalized_search_couleur TEXT;
+	BEGIN
+	    -- ✅ NOUVEAU: Normaliser les paramètres de recherche
+	    normalized_search_query := normalize_text(search_query);
+	    normalized_search_tags := normalize_word_array(search_tags);
+	    normalized_search_marque := CASE WHEN search_marque IS NOT NULL THEN normalize_text(search_marque) ELSE NULL END;
+	    normalized_search_couleur := CASE WHEN search_couleur IS NOT NULL THEN normalize_text(search_couleur) ELSE NULL END;
+	    RETURN QUERY
+	    WITH ranked_results AS (
+	        SELECT 
+	            s.id as service_id,
+	            m.id as media_id,
+	            m.path as media_path,
+	            COALESCE(
+	                product->>'nom',
+	                product->>'name',
+	                product->>'titre',
+	                'Produit'
+	            ) as product_name,
+	            m.ai_description,
+	            m.ai_tags,
+	            (
+	                -- ✅ AMÉLIORÉ: Score Full-Text avec langue dynamique
+	                COALESCE(
+	                    ts_rank(
+	                        to_tsvector(detected_lang, COALESCE(m.normalized_ai_description, '')),
+	                        plainto_tsquery(detected_lang, normalized_search_query)
+	                    ) * 50.0,
+	                    0.0
+	                ) +
+	                -- ✅ NOUVEAU: Matching vectoriel optimisé avec similarité (exact + partiel + fuzzy)
+	                COALESCE(
+	                    calculate_vector_match_score_optimized(
+	                        m.normalized_ai_tags,
+	                        normalized_search_tags
+	                    ) * 30.0,  -- Multiplicateur pour tags
+	                    0.0
+	                ) +
+	                -- ✅ AMÉLIORÉ: Matching partiel sur description normalisée (mots tronqués)
+	                CASE 
+	                    WHEN normalized_search_query != '' 
+	                         AND m.normalized_ai_description LIKE '%' || normalized_search_query || '%'
+	                    THEN 35.0
+	                    ELSE 0.0
+	                END +
+	                -- ✅ AMÉLIORÉ: Bonus tags communs avec normalisation
+	                (SELECT COUNT(*) * 20.0 
+	                 FROM unnest(COALESCE(m.normalized_ai_tags, ARRAY[]::TEXT[])) tag 
+	                 WHERE tag = ANY(normalized_search_tags)) +
+	                -- ✅ AMÉLIORÉ: Bonus marque exacte avec normalisation
+	                CASE 
+	                    WHEN normalized_search_marque IS NOT NULL 
+	                         AND normalize_text(COALESCE(m.ai_metadata->>'marque', '')) = normalized_search_marque
+	                    THEN 100.0 
+	                    ELSE 0.0 
+	                END +
+	                -- ✅ AMÉLIORÉ: Bonus couleur avec normalisation
+	                CASE 
+	                    WHEN normalized_search_couleur IS NOT NULL 
+	                         AND EXISTS (
+	                             SELECT 1 
+	                             FROM jsonb_array_elements_text(COALESCE(m.ai_metadata->'couleurs', '[]'::jsonb)) AS couleur
+	                             WHERE normalize_text(couleur) = normalized_search_couleur
+	                         )
+	                    THEN 30.0 
+	                    ELSE 0.0 
+	                END +
+	                -- Bonus catégorie identique
+	                CASE 
+	                    WHEN search_category IS NOT NULL 
+	                         AND m.ai_category = search_category 
+	                    THEN 40.0 
+	                    ELSE 0.0 
+	                END +
+	                -- Bonus confidence élevée
+	                (COALESCE(m.ai_confidence, 0.5) * 20.0)
+	            )::FLOAT as match_score,
+	            -- Calcul distance GPS si coordonnées fournies
+	            CASE 
+	                WHEN gps_lat IS NOT NULL AND gps_lng IS NOT NULL 
+	                     AND s.gps IS NOT NULL AND s.gps != '' 
+	                     AND s.gps ~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
+	                THEN
+	                    ST_Distance(
+	                        ST_Point(gps_lng, gps_lat)::geography,
+	                        ST_Point(
+	                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+	                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+	                        )::geography
+	                    ) / 1000.0  -- Convertir en km
+	                ELSE NULL
+	            END as distance_km,
+	            s.data as service_data,
+	            product
+	        FROM services s
+	        INNER JOIN media m ON m.service_id = s.id
+	        CROSS JOIN LATERAL jsonb_array_elements(
+	            CASE 
+	                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+	                THEN s.data->'produits'
+	                ELSE '[]'::jsonb
+	            END
+	        ) AS product
+	        WHERE s.is_active = true
+	        AND m.type = 'image'
+	        AND m.ai_description IS NOT NULL
+	        AND (
+	            -- ✅ AMÉLIORÉ: Conditions de recherche avec normalisation et matching vectoriel
+	            to_tsvector(detected_lang, COALESCE(m.normalized_ai_description, '')) @@ plainto_tsquery(detected_lang, normalized_search_query)
+	            OR m.normalized_ai_tags && normalized_search_tags  -- Overlap sur tags normalisés
+	            OR calculate_vector_match_score_optimized(m.normalized_ai_tags, normalized_search_tags) > 0.0  -- Matching vectoriel optimisé
+	            OR (normalized_search_query != '' AND m.normalized_ai_description LIKE '%' || normalized_search_query || '%')  -- Matching partiel
+	            OR (search_category IS NOT NULL AND m.ai_category = search_category)
+	        )
+	        -- Filtre GPS si coordonnées fournies
+	        AND (
+	            gps_lat IS NULL 
+	            OR gps_lng IS NULL
+	            OR search_radius_km IS NULL
+	            OR s.gps IS NULL
+	            OR s.gps = ''
+	            OR s.gps !~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
+	            OR ST_Distance(
+	                ST_Point(gps_lng, gps_lat)::geography,
+	                ST_Point(
+	                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+	                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+	                )::geography
+	            ) / 1000.0 <= search_radius_km
+	        )
+	    )
+	    SELECT 
+	        ranked_results.service_id,
+	        ranked_results.media_id,
+	        ranked_results.media_path,
+	        ranked_results.product_name,
+	        ranked_results.ai_description,
+	        ranked_results.ai_tags,
+	        ranked_results.match_score,
+	        ranked_results.distance_km,
+	        ranked_results.service_data
+	    FROM ranked_results
+	    ORDER BY 
+	        ranked_results.match_score DESC,
+	        ranked_results.distance_km ASC NULLS LAST
+	    LIMIT max_results;
+	END;
+	$$ LANGUAGE plpgsql STABLE;
+	COMMENT ON FUNCTION search_images_by_ai_analysis IS 'Recherche intelligente d''images par analyse IA avec matching vectoriel optimisé, gestion accents, matching partiel/fuzzy, et langue dynamique';
+	-- =====================================================
+	-- 5. Analyser les Tables pour Optimiser les Statistiques
+	-- =====================================================
+	ANALYZE media;
+	-- =====================================================
+	-- 6. Vérification
+	-- =====================================================
+	DO $$
+	BEGIN
+	    -- Vérifier que les colonnes existent
+	    IF NOT EXISTS (
+	        SELECT 1 FROM information_schema.columns 
+	        WHERE table_name = 'media' 
+	        AND column_name = 'normalized_ai_tags'
+	    ) THEN
+	        RAISE EXCEPTION 'Colonne normalized_ai_tags non créée';
+	    END IF;
+	    IF NOT EXISTS (
+	        SELECT 1 FROM information_schema.columns 
+	        WHERE table_name = 'media' 
+	        AND column_name = 'normalized_ai_description'
+	    ) THEN
+	        RAISE EXCEPTION 'Colonne normalized_ai_description non créée';
+	    END IF;
+	    -- Vérifier que les index existent
+	    IF NOT EXISTS (
+	        SELECT 1 FROM pg_indexes 
+	        WHERE indexname = 'idx_media_normalized_ai_tags_gin'
+	    ) THEN
+	        RAISE EXCEPTION 'Index idx_media_normalized_ai_tags_gin non créé';
+	    END IF;
+	    RAISE NOTICE '✅ Migration recherche image optimisée appliquée avec succès';
+	END $$;"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57462):yukpo_db_user@postgres:[521]:ERROR:  cannot insert multiple commands into a prepared statement
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57462):yukpo_db_user@postgres:[521]:STATEMENT:  -- Migration: Correction erreur to_tsvector avec langue dynamique
+	-- Date: 2026-01-14
+	-- Description: Corrige l'erreur ""function to_tsvector(text, text) does not exist"" 
+	--              en convertissant correctement le paramètre TEXT en regconfig
+	-- =====================================================
+	-- 1. Fonction Helper pour Convertir Langue TEXT -> regconfig
+	-- =====================================================
+	CREATE OR REPLACE FUNCTION get_text_search_config(lang_text TEXT)
+	RETURNS regconfig AS $$
+	BEGIN
+	    -- Convertir le texte de langue en regconfig valide
+	    -- Valeurs supportées: french, english, spanish, portuguese, arabic
+	    CASE 
+	        WHEN lang_text ILIKE 'french' OR lang_text ILIKE 'français' OR lang_text ILIKE 'fr' THEN
+	            RETURN 'french'::regconfig;
+	        WHEN lang_text ILIKE 'english' OR lang_text ILIKE 'anglais' OR lang_text ILIKE 'en' THEN
+	            RETURN 'english'::regconfig;
+	        WHEN lang_text ILIKE 'spanish' OR lang_text ILIKE 'espagnol' OR lang_text ILIKE 'es' THEN
+	            RETURN 'spanish'::regconfig;
+	        WHEN lang_text ILIKE 'portuguese' OR lang_text ILIKE 'portugais' OR lang_text ILIKE 'pt' THEN
+	            RETURN 'portuguese'::regconfig;
+	        WHEN lang_text ILIKE 'arabic' OR lang_text ILIKE 'arabe' OR lang_text ILIKE 'ar' THEN
+	            RETURN 'arabic'::regconfig;
+	        ELSE
+	            -- Français par défaut si langue non reconnue
+	            RETURN 'french'::regconfig;
+	    END CASE;
+	END;
+	$$ LANGUAGE plpgsql IMMUTABLE;
+	COMMENT ON FUNCTION get_text_search_config IS 'Convertit un texte de langue en regconfig PostgreSQL valide pour to_tsvector';
+	-- =====================================================
+	-- 2. Correction de la Fonction search_images_by_ai_analysis
+	-- =====================================================
+	CREATE OR REPLACE FUNCTION search_images_by_ai_analysis(
+	    search_query TEXT,
+	    search_tags TEXT[],
+	    search_category TEXT DEFAULT NULL,
+	    search_marque TEXT DEFAULT NULL,
+	    search_couleur TEXT DEFAULT NULL,
+	    gps_lat FLOAT DEFAULT NULL,
+	    gps_lng FLOAT DEFAULT NULL,
+	    search_radius_km INTEGER DEFAULT 50,
+	    max_results INTEGER DEFAULT 20,
+	    detected_lang TEXT DEFAULT 'french'  -- Langue dynamique
+	)
+	RETURNS TABLE (
+	    service_id INTEGER,
+	    media_id INTEGER,
+	    media_path TEXT,
+	    product_name TEXT,
+	    ai_description TEXT,
+	    ai_tags TEXT[],
+	    match_score FLOAT,
+	    distance_km FLOAT,
+	    service_data JSONB
+	) AS $$
+	DECLARE
+	    normalized_search_query TEXT;
+	    normalized_search_tags TEXT[];
+	    normalized_search_marque TEXT;
+	    normalized_search_couleur TEXT;
+	    lang_config regconfig;  -- ✅ CORRIGÉ: Variable regconfig au lieu de TEXT
+	BEGIN
+	    -- ✅ CORRIGÉ: Convertir la langue TEXT en regconfig
+	    lang_config := get_text_search_config(detected_lang);
+	    -- Normaliser les paramètres de recherche
+	    normalized_search_query := normalize_text(search_query);
+	    normalized_search_tags := normalize_word_array(search_tags);
+	    normalized_search_marque := CASE WHEN search_marque IS NOT NULL THEN normalize_text(search_marque) ELSE NULL END;
+	    normalized_search_couleur := CASE WHEN search_couleur IS NOT NULL THEN normalize_text(search_couleur) ELSE NULL END;
+	    RETURN QUERY
+	    WITH ranked_results AS (
+	        SELECT 
+	            s.id as service_id,
+	            m.id as media_id,
+	            m.path as media_path,
+	            COALESCE(
+	                product->>'nom',
+	                product->>'name',
+	                product->>'titre',
+	                'Produit'
+	            ) as product_name,
+	            m.ai_description,
+	            m.ai_tags,
+	            (
+	                -- ✅ CORRIGÉ: Utiliser lang_config (regconfig) au lieu de detected_lang (TEXT)
+	                COALESCE(
+	                    ts_rank(
+	                        to_tsvector(lang_config, COALESCE(m.normalized_ai_description, '')),
+	                        plainto_tsquery(lang_config, normalized_search_query)
+	                    ) * 50.0,
+	                    0.0
+	                ) +
+	                -- Matching vectoriel optimisé avec similarité (exact + partiel + fuzzy)
+	                COALESCE(
+	                    calculate_vector_match_score_optimized(
+	                        m.normalized_ai_tags,
+	                        normalized_search_tags
+	                    ) * 30.0,  -- Multiplicateur pour tags
+	                    0.0
+	                ) +
+	                -- Matching partiel sur description normalisée (mots tronqués)
+	                CASE 
+	                    WHEN normalized_search_query != '' 
+	                         AND m.normalized_ai_description LIKE '%' || normalized_search_query || '%'
+	                    THEN 35.0
+	                    ELSE 0.0
+	                END +
+	                -- Bonus tags communs avec normalisation
+	                (SELECT COUNT(*) * 20.0 
+	                 FROM unnest(COALESCE(m.normalized_ai_tags, ARRAY[]::TEXT[])) tag 
+	                 WHERE tag = ANY(normalized_search_tags)) +
+	                -- Bonus marque exacte avec normalisation
+	                CASE 
+	                    WHEN normalized_search_marque IS NOT NULL 
+	                         AND normalize_text(COALESCE(m.ai_metadata->>'marque', '')) = normalized_search_marque
+	                    THEN 100.0 
+	                    ELSE 0.0 
+	                END +
+	                -- Bonus couleur avec normalisation
+	                CASE 
+	                    WHEN normalized_search_couleur IS NOT NULL 
+	                         AND EXISTS (
+	                             SELECT 1 
+	                             FROM jsonb_array_elements_text(COALESCE(m.ai_metadata->'couleurs', '[]'::jsonb)) AS couleur
+	                             WHERE normalize_text(couleur) = normalized_search_couleur
+	                         )
+	                    THEN 30.0 
+	                    ELSE 0.0 
+	                END +
+	                -- Bonus catégorie identique
+	                CASE 
+	                    WHEN search_category IS NOT NULL 
+	                         AND m.ai_category = search_category 
+	                    THEN 40.0 
+	                    ELSE 0.0 
+	                END +
+	                -- Bonus confidence élevée
+	                (COALESCE(m.ai_confidence, 0.5) * 20.0)
+	            )::FLOAT as match_score,
+	            -- Calcul distance GPS si coordonnées fournies
+	            CASE 
+	                WHEN gps_lat IS NOT NULL AND gps_lng IS NOT NULL 
+	                     AND s.gps IS NOT NULL AND s.gps != '' 
+	                     AND s.gps ~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
+	                THEN
+	                    ST_Distance(
+	                        ST_Point(gps_lng, gps_lat)::geography,
+	                        ST_Point(
+	                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+	                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+	                        )::geography
+	                    ) / 1000.0  -- Convertir en km
+	                ELSE NULL
+	            END as distance_km,
+	            s.data as service_data,
+	            product
+	        FROM services s
+	        INNER JOIN media m ON m.service_id = s.id
+	        CROSS JOIN LATERAL jsonb_array_elements(
+	            CASE 
+	                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+	                THEN s.data->'produits'
+	                ELSE '[]'::jsonb
+	            END
+	        ) AS product
+	        WHERE s.is_active = true
+	        AND m.type = 'image'
+	        AND m.ai_description IS NOT NULL
+	        AND (
+	            -- ✅ CORRIGÉ: Utiliser lang_config (regconfig) au lieu de detected_lang (TEXT)
+	            to_tsvector(lang_config, COALESCE(m.normalized_ai_description, '')) @@ plainto_tsquery(lang_config, normalized_search_query)
+	            OR m.normalized_ai_tags && normalized_search_tags  -- Overlap sur tags normalisés
+	            OR calculate_vector_match_score_optimized(m.normalized_ai_tags, normalized_search_tags) > 0.0  -- Matching vectoriel optimisé
+	            OR (normalized_search_query != '' AND m.normalized_ai_description LIKE '%' || normalized_search_query || '%')  -- Matching partiel
+	            OR (search_category IS NOT NULL AND m.ai_category = search_category)
+	        )
+	        -- Filtre GPS si coordonnées fournies
+	        AND (
+	            gps_lat IS NULL 
+	            OR gps_lng IS NULL
+	            OR search_radius_km IS NULL
+	            OR s.gps IS NULL
+	            OR s.gps = ''
+	            OR s.gps !~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
+	            OR ST_Distance(
+	                ST_Point(gps_lng, gps_lat)::geography,
+	                ST_Point(
+	                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+	                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+	                )::geography
+	            ) / 1000.0 <= search_radius_km
+	        )
+	    )
+	    SELECT 
+	        ranked_results.service_id,
+	        ranked_results.media_id,
+	        ranked_results.media_path,
+	        ranked_results.product_name,
+	        ranked_results.ai_description,
+	        ranked_results.ai_tags,
+	        ranked_results.match_score,
+	        ranked_results.distance_km,
+	        ranked_results.service_data
+	    FROM ranked_results
+	    WHERE ranked_results.match_score > 0.0  -- ✅ AMÉLIORÉ: Filtrer les résultats avec score > 0
+	    ORDER BY 
+	        ranked_results.match_score DESC,
+	        ranked_results.distance_km ASC NULLS LAST
+	    LIMIT max_results;
+	END;
+	$$ LANGUAGE plpgsql STABLE;
+	COMMENT ON FUNCTION search_images_by_ai_analysis IS 'Recherche intelligente d''images par analyse IA avec matching vectoriel optimisé, gestion accents, matching partiel/fuzzy, et langue dynamique (CORRIGÉ: conversion TEXT->regconfig)';
+	-- =====================================================
+	-- 3. Vérification
+	-- =====================================================
+	DO $$
+	BEGIN
+	    -- Vérifier que la fonction helper existe
+	    IF NOT EXISTS (
+	        SELECT 1 FROM pg_proc 
+	        WHERE proname = 'get_text_search_config'
+	    ) THEN
+	        RAISE EXCEPTION 'Fonction get_text_search_config non créée';
+	    END IF;
+	    -- Vérifier que la fonction principale existe
+	    IF NOT EXISTS (
+	        SELECT 1 FROM pg_proc 
+	        WHERE proname = 'search_images_by_ai_analysis'
+	    ) THEN
+	        RAISE EXCEPTION 'Fonction search_images_by_ai_analysis non créée';
+	    END IF;
+	    RAISE NOTICE '✅ Migration correction to_tsvector appliquée avec succès';
+	END $$;"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:ERROR:  cannot insert multiple commands into a prepared statement
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:STATEMENT:  
+	        DROP FUNCTION IF EXISTS run_audio_cache_cleanup();
+	        CREATE OR REPLACE FUNCTION run_audio_cache_cleanup()
+	        RETURNS TABLE(
+	            deleted_count INTEGER,
+	            kept_count INTEGER,
+	            total_before INTEGER,
+	            total_after INTEGER
+	        ) AS $$
+	        DECLARE
+	            deleted_count_var INTEGER := 0;
+	            kept_count_var INTEGER := 0;
+	            total_before_var INTEGER := 0;
+	            total_after_var INTEGER := 0;
+	        BEGIN
+	            -- Vérifier si la fonction cleanup_old_audio_transcriptions existe
+	            IF EXISTS (
+	                SELECT 1 FROM pg_proc 
+	                WHERE proname = 'cleanup_old_audio_transcriptions'
+	            ) THEN
+	                -- Exécuter le nettoyage et récupérer les résultats dans des variables explicites
+	                -- Utiliser COALESCE pour garantir des valeurs non-NULL
+	                SELECT 
+	                    COALESCE(deleted_count, 0),
+	                    COALESCE(kept_count, 0),
+	                    COALESCE(total_before, 0),
+	                    COALESCE(total_after, 0)
+	                INTO 
+	                    deleted_count_var,
+	                    kept_count_var,
+	                    total_before_var,
+	                    total_after_var
+	                FROM cleanup_old_audio_transcriptions()
+	                LIMIT 1;
+	            ELSE
+	                -- Si la fonction n'existe pas, retourner des valeurs par défaut (0)
+	                RAISE NOTICE 'Fonction cleanup_old_audio_transcriptions non trouvée, retour de valeurs par défaut';
+	            END IF;
+	            -- Log (peut être envoyé à un système de monitoring)
+	            RAISE NOTICE 'Audio cache cleanup: deleted %, kept %, total before %, after %', 
+	                deleted_count_var, kept_count_var, total_before_var, total_after_var;
+	            -- Retourner les résultats comme une table (toujours des valeurs non-NULL)
+	            RETURN QUERY SELECT deleted_count_var, kept_count_var, total_before_var, total_after_var;
+	        END;
+	        $$ LANGUAGE plpgsql;"
+1769979222000,2026-02-01 20:53:42 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:ERROR:  cannot insert multiple commands into a prepared statement
+1769979222000,"2026-02-01 20:53:42 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:STATEMENT:  -- Migration: Optimisation Finale Performance Recherche
+	-- Date: 2025-12-30
+	-- Description: Réduire temps de recherche à < 2 secondes
+	-- =====================================================
+	-- 1. Fonction Optimisée : Calcul Meilleur Score Vectoriel
+	-- =====================================================
+	-- ✅ NOUVEAU: Fonction qui calcule les deux scores en une seule passe (évite double appel)
+	CREATE OR REPLACE FUNCTION calculate_best_vector_match_score(
+	    characteristic_vector_normalized TEXT[],
+	    full_vector_normalized TEXT[],
+	    search_keywords_normalized TEXT[]
+	)
+	RETURNS REAL AS $$
+	    SELECT GREATEST(
+	        COALESCE(calculate_vector_match_score_optimized(characteristic_vector_normalized, search_keywords_normalized), 0.0),
+	        COALESCE(calculate_vector_match_score_optimized(full_vector_normalized, search_keywords_normalized), 0.0)
+	    );
+	$$ LANGUAGE sql IMMUTABLE;
+	COMMENT ON FUNCTION calculate_best_vector_match_score IS 'Calcule le meilleur score vectoriel entre characteristic et full_vector en une seule passe';
+	-- =====================================================
+	-- 2. Index Composite pour Filtres Fréquents (si pas déjà créé)
+	-- =====================================================
+	-- Index composite pour accélérer les filtres fréquents
+	CREATE INDEX IF NOT EXISTS idx_autocomplete_search_filters_composite 
+	ON autocomplete_characteristics (is_real_product, identifiant_base, service_id) 
+	WHERE is_real_product = TRUE AND identifiant_base = 'produits';
+	-- Index sur service_id pour accélérer les jointures
+	CREATE INDEX IF NOT EXISTS idx_autocomplete_service_id_active 
+	ON autocomplete_characteristics (service_id) 
+	WHERE is_real_product = TRUE AND identifiant_base = 'produits';
+	-- =====================================================
+	-- 3. Vérification
+	-- =====================================================
+	DO $$
+	BEGIN
+	    IF NOT EXISTS (
+	        SELECT 1 FROM pg_proc WHERE proname = 'calculate_best_vector_match_score'
+	    ) THEN
+	        RAISE EXCEPTION 'Fonction calculate_best_vector_match_score non créée';
+	    END IF;
+	    RAISE NOTICE '✅ Migration optimisation performance recherche appliquée avec succès';
+	END $$;"
+1769979223000,2026-02-01 20:53:43 UTC:10.0.3.204(57526):yukpo_db_user@postgres:[533]:ERROR:  cannot insert multiple commands into a prepared statement
+1769979223000,"2026-02-01 20:53:43 UTC:10.0.3.204(57526):yukpo_db_user@postgres:[533]:STATEMENT:  
+	        CREATE INDEX IF NOT EXISTS idx_delivery_partners_name ON delivery_partners(name);
+	        CREATE INDEX IF NOT EXISTS idx_delivery_partners_active ON delivery_partners(is_active);
+	        CREATE INDEX IF NOT EXISTS idx_delivery_partners_created_by ON delivery_partners(created_by);
+	        CREATE INDEX IF NOT EXISTS idx_delivery_partners_type ON delivery_partners(partner_type);"
+1769979223000,2026-02-01 20:53:43 UTC:10.0.3.204(57526):yukpo_db_user@postgres:[533]:ERROR:  syntax error at end of input at character 813
+1769979223000,"2026-02-01 20:53:43 UTC:10.0.3.204(57526):yukpo_db_user@postgres:[533]:STATEMENT:  CREATE TABLE IF NOT EXISTS family_profiles (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    family_name VARCHAR(255),
+	    total_members INTEGER NOT NULL DEFAULT 1,
+	    children_count INTEGER DEFAULT 0,
+	    adults_count INTEGER DEFAULT 1,
+	    preferences JSONB DEFAULT '{}', -- végétarien, vegan, halal, etc.
+	    allergies TEXT[], -- liste allergies
+	    dietary_restrictions TEXT[], -- diabète, hypertension, etc.
+	    budget_monthly DECIMAL(10,2),
+	    cuisine_styles TEXT[], -- africaine, camerounaise, occidentale, etc.
+	    cooking_level VARCHAR(50), -- débutant, intermédiaire, avancé
+	    time_available_hours DECIMAL(4,2), -- heures disponibles par jour
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id)"
+1769979223000,2026-02-01 20:53:43 UTC:10.0.3.204(57560):yukpo_db_user@postgres:[537]:ERROR:  syntax error at end of input at character 985
+1769979223000,"2026-02-01 20:53:43 UTC:10.0.3.204(57560):yukpo_db_user@postgres:[537]:STATEMENT:  CREATE TABLE IF NOT EXISTS recipes (
+	    id SERIAL PRIMARY KEY,
+	    name VARCHAR(255) NOT NULL,
+	    description TEXT,
+	    cuisine_style VARCHAR(100), -- africaine, camerounaise, occidentale, etc.
+	    meal_type TEXT[], -- petit_dejeuner, dejeuner, diner
+	    difficulty VARCHAR(50), -- facile, moyen, difficile
+	    prep_time_minutes INTEGER,
+	    cook_time_minutes INTEGER,
+	    servings INTEGER DEFAULT 1,
+	    ingredients JSONB NOT NULL, -- [{name, quantity, unit}, ...]
+	    instructions TEXT[] NOT NULL, -- étapes de préparation
+	    nutrition_per_serving JSONB, -- {calories, proteins, carbs, fats, fiber}
+	    tags TEXT[], -- végétarien, vegan, rapide, économique, etc.
+	    image_url TEXT,
+	    video_url TEXT, -- vidéo recette optionnelle
+	    source VARCHAR(255), -- ""yukpo_ai"", ""community"", ""premium""
+	    is_premium BOOLEAN DEFAULT FALSE,
+	    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW()"
+1769979223000,2026-02-01 20:53:43 UTC:10.0.3.204(57572):yukpo_db_user@postgres:[538]:ERROR:  syntax error at end of input at character 506
+1769979223000,"2026-02-01 20:53:43 UTC:10.0.3.204(57572):yukpo_db_user@postgres:[538]:STATEMENT:  CREATE TABLE IF NOT EXISTS menu_plans (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    week_start DATE NOT NULL, -- lundi de la semaine
+	    week_end DATE NOT NULL, -- dimanche de la semaine
+	    status VARCHAR(50) DEFAULT 'draft', -- draft, active, completed
+	    total_budget DECIMAL(10,2),
+	    actual_cost DECIMAL(10,2),
+	    notes TEXT,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id, week_start)"
+1769979223000,2026-02-01 20:53:43 UTC:10.0.3.204(57586):yukpo_db_user@postgres:[539]:ERROR:  syntax error at end of input at character 516
+1769979223000,"2026-02-01 20:53:43 UTC:10.0.3.204(57586):yukpo_db_user@postgres:[539]:STATEMENT:  CREATE TABLE IF NOT EXISTS planned_meals (
+	    id SERIAL PRIMARY KEY,
+	    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,
+	    day_of_week INTEGER NOT NULL, -- 1=lundi, 7=dimanche
+	    meal_type VARCHAR(50) NOT NULL, -- petit_dejeuner, dejeuner, diner, gouter
+	    recipe_id INTEGER REFERENCES recipes(id) ON DELETE SET NULL,
+	    custom_name VARCHAR(255), -- nom personnalisé si pas de recette
+	    servings INTEGER NOT NULL DEFAULT 1,
+	    notes TEXT,
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1769979223000,2026-02-01 20:53:43 UTC:10.0.3.204(57450):yukpo_db_user@postgres:[519]:ERROR:  syntax error at end of input at character 288
+1769979223000,"2026-02-01 20:53:43 UTC:10.0.3.204(57450):yukpo_db_user@postgres:[519]:STATEMENT:  CREATE TABLE IF NOT EXISTS recipe_favorites (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id, recipe_id)"
+1769979223000,2026-02-01 20:53:43 UTC:10.0.3.204(57462):yukpo_db_user@postgres:[521]:ERROR:  syntax error at end of input at character 533
+1769979223000,"2026-02-01 20:53:43 UTC:10.0.3.204(57462):yukpo_db_user@postgres:[521]:STATEMENT:  CREATE TABLE IF NOT EXISTS shopping_lists (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    menu_plan_id INTEGER REFERENCES menu_plans(id) ON DELETE SET NULL,
+	    week_start DATE NOT NULL,
+	    status VARCHAR(50) DEFAULT 'pending', -- pending, in_progress, completed
+	    organized_by_store BOOLEAN DEFAULT FALSE,
+	    organized_by_aisle BOOLEAN DEFAULT FALSE,
+	    total_estimated_cost DECIMAL(10,2),
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW()"
+1769979223000,2026-02-01 20:53:43 UTC:10.0.3.204(57464):yukpo_db_user@postgres:[522]:ERROR:  syntax error at end of input at character 739
+1769979223000,"2026-02-01 20:53:43 UTC:10.0.3.204(57464):yukpo_db_user@postgres:[522]:STATEMENT:  CREATE TABLE IF NOT EXISTS shopping_list_items (
+	    id SERIAL PRIMARY KEY,
+	    shopping_list_id INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,
+	    ingredient_name VARCHAR(255) NOT NULL,
+	    quantity DECIMAL(10,2) NOT NULL,
+	    unit VARCHAR(50) NOT NULL,
+	    category VARCHAR(100), -- fruits, légumes, viande, épicerie, etc.
+	    store_section VARCHAR(100), -- rayon magasin
+	    preferred_store VARCHAR(255), -- magasin préféré
+	    is_checked BOOLEAN DEFAULT FALSE,
+	    actual_price DECIMAL(10,2),
+	    notes TEXT,
+	    order_placed BOOLEAN DEFAULT FALSE, -- commande via Yukpo
+	    order_id INTEGER, -- Référence vers commande (peut être lié à shopping_orders ou delivery_requests)
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1769979223000,2026-02-01 20:53:43 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:ERROR:  syntax error at end of input at character 550
+1769979223000,"2026-02-01 20:53:43 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:STATEMENT:  CREATE TABLE IF NOT EXISTS nutrition_analytics (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,
+	    week_start DATE NOT NULL,
+	    total_calories DECIMAL(10,2),
+	    total_proteins DECIMAL(10,2),
+	    total_carbs DECIMAL(10,2),
+	    total_fats DECIMAL(10,2),
+	    total_fiber DECIMAL(10,2),
+	    daily_average JSONB, -- moyenne par jour
+	    recommendations TEXT[], -- recommandations IA
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1769979226000,"2026-02-01 20:53:46 UTC:10.0.3.204(57606):yukpo_db_user@postgres:[541]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1769979226000,2026-02-01 20:53:46 UTC:10.0.3.204(57606):yukpo_db_user@postgres:[541]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1769979226000,"2026-02-01 20:53:46 UTC:10.0.3.204(57606):yukpo_db_user@postgres:[541]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1769979226000,2026-02-01 20:53:46 UTC:10.0.3.204(57606):yukpo_db_user@postgres:[541]:STATEMENT:  SELECT refresh_services_search_optimized()
+1769979288000,2026-02-01 20:54:48 UTC::@:[1345]:LOG:  checkpoint starting: time
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(58312):yukpo_db_user@postgres:[761]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(43440):yukpo_db_user@postgres:[736]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(55662):yukpo_db_user@postgres:[457]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(40286):yukpo_db_user@postgres:[481]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(36908):yukpo_db_user@postgres:[498]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(33370):yukpo_db_user@postgres:[474]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(45764):yukpo_db_user@postgres:[441]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(45736):yukpo_db_user@postgres:[439]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(45748):yukpo_db_user@postgres:[440]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(55678):yukpo_db_user@postgres:[463]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(34308):yukpo_db_user@postgres:[552]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(40298):yukpo_db_user@postgres:[484]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(45770):yukpo_db_user@postgres:[442]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(34338):yukpo_db_user@postgres:[554]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(36904):yukpo_db_user@postgres:[497]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(36922):yukpo_db_user@postgres:[499]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(34326):yukpo_db_user@postgres:[553]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(36932):yukpo_db_user@postgres:[500]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(43448):yukpo_db_user@postgres:[737]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(45776):yukpo_db_user@postgres:[451]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(58322):yukpo_db_user@postgres:[762]:LOG:  could not receive data from client: Connection reset by peer
+1769979307000,2026-02-01 20:55:07 UTC:10.0.2.162(40314):yukpo_db_user@postgres:[487]:LOG:  could not receive data from client: Connection reset by peer
+1769979335000,"2026-02-01 20:55:35 UTC::@:[1345]:LOG:  checkpoint complete: wrote 464 buffers (0.2%); 0 WAL file(s) added, 0 removed, 1 recycled; write=46.452 s, sync=0.002 s, total=46.461 s; sync files=86, longest=0.002 s, average=0.001 s; distance=65054 kB, estimate=65920 kB"
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(58662):yukpo_db_user@postgres:[667]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57596):yukpo_db_user@postgres:[540]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57522):yukpo_db_user@postgres:[531]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57606):yukpo_db_user@postgres:[541]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57572):yukpo_db_user@postgres:[538]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57524):yukpo_db_user@postgres:[532]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57552):yukpo_db_user@postgres:[535]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57464):yukpo_db_user@postgres:[522]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57514):yukpo_db_user@postgres:[529]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57586):yukpo_db_user@postgres:[539]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57460):yukpo_db_user@postgres:[520]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57508):yukpo_db_user@postgres:[528]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57540):yukpo_db_user@postgres:[534]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57526):yukpo_db_user@postgres:[533]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57516):yukpo_db_user@postgres:[530]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57480):yukpo_db_user@postgres:[524]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57558):yukpo_db_user@postgres:[536]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57462):yukpo_db_user@postgres:[521]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57500):yukpo_db_user@postgres:[527]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57560):yukpo_db_user@postgres:[537]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57476):yukpo_db_user@postgres:[523]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57450):yukpo_db_user@postgres:[519]:LOG:  could not receive data from client: Connection reset by peer
+1769979348000,2026-02-01 20:55:48 UTC:10.0.3.204(57486):yukpo_db_user@postgres:[525]:LOG:  could not receive data from client: Connection reset by peer
+1769979588000,2026-02-01 20:59:48 UTC::@:[1345]:LOG:  checkpoint starting: time
+1769979619000,"2026-02-01 21:00:19 UTC::@:[1345]:LOG:  checkpoint complete: wrote 310 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=31.073 s, sync=0.003 s, total=31.082 s; sync files=37, longest=0.002 s, average=0.001 s; distance=65536 kB, estimate=65881 kB"
+1769979777000,"2026-02-01 21:02:57 UTC:10.0.2.41(38070):yukpo_db_user@postgres:[1035]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1769979777000,2026-02-01 21:02:57 UTC:10.0.2.41(38070):yukpo_db_user@postgres:[1035]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1769979777000,"2026-02-01 21:02:57 UTC:10.0.2.41(38070):yukpo_db_user@postgres:[1035]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1769979777000,2026-02-01 21:02:57 UTC:10.0.2.41(38070):yukpo_db_user@postgres:[1035]:STATEMENT:  SELECT refresh_services_search_optimized()
+1769979791000,"2026-02-01 21:03:11 UTC:10.0.3.71(44146):yukpo_db_user@postgres:[1064]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1769979791000,2026-02-01 21:03:11 UTC:10.0.3.71(44146):yukpo_db_user@postgres:[1064]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1769979791000,"2026-02-01 21:03:11 UTC:10.0.3.71(44146):yukpo_db_user@postgres:[1064]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1769979791000,2026-02-01 21:03:11 UTC:10.0.3.71(44146):yukpo_db_user@postgres:[1064]:STATEMENT:  SELECT refresh_services_search_optimized()
+1769979888000,2026-02-01 21:04:48 UTC::@:[1345]:LOG:  checkpoint starting: time
+1769979892000,"2026-02-01 21:04:52 UTC:10.0.2.212(42592):yukpo_db_user@postgres:[1392]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1769979892000,2026-02-01 21:04:52 UTC:10.0.2.212(42592):yukpo_db_user@postgres:[1392]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1769979892000,"2026-02-01 21:04:52 UTC:10.0.2.212(42592):yukpo_db_user@postgres:[1392]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1769979892000,2026-02-01 21:04:52 UTC:10.0.2.212(42592):yukpo_db_user@postgres:[1392]:STATEMENT:  SELECT refresh_services_search_optimized()
+1769979909000,"2026-02-01 21:05:09 UTC::@:[1345]:LOG:  checkpoint complete: wrote 204 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=20.411 s, sync=0.003 s, total=20.421 s; sync files=44, longest=0.002 s, average=0.001 s; distance=65536 kB, estimate=65847 kB"
+1769979944000,"2026-02-01 21:05:44 UTC:10.0.2.30(53844):yukpo_db_user@postgres:[1599]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1769979944000,2026-02-01 21:05:44 UTC:10.0.2.30(53844):yukpo_db_user@postgres:[1599]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1769979944000,"2026-02-01 21:05:44 UTC:10.0.2.30(53844):yukpo_db_user@postgres:[1599]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1769979944000,2026-02-01 21:05:44 UTC:10.0.2.30(53844):yukpo_db_user@postgres:[1599]:STATEMENT:  SELECT refresh_services_search_optimized()
+1769979967000,"2026-02-01 21:06:07 UTC:10.0.3.26(46450):yukpo_db_user@postgres:[1294]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1769979967000,2026-02-01 21:06:07 UTC:10.0.3.26(46450):yukpo_db_user@postgres:[1294]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1769979967000,"2026-02-01 21:06:07 UTC:10.0.3.26(46450):yukpo_db_user@postgres:[1294]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1769979967000,2026-02-01 21:06:07 UTC:10.0.3.26(46450):yukpo_db_user@postgres:[1294]:STATEMENT:  SELECT refresh_services_search_optimized()
+1769979977000,"2026-02-01 21:06:17 UTC:10.0.3.206(49320):yukpo_db_user@postgres:[1851]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1769979977000,2026-02-01 21:06:17 UTC:10.0.3.206(49320):yukpo_db_user@postgres:[1851]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1769979977000,"2026-02-01 21:06:17 UTC:10.0.3.206(49320):yukpo_db_user@postgres:[1851]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1769979977000,2026-02-01 21:06:17 UTC:10.0.3.206(49320):yukpo_db_user@postgres:[1851]:STATEMENT:  SELECT refresh_services_search_optimized()
+1769980074000,"2026-02-01 21:07:54 UTC:10.0.3.191(39792):yukpo_db_user@postgres:[1521]:ERROR:  cannot refresh materialized view ""public.services_search_optimized_v2"" concurrently"
+1769980074000,2026-02-01 21:07:54 UTC:10.0.3.191(39792):yukpo_db_user@postgres:[1521]:HINT:  Create a unique index with no WHERE clause on one or more columns of the materialized view.
+1769980074000,"2026-02-01 21:07:54 UTC:10.0.3.191(39792):yukpo_db_user@postgres:[1521]:CONTEXT:  SQL statement ""REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_optimized_v2""
+	PL/pgSQL function refresh_services_search_optimized() line 5 at SQL statement"
+1769980074000,2026-02-01 21:07:54 UTC:10.0.3.191(39792):yukpo_db_user@postgres:[1521]:STATEMENT:  SELECT refresh_services_search_optimized()
+1769980188000,2026-02-01 21:09:48 UTC::@:[1345]:LOG:  checkpoint starting: time
+1769980212000,"2026-02-01 21:10:12 UTC::@:[1345]:LOG:  checkpoint complete: wrote 239 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=23.934 s, sync=0.003 s, total=23.943 s; sync files=41, longest=0.001 s, average=0.001 s; distance=65536 kB, estimate=65815 kB"
+1769980488000,2026-02-01 21:14:48 UTC::@:[1345]:LOG:  checkpoint starting: time

@@ -65,3 +65,5 @@ L'erreur `compileSdkVersion is not specified` persiste **même avec une valeur l
 - `mobile/SOLUTION_TROUVEE.md` - Solution partielle
 - `mobile/CONCLUSION_EXPLORATION.md` - Ce document
 
+
+

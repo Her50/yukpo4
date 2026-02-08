@@ -297,3 +297,5 @@ COMMENT ON FUNCTION add_product_to_service_jsonb_v2 IS 'Fonction optimisée qui 
 
 
 
+
+

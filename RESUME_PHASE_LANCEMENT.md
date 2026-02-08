@@ -97,3 +97,5 @@ WHERE is_active = TRUE;
 **Date** : 2026-02-06  
 **Statut** : ✅ **IMPLÉMENTÉ ET PRÊT POUR TEST**
 
+
+

@@ -86,3 +86,5 @@ Error resolving plugin [id: 'expo-module-gradle-plugin']
 
 **Statut**: Corrections appliquées, investigation supplémentaire nécessaire
 
+
+

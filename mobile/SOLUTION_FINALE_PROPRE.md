@@ -24,3 +24,5 @@ C'est un problème avec Expo SDK 51 lui-même, pas avec notre configuration. Dan
 2. Utiliser une version antérieure d'Expo
 3. Attendre une correction d'Expo
 
+
+

@@ -137,3 +137,5 @@ cd mobile/android
 
 **Prochaine étape** : Vérifier que le patch s'applique correctement lors du build EAS. Si non, considérer upgrade `expo-modules-core` vers `~2.5.0`.
 
+
+

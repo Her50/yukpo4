@@ -31,3 +31,5 @@ Relancer le build pour voir si l'exclusion de `expo-crypto` résout le problème
 Si ça ne fonctionne pas, tester la solution alternative : retirer le patch complètement.
 
 
+
+

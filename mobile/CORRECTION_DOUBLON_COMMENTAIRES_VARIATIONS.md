@@ -110,3 +110,5 @@ const transformedProduct = {
 2. **ProductCard** a déjà la logique pour afficher les variants (lignes 1806-1891)
 3. Le problème était que les données n'étaient pas préservées lors de la transformation dans ResultatBesoinScreen
 
+
+

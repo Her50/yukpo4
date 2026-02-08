@@ -147,3 +147,5 @@ WHERE email = 'admin@yukpo.dev';
 
 **Utilisez l'Option 1 (EC2)** car c'est la méthode la plus simple et la plus sécurisée pour accéder à la base de données AWS RDS dans un VPC privé.
 
+
+
