@@ -354,7 +354,7 @@ pub async fn add_reaction(
     let reaction_id_str = reaction_uuid.to_string();
 
     // Valider type réaction
-    let valid_types = vec!["like", "love", "laugh", "wow", "sad", "angry"];
+    let valid_types = ["like", "love", "laugh", "wow", "sad", "angry"];
     if !valid_types.contains(&payload.type_reaction.as_str()) {
         return Err(StatusCode::BAD_REQUEST);
     }

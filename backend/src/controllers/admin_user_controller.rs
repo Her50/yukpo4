@@ -224,7 +224,7 @@ pub async fn update_user_role(
     })?;
 
     // Valider le rôle
-    let valid_roles = vec!["user", "admin", "client", "prestataire"];
+    let valid_roles = ["user", "admin", "client", "prestataire"];
     if !valid_roles.contains(&request.role.as_str()) {
         return Err(AppError::BadRequest(
             format!("Rôle invalide. Rôles autorisés: {}", valid_roles.join(", ")).into(),

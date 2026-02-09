@@ -171,7 +171,7 @@ async fn detect_scenes_with_ia(
 
     // Obtenir métadonnées vidéo avec FFprobe
     let duration_output = Command::new("ffprobe")
-        .args(&[
+        .args([
             "-v",
             "error",
             "-show_entries",
@@ -278,7 +278,7 @@ Réponds SEULEMENT le JSON, rien d'autre."#,
         .ok_or_else(|| AppError::Internal("Champ 'scenes' manquant".to_string()))?;
 
     let mut scenes = Vec::new();
-    for (_idx, scene_json) in scenes_array.iter().enumerate() {
+    for scene_json in scenes_array.iter() {
         let start_time = scene_json.get("start_time").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let end_time =
             scene_json.get("end_time").and_then(|v| v.as_f64()).unwrap_or(start_time + 5.0);
@@ -322,7 +322,7 @@ async fn detect_scenes_ffmpeg(
 
     // 1. Obtenir la durée totale de la vidéo
     let duration_output = Command::new("ffprobe")
-        .args(&[
+        .args([
             "-v",
             "error",
             "-show_entries",
@@ -346,7 +346,7 @@ async fn detect_scenes_ffmpeg(
 
     // 2. Détecter les changements de scène avec FFmpeg
     let scene_output = Command::new("ffmpeg")
-        .args(&[
+        .args([
             "-i",
             video_url,
             "-vf",
@@ -379,7 +379,7 @@ async fn detect_scenes_ffmpeg(
 
     // 3. Détecter les silences
     let silence_output = Command::new("ffmpeg")
-        .args(&[
+        .args([
             "-i",
             video_url,
             "-af",
@@ -417,7 +417,7 @@ async fn detect_scenes_ffmpeg(
 
     // 4. Analyser le niveau audio moyen par segment
     let audio_level_output = Command::new("ffmpeg")
-        .args(&["-i", video_url, "-af", "volumedetect", "-f", "null", "-"])
+        .args(["-i", video_url, "-af", "volumedetect", "-f", "null", "-"])
         .output()
         .await;
 

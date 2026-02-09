@@ -5,25 +5,15 @@ fn normalize_country(input: &str) -> String {
         .trim()
         .to_lowercase()
         .replace('’', "'")
-        .replace('à', "a")
-        .replace('â', "a")
-        .replace('ä', "a")
+        .replace(['à', 'â', 'ä'], "a")
         .replace('ç', "c")
-        .replace('é', "e")
-        .replace('è', "e")
-        .replace('ê', "e")
-        .replace('ë', "e")
-        .replace('î', "i")
-        .replace('ï', "i")
-        .replace('ô', "o")
-        .replace('ö', "o")
-        .replace('ù', "u")
-        .replace('û', "u")
-        .replace('ü', "u")
+        .replace(['é', 'è', 'ê', 'ë'], "e")
+        .replace(['î', 'ï'], "i")
+        .replace(['ô', 'ö'], "o")
+        .replace(['ù', 'û', 'ü'], "u")
         .replace('ÿ', "y")
         .replace('œ', "oe")
-        .replace('–', "-")
-        .replace('—', "-")
+        .replace(['–', '—'], "-")
 }
 
 fn parse_country_from_string(value: &str) -> Option<String> {
@@ -33,7 +23,7 @@ fn parse_country_from_string(value: &str) -> Option<String> {
     }
 
     let candidates: Vec<&str> = trimmed
-        .split(|c| c == ',' || c == ';' || c == '|')
+        .split([',', ';', '|'])
         .map(|part| part.trim())
         .filter(|part| !part.is_empty())
         .collect();
@@ -334,10 +324,10 @@ fn ensure_product_currency(product: &mut Value, service_country: Option<&str>) {
 }
 
 pub fn auto_fill_currencies(service_data: &mut Value) {
-    let mut service_country = service_data.get("lieu_produit").and_then(|v| extract_country(v));
+    let mut service_country = service_data.get("lieu_produit").and_then(extract_country);
 
     if service_country.is_none() {
-        service_country = service_data.get("location_vector").and_then(|v| extract_country(v));
+        service_country = service_data.get("location_vector").and_then(extract_country);
     }
 
     if let Some(products_value) = service_data.get_mut("produits") {

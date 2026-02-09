@@ -258,7 +258,7 @@ impl TaxiMatchingService {
         // 7. Note conducteur
         if let Some(rating) = taxi.driver_rating {
             let rating_bonus = (rating - 3.0) * 5.0;
-            score += rating_bonus.max(0.0).min(15.0);
+            score += rating_bonus.clamp(0.0, 15.0);
             match_reasons.push(format!("Conducteur noté {:.1}/5", rating));
         }
 
@@ -269,7 +269,7 @@ impl TaxiMatchingService {
         }
 
         // Normaliser score entre 0 et 100
-        let final_score = score.max(0.0).min(100.0);
+        let final_score = score.clamp(0.0, 100.0);
 
         TaxiMatch {
             taxi_id: taxi.id,

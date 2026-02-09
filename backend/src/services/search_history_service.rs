@@ -210,43 +210,41 @@ pub async fn get_search_suggestions(
             .fetch_all(pool)
             .await
         }
+    } else if let Some(uid) = user_id {
+        // Recherche sans prefix mais avec user_id
+        sqlx::query(
+            r#"
+            SELECT query_text, COUNT(*) as search_count
+            FROM search_history
+            WHERE (user_id = $1 OR user_id IS NULL)
+            AND created_at >= NOW() - INTERVAL '90 days'
+            GROUP BY query_text
+            ORDER BY 
+                CASE WHEN user_id = $1 THEN 1 ELSE 2 END,
+                search_count DESC,
+                MAX(created_at) DESC
+            LIMIT $2
+            "#,
+        )
+        .bind(uid)
+        .bind(limit)
+        .fetch_all(pool)
+        .await
     } else {
-        if let Some(uid) = user_id {
-            // Recherche sans prefix mais avec user_id
-            sqlx::query(
-                r#"
-                SELECT query_text, COUNT(*) as search_count
-                FROM search_history
-                WHERE (user_id = $1 OR user_id IS NULL)
-                AND created_at >= NOW() - INTERVAL '90 days'
-                GROUP BY query_text
-                ORDER BY 
-                    CASE WHEN user_id = $1 THEN 1 ELSE 2 END,
-                    search_count DESC,
-                    MAX(created_at) DESC
-                LIMIT $2
-                "#,
-            )
-            .bind(uid)
-            .bind(limit)
-            .fetch_all(pool)
-            .await
-        } else {
-            // Recherche sans prefix ni user_id
-            sqlx::query(
-                r#"
-                SELECT query_text, COUNT(*) as search_count
-                FROM search_history
-                WHERE created_at >= NOW() - INTERVAL '90 days'
-                GROUP BY query_text
-                ORDER BY search_count DESC, MAX(created_at) DESC
-                LIMIT $1
-                "#,
-            )
-            .bind(limit)
-            .fetch_all(pool)
-            .await
-        }
+        // Recherche sans prefix ni user_id
+        sqlx::query(
+            r#"
+            SELECT query_text, COUNT(*) as search_count
+            FROM search_history
+            WHERE created_at >= NOW() - INTERVAL '90 days'
+            GROUP BY query_text
+            ORDER BY search_count DESC, MAX(created_at) DESC
+            LIMIT $1
+            "#,
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await
     }
     .map_err(|e| AppError::Internal(format!("Erreur récupération suggestions: {}", e)))?;
 

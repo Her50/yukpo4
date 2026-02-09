@@ -917,7 +917,7 @@ impl AudioMasteringService {
     async fn local_master(&self, input: &Path, output_dir: &Path) -> AppResult<MasteringResult> {
         let mastered_path = output_dir.join("mastered_local.wav");
 
-        let filters = vec![
+        let filters = [
             "loudnorm=I=-14:TP=-1.5:LRA=11",
             "acompressor=threshold=-24dB:ratio=3:attack=25:release=280",
             "aexciter=amount=0.2",

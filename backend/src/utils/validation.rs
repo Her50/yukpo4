@@ -12,6 +12,7 @@ lazy_static! {
     ).unwrap();
 
     /// Mot de passe fort: min 8 caractères, au moins une majuscule, une minuscule, un chiffre
+    #[allow(clippy::invalid_regex)]
     static ref PASSWORD_REGEX: Regex = Regex::new(
         r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
     ).unwrap();

@@ -93,7 +93,7 @@ impl OffresEmploiService {
         .bind(request.remote_partiel.unwrap_or(false))
         .bind(salaire_min.as_ref())
         .bind(salaire_max.as_ref())
-        .bind(&request.devise.unwrap_or_else(|| "XAF".to_string()))
+        .bind(request.devise.unwrap_or_else(|| "XAF".to_string()))
         .bind(request.salaire_negociable.unwrap_or(false))
         .bind(request.niveau_etude.as_deref())
         .bind(request.experience_min)
@@ -178,7 +178,7 @@ impl OffresEmploiService {
         }
 
         let page = request.page.unwrap_or(1).max(1);
-        let limit = request.limit.unwrap_or(20).min(100).max(1);
+        let limit = request.limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         // ✅ CORRECTION: Requête SQL qui récupère TOUTES les offres actives créées
@@ -200,9 +200,9 @@ impl OffresEmploiService {
 
         // Construire la requête SQL avec filtres si nécessaire
         let offres = if let Some(ref pattern) = search_pattern {
-            where_conditions.push(format!(
-                "(titre_poste ILIKE $1 OR description ILIKE $1 OR secteur ILIKE $1 OR COALESCE(domaine, '') ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(COALESCE(competences_requises, ARRAY[]::text[])) AS comp WHERE comp ILIKE $1) OR EXISTS (SELECT 1 FROM unnest(COALESCE(tags, ARRAY[]::text[])) AS tag WHERE tag ILIKE $1))"
-            ));
+            where_conditions.push(
+                "(titre_poste ILIKE $1 OR description ILIKE $1 OR secteur ILIKE $1 OR COALESCE(domaine, '') ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(COALESCE(competences_requises, ARRAY[]::text[])) AS comp WHERE comp ILIKE $1) OR EXISTS (SELECT 1 FROM unnest(COALESCE(tags, ARRAY[]::text[])) AS tag WHERE tag ILIKE $1))".to_string()
+            );
             let query_sql = format!(
                 "SELECT * FROM offres_emploi WHERE statut = 'active' AND is_active = true AND {} ORDER BY date_publication DESC LIMIT $2 OFFSET $3",
                 where_conditions.join(" AND ")

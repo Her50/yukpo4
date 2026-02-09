@@ -717,7 +717,7 @@ impl ScalabilityService {
     /// Démarre le worker de traitement par lots
     fn start_batch_processor_worker(&self) {
         let processor = Arc::clone(&self.batch_processor);
-        let _ = tokio::spawn(async move {
+        drop(tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(2));
             loop {
                 interval.tick().await;
@@ -726,7 +726,7 @@ impl ScalabilityService {
                 // Traiter les lots expirés
                 proc.process_expired_batches().await;
             }
-        });
+        }));
     }
 
     /// Obtient les métriques de scalabilité

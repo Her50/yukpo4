@@ -85,7 +85,7 @@ pub async fn create_health_structure(
     }
 
     // Valider le type
-    let valid_types = vec!["hopital_clinique", "pharmacie", "laboratoire"];
+    let valid_types = ["hopital_clinique", "pharmacie", "laboratoire"];
     if !valid_types.contains(&payload.structure_type.as_str()) {
         return Err((
             StatusCode::BAD_REQUEST,

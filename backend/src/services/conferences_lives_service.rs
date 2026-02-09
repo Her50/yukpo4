@@ -109,7 +109,7 @@ impl ConferencesLivesService {
         }
 
         let page = page.unwrap_or(1).max(1);
-        let limit = limit.unwrap_or(20).min(100).max(1);
+        let limit = limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
         let now = chrono::Utc::now();
 
@@ -236,7 +236,7 @@ impl ConferencesLivesService {
         request: SearchConferencesRequest,
     ) -> AppResult<(Vec<ConferenceLiveScolaire>, i64)> {
         let page = request.page.unwrap_or(1).max(1);
-        let limit = request.limit.unwrap_or(20).min(100).max(1);
+        let limit = request.limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         let mut query = sqlx::QueryBuilder::new(

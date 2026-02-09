@@ -674,7 +674,7 @@ async fn save_destination(
     let user_id = user.id;
 
     // Valider le label
-    let valid_labels = vec!["domicile", "bureau", "autre"];
+    let valid_labels = ["domicile", "bureau", "autre"];
     if !valid_labels.contains(&request.label.as_str()) {
         return Err(AppError::BadRequest(
             "Label invalide. Utilisez: domicile, bureau, ou autre".to_string(),

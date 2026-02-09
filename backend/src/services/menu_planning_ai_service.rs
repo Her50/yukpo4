@@ -364,7 +364,7 @@ impl MenuPlanningAIService {
             );
 
             // Compléter avec des jours manquants
-            let day_names = vec![
+            let day_names = [
                 "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche",
             ];
             let existing_days: std::collections::HashSet<i32> =

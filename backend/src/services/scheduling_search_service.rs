@@ -155,10 +155,10 @@ impl SchedulingSearchService {
             "#
         };
 
-        let rows = if user_lat.is_some() && user_lng.is_some() {
+        let rows = if let (Some(lat), Some(lng)) = (user_lat, user_lng) {
             sqlx::query(query)
-                .bind(user_lat.unwrap())
-                .bind(user_lng.unwrap())
+                .bind(lat)
+                .bind(lng)
                 .bind(max_distance)
                 .fetch_all(&self.pool)
                 .await
@@ -258,11 +258,11 @@ impl SchedulingSearchService {
             "#
         };
 
-        let rows = if user_lat.is_some() && user_lng.is_some() {
+        let rows = if let (Some(lat), Some(lng)) = (user_lat, user_lng) {
             sqlx::query(query)
                 .bind(requested_service)
-                .bind(user_lat.unwrap())
-                .bind(user_lng.unwrap())
+                .bind(lat)
+                .bind(lng)
                 .bind(search_time)
                 .bind(max_distance)
                 .fetch_all(&self.pool)

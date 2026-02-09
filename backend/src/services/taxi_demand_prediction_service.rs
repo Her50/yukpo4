@@ -204,8 +204,7 @@ impl TaxiDemandPredictionService {
         let confidence = if features.historical_avg > 0.0 {
             (1.0 - (predicted_demand - features.historical_avg).abs()
                 / features.historical_avg.max(1.0))
-            .max(0.0)
-            .min(1.0) as f32
+            .clamp(0.0, 1.0) as f32
         } else {
             0.7
         };

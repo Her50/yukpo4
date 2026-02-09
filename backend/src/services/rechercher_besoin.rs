@@ -1642,10 +1642,7 @@ pub async fn rechercher_besoin_direct(
     let mut prestataires_map = serde_json::Map::new();
     let mut prestataires_seen = std::collections::HashSet::new();
 
-    for (
-        _service_id,
-        (_, created_at, user_id, nom_complet, avatar_url, email, is_provider, gps, photo_profil),
-    ) in &service_user_info_map
+    for (_, created_at, user_id, nom_complet, avatar_url, email, is_provider, gps, photo_profil) in service_user_info_map.values()
     {
         // Utiliser user_id comme clé pour éviter doublons
         if !prestataires_seen.contains(user_id) {
@@ -2039,9 +2036,7 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
     let mut champs_embeddes = Vec::new();
 
     // NOTE: SUSPENSION COMPLÈTE DE PINECONE - Recherche native PostgreSQL uniquement
-    log_info(&format!(
-        "[PINECONE][SUSPENDU] Recherche sémantique Pinecone temporairement suspendue"
-    ));
+    log_info(&"[PINECONE][SUSPENDU] Recherche sémantique Pinecone temporairement suspendue".to_string());
 
     // TODO: Réactiver Pinecone plus tard quand nécessaire
     /*
@@ -2240,9 +2235,7 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
     .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur connexion base: {}", e)))?;
 
     // RECHERCHE NATIVE POSTGRESQL (SUSPENDUE TEMPORAIREMENT LA RECHERCHE SEMANTIQUE)
-    log_info(&format!(
-        "[RECHERCHE] Utilisation de la recherche native PostgreSQL intelligente"
-    ));
+    log_info(&"[RECHERCHE] Utilisation de la recherche native PostgreSQL intelligente".to_string());
 
     // Extraire les termes de recherche du JSON IA
     let search_query = extract_search_query_from_ia_json(&data_with_media)?;
@@ -2439,6 +2432,12 @@ pub struct TokenConsumption {
     pub ocr_calls: i64,
     pub matching_complexity: i64,
     pub total_tokens: i64,
+}
+
+impl Default for TokenConsumption {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TokenConsumption {

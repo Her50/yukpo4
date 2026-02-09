@@ -246,7 +246,7 @@ impl ProfilsCandidatsService {
         info!("[search_candidats] Recherche candidats");
 
         let page = page.unwrap_or(1).max(1);
-        let limit = limit.unwrap_or(20).min(100).max(1);
+        let limit = limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         // Construire la requête avec filtres

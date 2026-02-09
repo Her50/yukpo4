@@ -116,7 +116,7 @@ pub async fn compute_score(
 
     // Calcul du score final avec pond?ration
     let score = (avg_rating * 0.7) + (promptitude_score * 0.3);
-    let score_final = score.max(0.0).min(5.0); // Limiter entre 0 et 5
+    let score_final = score.clamp(0.0, 5.0); // Limiter entre 0 et 5
 
     let service_score = ServiceScore {
         service_id,

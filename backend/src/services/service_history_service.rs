@@ -330,8 +330,9 @@ async fn enrich_history_event(
         meta.remove("provider_snapshot");
     }
 
-    if (service_snapshot.is_none() || provider_snapshot.is_none()) && event.service_id.is_some() {
-        match fetch_service_and_provider_snapshot(pool, event.service_id.unwrap()).await? {
+    if (service_snapshot.is_none() || provider_snapshot.is_none()) {
+        if let Some(service_id) = event.service_id {
+            match fetch_service_and_provider_snapshot(pool, service_id).await? {
             Some((service_snap, provider_snap)) => {
                 if service_snapshot.is_none() {
                     service_snapshot = Some(service_snap);
@@ -343,7 +344,7 @@ async fn enrich_history_event(
             None => {
                 if service_snapshot.is_none() {
                     service_snapshot = Some(ServiceHistorySnapshot {
-                        id: event.service_id.unwrap_or_default(),
+                        id: service_id,
                         provider_id: provider_snapshot.as_ref().map(|p| p.id).unwrap_or_default(),
                         title: None,
                         category: None,

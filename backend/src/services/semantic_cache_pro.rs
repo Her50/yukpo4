@@ -384,7 +384,7 @@ impl SemanticCachePro {
         let mut embedding = vec![0.0; self.config.embedding_dimensions];
 
         // Hachage simple pour simulation (remplacer par vrai embedding)
-        for (_i, word) in words.iter().enumerate() {
+        for word in words.iter() {
             let hash = self.simple_hash(word) as usize;
             let len = embedding.len();
             embedding[hash % len] += 1.0 / words.len() as f32;
@@ -532,7 +532,7 @@ impl SemanticCachePro {
 
         // Score bas? sur la longueur et complexit?
         let complexity_score = (query_len.log10() * response_len.log10()) / 100.0;
-        complexity_score.min(1.0).max(0.1)
+        complexity_score.clamp(0.1, 1.0)
     }
 
     fn is_context_compatible(&self, query_context: Option<&str>, cached_context: &str) -> bool {

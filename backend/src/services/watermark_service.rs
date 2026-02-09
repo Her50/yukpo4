@@ -59,7 +59,7 @@ impl WatermarkService {
         output_video: &Path,
         config: Option<WatermarkConfig>,
     ) -> AppResult<PathBuf> {
-        let mut config = config.unwrap_or_else(WatermarkConfig::default);
+        let mut config = config.unwrap_or_default();
 
         // Vérifier que la vidéo source existe
         if !input_video.exists() {

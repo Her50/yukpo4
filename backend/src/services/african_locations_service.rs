@@ -90,7 +90,7 @@ impl AfricanLocationsService {
         let place_lower = place_name.to_lowercase();
 
         // Liste des pays
-        let countries = vec![
+        let countries = [
             "cameroun",
             "sénégal",
             "côte d'ivoire",

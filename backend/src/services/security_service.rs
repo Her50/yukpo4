@@ -64,6 +64,12 @@ pub struct SecurityService {
     blocked_users: Arc<RwLock<HashMap<String, u64>>>,
 }
 
+impl Default for SecurityService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SecurityService {
     pub fn new() -> Self {
         let config = SecurityConfig {

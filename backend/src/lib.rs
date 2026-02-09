@@ -439,10 +439,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         // ✅ Phase 7: Compression gzip/brotli pour réponses volumineuses
         .layer(CompressionLayer::new().gzip(true).br(true))
-        .with_state(state);
+        .with_state(state)
     // Ajouter les routes WebSocket séparément
     // let app = app.merge(websocket);
-    app
 }
 // In main.rs, call init_logging() before anything else.
 // For anti-bruteforce, apply axum::middleware::from_fn(anti_bruteforce) only to /auth/login route in auth_routes.rs.

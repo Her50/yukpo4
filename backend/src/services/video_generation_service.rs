@@ -3243,7 +3243,7 @@ fn compute_slide_durations(total_duration: u32, overlays: &[SlideOverlay]) -> Ve
     let mut durations: Vec<f32> = weights.iter().map(|w| total * (w / total_weight)).collect();
 
     let average = total / count as f32;
-    let min_duration = average.min(2.8).max(1.4);
+    let min_duration = average.clamp(1.4, 2.8);
     let max_duration = (average * 2.2).clamp(min_duration + 0.2, 12.0);
 
     for duration in durations.iter_mut() {
@@ -3494,7 +3494,7 @@ async fn append_video_variants_to_service_data(
     )
     .fetch_optional(&state.pg)
     .await
-    .map_err(|err| AppError::from(err))?;
+    .map_err(AppError::from)?;
 
     if let Some(row) = product_row {
         let mut product_data = row.product_data;
@@ -3703,7 +3703,7 @@ async fn apply_crossfade_transitions(
             })?;
         } else {
             // Si pas d'audio, ajouter un stream audio silencieux
-            let duration = slide_durations.get(0).copied().unwrap_or(4.0).max(1.0);
+            let duration = slide_durations.first().copied().unwrap_or(4.0).max(1.0);
             let args = vec![
                 "-y".to_string(),
                 "-i".to_string(),
@@ -3752,7 +3752,7 @@ async fn apply_crossfade_transitions(
 
     let mut filter_parts: Vec<String> = Vec::new();
     let mut previous_label = "0:v".to_string();
-    let mut accumulated = slide_durations.get(0).copied().unwrap_or(4.0).max(0.2);
+    let mut accumulated = slide_durations.first().copied().unwrap_or(4.0).max(0.2);
 
     for index in 0..(slide_filenames.len() - 1) {
         let current_duration = slide_durations.get(index).copied().unwrap_or(4.0).max(0.2);
@@ -4196,7 +4196,7 @@ async fn generate_additional_variant(
         "Variante vidéo {} ({}x{})",
         format_label, target_width, target_height
     ))
-    .bind(&vec![
+    .bind(vec![
         "video".to_string(),
         "variant".to_string(),
         format_label.to_string(),
@@ -4566,9 +4566,9 @@ async fn generate_background_music(
             warn!("[VideoGeneration] Utilisation du WAV comme fallback");
             if let Err(e) = tokio::fs::copy(&wav_path, &track_path).await {
                 error!("[VideoGeneration] Impossible de copier WAV: {}", e);
-                return Err(AppError::Internal(format!(
-                    "Génération musique impossible: conversion MP3 échouée et copie WAV échouée"
-                )));
+                return Err(AppError::Internal(
+                    "Génération musique impossible: conversion MP3 échouée et copie WAV échouée".to_string()
+                ));
             }
         } else {
             // Nettoyer le fichier WAV temporaire
@@ -4578,9 +4578,9 @@ async fn generate_background_music(
         // Si le format de sortie n'est pas MP3, utiliser directement le WAV
         if let Err(e) = tokio::fs::copy(&wav_path, &track_path).await {
             error!("[VideoGeneration] Impossible de copier WAV: {}", e);
-            return Err(AppError::Internal(format!(
-                "Génération musique impossible: copie WAV échouée"
-            )));
+            return Err(AppError::Internal(
+                "Génération musique impossible: copie WAV échouée".to_string()
+            ));
         }
         let _ = tokio::fs::remove_file(&wav_path).await;
     }

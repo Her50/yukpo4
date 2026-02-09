@@ -131,7 +131,7 @@ pub async fn upload_comment_media(
         })?
         .get("media_urls");
 
-    let mut existing_media = current_media.as_array().cloned().unwrap_or_else(|| vec![]);
+    let mut existing_media = current_media.as_array().cloned().unwrap_or_else(Vec::new);
     existing_media.extend(media_urls.clone());
 
     sqlx::query("UPDATE product_comments SET media_urls = $1 WHERE id = $2")

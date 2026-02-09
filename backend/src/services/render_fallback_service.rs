@@ -33,6 +33,12 @@ pub struct RenderFallbackResponse {
 
 pub struct RenderFallbackService;
 
+impl Default for RenderFallbackService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RenderFallbackService {
     pub fn new() -> Self {
         Self

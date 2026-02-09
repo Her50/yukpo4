@@ -35,7 +35,7 @@ pub async fn toggle_product_reaction(
     Json(payload): Json<ReactionPayload>,
 ) -> Result<Json<Value>, StatusCode> {
     // Valider le type de réaction
-    let valid_reactions = vec![
+    let valid_reactions = [
         "love",
         "like",
         "wow",

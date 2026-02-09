@@ -199,7 +199,7 @@ impl AppState {
                 if normalized_url.matches(':').count() >= 2 && !normalized_url.contains("/") {
                     normalized_url.push_str("/0");
                 } else if normalized_url.ends_with('/') {
-                    normalized_url.push_str("0");
+                    normalized_url.push('0');
                 }
             }
 
@@ -404,7 +404,7 @@ impl AppState {
         let redis_cluster_nodes = env::var("REDIS_CLUSTER_NODES")
             .ok()
             .map(|nodes| nodes.split(',').map(|s| s.trim().to_string()).collect())
-            .unwrap_or_else(|| vec![]);
+            .unwrap_or_else(Vec::new);
 
         // ✅ Phase 2: Initialiser les rate limiters
         let global_rate_limiter = Arc::new(
@@ -697,7 +697,7 @@ impl AppState {
             live_streaming: {
                 let config = LiveStreamingConfig::from_env();
                 // Validation silencieuse pour les tests
-                if let Err(_) = config.validate() {
+                if config.validate().is_err() {
                     // Pas de log en mode test
                 }
                 Arc::new(config)

@@ -104,7 +104,7 @@ impl TaxiDynamicPricingService {
             self.calculate_multiplier(demand_factor, supply_factor, time_factor, surge_factor);
 
         // Limiter entre 0.8 et 2.0
-        let dynamic_multiplier = dynamic_multiplier.max(0.8).min(2.0);
+        let dynamic_multiplier = dynamic_multiplier.clamp(0.8, 2.0);
 
         let final_price = request.base_price * dynamic_multiplier;
 

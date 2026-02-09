@@ -109,7 +109,7 @@ pub async fn get_redis_connection(
                     // ✅ CORRECTION: Logger seulement une fois toutes les 5 minutes pour éviter le spam
                     let should_log = {
                         let mut cache_guard = REDIS_HEALTH_CACHE.lock().unwrap();
-                        let cache = cache_guard.get_or_insert_with(|| RedisHealthCache::new());
+                        let cache = cache_guard.get_or_insert_with(RedisHealthCache::new);
                         cache.should_log(false)
                     };
                     if should_log {
@@ -144,7 +144,7 @@ pub async fn get_redis_connection(
                     // Timeout final
                     let should_log = {
                         let mut cache_guard = REDIS_HEALTH_CACHE.lock().unwrap();
-                        let cache = cache_guard.get_or_insert_with(|| RedisHealthCache::new());
+                        let cache = cache_guard.get_or_insert_with(RedisHealthCache::new);
                         cache.should_log(false)
                     };
                     if should_log {

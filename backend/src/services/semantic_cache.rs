@@ -126,7 +126,7 @@ impl SemanticCache {
 
         let response = self
             .http_client
-            .post(&format!("{}/embedding", self.config.embedding_service_url))
+            .post(format!("{}/embedding", self.config.embedding_service_url))
             .json(&json!({
                 "value": text,
                 "type_donnee": "texte"
@@ -165,7 +165,7 @@ impl SemanticCache {
 
         let response = match self
             .http_client
-            .post(&format!(
+            .post(format!(
                 "{}/search_embedding_pinecone",
                 self.config.embedding_service_url
             ))
@@ -268,7 +268,7 @@ impl SemanticCache {
 
             let response = self
                 .http_client
-                .post(&format!(
+                .post(format!(
                     "{}/add_embedding_pinecone",
                     self.config.embedding_service_url
                 ))
@@ -377,7 +377,7 @@ impl SemanticCache {
             });
 
             let response = self.http_client
-                .post(&format!("{}/search_embedding_pinecone", self.config.embedding_service_url))
+                .post(format!("{}/search_embedding_pinecone", self.config.embedding_service_url))
                 .header("x-api-key", &self.config.api_key)
                 .json(&request)
                 .timeout(Duration::from_secs(1500)) // Timeout ?quilibr? (1.5s)

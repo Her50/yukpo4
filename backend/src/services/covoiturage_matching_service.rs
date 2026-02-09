@@ -171,7 +171,7 @@ impl CovoiturageMatchingService {
         // 8. Note conducteur (+5 à +15 selon note)
         if let Some(rating) = trip.driver_rating {
             let rating_bonus = (rating - 3.0) * 5.0; // +0 si 3.0, +10 si 5.0
-            score += rating_bonus.max(0.0).min(15.0);
+            score += rating_bonus.clamp(0.0, 15.0);
             match_reasons.push(format!("Conducteur noté {:.1}/5", rating));
         }
 
@@ -182,7 +182,7 @@ impl CovoiturageMatchingService {
         }
 
         // Normaliser score entre 0 et 100
-        let final_score = score.max(0.0).min(100.0);
+        let final_score = score.clamp(0.0, 100.0);
 
         Ok(TripMatch {
             covoiturage_id: trip.id,

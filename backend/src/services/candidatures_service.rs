@@ -106,7 +106,7 @@ impl CandidaturesService {
         limit: Option<i64>,
     ) -> AppResult<(Vec<Candidature>, i64)> {
         let page = page.unwrap_or(1).max(1);
-        let limit = limit.unwrap_or(20).min(100).max(1);
+        let limit = limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         let mut query = String::from("SELECT * FROM candidatures WHERE offre_id = $1");
@@ -153,7 +153,7 @@ impl CandidaturesService {
         limit: Option<i64>,
     ) -> AppResult<(Vec<Candidature>, i64)> {
         let page = page.unwrap_or(1).max(1);
-        let limit = limit.unwrap_or(20).min(100).max(1);
+        let limit = limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         let mut query = String::from("SELECT * FROM candidatures WHERE candidat_id = $1");

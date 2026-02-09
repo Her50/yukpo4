@@ -60,9 +60,7 @@ pub fn sanitize_prompt_input(input: &str) -> String {
 
     // 4. Échapper caractères spéciaux pour sécurité supplémentaire
     sanitized
-        .replace('\n', " ")
-        .replace('\r', " ")
-        .replace('\t', " ")
+        .replace(['\n', '\r', '\t'], " ")
         .trim()
         .to_string()
 }

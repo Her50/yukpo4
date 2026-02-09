@@ -78,7 +78,7 @@ impl ExperiencesEtudiantsService {
         limit: Option<i64>,
     ) -> AppResult<(Vec<ExperienceAncienEtudiant>, i64)> {
         let page = page.unwrap_or(1).max(1);
-        let limit = limit.unwrap_or(20).min(100).max(1);
+        let limit = limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         let experiences = sqlx::query_as::<_, ExperienceAncienEtudiant>(
@@ -124,7 +124,7 @@ impl ExperiencesEtudiantsService {
         limit: Option<i64>,
     ) -> AppResult<(Vec<ExperienceAncienEtudiant>, i64)> {
         let page = page.unwrap_or(1).max(1);
-        let limit = limit.unwrap_or(20).min(100).max(1);
+        let limit = limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         let filiere_clone = filiere.clone();
@@ -165,7 +165,7 @@ impl ExperiencesEtudiantsService {
         request: SearchExperiencesRequest,
     ) -> AppResult<(Vec<ExperienceAncienEtudiant>, i64)> {
         let page = request.page.unwrap_or(1).max(1);
-        let limit = request.limit.unwrap_or(20).min(100).max(1);
+        let limit = request.limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         let mut query = sqlx::QueryBuilder::new(

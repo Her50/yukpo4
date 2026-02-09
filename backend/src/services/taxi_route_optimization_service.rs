@@ -57,6 +57,12 @@ pub struct TaxiRouteOptimizationService {
     google_maps_api_key: Option<String>,
 }
 
+impl Default for TaxiRouteOptimizationService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TaxiRouteOptimizationService {
     pub fn new() -> Self {
         let google_maps_api_key = std::env::var("GOOGLE_MAPS_API_KEY").ok();

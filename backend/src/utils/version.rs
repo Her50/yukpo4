@@ -51,7 +51,7 @@ impl VersionInfo {
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Ok(output) = std::process::Command::new("git")
-                .args(&["rev-parse", "--short", "HEAD"])
+                .args(["rev-parse", "--short", "HEAD"])
                 .output()
             {
                 if let Ok(commit) = String::from_utf8(output.stdout) {
@@ -77,7 +77,7 @@ impl VersionInfo {
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Ok(output) = std::process::Command::new("git")
-                .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+                .args(["rev-parse", "--abbrev-ref", "HEAD"])
                 .output()
             {
                 if let Ok(branch) = String::from_utf8(output.stdout) {

@@ -77,7 +77,7 @@ impl FournituresScolairesService {
         limit: Option<i64>,
     ) -> AppResult<(Vec<FournituresScolaires>, i64)> {
         let page = page.unwrap_or(1).max(1);
-        let limit = limit.unwrap_or(20).min(100).max(1);
+        let limit = limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         let fournitures = sqlx::query_as::<_, FournituresScolaires>(
@@ -118,7 +118,7 @@ impl FournituresScolairesService {
         request: SearchFournituresRequest,
     ) -> AppResult<(Vec<FournituresScolaires>, i64)> {
         let page = request.page.unwrap_or(1).max(1);
-        let limit = request.limit.unwrap_or(20).min(100).max(1);
+        let limit = request.limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         let mut conditions = vec!["is_active = true".to_string()];

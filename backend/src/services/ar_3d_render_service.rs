@@ -11,6 +11,12 @@ pub struct AR3DRenderService {
     render_output_dir: String,
 }
 
+impl Default for AR3DRenderService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AR3DRenderService {
     pub fn new() -> Self {
         let render_output_dir = std::env::var("AR_RENDER_OUTPUT_DIR")

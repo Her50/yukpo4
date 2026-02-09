@@ -26,17 +26,13 @@ pub struct VideoJobQueueItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default)]
 pub enum JobPriority {
+    #[default]
     Low = 0,
     Normal = 1,
     High = 2,
     Critical = 3,
-}
-
-impl Default for JobPriority {
-    fn default() -> Self {
-        JobPriority::Normal
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -113,7 +109,7 @@ impl VideoQueueService {
         .await?;
 
         // ✅ Ajouter à Redis queue pour traitement distribué
-        let job_id = item.job_id.clone();
+        let job_id = item.job_id;
         let priority = priority_value.clone() as u8;
         // Cloner les champs nécessaires pour sérialisation
         let item_for_queue = serde_json::json!({

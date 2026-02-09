@@ -212,7 +212,7 @@ impl TrocIntelligentService {
         self.find_cycles_recursive(
             &all_livres,
             &livre_offert,
-            &vec![livre_offert.clone()],
+            &[livre_offert.clone()],
             max_participants as usize,
             &mut chaines_trouvees,
         );

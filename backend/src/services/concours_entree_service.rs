@@ -90,7 +90,7 @@ impl ConcoursEntreeService {
         }
 
         let page = page.unwrap_or(1).max(1);
-        let limit = limit.unwrap_or(20).min(100).max(1);
+        let limit = limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
         let today = chrono::Utc::now().date_naive();
 
@@ -162,7 +162,7 @@ impl ConcoursEntreeService {
         request: SearchConcoursRequest,
     ) -> AppResult<(Vec<ConcoursEntree>, i64)> {
         let page = request.page.unwrap_or(1).max(1);
-        let limit = request.limit.unwrap_or(20).min(100).max(1);
+        let limit = request.limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
         let mut query =

@@ -36,7 +36,7 @@ pub async fn enqueue_distribution_job(
     .bind(payload.schedule_time)
     .execute(&state.pg)
     .await
-    .map_err(|err| AppError::from(err))?;
+    .map_err(AppError::from)?;
 
     info!(
         "[SocialDistribution] Job ajouté pour media_id={} platform={}",
@@ -81,7 +81,7 @@ pub async fn fetch_due_jobs(
         3, // 3 tentatives avec backoff exponentiel
     )
     .await
-    .map_err(|err| AppError::from(err))?;
+    .map_err(AppError::from)?;
 
     Ok(rows)
 }
@@ -140,7 +140,7 @@ pub async fn mark_job_failed(
     .bind(job_id)
     .execute(&state.pg)
     .await
-    .map_err(|err| AppError::from(err))?;
+    .map_err(AppError::from)?;
 
     warn!(
         "[SocialDistribution] Job {} failed: {}",

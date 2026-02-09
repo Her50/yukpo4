@@ -25,6 +25,12 @@ pub struct WebRTCSignalingManager {
     peers: Arc<RwLock<HashMap<String, PeerState>>>,
 }
 
+impl Default for WebRTCSignalingManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WebRTCSignalingManager {
     pub fn new() -> Self {
         let manager = Self {

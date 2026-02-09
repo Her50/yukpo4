@@ -28,7 +28,7 @@ pub async fn notify_new_matching(
         return Ok(());
     }
 
-    let title = format!("🎯 Nouvelle offre correspondante !");
+    let title = "🎯 Nouvelle offre correspondante !".to_string();
     let body = format!(
         "Vous avez un score de {}% pour le poste: {}",
         score as i32, titre_poste
