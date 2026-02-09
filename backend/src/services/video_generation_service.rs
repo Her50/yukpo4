@@ -4567,7 +4567,8 @@ async fn generate_background_music(
             if let Err(e) = tokio::fs::copy(&wav_path, &track_path).await {
                 error!("[VideoGeneration] Impossible de copier WAV: {}", e);
                 return Err(AppError::Internal(
-                    "Génération musique impossible: conversion MP3 échouée et copie WAV échouée".to_string()
+                    "Génération musique impossible: conversion MP3 échouée et copie WAV échouée"
+                        .to_string(),
                 ));
             }
         } else {
@@ -4579,7 +4580,7 @@ async fn generate_background_music(
         if let Err(e) = tokio::fs::copy(&wav_path, &track_path).await {
             error!("[VideoGeneration] Impossible de copier WAV: {}", e);
             return Err(AppError::Internal(
-                "Génération musique impossible: copie WAV échouée".to_string()
+                "Génération musique impossible: copie WAV échouée".to_string(),
             ));
         }
         let _ = tokio::fs::remove_file(&wav_path).await;

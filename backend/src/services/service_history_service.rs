@@ -333,30 +333,34 @@ async fn enrich_history_event(
     if (service_snapshot.is_none() || provider_snapshot.is_none()) {
         if let Some(service_id) = event.service_id {
             match fetch_service_and_provider_snapshot(pool, service_id).await? {
-            Some((service_snap, provider_snap)) => {
-                if service_snapshot.is_none() {
-                    service_snapshot = Some(service_snap);
+                Some((service_snap, provider_snap)) => {
+                    if service_snapshot.is_none() {
+                        service_snapshot = Some(service_snap);
+                    }
+                    if provider_snapshot.is_none() {
+                        provider_snapshot = Some(provider_snap);
+                    }
                 }
-                if provider_snapshot.is_none() {
-                    provider_snapshot = Some(provider_snap);
-                }
-            }
-            None => {
-                if service_snapshot.is_none() {
-                    service_snapshot = Some(ServiceHistorySnapshot {
-                        id: service_id,
-                        provider_id: provider_snapshot.as_ref().map(|p| p.id).unwrap_or_default(),
-                        title: None,
-                        category: None,
-                        short_description: None,
-                        cover_media: None,
-                        city: None,
-                        country: None,
-                        is_active: None,
-                        service_deleted: Some(true),
-                    });
-                } else if let Some(snapshot) = service_snapshot.as_mut() {
-                    snapshot.service_deleted.get_or_insert(true);
+                None => {
+                    if service_snapshot.is_none() {
+                        service_snapshot = Some(ServiceHistorySnapshot {
+                            id: service_id,
+                            provider_id: provider_snapshot
+                                .as_ref()
+                                .map(|p| p.id)
+                                .unwrap_or_default(),
+                            title: None,
+                            category: None,
+                            short_description: None,
+                            cover_media: None,
+                            city: None,
+                            country: None,
+                            is_active: None,
+                            service_deleted: Some(true),
+                        });
+                    } else if let Some(snapshot) = service_snapshot.as_mut() {
+                        snapshot.service_deleted.get_or_insert(true);
+                    }
                 }
             }
         }

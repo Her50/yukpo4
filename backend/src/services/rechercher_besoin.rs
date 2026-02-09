@@ -1642,7 +1642,8 @@ pub async fn rechercher_besoin_direct(
     let mut prestataires_map = serde_json::Map::new();
     let mut prestataires_seen = std::collections::HashSet::new();
 
-    for (_, created_at, user_id, nom_complet, avatar_url, email, is_provider, gps, photo_profil) in service_user_info_map.values()
+    for (_, created_at, user_id, nom_complet, avatar_url, email, is_provider, gps, photo_profil) in
+        service_user_info_map.values()
     {
         // Utiliser user_id comme clé pour éviter doublons
         if !prestataires_seen.contains(user_id) {
@@ -2036,7 +2037,9 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
     let mut champs_embeddes = Vec::new();
 
     // NOTE: SUSPENSION COMPLÈTE DE PINECONE - Recherche native PostgreSQL uniquement
-    log_info(&"[PINECONE][SUSPENDU] Recherche sémantique Pinecone temporairement suspendue".to_string());
+    log_info(
+        &"[PINECONE][SUSPENDU] Recherche sémantique Pinecone temporairement suspendue".to_string(),
+    );
 
     // TODO: Réactiver Pinecone plus tard quand nécessaire
     /*

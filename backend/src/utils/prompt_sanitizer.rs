@@ -59,10 +59,7 @@ pub fn sanitize_prompt_input(input: &str) -> String {
     sanitized = sanitized.split_whitespace().collect::<Vec<_>>().join(" ");
 
     // 4. Échapper caractères spéciaux pour sécurité supplémentaire
-    sanitized
-        .replace(['\n', '\r', '\t'], " ")
-        .trim()
-        .to_string()
+    sanitized.replace(['\n', '\r', '\t'], " ").trim().to_string()
 }
 
 /// Valide qu'un prompt ne contient pas de tentatives d'injection

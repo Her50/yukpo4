@@ -25,8 +25,7 @@ pub struct VideoJobQueueItem {
     pub max_retries: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum JobPriority {
     #[default]
     Low = 0,
