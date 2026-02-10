@@ -491,12 +491,12 @@ jobs:
             # Créer docker-compose.hetzner.yml si n'existe pas
             if [ ! -f docker-compose.hetzner.yml ]; then
               echo "📝 Creating docker-compose.hetzner.yml..."
-              cat > docker-compose.hetzner.yml << COMPOSE_EOF
+              cat > docker-compose.hetzner.yml << 'COMPOSE_EOF'
 version: '3.8'
 
 services:
   backend:
-    image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+    image: ghcr.io/Her50/yukpo4/yukpomnang-backend-optimized:latest
     container_name: yukpo-backend
     restart: unless-stopped
     env_file:
@@ -528,7 +528,7 @@ services:
     environment:
       - POSTGRES_DB=yukpomnang
       - POSTGRES_USER=yukpo_user
-      - POSTGRES_PASSWORD=\${DB_PASSWORD:-changeme}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -545,7 +545,7 @@ services:
     image: redis:7-alpine
     container_name: yukpo-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass \${REDIS_PASSWORD:-changeme}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
     volumes:
       - redis_data:/data
     ports:
