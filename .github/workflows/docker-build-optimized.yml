@@ -224,7 +224,6 @@ jobs:
         with:
           images: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-            ${{ env.ECR_REPO_URI }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr

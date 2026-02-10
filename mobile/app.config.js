@@ -68,10 +68,8 @@ module.exports = {
         android: {
             adaptiveIcon: {
                 foregroundImage: "./assets/adaptive-icon.png",
-                // ✅ FOND MODERNE : Bleu foncé optimisé pour contraste avec le Y orange/jaune (cohérent avec le splash screen)
-                backgroundColor: "#1E3A8A"
-                // ✅ ANCIEN FOND (commenté) : Bleu indigo traditionnel du ndop
-                // backgroundColor: "#1A237E"
+                // ✅ FOND BLANC : Fond blanc pour contraste maximal avec le Y violet
+                backgroundColor: "#FFFFFF"  // Blanc pour visibilité maximale du Y violet
             },
             package: "com.yukpomnang.mobile",
             // Ajouter googleServicesFile seulement si le fichier existe
