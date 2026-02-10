@@ -485,13 +485,13 @@ jobs:
       - name: Update docker-compose on Hetzner
         run: |
           echo "🔄 Updating docker-compose.yml on Hetzner..."
-          ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << EOF
+          ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
             cd ${{ env.HETZNER_DIR }}
             
             # Créer docker-compose.hetzner.yml si n'existe pas
             if [ ! -f docker-compose.hetzner.yml ]; then
               echo "📝 Creating docker-compose.hetzner.yml..."
-              cat > docker-compose.hetzner.yml << 'COMPOSE_EOF'
+              cat > docker-compose.hetzner.yml << COMPOSE_EOF
 version: '3.8'
 
 services:
