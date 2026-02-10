@@ -87,10 +87,8 @@ jobs:
             echo "📝 Extracting environment variables..."
             
             # Create .env file
-            cat > hetzner.env << 'ENVEOF'
-# Environment variables for Hetzner
-# Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-ENVEOF
+            echo "# Environment variables for Hetzner" > hetzner.env
+            echo "# Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> hetzner.env
             
             # Extract environment variables
             echo "$CONTAINER_DEF" | jq -r '.environment[]? | "\(.name)=\(.value)"' >> hetzner.env
