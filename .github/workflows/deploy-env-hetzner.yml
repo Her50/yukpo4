@@ -52,11 +52,9 @@ jobs:
           
           # Configure AWS credentials (from GitHub secrets)
           mkdir -p ~/.aws
-          cat > ~/.aws/credentials << EOF
-[default]
-aws_access_key_id = ${{ secrets.AWS_ACCESS_KEY_ID }}
-aws_secret_access_key = ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-EOF
+          echo "[default]" > ~/.aws/credentials
+          echo "aws_access_key_id = ${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
+          echo "aws_secret_access_key = ${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
           echo "[default]" > ~/.aws/config
           echo "region = us-east-1" >> ~/.aws/config
           
@@ -148,27 +146,25 @@ ENVEOF
             done
             
             # Add Hetzner-specific overrides
-            cat >> hetzner.env << 'ENVEOF'
-
-# Hetzner-specific overrides
-S3_ENDPOINT=s3.eu-central-1.wasabisys.com
-S3_BUCKET=yukpo-video-prod
-S3_REGION=eu-central-1
-S3_ACCESS_KEY=${{ secrets.WASABI_ACCESS_KEY }}
-S3_SECRET_KEY=${{ secrets.WASABI_SECRET_KEY }}
-S3_FORCE_PATH_STYLE=true
-
-LIVEKIT_API_URL=http://46.224.14.85:7880
-LIVEKIT_WS_URL=ws://46.224.14.85:7880
-SRS_HLS_URL=https://srs.46.224.14.85.sslip.io/live
-SRS_RTMP_URL=rtmp://46.224.14.85:1935/live
-VIDEO_RENDERER_RPC_URL=http://46.224.14.85:8088/render
-
-HOST=0.0.0.0
-PORT=8080
-ENVIRONMENT=production
-RUST_LOG=info
-ENVEOF
+            echo "" >> hetzner.env
+            echo "# Hetzner-specific overrides" >> hetzner.env
+            echo "S3_ENDPOINT=s3.eu-central-1.wasabisys.com" >> hetzner.env
+            echo "S3_BUCKET=yukpo-video-prod" >> hetzner.env
+            echo "S3_REGION=eu-central-1" >> hetzner.env
+            echo "S3_ACCESS_KEY=${{ secrets.WASABI_ACCESS_KEY }}" >> hetzner.env
+            echo "S3_SECRET_KEY=${{ secrets.WASABI_SECRET_KEY }}" >> hetzner.env
+            echo "S3_FORCE_PATH_STYLE=true" >> hetzner.env
+            echo "" >> hetzner.env
+            echo "LIVEKIT_API_URL=http://46.224.14.85:7880" >> hetzner.env
+            echo "LIVEKIT_WS_URL=ws://46.224.14.85:7880" >> hetzner.env
+            echo "SRS_HLS_URL=https://srs.46.224.14.85.sslip.io/live" >> hetzner.env
+            echo "SRS_RTMP_URL=rtmp://46.224.14.85:1935/live" >> hetzner.env
+            echo "VIDEO_RENDERER_RPC_URL=http://46.224.14.85:8088/render" >> hetzner.env
+            echo "" >> hetzner.env
+            echo "HOST=0.0.0.0" >> hetzner.env
+            echo "PORT=8080" >> hetzner.env
+            echo "ENVIRONMENT=production" >> hetzner.env
+            echo "RUST_LOG=info" >> hetzner.env
             
             echo "✅ Generated hetzner.env with $(wc -l < hetzner.env) lines"
           fi
