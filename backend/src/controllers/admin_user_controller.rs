@@ -61,16 +61,15 @@ pub async fn list_users(
         })?;
 
     // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
-    ensure_admin_role_str(&user_role).map_err(|e| {
+    ensure_admin_role_str(&user_role).inspect_err(|e| {
         warn!(
             "[list_users] Tentative d'accès non autorisée par user_id={}, role={}",
             user.id, user_role
         );
-        e
     })?;
 
     let page = query.page.unwrap_or(1).max(1);
-    let limit = query.limit.unwrap_or(20).min(100).max(1);
+    let limit = query.limit.unwrap_or(20).clamp(1, 100);
     let offset = (page - 1) * limit;
 
     // Construire la requête selon les filtres
@@ -215,20 +214,20 @@ pub async fn update_user_role(
         })?;
 
     // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
-    ensure_admin_role_str(&user_role).map_err(|e| {
+    ensure_admin_role_str(&user_role).inspect_err(|e| {
         warn!(
             "[update_user_role] Tentative d'accès non autorisée par user_id={}, role={}",
             user.id, user_role
         );
-        e
     })?;
 
     // Valider le rôle
     let valid_roles = ["user", "admin", "client", "prestataire"];
     if !valid_roles.contains(&request.role.as_str()) {
-        return Err(AppError::BadRequest(
-            format!("Rôle invalide. Rôles autorisés: {}", valid_roles.join(", ")).into(),
-        ));
+        return Err(AppError::BadRequest(format!(
+            "Rôle invalide. Rôles autorisés: {}",
+            valid_roles.join(", ")
+        )));
     }
 
     // Vérifier que l'utilisateur existe

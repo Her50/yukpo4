@@ -330,7 +330,7 @@ async fn enrich_history_event(
         meta.remove("provider_snapshot");
     }
 
-    if (service_snapshot.is_none() || provider_snapshot.is_none()) {
+    if service_snapshot.is_none() || provider_snapshot.is_none() {
         if let Some(service_id) = event.service_id {
             match fetch_service_and_provider_snapshot(pool, service_id).await? {
                 Some((service_snap, provider_snap)) => {

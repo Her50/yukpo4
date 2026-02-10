@@ -71,7 +71,7 @@ pub async fn predict_ia(
         Err(e) => {
             error!("[predict_ia] Error: {e:?}");
             let msg = format!("Erreur IA: {e:?}");
-            return Err(crate::core::types::AppError::Internal(msg));
+            Err(crate::core::types::AppError::Internal(msg))
         }
     }
 }
@@ -243,7 +243,7 @@ pub async fn generate_video_subtitles(
         }));
     }
 
-    let duration = payload.duration_seconds.max(5).min(900);
+    let duration = payload.duration_seconds.clamp(5, 900);
 
     // ✅ CORRECTION: Gestion d'erreur robuste avec fallback
     let srt = match state

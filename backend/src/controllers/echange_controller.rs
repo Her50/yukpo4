@@ -141,12 +141,10 @@ pub async fn creer_echange(
                 json!({"error": "Pour un don, il faut soit une offre seule, soit un besoin seul, mais pas les deux ni aucun."}),
             );
         }
-    } else if mode == "echange" {
-        if !offre_nonvide || !besoin_nonvide {
-            return Json(
-                json!({"error": "L'offre et le besoin doivent contenir au moins un bien (cl? non vide)"}),
-            );
-        }
+    } else if mode == "echange" && (!offre_nonvide || !besoin_nonvide) {
+        return Json(
+            json!({"error": "L'offre et le besoin doivent contenir au moins un bien (cl? non vide)"}),
+        );
     }
     // Appels ? traiter_echange d?sactiv?s temporairement
     // match crate::services::traiter_echange::traiter_echange(Some(payload.user_id), &serde_json::Value::Object(data), pool, None).await {

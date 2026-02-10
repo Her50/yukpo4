@@ -131,6 +131,7 @@ pub fn validate_string_enum(json: &Value, field: &str, allowed: &[&str]) -> AppR
 mod tests {
     use super::*;
     use serde::Deserialize;
+    use serde_json::{json, Value};
 
     #[derive(Deserialize)]
     struct TestResponse {
@@ -140,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_validate_required_fields() {
-        let json = json!({
+        let json: Value = serde_json::json!({
             "value": 42.0,
             "name": "test"
         });
@@ -150,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_validate_numeric_range() {
-        let json = json!({
+        let json: Value = serde_json::json!({
             "value": 0.5
         });
         assert!(validate_numeric_range(&json, "value", 0.0, 1.0).is_ok());
@@ -159,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_validate_string_enum() {
-        let json = json!({
+        let json: Value = serde_json::json!({
             "level": "intermediate"
         });
         assert!(

@@ -73,7 +73,7 @@ impl VideoRendererConfig {
         let auto_build = env::var("VIDEO_RENDERER_AUTO_BUILD")
             .ok()
             .and_then(|raw| raw.parse::<bool>().ok())
-            .unwrap_or(if env_prod { false } else { true }); // false en prod par défaut, true en dev
+            .unwrap_or(!env_prod); // false en prod par défaut, true en dev
 
         let enable_gpu = env::var("VIDEO_RENDERER_ENABLE_GPU")
             .ok()

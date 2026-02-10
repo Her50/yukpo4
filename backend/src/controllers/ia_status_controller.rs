@@ -43,7 +43,7 @@ pub async fn predict_ia(
         }
         Err(e) => {
             error!("[predict_ia] Error: {e:?}");
-            return Err(e.into());
+            Err(e)
         }
     }
 }

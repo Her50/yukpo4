@@ -26,6 +26,18 @@ struct GeocodeResponse {
     formatted_address: String,
 }
 
+#[derive(Deserialize)]
+struct PlaceDetailsRequest {
+    place_id: String,
+}
+
+#[derive(Serialize)]
+struct PlaceDetailsResponse {
+    location: LocationCoords,
+    formatted_address: String,
+    name: Option<String>,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 struct LocationCoords {
     lat: f64,
@@ -191,6 +203,76 @@ async fn geocode_address(
 
     Err(AppError::Internal(
         "Aucun résultat de géocodage".to_string(),
+    ))
+}
+
+/// Obtenir les coordonnées depuis un place_id Google Places
+async fn get_place_details(
+    Query(params): Query<PlaceDetailsRequest>,
+    State(_state): State<Arc<AppState>>,
+) -> AppResult<Json<PlaceDetailsResponse>> {
+    let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
+        .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;
+
+    let url = format!(
+        "https://maps.googleapis.com/maps/api/place/details/json?place_id={}&fields=geometry,formatted_address,name&key={}&language=fr",
+        urlencoding::encode(&params.place_id),
+        api_key
+    );
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur requête Google Places Details: {}", e)))?;
+
+    let data: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur parsing Google Places Details: {}", e)))?;
+
+    if let Some(status) = data.get("status").and_then(|s| s.as_str()) {
+        if status != "OK" {
+            return Err(AppError::Internal(format!(
+                "Google Places Details API error: {}",
+                status
+            )));
+        }
+
+        if let Some(result) = data.get("result") {
+            if let Some(geometry) = result.get("geometry") {
+                if let Some(location) = geometry.get("location") {
+                    let lat = location
+                        .get("lat")
+                        .and_then(|l| l.as_f64())
+                        .ok_or_else(|| AppError::Internal("Latitude invalide".to_string()))?;
+                    let lng = location
+                        .get("lng")
+                        .and_then(|l| l.as_f64())
+                        .ok_or_else(|| AppError::Internal("Longitude invalide".to_string()))?;
+
+                    let formatted_address = result
+                        .get("formatted_address")
+                        .and_then(|a| a.as_str())
+                        .unwrap_or("")
+                        .to_string();
+
+                    let name = result.get("name").and_then(|n| n.as_str()).map(|s| s.to_string());
+
+                    return Ok(Json(PlaceDetailsResponse {
+                        location: LocationCoords { lat, lng },
+                        formatted_address,
+                        name,
+                    }));
+                }
+            }
+        }
+    }
+
+    Err(AppError::Internal(
+        "Aucun résultat pour ce place_id".to_string(),
     ))
 }
 
@@ -954,6 +1036,7 @@ async fn autocomplete_with_saved(
 pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/api/navigation/geocode", get(geocode_address))
+        .route("/api/navigation/place-details", get(get_place_details))
         .route("/api/navigation/routes", post(get_routes))
         .route(
             "/api/navigation/points-of-interest",

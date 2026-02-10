@@ -189,6 +189,7 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
 
     let state = Arc::new(AppState {
         pg: pool.clone(),
+        pg_read: None,
         mongo: mongo_client,
         mongo_history,
         ia: app_ia,
@@ -196,6 +197,8 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         database_url,
         optimizations_enabled: false,
         redis_client,
+        redis_pool: None,
+        redis_cluster_nodes: vec![],
         semantic_cache: None,
         prompt_optimizer: None,
         live_streaming: Arc::new(LiveStreamingConfig::from_env()),
@@ -214,7 +217,46 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         studio_service,
         inventory,
         feature_flags: Arc::new(crate::config::feature_flags::FeatureFlagService::from_env()),
+        cache_service: Arc::new(crate::services::cache_service::CacheService::new(
+            redis_client.clone(),
+        )),
+        geographic_matching: None,
+        search_metrics: Arc::new(crate::services::search_metrics::SearchMetricsService::new(
+            pool.clone(),
+        )),
+        global_cache: Arc::new(
+            crate::services::global_cache_service::GlobalCacheService::new(redis_client.clone()),
+        ),
+        global_metrics: Arc::new(
+            crate::services::global_metrics_service::GlobalMetricsService::new(pool.clone()),
+        ),
+        scalability: Arc::new(
+            crate::services::scalability_service::ScalabilityService::new(
+                pool.clone(),
+                redis_client.clone(),
+            ),
+        ),
+        search_cache: Arc::new(
+            crate::services::search_cache_service::SearchCacheService::new(redis_client.clone()),
+        ),
+        global_rate_limiter: Arc::new(crate::middlewares::rate_limit::GlobalRateLimiter::new(
+            redis_client.clone(),
+        )),
+        user_rate_limiter: Arc::new(crate::middlewares::rate_limit::UserRateLimiter::new(
+            redis_client.clone(),
+        )),
+        delivery_state_sharing: None,
+        chat_ws_manager: None,
         delivery_chat_ws_manager: None,
+        flash_sale_cache: None,
+        flash_sale_queue: None,
+        global_promo_cache: None,
+        notification_queue: None,
+        spotify_service: None,
+        youtube_audio_service: None,
+        products_service: Arc::new(crate::services::products_service::ProductsService::new(
+            pool.clone(),
+        )),
     });
 
     Some(BackendTestContext {

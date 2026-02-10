@@ -5,6 +5,7 @@ import {
     Dimensions,
     FlatList,
     Linking,
+    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -157,6 +158,8 @@ const NavigationScreen: React.FC = () => {
             }
         } catch (error) {
             console.error('Erreur autocomplete:', error);
+            setAutocompleteResults([]);
+            setShowAutocomplete(false);
         }
     }, []);
 
@@ -487,7 +490,14 @@ const NavigationScreen: React.FC = () => {
 
                 {/* Saisie destination avec autocomplete */}
                 <NativeCard style={styles.searchCard}>
-                    <Text style={styles.label}>Destination</Text>
+                    <View style={styles.labelRow}>
+                        <Text style={styles.label}>Destination</Text>
+                        {autocompleteResults.length > 0 && (
+                            <Text style={styles.autocompleteHint}>
+                                {autocompleteResults.filter(r => !r.is_saved).length > 0 && '🔍 Google Places'}
+                            </Text>
+                        )}
+                    </View>
                     <View style={styles.searchRow}>
                         <View style={styles.inputContainer}>
                             <TextInput
@@ -496,12 +506,23 @@ const NavigationScreen: React.FC = () => {
                                 value={destination}
                                 onChangeText={(text) => {
                                     setDestination(text);
-                                    handleAutocomplete(text);
+                                    if (text.length >= 2) {
+                                        handleAutocomplete(text);
+                                    } else {
+                                        setShowAutocomplete(false);
+                                        setAutocompleteResults([]);
+                                    }
                                 }}
                                 onFocus={() => {
                                     if (destination.length >= 2) {
                                         handleAutocomplete(destination);
                                     }
+                                }}
+                                onBlur={() => {
+                                    // Délai pour permettre le clic sur un résultat
+                                    setTimeout(() => {
+                                        setShowAutocomplete(false);
+                                    }, 200);
                                 }}
                                 onSubmitEditing={searchRoutes}
                             />
@@ -514,7 +535,7 @@ const NavigationScreen: React.FC = () => {
                                         renderItem={({ item }) => (
                                             <TouchableOpacity
                                                 style={styles.autocompleteItem}
-                                                onPress={() => {
+                                                onPress={async () => {
                                                     if (item.is_saved && item.latitude && item.longitude) {
                                                         // Destination favorite
                                                         setDestination(item.description);
@@ -522,12 +543,32 @@ const NavigationScreen: React.FC = () => {
                                                             lat: item.latitude,
                                                             lng: item.longitude
                                                         });
+                                                    } else if (item.place_id) {
+                                                        // Résultat Google Places - récupérer les coordonnées
+                                                        try {
+                                                            const response = await apiGet(`/api/navigation/place-details?place_id=${encodeURIComponent(item.place_id)}`);
+                                                            if (response?.data?.location) {
+                                                                setDestination(item.description);
+                                                                setDestinationCoords({
+                                                                    lat: response.data.location.lat,
+                                                                    lng: response.data.location.lng
+                                                                });
+                                                            } else {
+                                                                // Fallback: utiliser la description et géocoder
+                                                                setDestination(item.description);
+                                                            }
+                                                        } catch (error) {
+                                                            console.error('Erreur récupération place details:', error);
+                                                            // Fallback: utiliser la description et géocoder
+                                                            setDestination(item.description);
+                                                        }
                                                     } else {
-                                                        // Résultat Google Places
+                                                        // Pas de place_id, utiliser la description
                                                         setDestination(item.description);
                                                     }
                                                     setShowAutocomplete(false);
                                                 }}
+                                                activeOpacity={0.7}
                                             >
                                                 <Text style={styles.autocompleteText}>
                                                     {item.description}
@@ -538,6 +579,7 @@ const NavigationScreen: React.FC = () => {
                                             </TouchableOpacity>
                                         )}
                                         style={styles.autocompleteList}
+                                        keyboardShouldPersistTaps="handled"
                                     />
                                 </View>
                             )}
@@ -787,11 +829,21 @@ const styles = StyleSheet.create({
     searchCard: {
         marginBottom: modernStyles.spacing.lg,
     },
+    labelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: modernStyles.spacing.sm,
+    },
     label: {
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
-        marginBottom: modernStyles.spacing.sm,
+    },
+    autocompleteHint: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
     },
     searchRow: {
         flexDirection: 'row',
@@ -800,6 +852,7 @@ const styles = StyleSheet.create({
     inputContainer: {
         flex: 1,
         position: 'relative',
+        zIndex: 1,
     },
     input: {
         flex: 1,
@@ -822,16 +875,16 @@ const styles = StyleSheet.create({
         borderRadius: modernStyles.borderRadius.medium,
         borderWidth: 1,
         borderColor: modernColors.border,
-        maxHeight: 200,
+        maxHeight: 250,
         zIndex: 1000,
-        elevation: 5,
+        elevation: 10,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
     },
     autocompleteList: {
-        maxHeight: 200,
+        maxHeight: 250,
     },
     autocompleteItem: {
         flexDirection: 'row',

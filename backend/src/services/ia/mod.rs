@@ -942,6 +942,7 @@ mod tests {
             excel_base64: None,
             site_web: None,
             gps_mobile: None,
+            specialized_type: None,
         };
 
         // Note: Ce test n?cessite une instance du service

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// Configuration des optimisations de performance
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OptimizationConfig {
     /// Configuration du cache Redis
     pub cache: CacheConfig,
@@ -105,17 +105,7 @@ pub struct BackgroundConfig {
     pub task_queue_size: usize,
 }
 
-impl Default for OptimizationConfig {
-    fn default() -> Self {
-        Self {
-            cache: CacheConfig::default(),
-            database: DatabaseConfig::default(),
-            matching: MatchingConfig::default(),
-            api: ApiConfig::default(),
-            background: BackgroundConfig::default(),
-        }
-    }
-}
+// Default implementation can be derived
 
 impl Default for CacheConfig {
     fn default() -> Self {

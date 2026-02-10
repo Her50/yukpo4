@@ -231,7 +231,7 @@ pub async fn register_user(
         match &payload.partner_type {
             Some(pt) if !pt.trim().is_empty() => {
                 let pt_trimmed = pt.trim();
-                if !valid_types.iter().any(|&vt| vt == pt_trimmed) {
+                if !valid_types.contains(&pt_trimmed) {
                     error!(
                         "[register_user] ❌ Type de partenaire invalide: '{}'. Types valides: {}",
                         pt_trimmed,
@@ -640,7 +640,7 @@ pub async fn register_user(
     )?;
 
     // Retourne explicitement 201 Created avec le token
-    return Ok((
+    Ok((
         axum::http::StatusCode::CREATED,
         Json(serde_json::json!({
             "id": new.id,
@@ -649,7 +649,7 @@ pub async fn register_user(
             "message": "utiliseateur inscrit avec succès"
         })),
     )
-        .into_response());
+        .into_response())
 }
 
 async fn send_verification_email(email: &str) -> AppResult<()> {
