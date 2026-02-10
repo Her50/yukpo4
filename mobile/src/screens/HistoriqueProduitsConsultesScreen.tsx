@@ -74,51 +74,90 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
     try {
       const productsPromises = history.map(async (item) => {
         try {
-          // Charger le service
+          // ✅ CORRIGÉ 2026-02-10: Charger le service ET le prestataire
           const serviceResponse = await apiGet(`/api/services/${item.serviceId}`);
-          if (serviceResponse.success && serviceResponse.data) {
-            const service = serviceResponse.data;
-            
-            // Si productIndex est défini, charger le produit spécifique
+          if (!serviceResponse.success || !serviceResponse.data) {
+            console.warn(`[HistoriqueProduitsConsultesScreen] Service ${item.serviceId} non trouvé`);
+            return null;
+          }
+          
+          const service = serviceResponse.data;
+          
+          // ✅ CORRIGÉ 2026-02-10: Charger le prestataire depuis le service
+          let prestataire = null;
+          if (service.user_id) {
+            try {
+              const prestataireResponse = await apiGet(`/api/users/profile/${service.user_id}`);
+              if (prestataireResponse.success && prestataireResponse.data) {
+                prestataire = prestataireResponse.data;
+              }
+            } catch (error) {
+              console.warn(`[HistoriqueProduitsConsultesScreen] Erreur chargement prestataire ${service.user_id}:`, error);
+              // Continuer même si le prestataire n'est pas chargé
+              prestataire = {
+                user_id: service.user_id,
+                nom: service.data?.nom_prestataire?.valeur || 'Prestataire',
+              };
+            }
+          }
+          }
+          
+          // ✅ CORRIGÉ 2026-02-10: TOUJOURS charger les produits, ne jamais retourner le service comme produit
+          const productsResponse = await apiGet(`/api/services/${item.serviceId}/products`);
+          if (productsResponse.success && Array.isArray(productsResponse.data)) {
+            // Si productIndex est défini, chercher le produit spécifique
             if (item.productIndex !== undefined) {
-              const productsResponse = await apiGet(`/api/services/${item.serviceId}/products`);
-              if (productsResponse.success && Array.isArray(productsResponse.data)) {
-                const product = productsResponse.data.find(
-                  (p: any) => p.product_index === item.productIndex
-                );
-                
-                if (product) {
-                  const productData = product.product_data || product;
-                  return {
-                    ...productData,
-                    product_data: productData,
-                    id: product.id || `${item.serviceId}_${item.productIndex}`,
-                    product_index: item.productIndex,
-                    product_name: product.product_name || productData.nom_produit || productData.nom || productData.name,
-                    nom_produit: productData.nom_produit || productData.nom || productData.name || product.product_name,
-                    nom: productData.nom_produit || productData.nom || productData.name || product.product_name,
-                    name: productData.nom_produit || productData.nom || productData.name || product.product_name,
-                    _serviceId: item.serviceId,
-                    _service: service,
-                    viewedAt: item.viewedAt,
-                  };
-                }
+              const product = productsResponse.data.find(
+                (p: any) => p.product_index === item.productIndex
+              );
+              
+              if (product) {
+                const productData = product.product_data || product;
+                return {
+                  // ✅ CORRIGÉ: Structure identique à ResultatBesoinScreen
+                  ...product,
+                  product_data: productData,
+                  id: product.id || `${item.serviceId}_${item.productIndex}`,
+                  product_id: product.id || `${item.serviceId}_${item.productIndex}`,
+                  product_index: item.productIndex,
+                  product_name: product.product_name || productData.nom_produit || productData.nom || productData.name,
+                  nom_produit: productData.nom_produit || productData.nom || productData.name || product.product_name,
+                  nom: productData.nom_produit || productData.nom || productData.name || product.product_name,
+                  name: productData.nom_produit || productData.nom || productData.name || product.product_name,
+                  _serviceId: item.serviceId,
+                  _service: service,
+                  _prestataire: prestataire,
+                  viewedAt: item.viewedAt,
+                };
               }
             }
             
-            // Si pas de produit spécifique, retourner le service comme produit
-            const serviceData = service.data || {};
-            return {
-              ...serviceData,
-              id: `${item.serviceId}_0`,
-              product_index: 0,
-              nom: serviceData.titre_service?.valeur || serviceData.nom_produit?.valeur || item.productName,
-              name: serviceData.titre_service?.valeur || serviceData.nom_produit?.valeur || item.productName,
-              _serviceId: item.serviceId,
-              _service: service,
-              viewedAt: item.viewedAt,
-            };
+            // ✅ CORRIGÉ 2026-02-10: Si productIndex n'est pas défini ou produit non trouvé, prendre le premier produit
+            // Ne jamais retourner le service comme produit
+            if (productsResponse.data.length > 0) {
+              const product = productsResponse.data[0];
+              const productData = product.product_data || product;
+              return {
+                ...product,
+                product_data: productData,
+                id: product.id || `${item.serviceId}_${product.product_index || 0}`,
+                product_id: product.id || `${item.serviceId}_${product.product_index || 0}`,
+                product_index: product.product_index || 0,
+                product_name: product.product_name || productData.nom_produit || productData.nom || productData.name,
+                nom_produit: productData.nom_produit || productData.nom || productData.name || product.product_name,
+                nom: productData.nom_produit || productData.nom || productData.name || product.product_name,
+                name: productData.nom_produit || productData.nom || productData.name || product.product_name,
+                _serviceId: item.serviceId,
+                _service: service,
+                _prestataire: prestataire,
+                viewedAt: item.viewedAt,
+              };
+            }
           }
+          
+          // ✅ CORRIGÉ 2026-02-10: Si aucun produit n'est trouvé, retourner null au lieu du service
+          console.warn(`[HistoriqueProduitsConsultesScreen] Aucun produit trouvé pour service ${item.serviceId}`);
+          return null;
         } catch (error) {
           console.error(`[HistoriqueProduitsConsultesScreen] Erreur chargement produit ${item.serviceId}:`, error);
           return null;

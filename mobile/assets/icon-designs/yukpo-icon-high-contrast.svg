@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient de fond bleu clair pour meilleur contraste -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#2563EB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient pour le Y orange/jaune VIF pour visibilité maximale -->
+    <linearGradient id="yGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B00;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FFD200;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF8C00;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Ombre portée pour le Y - plus prononcée -->
+    <filter id="yShadow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="12"/>
+      <feOffset dx="0" dy="12" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.5"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Brillance sur le Y - plus visible -->
+    <linearGradient id="yShine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Fond avec gradient bleu clair pour meilleur contraste -->
+  <rect width="1024" height="1024" fill="url(#bgGradient)" rx="180"/>
+  
+  <!-- Cercle central subtil pour mettre en valeur le Y -->
+  <circle cx="512" cy="512" r="400" fill="#FFFFFF" opacity="0.1"/>
+  
+  <!-- La lettre Y stylisée avec CONTRASTE MAXIMAL -->
+  <g filter="url(#yShadow)">
+    <!-- Branche gauche du Y - PLUS ÉPAISSE -->
+    <path d="M 250 250 L 512 520 L 470 570 L 208 300 Z" 
+          fill="url(#yGradient)" 
+          stroke="#FFFFFF" 
+          stroke-width="10" 
+          stroke-linejoin="round"/>
+    
+    <!-- Branche droite du Y - PLUS ÉPAISSE -->
+    <path d="M 774 250 L 512 520 L 554 570 L 816 300 Z" 
+          fill="url(#yGradient)" 
+          stroke="#FFFFFF" 
+          stroke-width="10" 
+          stroke-linejoin="round"/>
+    
+    <!-- Tige du Y - PLUS ÉPAISSE -->
+    <path d="M 470 520 L 554 520 L 554 810 L 470 810 Z" 
+          fill="url(#yGradient)" 
+          stroke="#FFFFFF" 
+          stroke-width="10" 
+          stroke-linejoin="round"/>
+    
+    <!-- Effet de brillance sur le Y - PLUS VISIBLE -->
+    <path d="M 260 260 L 512 530 L 480 570 L 228 310 Z" 
+          fill="url(#yShine)" 
+          opacity="0.7"/>
+    <path d="M 764 260 L 512 530 L 544 570 L 796 310 Z" 
+          fill="url(#yShine)" 
+          opacity="0.7"/>
+    <path d="M 480 530 L 544 530 L 544 780 L 480 780 Z" 
+          fill="url(#yShine)" 
+          opacity="0.7"/>
+  </g>
+  
+  <!-- Étoile moderne en bas - PLUS VISIBLE -->
+  <g opacity="0.8">
+    <circle cx="512" cy="920" r="10" fill="#FFD200" stroke="#FFFFFF" stroke-width="3"/>
+    <path d="M 512 895 L 520 910 L 535 910 L 522 920 L 525 935 L 512 925 L 499 935 L 502 920 L 489 910 L 504 910 Z" 
+          fill="#FFD200" 
+          stroke="#FFFFFF" 
+          stroke-width="3"/>
+  </g>
+</svg>
+

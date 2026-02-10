@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { API_BASE_URL } from '../config/api';
 import { modernColors } from '../styles/theme';
 import { NativeCard } from './SafeNativeDesign';
-import { SafeIcon } from './SafeIcon';
+import SafeIcon from './SafeIcon';
 
 interface TimeSeriesData {
     date: string;

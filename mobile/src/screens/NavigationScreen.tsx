@@ -142,7 +142,7 @@ const NavigationScreen: React.FC = () => {
         }
     }, [user, loadSavedDestinations]);
 
-    // ✅ NOUVEAU: Autocomplete avec destinations favorites
+    // ✅ NOUVEAU: Autocomplete avec destinations favorites et Google Places
     const handleAutocomplete = useCallback(async (query: string) => {
         if (query.length < 2) {
             setAutocompleteResults([]);
@@ -150,18 +150,87 @@ const NavigationScreen: React.FC = () => {
             return;
         }
 
+        const results: Array<{
+            description: string;
+            address?: string;
+            latitude?: number;
+            longitude?: number;
+            is_saved?: boolean;
+            label?: string;
+            place_id?: string;
+        }> = [];
+
+        // 1. Vérifier les destinations favorites (domicile, bureau)
+        const destLower = query.toLowerCase().trim();
+        if (destLower.includes('domicile') || destLower.includes('maison') || destLower.includes('home')) {
+            const saved = savedDestinations.find(d => d.label === 'domicile');
+            if (saved) {
+                results.push({
+                    description: saved.custom_label || 'Domicile',
+                    address: saved.address,
+                    latitude: saved.latitude,
+                    longitude: saved.longitude,
+                    is_saved: true,
+                    label: 'domicile'
+                });
+            }
+        }
+        if (destLower.includes('bureau') || destLower.includes('office') || destLower.includes('travail')) {
+            const saved = savedDestinations.find(d => d.label === 'bureau');
+            if (saved) {
+                results.push({
+                    description: saved.custom_label || 'Bureau',
+                    address: saved.address,
+                    latitude: saved.latitude,
+                    longitude: saved.longitude,
+                    is_saved: true,
+                    label: 'bureau'
+                });
+            }
+        }
+
+        // 2. Appeler l'API backend pour Google Places Autocomplete
         try {
-            const response = await apiGet(`/api/navigation/autocomplete?query=${encodeURIComponent(query)}`);
+            const origin = await getCurrentPosition();
+            let url = `/api/navigation/autocomplete?query=${encodeURIComponent(query)}`;
+            if (origin) {
+                url += `&lat=${origin.lat}&lng=${origin.lng}`;
+            }
+            
+            const response = await apiGet(url);
             if (response?.data?.results) {
-                setAutocompleteResults(response.data.results);
-                setShowAutocomplete(true);
+                // Ajouter les résultats Google Places
+                const googleResults = response.data.results.map((r: any) => ({
+                    description: r.description || r.formatted_address || '',
+                    address: r.formatted_address,
+                    place_id: r.place_id,
+                    latitude: r.location?.lat,
+                    longitude: r.location?.lng,
+                    is_saved: false
+                }));
+                results.push(...googleResults);
             }
         } catch (error) {
-            console.error('Erreur autocomplete:', error);
-            setAutocompleteResults([]);
-            setShowAutocomplete(false);
+            console.error('Erreur autocomplete Google Places:', error);
+            // Fallback: utiliser l'endpoint places standard
+            try {
+                const response = await apiGet(`/api/places/autocomplete?query=${encodeURIComponent(query)}`);
+                if (response?.data?.results) {
+                    const placesResults = response.data.results.map((r: any) => ({
+                        description: r.description || '',
+                        place_id: r.place_id,
+                        is_saved: false
+                    }));
+                    results.push(...placesResults);
+                }
+            } catch (fallbackError) {
+                console.error('Erreur autocomplete fallback:', fallbackError);
+            }
         }
-    }, []);
+
+        setAutocompleteResults(results);
+        setShowAutocomplete(results.length > 0);
+    }, [savedDestinations, getCurrentPosition]);
 
     // ✅ NOUVEAU: Vérifier si la destination est une destination favorite (domicile, bureau, etc.)
     const resolveDestination = useCallback(async (dest: string): Promise<{ lat: number; lng: number; address: string } | null> => {
@@ -488,10 +557,41 @@ const NavigationScreen: React.FC = () => {
                     </NativeCard>
                 )}
 
-                {/* Saisie destination avec autocomplete */}
+                {/* ✅ NOUVEAU: Suggestions rapides */}
+                {savedDestinations.length > 0 && destination.length === 0 && (
+                    <NativeCard style={styles.quickSuggestionsCard}>
+                        <Text style={styles.quickSuggestionsTitle}>📍 Destinations favorites</Text>
+                        <View style={styles.quickSuggestionsRow}>
+                            {savedDestinations.slice(0, 3).map((dest) => (
+                                <TouchableOpacity
+                                    key={dest.id}
+                                    style={styles.quickSuggestionButton}
+                                    onPress={() => {
+                                        setDestination(dest.custom_label || dest.label);
+                                        setDestinationCoords({
+                                            lat: dest.latitude,
+                                            lng: dest.longitude
+                                        });
+                                    }}
+                                >
+                                    <SafeIcon 
+                                        name={dest.label === 'domicile' ? 'Home' : dest.label === 'bureau' ? 'Briefcase' : 'MapPin'} 
+                                        size={16} 
+                                        color={modernColors.primary} 
+                                    />
+                                    <Text style={styles.quickSuggestionText} numberOfLines={1}>
+                                        {dest.custom_label || (dest.label === 'domicile' ? 'Domicile' : dest.label === 'bureau' ? 'Bureau' : dest.label)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </NativeCard>
+                )}
+
+                {/* Saisie destination avec autocomplete amélioré */}
                 <NativeCard style={styles.searchCard}>
                     <View style={styles.labelRow}>
-                        <Text style={styles.label}>Destination</Text>
+                        <Text style={styles.label}>🔍 Recherche intelligente</Text>
                         {autocompleteResults.length > 0 && (
                             <Text style={styles.autocompleteHint}>
                                 {autocompleteResults.filter(r => !r.is_saved).length > 0 && '🔍 Google Places'}
@@ -502,7 +602,7 @@ const NavigationScreen: React.FC = () => {
                         <View style={styles.inputContainer}>
                             <TextInput
                                 style={styles.input}
-                                placeholder="Domicile, Bureau, ou adresse..."
+                                placeholder="Tapez une adresse, lieu, ou destination..."
                                 value={destination}
                                 onChangeText={(text) => {
                                     setDestination(text);
@@ -516,6 +616,18 @@ const NavigationScreen: React.FC = () => {
                                 onFocus={() => {
                                     if (destination.length >= 2) {
                                         handleAutocomplete(destination);
+                                    } else if (savedDestinations.length > 0) {
+                                        // Afficher les destinations favorites si le champ est vide
+                                        const savedResults = savedDestinations.map(dest => ({
+                                            description: dest.custom_label || (dest.label === 'domicile' ? '🏠 Domicile' : dest.label === 'bureau' ? '💼 Bureau' : `📍 ${dest.label}`),
+                                            address: dest.address,
+                                            latitude: dest.latitude,
+                                            longitude: dest.longitude,
+                                            is_saved: true,
+                                            label: dest.label
+                                        }));
+                                        setAutocompleteResults(savedResults);
+                                        setShowAutocomplete(savedResults.length > 0);
                                     }
                                 }}
                                 onBlur={() => {
@@ -538,11 +650,16 @@ const NavigationScreen: React.FC = () => {
                                                 onPress={async () => {
                                                     if (item.is_saved && item.latitude && item.longitude) {
                                                         // Destination favorite
-                                                        setDestination(item.description);
+                                                        setDestination(item.description.replace(/^[🏠💼📍]\s*/, ''));
                                                         setDestinationCoords({
                                                             lat: item.latitude,
                                                             lng: item.longitude
                                                         });
+                                                        setShowAutocomplete(false);
+                                                        // Rechercher automatiquement les routes
+                                                        setTimeout(() => {
+                                                            searchRoutes();
+                                                        }, 100);
                                                     } else if (item.place_id) {
                                                         // Résultat Google Places - récupérer les coordonnées
                                                         try {
@@ -553,29 +670,48 @@ const NavigationScreen: React.FC = () => {
                                                                     lat: response.data.location.lat,
                                                                     lng: response.data.location.lng
                                                                 });
+                                                                setShowAutocomplete(false);
+                                                                // Rechercher automatiquement les routes
+                                                                setTimeout(() => {
+                                                                    searchRoutes();
+                                                                }, 100);
                                                             } else {
                                                                 // Fallback: utiliser la description et géocoder
                                                                 setDestination(item.description);
+                                                                setShowAutocomplete(false);
                                                             }
                                                         } catch (error) {
                                                             console.error('Erreur récupération place details:', error);
                                                             // Fallback: utiliser la description et géocoder
                                                             setDestination(item.description);
+                                                            setShowAutocomplete(false);
                                                         }
                                                     } else {
                                                         // Pas de place_id, utiliser la description
                                                         setDestination(item.description);
+                                                        setShowAutocomplete(false);
                                                     }
-                                                    setShowAutocomplete(false);
                                                 }}
                                                 activeOpacity={0.7}
                                             >
-                                                <Text style={styles.autocompleteText}>
-                                                    {item.description}
-                                                </Text>
-                                                {item.is_saved && (
-                                                    <SafeIcon name="Star" size={14} color="#FBBF24" />
-                                                )}
+                                                <View style={styles.autocompleteItemContent}>
+                                                    {item.is_saved && (
+                                                        <SafeIcon name="Star" size={16} color="#FBBF24" />
+                                                    )}
+                                                    {!item.is_saved && (
+                                                        <SafeIcon name="MapPin" size={16} color={modernColors.primary} />
+                                                    )}
+                                                    <View style={styles.autocompleteTextContainer}>
+                                                        <Text style={styles.autocompleteText} numberOfLines={2}>
+                                                            {item.description}
+                                                        </Text>
+                                                        {item.address && item.address !== item.description && (
+                                                            <Text style={styles.autocompleteAddress} numberOfLines={1}>
+                                                                {item.address}
+                                                            </Text>
+                                                        )}
+                                                    </View>
+                                                </View>
                                             </TouchableOpacity>
                                         )}
                                         style={styles.autocompleteList}
@@ -584,18 +720,27 @@ const NavigationScreen: React.FC = () => {
                                 </View>
                             )}
                         </View>
-                        <NativeButton
-                            variant="primary"
+                        <TouchableOpacity
+                            style={[
+                                styles.searchButton,
+                                loading && styles.searchButtonDisabled
+                            ]}
                             onPress={searchRoutes}
                             disabled={loading}
-                            style={styles.searchButton}
+                            activeOpacity={0.8}
                         >
                             {loading ? (
-                                <ActivityIndicator color="white" size="small" />
+                                <>
+                                    <ActivityIndicator color="white" size="small" />
+                                    <Text style={styles.searchButtonText}>Recherche...</Text>
+                                </>
                             ) : (
-                                <SafeIcon name="Search" size={20} color="white" />
+                                <>
+                                    <SafeIcon name="Search" size={20} color="white" />
+                                    <Text style={styles.searchButtonText}>Rechercher</Text>
+                                </>
                             )}
-                        </NativeButton>
+                        </TouchableOpacity>
                     </View>
                     {/* ✅ Bouton pour enregistrer destination */}
                     {destinationCoords && (
@@ -845,6 +990,40 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         fontStyle: 'italic',
     },
+    quickSuggestionsCard: {
+        marginBottom: modernStyles.spacing.md,
+        padding: modernStyles.spacing.md,
+    },
+    quickSuggestionsTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: modernStyles.spacing.sm,
+    },
+    quickSuggestionsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: modernStyles.spacing.sm,
+    },
+    quickSuggestionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: modernStyles.spacing.md,
+        paddingVertical: modernStyles.spacing.sm,
+        borderRadius: modernStyles.borderRadius.medium,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        flex: 1,
+        minWidth: 100,
+    },
+    quickSuggestionText: {
+        fontSize: 13,
+        color: modernColors.text,
+        fontWeight: '500',
+        flex: 1,
+    },
     searchRow: {
         flexDirection: 'row',
         gap: modernStyles.spacing.sm,
@@ -887,18 +1066,28 @@ const styles = StyleSheet.create({
         maxHeight: 250,
     },
     autocompleteItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
         paddingHorizontal: modernStyles.spacing.md,
         paddingVertical: modernStyles.spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: modernColors.border,
     },
-    autocompleteText: {
+    autocompleteItemContent: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: modernStyles.spacing.sm,
+    },
+    autocompleteTextContainer: {
         flex: 1,
+    },
+    autocompleteText: {
         fontSize: 14,
         color: modernColors.text,
+        fontWeight: '500',
+    },
+    autocompleteAddress: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 2,
     },
     saveDestinationButton: {
         flexDirection: 'row',
@@ -914,8 +1103,28 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     searchButton: {
-        paddingHorizontal: modernStyles.spacing.md,
-        minWidth: 50,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: modernStyles.spacing.sm,
+        paddingHorizontal: modernStyles.spacing.lg,
+        paddingVertical: modernStyles.spacing.md,
+        minWidth: 120,
+        backgroundColor: modernColors.primary,
+        borderRadius: modernStyles.borderRadius.medium,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    searchButtonDisabled: {
+        opacity: 0.6,
+    },
+    searchButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     routesSection: {
         marginBottom: modernStyles.spacing.lg,

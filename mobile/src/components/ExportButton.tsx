@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Share, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { config } from '../config/environment';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 

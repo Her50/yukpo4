@@ -207,6 +207,13 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       const productsArrays = await Promise.all(productPromises);
       let extractedProducts = productsArrays.flat();
       
+      console.log(`📊 [PrestataireBoutiqueScreen] Total produits extraits AVANT ajout produit cliqué: ${extractedProducts.length}`, {
+        servicesProcessed: serviceIds.length,
+        productsPerService: productsArrays.map((arr, idx) => ({ serviceId: serviceIds[idx], count: arr.length })),
+      });
+      
+      // ✅ CORRIGÉ 2026-02-10: Ne PAS filtrer les produits - afficher TOUS les produits du prestataire
+      // Le produit cliqué sera ajouté s'il n'est pas déjà dans les résultats, mais on affiche TOUS les produits
       // ✅ NOUVEAU 2026-01-23: Ajouter le produit cliqué s'il n'est pas déjà dans les résultats
       if (clickedProduct && clickedService) {
         const clickedProductId = clickedProduct.id || clickedProduct.product_id || 
@@ -355,7 +362,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       setLoading(false);
       setRefreshing(false);
     }
-  }, [prestataireUserId, location]);
+  }, [prestataireUserId, location, clickedProduct, clickedService]);
 
   useEffect(() => {
     loadPrestataireData();

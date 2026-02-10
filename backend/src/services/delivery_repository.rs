@@ -672,43 +672,100 @@ impl DeliveryRepository {
         &self,
         payload: NewCourierApplication,
     ) -> AppResult<CourierApplication> {
-        let row: CourierApplicationRow = sqlx::query_as(
+        // ✅ CORRIGÉ 2026-02-10: Vérifier si la colonne partner_id existe avant de l'utiliser
+        let has_partner_id_column = sqlx::query_scalar::<_, bool>(
             r#"
-            INSERT INTO courier_applications (
-                user_id,
-                status,
-                submitted_at,
-                profile_data,
-                documents,
-                notes,
-                partner_id
+            SELECT EXISTS (
+                SELECT 1 
+                FROM information_schema.columns 
+                WHERE table_name = 'courier_applications' 
+                AND column_name = 'partner_id'
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING
-                id,
-                user_id,
-                status,
-                submitted_at,
-                reviewed_at,
-                reviewer_id,
-                rejection_reason,
-                profile_data,
-                documents,
-                notes,
-                partner_id,
-                created_at,
-                updated_at
             "#,
         )
-        .bind(payload.user_id)
-        .bind(payload.status as DeliveryApplicationStatus)
-        .bind(payload.submitted_at)
-        .bind(payload.profile_data)
-        .bind(payload.documents)
-        .bind(payload.notes.unwrap_or_else(|| Value::Array(Vec::new())))
-        .bind(payload.partner_id)
         .fetch_one(&self.pool)
-        .await?;
+        .await
+        .unwrap_or(false);
+
+        let row: CourierApplicationRow = if has_partner_id_column {
+            sqlx::query_as(
+                r#"
+                INSERT INTO courier_applications (
+                    user_id,
+                    status,
+                    submitted_at,
+                    profile_data,
+                    documents,
+                    notes,
+                    partner_id
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING
+                    id,
+                    user_id,
+                    status,
+                    submitted_at,
+                    reviewed_at,
+                    reviewer_id,
+                    rejection_reason,
+                    profile_data,
+                    documents,
+                    notes,
+                    partner_id,
+                    created_at,
+                    updated_at
+                "#,
+            )
+            .bind(payload.user_id)
+            .bind(payload.status as DeliveryApplicationStatus)
+            .bind(payload.submitted_at)
+            .bind(payload.profile_data)
+            .bind(payload.documents)
+            .bind(payload.notes.unwrap_or_else(|| Value::Array(Vec::new())))
+            .bind(payload.partner_id)
+            .fetch_one(&self.pool)
+            .await?
+        } else {
+            // ✅ FALLBACK: Si partner_id n'existe pas, ne pas l'inclure dans la requête
+            log::warn!(
+                "[create_courier_application] ⚠️ Colonne partner_id n'existe pas, utilisation de requête sans partner_id"
+            );
+            sqlx::query_as(
+                r#"
+                INSERT INTO courier_applications (
+                    user_id,
+                    status,
+                    submitted_at,
+                    profile_data,
+                    documents,
+                    notes
+                )
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING
+                    id,
+                    user_id,
+                    status,
+                    submitted_at,
+                    reviewed_at,
+                    reviewer_id,
+                    rejection_reason,
+                    profile_data,
+                    documents,
+                    notes,
+                    NULL as partner_id,
+                    created_at,
+                    updated_at
+                "#,
+            )
+            .bind(payload.user_id)
+            .bind(payload.status as DeliveryApplicationStatus)
+            .bind(payload.submitted_at)
+            .bind(payload.profile_data)
+            .bind(payload.documents)
+            .bind(payload.notes.unwrap_or_else(|| Value::Array(Vec::new())))
+            .fetch_one(&self.pool)
+            .await?
+        };
 
         Ok(CourierApplication {
             id: row.id,
@@ -803,7 +860,23 @@ impl DeliveryRepository {
         submitted_at: Option<DateTime<Utc>>,
         partner_id: Option<i32>,
     ) -> AppResult<CourierApplication> {
-        let row: CourierApplicationRow = sqlx::query_as(
+        // ✅ CORRIGÉ 2026-02-10: Vérifier si la colonne partner_id existe avant de l'utiliser
+        // Si elle n'existe pas, utiliser une requête sans partner_id
+        let has_partner_id_column = sqlx::query_scalar::<_, bool>(
+            r#"
+            SELECT EXISTS (
+                SELECT 1 
+                FROM information_schema.columns 
+                WHERE table_name = 'courier_applications' 
+                AND column_name = 'partner_id'
+            )
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(false);
+
+        let query_str = if has_partner_id_column {
             r#"
             UPDATE courier_applications
             SET status = $2,
@@ -832,16 +905,54 @@ impl DeliveryRepository {
                 partner_id,
                 created_at,
                 updated_at
-            "#,
-        )
-        .bind(application_id)
-        .bind(status as DeliveryApplicationStatus)
-        .bind(profile_data)
-        .bind(documents)
-        .bind(submitted_at)
-        .bind(partner_id)
-        .fetch_one(&self.pool)
-        .await?;
+            "#
+        } else {
+            // ✅ FALLBACK: Si partner_id n'existe pas, ne pas l'inclure dans la requête
+            log::warn!(
+                "[update_courier_application] ⚠️ Colonne partner_id n'existe pas, utilisation de requête sans partner_id"
+            );
+            r#"
+            UPDATE courier_applications
+            SET status = $2,
+                submitted_at = COALESCE($5, 
+                    CASE 
+                        WHEN $2::text = 'submitted' AND submitted_at IS NULL THEN NOW()
+                        ELSE submitted_at
+                    END
+                ),
+                profile_data = COALESCE($3, profile_data),
+                documents = COALESCE($4, documents),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING
+                id,
+                user_id,
+                status,
+                submitted_at,
+                reviewed_at,
+                reviewer_id,
+                rejection_reason,
+                profile_data,
+                documents,
+                notes,
+                NULL as partner_id,
+                created_at,
+                updated_at
+            "#
+        };
+
+        let mut query = sqlx::query_as::<_, CourierApplicationRow>(query_str)
+            .bind(application_id)
+            .bind(status as DeliveryApplicationStatus)
+            .bind(profile_data)
+            .bind(documents)
+            .bind(submitted_at);
+
+        if has_partner_id_column {
+            query = query.bind(partner_id);
+        }
+
+        let row = query.fetch_one(&self.pool).await?;
 
         Ok(CourierApplication {
             id: row.id,
@@ -865,6 +976,8 @@ impl DeliveryRepository {
         &self,
         user_id: i32,
     ) -> AppResult<Option<CourierApplication>> {
+        // ✅ CORRIGÉ: Vérifier si partner_id existe avant de le sélectionner
+        // ✅ CORRIGÉ: Utiliser une requête qui gère le cas où partner_id n'existe pas
         let row: Option<CourierApplicationRow> = sqlx::query_as(
             r#"
             SELECT
@@ -988,7 +1101,7 @@ impl DeliveryRepository {
                     profile_data,
                     documents,
                     notes,
-                    partner_id,
+                    COALESCE(partner_id, NULL) as partner_id,
                     created_at,
                     updated_at
                 FROM courier_applications

@@ -324,6 +324,56 @@ const MesProduitsScreen: React.FC = () => {
                 
                 const productIndex = product.product_index;
                 
+                // ✅ CORRIGÉ 2026-02-10: Extraire le prix correctement (sans conversion incorrecte)
+                // product_price est déjà en unités (pas en centimes), donc on l'utilise tel quel
+                // Le backend sérialise Decimal en string ou number selon la configuration
+                let prixValue: number | string | undefined = undefined;
+                
+                // Priorité 1: product_price depuis la colonne générée (déjà en unités)
+                if (product.product_price !== null && product.product_price !== undefined) {
+                    // ✅ CORRIGÉ: Convertir Decimal (sérialisé en string ou number) en number
+                    if (typeof product.product_price === 'number') {
+                        prixValue = product.product_price;
+                    } else if (typeof product.product_price === 'string') {
+                        prixValue = parseFloat(product.product_price) || 0;
+                    } else {
+                        // Si c'est un objet Decimal, le convertir en string puis en number
+                        prixValue = parseFloat(String(product.product_price)) || 0;
+                    }
+                }
+                
+                // Priorité 2: prix depuis product_data (déjà en unités)
+                if (!prixValue || prixValue === 0) {
+                    const prixFromData = productData.prix || productData.prix_produit;
+                    if (prixFromData !== null && prixFromData !== undefined) {
+                        if (typeof prixFromData === 'object' && 'valeur' in prixFromData) {
+                            const valeur = prixFromData.valeur;
+                            prixValue = typeof valeur === 'number' 
+                                ? valeur 
+                                : parseFloat(String(valeur)) || 0;
+                        } else {
+                            prixValue = typeof prixFromData === 'number' 
+                                ? prixFromData 
+                                : parseFloat(String(prixFromData)) || 0;
+                        }
+                    }
+                }
+                
+                // ✅ DEBUG: Logger les prix pour diagnostiquer le problème de multiplication
+                if (__DEV__ && prixValue && prixValue > 0) {
+                    const priceVariant = productData.price_variant || productData.variabilite_prix || productData.variation_prix;
+                    console.log(`[MesProduitsScreen] 💰 Prix produit ${product.id}:`, {
+                        product_price: product.product_price,
+                        prixValue,
+                        hasPriceVariant: !!priceVariant,
+                        priceVariantModalites: priceVariant && typeof priceVariant === 'object' && 'modalites' in priceVariant 
+                            ? (priceVariant.modalites || []).map((m: any) => ({ valeur: m.valeur, prix: m.prix }))
+                            : null,
+                        productDataPrix: productData.prix,
+                        productDataPrixProduit: productData.prix_produit,
+                    });
+                }
+                
                 return {
                     id: `${product.service_id}_${productIndex}`,
                     rawProductId: product.id.toString(),
@@ -331,7 +381,7 @@ const MesProduitsScreen: React.FC = () => {
                     productIndex: productIndex,
                     product_index: productIndex,
                     nom: product.product_name || productData.nom || productData.nom_produit || 'Produit sans nom',
-                    prix: product.product_price || productData.prix || productData.prix_produit || 0,
+                    prix: prixValue || 0,
                     devise: productData.devise || productData.devise_produit || 'XAF',
                     description: productData.description || productData.description_produit || '',
                     categorie: product.product_type || productData.categorie || productData.categorie_produit || '',
@@ -343,6 +393,7 @@ const MesProduitsScreen: React.FC = () => {
                     // serviceTitre est optionnel (peut être récupéré séparément si nécessaire)
                     serviceTitre: undefined,
                     // Préserver toutes les autres données du produit depuis product_data
+                    // ✅ IMPORTANT: Préserver price_variant/variabilite_prix pour l'affichage des variations
                     ...productData,
                 } as ManagedProduct;
             });
@@ -1797,24 +1848,54 @@ const MesProduitsScreen: React.FC = () => {
         // ✅ CORRIGÉ: Extraire la devise du produit (priorité: devise_produit > devise)
         const productCurrency = product.devise_produit || product.devise;
         
-        const priceValue = product.prix !== undefined && product.prix !== null && product.prix !== 0
-            ? (() => {
-                const prixNum = typeof product.prix === 'number' ? product.prix : parseFloat(String(product.prix)) || 0;
-                const prixFormatted = prixNum.toLocaleString('fr-FR');
-                // ✅ CORRIGÉ: N'afficher la devise que si elle existe, sinon ne pas en mettre
-                return productCurrency && productCurrency.trim() 
-                    ? `${prixFormatted} ${productCurrency.trim()}`
-                    : prixFormatted;
-            })()
-            : product.prix_produit && product.prix_produit !== 0
+        // ✅ CORRIGÉ 2026-02-10: Vérifier les variations de prix avant d'afficher le prix unique
+        // Si le produit a des variations de prix, calculer le prix minimum
+        const priceVariant = product.price_variant || product.variabilite_prix || product.variation_prix;
+        const hasVariants = priceVariant && typeof priceVariant === 'object' && Array.isArray(priceVariant.modalites) && priceVariant.modalites.length > 0;
+        
+        let priceValue: string | null = null;
+        
+        if (hasVariants) {
+            // ✅ CORRIGÉ 2026-02-10: Calculer le prix minimum des variations
+            const modalites = priceVariant.modalites || [];
+            const variantPrices = modalites
+                .map((m: any) => {
+                    const prix = m.prix || m.price || 0;
+                    return typeof prix === 'number' ? prix : parseFloat(String(prix)) || 0;
+                })
+                .filter((p: number) => p > 0);
+            
+            if (variantPrices.length > 0) {
+                const minPrice = Math.min(...variantPrices);
+                const prixFormatted = minPrice.toLocaleString('fr-FR');
+                const variantCurrency = modalites[0]?.devise || modalites[0]?.currency || productCurrency || 'XAF';
+                priceValue = variantCurrency && variantCurrency.trim()
+                    ? `À partir de ${prixFormatted} ${variantCurrency.trim()}`
+                    : `À partir de ${prixFormatted}`;
+            }
+        }
+        
+        // Si pas de variations ou pas de prix dans les variations, utiliser le prix unique
+        if (!priceValue) {
+            priceValue = product.prix !== undefined && product.prix !== null && product.prix !== 0
                 ? (() => {
-                    const prixNum = typeof product.prix_produit === 'number' ? product.prix_produit : parseFloat(String(product.prix_produit)) || 0;
+                    const prixNum = typeof product.prix === 'number' ? product.prix : parseFloat(String(product.prix)) || 0;
                     const prixFormatted = prixNum.toLocaleString('fr-FR');
-                    return productCurrency && productCurrency.trim()
+                    // ✅ CORRIGÉ: N'afficher la devise que si elle existe, sinon ne pas en mettre
+                    return productCurrency && productCurrency.trim() 
                         ? `${prixFormatted} ${productCurrency.trim()}`
                         : prixFormatted;
                 })()
-                : null;
+                : product.prix_produit && product.prix_produit !== 0
+                    ? (() => {
+                        const prixNum = typeof product.prix_produit === 'number' ? product.prix_produit : parseFloat(String(product.prix_produit)) || 0;
+                        const prixFormatted = prixNum.toLocaleString('fr-FR');
+                        return productCurrency && productCurrency.trim()
+                            ? `${prixFormatted} ${productCurrency.trim()}`
+                            : prixFormatted;
+                    })()
+                    : null;
+        }
 
         const productDescription = product.description
             || product.description_produit

@@ -757,8 +757,9 @@ async fn save_product_delivery_config(
         )
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-            CASE WHEN $18 THEN NOW() ELSE NULL END, 
-            CASE WHEN $18 THEN $19 ELSE NULL END
+            $18, 
+            CASE WHEN $18::boolean THEN NOW() ELSE NULL END, 
+            CASE WHEN $18::boolean THEN $19 ELSE NULL END
         )
         ON CONFLICT (service_id, product_index)
         DO UPDATE SET
@@ -777,8 +778,8 @@ async fn save_product_delivery_config(
             billing_partner_label = EXCLUDED.billing_partner_label,
             storage_location_id = EXCLUDED.storage_location_id,
             is_configured = EXCLUDED.is_configured,
-            configured_at = CASE WHEN EXCLUDED.is_configured THEN NOW() ELSE product_delivery_config.configured_at END,
-            configured_by = CASE WHEN EXCLUDED.is_configured THEN EXCLUDED.configured_by ELSE product_delivery_config.configured_by END,
+            configured_at = CASE WHEN EXCLUDED.is_configured::boolean THEN NOW() ELSE product_delivery_config.configured_at END,
+            configured_by = CASE WHEN EXCLUDED.is_configured::boolean THEN EXCLUDED.configured_by ELSE product_delivery_config.configured_by END,
             updated_at = NOW()
         RETURNING id, is_configured
         "#,

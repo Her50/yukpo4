@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient violet premium pour le Y - plus vibrant -->
+    <linearGradient id="yGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9333EA;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#A855F7;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#C084FC;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7E22CE;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient de brillance pour effet 3D -->
+    <linearGradient id="yShine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.7" />
+      <stop offset="30%" style="stop-color:#FFFFFF;stop-opacity:0.3" />
+      <stop offset="70%" style="stop-color:#FFFFFF;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0" />
+    </linearGradient>
+    
+    <!-- Ombre portée améliorée pour profondeur -->
+    <filter id="yShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="15"/>
+      <feOffset dx="0" dy="15" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.6"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Ombre interne pour effet de profondeur -->
+    <filter id="innerShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1"/>
+    </filter>
+  </defs>
+  
+  <!-- Fond blanc pur pour contraste maximal -->
+  <rect width="1024" height="1024" fill="#FFFFFF" rx="200"/>
+  
+  <!-- Cercle de fond subtil pour profondeur -->
+  <circle cx="512" cy="512" r="420" fill="#F3F4F6" opacity="0.5"/>
+  
+  <!-- La lettre Y stylisée en VIOLET PREMIUM avec effets 3D -->
+  <g filter="url(#yShadow)">
+    <!-- Branche gauche du Y - optimisée pour visibilité -->
+    <path d="M 240 240 L 512 500 L 460 560 L 188 300 Z" 
+          fill="url(#yGradient)" 
+          stroke="#FFFFFF" 
+          stroke-width="12" 
+          stroke-linejoin="round"
+          stroke-linecap="round"/>
+    
+    <!-- Branche droite du Y - optimisée pour visibilité -->
+    <path d="M 784 240 L 512 500 L 564 560 L 836 300 Z" 
+          fill="url(#yGradient)" 
+          stroke="#FFFFFF" 
+          stroke-width="12" 
+          stroke-linejoin="round"
+          stroke-linecap="round"/>
+    
+    <!-- Tige du Y - optimisée pour visibilité -->
+    <path d="M 460 500 L 564 500 L 564 820 L 460 820 Z" 
+          fill="url(#yGradient)" 
+          stroke="#FFFFFF" 
+          stroke-width="12" 
+          stroke-linejoin="round"
+          stroke-linecap="round"/>
+    
+    <!-- Effet de brillance sur le Y pour effet 3D -->
+    <path d="M 250 250 L 512 510 L 470 570 L 208 310 Z" 
+          fill="url(#yShine)" 
+          opacity="0.8"/>
+    <path d="M 774 250 L 512 510 L 554 570 L 816 310 Z" 
+          fill="url(#yShine)" 
+          opacity="0.8"/>
+    <path d="M 470 510 L 554 510 L 554 790 L 470 790 Z" 
+          fill="url(#yShine)" 
+          opacity="0.8"/>
+    
+    <!-- Reflet subtil pour effet premium -->
+    <path d="M 260 260 L 512 520 L 480 560 L 228 320 Z" 
+          fill="#FFFFFF" 
+          opacity="0.2"/>
+    <path d="M 764 260 L 512 520 L 544 560 L 796 320 Z" 
+          fill="#FFFFFF" 
+          opacity="0.2"/>
+  </g>
+  
+  <!-- Étoile moderne en bas en violet - plus visible -->
+  <g opacity="0.9">
+    <circle cx="512" cy="920" r="12" fill="#9333EA" stroke="#FFFFFF" stroke-width="4"/>
+    <path d="M 512 890 L 522 910 L 542 910 L 526 924 L 530 944 L 512 930 L 494 944 L 498 924 L 482 910 L 502 910 Z" 
+          fill="#9333EA" 
+          stroke="#FFFFFF" 
+          stroke-width="4"/>
+  </g>
+  
+  <!-- Bordure subtile pour définition -->
+  <rect width="1024" height="1024" 
+        fill="none" 
+        stroke="#E5E7EB" 
+        stroke-width="2" 
+        opacity="0.5" 
+        rx="200"/>
+</svg>
+

@@ -1237,8 +1237,9 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
   const handleShare = async () => {
     try {
-      // ✅ CORRIGÉ 2026-01-23: Vérifier que productData existe avant d'accéder à ses propriétés
-      const productName = productData?.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
+      // ✅ CORRIGÉ 2026-02-10: Utiliser UNIQUEMENT productData.nom pour éviter d'utiliser le nom du premier produit du service
+      // Ne pas utiliser service?.data?.nom_produit?.valeur car cela pourrait être le premier produit du service
+      const productName = productData?.nom || productData?.nom_produit || product?.nom || 'Produit';
       // ✅ CORRIGÉ 2026-01-21: Utiliser UNIQUEMENT productData.description pour éviter confusion avec autres produits
       const productDesc = productData.description || productData.description_produit || '';
       const price = displayPrice > 0 ? displayPrice : undefined;
