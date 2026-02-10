@@ -52,3 +52,11 @@ hetzner*.env
 *-final.env
 *-smart.env
 GITHUB_SECRETS_INSTRUCTIONS.txt
+create-env-hetzner.sh
+scripts/generate-hetzner-env.ps1
+scripts/migrate-aws-to-hetzner-smart.ps1
+scripts/migrate-timeout.ps1
+scripts/final-migrate-with-render-vars.ps1
+scripts/migrate-final-complete.ps1
+scripts/migrate-direct.ps1
+scripts/migrate-simple-fast.ps1
