@@ -47,3 +47,8 @@ video-renderer/node_modules/
 backend/.env
 frontend/.env
 mobile/.env
+hetzner*.env
+*-complete.env
+*-final.env
+*-smart.env
+GITHUB_SECRETS_INSTRUCTIONS.txt
