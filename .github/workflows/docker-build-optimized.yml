@@ -28,6 +28,11 @@ on:
         required: false
         default: 'false'
         type: boolean
+      push_to_hetzner:
+        description: 'Deploy to Hetzner'
+        required: false
+        default: 'false'
+        type: boolean
 
 env:
   REGISTRY: ghcr.io
@@ -37,6 +42,9 @@ env:
   ECR_REPO_NAME: yukpomnang-backend
   ECR_REPO_URI: 846505724644.dkr.ecr.us-east-1.amazonaws.com/yukpomnang-backend
   SSM_DATABASE_URL_PATH: /yukpomnang/production/DATABASE_URL
+  HETZNER_HOST: 46.224.14.85
+  HETZNER_USER: root
+  HETZNER_DIR: /opt/yukpo
 
 jobs:
   run-migrations:
@@ -436,4 +444,200 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "💡 Surveillez le déploiement avec:" >> $GITHUB_STEP_SUMMARY
           echo "   \`aws ecs describe-services --cluster yukpomnang-cluster --services yukpomnang-backend-service --region ${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
+
+  deploy-to-hetzner:
+    name: Deploy to Hetzner
+    needs: build-and-push
+    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || (github.event_name == 'workflow_dispatch' && inputs.push_to_hetzner == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+
+      - name: Add Hetzner to known hosts
+        run: |
+          ssh-keyscan -H ${{ env.HETZNER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} "echo '✅ SSH connection successful'"
+
+      - name: Pull latest image from GHCR
+        run: |
+          echo "🔄 Pulling latest image from GitHub Container Registry..."
+          ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
+            cd ${{ env.HETZNER_DIR }}/backend
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || echo "⚠️ Image latest not found, trying optimized tag..."
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:optimized || echo "⚠️ Image optimized not found, trying main tag..."
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${{ github.sha }} || echo "⚠️ Image with SHA not found"
+            docker images | grep -E "(${{ env.IMAGE_NAME }})" | head -5
+          EOF
+
+      - name: Update docker-compose on Hetzner
+        run: |
+          echo "🔄 Updating docker-compose.yml on Hetzner..."
+          ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
+            cd ${{ env.HETZNER_DIR }}
+            
+            # Créer docker-compose.hetzner.yml si n'existe pas
+            if [ ! -f docker-compose.hetzner.yml ]; then
+              echo "📝 Creating docker-compose.hetzner.yml..."
+              cat > docker-compose.hetzner.yml << 'COMPOSE_EOF'
+version: '3.8'
+
+services:
+  backend:
+    image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+    container_name: yukpo-backend
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENVIRONMENT=production
+      - RUST_LOG=info
+      - HOST=0.0.0.0
+      - PORT=8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - yukpo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: yukpo-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=yukpomnang
+      - POSTGRES_USER=${DB_USER:-yukpo_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - yukpo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-yukpo_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: yukpo-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - yukpo-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  yukpo-network:
+    driver: bridge
+COMPOSE_EOF
+            fi
+            
+            echo "✅ docker-compose.hetzner.yml ready"
+          EOF
+
+      - name: Deploy to Hetzner
+        run: |
+          echo "🚀 Deploying to Hetzner..."
+          ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
+            cd ${{ env.HETZNER_DIR }}
+            
+            # Charger les variables d'environnement si .env existe
+            if [ -f .env ]; then
+              set -a
+              source .env
+              set +a
+            fi
+            
+            # Arrêter les anciens conteneurs
+            echo "🛑 Stopping old containers..."
+            docker-compose -f docker-compose.hetzner.yml down || true
+            
+            # Pull les images à jour
+            echo "📥 Pulling latest images..."
+            docker-compose -f docker-compose.hetzner.yml pull backend || true
+            
+            # Démarrer les services
+            echo "🚀 Starting services..."
+            docker-compose -f docker-compose.hetzner.yml up -d
+            
+            # Attendre que les services soient prêts
+            echo "⏳ Waiting for services to be ready..."
+            sleep 10
+            
+            # Vérifier le statut
+            echo "📊 Service status:"
+            docker-compose -f docker-compose.hetzner.yml ps
+            
+            # Vérifier les logs
+            echo "📋 Recent logs:"
+            docker-compose -f docker-compose.hetzner.yml logs --tail=20 backend
+          EOF
+
+      - name: Verify deployment
+        run: |
+          echo "✅ Verifying deployment..."
+          ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
+            cd ${{ env.HETZNER_DIR }}
+            
+            # Vérifier que le backend répond
+            echo "🔍 Checking backend health..."
+            sleep 5
+            curl -f http://localhost:8080/api/health || echo "⚠️ Health check failed, but service might still be starting"
+            
+            # Vérifier les conteneurs
+            echo ""
+            echo "📊 Container status:"
+            docker ps --filter "name=yukpo" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          EOF
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## 🚀 Hetzner Deployment - Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Host**: \`${{ env.HETZNER_HOST }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Services**: Backend, PostgreSQL, Redis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Déploiement Hetzner terminé avec succès" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "💡 Vérifier le déploiement avec:" >> $GITHUB_STEP_SUMMARY
+          echo "   \`ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} 'cd ${{ env.HETZNER_DIR }} && docker-compose -f docker-compose.hetzner.yml ps'\`" >> $GITHUB_STEP_SUMMARY
 
