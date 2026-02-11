@@ -733,18 +733,19 @@ async fn save_product_delivery_config(
     // ✅ CORRIGÉ 2026-02-10: Vérifier que storage_location_id existe dans la table avant de l'utiliser
     if let Some(storage_location_id) = payload.storage_location_id {
         if storage_location_id > 0 {
-            let storage_location_exists: Option<bool> =
-                sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM merchant_storage_locations WHERE id = $1)")
-                    .bind(storage_location_id)
-                    .fetch_optional(&state.pg)
-                    .await
-                    .map_err(|e| {
-                        log::error!(
-                            "[save_product_delivery_config] Erreur vérification storage_location_id: {}",
-                            e
-                        );
-                        AppError::Internal("Erreur lors de la vérification du lieu de stockage".into())
-                    })?;
+            let storage_location_exists: Option<bool> = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM merchant_storage_locations WHERE id = $1)",
+            )
+            .bind(storage_location_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                log::error!(
+                    "[save_product_delivery_config] Erreur vérification storage_location_id: {}",
+                    e
+                );
+                AppError::Internal("Erreur lors de la vérification du lieu de stockage".into())
+            })?;
 
             if storage_location_exists != Some(true) {
                 return Err(AppError::BadRequest(format!(

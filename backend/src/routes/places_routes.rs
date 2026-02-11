@@ -4,8 +4,7 @@ use axum::{
     http::{HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
-    Json,
-    Router,
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -335,7 +334,7 @@ pub struct GoogleBusinessDetails {
     pub location: LocationCoords,
     pub phone_number: Option<String>,
     pub website: Option<String>,
-    pub photos: Vec<String>, // URLs des photos
+    pub photos: Vec<String>,                // URLs des photos
     pub opening_hours: Option<Vec<String>>, // Horaires d'ouverture
     pub rating: Option<f64>,
     pub user_ratings_total: Option<i32>,
@@ -360,9 +359,8 @@ pub async fn get_google_business_details(
     State(_state): State<Arc<AppState>>,
     Query(params): Query<GoogleBusinessDetailsQuery>,
 ) -> impl IntoResponse {
-    let api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_else(|_| {
-        "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ".to_string()
-    });
+    let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
+        .unwrap_or_else(|_| "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ".to_string());
 
     if api_key.is_empty() {
         return (
@@ -385,12 +383,7 @@ pub async fn get_google_business_details(
     );
 
     let client = reqwest::Client::new();
-    match client
-        .get(&url)
-        .timeout(std::time::Duration::from_secs(10))
-        .send()
-        .await
-    {
+    match client.get(&url).timeout(std::time::Duration::from_secs(10)).send().await {
         Ok(response) => {
             match response.json::<serde_json::Value>().await {
                 Ok(data) => {
@@ -408,32 +401,26 @@ pub async fn get_google_business_details(
 
                         if let Some(result) = data.get("result") {
                             // Extraire les coordonnées
-                            let location = match result
-                                .get("geometry")
-                                .and_then(|g| g.get("location"))
-                            {
-                                Some(loc) => {
-                                    let lat = loc
-                                        .get("lat")
-                                        .and_then(|l| l.as_f64())
-                                        .unwrap_or(0.0);
-                                    let lng = loc
-                                        .get("lng")
-                                        .and_then(|l| l.as_f64())
-                                        .unwrap_or(0.0);
-                                    LocationCoords { lat, lng }
-                                }
-                                None => {
-                                    return (
-                                        StatusCode::BAD_REQUEST,
-                                        Json(GoogleBusinessDetailsResponse {
-                                            success: false,
-                                            data: None,
-                                            error: Some("Géométrie invalide".to_string()),
-                                        }),
-                                    );
-                                }
-                            };
+                            let location =
+                                match result.get("geometry").and_then(|g| g.get("location")) {
+                                    Some(loc) => {
+                                        let lat =
+                                            loc.get("lat").and_then(|l| l.as_f64()).unwrap_or(0.0);
+                                        let lng =
+                                            loc.get("lng").and_then(|l| l.as_f64()).unwrap_or(0.0);
+                                        LocationCoords { lat, lng }
+                                    }
+                                    None => {
+                                        return (
+                                            StatusCode::BAD_REQUEST,
+                                            Json(GoogleBusinessDetailsResponse {
+                                                success: false,
+                                                data: None,
+                                                error: Some("Géométrie invalide".to_string()),
+                                            }),
+                                        );
+                                    }
+                                };
 
                             // Extraire le nom
                             let name = result
@@ -463,7 +450,9 @@ pub async fn get_google_business_details(
 
                             // Extraire les photos (premières 10)
                             let mut photos: Vec<String> = Vec::new();
-                            if let Some(photos_array) = result.get("photos").and_then(|p| p.as_array()) {
+                            if let Some(photos_array) =
+                                result.get("photos").and_then(|p| p.as_array())
+                            {
                                 for photo in photos_array.iter().take(10) {
                                     if let Some(photo_reference) =
                                         photo.get("photo_reference").and_then(|r| r.as_str())
@@ -562,7 +551,10 @@ pub async fn get_google_business_details(
 pub fn places_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/api/places/autocomplete", get(autocomplete_places))
-        .route("/api/places/google-business-details", get(get_google_business_details))
+        .route(
+            "/api/places/google-business-details",
+            get(get_google_business_details),
+        )
         .route("/api/places/photo", get(fetch_place_photo))
         .with_state(state)
 }
