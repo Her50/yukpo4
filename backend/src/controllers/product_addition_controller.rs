@@ -758,8 +758,12 @@ pub async fn add_product_to_service(
     // ✅ AMÉLIORÉ: Chercher les images dans différents champs (comme dans creer_service)
     // Support de formats imbriqués et de structures variées
     if let Some(prod_obj) = product_data_original.as_object() {
-        // Fonction helper pour extraire les images d'un champ
-        let mut extract_from_field = |field_name: &str, value: &serde_json::Value| -> usize {
+        // Fonction helper récursive pour extraire les images d'un champ
+        fn extract_from_field(
+            field_name: &str,
+            value: &serde_json::Value,
+            images_to_process: &mut Vec<String>,
+        ) -> usize {
             let mut count = 0;
 
             match value {
@@ -796,14 +800,14 @@ pub async fn add_product_to_service(
                 serde_json::Value::Object(obj) => {
                     // Support de structures avec type_donnee
                     if let Some(valeur) = obj.get("valeur") {
-                        count += extract_from_field(field_name, valeur);
+                        count += extract_from_field(field_name, valeur, images_to_process);
                     }
                 }
                 _ => {}
             }
 
             count
-        };
+        }
 
         // ✅ NOUVEAU: Liste exhaustive des champs possibles pour les images
         let image_fields = [
@@ -822,7 +826,7 @@ pub async fn add_product_to_service(
 
         for field_name in &image_fields {
             if let Some(value) = prod_obj.get(*field_name) {
-                let count = extract_from_field(field_name, value);
+                let count = extract_from_field(field_name, value, &mut images_to_process);
                 if count > 0 {
                     log_info(&format!(
                         "[add_product_to_service] ✅ Trouvé {} image(s) dans champ '{}'",
@@ -842,6 +846,7 @@ pub async fn add_product_to_service(
                             let count = extract_from_field(
                                 &format!("{}.{}", key, nested_key),
                                 nested_value,
+                                &mut images_to_process,
                             );
                             if count > 0 {
                                 log_info(&format!(
