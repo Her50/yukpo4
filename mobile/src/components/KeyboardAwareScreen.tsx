@@ -122,8 +122,8 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       enableResetKeyboardOnBlur={false}
       // ✅ CORRECTION CRITIQUE: S'assurer que le clavier peut s'afficher
       keyboardOpeningTime={0}
-      // ✅ CORRECTION CRITIQUE: Ne pas empêcher le clavier de s'afficher
-      resetScrollToCoords={{ x: 0, y: 0 }}
+      // ✅ CORRIGÉ: Ne pas forcer le scroll à revenir en haut, laisser le composant gérer automatiquement
+      enableResetScrollToCoords={false}
     >
       {children}
     </KeyboardAwareScrollView>

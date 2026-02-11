@@ -13,7 +13,6 @@ import SafeIcon from './SafeIcon';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import LocationSelector, { LocationObject } from './LocationSelector';
-import { PlaceScope } from '../services/placesService';
 
 interface GoogleBusinessModalProps {
   visible: boolean;
@@ -147,7 +146,7 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
                   }
                 }}
                 placeholder="Ex: Restaurant Le Gourmet, Douala"
-                scope={PlaceScope.ESTABLISHMENT}
+                scope="establishment"
                 style={styles.locationSelector}
                 enrichWithBackend={true}
               />

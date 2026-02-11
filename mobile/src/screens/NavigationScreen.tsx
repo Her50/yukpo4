@@ -19,7 +19,6 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import { NativeCard, NativeButton } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import LocationSelector, { LocationObject } from '../components/LocationSelector';
-import { PlaceScope } from '../services/placesService';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocationSafe } from '../contexts/LocationContext';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -561,7 +560,7 @@ const NavigationScreen: React.FC = () => {
                             }
                         }}
                         placeholder="Tapez une adresse, lieu, ou destination..."
-                        scope={PlaceScope.ALL}
+                        scope="all"
                         style={styles.locationSelector}
                     />
                     
