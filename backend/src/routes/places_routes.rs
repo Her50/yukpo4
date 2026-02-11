@@ -3,7 +3,9 @@ use axum::{
     extract::{Query, State},
     http::{HeaderValue, StatusCode},
     response::{IntoResponse, Response},
+    routing::get,
     Json,
+    Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -317,5 +319,250 @@ pub async fn fetch_place_photo(Query(params): Query<PlacePhotoQuery>) -> impl In
     }
 }
 
-// Note: Le router pour les routes places n'est pas défini ici car les routes
-// sont définies directement dans router_yukpo.rs (lignes 67-68)
+// ✅ NOUVEAU 2026-02-10: Réponse pour les détails Google Business
+#[derive(Debug, Serialize)]
+pub struct GoogleBusinessDetailsResponse {
+    pub success: bool,
+    pub data: Option<GoogleBusinessDetails>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GoogleBusinessDetails {
+    pub place_id: String,
+    pub name: String,
+    pub formatted_address: String,
+    pub location: LocationCoords,
+    pub phone_number: Option<String>,
+    pub website: Option<String>,
+    pub photos: Vec<String>, // URLs des photos
+    pub opening_hours: Option<Vec<String>>, // Horaires d'ouverture
+    pub rating: Option<f64>,
+    pub user_ratings_total: Option<i32>,
+    pub business_status: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LocationCoords {
+    pub lat: f64,
+    pub lng: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GoogleBusinessDetailsQuery {
+    pub place_id: String,
+}
+
+/// ✅ NOUVEAU 2026-02-10: Obtenir les détails complets d'un Google Business Profile
+/// Récupère toutes les informations nécessaires pour pré-remplir le formulaire de création de service
+/// GET /api/places/google-business-details?place_id=ChIJ...
+pub async fn get_google_business_details(
+    State(_state): State<Arc<AppState>>,
+    Query(params): Query<GoogleBusinessDetailsQuery>,
+) -> impl IntoResponse {
+    let api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_else(|_| {
+        "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ".to_string()
+    });
+
+    if api_key.is_empty() {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(GoogleBusinessDetailsResponse {
+                success: false,
+                data: None,
+                error: Some("GOOGLE_MAPS_API_KEY non configurée".to_string()),
+            }),
+        );
+    }
+
+    // ✅ Récupérer tous les champs nécessaires pour Google Business
+    let fields = "place_id,name,formatted_address,geometry,international_phone_number,website,photos,opening_hours,rating,user_ratings_total,business_status";
+    let url = format!(
+        "https://maps.googleapis.com/maps/api/place/details/json?place_id={}&fields={}&key={}&language=fr",
+        urlencoding::encode(&params.place_id),
+        fields,
+        api_key
+    );
+
+    let client = reqwest::Client::new();
+    match client
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await
+    {
+        Ok(response) => {
+            match response.json::<serde_json::Value>().await {
+                Ok(data) => {
+                    if let Some(status) = data.get("status").and_then(|s| s.as_str()) {
+                        if status != "OK" {
+                            return (
+                                StatusCode::BAD_REQUEST,
+                                Json(GoogleBusinessDetailsResponse {
+                                    success: false,
+                                    data: None,
+                                    error: Some(format!("Google Places API error: {}", status)),
+                                }),
+                            );
+                        }
+
+                        if let Some(result) = data.get("result") {
+                            // Extraire les coordonnées
+                            let location = match result
+                                .get("geometry")
+                                .and_then(|g| g.get("location"))
+                            {
+                                Some(loc) => {
+                                    let lat = loc
+                                        .get("lat")
+                                        .and_then(|l| l.as_f64())
+                                        .unwrap_or(0.0);
+                                    let lng = loc
+                                        .get("lng")
+                                        .and_then(|l| l.as_f64())
+                                        .unwrap_or(0.0);
+                                    LocationCoords { lat, lng }
+                                }
+                                None => {
+                                    return (
+                                        StatusCode::BAD_REQUEST,
+                                        Json(GoogleBusinessDetailsResponse {
+                                            success: false,
+                                            data: None,
+                                            error: Some("Géométrie invalide".to_string()),
+                                        }),
+                                    );
+                                }
+                            };
+
+                            // Extraire le nom
+                            let name = result
+                                .get("name")
+                                .and_then(|n| n.as_str())
+                                .unwrap_or("")
+                                .to_string();
+
+                            // Extraire l'adresse
+                            let formatted_address = result
+                                .get("formatted_address")
+                                .and_then(|a| a.as_str())
+                                .unwrap_or("")
+                                .to_string();
+
+                            // Extraire le téléphone
+                            let phone_number = result
+                                .get("international_phone_number")
+                                .and_then(|p| p.as_str())
+                                .map(|s| s.to_string());
+
+                            // Extraire le site web
+                            let website = result
+                                .get("website")
+                                .and_then(|w| w.as_str())
+                                .map(|s| s.to_string());
+
+                            // Extraire les photos (premières 10)
+                            let mut photos: Vec<String> = Vec::new();
+                            if let Some(photos_array) = result.get("photos").and_then(|p| p.as_array()) {
+                                for photo in photos_array.iter().take(10) {
+                                    if let Some(photo_reference) =
+                                        photo.get("photo_reference").and_then(|r| r.as_str())
+                                    {
+                                        // Construire l'URL de la photo
+                                        let photo_url = format!(
+                                            "https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={}&key={}",
+                                            urlencoding::encode(photo_reference),
+                                            api_key
+                                        );
+                                        photos.push(photo_url);
+                                    }
+                                }
+                            }
+
+                            // Extraire les horaires d'ouverture
+                            let opening_hours = result
+                                .get("opening_hours")
+                                .and_then(|h| h.get("weekday_text"))
+                                .and_then(|w| w.as_array())
+                                .map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                        .collect()
+                                });
+
+                            // Extraire la note
+                            let rating = result.get("rating").and_then(|r| r.as_f64());
+
+                            // Extraire le nombre d'avis
+                            let user_ratings_total = result
+                                .get("user_ratings_total")
+                                .and_then(|u| u.as_i64())
+                                .map(|i| i as i32);
+
+                            // Extraire le statut business
+                            let business_status = result
+                                .get("business_status")
+                                .and_then(|b| b.as_str())
+                                .map(|s| s.to_string());
+
+                            return (
+                                StatusCode::OK,
+                                Json(GoogleBusinessDetailsResponse {
+                                    success: true,
+                                    data: Some(GoogleBusinessDetails {
+                                        place_id: params.place_id,
+                                        name,
+                                        formatted_address,
+                                        location,
+                                        phone_number,
+                                        website,
+                                        photos,
+                                        opening_hours,
+                                        rating,
+                                        user_ratings_total,
+                                        business_status,
+                                    }),
+                                    error: None,
+                                }),
+                            );
+                        }
+                    }
+
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(GoogleBusinessDetailsResponse {
+                            success: false,
+                            data: None,
+                            error: Some("Aucun résultat pour ce place_id".to_string()),
+                        }),
+                    )
+                }
+                Err(err) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(GoogleBusinessDetailsResponse {
+                        success: false,
+                        data: None,
+                        error: Some(format!("Erreur parsing Google Business Details: {}", err)),
+                    }),
+                ),
+            }
+        }
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(GoogleBusinessDetailsResponse {
+                success: false,
+                data: None,
+                error: Some(format!("Erreur requête Google Business Details: {}", err)),
+            }),
+        ),
+    }
+}
+
+/// ✅ NOUVEAU 2026-02-10: Router pour les routes Google Places
+pub fn places_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+    Router::new()
+        .route("/api/places/autocomplete", get(autocomplete_places))
+        .route("/api/places/google-business-details", get(get_google_business_details))
+        .route("/api/places/photo", get(fetch_place_photo))
+        .with_state(state)
+}

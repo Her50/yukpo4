@@ -613,7 +613,21 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       avatar_url: service?.data?.photo_prestataire?.valeur,
     };
 
+  // ✅ NOUVEAU 2026-02-10: Utiliser le nom de la structure (titre_service) en priorité au lieu du nom personnel
+  // Priorité 1: Nom de la structure depuis le service (titre_service)
+  const structureName = 
+    service?.data?.titre_service?.valeur ||
+    service?.data?.titre_service ||
+    service?.titre_service ||
+    service?.titre ||
+    service?.data?.nom_structure?.valeur ||
+    service?.data?.nom_structure ||
+    service?.data?.nom_entreprise?.valeur ||
+    service?.data?.nom_entreprise ||
+    null;
+
   const prestataireName =
+    structureName || // ✅ PRIORITÉ: Nom de la structure
     rawPrestataire?.nom ||
     rawPrestataire?.nom_complet ||
     rawPrestataire?.name ||
@@ -628,7 +642,6 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     service?.data?.prestataire_nom?.valeur ||
     service?.data?.contact_nom?.valeur ||
     service?.data?.nom?.valeur ||
-    service?.data?.nom_entreprise?.valeur ||
     'Prestataire';
 
   const prestataireAvatar =
@@ -1229,7 +1242,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     setChatContext({
       type: 'service',
       targetUserId: prestataire.user_id ? Number(prestataire.user_id) : undefined,
-      targetUserName: prestataire.nom,
+      targetUserName: structureName || prestataire.nom, // ✅ CORRIGÉ 2026-02-10: Utiliser le nom de la structure en priorité
       targetAvatar: prestataire.avatar_url || null,
     });
     setPrivateConversationId(null);
@@ -1260,9 +1273,14 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         serviceId,
       });
 
+      // ✅ CORRIGÉ 2026-02-10: Inclure le deep link dans l'URL pour une meilleure compatibilité
+      // Certaines applications (WhatsApp, etc.) utilisent l'URL pour ouvrir le lien
+      const deepLink = `yukpomnang://product/${productId}?serviceId=${serviceId}`;
+      
       const result = await Share.share({
         message: shareMessage,
         title: productName,
+        url: deepLink, // ✅ Ajouter le deep link comme URL pour une meilleure compatibilité
       });
 
       if (result.action === Share.sharedAction) {

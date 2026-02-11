@@ -278,7 +278,9 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let mobile_routes = Router::<Arc<AppState>>::new()
         .merge(weather_routes(state.clone()))
         .merge(nearby_services_routes(state.clone()))
-        .merge(ai_chat_routes(state.clone()));
+        .merge(ai_chat_routes(state.clone()))
+        // ✅ NOUVEAU 2026-02-10: Routes pour Google Places (autocomplete et détails business)
+        .merge(crate::routes::places_routes::places_routes(state.clone()));
 
     // ✅ NOUVEAU: Routes pour @mentions et multi-participants conversations
     let conversation_routes_merged =

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient violet très vibrant et contrasté -->
+    <linearGradient id="yGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7C3AED;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6D28D9;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Fond BLANC PUR - 100% opaque pour contraste maximal -->
+  <rect width="1024" height="1024" fill="#FFFFFF" rx="180"/>
+  
+  <!-- La lettre Y en VIOLET - ULTRA ÉPAISSE pour visibilité maximale -->
+  <!-- Branche gauche - très épaisse -->
+  <path d="M 180 180 L 512 460 L 420 560 L 88 280 Z" 
+        fill="url(#yGradient)" 
+        stroke="#FFFFFF" 
+        stroke-width="30" 
+        stroke-linejoin="round"
+        stroke-linecap="round"/>
+  
+  <!-- Branche droite - très épaisse -->
+  <path d="M 844 180 L 512 460 L 604 560 L 936 280 Z" 
+        fill="url(#yGradient)" 
+        stroke="#FFFFFF" 
+        stroke-width="30" 
+        stroke-linejoin="round"
+        stroke-linecap="round"/>
+  
+  <!-- Tige - très épaisse -->
+  <rect x="420" y="460" width="184" height="380" 
+        fill="url(#yGradient)" 
+        stroke="#FFFFFF" 
+        stroke-width="30" 
+        rx="15"/>
+  
+  <!-- Contour noir subtil pour définition supplémentaire -->
+  <path d="M 180 180 L 512 460 L 420 560 L 88 280 Z" 
+        fill="none" 
+        stroke="#000000" 
+        stroke-width="4" 
+        stroke-opacity="0.1"
+        stroke-linejoin="round"/>
+  <path d="M 844 180 L 512 460 L 604 560 L 936 280 Z" 
+        fill="none" 
+        stroke="#000000" 
+        stroke-width="4" 
+        stroke-opacity="0.1"
+        stroke-linejoin="round"/>
+  <rect x="420" y="460" width="184" height="380" 
+        fill="none" 
+        stroke="#000000" 
+        stroke-width="4" 
+        stroke-opacity="0.1"
+        rx="15"/>
+</svg>
+

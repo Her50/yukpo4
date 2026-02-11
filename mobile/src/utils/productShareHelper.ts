@@ -73,18 +73,18 @@ export const generateProductShareMessage = (data: ProductShareData): string => {
     message += `📍 ${location.trim()}\n`;
   }
 
-  // ✅ AMÉLIORATION: Inclure à la fois le lien web (pour compatibilité) et le deep link direct
-  // Le lien web sera intercepté par l'app Android via intentFilters, et le deep link fonctionne directement
+  // ✅ CORRIGÉ 2026-02-10: Inclure le deep link direct pour une ouverture immédiate dans l'app
+  // Le deep link fonctionne directement sans nécessiter de vérification de domaine (App Links)
+  // Le lien web sert de fallback pour les navigateurs web
   const smartLink = generateSmartShareLink(productId, serviceId);
   const deepLink = generateDirectDeepLink(productId, serviceId);
   
-  // Sur mobile, le deep link sera utilisé en priorité
-  // Le lien web sert de fallback et sera intercepté par l'app si installée
-  message += `\n🔗 Voir ce produit:\n${smartLink}`;
+  // ✅ CORRIGÉ: Inclure le deep link direct en premier pour une ouverture immédiate
+  // Sur mobile, le deep link sera utilisé en priorité et ouvrira directement l'app
+  message += `\n📱 Ouvrir dans l'app:\n${deepLink}`;
   
-  // ✅ Optionnel: Ajouter aussi le deep link direct pour une ouverture immédiate
-  // (peut être commenté si on veut seulement le lien web)
-  // message += `\n📱 Ouvrir dans l'app:\n${deepLink}`;
+  // ✅ Ajouter aussi le lien web comme fallback (pour navigateurs web ou si l'app n'est pas installée)
+  message += `\n🔗 Voir en ligne:\n${smartLink}`;
 
   return message;
 };

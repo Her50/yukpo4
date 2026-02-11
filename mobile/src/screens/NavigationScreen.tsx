@@ -77,6 +77,12 @@ const NavigationScreen: React.FC = () => {
     const [stats, setStats] = useState<NavigationStats | null>(null);
     const [waypoints, setWaypoints] = useState<Array<{ lat: number; lng: number; name: string }>>([]);
     
+    // ✅ NOUVEAU 2026-02-10: États pour les fonctionnalités intelligentes
+    const [avoidTolls, setAvoidTolls] = useState(false);
+    const [avoidHighways, setAvoidHighways] = useState(false);
+    const [avoidFerries, setAvoidFerries] = useState(false);
+    const [showSmartFeatures, setShowSmartFeatures] = useState(true); // Afficher par défaut
+    
     // ✅ NOUVEAU: États pour autocomplete et destinations favorites
     const [autocompleteResults, setAutocompleteResults] = useState<Array<{
         description: string;
@@ -304,13 +310,20 @@ const NavigationScreen: React.FC = () => {
 
             setDestinationCoords(destCoords);
 
+            // ✅ CORRIGÉ 2026-02-10: Construire la liste des évitements selon les préférences
+            const avoidList: string[] = [];
+            if (avoidTolls) avoidList.push('tolls');
+            if (avoidHighways) avoidList.push('highways');
+            if (avoidFerries) avoidList.push('ferries');
+            
             // Appeler l'API pour obtenir les routes multiples
             const response = await apiPost('/api/navigation/routes', {
                 origin: { lat: origin.lat, lng: origin.lng },
                 destination: { lat: destCoords.lat, lng: destCoords.lng },
-                alternatives: true,
-                avoid: [],
-                traffic_model: 'best_guess'
+                alternatives: true, // ✅ Routes alternatives activées
+                avoid: avoidList, // ✅ Évitements selon les préférences
+                traffic_model: 'best_guess',
+                waypoints: waypoints.length > 0 ? waypoints.map(wp => ({ lat: wp.lat, lng: wp.lng })) : undefined
             });
 
             if (response?.data?.routes) {
@@ -329,7 +342,7 @@ const NavigationScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [destination, getCurrentPosition, geocodeDestination]);
+    }, [destination, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints]);
 
     // Charger les points d'intérêt le long d'une route (automatiquement via Google Places API)
     const loadPointsOfInterest = useCallback(async (route: RouteOption) => {
@@ -572,6 +585,10 @@ const NavigationScreen: React.FC = () => {
                                             lat: dest.latitude,
                                             lng: dest.longitude
                                         });
+                                        // ✅ Rechercher automatiquement les routes
+                                        setTimeout(() => {
+                                            searchRoutes();
+                                        }, 100);
                                     }}
                                 >
                                     <SafeIcon 
@@ -588,7 +605,71 @@ const NavigationScreen: React.FC = () => {
                     </NativeCard>
                 )}
 
-                {/* Saisie destination avec autocomplete amélioré */}
+                {/* ✅ NOUVEAU 2026-02-10: Fonctionnalités intelligentes visibles avant la recherche */}
+                {showSmartFeatures && (
+                    <NativeCard style={styles.smartFeaturesCard}>
+                        <View style={styles.smartFeaturesHeader}>
+                            <Text style={styles.smartFeaturesTitle}>⚡ Options de navigation</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowSmartFeatures(false)}
+                                style={styles.collapseButton}
+                            >
+                                <SafeIcon name="ChevronUp" size={16} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.smartFeaturesContent}>
+                            <TouchableOpacity
+                                style={styles.smartFeatureOption}
+                                onPress={() => setAvoidTolls(!avoidTolls)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.smartFeatureCheckbox}>
+                                    {avoidTolls && <SafeIcon name="Check" size={16} color={modernColors.primary} />}
+                                </View>
+                                <Text style={styles.smartFeatureLabel}>Éviter les péages</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.smartFeatureOption}
+                                onPress={() => setAvoidHighways(!avoidHighways)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.smartFeatureCheckbox}>
+                                    {avoidHighways && <SafeIcon name="Check" size={16} color={modernColors.primary} />}
+                                </View>
+                                <Text style={styles.smartFeatureLabel}>Éviter les autoroutes</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.smartFeatureOption}
+                                onPress={() => setAvoidFerries(!avoidFerries)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.smartFeatureCheckbox}>
+                                    {avoidFerries && <SafeIcon name="Check" size={16} color={modernColors.primary} />}
+                                </View>
+                                <Text style={styles.smartFeatureLabel}>Éviter les ferries</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.smartFeaturesHint}>
+                            <SafeIcon name="Info" size={14} color={modernColors.textSecondary} />
+                            <Text style={styles.smartFeaturesHintText}>
+                                Les routes alternatives seront proposées après la recherche
+                            </Text>
+                        </View>
+                    </NativeCard>
+                )}
+                
+                {/* ✅ NOUVEAU: Bouton pour afficher les fonctionnalités si masquées */}
+                {!showSmartFeatures && (
+                    <TouchableOpacity
+                        style={styles.showSmartFeaturesButton}
+                        onPress={() => setShowSmartFeatures(true)}
+                    >
+                        <SafeIcon name="Settings" size={16} color={modernColors.primary} />
+                        <Text style={styles.showSmartFeaturesText}>Afficher les options de navigation</Text>
+                    </TouchableOpacity>
+                )}
+
+                {/* ✅ CORRIGÉ 2026-02-10: Saisie destination avec autocomplete amélioré et layout corrigé */}
                 <NativeCard style={styles.searchCard}>
                     <View style={styles.labelRow}>
                         <Text style={styles.label}>🔍 Recherche intelligente</Text>
@@ -598,150 +679,152 @@ const NavigationScreen: React.FC = () => {
                             </Text>
                         )}
                     </View>
-                    <View style={styles.searchRow}>
-                        <View style={styles.inputContainer}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Tapez une adresse, lieu, ou destination..."
-                                value={destination}
-                                onChangeText={(text) => {
-                                    setDestination(text);
-                                    if (text.length >= 2) {
-                                        handleAutocomplete(text);
-                                    } else {
-                                        setShowAutocomplete(false);
-                                        setAutocompleteResults([]);
-                                    }
-                                }}
-                                onFocus={() => {
-                                    if (destination.length >= 2) {
-                                        handleAutocomplete(destination);
-                                    } else if (savedDestinations.length > 0) {
-                                        // Afficher les destinations favorites si le champ est vide
-                                        const savedResults = savedDestinations.map(dest => ({
-                                            description: dest.custom_label || (dest.label === 'domicile' ? '🏠 Domicile' : dest.label === 'bureau' ? '💼 Bureau' : `📍 ${dest.label}`),
-                                            address: dest.address,
-                                            latitude: dest.latitude,
-                                            longitude: dest.longitude,
-                                            is_saved: true,
-                                            label: dest.label
-                                        }));
-                                        setAutocompleteResults(savedResults);
-                                        setShowAutocomplete(savedResults.length > 0);
-                                    }
-                                }}
-                                onBlur={() => {
-                                    // Délai pour permettre le clic sur un résultat
-                                    setTimeout(() => {
-                                        setShowAutocomplete(false);
-                                    }, 200);
-                                }}
-                                onSubmitEditing={searchRoutes}
-                            />
-                            {/* ✅ Autocomplete dropdown */}
-                            {showAutocomplete && autocompleteResults.length > 0 && (
-                                <View style={styles.autocompleteContainer}>
-                                    <FlatList
-                                        data={autocompleteResults}
-                                        keyExtractor={(item, index) => `${item.description}-${index}`}
-                                        renderItem={({ item }) => (
-                                            <TouchableOpacity
-                                                style={styles.autocompleteItem}
-                                                onPress={async () => {
-                                                    if (item.is_saved && item.latitude && item.longitude) {
-                                                        // Destination favorite
-                                                        setDestination(item.description.replace(/^[🏠💼📍]\s*/, ''));
-                                                        setDestinationCoords({
-                                                            lat: item.latitude,
-                                                            lng: item.longitude
-                                                        });
-                                                        setShowAutocomplete(false);
-                                                        // Rechercher automatiquement les routes
-                                                        setTimeout(() => {
-                                                            searchRoutes();
-                                                        }, 100);
-                                                    } else if (item.place_id) {
-                                                        // Résultat Google Places - récupérer les coordonnées
-                                                        try {
-                                                            const response = await apiGet(`/api/navigation/place-details?place_id=${encodeURIComponent(item.place_id)}`);
-                                                            if (response?.data?.location) {
-                                                                setDestination(item.description);
-                                                                setDestinationCoords({
-                                                                    lat: response.data.location.lat,
-                                                                    lng: response.data.location.lng
-                                                                });
-                                                                setShowAutocomplete(false);
-                                                                // Rechercher automatiquement les routes
-                                                                setTimeout(() => {
-                                                                    searchRoutes();
-                                                                }, 100);
-                                                            } else {
-                                                                // Fallback: utiliser la description et géocoder
-                                                                setDestination(item.description);
-                                                                setShowAutocomplete(false);
-                                                            }
-                                                        } catch (error) {
-                                                            console.error('Erreur récupération place details:', error);
+                    
+                    {/* ✅ CORRIGÉ: Champ de saisie en pleine largeur, bouton en dessous */}
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Tapez une adresse, lieu, ou destination..."
+                            value={destination}
+                            onChangeText={(text) => {
+                                setDestination(text);
+                                if (text.length >= 2) {
+                                    handleAutocomplete(text);
+                                } else {
+                                    setShowAutocomplete(false);
+                                    setAutocompleteResults([]);
+                                }
+                            }}
+                            onFocus={() => {
+                                if (destination.length >= 2) {
+                                    handleAutocomplete(destination);
+                                } else if (savedDestinations.length > 0) {
+                                    // Afficher les destinations favorites si le champ est vide
+                                    const savedResults = savedDestinations.map(dest => ({
+                                        description: dest.custom_label || (dest.label === 'domicile' ? '🏠 Domicile' : dest.label === 'bureau' ? '💼 Bureau' : `📍 ${dest.label}`),
+                                        address: dest.address,
+                                        latitude: dest.latitude,
+                                        longitude: dest.longitude,
+                                        is_saved: true,
+                                        label: dest.label
+                                    }));
+                                    setAutocompleteResults(savedResults);
+                                    setShowAutocomplete(savedResults.length > 0);
+                                }
+                            }}
+                            onBlur={() => {
+                                // Délai pour permettre le clic sur un résultat
+                                setTimeout(() => {
+                                    setShowAutocomplete(false);
+                                }, 200);
+                            }}
+                            onSubmitEditing={searchRoutes}
+                        />
+                        {/* ✅ CORRIGÉ: Autocomplete dropdown avec meilleur positionnement */}
+                        {showAutocomplete && autocompleteResults.length > 0 && (
+                            <View style={styles.autocompleteContainer}>
+                                <FlatList
+                                    data={autocompleteResults}
+                                    keyExtractor={(item, index) => `${item.description}-${index}`}
+                                    renderItem={({ item }) => (
+                                        <TouchableOpacity
+                                            style={styles.autocompleteItem}
+                                            onPress={async () => {
+                                                if (item.is_saved && item.latitude && item.longitude) {
+                                                    // Destination favorite
+                                                    setDestination(item.description.replace(/^[🏠💼📍]\s*/, ''));
+                                                    setDestinationCoords({
+                                                        lat: item.latitude,
+                                                        lng: item.longitude
+                                                    });
+                                                    setShowAutocomplete(false);
+                                                    // Rechercher automatiquement les routes
+                                                    setTimeout(() => {
+                                                        searchRoutes();
+                                                    }, 100);
+                                                } else if (item.place_id) {
+                                                    // Résultat Google Places - récupérer les coordonnées
+                                                    try {
+                                                        const response = await apiGet(`/api/navigation/place-details?place_id=${encodeURIComponent(item.place_id)}`);
+                                                        if (response?.data?.location) {
+                                                            setDestination(item.description);
+                                                            setDestinationCoords({
+                                                                lat: response.data.location.lat,
+                                                                lng: response.data.location.lng
+                                                            });
+                                                            setShowAutocomplete(false);
+                                                            // Rechercher automatiquement les routes
+                                                            setTimeout(() => {
+                                                                searchRoutes();
+                                                            }, 100);
+                                                        } else {
                                                             // Fallback: utiliser la description et géocoder
                                                             setDestination(item.description);
                                                             setShowAutocomplete(false);
                                                         }
-                                                    } else {
-                                                        // Pas de place_id, utiliser la description
+                                                    } catch (error) {
+                                                        console.error('Erreur récupération place details:', error);
+                                                        // Fallback: utiliser la description et géocoder
                                                         setDestination(item.description);
                                                         setShowAutocomplete(false);
                                                     }
-                                                }}
-                                                activeOpacity={0.7}
-                                            >
-                                                <View style={styles.autocompleteItemContent}>
-                                                    {item.is_saved && (
-                                                        <SafeIcon name="Star" size={16} color="#FBBF24" />
-                                                    )}
-                                                    {!item.is_saved && (
-                                                        <SafeIcon name="MapPin" size={16} color={modernColors.primary} />
-                                                    )}
-                                                    <View style={styles.autocompleteTextContainer}>
-                                                        <Text style={styles.autocompleteText} numberOfLines={2}>
-                                                            {item.description}
+                                                } else {
+                                                    // Pas de place_id, utiliser la description
+                                                    setDestination(item.description);
+                                                    setShowAutocomplete(false);
+                                                }
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={styles.autocompleteItemContent}>
+                                                {item.is_saved && (
+                                                    <SafeIcon name="Star" size={16} color="#FBBF24" />
+                                                )}
+                                                {!item.is_saved && (
+                                                    <SafeIcon name="MapPin" size={16} color={modernColors.primary} />
+                                                )}
+                                                <View style={styles.autocompleteTextContainer}>
+                                                    <Text style={styles.autocompleteText} numberOfLines={2}>
+                                                        {item.description}
+                                                    </Text>
+                                                    {item.address && item.address !== item.description && (
+                                                        <Text style={styles.autocompleteAddress} numberOfLines={1}>
+                                                            {item.address}
                                                         </Text>
-                                                        {item.address && item.address !== item.description && (
-                                                            <Text style={styles.autocompleteAddress} numberOfLines={1}>
-                                                                {item.address}
-                                                            </Text>
-                                                        )}
-                                                    </View>
+                                                    )}
                                                 </View>
-                                            </TouchableOpacity>
-                                        )}
-                                        style={styles.autocompleteList}
-                                        keyboardShouldPersistTaps="handled"
-                                    />
-                                </View>
-                            )}
-                        </View>
-                        <TouchableOpacity
-                            style={[
-                                styles.searchButton,
-                                loading && styles.searchButtonDisabled
-                            ]}
-                            onPress={searchRoutes}
-                            disabled={loading}
-                            activeOpacity={0.8}
-                        >
-                            {loading ? (
-                                <>
-                                    <ActivityIndicator color="white" size="small" />
-                                    <Text style={styles.searchButtonText}>Recherche...</Text>
-                                </>
-                            ) : (
-                                <>
-                                    <SafeIcon name="Search" size={20} color="white" />
-                                    <Text style={styles.searchButtonText}>Rechercher</Text>
-                                </>
-                            )}
-                        </TouchableOpacity>
+                                            </View>
+                                        </TouchableOpacity>
+                                    )}
+                                    style={styles.autocompleteList}
+                                    keyboardShouldPersistTaps="handled"
+                                />
+                            </View>
+                        )}
                     </View>
+                    
+                    {/* ✅ CORRIGÉ: Bouton de recherche en dessous du champ, pleine largeur */}
+                    <TouchableOpacity
+                        style={[
+                            styles.searchButton,
+                            loading && styles.searchButtonDisabled
+                        ]}
+                        onPress={searchRoutes}
+                        disabled={loading || !destination.trim()}
+                        activeOpacity={0.8}
+                    >
+                        {loading ? (
+                            <>
+                                <ActivityIndicator color="white" size="small" />
+                                <Text style={styles.searchButtonText}>Recherche...</Text>
+                            </>
+                        ) : (
+                            <>
+                                <SafeIcon name="Search" size={20} color="white" />
+                                <Text style={styles.searchButtonText}>Rechercher</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
                     {/* ✅ Bouton pour enregistrer destination */}
                     {destinationCoords && (
                         <TouchableOpacity
@@ -1024,14 +1107,12 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         flex: 1,
     },
-    searchRow: {
-        flexDirection: 'row',
-        gap: modernStyles.spacing.sm,
-    },
+    // ✅ SUPPRIMÉ: searchRow n'est plus nécessaire, le bouton est en dessous
     inputContainer: {
-        flex: 1,
+        width: '100%',
         position: 'relative',
-        zIndex: 1,
+        zIndex: 10,
+        marginBottom: modernStyles.spacing.md,
     },
     input: {
         flex: 1,
@@ -1109,7 +1190,7 @@ const styles = StyleSheet.create({
         gap: modernStyles.spacing.sm,
         paddingHorizontal: modernStyles.spacing.lg,
         paddingVertical: modernStyles.spacing.md,
-        minWidth: 120,
+        width: '100%', // ✅ CORRIGÉ: Pleine largeur
         backgroundColor: modernColors.primary,
         borderRadius: modernStyles.borderRadius.medium,
         shadowColor: '#000',
@@ -1283,6 +1364,76 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: 'white',
+    },
+    // ✅ NOUVEAU 2026-02-10: Styles pour les fonctionnalités intelligentes
+    smartFeaturesCard: {
+        marginBottom: modernStyles.spacing.md,
+    },
+    smartFeaturesHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: modernStyles.spacing.sm,
+    },
+    smartFeaturesTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    collapseButton: {
+        padding: 4,
+    },
+    smartFeaturesContent: {
+        gap: modernStyles.spacing.sm,
+    },
+    smartFeatureOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: modernStyles.spacing.sm,
+        paddingVertical: modernStyles.spacing.sm,
+    },
+    smartFeatureCheckbox: {
+        width: 20,
+        height: 20,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        borderRadius: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: modernColors.surface,
+    },
+    smartFeatureLabel: {
+        fontSize: 14,
+        color: modernColors.text,
+        flex: 1,
+    },
+    smartFeaturesHint: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: modernStyles.spacing.xs,
+        marginTop: modernStyles.spacing.sm,
+        paddingTop: modernStyles.spacing.sm,
+        borderTopWidth: 1,
+        borderTopColor: modernColors.border,
+    },
+    smartFeaturesHintText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+        flex: 1,
+    },
+    showSmartFeaturesButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: modernStyles.spacing.xs,
+        paddingVertical: modernStyles.spacing.sm,
+        marginBottom: modernStyles.spacing.md,
+    },
+    showSmartFeaturesText: {
+        fontSize: 13,
+        color: modernColors.primary,
+        fontWeight: '500',
     },
 });
 

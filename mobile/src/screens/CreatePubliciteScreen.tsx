@@ -917,9 +917,14 @@ const CreatePubliciteScreen: React.FC = () => {
 
     // ✅ NOUVEAU: Capturer la position d'une section
     const handleSectionLayout = useCallback((stepId: string, event: any) => {
-        const { y } = event.nativeEvent.layout;
-        // La position Y est relative au parent (ScrollView content)
-        sectionPositions.current[stepId] = y;
+        // ✅ CORRIGÉ: Vérifier que event et nativeEvent existent
+        if (event && event.nativeEvent && event.nativeEvent.layout) {
+            const { y } = event.nativeEvent.layout;
+            // La position Y est relative au parent (ScrollView content)
+            if (typeof y === 'number') {
+                sectionPositions.current[stepId] = y;
+            }
+        }
     }, []);
 
     // ✅ NOUVEAU: Navigation vers une section spécifique
@@ -932,13 +937,18 @@ const CreatePubliciteScreen: React.FC = () => {
             // Scroll avec un offset pour ne pas coller au bord supérieur
             // On soustrait aussi la hauteur du header et du stepper (environ 120px)
             const scrollY = Math.max(0, position - 100);
-            const scrollView = scrollViewRef.current as any;
+            const scrollView = scrollViewRef.current;
             
-            // KeyboardAwareScrollView supporte scrollToPosition
-            if (typeof scrollView.scrollToPosition === 'function') {
-                scrollView.scrollToPosition(0, scrollY, true);
-            } else if (typeof scrollView.scrollTo === 'function') {
-                scrollView.scrollTo({ x: 0, y: scrollY, animated: true });
+            // ✅ CORRIGÉ: Vérifier que scrollView est bien un objet avant d'appeler des méthodes
+            if (scrollView && typeof scrollView === 'object') {
+                // KeyboardAwareScrollView supporte scrollToPosition
+                if (typeof (scrollView as any).scrollToPosition === 'function') {
+                    (scrollView as any).scrollToPosition(0, scrollY, true);
+                } else if (typeof (scrollView as any).scrollTo === 'function') {
+                    (scrollView as any).scrollTo({ x: 0, y: scrollY, animated: true });
+                } else if (typeof (scrollView as any).scrollToOffset === 'function') {
+                    (scrollView as any).scrollToOffset({ offset: scrollY, animated: true });
+                }
             }
         } else {
             console.warn('[CreatePublicite] Position non disponible pour la section:', stepId);
@@ -977,7 +987,7 @@ const CreatePubliciteScreen: React.FC = () => {
             </View>
 
             <KeyboardAwareScrollView
-                innerRef={scrollViewRef}
+                ref={scrollViewRef}
                 style={styles.content}
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: Platform.OS === 'android' ? 400 : 350 }]}
                 showsVerticalScrollIndicator={true}

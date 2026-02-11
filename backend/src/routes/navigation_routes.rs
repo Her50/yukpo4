@@ -1072,3 +1072,245 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .with_state(state)
 }
+
+    .fetch_one(&state.pg)
+    .await?;
+
+    Ok(Json(SavedDestination {
+        id: result.id.to_string(),
+        label: request.label,
+        custom_label: request.custom_label,
+        address: request.address,
+        latitude: request.latitude,
+        longitude: request.longitude,
+        place_id: request.place_id,
+        is_default,
+    }))
+}
+
+/// Lister les destinations favorites
+async fn list_destinations(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<SavedDestinationsResponse>> {
+    let user_id = user.id;
+
+    let rows = sqlx::query_as::<_, SavedDestinationRow>(
+        r#"
+        SELECT id, label, custom_label, address, latitude, longitude, place_id, is_default
+        FROM navigation_saved_destinations
+        WHERE user_id = $1
+        ORDER BY is_default DESC, created_at DESC
+        "#,
+    )
+    .bind(user_id as i32)
+    .fetch_all(&state.pg)
+    .await?;
+
+    let destinations = rows
+        .into_iter()
+        .map(|row| SavedDestination {
+            id: row.id.to_string(),
+            label: row.label,
+            custom_label: row.custom_label,
+            address: row.address,
+            latitude: row.latitude,
+            longitude: row.longitude,
+            place_id: row.place_id,
+            is_default: row.is_default,
+        })
+        .collect();
+
+    Ok(Json(SavedDestinationsResponse { destinations }))
+}
+
+/// Obtenir une destination par label (domicile, bureau, etc.)
+async fn get_destination_by_label(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(label): Path<String>,
+) -> AppResult<Json<SavedDestination>> {
+    let user_id = user.id;
+
+    let row = sqlx::query_as::<_, SavedDestinationRow>(
+        r#"
+        SELECT id, label, custom_label, address, latitude, longitude, place_id, is_default
+        FROM navigation_saved_destinations
+        WHERE user_id = $1 AND label = $2
+        LIMIT 1
+        "#,
+    )
+    .bind(user_id as i32)
+    .bind(&label)
+    .fetch_optional(&state.pg)
+    .await?
+    .ok_or_else(|| AppError::NotFound(format!("Destination '{}' non trouvée", label)))?;
+
+    Ok(Json(SavedDestination {
+        id: row.id.to_string(),
+        label: row.label,
+        custom_label: row.custom_label,
+        address: row.address,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        place_id: row.place_id,
+        is_default: row.is_default,
+    }))
+}
+
+/// Supprimer une destination
+async fn delete_destination(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(destination_id): Path<Uuid>,
+) -> AppResult<Json<serde_json::Value>> {
+    let user_id = user.id;
+
+    let result = sqlx::query_as::<_, SavedDestinationIdRow>(
+        r#"
+        DELETE FROM navigation_saved_destinations
+        WHERE id = $1 AND user_id = $2
+        RETURNING id
+        "#,
+    )
+    .bind(destination_id)
+    .bind(user_id as i32)
+    .fetch_optional(&state.pg)
+    .await?;
+
+    if result.is_none() {
+        return Err(AppError::NotFound("Destination non trouvée".to_string()));
+    }
+
+    Ok(Json(serde_json::json!({ "success": true })))
+}
+
+/// Autocomplete avec destinations favorites incluses
+async fn autocomplete_with_saved(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Query(params): Query<serde_json::Value>,
+) -> AppResult<Json<serde_json::Value>> {
+    let query = params.get("query").and_then(|q| q.as_str()).unwrap_or("").trim();
+    let query_lower = query.to_lowercase();
+
+    // Récupérer les destinations favorites
+    let user_id = user.id;
+    let saved_destinations = sqlx::query_as::<_, SavedDestinationAutocompleteRow>(
+        r#"
+        SELECT label, custom_label, address, latitude, longitude
+        FROM navigation_saved_destinations
+        WHERE user_id = $1
+        ORDER BY is_default DESC
+        "#,
+    )
+    .bind(user_id as i32)
+    .fetch_all(&state.pg)
+    .await?;
+
+    let mut results = Vec::new();
+
+    // Ajouter les destinations favorites qui correspondent
+    for dest in saved_destinations {
+        let display_label = match dest.label.as_str() {
+            "domicile" => "🏠 Domicile".to_string(),
+            "bureau" => "💼 Bureau".to_string(),
+            "autre" => format!("📍 {}", dest.custom_label.as_deref().unwrap_or("Autre")),
+            _ => format!("📍 {}", dest.label),
+        };
+
+        if query.is_empty()
+            || dest.label.to_lowercase().contains(&query_lower)
+            || dest.address.to_lowercase().contains(&query_lower)
+            || display_label.to_lowercase().contains(&query_lower)
+        {
+            results.push(serde_json::json!({
+                "description": display_label,
+                "address": dest.address,
+                "latitude": dest.latitude,
+                "longitude": dest.longitude,
+                "is_saved": true,
+                "label": dest.label
+            }));
+        }
+    }
+
+    // Si la query n'est pas vide et > 2 caractères, appeler Google Places
+    if !query.is_empty() && query.len() > 2 {
+        let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
+            .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;
+
+        let url = format!(
+            "https://maps.googleapis.com/maps/api/place/autocomplete/json?input={}&key={}&language=fr",
+            urlencoding::encode(query),
+            api_key
+        );
+
+        if let Ok(response) = reqwest::Client::new()
+            .get(&url)
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await
+        {
+            if let Ok(data) = response.json::<serde_json::Value>().await {
+                if let Some(predictions) = data.get("predictions").and_then(|p| p.as_array()) {
+                    for pred in predictions.iter().take(10) {
+                        if let Some(description) = pred.get("description").and_then(|d| d.as_str())
+                        {
+                            results.push(serde_json::json!({
+                                "description": description,
+                                "is_saved": false,
+                                "place_id": pred.get("place_id").and_then(|p| p.as_str())
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "results": results
+    })))
+}
+
+pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+    Router::new()
+        .route("/api/navigation/geocode", get(geocode_address))
+        .route("/api/navigation/place-details", get(get_place_details))
+        .route("/api/navigation/routes", post(get_routes))
+        .route(
+            "/api/navigation/points-of-interest",
+            get(get_points_of_interest),
+        )
+        .route(
+            "/api/navigation/trips",
+            post(save_trip).layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/navigation/stats",
+            get(get_stats).layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/navigation/destinations",
+            get(list_destinations).layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/navigation/destinations",
+            post(save_destination).layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/navigation/destinations/:label",
+            get(get_destination_by_label).layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/navigation/destinations/:id",
+            delete(delete_destination).layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/navigation/autocomplete",
+            get(autocomplete_with_saved).layer(middleware::from_fn(jwt_auth)),
+        )
+        .with_state(state)
+}

@@ -730,7 +730,30 @@ async fn save_product_delivery_config(
 
     // ✅ 5. Créer ou mettre à jour la configuration
     // ✅ CORRIGÉ 2026-01-30: Gestion d'erreur robuste pour éviter erreur 500
-    // ✅ CORRIGÉ 2026-01-30: Vérifier que storage_location_id existe dans la table avant de l'utiliser
+    // ✅ CORRIGÉ 2026-02-10: Vérifier que storage_location_id existe dans la table avant de l'utiliser
+    if let Some(storage_location_id) = payload.storage_location_id {
+        if storage_location_id > 0 {
+            let storage_location_exists: Option<bool> =
+                sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM merchant_storage_locations WHERE id = $1)")
+                    .bind(storage_location_id)
+                    .fetch_optional(&state.pg)
+                    .await
+                    .map_err(|e| {
+                        log::error!(
+                            "[save_product_delivery_config] Erreur vérification storage_location_id: {}",
+                            e
+                        );
+                        AppError::Internal("Erreur lors de la vérification du lieu de stockage".into())
+                    })?;
+
+            if storage_location_exists != Some(true) {
+                return Err(AppError::BadRequest(format!(
+                    "Le lieu de stockage avec l'ID {} n'existe pas dans la base de données. Veuillez sélectionner un lieu de stockage valide.",
+                    storage_location_id
+                )));
+            }
+        }
+    }
 
     // ✅ AMÉLIORÉ: Logging détaillé avant insertion pour diagnostic
     log::debug!(
@@ -758,8 +781,9 @@ async fn save_product_delivery_config(
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
             $18, 
-            CASE WHEN $18::boolean THEN NOW() ELSE NULL END, 
-            CASE WHEN $18::boolean THEN $19 ELSE NULL END
+            $19, 
+            CASE WHEN $19::boolean THEN NOW() ELSE NULL END, 
+            CASE WHEN $19::boolean THEN $20 ELSE NULL END
         )
         ON CONFLICT (service_id, product_index)
         DO UPDATE SET

@@ -733,8 +733,27 @@ const ResultatBesoinScreen: React.FC = () => {
                             // ✅ Transformer le format API vers format attendu (product_data contient les données)
                             const productData = productFromAPI.product_data || productFromAPI;
                             
+                            // ✅ CORRIGÉ 2026-02-10: DEBUG - Log détaillé de la structure productFromAPI pour diagnostiquer les médias
+                            if (__DEV__) {
+                                console.log(`🔍 [ResultatBesoinScreen] Structure productFromAPI pour service ${service.id}:`, {
+                                    hasProductData: !!productFromAPI.product_data,
+                                    productDataKeys: productFromAPI.product_data ? Object.keys(productFromAPI.product_data) : [],
+                                    productDataImages: productFromAPI.product_data?.images,
+                                    productDataVideos: productFromAPI.product_data?.videos,
+                                    directImages: productFromAPI.images,
+                                    directVideos: productFromAPI.videos,
+                                    allKeys: Object.keys(productFromAPI),
+                                    productFromAPISample: JSON.stringify(productFromAPI).substring(0, 500),
+                                });
+                            }
+                            
                             // ✅ CORRIGÉ 2026-01-23: Utiliser la fonction utilitaire pour extraire le nom correctement
                             const productName = getProductName(productData) || productFromAPI.product_name || '';
+                            
+                            // ✅ CORRIGÉ 2026-02-10: Extraire les images/vidéos depuis TOUTES les sources possibles
+                            // Priorité: productFromAPI.images/videos (direct) > productData.images/videos > []
+                            const extractedImages = productFromAPI.images || productData.images || [];
+                            const extractedVideos = productFromAPI.videos || productData.videos || [];
                             
                             // ✅ CORRIGÉ 2026-01-20: Extraire correctement tous les champs du produit
                             // ✅ CORRIGÉ 2026-01-21: S'assurer que les images et vidéos sont bien incluses depuis product_data
@@ -744,9 +763,9 @@ const ResultatBesoinScreen: React.FC = () => {
                                 ...productData,
                                 // ✅ CRITIQUE: Garder product_data comme structure séparée pour ProductCard
                                 product_data: productData, // ✅ Structure complète de product_data (inclut variants, has_variant, variation_prix, etc.)
-                                // ✅ CORRIGÉ 2026-01-21: S'assurer que les images/vidéos sont bien extraites depuis product_data
-                                images: productData.images || [],
-                                videos: productData.videos || [],
+                                // ✅ CORRIGÉ 2026-02-10: Utiliser les images/vidéos extraites depuis toutes les sources
+                                images: Array.isArray(extractedImages) ? extractedImages : (extractedImages ? [extractedImages] : []),
+                                videos: Array.isArray(extractedVideos) ? extractedVideos : (extractedVideos ? [extractedVideos] : []),
                                 // ✅ NOUVEAU 2026-01-XX: Préserver les variations de prix (variants, has_variant, variation_prix)
                                 has_variant: productData.has_variant || productFromAPI.has_variant || false,
                                 variants: productData.variants || productFromAPI.variants || [],
@@ -777,7 +796,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 },
                             };
                             
-                            // ✅ DEBUG 2026-01-21: Log détaillé de chaque produit transformé avec description et images
+                            // ✅ DEBUG 2026-02-10: Log détaillé de chaque produit transformé avec description et images
                             console.log(`📦 [ResultatBesoinScreen] Produit transformé pour service ${service.id}:`, {
                                 id: transformedProduct.id,
                                 product_index: transformedProduct.product_index,
@@ -787,8 +806,15 @@ const ResultatBesoinScreen: React.FC = () => {
                                 product_name: transformedProduct.product_name,
                                 description: transformedProduct.description,
                                 description_produit: transformedProduct.description_produit,
+                                // ✅ CORRIGÉ 2026-02-10: Log détaillé des médias
                                 images_count: Array.isArray(transformedProduct.images) ? transformedProduct.images.length : 0,
                                 videos_count: Array.isArray(transformedProduct.videos) ? transformedProduct.videos.length : 0,
+                                images_sample: Array.isArray(transformedProduct.images) && transformedProduct.images.length > 0 
+                                    ? (typeof transformedProduct.images[0] === 'string' ? transformedProduct.images[0].substring(0, 100) : transformedProduct.images[0])
+                                    : 'aucune',
+                                videos_sample: Array.isArray(transformedProduct.videos) && transformedProduct.videos.length > 0
+                                    ? (typeof transformedProduct.videos[0] === 'string' ? transformedProduct.videos[0].substring(0, 100) : transformedProduct.videos[0])
+                                    : 'aucune',
                                 hasProductData: !!productFromAPI.product_data,
                                 productDataKeys: productData ? Object.keys(productData) : [],
                                 originalProductFromAPI: {
@@ -799,7 +825,10 @@ const ResultatBesoinScreen: React.FC = () => {
                                     product_data_description: productData?.description,
                                     product_data_description_produit: productData?.description_produit,
                                     product_data_images_count: Array.isArray(productData?.images) ? productData.images.length : 0,
-                                    product_data_videos_count: Array.isArray(productData?.videos) ? productData.videos.length : 0
+                                    product_data_videos_count: Array.isArray(productData?.videos) ? productData.videos.length : 0,
+                                    // ✅ NOUVEAU 2026-02-10: Vérifier aussi productFromAPI.images/videos directement
+                                    direct_images_count: Array.isArray(productFromAPI.images) ? productFromAPI.images.length : (productFromAPI.images ? 1 : 0),
+                                    direct_videos_count: Array.isArray(productFromAPI.videos) ? productFromAPI.videos.length : (productFromAPI.videos ? 1 : 0),
                                 }
                             });
                             
@@ -886,11 +915,15 @@ const ResultatBesoinScreen: React.FC = () => {
                                 finalScore += 100; // Forte priorité pour affichage
                             }
 
-                            // ✅ CORRIGÉ 2026-01-22: Extraire les images et vidéos du produit/service
-                            // ✅ PRIORITÉ: product.images/videos (depuis product_data enrichi par le backend avec URLs CDN depuis table media)
-                            // ✅ Le backend ajoute les images depuis la table media dans product_data.images avec URLs CDN complètes
+                            // ✅ CORRIGÉ 2026-02-10: Extraire les images et vidéos du produit/service
+                            // ✅ PRIORITÉ ABSOLUE: product.images/videos (déjà extraits dans transformedProduct depuis productFromAPI.images/videos OU productData.images/videos)
+                            // ✅ Le backend peut ajouter les images depuis la table media dans product_data.images avec URLs CDN complètes
                             // ✅ CORRIGÉ: Utiliser product.product_data au lieu de productData (qui n'est pas dans ce scope)
                             const productDataFromProduct = product.product_data || product;
+                            
+                            // ✅ CORRIGÉ 2026-02-10: PRIORITÉ ABSOLUE à product.images/videos car ils sont déjà extraits correctement dans transformedProduct
+                            // ✅ transformedProduct.images/videos contient déjà productFromAPI.images/videos OU productData.images/videos
+                            // ✅ Ne PAS écraser product.images/videos s'ils existent déjà (ils viennent de transformedProduct)
                             const productImages = Array.isArray(product.images) && product.images.length > 0 ? product.images 
                                 : Array.isArray(productDataFromProduct?.images) && productDataFromProduct.images.length > 0 ? productDataFromProduct.images
                                 : Array.isArray(service?.images) ? service.images
@@ -953,12 +986,14 @@ const ResultatBesoinScreen: React.FC = () => {
                                 _gpsSource: productGPS ? 'product' : (serviceGPSFixe ? 'service_fixe' : 'service_realtime'),
                                 distance: distance,
                                 distance_km: distance, // ✅ Ajout pour compatibilité ProductCard
-                                // ✅ CORRIGÉ 2026-01-22: S'assurer que les images/vidéos depuis la table media sont bien incluses
+                                // ✅ CORRIGÉ 2026-02-10: S'assurer que les images/vidéos depuis la table media sont bien incluses
                                 // ✅ Les URLs CDN sont déjà des URLs complètes (https://...) depuis le backend via build_public_url()
-                                // ✅ Priorité: productImages/productVideos (depuis product_data enrichi) > product.images/videos
-                                // ✅ CORRIGÉ: Toujours utiliser productImages/productVideos car ils sont déjà extraits avec la bonne priorité
-                                images: productImages,
-                                videos: productVideos,
+                                // ✅ Le backend enrichit product_data.images/videos avec les médias depuis la table media (lignes 118-158 de products_controller.rs)
+                                // ✅ CORRIGÉ: Utiliser product.images/videos s'ils existent (déjà extraits dans transformedProduct depuis product_data.images/videos)
+                                // ✅ Sinon, utiliser productImages/productVideos (fallbacks vers service)
+                                // ✅ transformedProduct.images/videos contient déjà les médias depuis product_data.images/videos enrichis par le backend
+                                images: (Array.isArray(product.images) && product.images.length > 0) ? product.images : productImages,
+                                videos: (Array.isArray(product.videos) && product.videos.length > 0) ? product.videos : productVideos,
                                 score: finalScore, // ✅ Score ajusté avec bonus promo
                                 en_promotion: isPromo, // Passer le flag
                                 promotion_active: isPromo

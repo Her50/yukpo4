@@ -94,13 +94,15 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       ref={innerRef}
       style={[styles.scrollView, style]}
       contentContainerStyle={[styles.contentContainer, contentContainerStyle]}
-      // ✅ AMÉLIORÉ: Configuration Android (crucial pour résoudre le problème)
+      // ✅ CORRIGÉ 2026-02-10: Configuration optimisée pour que l'écran monte au lieu que le clavier masque
       enableOnAndroid={true}
-      // ✅ CORRECTION CRITIQUE: Réactiver le scroll automatique mais avec des valeurs réduites
+      // ✅ CORRIGÉ: Activer le scroll automatique pour que l'écran monte avec le clavier
       enableAutomaticScroll={true}
-      // ✅ CORRECTION CRITIQUE: Réduire significativement les valeurs pour éviter le scroll jusqu'en bas
-      extraHeight={Platform.OS === 'android' ? 50 : 0} // ✅ RÉDUIT: 50px pour Android (au lieu de 350)
-      extraScrollHeight={Platform.OS === 'ios' ? Math.max(extraScrollHeight, 50) : 0} // ✅ RÉDUIT: Minimum 50px pour iOS (au lieu de 300)
+      // ✅ CORRIGÉ: Augmenter les valeurs pour que l'écran monte suffisamment au-dessus du clavier
+      // extraHeight: espace supplémentaire au-dessus du clavier (Android)
+      extraHeight={Platform.OS === 'android' ? 200 : 0} // ✅ AUGMENTÉ: 200px pour Android pour que l'écran monte suffisamment
+      // extraScrollHeight: espace supplémentaire pour le scroll (iOS)
+      extraScrollHeight={Platform.OS === 'ios' ? Math.max(extraScrollHeight, 150) : 0} // ✅ AUGMENTÉ: Minimum 150px pour iOS
       // ✅ Configuration iOS
       enableResetScrollToCoords={false}
       keyboardOpeningTime={0}
@@ -113,9 +115,11 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       contentInsetAdjustmentBehavior="never"
       // ✅ Améliorer la réactivité - fermer le clavier lors du scroll
       keyboardDismissMode="interactive"
-      // ✅ CORRECTION CRITIQUE: Désactiver scrollToOverflowEnabled qui cause le scroll jusqu'en bas
+      // ✅ CORRIGÉ: Désactiver scrollToOverflowEnabled pour éviter le scroll excessif
       viewIsInsideTabBar={false}
       scrollToOverflowEnabled={false}
+      // ✅ NOUVEAU: Activer le scroll vers le champ actif
+      enableResetKeyboardOnBlur={false}
     >
       {children}
     </KeyboardAwareScrollView>
@@ -131,8 +135,8 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flexGrow: 1,
-    // ✅ CORRECTION CRITIQUE: Réduire le paddingBottom pour éviter le scroll excessif vers le bas
-    paddingBottom: Platform.OS === 'android' ? 50 : 50, // ✅ RÉDUIT: 50px pour Android et iOS (au lieu de 400/350)
+    // ✅ CORRIGÉ 2026-02-10: Augmenter le paddingBottom pour que l'écran monte suffisamment au-dessus du clavier
+    paddingBottom: Platform.OS === 'android' ? 250 : 200, // ✅ AUGMENTÉ: 250px pour Android, 200px pour iOS pour que l'écran monte au-dessus du clavier
   },
 });
 

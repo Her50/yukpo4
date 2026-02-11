@@ -32,10 +32,8 @@ module.exports = {
         splash: {
             image: "./assets/splash.png",
             resizeMode: "contain",
-            // ✅ FOND MODERNE : Bleu foncé optimisé pour contraste avec le Y orange/jaune
-            backgroundColor: "#1E3A8A"  // Bleu foncé moderne (couleur principale du gradient, meilleur contraste avec orange/jaune)
-            // ✅ ANCIEN FOND (commenté) : Bleu indigo traditionnel du ndop
-            // backgroundColor: "#1A237E"
+            // ✅ FOND BLANC : Fond blanc pour contraste maximal avec le Y violet
+            backgroundColor: "#FFFFFF"  // Blanc pour visibilité maximale du Y violet
         },
         assetBundlePatterns: [
             "assets/images/**/*",

@@ -42,14 +42,35 @@ const ProductDetailScreen: React.FC = () => {
             setLoading(true);
             setError(null);
 
+            // ✅ CORRIGÉ 2026-02-10: Parser productId qui peut être au format "service_id_product_index" (ex: "1_1")
+            let finalServiceId = serviceId;
+            let finalProductIndex = productIndex;
+            
+            if (productId && typeof productId === 'string') {
+                // Vérifier si productId est au format "service_id_product_index"
+                const underscoreIndex = productId.indexOf('_');
+                if (underscoreIndex > 0) {
+                    const parsedServiceId = parseInt(productId.substring(0, underscoreIndex), 10);
+                    const parsedProductIndex = parseInt(productId.substring(underscoreIndex + 1), 10);
+                    if (!isNaN(parsedServiceId) && !isNaN(parsedProductIndex)) {
+                        finalServiceId = parsedServiceId;
+                        finalProductIndex = parsedProductIndex;
+                        console.log(`[ProductDetailScreen] ✅ ProductId parsé: serviceId=${finalServiceId}, productIndex=${finalProductIndex}`);
+                    }
+                } else if (!isNaN(Number(productId))) {
+                    // Si productId est juste un nombre, c'est peut-être un productIndex
+                    finalProductIndex = Number(productId);
+                }
+            }
+
             // Vérifier si l'utilisateur est connecté
             if (!user) {
                 // Sauvegarder la destination pour redirection après login
                 await SafeStorage.setItem(PENDING_DEEP_LINK_KEY, JSON.stringify({
                     type: 'product',
                     productId,
-                    serviceId,
-                    productIndex,
+                    serviceId: finalServiceId,
+                    productIndex: finalProductIndex,
                     timestamp: Date.now()
                 }));
 
@@ -70,49 +91,66 @@ const ProductDetailScreen: React.FC = () => {
                 return;
             }
 
-            console.log('🔍 Chargement produit:', productId || productIndex, 'du service:', serviceId);
+            console.log('🔍 Chargement produit:', productId || finalProductIndex, 'du service:', finalServiceId);
 
-            // Charger le service qui contient le produit
-            const serviceResponse = await apiGet(`/api/services/${serviceId}`);
-
+            // ✅ CORRIGÉ 2026-02-10: Utiliser le nouveau système (service_products via API)
+            // Charger le service
+            const serviceResponse = await apiGet(`/api/services/${finalServiceId}`);
             if (!serviceResponse.success || !serviceResponse.data) {
                 throw new Error('Service non trouvé');
             }
-
             const loadedService = serviceResponse.data;
             setService(loadedService);
 
-            // Extraire le produit spécifique
-            const produits = loadedService.data?.produits?.valeur || loadedService.data?.produits || [];
-
-            // Priorité: utiliser productIndex si disponible, sinon productId
+            // ✅ CORRIGÉ: Charger les produits depuis l'API service_products
+            const productsResponse = await apiGet(`/api/services/${finalServiceId}/products`);
             let foundProduct: any = null;
-            let productIndexValue = -1;
 
-            if (productIndex !== undefined && !isNaN(Number(productIndex))) {
-                // Utiliser productIndex directement
-                productIndexValue = Number(productIndex);
-                foundProduct = produits[productIndexValue];
-            } else if (productId) {
-                // Fallback: chercher par productId
-                foundProduct = produits.find((p: any) => p.id === productId);
-                productIndexValue = produits.findIndex((p: any) => p.id === productId);
-            } else {
-                // Si aucun des deux n'est fourni, prendre le premier produit
-                foundProduct = produits[0];
-                productIndexValue = 0;
+            if (productsResponse.success && Array.isArray(productsResponse.data)) {
+                // Chercher le produit par product_index
+                if (finalProductIndex !== undefined && !isNaN(Number(finalProductIndex))) {
+                    foundProduct = productsResponse.data.find(
+                        (p: any) => p.product_index === Number(finalProductIndex)
+                    );
+                } else if (productId) {
+                    // Fallback: chercher par productId (format service_id_product_index)
+                    foundProduct = productsResponse.data.find(
+                        (p: any) => `${p.service_id}_${p.product_index}` === productId
+                    );
+                }
+            }
+
+            // ✅ FALLBACK: Si pas trouvé dans service_products, essayer l'ancien système
+            if (!foundProduct) {
+                const produits = loadedService.data?.produits?.valeur || loadedService.data?.produits || [];
+                if (finalProductIndex !== undefined && !isNaN(Number(finalProductIndex))) {
+                    foundProduct = produits[Number(finalProductIndex)];
+                } else if (productId) {
+                    foundProduct = produits.find((p: any) => p.id === productId);
+                } else if (produits.length > 0) {
+                    // Si aucun des deux n'est fourni, prendre le premier produit
+                    foundProduct = produits[0];
+                }
             }
 
             if (!foundProduct) {
                 throw new Error('Produit non trouvé dans ce service');
             }
 
-            // Enrichir le produit avec le service parent
+            // ✅ CORRIGÉ 2026-02-10: Enrichir le produit avec le service parent
+            // Si le produit vient de l'API service_products, il a déjà la structure correcte
+            const productData = foundProduct.product_data || foundProduct;
+            const productName = productData.nom || productData.nom_produit || foundProduct.product_name || foundProduct.nom || 'Produit';
+            
             const enrichedProduct = {
                 ...foundProduct,
+                // ✅ S'assurer que les propriétés principales sont au niveau racine pour ProductCard
+                nom: productName,
+                nom_produit: productName,
+                product_name: productName,
                 _service: loadedService,
-                _serviceId: serviceId,
-                _productIndex: productIndexValue,
+                _serviceId: finalServiceId,
+                _productIndex: finalProductIndex !== undefined ? Number(finalProductIndex) : (foundProduct.product_index || 0),
             };
 
             setProduct(enrichedProduct);
@@ -120,7 +158,7 @@ const ProductDetailScreen: React.FC = () => {
             // Charger les infos du prestataire
             if (loadedService.user_id) {
                 try {
-                    const prestataireResponse = await apiGet(`/api/users/${loadedService.user_id}`);
+                    const prestataireResponse = await apiGet(`/api/users/profile/${loadedService.user_id}`);
                     if (prestataireResponse.success && prestataireResponse.data) {
                         setPrestataire(prestataireResponse.data);
                     }
@@ -129,7 +167,7 @@ const ProductDetailScreen: React.FC = () => {
                 }
             }
 
-            console.log('✅ Produit chargé:', foundProduct.nom);
+            console.log('✅ Produit chargé:', productName);
         } catch (error: any) {
             console.error('❌ Erreur chargement produit:', error);
             setError(error.message || 'Impossible de charger ce produit');

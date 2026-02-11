@@ -35,10 +35,18 @@ const linking: LinkingOptions<any> = {
         },
       },
       ProductDetail: {
+        // ✅ CORRIGÉ 2026-02-10: Gérer les query params (serviceId) dans le path
+        // Format: yukpomnang://product/:productId?serviceId=:serviceId
         path: 'product/:productId',
         parse: {
           productId: (productId: string) => productId,
-          serviceId: (serviceId: string) => serviceId ? parseInt(serviceId, 10) : undefined,
+          // ✅ CORRIGÉ: serviceId est dans les query params, pas dans le path
+          // React Navigation extrait automatiquement les query params
+          serviceId: (serviceId: string | number | undefined) => {
+            if (!serviceId) return undefined;
+            const parsed = typeof serviceId === 'number' ? serviceId : parseInt(String(serviceId), 10);
+            return isNaN(parsed) ? undefined : parsed;
+          },
         },
       },  // ✅ AMÉLIORÉ: Deep link produit avec parsing des paramètres
       ServiceDetailShared: 'service/:id',

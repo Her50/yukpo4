@@ -100,7 +100,6 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
               };
             }
           }
-          }
           
           // ✅ CORRIGÉ 2026-02-10: TOUJOURS charger les produits, ne jamais retourner le service comme produit
           const productsResponse = await apiGet(`/api/services/${item.serviceId}/products`);

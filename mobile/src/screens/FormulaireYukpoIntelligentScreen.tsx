@@ -45,6 +45,8 @@ import { DynamicField, IASuggestion, processIASuggestion } from '../utils/formDi
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoConfigPromptModal';
+// ✅ NOUVEAU 2026-02-10: Import de la modal Google Business
+import GoogleBusinessModal from '../components/GoogleBusinessModal';
 // ✅ NOUVEAU: Import des fonctions de synchronisation prix_variation <-> sous-caractéristiques
 import { applyPriceVariantToProduits, extractPriceVariant } from '../utils/priceVariant';
 
@@ -163,6 +165,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   } | null>(null);
   // ✅ NOUVEAU: État pour le modal de confirmation de livraison automatique
   const [showDeliveryAutoPrompt, setShowDeliveryAutoPrompt] = useState(false);
+  // ✅ NOUVEAU 2026-02-10: États pour Google Business
+  const [showGoogleBusinessModal, setShowGoogleBusinessModal] = useState(false);
+  const [isFirstServiceCreation, setIsFirstServiceCreation] = useState(false);
+  const [googleBusinessData, setGoogleBusinessData] = useState<any>(null);
   // ✅ SUPPRIMÉ: Duplication produits - Les produits sont maintenant gérés via les champs dynamiques
   const normalizeMediaList = (value: any): any[] => {
     if (!value) {
@@ -1303,6 +1309,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // ✅ REFONTE COMPLÈTE: Fonctions de navigation utilisant currentDisplayIndex comme source de vérité
   const goToNextBlock = () => {
+    // ✅ NOUVEAU 2026-02-10: Validation obligatoire du champ "Nom de votre structure" avant de passer au bloc suivant
+    const titreServiceValue = valeursFormulaire.titre_service;
+    const titreServiceField = composants.find(f => f.name === 'titre_service');
+    const isStructureNameField = titreServiceField?.isStructureName || titreServiceField?.label?.includes('structure');
+    
+    if (isStructureNameField && titreServiceField?.required) {
+      const isEmpty = !titreServiceValue || (typeof titreServiceValue === 'string' && titreServiceValue.trim() === '');
+      if (isEmpty) {
+        Alert.alert(
+          '⚠️ Champ obligatoire',
+          'Le "Nom de votre structure" est obligatoire. Veuillez le renseigner avant de continuer.',
+          [{ text: 'OK' }]
+        );
+        // ✅ Mettre en évidence le champ vide
+        setFieldErrors(prev => ({
+          ...prev,
+          titre_service: 'Ce champ est obligatoire'
+        }));
+        return; // ✅ Empêcher de passer au bloc suivant
+      }
+    }
     try {
       // ✅ Vérifier que displayedBlocks existe et n'est pas vide
       if (!displayedBlocks || !Array.isArray(displayedBlocks) || displayedBlocks.length === 0) {
@@ -1491,6 +1518,111 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       Alert.alert('Erreur', 'Une erreur est survenue lors de la navigation. Veuillez réessayer.', [{ text: 'OK' }]);
     }
   };
+
+  // ✅ NOUVEAU 2026-02-10: Vérifier si c'est la première création de service pour afficher la modal Google Business
+  useEffect(() => {
+    const checkFirstServiceCreation = async () => {
+      // ✅ Afficher la modal uniquement si :
+      // - Mode création (pas édition)
+      // - Pas d'ajout de produit à un service existant
+      // - Utilisateur connecté
+      if (
+        mode === 'create' &&
+        !isAddingProductToExistingService &&
+        !serviceId &&
+        user?.id
+      ) {
+        try {
+          // Vérifier si l'utilisateur a déjà des services
+          const response = await apiGet('/api/prestataire/services', {
+            params: {
+              page: 0,
+              limit: 1, // On a juste besoin de savoir s'il y en a au moins un
+            },
+          });
+
+          let hasExistingServices = false;
+          if (response.success && response.data) {
+            // Essayer différentes structures possibles
+            if (Array.isArray(response.data)) {
+              hasExistingServices = response.data.length > 0;
+            } else if (Array.isArray(response.data.data)) {
+              hasExistingServices = response.data.data.length > 0;
+            } else if (Array.isArray(response.data.services)) {
+              hasExistingServices = response.data.services.length > 0;
+            } else if (Array.isArray(response.data.items)) {
+              hasExistingServices = response.data.items.length > 0;
+            }
+          }
+
+          // ✅ Si c'est la première création, afficher la modal Google Business
+          if (!hasExistingServices) {
+            setIsFirstServiceCreation(true);
+            setShowGoogleBusinessModal(true);
+          }
+        } catch (error) {
+          console.error('[FormulaireYukpoIntelligentScreen] Erreur vérification services:', error);
+          // En cas d'erreur, ne pas afficher la modal (on ne veut pas bloquer l'utilisateur)
+        }
+      }
+    };
+
+    checkFirstServiceCreation();
+  }, [mode, isAddingProductToExistingService, serviceId, user?.id]);
+
+  // ✅ NOUVEAU 2026-02-10: Fonction pour pré-remplir le formulaire avec les données Google Business
+  const handleGoogleBusinessSelected = useCallback((businessData: any) => {
+    console.log('[FormulaireYukpoIntelligentScreen] ✅ Données Google Business sélectionnées:', businessData);
+    setGoogleBusinessData(businessData);
+
+    // ✅ Pré-remplir les champs du formulaire
+    const newValues: Record<string, any> = {};
+
+    // ✅ Bloc Informations générales : Nom de la structure
+    if (businessData.name) {
+      newValues.titre_service = businessData.name;
+      newValues.nom_structure = businessData.name; // ✅ NOUVEAU: Champ pour le nom de la structure
+    }
+
+    // ✅ Bloc Localisation : Adresse et coordonnées
+    if (businessData.formatted_address) {
+      newValues.adresse = businessData.formatted_address;
+      newValues.lieu = businessData.formatted_address;
+    }
+    if (businessData.location) {
+      newValues.latitude = businessData.location.lat;
+      newValues.longitude = businessData.location.lng;
+      setSelectedLocation({
+        lat: businessData.location.lat,
+        lng: businessData.location.lng,
+      });
+    }
+
+    // ✅ Bloc Contact : Téléphone et site web
+    if (businessData.phone_number) {
+      newValues.telephone = businessData.phone_number;
+    }
+    if (businessData.website) {
+      newValues.website = businessData.website;
+      newValues.siteweb = businessData.website;
+    }
+
+    // ✅ Bloc Identité Visuelle : Photos Google Business
+    if (businessData.photos && businessData.photos.length > 0) {
+      // Les photos Google Business seront ajoutées dans le champ images
+      // L'utilisateur pourra les supprimer s'il le souhaite
+      newValues.images = businessData.photos;
+      newValues.image_principale = businessData.photos[0]; // Première photo comme image principale
+    }
+
+    // ✅ Mettre à jour les valeurs du formulaire
+    setValeursFormulaire((prev) => ({
+      ...prev,
+      ...newValues,
+    }));
+
+    console.log('[FormulaireYukpoIntelligentScreen] ✅ Formulaire pré-rempli avec données Google Business');
+  }, []);
 
   // ✅ NOUVEAU: Charger les données du service en mode édition
   useEffect(() => {
@@ -2232,9 +2364,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           {
             name: 'titre_service',
             type: 'text',
-            label: 'Titre du service',
-            required: true,
-            placeholder: 'Ex: Restaurant Le Gourmet'
+            label: 'Nom de votre structure', // ✅ CORRIGÉ 2026-02-10: Renommé de "Titre du service" à "Nom de votre structure"
+            required: true, // ✅ OBLIGATOIRE: Ne peut pas passer au bloc suivant sans ce champ
+            placeholder: 'Ex: Restaurant Le Gourmet, Boutique XYZ...',
+            isStructureName: true, // ✅ NOUVEAU: Flag pour distinction visuelle
+            hint: 'Indiquez le nom officiel de votre structure (boutique, entreprise, prestation). Ce nom sera visible par tous les clients.'
           },
           {
             name: 'description',
@@ -3135,11 +3269,43 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }
         }
 
+        // ✅ NOUVEAU 2026-02-10: Distinction visuelle spéciale pour "Nom de votre structure"
+        const isStructureName = field.name === 'titre_service' && (field.isStructureName || field.label?.includes('structure'));
+        const isEmpty = !fieldValue || fieldValue.trim() === '';
+        const isRequiredAndEmpty = isStructureName && isEmpty && field.required;
+
         return (
-          <View key={field.name} style={isProductField ? styles.productFieldContainer : styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>
-              {field.label} {field.required && <Text style={styles.required}>*</Text>}
-            </Text>
+          <View key={field.name} style={[
+            isProductField ? styles.productFieldContainer : styles.fieldContainer,
+            isRequiredAndEmpty && styles.fieldContainerRequired // ✅ Style spécial si requis et vide
+          ]}>
+            {/* ✅ NOUVEAU 2026-02-10: Label avec distinction visuelle pour "Nom de votre structure" */}
+            <View style={isStructureName ? styles.structureNameLabelContainer : undefined}>
+              {isStructureName && (
+                <SafeIcon name="Building" size={18} color={isRequiredAndEmpty ? modernColors.error : modernColors.primary} />
+              )}
+              <Text style={[
+                styles.fieldLabel,
+                isStructureName && styles.structureNameLabel,
+                isRequiredAndEmpty && styles.labelRequired
+              ]}>
+                {field.label} {field.required && <Text style={styles.required}>*</Text>}
+              </Text>
+              {isRequiredAndEmpty && (
+                <View style={styles.requiredBadge}>
+                  <Text style={styles.requiredBadgeText}>OBLIGATOIRE</Text>
+                </View>
+              )}
+            </View>
+            
+            {/* ✅ NOUVEAU 2026-02-10: Hint pour "Nom de votre structure" */}
+            {isStructureName && field.hint && (
+              <View style={styles.hintBox}>
+                <SafeIcon name="Info" size={14} color={modernColors.textSecondary} />
+                <Text style={styles.hintText}>{field.hint}</Text>
+              </View>
+            )}
+
             <StableTextInput
               key={`input-${field.name}`}
               placeholder={field.placeholder}
@@ -3169,7 +3335,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 hasError && styles.fieldInputError,
                 styles.autoGrowingInput,
                 field.name === 'nom_produit' && styles.autoGrowingInputName,
-                field.name === 'categorie_produit' && styles.autoGrowingInputCategory
+                field.name === 'categorie_produit' && styles.autoGrowingInputCategory,
+                isRequiredAndEmpty && styles.fieldInputRequired // ✅ Style spécial si requis et vide
               ]}
             />
             {hasError && (
@@ -5585,6 +5752,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       )}
 
       {/* ✅ SUPPRIMÉ: Modal de duplication de produit - Les produits sont maintenant gérés via les champs dynamiques */}
+
+      {/* ✅ NOUVEAU 2026-02-10: Modal Google Business pour première création de service */}
+      <GoogleBusinessModal
+        visible={showGoogleBusinessModal}
+        onClose={() => setShowGoogleBusinessModal(false)}
+        onSelectBusiness={handleGoogleBusinessSelected}
+      />
     </View>
   );
 };
@@ -6187,6 +6361,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
     gap: 8,
+  },
+  // ✅ NOUVEAU 2026-02-10: Styles pour "Nom de votre structure"
+  structureNameLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  structureNameLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: modernColors.text,
+    flex: 1,
+  },
+  fieldInputRequired: {
+    borderWidth: 2,
+    borderColor: modernColors.error,
+    backgroundColor: '#FEF2F2',
   },
   label: {
     fontSize: 15,
