@@ -180,6 +180,9 @@ pub async fn process_product_creation(
 
             // ✅ NOUVEAU 2026-01-04: Traiter les médias APRÈS création du produit avec le vrai product_id
             let real_product_id = product.id.to_string();
+            let mut media_processing_success = true; // ✅ NOUVEAU: Suivi du succès du traitement des médias
+            let mut media_insertion_count = 0; // ✅ NOUVEAU: Compteur de médias insérés
+            
             if !images_to_process.is_empty() {
                 log::info!(
                     "[process_product_creation] 🖼️ Traitement de {} image(s) pour produit {} (product_id: {})",
@@ -187,47 +190,117 @@ pub async fn process_product_creation(
                     product_index,
                     real_product_id
                 );
-
-                use crate::services::media_storage_service::MediaStorageService;
-                use crate::services::optimized_media_processor::{
-                    MediaItem, OptimizedMediaProcessor, OptimizedMediaProcessorConfig,
-                };
-                use std::path::PathBuf;
-
-                // Configuration du processeur de médias
-                let config = OptimizedMediaProcessorConfig {
-                    max_concurrent: 10,
-                    db_batch_size: 20,
-                    generate_thumbnails: true,
-                    adaptive_compression: true,
-                    use_signature_cache: true,
-                };
-
-                // Créer MediaStorageService (nécessaire pour OptimizedMediaProcessor)
-                let storage_root = PathBuf::from(
-                    std::env::var("UPLOAD_STORAGE_ROOT").unwrap_or_else(|_| "uploads".to_string()),
+                log::info!(
+                    "[process_product_creation] 📋 Validation des images avant traitement..."
                 );
-                use crate::config::storage::MediaStorageConfig;
-                let storage_config = MediaStorageConfig::from_env();
-                let media_storage = Arc::new(MediaStorageService::new(storage_config));
-
-                let processor =
-                    OptimizedMediaProcessor::new(pool.clone(), storage_root, media_storage, config);
-
-                // Convertir les images en MediaItem
-                let mut media_items: Vec<MediaItem> = Vec::new();
-                for image_data in images_to_process {
+                
+                // ✅ NOUVEAU: Valider le format des images avant traitement
+                let mut valid_images = Vec::new();
+                for (idx, image_data) in images_to_process.iter().enumerate() {
                     if image_data.is_empty() {
+                        log::warn!(
+                            "[process_product_creation] ⚠️ Image {} est vide, ignorée",
+                            idx
+                        );
                         continue;
                     }
-                    // Vérifier si c'est une URL ou du base64
-                    let is_base64 = !image_data.starts_with("http://")
-                        && !image_data.starts_with("https://")
-                        && image_data.len() > 100; // Heuristique simple
-                    media_items.push(MediaItem::new_image(image_data.clone(), is_base64));
+                    
+                    // Vérifier si c'est une URL valide
+                    let is_url = image_data.starts_with("http://") || image_data.starts_with("https://");
+                    // Vérifier si c'est du base64 valide
+                    let is_base64 = !is_url && (image_data.starts_with("data:") || image_data.len() > 100);
+                    
+                    if !is_url && !is_base64 {
+                        log::warn!(
+                            "[process_product_creation] ⚠️ Image {} format invalide (ni URL ni base64), ignorée",
+                            idx
+                        );
+                        continue;
+                    }
+                    
+                    if is_base64 && !image_data.starts_with("data:") {
+                        // Vérifier que c'est du base64 valide (caractères alphanumériques + / + =)
+                        let base64_chars: std::collections::HashSet<char> = 
+                            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".chars().collect();
+                        let is_valid_base64 = image_data.chars().all(|c| base64_chars.contains(&c) || c.is_whitespace());
+                        
+                        if !is_valid_base64 {
+                            log::warn!(
+                                "[process_product_creation] ⚠️ Image {} base64 invalide, ignorée",
+                                idx
+                            );
+                            continue;
+                        }
+                    }
+                    
+                    valid_images.push(image_data.clone());
                 }
+                
+                log::info!(
+                    "[process_product_creation] ✅ {} image(s) valide(s) sur {} image(s) reçue(s)",
+                    valid_images.len(),
+                    images_to_process.len()
+                );
+                
+                if valid_images.is_empty() {
+                    log::error!(
+                        "[process_product_creation] ❌ Aucune image valide à traiter pour produit {}",
+                        product_index
+                    );
+                    media_processing_success = false;
+                } else {
+                    log::debug!(
+                        "[process_product_creation] 📋 Échantillon des premières images valides (max 3): {:?}",
+                        valid_images.iter().take(3).map(|img| {
+                            if img.len() > 100 {
+                                format!("{}... ({} chars)", &img[..100], img.len())
+                            } else {
+                                img.clone()
+                            }
+                        }).collect::<Vec<_>>()
+                    );
 
-                if !media_items.is_empty() {
+                    use crate::services::media_storage_service::MediaStorageService;
+                    use crate::services::optimized_media_processor::{
+                        MediaItem, OptimizedMediaProcessor, OptimizedMediaProcessorConfig,
+                    };
+                    use std::path::PathBuf;
+
+                    // Configuration du processeur de médias
+                    let config = OptimizedMediaProcessorConfig {
+                        max_concurrent: 10,
+                        db_batch_size: 20,
+                        generate_thumbnails: true,
+                        adaptive_compression: true,
+                        use_signature_cache: true,
+                    };
+
+                    // Créer MediaStorageService (nécessaire pour OptimizedMediaProcessor)
+                    let storage_root = PathBuf::from(
+                        std::env::var("UPLOAD_STORAGE_ROOT").unwrap_or_else(|_| "uploads".to_string()),
+                    );
+                    use crate::config::storage::MediaStorageConfig;
+                    let storage_config = MediaStorageConfig::from_env();
+                    let media_storage = Arc::new(MediaStorageService::new(storage_config));
+
+                    let processor =
+                        OptimizedMediaProcessor::new(pool.clone(), storage_root, media_storage, config);
+
+                    // Convertir les images validées en MediaItem
+                    let mut media_items: Vec<MediaItem> = Vec::new();
+                    for image_data in valid_images {
+                        // Vérifier si c'est une URL ou du base64
+                        let is_base64 = !image_data.starts_with("http://")
+                            && !image_data.starts_with("https://");
+                        media_items.push(MediaItem::new_image(image_data.clone(), is_base64));
+                    }
+
+                    log::info!(
+                        "[process_product_creation] 🚀 Début traitement batch de {} média(s)",
+                        media_items.len()
+                    );
+
+                    if !media_items.is_empty() {
                     // Traiter les médias en batch
                     match processor
                         .process_media_batch(
@@ -238,15 +311,26 @@ pub async fn process_product_creation(
                         .await
                     {
                         Ok(processed) => {
+                            log::info!(
+                                "[process_product_creation] ✅ {} média(x) traité(s) avec succès, début insertion dans table media",
+                                processed.len()
+                            );
+                            
                             // Insérer les médias dans la table media avec le vrai product_id
                             let mut tx = pool.begin().await.map_err(|e| {
+                                log::error!(
+                                    "[process_product_creation] ❌ Erreur début transaction: {}",
+                                    e
+                                );
                                 AppError::Internal(format!("Erreur début transaction: {}", e))
                             })?;
 
+                            let mut insertion_errors = Vec::new();
+                            
                             for (image_index, media) in processed.iter().enumerate() {
                                 let is_main = image_index == 0;
 
-                                if let Err(e) = sqlx::query(
+                                match sqlx::query(
                                     r#"
                                     INSERT INTO media (
                                         service_id, product_id, product_index, type, path,
@@ -270,45 +354,96 @@ pub async fn process_product_creation(
                                 .execute(&mut *tx)
                                 .await
                                 {
-                                    log::error!(
-                                        "[process_product_creation] ❌ Erreur insertion media {} pour produit {}: {}",
-                                        image_index,
-                                        product_index,
-                                        e
-                                    );
-                                } else {
-                                    log::info!(
-                                        "[process_product_creation] ✅ Media {} inséré pour produit {} (product_id: {})",
-                                        image_index,
-                                        product_index,
-                                        real_product_id
-                                    );
+                                    Err(e) => {
+                                        log::error!(
+                                            "[process_product_creation] ❌ Erreur insertion media {} pour produit {} (product_id: {}): {}",
+                                            image_index,
+                                            product_index,
+                                            real_product_id,
+                                            e
+                                        );
+                                        insertion_errors.push((image_index, e.to_string()));
+                                    }
+                                    Ok(_) => {
+                                        media_insertion_count += 1;
+                                        log::info!(
+                                            "[process_product_creation] ✅ Media {} inséré pour produit {} (product_id: {}, path: {})",
+                                            image_index,
+                                            product_index,
+                                            real_product_id,
+                                            media.file_path
+                                        );
+                                    }
                                 }
                             }
 
-                            // Commit la transaction
-                            if let Err(e) = tx.commit().await {
+                            // ✅ CORRIGÉ: Commit seulement si au moins une insertion a réussi
+                            if media_insertion_count == 0 {
+                                log::error!(
+                                    "[process_product_creation] ❌ Aucun média inséré avec succès, rollback de la transaction"
+                                );
+                                let _ = tx.rollback().await;
+                                media_processing_success = false;
+                            } else if let Err(e) = tx.commit().await {
                                 log::error!(
                                     "[process_product_creation] ❌ Erreur commit transaction médias: {}",
                                     e
                                 );
+                                media_processing_success = false;
                             } else {
                                 log::info!(
-                                    "[process_product_creation] ✅ {} média(x) sauvegardé(s) pour produit {}",
-                                    processed.len(),
-                                    product_index
+                                    "[process_product_creation] ✅ {} média(x) sauvegardé(s) avec succès pour produit {} (product_id: {})",
+                                    media_insertion_count,
+                                    product_index,
+                                    real_product_id
                                 );
+                                
+                                if !insertion_errors.is_empty() {
+                                    log::warn!(
+                                        "[process_product_creation] ⚠️ {} erreur(s) d'insertion sur {} média(x) total",
+                                        insertion_errors.len(),
+                                        processed.len()
+                                    );
+                                }
                             }
                         }
                         Err(e) => {
                             log::error!(
-                                "[process_product_creation] ❌ Erreur traitement médias: {} (non bloquant)",
+                                "[process_product_creation] ❌ Erreur traitement batch médias: {}",
                                 e
                             );
-                            // Ne pas faire échouer la création du produit si les médias échouent
+                            media_processing_success = false;
                         }
                     }
+                } else {
+                    log::warn!(
+                        "[process_product_creation] ⚠️ Aucun média valide à traiter après validation"
+                    );
+                    media_processing_success = false;
                 }
+            } else {
+                log::info!(
+                    "[process_product_creation] ℹ️ Aucune image à traiter pour produit {}",
+                    product_index
+                );
+                // Pas d'images n'est pas une erreur, donc media_processing_success reste true
+            }
+            
+            // ✅ NOUVEAU: Logger le résultat final du traitement des médias
+            if !images_to_process.is_empty() {
+                if media_processing_success && media_insertion_count > 0 {
+                    log::info!(
+                        "[process_product_creation] ✅ Traitement médias réussi: {} média(x) sauvegardé(s)",
+                        media_insertion_count
+                    );
+                } else {
+                    log::error!(
+                        "[process_product_creation] ❌ ÉCHEC traitement médias: {} média(x) attendu(s), {} sauvegardé(s)",
+                        images_to_process.len(),
+                        media_insertion_count
+                    );
+                }
+            }
             }
 
             // ✅ PHASE 1: Mettre à jour autocomplete_characteristics avec le product_id de la table products
@@ -363,11 +498,14 @@ pub async fn process_product_creation(
                 }
             }
 
-            // Retourner le résultat (format compatible avec l'ancien code)
+            // ✅ NOUVEAU: Inclure le statut du traitement des médias dans le résultat
             Ok(json!({
                 "product_index": product_index,
                 "product_id": product.id,
                 "service_id": service_id,
+                "media_processing_success": media_processing_success,
+                "media_insertion_count": media_insertion_count,
+                "media_expected_count": images_to_process.len(),
                 "produits_data": json!({
                     "type_donnee": "listeproduit",
                     "valeur": [product_data_cleaned]
@@ -600,35 +738,167 @@ pub async fn add_product_to_service(
     // Les médias doivent être uploadés vers Wasabi et stockés dans la table media, PAS dans services.data
     // Sinon le JSONB devient énorme, causant des UPDATE lents (7-12s) et des timeouts
 
-    // Extraire les images du produit AVANT nettoyage
+    // ✅ CRITIQUE: Extraire les images du produit AVANT nettoyage
     let product_data_original = request.product_data.clone();
     let mut images_to_process: Vec<String> = Vec::new();
 
-    // Chercher les images dans différents champs (comme dans creer_service)
+    log_info(&format!(
+        "[add_product_to_service] 🔍 Extraction images depuis product_data - Clés disponibles: {:?}",
+        product_data_original
+            .as_object()
+            .map(|o| o.keys().collect::<Vec<_>>())
+            .unwrap_or_default()
+    ));
+
+    // ✅ AMÉLIORÉ: Chercher les images dans différents champs (comme dans creer_service)
+    // Support de formats imbriqués et de structures variées
     if let Some(prod_obj) = product_data_original.as_object() {
-        if let Some(image_urls) = prod_obj.get("imageUrls").and_then(|v| v.as_array()) {
-            images_to_process
-                .extend(image_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
-        }
-        if let Some(product_images) = prod_obj.get("images").and_then(|v| v.as_array()) {
-            images_to_process
-                .extend(product_images.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
-        }
-        if let Some(base64_image) = prod_obj.get("base64_image") {
-            if let Some(base64_array) = base64_image.as_array() {
-                images_to_process
-                    .extend(base64_array.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
-            } else if let Some(base64_str) = base64_image.as_str() {
-                images_to_process.push(base64_str.to_string());
+        // Fonction helper pour extraire les images d'un champ
+        let mut extract_from_field = |field_name: &str, value: &serde_json::Value| -> usize {
+            let mut count = 0;
+            
+            match value {
+                serde_json::Value::Array(arr) => {
+                    for item in arr {
+                        if let Some(img_str) = item.as_str() {
+                            if !img_str.is_empty() {
+                                images_to_process.push(img_str.to_string());
+                                count += 1;
+                            }
+                        } else if let Some(img_obj) = item.as_object() {
+                            // Support de structures imbriquées : { url: "...", path: "...", valeur: "..." }
+                            if let Some(url) = img_obj.get("url").or_else(|| img_obj.get("path")).or_else(|| img_obj.get("valeur")) {
+                                if let Some(img_str) = url.as_str() {
+                                    if !img_str.is_empty() {
+                                        images_to_process.push(img_str.to_string());
+                                        count += 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                serde_json::Value::String(s) => {
+                    if !s.is_empty() {
+                        images_to_process.push(s.clone());
+                        count += 1;
+                    }
+                }
+                serde_json::Value::Object(obj) => {
+                    // Support de structures avec type_donnee
+                    if let Some(valeur) = obj.get("valeur") {
+                        count += extract_from_field(field_name, valeur);
+                    }
+                }
+                _ => {}
+            }
+            
+            count
+        };
+        
+        // ✅ NOUVEAU: Liste exhaustive des champs possibles pour les images
+        let image_fields = [
+            "imageUrls",           // Upload préalable (priorité)
+            "images",              // URLs ou base64
+            "base64_image",        // Rétrocompatibilité
+            "images_base64",       // Base64 array
+            "image_base64",        // Base64 string
+            "product_images",      // Format alternatif
+            "productImages",       // Format camelCase
+            "image_urls",          // Format snake_case
+            "image_url",           // Format snake_case (singulier)
+            "media_images",        // Format media
+            "mediaImages",         // Format camelCase
+        ];
+        
+        for field_name in &image_fields {
+            if let Some(value) = prod_obj.get(*field_name) {
+                let count = extract_from_field(field_name, value);
+                if count > 0 {
+                    log_info(&format!(
+                        "[add_product_to_service] ✅ Trouvé {} image(s) dans champ '{}'",
+                        count,
+                        field_name
+                    ));
+                }
             }
         }
-        if let Some(images_base64) = prod_obj.get("images_base64").and_then(|v| v.as_array()) {
-            images_to_process
-                .extend(images_base64.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+        
+        // ✅ NOUVEAU: Recherche récursive dans les objets imbriqués
+        // Par exemple : { media: { images: [...] } }
+        for (key, value) in prod_obj.iter() {
+            if key.to_lowercase().contains("image") || key.to_lowercase().contains("media") {
+                if let Some(nested_obj) = value.as_object() {
+                    for nested_key in &image_fields {
+                        if let Some(nested_value) = nested_obj.get(*nested_key) {
+                            let count = extract_from_field(&format!("{}.{}", key, nested_key), nested_value);
+                            if count > 0 {
+                                log_info(&format!(
+                                    "[add_product_to_service] ✅ Trouvé {} image(s) dans champ '{}.{}'",
+                                    count,
+                                    key,
+                                    nested_key
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
         }
-        if let Some(image_base64) = prod_obj.get("image_base64").and_then(|v| v.as_str()) {
-            images_to_process.push(image_base64.to_string());
-        }
+    } else {
+        log_warn(&format!(
+            "[add_product_to_service] ⚠️ product_data n'est pas un objet JSON"
+        ));
+    }
+
+    log_info(&format!(
+        "[add_product_to_service] 📊 Total images extraites: {}",
+        images_to_process.len()
+    ));
+    
+    // ✅ NOUVEAU: Logger un échantillon des images extraites pour diagnostic
+    if !images_to_process.is_empty() {
+        log_info(&format!(
+            "[add_product_to_service] 📋 Échantillon images extraites (max 3): {:?}",
+            images_to_process.iter().take(3).map(|img| {
+                if img.len() > 150 {
+                    format!("{}... ({} chars)", &img[..150], img.len())
+                } else {
+                    img.clone()
+                }
+            }).collect::<Vec<_>>()
+        ));
+    } else {
+        log_warn(&format!(
+            "[add_product_to_service] ⚠️ AUCUNE image extraite depuis product_data!"
+        ));
+        log_info(&format!(
+            "[add_product_to_service] 🔍 Structure complète de product_data (tronquée): {:?}",
+            product_data_original
+                .as_object()
+                .map(|o| {
+                    o.iter()
+                        .take(10)
+                        .map(|(k, v)| {
+                            let value_preview = match v {
+                                serde_json::Value::String(s) => {
+                                    if s.len() > 50 {
+                                        format!("{}... ({} chars)", &s[..50], s.len())
+                                    } else {
+                                        s.clone()
+                                    }
+                                }
+                                serde_json::Value::Array(arr) => {
+                                    format!("Array[{}]", arr.len())
+                                }
+                                _ => format!("{:?}", v).chars().take(50).collect::<String>()
+                            };
+                            (k.clone(), value_preview)
+                        })
+                        .collect::<std::collections::HashMap<_, _>>()
+                })
+                .unwrap_or_default()
+        ));
     }
 
     // ✅ Nettoyer les médias du JSON (seront sauvegardés séparément)

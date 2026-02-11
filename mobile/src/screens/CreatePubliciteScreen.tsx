@@ -989,7 +989,7 @@ const CreatePubliciteScreen: React.FC = () => {
             <KeyboardAwareScrollView
                 ref={scrollViewRef}
                 style={styles.content}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: Platform.OS === 'android' ? 400 : 350 }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: Platform.OS === 'android' ? 500 : 450 }]}
                 showsVerticalScrollIndicator={true}
                 enableOnAndroid={true}
                 enableAutomaticScroll={true}
@@ -997,13 +997,14 @@ const CreatePubliciteScreen: React.FC = () => {
                 extraHeight={Platform.OS === 'android' ? 350 : 0}
                 extraScrollHeight={Platform.OS === 'ios' ? 300 : 0}
                 keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="interactive"
+                keyboardDismissMode="none"
                 scrollEnabled={true}
                 bounces={true}
                 removeClippedSubviews={false}
                 nestedScrollEnabled={false}
                 enableResetScrollToCoords={false}
                 keyboardOpeningTime={0}
+                alwaysBounceVertical={false}
             >
                 {/* ✅ NOUVEAU: Section Templates */}
                 {!titre && !showTemplates && (
@@ -1480,7 +1481,19 @@ const CreatePubliciteScreen: React.FC = () => {
                     selectedAssets={selectedAssets}
                 />
 
-                {/* ✅ SUPPRIMÉ: Bouton de création dans le scroll (déplacé vers les boutons sticky pour éviter les doublons) */}
+                {/* Bouton de création/modification */}
+                <NativeButton
+                    title={loading ? t('message.loading') :
+                        mode === 'edit' ? '💾 Enregistrer les modifications' :
+                            mode === 'relance' ? '🔄 Relancer la publicité' :
+                                `🚀 ${t('publicite.create')}`}
+                    onPress={handleCreatePublicite}
+                    disabled={loading || !titre.trim()} // ✅ CORRECTION: Produit optionnel
+                    variant="primary"
+                    size="large"
+                    style={styles.createButton}
+                />
+
                 <View style={{ height: 120 }} />
             </KeyboardAwareScrollView>
 
@@ -1499,7 +1512,7 @@ const CreatePubliciteScreen: React.FC = () => {
                         <Text style={styles.navButtonTextPrev}>Précédent</Text>
                     </TouchableOpacity>
                 )}
-                {currentStep < STEPS.length - 1 ? (
+                {currentStep < STEPS.length - 1 && (
                     <TouchableOpacity
                         style={[styles.navButton, styles.navButtonNext]}
                         onPress={() => {
@@ -1515,26 +1528,6 @@ const CreatePubliciteScreen: React.FC = () => {
                     >
                         <Text style={styles.navButtonTextNext}>Suivant</Text>
                         <SafeIcon name="chevron-right" size={20} color="#fff" />
-                    </TouchableOpacity>
-                ) : (
-                    // ✅ CORRIGÉ: Bouton de création au dernier écran
-                    <TouchableOpacity
-                        style={[styles.navButton, styles.navButtonCreate]}
-                        onPress={handleCreatePublicite}
-                        disabled={loading || !titre.trim()}
-                    >
-                        {loading ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                        ) : (
-                            <>
-                                <Text style={styles.navButtonTextCreate}>
-                                    {mode === 'edit' ? '💾 Enregistrer' :
-                                     mode === 'relance' ? '🔄 Relancer' :
-                                     `🚀 ${t('publicite.create')}`}
-                                </Text>
-                                <SafeIcon name="check" size={20} color="#fff" />
-                            </>
-                        )}
                     </TouchableOpacity>
                 )}
             </View>
@@ -1567,7 +1560,8 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: 16,
-        paddingBottom: 120, // Espace pour les boutons sticky en bas
+        paddingBottom: 200, // ✅ CORRIGÉ: Espace suffisant pour les boutons sticky en bas et tous les éléments
+        flexGrow: 1, // ✅ CORRIGÉ: Permet au contenu de s'étendre et d'être scrollable
     },
     infoCard: {
         padding: 16,
@@ -1679,7 +1673,8 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
     productsList: {
-        maxHeight: 300,
+        // ✅ CORRIGÉ: Supprimé maxHeight pour permettre l'affichage de tous les produits
+        // Le scroll est géré par le KeyboardAwareScrollView parent
     },
     productItem: {
         flexDirection: 'row',
@@ -2043,21 +2038,12 @@ const styles = StyleSheet.create({
     navButtonNext: {
         backgroundColor: modernColors.primary,
     },
-    navButtonCreate: {
-        backgroundColor: modernColors.primary,
-        flex: 1,
-    },
     navButtonTextPrev: {
         fontSize: 15,
         fontWeight: '600',
         color: modernColors.primary,
     },
     navButtonTextNext: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    navButtonTextCreate: {
         fontSize: 15,
         fontWeight: '600',
         color: '#fff',

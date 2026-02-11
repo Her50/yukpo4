@@ -5,15 +5,17 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   ActivityIndicator,
   TouchableOpacity,
   FlatList,
+  Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { NativeButton } from '../components/SafeNativeDesign';
 import { NativeInput } from '../components/SafeNativeDesign';
 import { NativeCard } from '../components/SafeNativeDesign';
-import { apiPost, apiGet } from '../services/api';
+import { apiPost } from '../services/api';
+import { productsService } from '../services/productsService';
 import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -30,10 +32,13 @@ interface RouteParams {
 }
 
 interface Product {
-  index: number;
+  serviceId: number;
+  productIndex: number;
   nom: string;
   description?: string;
   prix?: number;
+  serviceTitle?: string;
+  id: string; // Identifiant unique pour la sélection
 }
 
 const CreateFlashPromoScreen: React.FC = () => {
@@ -49,7 +54,7 @@ const CreateFlashPromoScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedProductIndexes, setSelectedProductIndexes] = useState<number[]>([]);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed' | 'free'>('percentage');
@@ -68,12 +73,16 @@ const CreateFlashPromoScreen: React.FC = () => {
     loadProducts();
   }, [serviceId, serviceData]);
 
-  // Pré-sélectionner le produit si productIndex est fourni
+  // Pré-sélectionner le produit si productIndex et serviceId sont fournis
   useEffect(() => {
-    if (productIndex !== undefined && products.length > 0) {
-      setSelectedProductIndexes([productIndex]);
+    if (productIndex !== undefined && serviceId && products.length > 0) {
+      const productId = `${serviceId}_${productIndex}`;
+      const product = products.find(p => p.id === productId);
+      if (product) {
+        setSelectedProductIds([productId]);
+      }
     }
-  }, [productIndex, products]);
+  }, [productIndex, serviceId, products]);
 
   // Pré-remplir le titre si disponible
   useEffect(() => {
@@ -86,71 +95,47 @@ const CreateFlashPromoScreen: React.FC = () => {
     try {
       setLoadingProducts(true);
       
-      // Si serviceData est fourni, extraire les produits
-      if (serviceData?.produits) {
-        const produits = serviceData.produits.valeur || serviceData.produits || [];
-        const productsList: Product[] = [];
-        
-        if (Array.isArray(produits)) {
-          produits.forEach((prod: any, index: number) => {
-            const nom = typeof prod === 'string' 
-              ? prod.split(',')[0] 
-              : prod.nom || prod.data?.nom || prod.nom_produit || `Produit ${index + 1}`;
-            const description = typeof prod === 'string' 
-              ? prod.split(',')[1] 
-              : prod.description || prod.data?.description || '';
-            const prix = typeof prod === 'object' 
-              ? (prod.prix || prod.data?.prix || prod.prix_produit || 0)
-              : 0;
-            
-            productsList.push({ index, nom, description, prix });
-          });
-        }
-        
-        setProducts(productsList);
-      } else {
-        // Sinon, charger depuis l'API
-        const response = await apiGet(`/api/prestataire/services`);
-        if (response.success && Array.isArray(response.data)) {
-          const service = response.data.find((s: any) => s.id === serviceId);
-          if (service?.data?.produits) {
-            const produits = service.data.produits.valeur || service.data.produits || [];
-            const productsList: Product[] = [];
-            
-            if (Array.isArray(produits)) {
-              produits.forEach((prod: any, index: number) => {
-                const nom = typeof prod === 'string' 
-                  ? prod.split(',')[0] 
-                  : prod.nom || prod.data?.nom || prod.nom_produit || `Produit ${index + 1}`;
-                const description = typeof prod === 'string' 
-                  ? prod.split(',')[1] 
-                  : prod.description || prod.data?.description || '';
-                const prix = typeof prod === 'object' 
-                  ? (prod.prix || prod.data?.prix || prod.prix_produit || 0)
-                  : 0;
-                
-                productsList.push({ index, nom, description, prix });
-              });
-            }
-            
-            setProducts(productsList);
-          }
-        }
+      if (!user?.id) {
+        console.warn('[CreateFlashPromo] ⚠️ Utilisateur non connecté');
+        setProducts([]);
+        return;
       }
+
+      // ✅ CORRIGÉ: Charger TOUS les produits de l'utilisateur depuis tous ses services
+      const apiProducts = await productsService.getProductsByUser(user.id);
+      console.log('[CreateFlashPromo] ✅ Produits récupérés:', apiProducts.length);
+
+      // Convertir les produits de l'API en format Product
+      const productsList: Product[] = apiProducts.map((apiProduct) => {
+        const productData = apiProduct.product_data || {};
+        return {
+          serviceId: apiProduct.service_id,
+          productIndex: apiProduct.product_index,
+          id: `${apiProduct.service_id}_${apiProduct.product_index}`, // Identifiant unique
+          nom: apiProduct.product_name || productData.nom || productData.nom_produit || 'Produit sans nom',
+          description: productData.description || productData.desc || '',
+          prix: apiProduct.product_price || productData.prix || productData.prix_produit || 0,
+          serviceTitle: productData.titre_service || productData.nom_service || `Service #${apiProduct.service_id}`,
+        };
+      });
+      
+      setProducts(productsList);
+      console.log('[CreateFlashPromo] ✅ Produits convertis:', productsList.length);
     } catch (error: any) {
       console.error('[CreateFlashPromo] Erreur chargement produits:', error);
       toaster.error('Erreur lors du chargement des produits');
+      setProducts([]);
     } finally {
       setLoadingProducts(false);
     }
   };
 
-  const toggleProductSelection = (index: number) => {
-    setSelectedProductIndexes(prev => {
-      if (prev.includes(index)) {
-        return prev.filter(i => i !== index);
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProductIds(prev => {
+      if (prev.includes(productId)) {
+        return prev.filter(id => id !== productId);
       } else {
-        return [...prev, index];
+        return [...prev, productId];
       }
     });
   };
@@ -162,7 +147,7 @@ const CreateFlashPromoScreen: React.FC = () => {
       return;
     }
 
-    if (selectedProductIndexes.length === 0) {
+    if (selectedProductIds.length === 0) {
       toaster.error('Veuillez sélectionner au moins un produit');
       return;
     }
@@ -207,28 +192,54 @@ const CreateFlashPromoScreen: React.FC = () => {
     setLoading(true);
 
     try {
-      const payload = {
-        service_id: serviceId,
-        product_indexes: selectedProductIndexes, // ✅ NOUVEAU: Liste de produits
-        discount_type: discountType,
-        discount_value: discountType === 'free' ? null : parseFloat(discountValue),
-        title: title.trim(),
-        description: description.trim() || null,
-        starts_at: startsAt.toISOString(),
-        ends_at: endsAt.toISOString(),
-        conditions: conditions.trim() || null,
-        availability: availability, // ✅ NOUVEAU: online, live, both
-        live_session_id: liveSessionId.trim() || null, // ✅ NOUVEAU: Session live optionnelle
-        stock_cap: stockCap.trim() ? parseInt(stockCap) : null, // ✅ NOUVEAU: Limite de stock
-      };
+      // ✅ CORRIGÉ: Extraire service_id et product_index depuis selectedProductIds
+      // Format: "serviceId_productIndex"
+      const productIndexesByService: Record<number, number[]> = {};
+      selectedProductIds.forEach(productId => {
+        const [serviceIdStr, productIndexStr] = productId.split('_');
+        const serviceIdNum = parseInt(serviceIdStr, 10);
+        const productIndexNum = parseInt(productIndexStr, 10);
+        
+        if (!isNaN(serviceIdNum) && !isNaN(productIndexNum)) {
+          if (!productIndexesByService[serviceIdNum]) {
+            productIndexesByService[serviceIdNum] = [];
+          }
+          productIndexesByService[serviceIdNum].push(productIndexNum);
+        }
+      });
 
-      const response = await apiPost('/api/flash-promos', payload);
+      // ✅ CORRIGÉ: Créer une promotion flash pour chaque service avec ses produits sélectionnés
+      const promises = Object.entries(productIndexesByService).map(async ([serviceIdStr, productIndexes]) => {
+        const serviceIdNum = parseInt(serviceIdStr, 10);
+        const payload = {
+          service_id: serviceIdNum,
+          product_indexes: productIndexes,
+          discount_type: discountType,
+          discount_value: discountType === 'free' ? null : parseFloat(discountValue),
+          title: title.trim(),
+          description: description.trim() || null,
+          starts_at: startsAt.toISOString(),
+          ends_at: endsAt.toISOString(),
+          conditions: conditions.trim() || null,
+          availability: availability,
+          live_session_id: liveSessionId.trim() || null,
+          stock_cap: stockCap.trim() ? parseInt(stockCap) : null,
+        };
 
-      if (response.success) {
-        toaster.success('⚡ Flash promotionnel créé avec succès (gratuit) !');
+        return apiPost('/api/flash-promos', payload);
+      });
+
+      const responses = await Promise.all(promises);
+      const allSuccess = responses.every(r => r.success);
+
+      if (allSuccess) {
+        const servicesCount = Object.keys(productIndexesByService).length;
+        const productsCount = selectedProductIds.length;
+        toaster.success(`⚡ ${productsCount} promotion${productsCount > 1 ? 's' : ''} flash créée${productsCount > 1 ? 's' : ''} avec succès (gratuit) !`);
         navigation.goBack();
       } else {
-        toaster.error(response.error || 'Erreur lors de la création');
+        const failedCount = responses.filter(r => !r.success).length;
+        toaster.error(`${failedCount} promotion${failedCount > 1 ? 's' : ''} n'a${failedCount > 1 ? 'ont' : ''} pas pu être créée${failedCount > 1 ? 's' : ''}`);
       }
     } catch (error: any) {
       console.error('[CreateFlashPromo] Erreur:', error);
@@ -258,10 +269,16 @@ const CreateFlashPromoScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView 
+    <KeyboardAwareScrollView 
       style={[styles.container, { backgroundColor: modernColors.background }]}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={true}
+      enableOnAndroid={true}
+      enableAutomaticScroll={true}
+      extraHeight={Platform.OS === 'android' ? 200 : 0}
+      extraScrollHeight={Platform.OS === 'ios' ? 200 : 0}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="none"
     >
       <View style={styles.content}>
         <Text style={[styles.title, { color: modernColors.text }]}>
@@ -278,58 +295,89 @@ const CreateFlashPromoScreen: React.FC = () => {
           </Text>
         </NativeCard>
 
-        {/* ✅ NOUVEAU: Sélection multiple de produits */}
+        {/* ✅ AMÉLIORÉ: Sélection multiple de produits avec meilleure UX */}
         <NativeCard style={styles.card}>
           <View style={styles.productHeaderRow}>
-            <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>
-              Produits à promouvoir * {selectedProductIndexes.length > 0 && `(${selectedProductIndexes.length} sélectionné${selectedProductIndexes.length > 1 ? 's' : ''})`}
-            </Text>
+            <View style={styles.productHeaderTitle}>
+              <Text style={[styles.label, { color: modernColors.text, fontWeight: '700', fontSize: 16 }]}>
+                Produits à promouvoir *
+              </Text>
+              {selectedProductIds.length > 0 && (
+                <View style={styles.selectionBadge}>
+                  <Text style={styles.selectionBadgeText}>
+                    {selectedProductIds.length} sélectionné{selectedProductIds.length > 1 ? 's' : ''}
+                  </Text>
+                </View>
+              )}
+            </View>
             {products.length > 0 && (
               <TouchableOpacity
                 onPress={() => {
-                  if (selectedProductIndexes.length === products.length) {
-                    setSelectedProductIndexes([]);
+                  if (selectedProductIds.length === products.length) {
+                    setSelectedProductIds([]);
                   } else {
-                    setSelectedProductIndexes(products.map(p => p.index));
+                    setSelectedProductIds(products.map(p => p.id));
                   }
                 }}
-                style={[styles.selectAllButton, { backgroundColor: modernColors.primary + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }]}
+                style={styles.selectAllButton}
               >
-                <Text style={[styles.selectAllText, { color: modernColors.primary, fontWeight: '700' }]}>
-                  {selectedProductIndexes.length === products.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                <Text style={styles.selectAllText}>
+                  {selectedProductIds.length === products.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                 </Text>
               </TouchableOpacity>
             )}
           </View>
-          {products.length === 0 ? (
-            <Text style={[styles.emptyText, { color: modernColors.textSecondary }]}>
-              Aucun produit trouvé dans ce service
-            </Text>
+          {loadingProducts ? (
+            <View style={styles.loadingProductsContainer}>
+              <ActivityIndicator size="small" color={modernColors.primary} />
+              <Text style={[styles.loadingProductsText, { color: modernColors.textSecondary }]}>
+                Chargement des produits...
+              </Text>
+            </View>
+          ) : products.length === 0 ? (
+            <View style={styles.emptyStateContainer}>
+              <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
+              <Text style={[styles.emptyText, { color: modernColors.textSecondary, marginTop: 12 }]}>
+                Aucun produit trouvé
+              </Text>
+              <Text style={[styles.emptySubtext, { color: modernColors.textSecondary }]}>
+                Créez d'abord des produits dans vos services
+              </Text>
+            </View>
           ) : (
-            <FlatList
-              data={products}
-              keyExtractor={(item) => item.index.toString()}
-              scrollEnabled={false}
-              renderItem={({ item }) => {
-                const isSelected = selectedProductIndexes.includes(item.index);
+            <View style={styles.productsContainer}>
+              {products.map((item) => {
+                const isSelected = selectedProductIds.includes(item.id);
                 return (
                   <TouchableOpacity
+                    key={item.id}
                     style={[
                       styles.productItem,
                       { 
-                        backgroundColor: isSelected ? modernColors.primary + '20' : modernColors.surface,
+                        backgroundColor: isSelected ? modernColors.primary + '15' : modernColors.surface,
                         borderColor: isSelected ? modernColors.primary : modernColors.border,
+                        borderWidth: isSelected ? 2 : 1,
                       }
                     ]}
-                    onPress={() => toggleProductSelection(item.index)}
+                    onPress={() => toggleProductSelection(item.id)}
+                    activeOpacity={0.7}
                   >
+                    <View style={styles.productCheckbox}>
+                      {isSelected && (
+                        <SafeIcon name="check" size={18} color="#fff" />
+                      )}
+                    </View>
                     <View style={styles.productContent}>
                       <View style={styles.productHeader}>
-                        <SafeIcon name={isSelected ? 'check-circle' : 'circle'} size={22} color={isSelected ? modernColors.primary : modernColors.textSecondary} />
-                        <Text style={[styles.productName, { color: modernColors.text, fontWeight: '700' }]}>
+                        <Text style={[styles.productName, { color: modernColors.text, fontWeight: '700' }]} numberOfLines={1}>
                           {item.nom}
                         </Text>
                       </View>
+                      {item.serviceTitle && (
+                        <Text style={[styles.productService, { color: modernColors.textSecondary }]} numberOfLines={1}>
+                          📦 {item.serviceTitle}
+                        </Text>
+                      )}
                       {item.description && (
                         <Text style={[styles.productDescription, { color: modernColors.textSecondary }]} numberOfLines={2}>
                           {item.description}
@@ -343,8 +391,8 @@ const CreateFlashPromoScreen: React.FC = () => {
                     </View>
                   </TouchableOpacity>
                 );
-              }}
-            />
+              })}
+            </View>
           )}
         </NativeCard>
 
@@ -543,7 +591,7 @@ const CreateFlashPromoScreen: React.FC = () => {
           </View>
         )}
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 };
 
@@ -552,27 +600,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: Platform.OS === 'android' ? 100 : 80,
+    flexGrow: 1,
   },
   content: {
-    padding: 16,
+    padding: 20,
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
     marginBottom: 8,
     letterSpacing: 0.5,
-    color: modernColors.text, // ✅ CORRIGÉ: Couleur de texte visible
+    color: modernColors.text,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
-    marginBottom: 24,
+    marginBottom: 32,
     lineHeight: 22,
-    color: modernColors.textSecondary, // ✅ CORRIGÉ: Couleur de texte visible
+    color: modernColors.textSecondary,
+    textAlign: 'center',
   },
   card: {
-    marginBottom: 16,
-    padding: 16,
+    marginBottom: 20,
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   label: {
     fontSize: 15,
@@ -613,12 +670,13 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 24,
+    marginTop: 32,
     marginBottom: 32,
+    gap: 12,
   },
   button: {
     flex: 1,
-    marginHorizontal: 8,
+    minHeight: 50,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -634,60 +692,114 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: modernColors.textSecondary, // ✅ CORRIGÉ: Couleur de texte visible
   },
+  productHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  productHeaderTitle: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  selectionBadge: {
+    backgroundColor: modernColors.primary + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  selectionBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: modernColors.primary,
+  },
+  selectAllButton: {
+    backgroundColor: modernColors.primary + '15',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  selectAllText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: modernColors.primary,
+  },
+  loadingProductsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 12,
+  },
+  loadingProductsText: {
+    fontSize: 14,
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  productsContainer: {
+    gap: 12,
+  },
   productItem: {
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 2,
+    flexDirection: 'row',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 2,
+  },
+  productCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: modernColors.primary,
+    backgroundColor: modernColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    marginTop: 2,
   },
   productContent: {
     flex: 1,
   },
-  productHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  selectAllButton: {
-    padding: 4,
-  },
-  selectAllText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
   productHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 4,
   },
   productName: {
     fontSize: 16,
     fontWeight: '700',
-    marginLeft: 10,
-    flex: 1,
     letterSpacing: 0.2,
-    color: modernColors.text, // ✅ CORRIGÉ: Couleur de texte visible
+    color: modernColors.text,
+  },
+  productService: {
+    fontSize: 13,
+    marginTop: 4,
+    marginBottom: 6,
   },
   productDescription: {
     fontSize: 13,
-    marginLeft: 32,
-    marginTop: 6,
+    marginTop: 4,
     lineHeight: 18,
-    color: modernColors.textSecondary, // ✅ CORRIGÉ: Couleur de texte visible
+    color: modernColors.textSecondary,
   },
   productPrice: {
     fontSize: 15,
     fontWeight: '700',
-    marginLeft: 32,
-    marginTop: 6,
+    marginTop: 8,
     letterSpacing: 0.3,
-    color: modernColors.primary, // ✅ CORRIGÉ: Couleur de texte visible
+    color: modernColors.primary,
   },
 });
 

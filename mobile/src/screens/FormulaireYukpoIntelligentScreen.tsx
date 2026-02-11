@@ -3782,22 +3782,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               ? (readOption('origineChamps') as string).trim()
               : 'formulaire';
 
-          const buildBaseProduct = () => ({
-            nom: nomFallback,
-            // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
-            images: Array.isArray(media.images) ? media.images.slice(0, 10) : [],
-            base64_image: Array.isArray(media.images) ? media.images.slice(0, 10) : [],
-            videos: media.videos ? [...media.videos] : undefined,
-            video_base64: media.videos ? [...media.videos] : undefined,
-            audio_base64: media.audios ? [...media.audios] : undefined,
-            doc_base64: media.documents ? [...media.documents] : undefined,
-            excel_base64: media.excel ? [...media.excel] : undefined,
-            devise: deviseFallback,
-            combinaison_brute: combinationString,
-            characteristic_vector: [...characteristicVector],
-            product_labels: [...productLabels],
-            origine_champs: origineChamps,
-          });
+          const buildBaseProduct = () => {
+            // ✅ AMÉLIORÉ: S'assurer que les images sont bien des tableaux et non undefined
+            const productImages = Array.isArray(media.images) ? media.images.slice(0, 10) : [];
+            const productBase64Images = Array.isArray(media.images) ? media.images.slice(0, 10) : [];
+            
+            // ✅ NOUVEAU: Logger pour diagnostic
+            if (productImages.length > 0) {
+              console.log(`[FormulaireYukpoIntelligentScreen] 📦 buildBaseProduct: ${productImages.length} image(s) pour le produit`);
+            }
+            
+            return {
+              nom: nomFallback,
+              // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
+              images: productImages,
+              base64_image: productBase64Images,
+              videos: media.videos ? [...media.videos] : undefined,
+              video_base64: media.videos ? [...media.videos] : undefined,
+              audio_base64: media.audios ? [...media.audios] : undefined,
+              doc_base64: media.documents ? [...media.documents] : undefined,
+              excel_base64: media.excel ? [...media.excel] : undefined,
+              devise: deviseFallback,
+              combinaison_brute: combinationString,
+              characteristic_vector: [...characteristicVector],
+              product_labels: [...productLabels],
+              origine_champs: origineChamps,
+            };
+          };
 
           if (!produitsNode) {
             return {
@@ -3990,6 +4001,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           if (mergedImages.length > 0) {
             nouveauProduit.images = mergedImages;
             nouveauProduit.base64_image = mergedImages;
+            
+            // ✅ NOUVEAU: Logger pour diagnostic
+            console.log(`[FormulaireYukpoIntelligentScreen] ✅ ${mergedImages.length} image(s) fusionnée(s) et assignée(s) à 'images' et 'base64_image'`);
+          } else {
+            console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Aucune image après fusion (mergedImages vide)');
+          }
+        } else {
+          // ✅ NOUVEAU: S'assurer que les images existantes sont aussi dans base64_image
+          if (nouveauProduit.images && nouveauProduit.images.length > 0 && !nouveauProduit.base64_image) {
+            nouveauProduit.base64_image = nouveauProduit.images;
+            console.log(`[FormulaireYukpoIntelligentScreen] ✅ Copié ${nouveauProduit.images.length} image(s) de 'images' vers 'base64_image'`);
           }
         }
 
@@ -4022,11 +4044,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }
         }
 
+        // ✅ NOUVEAU: Vérifier et logger le format des images avant envoi
+        const imagesCount = nouveauProduit.images?.length || 0;
+        const base64ImageCount = nouveauProduit.base64_image?.length || 0;
+        
         console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit (complètes):', {
           ...nouveauProduit,
-          images: compressedMedia?.images?.length || 0,
+          images: imagesCount,
+          base64_image: base64ImageCount,
           videos: compressedMedia?.videos?.length || 0
         });
+        
+        // ✅ NOUVEAU: Vérifier que les images sont bien présentes et dans le bon format
+        if (imagesCount === 0 && base64ImageCount === 0) {
+          console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ AUCUNE image dans nouveauProduit avant envoi!');
+          console.log('[FormulaireYukpoIntelligentScreen] 🔍 Clés disponibles dans nouveauProduit:', Object.keys(nouveauProduit));
+          console.log('[FormulaireYukpoIntelligentScreen] 🔍 compressedMedia?.images:', compressedMedia?.images?.length || 0);
+        } else {
+          console.log(`[FormulaireYukpoIntelligentScreen] ✅ Images prêtes: ${imagesCount} dans 'images', ${base64ImageCount} dans 'base64_image'`);
+          
+          // ✅ NOUVEAU: Vérifier le format des premières images
+          const firstImage = nouveauProduit.images?.[0] || nouveauProduit.base64_image?.[0];
+          if (firstImage) {
+            const isUrl = firstImage.startsWith('http://') || firstImage.startsWith('https://');
+            const isBase64 = firstImage.startsWith('data:') || (!isUrl && firstImage.length > 100);
+            console.log(`[FormulaireYukpoIntelligentScreen] 📋 Format première image: ${isUrl ? 'URL' : isBase64 ? 'Base64' : 'Inconnu'} (${firstImage.substring(0, 100)}...)`);
+          }
+        }
 
         // 💰 ÉTAPE 1 : Vérifier le solde (coût fixe : 3000 FCFA pour ajout produit)
         const COUT_AJOUT_PRODUIT = 3000;
@@ -4082,6 +4126,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               text: 'Confirmer',
               onPress: async () => {
                 try {
+                  // ✅ NOUVEAU: Vérification finale avant envoi
+                  const finalImagesCount = nouveauProduit.images?.length || 0;
+                  const finalBase64Count = nouveauProduit.base64_image?.length || 0;
+                  
+                  console.log(`[FormulaireYukpoIntelligentScreen] 🚀 Envoi produit avec ${finalImagesCount} image(s) dans 'images' et ${finalBase64Count} dans 'base64_image'`);
+                  
+                  // ✅ NOUVEAU: S'assurer que les images sont dans les deux champs pour compatibilité maximale
+                  if (finalImagesCount > 0 && finalBase64Count === 0) {
+                    nouveauProduit.base64_image = nouveauProduit.images;
+                    console.log('[FormulaireYukpoIntelligentScreen] ✅ Copié images vers base64_image avant envoi');
+                  } else if (finalBase64Count > 0 && finalImagesCount === 0) {
+                    nouveauProduit.images = nouveauProduit.base64_image;
+                    console.log('[FormulaireYukpoIntelligentScreen] ✅ Copié base64_image vers images avant envoi');
+                  }
+                  
                   // Appeler /api/services/{serviceId}/products
                   const userId = parseInt(user?.id || '0', 10);
                   const response = await apiPost(`/api/services/${serviceId}/products`, {
@@ -4094,6 +4153,23 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   }
 
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', response);
+                  
+                  // ✅ NOUVEAU: Vérifier le statut du traitement des médias dans la réponse
+                  if (response.data) {
+                    const resultData = response.data as any;
+                    if (resultData.media_processing_success !== undefined) {
+                      if (resultData.media_processing_success) {
+                        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Médias traités avec succès: ${resultData.media_insertion_count || 0} média(x) sauvegardé(s)`);
+                      } else {
+                        console.error(`[FormulaireYukpoIntelligentScreen] ❌ Échec traitement médias: ${resultData.media_insertion_count || 0} média(x) sauvegardé(s) sur ${resultData.media_expected_count || 0} attendu(s)`);
+                      }
+                    }
+                    
+                    // Si un job_id est retourné, informer l'utilisateur
+                    if (resultData.job_id) {
+                      console.log(`[FormulaireYukpoIntelligentScreen] 📋 Job ID: ${resultData.job_id} - Le traitement se fait en arrière-plan`);
+                    }
+                  }
 
                   const responseData: any = response.data ?? {};
                   const costPaid = Number(responseData.cost ?? response.cost ?? COUT_AJOUT_PRODUIT);

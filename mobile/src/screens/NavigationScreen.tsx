@@ -10,14 +10,16 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import * as Location from 'expo-location';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { NativeCard, NativeButton } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
+import LocationSelector, { LocationObject } from '../components/LocationSelector';
+import { PlaceScope } from '../services/placesService';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocationSafe } from '../contexts/LocationContext';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -68,6 +70,7 @@ const NavigationScreen: React.FC = () => {
     
     const [destination, setDestination] = useState('');
     const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [selectedLocation, setSelectedLocation] = useState<LocationObject | null>(null);
     const [routes, setRoutes] = useState<RouteOption[]>([]);
     const [selectedRoute, setSelectedRoute] = useState<RouteOption | null>(null);
     const [pointsOfInterest, setPointsOfInterest] = useState<PointOfInterest[]>([]);
@@ -77,23 +80,10 @@ const NavigationScreen: React.FC = () => {
     const [stats, setStats] = useState<NavigationStats | null>(null);
     const [waypoints, setWaypoints] = useState<Array<{ lat: number; lng: number; name: string }>>([]);
     
-    // ✅ NOUVEAU 2026-02-10: États pour les fonctionnalités intelligentes
+    // ✅ NOUVEAU 2026-02-10: États pour les fonctionnalités intelligentes (gardés pour compatibilité API)
     const [avoidTolls, setAvoidTolls] = useState(false);
     const [avoidHighways, setAvoidHighways] = useState(false);
     const [avoidFerries, setAvoidFerries] = useState(false);
-    const [showSmartFeatures, setShowSmartFeatures] = useState(true); // Afficher par défaut
-    
-    // ✅ NOUVEAU: États pour autocomplete et destinations favorites
-    const [autocompleteResults, setAutocompleteResults] = useState<Array<{
-        description: string;
-        address?: string;
-        latitude?: number;
-        longitude?: number;
-        is_saved?: boolean;
-        label?: string;
-        place_id?: string;
-    }>>([]);
-    const [showAutocomplete, setShowAutocomplete] = useState(false);
     const [savedDestinations, setSavedDestinations] = useState<Array<{
         id: string;
         label: string;
@@ -148,95 +138,8 @@ const NavigationScreen: React.FC = () => {
         }
     }, [user, loadSavedDestinations]);
 
-    // ✅ NOUVEAU: Autocomplete avec destinations favorites et Google Places
-    const handleAutocomplete = useCallback(async (query: string) => {
-        if (query.length < 2) {
-            setAutocompleteResults([]);
-            setShowAutocomplete(false);
-            return;
-        }
-
-        const results: Array<{
-            description: string;
-            address?: string;
-            latitude?: number;
-            longitude?: number;
-            is_saved?: boolean;
-            label?: string;
-            place_id?: string;
-        }> = [];
-
-        // 1. Vérifier les destinations favorites (domicile, bureau)
-        const destLower = query.toLowerCase().trim();
-        if (destLower.includes('domicile') || destLower.includes('maison') || destLower.includes('home')) {
-            const saved = savedDestinations.find(d => d.label === 'domicile');
-            if (saved) {
-                results.push({
-                    description: saved.custom_label || 'Domicile',
-                    address: saved.address,
-                    latitude: saved.latitude,
-                    longitude: saved.longitude,
-                    is_saved: true,
-                    label: 'domicile'
-                });
-            }
-        }
-        if (destLower.includes('bureau') || destLower.includes('office') || destLower.includes('travail')) {
-            const saved = savedDestinations.find(d => d.label === 'bureau');
-            if (saved) {
-                results.push({
-                    description: saved.custom_label || 'Bureau',
-                    address: saved.address,
-                    latitude: saved.latitude,
-                    longitude: saved.longitude,
-                    is_saved: true,
-                    label: 'bureau'
-                });
-            }
-        }
-
-        // 2. Appeler l'API backend pour Google Places Autocomplete
-        try {
-            const origin = await getCurrentPosition();
-            let url = `/api/navigation/autocomplete?query=${encodeURIComponent(query)}`;
-            if (origin) {
-                url += `&lat=${origin.lat}&lng=${origin.lng}`;
-            }
-            
-            const response = await apiGet(url);
-            if (response?.data?.results) {
-                // Ajouter les résultats Google Places
-                const googleResults = response.data.results.map((r: any) => ({
-                    description: r.description || r.formatted_address || '',
-                    address: r.formatted_address,
-                    place_id: r.place_id,
-                    latitude: r.location?.lat,
-                    longitude: r.location?.lng,
-                    is_saved: false
-                }));
-                results.push(...googleResults);
-            }
-        } catch (error) {
-            console.error('Erreur autocomplete Google Places:', error);
-            // Fallback: utiliser l'endpoint places standard
-            try {
-                const response = await apiGet(`/api/places/autocomplete?query=${encodeURIComponent(query)}`);
-                if (response?.data?.results) {
-                    const placesResults = response.data.results.map((r: any) => ({
-                        description: r.description || '',
-                        place_id: r.place_id,
-                        is_saved: false
-                    }));
-                    results.push(...placesResults);
-                }
-            } catch (fallbackError) {
-                console.error('Erreur autocomplete fallback:', fallbackError);
-            }
-        }
-
-        setAutocompleteResults(results);
-        setShowAutocomplete(results.length > 0);
-    }, [savedDestinations, getCurrentPosition]);
+    // ✅ SUPPRIMÉ: handleAutocomplete n'est plus nécessaire, LocationSelector le gère
+    // L'autocomplete est maintenant géré par LocationSelector
 
     // ✅ NOUVEAU: Vérifier si la destination est une destination favorite (domicile, bureau, etc.)
     const resolveDestination = useCallback(async (dest: string): Promise<{ lat: number; lng: number; address: string } | null> => {
@@ -286,8 +189,22 @@ const NavigationScreen: React.FC = () => {
 
     // Rechercher les routes
     const searchRoutes = useCallback(async () => {
-        if (!destination.trim()) {
-            Alert.alert('Destination requise', 'Veuillez saisir une destination');
+        // ✅ CORRIGÉ: Utiliser les coordonnées de selectedLocation si disponibles
+        let destCoords = destinationCoords;
+        
+        if (!destCoords && selectedLocation) {
+            // Si LocationSelector a fourni des coordonnées, les utiliser
+            if (selectedLocation.latitude && selectedLocation.longitude) {
+                destCoords = {
+                    lat: selectedLocation.latitude,
+                    lng: selectedLocation.longitude
+                };
+                setDestinationCoords(destCoords);
+            }
+        }
+        
+        if (!destCoords && !destination.trim()) {
+            Alert.alert('Destination requise', 'Veuillez sélectionner ou saisir une destination');
             return;
         }
 
@@ -300,15 +217,16 @@ const NavigationScreen: React.FC = () => {
                 return;
             }
 
-            // Géocoder la destination
-            const destCoords = await geocodeDestination(destination);
+            // Si pas de coordonnées, géocoder la destination
             if (!destCoords) {
-                Alert.alert('Erreur', 'Impossible de trouver cette destination');
-                setLoading(false);
-                return;
+                destCoords = await geocodeDestination(destination);
+                if (!destCoords) {
+                    Alert.alert('Erreur', 'Impossible de trouver cette destination');
+                    setLoading(false);
+                    return;
+                }
+                setDestinationCoords(destCoords);
             }
-
-            setDestinationCoords(destCoords);
 
             // ✅ CORRIGÉ 2026-02-10: Construire la liste des évitements selon les préférences
             const avoidList: string[] = [];
@@ -342,7 +260,7 @@ const NavigationScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [destination, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints]);
+    }, [destination, destinationCoords, selectedLocation, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints]);
 
     // Charger les points d'intérêt le long d'une route (automatiquement via Google Places API)
     const loadPointsOfInterest = useCallback(async (route: RouteOption) => {
@@ -527,7 +445,14 @@ const NavigationScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+            <KeyboardAwareScrollView 
+                style={styles.scrollView} 
+                contentContainerStyle={styles.scrollContent}
+                enableOnAndroid={true}
+                enableAutomaticScroll={true}
+                extraScrollHeight={100}
+                keyboardShouldPersistTaps="handled"
+            >
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.title}>🧭 Navigation Intelligente</Text>
@@ -605,203 +530,40 @@ const NavigationScreen: React.FC = () => {
                     </NativeCard>
                 )}
 
-                {/* ✅ NOUVEAU 2026-02-10: Fonctionnalités intelligentes visibles avant la recherche */}
-                {showSmartFeatures && (
-                    <NativeCard style={styles.smartFeaturesCard}>
-                        <View style={styles.smartFeaturesHeader}>
-                            <Text style={styles.smartFeaturesTitle}>⚡ Options de navigation</Text>
-                            <TouchableOpacity
-                                onPress={() => setShowSmartFeatures(false)}
-                                style={styles.collapseButton}
-                            >
-                                <SafeIcon name="ChevronUp" size={16} color={modernColors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.smartFeaturesContent}>
-                            <TouchableOpacity
-                                style={styles.smartFeatureOption}
-                                onPress={() => setAvoidTolls(!avoidTolls)}
-                                activeOpacity={0.7}
-                            >
-                                <View style={styles.smartFeatureCheckbox}>
-                                    {avoidTolls && <SafeIcon name="Check" size={16} color={modernColors.primary} />}
-                                </View>
-                                <Text style={styles.smartFeatureLabel}>Éviter les péages</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.smartFeatureOption}
-                                onPress={() => setAvoidHighways(!avoidHighways)}
-                                activeOpacity={0.7}
-                            >
-                                <View style={styles.smartFeatureCheckbox}>
-                                    {avoidHighways && <SafeIcon name="Check" size={16} color={modernColors.primary} />}
-                                </View>
-                                <Text style={styles.smartFeatureLabel}>Éviter les autoroutes</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.smartFeatureOption}
-                                onPress={() => setAvoidFerries(!avoidFerries)}
-                                activeOpacity={0.7}
-                            >
-                                <View style={styles.smartFeatureCheckbox}>
-                                    {avoidFerries && <SafeIcon name="Check" size={16} color={modernColors.primary} />}
-                                </View>
-                                <Text style={styles.smartFeatureLabel}>Éviter les ferries</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.smartFeaturesHint}>
-                            <SafeIcon name="Info" size={14} color={modernColors.textSecondary} />
-                            <Text style={styles.smartFeaturesHintText}>
-                                Les routes alternatives seront proposées après la recherche
-                            </Text>
-                        </View>
-                    </NativeCard>
-                )}
-                
-                {/* ✅ NOUVEAU: Bouton pour afficher les fonctionnalités si masquées */}
-                {!showSmartFeatures && (
-                    <TouchableOpacity
-                        style={styles.showSmartFeaturesButton}
-                        onPress={() => setShowSmartFeatures(true)}
-                    >
-                        <SafeIcon name="Settings" size={16} color={modernColors.primary} />
-                        <Text style={styles.showSmartFeaturesText}>Afficher les options de navigation</Text>
-                    </TouchableOpacity>
-                )}
+                {/* ✅ NOUVEAU: Texte explicatif sur les fonctionnalités intelligentes */}
+                <NativeCard style={styles.infoCard}>
+                    <View style={styles.infoContent}>
+                        <SafeIcon name="Sparkles" size={20} color={modernColors.primary} />
+                        <Text style={styles.infoText}>
+                            L'application va vous aider à trouver le meilleur chemin possible vers votre destination en anticipant les embouteillages et en vous permettant de trouver des sites spécifiques le long de votre trajet.
+                        </Text>
+                    </View>
+                </NativeCard>
 
-                {/* ✅ CORRIGÉ 2026-02-10: Saisie destination avec autocomplete amélioré et layout corrigé */}
+                {/* ✅ CORRIGÉ: Utilisation de LocationSelector pour l'autocomplete GPS */}
                 <NativeCard style={styles.searchCard}>
-                    <View style={styles.labelRow}>
-                        <Text style={styles.label}>🔍 Recherche intelligente</Text>
-                        {autocompleteResults.length > 0 && (
-                            <Text style={styles.autocompleteHint}>
-                                {autocompleteResults.filter(r => !r.is_saved).length > 0 && '🔍 Google Places'}
-                            </Text>
-                        )}
-                    </View>
-                    
-                    {/* ✅ CORRIGÉ: Champ de saisie en pleine largeur, bouton en dessous */}
-                    <View style={styles.inputContainer}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Tapez une adresse, lieu, ou destination..."
-                            value={destination}
-                            onChangeText={(text) => {
-                                setDestination(text);
-                                if (text.length >= 2) {
-                                    handleAutocomplete(text);
-                                } else {
-                                    setShowAutocomplete(false);
-                                    setAutocompleteResults([]);
-                                }
-                            }}
-                            onFocus={() => {
-                                if (destination.length >= 2) {
-                                    handleAutocomplete(destination);
-                                } else if (savedDestinations.length > 0) {
-                                    // Afficher les destinations favorites si le champ est vide
-                                    const savedResults = savedDestinations.map(dest => ({
-                                        description: dest.custom_label || (dest.label === 'domicile' ? '🏠 Domicile' : dest.label === 'bureau' ? '💼 Bureau' : `📍 ${dest.label}`),
-                                        address: dest.address,
-                                        latitude: dest.latitude,
-                                        longitude: dest.longitude,
-                                        is_saved: true,
-                                        label: dest.label
-                                    }));
-                                    setAutocompleteResults(savedResults);
-                                    setShowAutocomplete(savedResults.length > 0);
-                                }
-                            }}
-                            onBlur={() => {
-                                // Délai pour permettre le clic sur un résultat
-                                setTimeout(() => {
-                                    setShowAutocomplete(false);
-                                }, 200);
-                            }}
-                            onSubmitEditing={searchRoutes}
-                        />
-                        {/* ✅ CORRIGÉ: Autocomplete dropdown avec meilleur positionnement */}
-                        {showAutocomplete && autocompleteResults.length > 0 && (
-                            <View style={styles.autocompleteContainer}>
-                                <FlatList
-                                    data={autocompleteResults}
-                                    keyExtractor={(item, index) => `${item.description}-${index}`}
-                                    renderItem={({ item }) => (
-                                        <TouchableOpacity
-                                            style={styles.autocompleteItem}
-                                            onPress={async () => {
-                                                if (item.is_saved && item.latitude && item.longitude) {
-                                                    // Destination favorite
-                                                    setDestination(item.description.replace(/^[🏠💼📍]\s*/, ''));
-                                                    setDestinationCoords({
-                                                        lat: item.latitude,
-                                                        lng: item.longitude
-                                                    });
-                                                    setShowAutocomplete(false);
-                                                    // Rechercher automatiquement les routes
-                                                    setTimeout(() => {
-                                                        searchRoutes();
-                                                    }, 100);
-                                                } else if (item.place_id) {
-                                                    // Résultat Google Places - récupérer les coordonnées
-                                                    try {
-                                                        const response = await apiGet(`/api/navigation/place-details?place_id=${encodeURIComponent(item.place_id)}`);
-                                                        if (response?.data?.location) {
-                                                            setDestination(item.description);
-                                                            setDestinationCoords({
-                                                                lat: response.data.location.lat,
-                                                                lng: response.data.location.lng
-                                                            });
-                                                            setShowAutocomplete(false);
-                                                            // Rechercher automatiquement les routes
-                                                            setTimeout(() => {
-                                                                searchRoutes();
-                                                            }, 100);
-                                                        } else {
-                                                            // Fallback: utiliser la description et géocoder
-                                                            setDestination(item.description);
-                                                            setShowAutocomplete(false);
-                                                        }
-                                                    } catch (error) {
-                                                        console.error('Erreur récupération place details:', error);
-                                                        // Fallback: utiliser la description et géocoder
-                                                        setDestination(item.description);
-                                                        setShowAutocomplete(false);
-                                                    }
-                                                } else {
-                                                    // Pas de place_id, utiliser la description
-                                                    setDestination(item.description);
-                                                    setShowAutocomplete(false);
-                                                }
-                                            }}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={styles.autocompleteItemContent}>
-                                                {item.is_saved && (
-                                                    <SafeIcon name="Star" size={16} color="#FBBF24" />
-                                                )}
-                                                {!item.is_saved && (
-                                                    <SafeIcon name="MapPin" size={16} color={modernColors.primary} />
-                                                )}
-                                                <View style={styles.autocompleteTextContainer}>
-                                                    <Text style={styles.autocompleteText} numberOfLines={2}>
-                                                        {item.description}
-                                                    </Text>
-                                                    {item.address && item.address !== item.description && (
-                                                        <Text style={styles.autocompleteAddress} numberOfLines={1}>
-                                                            {item.address}
-                                                        </Text>
-                                                    )}
-                                                </View>
-                                            </View>
-                                        </TouchableOpacity>
-                                    )}
-                                    style={styles.autocompleteList}
-                                    keyboardShouldPersistTaps="handled"
-                                />
-                            </View>
-                        )}
-                    </View>
+                    <Text style={styles.label}>Votre destination</Text>
+                    <LocationSelector
+                        value={selectedLocation}
+                        onChange={(location: LocationObject) => {
+                            setSelectedLocation(location);
+                            setDestination(location.raw || location.place_name || '');
+                            
+                            // Si le lieu a des coordonnées, les utiliser directement
+                            if (location.latitude && location.longitude) {
+                                setDestinationCoords({
+                                    lat: location.latitude,
+                                    lng: location.longitude
+                                });
+                            } else {
+                                // Sinon, géocoder l'adresse
+                                geocodeDestination(location.raw || location.place_name || '');
+                            }
+                        }}
+                        placeholder="Tapez une adresse, lieu, ou destination..."
+                        scope={PlaceScope.ALL}
+                        style={styles.locationSelector}
+                    />
                     
                     {/* ✅ CORRIGÉ: Bouton de recherche en dessous du champ, pleine largeur */}
                     <TouchableOpacity
@@ -810,7 +572,7 @@ const NavigationScreen: React.FC = () => {
                             loading && styles.searchButtonDisabled
                         ]}
                         onPress={searchRoutes}
-                        disabled={loading || !destination.trim()}
+                        disabled={loading || (!destination.trim() && !selectedLocation)}
                         activeOpacity={0.8}
                     >
                         {loading ? (
@@ -979,7 +741,7 @@ const NavigationScreen: React.FC = () => {
                         <Text style={styles.navigateButtonText}>Démarrer la navigation</Text>
                     </NativeButton>
                 )}
-            </ScrollView>
+            </KeyboardAwareScrollView>
         </SafeNativeView>
     );
 };
@@ -1057,6 +819,21 @@ const styles = StyleSheet.create({
     searchCard: {
         marginBottom: modernStyles.spacing.lg,
     },
+    infoCard: {
+        marginBottom: modernStyles.spacing.md,
+        backgroundColor: modernColors.primaryLight || '#EFF6FF',
+    },
+    infoContent: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: modernStyles.spacing.sm,
+    },
+    infoText: {
+        flex: 1,
+        fontSize: 13,
+        lineHeight: 20,
+        color: modernColors.text,
+    },
     labelRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -1067,6 +844,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
+        marginBottom: modernStyles.spacing.sm,
+    },
+    locationSelector: {
+        marginBottom: modernStyles.spacing.md,
     },
     autocompleteHint: {
         fontSize: 11,

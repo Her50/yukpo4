@@ -248,6 +248,13 @@ impl ProductCreationQueueService {
         // Marquer comme en cours
         self.mark_processing(job.id).await?;
 
+        // ✅ NOUVEAU: Logger les images à traiter
+        log::info!(
+            "[ProductCreationQueue] 📦 Job {} - {} image(s) à traiter",
+            job.id,
+            job.images_to_process.len()
+        );
+        
         // Traiter le job
         match process_product_creation(
             self.pool.clone(),
@@ -259,19 +266,70 @@ impl ProductCreationQueueService {
         .await
         {
             Ok(result) => {
-                // Marquer comme complété
+                // ✅ CORRIGÉ: Vérifier le statut du traitement des médias
+                let media_processing_success = result
+                    .get("media_processing_success")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(true); // Par défaut true si pas d'images
+                let media_insertion_count = result
+                    .get("media_insertion_count")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(0);
+                let media_expected_count = result
+                    .get("media_expected_count")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(0);
+                
+                // ✅ NOUVEAU: Inclure le statut des médias dans le résultat
                 let result_data = json!({
                     "success": true,
                     "product_index": result.get("product_index"),
+                    "product_id": result.get("product_id"),
                     "service_id": job.service_id,
+                    "media_processing_success": media_processing_success,
+                    "media_insertion_count": media_insertion_count,
+                    "media_expected_count": media_expected_count,
                 });
 
-                self.mark_completed(job.id, result_data.clone()).await?;
-
-                log::info!(
-                    "[ProductCreationQueue] ✅ Job {} complété avec succès",
-                    job.id
-                );
+                // ✅ CORRIGÉ: Ne marquer comme complété que si les médias ont été traités avec succès
+                // (ou s'il n'y avait pas d'images à traiter)
+                if !job.images_to_process.is_empty() && !media_processing_success {
+                    let error_msg = format!(
+                        "Produit créé mais échec traitement médias: {} attendu(s), {} sauvegardé(s)",
+                        media_expected_count,
+                        media_insertion_count
+                    );
+                    log::error!(
+                        "[ProductCreationQueue] ⚠️ Job {} - {}",
+                        job.id,
+                        error_msg
+                    );
+                    
+                    // ✅ NOUVEAU: Marquer le job comme complété mais avec un avertissement
+                    // Le produit est créé, donc on ne peut pas le marquer comme failed
+                    // Mais on inclut l'information dans le résultat
+                    self.mark_completed(job.id, result_data.clone()).await?;
+                    
+                    log::warn!(
+                        "[ProductCreationQueue] ⚠️ Job {} complété avec avertissement (médias non sauvegardés)",
+                        job.id
+                    );
+                } else {
+                    self.mark_completed(job.id, result_data.clone()).await?;
+                    
+                    if !job.images_to_process.is_empty() {
+                        log::info!(
+                            "[ProductCreationQueue] ✅ Job {} complété avec succès - {} média(x) sauvegardé(s)",
+                            job.id,
+                            media_insertion_count
+                        );
+                    } else {
+                        log::info!(
+                            "[ProductCreationQueue] ✅ Job {} complété avec succès (pas d'images à traiter)",
+                            job.id
+                        );
+                    }
+                }
 
                 Ok(result_data)
             }

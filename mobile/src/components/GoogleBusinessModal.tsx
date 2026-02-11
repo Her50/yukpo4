@@ -7,24 +7,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  TextInput,
-  FlatList,
 } from 'react-native';
 import { NativeCard, NativeButton } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import LocationSelector, { LocationObject } from './LocationSelector';
+import { PlaceScope } from '../services/placesService';
 
 interface GoogleBusinessModalProps {
   visible: boolean;
   onClose: () => void;
   onSelectBusiness: (businessData: any) => void;
-}
-
-interface PlaceResult {
-  description: string;
-  place_id?: string;
-  types?: string[];
 }
 
 const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
@@ -33,87 +27,23 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
   onSelectBusiness,
 }) => {
   const [hasGoogleBusiness, setHasGoogleBusiness] = useState<boolean | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [autocompleteResults, setAutocompleteResults] = useState<PlaceResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<LocationObject | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
-  const [showAutocomplete, setShowAutocomplete] = useState(false);
 
-  // ✅ Recherche autocomplete Google Places
-  const handleSearch = useCallback(async (query: string) => {
-    if (query.length < 2) {
-      setAutocompleteResults([]);
-      setShowAutocomplete(false);
+  // ✅ Récupérer les détails complets du business depuis LocationObject
+  const handleSelectBusiness = useCallback(async (location: LocationObject) => {
+    if (!location.place_id) {
+      Alert.alert(
+        'Erreur',
+        'Ce lieu ne contient pas d\'identifiant Google Places. Veuillez sélectionner un établissement Google Business.'
+      );
       return;
     }
 
-    setLoading(true);
-    try {
-      // ✅ CORRECTION: Utiliser le bon format de paramètres pour l'API
-      const response = await apiGet('/api/places/autocomplete', {
-        params: {
-          query: query.trim(),
-          type: 'point', // ✅ CORRIGÉ: Utiliser 'point' qui correspond à 'establishment' dans le backend
-        },
-      });
-
-      console.log('[GoogleBusinessModal] Réponse autocomplete:', response);
-
-      // ✅ CORRECTION: Le backend retourne { success: true, data: [...], results: [...] }
-      // apiCall retourne { success: true, data: { success: true, data: [...], results: [...] } }
-      if (response.success && response.data) {
-        const apiData = response.data as any;
-        
-        // ✅ CORRECTION: Vérifier d'abord apiData.results (format enrichi avec place_id)
-        if (apiData.results && Array.isArray(apiData.results) && apiData.results.length > 0) {
-          setAutocompleteResults(apiData.results);
-          setShowAutocomplete(true);
-        } 
-        // ✅ CORRECTION: Sinon vérifier apiData.data (format simple array de strings)
-        else if (apiData.data && Array.isArray(apiData.data) && apiData.data.length > 0) {
-          // Convertir en format enrichi
-          const enrichedResults: PlaceResult[] = apiData.data.map((desc: string) => ({
-            description: desc,
-            place_id: undefined,
-            types: undefined,
-          }));
-          setAutocompleteResults(enrichedResults);
-          setShowAutocomplete(true);
-        } 
-        // ✅ CORRECTION: Si apiData est directement un array (cas de compatibilité)
-        else if (Array.isArray(apiData) && apiData.length > 0) {
-          const enrichedResults: PlaceResult[] = apiData.map((desc: string) => ({
-            description: desc,
-            place_id: undefined,
-            types: undefined,
-          }));
-          setAutocompleteResults(enrichedResults);
-          setShowAutocomplete(true);
-        } else {
-          console.warn('[GoogleBusinessModal] Aucun résultat trouvé dans la réponse:', apiData);
-          setAutocompleteResults([]);
-          setShowAutocomplete(false);
-        }
-      } else {
-        console.warn('[GoogleBusinessModal] Réponse non réussie ou vide:', response);
-        setAutocompleteResults([]);
-        setShowAutocomplete(false);
-      }
-    } catch (error) {
-      console.error('[GoogleBusinessModal] Erreur autocomplete:', error);
-      setAutocompleteResults([]);
-      setShowAutocomplete(false);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // ✅ Récupérer les détails complets du business
-  const handleSelectBusiness = useCallback(async (placeId: string, description: string) => {
     setLoadingDetails(true);
     try {
       const response = await apiGet('/api/places/google-business-details', {
-        params: { place_id: placeId },
+        params: { place_id: location.place_id },
       });
 
       if (response.success && response.data?.data) {
@@ -149,9 +79,7 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
   React.useEffect(() => {
     if (!visible) {
       setHasGoogleBusiness(null);
-      setSearchQuery('');
-      setAutocompleteResults([]);
-      setShowAutocomplete(false);
+      setSelectedLocation(null);
     }
   }, [visible]);
 
@@ -207,54 +135,27 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
                 Tapez le nom de votre boutique ou prestation pour la trouver sur Google
               </Text>
 
-              <View style={styles.searchContainer}>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Ex: Restaurant Le Gourmet, Douala"
-                  value={searchQuery}
-                  onChangeText={(text) => {
-                    setSearchQuery(text);
-                    handleSearch(text);
-                  }}
-                  autoFocus
-                />
-                {loading && (
-                  <ActivityIndicator
-                    size="small"
-                    color={modernColors.primary}
-                    style={styles.loadingIndicator}
-                  />
-                )}
-              </View>
-
-              {/* ✅ Liste des résultats autocomplete */}
-              {showAutocomplete && autocompleteResults.length > 0 && (
-                <View style={styles.autocompleteContainer}>
-                  <FlatList
-                    data={autocompleteResults}
-                    keyExtractor={(item, index) => item.place_id || `result-${index}`}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.autocompleteItem}
-                        onPress={() => {
-                          if (item.place_id) {
-                            handleSelectBusiness(item.place_id, item.description);
-                          }
-                        }}
-                        disabled={loadingDetails}
-                      >
-                        <SafeIcon name="MapPin" size={16} color={modernColors.primary} />
-                        <Text style={styles.autocompleteText} numberOfLines={2}>
-                          {item.description}
-                        </Text>
-                        {loadingDetails && (
-                          <ActivityIndicator size="small" color={modernColors.primary} />
-                        )}
-                      </TouchableOpacity>
-                    )}
-                    style={styles.autocompleteList}
-                    keyboardShouldPersistTaps="handled"
-                  />
+              {/* ✅ CORRIGÉ: Utilisation de LocationSelector pour l'autocomplete Google Places */}
+              <LocationSelector
+                value={selectedLocation}
+                onChange={(location: LocationObject) => {
+                  setSelectedLocation(location);
+                  
+                  // Si le lieu a un place_id, récupérer automatiquement les détails
+                  if (location.place_id) {
+                    handleSelectBusiness(location);
+                  }
+                }}
+                placeholder="Ex: Restaurant Le Gourmet, Douala"
+                scope={PlaceScope.ESTABLISHMENT}
+                style={styles.locationSelector}
+                enrichWithBackend={true}
+              />
+              
+              {loadingDetails && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={modernColors.primary} />
+                  <Text style={styles.loadingText}>Récupération des informations...</Text>
                 </View>
               )}
 
@@ -342,49 +243,20 @@ const styles = StyleSheet.create({
     color: modernColors.text,
     textAlign: 'center',
   },
-  searchContainer: {
-    position: 'relative',
+  locationSelector: {
     marginBottom: 12,
   },
-  searchInput: {
-    borderWidth: 1,
-    borderColor: modernColors.border,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: modernColors.text,
-    backgroundColor: modernColors.surface,
-  },
-  loadingIndicator: {
-    position: 'absolute',
-    right: 12,
-    top: 12,
-  },
-  autocompleteContainer: {
-    maxHeight: 300,
-    borderWidth: 1,
-    borderColor: modernColors.border,
-    borderRadius: 8,
-    backgroundColor: 'white',
-    marginBottom: 12,
-  },
-  autocompleteList: {
-    maxHeight: 300,
-  },
-  autocompleteItem: {
+  loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: modernColors.border,
-    gap: 12,
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 8,
   },
-  autocompleteText: {
-    flex: 1,
+  loadingText: {
     fontSize: 14,
-    color: modernColors.text,
+    color: modernColors.textSecondary,
   },
   skipButton: {
     alignSelf: 'center',

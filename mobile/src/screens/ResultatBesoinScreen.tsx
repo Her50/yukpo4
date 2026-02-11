@@ -752,8 +752,57 @@ const ResultatBesoinScreen: React.FC = () => {
                             
                             // ✅ CORRIGÉ 2026-02-10: Extraire les images/vidéos depuis TOUTES les sources possibles
                             // Priorité: productFromAPI.images/videos (direct) > productData.images/videos > []
-                            const extractedImages = productFromAPI.images || productData.images || [];
-                            const extractedVideos = productFromAPI.videos || productData.videos || [];
+                            // ✅ AMÉLIORÉ: Extraire aussi depuis product_data si c'est un objet JSON
+                            let extractedImages: any[] = [];
+                            let extractedVideos: any[] = [];
+                            
+                            // Source 1: productFromAPI.images/videos (direct - peut venir de la table media enrichie par le backend)
+                            if (Array.isArray(productFromAPI.images) && productFromAPI.images.length > 0) {
+                                extractedImages = productFromAPI.images;
+                            } else if (productFromAPI.images && !Array.isArray(productFromAPI.images)) {
+                                extractedImages = [productFromAPI.images];
+                            }
+                            
+                            if (Array.isArray(productFromAPI.videos) && productFromAPI.videos.length > 0) {
+                                extractedVideos = productFromAPI.videos;
+                            } else if (productFromAPI.videos && !Array.isArray(productFromAPI.videos)) {
+                                extractedVideos = [productFromAPI.videos];
+                            }
+                            
+                            // Source 2: productData.images/videos (où le backend enrichit avec les médias de la table media)
+                            if (extractedImages.length === 0 && productData) {
+                                if (Array.isArray(productData.images) && productData.images.length > 0) {
+                                    extractedImages = productData.images;
+                                } else if (productData.images && !Array.isArray(productData.images)) {
+                                    extractedImages = [productData.images];
+                                }
+                            }
+                            
+                            if (extractedVideos.length === 0 && productData) {
+                                if (Array.isArray(productData.videos) && productData.videos.length > 0) {
+                                    extractedVideos = productData.videos;
+                                } else if (productData.videos && !Array.isArray(productData.videos)) {
+                                    extractedVideos = [productData.videos];
+                                }
+                            }
+                            
+                            // ✅ AMÉLIORÉ: Normaliser les images/vidéos (extraire les URLs si ce sont des objets)
+                            const normalizeMediaArray = (mediaArray: any[]): string[] => {
+                                return mediaArray
+                                    .map((item: any) => {
+                                        if (typeof item === 'string') {
+                                            return item.trim();
+                                        } else if (item && typeof item === 'object') {
+                                            // Extraire l'URL depuis différents formats d'objets
+                                            return item.url || item.path || item.valeur || item.uri || item.src || null;
+                                        }
+                                        return null;
+                                    })
+                                    .filter((url): url is string => url !== null && url !== '' && url !== 'false');
+                            };
+                            
+                            const normalizedImages = normalizeMediaArray(extractedImages);
+                            const normalizedVideos = normalizeMediaArray(extractedVideos);
                             
                             // ✅ CORRIGÉ 2026-01-20: Extraire correctement tous les champs du produit
                             // ✅ CORRIGÉ 2026-01-21: S'assurer que les images et vidéos sont bien incluses depuis product_data
@@ -763,9 +812,9 @@ const ResultatBesoinScreen: React.FC = () => {
                                 ...productData,
                                 // ✅ CRITIQUE: Garder product_data comme structure séparée pour ProductCard
                                 product_data: productData, // ✅ Structure complète de product_data (inclut variants, has_variant, variation_prix, etc.)
-                                // ✅ CORRIGÉ 2026-02-10: Utiliser les images/vidéos extraites depuis toutes les sources
-                                images: Array.isArray(extractedImages) ? extractedImages : (extractedImages ? [extractedImages] : []),
-                                videos: Array.isArray(extractedVideos) ? extractedVideos : (extractedVideos ? [extractedVideos] : []),
+                                // ✅ CORRIGÉ 2026-02-10: Utiliser les images/vidéos normalisées
+                                images: normalizedImages,
+                                videos: normalizedVideos,
                                 // ✅ NOUVEAU 2026-01-XX: Préserver les variations de prix (variants, has_variant, variation_prix)
                                 has_variant: productData.has_variant || productFromAPI.has_variant || false,
                                 variants: productData.variants || productFromAPI.variants || [],
@@ -806,14 +855,14 @@ const ResultatBesoinScreen: React.FC = () => {
                                 product_name: transformedProduct.product_name,
                                 description: transformedProduct.description,
                                 description_produit: transformedProduct.description_produit,
-                                // ✅ CORRIGÉ 2026-02-10: Log détaillé des médias
-                                images_count: Array.isArray(transformedProduct.images) ? transformedProduct.images.length : 0,
-                                videos_count: Array.isArray(transformedProduct.videos) ? transformedProduct.videos.length : 0,
-                                images_sample: Array.isArray(transformedProduct.images) && transformedProduct.images.length > 0 
-                                    ? (typeof transformedProduct.images[0] === 'string' ? transformedProduct.images[0].substring(0, 100) : transformedProduct.images[0])
+                                // ✅ CORRIGÉ 2026-02-10: Log détaillé des médias normalisés
+                                images_count: normalizedImages.length,
+                                videos_count: normalizedVideos.length,
+                                images_sample: normalizedImages.length > 0 
+                                    ? normalizedImages[0].substring(0, 100) + '...'
                                     : 'aucune',
-                                videos_sample: Array.isArray(transformedProduct.videos) && transformedProduct.videos.length > 0
-                                    ? (typeof transformedProduct.videos[0] === 'string' ? transformedProduct.videos[0].substring(0, 100) : transformedProduct.videos[0])
+                                videos_sample: normalizedVideos.length > 0
+                                    ? normalizedVideos[0].substring(0, 100) + '...'
                                     : 'aucune',
                                 hasProductData: !!productFromAPI.product_data,
                                 productDataKeys: productData ? Object.keys(productData) : [],
@@ -824,11 +873,14 @@ const ResultatBesoinScreen: React.FC = () => {
                                     hasProductData: !!productFromAPI.product_data,
                                     product_data_description: productData?.description,
                                     product_data_description_produit: productData?.description_produit,
-                                    product_data_images_count: Array.isArray(productData?.images) ? productData.images.length : 0,
-                                    product_data_videos_count: Array.isArray(productData?.videos) ? productData.videos.length : 0,
+                                    product_data_images_count: Array.isArray(productData?.images) ? productData.images.length : (productData?.images ? 1 : 0),
+                                    product_data_videos_count: Array.isArray(productData?.videos) ? productData.videos.length : (productData?.videos ? 1 : 0),
                                     // ✅ NOUVEAU 2026-02-10: Vérifier aussi productFromAPI.images/videos directement
                                     direct_images_count: Array.isArray(productFromAPI.images) ? productFromAPI.images.length : (productFromAPI.images ? 1 : 0),
                                     direct_videos_count: Array.isArray(productFromAPI.videos) ? productFromAPI.videos.length : (productFromAPI.videos ? 1 : 0),
+                                    // ✅ NOUVEAU: Vérifier le format des images (string vs object)
+                                    direct_images_type: productFromAPI.images ? (Array.isArray(productFromAPI.images) ? 'array' : typeof productFromAPI.images) : 'absent',
+                                    product_data_images_type: productData?.images ? (Array.isArray(productData.images) ? 'array' : typeof productData.images) : 'absent',
                                 }
                             });
                             

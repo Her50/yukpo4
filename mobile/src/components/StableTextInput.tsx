@@ -127,6 +127,10 @@ const StableTextInput: React.FC<StableTextInputProps> = ({
       editable={props.editable !== false}
       // ✅ CORRECTION CRITIQUE: Éviter les problèmes de clavier sur Android
       showSoftInputOnFocus={true}
+      // ✅ CORRECTION CRITIQUE: Empêcher le blur automatique qui cause le saut de curseur
+      blurOnSubmit={props.multiline ? false : props.blurOnSubmit}
+      // ✅ CORRECTION CRITIQUE: S'assurer que le clavier peut s'afficher
+      keyboardType={props.keyboardType || 'default'}
     />
   );
 };

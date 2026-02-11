@@ -113,13 +113,17 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       bounces={Platform.OS === 'ios'}
       // ✅ Désactiver le padding automatique sur Android (géré par extraHeight)
       contentInsetAdjustmentBehavior="never"
-      // ✅ Améliorer la réactivité - fermer le clavier lors du scroll
-      keyboardDismissMode="interactive"
+      // ✅ CORRIGÉ: Ne pas fermer le clavier lors du scroll pour permettre la saisie
+      keyboardDismissMode="none"
       // ✅ CORRIGÉ: Désactiver scrollToOverflowEnabled pour éviter le scroll excessif
       viewIsInsideTabBar={false}
       scrollToOverflowEnabled={false}
       // ✅ NOUVEAU: Activer le scroll vers le champ actif
       enableResetKeyboardOnBlur={false}
+      // ✅ CORRECTION CRITIQUE: S'assurer que le clavier peut s'afficher
+      keyboardOpeningTime={0}
+      // ✅ CORRECTION CRITIQUE: Ne pas empêcher le clavier de s'afficher
+      resetScrollToCoords={{ x: 0, y: 0 }}
     >
       {children}
     </KeyboardAwareScrollView>
