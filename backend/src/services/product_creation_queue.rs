@@ -254,7 +254,7 @@ impl ProductCreationQueueService {
             job.id,
             job.images_to_process.len()
         );
-        
+
         // Traiter le job
         match process_product_creation(
             self.pool.clone(),
@@ -271,15 +271,11 @@ impl ProductCreationQueueService {
                     .get("media_processing_success")
                     .and_then(|v| v.as_bool())
                     .unwrap_or(true); // Par défaut true si pas d'images
-                let media_insertion_count = result
-                    .get("media_insertion_count")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(0);
-                let media_expected_count = result
-                    .get("media_expected_count")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(0);
-                
+                let media_insertion_count =
+                    result.get("media_insertion_count").and_then(|v| v.as_i64()).unwrap_or(0);
+                let media_expected_count =
+                    result.get("media_expected_count").and_then(|v| v.as_i64()).unwrap_or(0);
+
                 // ✅ NOUVEAU: Inclure le statut des médias dans le résultat
                 let result_data = json!({
                     "success": true,
@@ -299,24 +295,20 @@ impl ProductCreationQueueService {
                         media_expected_count,
                         media_insertion_count
                     );
-                    log::error!(
-                        "[ProductCreationQueue] ⚠️ Job {} - {}",
-                        job.id,
-                        error_msg
-                    );
-                    
+                    log::error!("[ProductCreationQueue] ⚠️ Job {} - {}", job.id, error_msg);
+
                     // ✅ NOUVEAU: Marquer le job comme complété mais avec un avertissement
                     // Le produit est créé, donc on ne peut pas le marquer comme failed
                     // Mais on inclut l'information dans le résultat
                     self.mark_completed(job.id, result_data.clone()).await?;
-                    
+
                     log::warn!(
                         "[ProductCreationQueue] ⚠️ Job {} complété avec avertissement (médias non sauvegardés)",
                         job.id
                     );
                 } else {
                     self.mark_completed(job.id, result_data.clone()).await?;
-                    
+
                     if !job.images_to_process.is_empty() {
                         log::info!(
                             "[ProductCreationQueue] ✅ Job {} complété avec succès - {} média(x) sauvegardé(s)",

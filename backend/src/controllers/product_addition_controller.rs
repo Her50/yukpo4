@@ -182,7 +182,7 @@ pub async fn process_product_creation(
             let real_product_id = product.id.to_string();
             let mut media_processing_success = true; // ✅ NOUVEAU: Suivi du succès du traitement des médias
             let mut media_insertion_count = 0; // ✅ NOUVEAU: Compteur de médias insérés
-            
+
             if !images_to_process.is_empty() {
                 log::info!(
                     "[process_product_creation] 🖼️ Traitement de {} image(s) pour produit {} (product_id: {})",
@@ -193,7 +193,7 @@ pub async fn process_product_creation(
                 log::info!(
                     "[process_product_creation] 📋 Validation des images avant traitement..."
                 );
-                
+
                 // ✅ NOUVEAU: Valider le format des images avant traitement
                 let mut valid_images = Vec::new();
                 for (idx, image_data) in images_to_process.iter().enumerate() {
@@ -204,12 +204,14 @@ pub async fn process_product_creation(
                         );
                         continue;
                     }
-                    
+
                     // Vérifier si c'est une URL valide
-                    let is_url = image_data.starts_with("http://") || image_data.starts_with("https://");
+                    let is_url =
+                        image_data.starts_with("http://") || image_data.starts_with("https://");
                     // Vérifier si c'est du base64 valide
-                    let is_base64 = !is_url && (image_data.starts_with("data:") || image_data.len() > 100);
-                    
+                    let is_base64 =
+                        !is_url && (image_data.starts_with("data:") || image_data.len() > 100);
+
                     if !is_url && !is_base64 {
                         log::warn!(
                             "[process_product_creation] ⚠️ Image {} format invalide (ni URL ni base64), ignorée",
@@ -217,13 +219,17 @@ pub async fn process_product_creation(
                         );
                         continue;
                     }
-                    
+
                     if is_base64 && !image_data.starts_with("data:") {
                         // Vérifier que c'est du base64 valide (caractères alphanumériques + / + =)
-                        let base64_chars: std::collections::HashSet<char> = 
-                            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".chars().collect();
-                        let is_valid_base64 = image_data.chars().all(|c| base64_chars.contains(&c) || c.is_whitespace());
-                        
+                        let base64_chars: std::collections::HashSet<char> =
+                            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+                                .chars()
+                                .collect();
+                        let is_valid_base64 = image_data
+                            .chars()
+                            .all(|c| base64_chars.contains(&c) || c.is_whitespace());
+
                         if !is_valid_base64 {
                             log::warn!(
                                 "[process_product_creation] ⚠️ Image {} base64 invalide, ignorée",
@@ -232,16 +238,16 @@ pub async fn process_product_creation(
                             continue;
                         }
                     }
-                    
+
                     valid_images.push(image_data.clone());
                 }
-                
+
                 log::info!(
                     "[process_product_creation] ✅ {} image(s) valide(s) sur {} image(s) reçue(s)",
                     valid_images.len(),
                     images_to_process.len()
                 );
-                
+
                 if valid_images.is_empty() {
                     log::error!(
                         "[process_product_creation] ❌ Aucune image valide à traiter pour produit {}",
@@ -277,14 +283,19 @@ pub async fn process_product_creation(
 
                     // Créer MediaStorageService (nécessaire pour OptimizedMediaProcessor)
                     let storage_root = PathBuf::from(
-                        std::env::var("UPLOAD_STORAGE_ROOT").unwrap_or_else(|_| "uploads".to_string()),
+                        std::env::var("UPLOAD_STORAGE_ROOT")
+                            .unwrap_or_else(|_| "uploads".to_string()),
                     );
                     use crate::config::storage::MediaStorageConfig;
                     let storage_config = MediaStorageConfig::from_env();
                     let media_storage = Arc::new(MediaStorageService::new(storage_config));
 
-                    let processor =
-                        OptimizedMediaProcessor::new(pool.clone(), storage_root, media_storage, config);
+                    let processor = OptimizedMediaProcessor::new(
+                        pool.clone(),
+                        storage_root,
+                        media_storage,
+                        config,
+                    );
 
                     // Convertir les images validées en MediaItem
                     let mut media_items: Vec<MediaItem> = Vec::new();
@@ -301,37 +312,37 @@ pub async fn process_product_creation(
                     );
 
                     if !media_items.is_empty() {
-                    // Traiter les médias en batch
-                    match processor
-                        .process_media_batch(
-                            service_id,
-                            Some(product_index.try_into().unwrap()),
-                            media_items,
-                        )
-                        .await
-                    {
-                        Ok(processed) => {
-                            log::info!(
+                        // Traiter les médias en batch
+                        match processor
+                            .process_media_batch(
+                                service_id,
+                                Some(product_index.try_into().unwrap()),
+                                media_items,
+                            )
+                            .await
+                        {
+                            Ok(processed) => {
+                                log::info!(
                                 "[process_product_creation] ✅ {} média(x) traité(s) avec succès, début insertion dans table media",
                                 processed.len()
                             );
-                            
-                            // Insérer les médias dans la table media avec le vrai product_id
-                            let mut tx = pool.begin().await.map_err(|e| {
-                                log::error!(
+
+                                // Insérer les médias dans la table media avec le vrai product_id
+                                let mut tx = pool.begin().await.map_err(|e| {
+                                    log::error!(
                                     "[process_product_creation] ❌ Erreur début transaction: {}",
                                     e
                                 );
-                                AppError::Internal(format!("Erreur début transaction: {}", e))
-                            })?;
+                                    AppError::Internal(format!("Erreur début transaction: {}", e))
+                                })?;
 
-                            let mut insertion_errors = Vec::new();
-                            
-                            for (image_index, media) in processed.iter().enumerate() {
-                                let is_main = image_index == 0;
+                                let mut insertion_errors = Vec::new();
 
-                                match sqlx::query(
-                                    r#"
+                                for (image_index, media) in processed.iter().enumerate() {
+                                    let is_main = image_index == 0;
+
+                                    match sqlx::query(
+                                        r#"
                                     INSERT INTO media (
                                         service_id, product_id, product_index, type, path,
                                         is_main_image, display_order, uploaded_at,
@@ -339,111 +350,105 @@ pub async fn process_product_creation(
                                     )
                                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                                     "#,
-                                )
-                                .bind(service_id)
-                                .bind(&real_product_id) // ✅ Utiliser le vrai product_id
-                                .bind(product_index)
-                                .bind("image")
-                                .bind(&media.file_path)
-                                .bind(is_main)
-                                .bind(image_index as i32)
-                                .bind(chrono::Utc::now().naive_utc())
-                                .bind(&media.image_signature)
-                                .bind(&media.image_hash)
-                                .bind(&media.image_metadata)
-                                .execute(&mut *tx)
-                                .await
-                                {
-                                    Err(e) => {
-                                        log::error!(
+                                    )
+                                    .bind(service_id)
+                                    .bind(&real_product_id) // ✅ Utiliser le vrai product_id
+                                    .bind(product_index)
+                                    .bind("image")
+                                    .bind(&media.file_path)
+                                    .bind(is_main)
+                                    .bind(image_index as i32)
+                                    .bind(chrono::Utc::now().naive_utc())
+                                    .bind(&media.image_signature)
+                                    .bind(&media.image_hash)
+                                    .bind(&media.image_metadata)
+                                    .execute(&mut *tx)
+                                    .await
+                                    {
+                                        Err(e) => {
+                                            log::error!(
                                             "[process_product_creation] ❌ Erreur insertion media {} pour produit {} (product_id: {}): {}",
                                             image_index,
                                             product_index,
                                             real_product_id,
                                             e
                                         );
-                                        insertion_errors.push((image_index, e.to_string()));
-                                    }
-                                    Ok(_) => {
-                                        media_insertion_count += 1;
-                                        log::info!(
+                                            insertion_errors.push((image_index, e.to_string()));
+                                        }
+                                        Ok(_) => {
+                                            media_insertion_count += 1;
+                                            log::info!(
                                             "[process_product_creation] ✅ Media {} inséré pour produit {} (product_id: {}, path: {})",
                                             image_index,
                                             product_index,
                                             real_product_id,
                                             media.file_path
                                         );
+                                        }
                                     }
                                 }
-                            }
 
-                            // ✅ CORRIGÉ: Commit seulement si au moins une insertion a réussi
-                            if media_insertion_count == 0 {
-                                log::error!(
+                                // ✅ CORRIGÉ: Commit seulement si au moins une insertion a réussi
+                                if media_insertion_count == 0 {
+                                    log::error!(
                                     "[process_product_creation] ❌ Aucun média inséré avec succès, rollback de la transaction"
                                 );
-                                let _ = tx.rollback().await;
-                                media_processing_success = false;
-                            } else if let Err(e) = tx.commit().await {
-                                log::error!(
+                                    let _ = tx.rollback().await;
+                                    media_processing_success = false;
+                                } else if let Err(e) = tx.commit().await {
+                                    log::error!(
                                     "[process_product_creation] ❌ Erreur commit transaction médias: {}",
                                     e
                                 );
-                                media_processing_success = false;
-                            } else {
-                                log::info!(
+                                    media_processing_success = false;
+                                } else {
+                                    log::info!(
                                     "[process_product_creation] ✅ {} média(x) sauvegardé(s) avec succès pour produit {} (product_id: {})",
                                     media_insertion_count,
                                     product_index,
                                     real_product_id
                                 );
-                                
-                                if !insertion_errors.is_empty() {
-                                    log::warn!(
+
+                                    if !insertion_errors.is_empty() {
+                                        log::warn!(
                                         "[process_product_creation] ⚠️ {} erreur(s) d'insertion sur {} média(x) total",
                                         insertion_errors.len(),
                                         processed.len()
                                     );
+                                    }
                                 }
                             }
-                        }
-                        Err(e) => {
-                            log::error!(
+                            Err(e) => {
+                                log::error!(
                                 "[process_product_creation] ❌ Erreur traitement batch médias: {}",
                                 e
                             );
-                            media_processing_success = false;
+                                media_processing_success = false;
+                            }
                         }
-                    }
-                } else {
-                    log::warn!(
+                    } else {
+                        log::warn!(
                         "[process_product_creation] ⚠️ Aucun média valide à traiter après validation"
                     );
-                    media_processing_success = false;
+                        media_processing_success = false;
+                    }
                 }
-            } else {
-                log::info!(
-                    "[process_product_creation] ℹ️ Aucune image à traiter pour produit {}",
-                    product_index
-                );
-                // Pas d'images n'est pas une erreur, donc media_processing_success reste true
-            }
-            
-            // ✅ NOUVEAU: Logger le résultat final du traitement des médias
-            if !images_to_process.is_empty() {
-                if media_processing_success && media_insertion_count > 0 {
-                    log::info!(
+
+                // ✅ NOUVEAU: Logger le résultat final du traitement des médias
+                if !images_to_process.is_empty() {
+                    if media_processing_success && media_insertion_count > 0 {
+                        log::info!(
                         "[process_product_creation] ✅ Traitement médias réussi: {} média(x) sauvegardé(s)",
                         media_insertion_count
                     );
-                } else {
-                    log::error!(
+                    } else {
+                        log::error!(
                         "[process_product_creation] ❌ ÉCHEC traitement médias: {} média(x) attendu(s), {} sauvegardé(s)",
                         images_to_process.len(),
                         media_insertion_count
                     );
+                    }
                 }
-            }
             }
 
             // ✅ PHASE 1: Mettre à jour autocomplete_characteristics avec le product_id de la table products
@@ -756,7 +761,7 @@ pub async fn add_product_to_service(
         // Fonction helper pour extraire les images d'un champ
         let mut extract_from_field = |field_name: &str, value: &serde_json::Value| -> usize {
             let mut count = 0;
-            
+
             match value {
                 serde_json::Value::Array(arr) => {
                     for item in arr {
@@ -767,7 +772,11 @@ pub async fn add_product_to_service(
                             }
                         } else if let Some(img_obj) = item.as_object() {
                             // Support de structures imbriquées : { url: "...", path: "...", valeur: "..." }
-                            if let Some(url) = img_obj.get("url").or_else(|| img_obj.get("path")).or_else(|| img_obj.get("valeur")) {
+                            if let Some(url) = img_obj
+                                .get("url")
+                                .or_else(|| img_obj.get("path"))
+                                .or_else(|| img_obj.get("valeur"))
+                            {
                                 if let Some(img_str) = url.as_str() {
                                     if !img_str.is_empty() {
                                         images_to_process.push(img_str.to_string());
@@ -792,38 +801,37 @@ pub async fn add_product_to_service(
                 }
                 _ => {}
             }
-            
+
             count
         };
-        
+
         // ✅ NOUVEAU: Liste exhaustive des champs possibles pour les images
         let image_fields = [
-            "imageUrls",           // Upload préalable (priorité)
-            "images",              // URLs ou base64
-            "base64_image",        // Rétrocompatibilité
-            "images_base64",       // Base64 array
-            "image_base64",        // Base64 string
-            "product_images",      // Format alternatif
-            "productImages",       // Format camelCase
-            "image_urls",          // Format snake_case
-            "image_url",           // Format snake_case (singulier)
-            "media_images",        // Format media
-            "mediaImages",         // Format camelCase
+            "imageUrls",      // Upload préalable (priorité)
+            "images",         // URLs ou base64
+            "base64_image",   // Rétrocompatibilité
+            "images_base64",  // Base64 array
+            "image_base64",   // Base64 string
+            "product_images", // Format alternatif
+            "productImages",  // Format camelCase
+            "image_urls",     // Format snake_case
+            "image_url",      // Format snake_case (singulier)
+            "media_images",   // Format media
+            "mediaImages",    // Format camelCase
         ];
-        
+
         for field_name in &image_fields {
             if let Some(value) = prod_obj.get(*field_name) {
                 let count = extract_from_field(field_name, value);
                 if count > 0 {
                     log_info(&format!(
                         "[add_product_to_service] ✅ Trouvé {} image(s) dans champ '{}'",
-                        count,
-                        field_name
+                        count, field_name
                     ));
                 }
             }
         }
-        
+
         // ✅ NOUVEAU: Recherche récursive dans les objets imbriqués
         // Par exemple : { media: { images: [...] } }
         for (key, value) in prod_obj.iter() {
@@ -831,7 +839,10 @@ pub async fn add_product_to_service(
                 if let Some(nested_obj) = value.as_object() {
                     for nested_key in &image_fields {
                         if let Some(nested_value) = nested_obj.get(*nested_key) {
-                            let count = extract_from_field(&format!("{}.{}", key, nested_key), nested_value);
+                            let count = extract_from_field(
+                                &format!("{}.{}", key, nested_key),
+                                nested_value,
+                            );
                             if count > 0 {
                                 log_info(&format!(
                                     "[add_product_to_service] ✅ Trouvé {} image(s) dans champ '{}.{}'",
@@ -855,18 +866,22 @@ pub async fn add_product_to_service(
         "[add_product_to_service] 📊 Total images extraites: {}",
         images_to_process.len()
     ));
-    
+
     // ✅ NOUVEAU: Logger un échantillon des images extraites pour diagnostic
     if !images_to_process.is_empty() {
         log_info(&format!(
             "[add_product_to_service] 📋 Échantillon images extraites (max 3): {:?}",
-            images_to_process.iter().take(3).map(|img| {
-                if img.len() > 150 {
-                    format!("{}... ({} chars)", &img[..150], img.len())
-                } else {
-                    img.clone()
-                }
-            }).collect::<Vec<_>>()
+            images_to_process
+                .iter()
+                .take(3)
+                .map(|img| {
+                    if img.len() > 150 {
+                        format!("{}... ({} chars)", &img[..150], img.len())
+                    } else {
+                        img.clone()
+                    }
+                })
+                .collect::<Vec<_>>()
         ));
     } else {
         log_warn(&format!(
@@ -891,7 +906,7 @@ pub async fn add_product_to_service(
                                 serde_json::Value::Array(arr) => {
                                     format!("Array[{}]", arr.len())
                                 }
-                                _ => format!("{:?}", v).chars().take(50).collect::<String>()
+                                _ => format!("{:?}", v).chars().take(50).collect::<String>(),
                             };
                             (k.clone(), value_preview)
                         })
