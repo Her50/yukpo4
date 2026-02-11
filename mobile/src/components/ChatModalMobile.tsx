@@ -1291,34 +1291,46 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             </TouchableOpacity>
                         )}
 
-                        {/* ✅ NOUVEAU 2026-01-23: Bouton "Envoyer lien avis" */}
-                        <TouchableOpacity
-                            style={styles.mediaButton}
-                            onPress={async () => {
-                                if (!service?.id) {
-                                    Alert.alert('Erreur', 'Service non disponible');
-                                    return;
-                                }
+                        {/* ✅ NOUVEAU 2026-01-23: Bouton "Envoyer lien avis" - Visible uniquement pour le propriétaire */}
+                        {(() => {
+                            // ✅ CORRECTION: Vérifier si l'utilisateur est propriétaire du service
+                            const isOwner = user?.id && service?.user_id && Number(user.id) === Number(service.user_id);
+                            
+                            if (!isOwner) {
+                                return null; // Ne pas afficher le bouton si l'utilisateur n'est pas propriétaire
+                            }
+                            
+                            return (
+                                <TouchableOpacity
+                                    style={styles.mediaButton}
+                                    onPress={async () => {
+                                        if (!service?.id) {
+                                            Alert.alert('Erreur', 'Service non disponible');
+                                            return;
+                                        }
 
-                                // Générer le lien vers les avis du produit/service
-                                const reviewLink = `yukpo://reviews/${service.id}`;
-                                const productName = getServiceFieldValue(service?.data?.titre_service) || 
-                                                   getServiceFieldValue(service?.data?.nom_produit) || 
-                                                   'ce produit';
-                                
-                                // Pré-remplir le message avec le lien
-                                const messageWithLink = `Bonjour, j'aimerais avoir votre avis sur ${productName}.\n\nLien pour laisser un avis : ${reviewLink}`;
-                                
-                                setNewMessage(messageWithLink);
-                                
-                                // Scroll vers le bas pour montrer le message
-                                setTimeout(() => {
-                                    scrollViewRef.current?.scrollToEnd({ animated: true });
-                                }, 100);
-                            }}
-                        >
-                            <SafeIcon name="star" size={18} color="#F59E0B" />
-                        </TouchableOpacity>
+                                        // ✅ CORRECTION: Générer un lien HTTP/HTTPS cliquable au lieu d'un deep link
+                                        // Le deep link yukpo:// n'est pas cliquable dans le chat
+                                        const reviewLink = `https://yukpomnang.com/reviews/${service.id}`;
+                                        const productName = getServiceFieldValue(service?.data?.titre_service) || 
+                                                           getServiceFieldValue(service?.data?.nom_produit) || 
+                                                           'ce produit';
+                                        
+                                        // ✅ CORRECTION: Pré-remplir le message avec le lien HTTP cliquable
+                                        const messageWithLink = `Bonjour, j'aimerais avoir votre avis sur ${productName}.\n\nLien pour laisser un avis : ${reviewLink}`;
+                                        
+                                        setNewMessage(messageWithLink);
+                                        
+                                        // Scroll vers le bas pour montrer le message
+                                        setTimeout(() => {
+                                            scrollViewRef.current?.scrollToEnd({ animated: true });
+                                        }, 100);
+                                    }}
+                                >
+                                    <SafeIcon name="star" size={18} color="#F59E0B" />
+                                </TouchableOpacity>
+                            );
+                        })()}
 
                         {/* ✅ NOUVEAU: Bouton "Négocier le prix" */}
                         <TouchableOpacity
@@ -1850,7 +1862,7 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 4,
     },
     messageBubbleRight: {
-        backgroundColor: modernColors.primary,
+        backgroundColor: '#8B9AFF', // ✅ CORRIGÉ: Couleur plus claire pour les messages envoyés (au lieu de modernColors.primary trop foncé)
         borderBottomRightRadius: 4,
     },
     messageText: {

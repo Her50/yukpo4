@@ -20,6 +20,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import SafeIcon from '../components/SafeIcon';
+import { modernColors } from '../theme/modernTheme';
 
 interface RouteParams {
   serviceId: number;
@@ -249,30 +250,30 @@ const CreateFlashPromoScreen: React.FC = () => {
 
   if (loadingProducts) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Chargement des produits...</Text>
+      <View style={[styles.container, { backgroundColor: modernColors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={modernColors.primary} />
+        <Text style={[styles.loadingText, { color: modernColors.textSecondary }]}>Chargement des produits...</Text>
       </View>
     );
   }
 
   return (
     <ScrollView 
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: modernColors.background }]}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={true}
     >
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.text }]}>
+        <Text style={[styles.title, { color: modernColors.text }]}>
           ⚡ Créer un Flash Promotionnel
         </Text>
-        <Text style={[styles.subtitle, { color: colors.text, opacity: 0.85 }]}>
+        <Text style={[styles.subtitle, { color: modernColors.textSecondary }]}>
           Gratuit - Créez une promotion limitée dans le temps pour vos produits
         </Text>
 
         <NativeCard style={styles.card}>
-          <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>Service</Text>
-          <Text style={[styles.value, { color: colors.text, fontWeight: '600' }]}>
+          <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Service</Text>
+          <Text style={[styles.value, { color: modernColors.text, fontWeight: '600' }]}>
             {serviceTitle || `Service #${serviceId}`}
           </Text>
         </NativeCard>
@@ -280,7 +281,7 @@ const CreateFlashPromoScreen: React.FC = () => {
         {/* ✅ NOUVEAU: Sélection multiple de produits */}
         <NativeCard style={styles.card}>
           <View style={styles.productHeaderRow}>
-            <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>
+            <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>
               Produits à promouvoir * {selectedProductIndexes.length > 0 && `(${selectedProductIndexes.length} sélectionné${selectedProductIndexes.length > 1 ? 's' : ''})`}
             </Text>
             {products.length > 0 && (
@@ -292,16 +293,16 @@ const CreateFlashPromoScreen: React.FC = () => {
                     setSelectedProductIndexes(products.map(p => p.index));
                   }
                 }}
-                style={[styles.selectAllButton, { backgroundColor: colors.primary + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }]}
+                style={[styles.selectAllButton, { backgroundColor: modernColors.primary + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }]}
               >
-                <Text style={[styles.selectAllText, { color: colors.primary, fontWeight: '700' }]}>
+                <Text style={[styles.selectAllText, { color: modernColors.primary, fontWeight: '700' }]}>
                   {selectedProductIndexes.length === products.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                 </Text>
               </TouchableOpacity>
             )}
           </View>
           {products.length === 0 ? (
-            <Text style={[styles.emptyText, { color: colors.text, opacity: 0.7 }]}>
+            <Text style={[styles.emptyText, { color: modernColors.textSecondary }]}>
               Aucun produit trouvé dans ce service
             </Text>
           ) : (
@@ -316,26 +317,26 @@ const CreateFlashPromoScreen: React.FC = () => {
                     style={[
                       styles.productItem,
                       { 
-                        backgroundColor: isSelected ? colors.primary + '20' : colors.surface,
-                        borderColor: isSelected ? colors.primary : colors.border,
+                        backgroundColor: isSelected ? modernColors.primary + '20' : modernColors.surface,
+                        borderColor: isSelected ? modernColors.primary : modernColors.border,
                       }
                     ]}
                     onPress={() => toggleProductSelection(item.index)}
                   >
                     <View style={styles.productContent}>
                       <View style={styles.productHeader}>
-                        <SafeIcon name={isSelected ? 'check-circle' : 'circle'} size={22} color={isSelected ? colors.primary : colors.textSecondary} />
-                        <Text style={[styles.productName, { color: colors.text, fontWeight: '700' }]}>
+                        <SafeIcon name={isSelected ? 'check-circle' : 'circle'} size={22} color={isSelected ? modernColors.primary : modernColors.textSecondary} />
+                        <Text style={[styles.productName, { color: modernColors.text, fontWeight: '700' }]}>
                           {item.nom}
                         </Text>
                       </View>
                       {item.description && (
-                        <Text style={[styles.productDescription, { color: colors.text, opacity: 0.8 }]} numberOfLines={2}>
+                        <Text style={[styles.productDescription, { color: modernColors.textSecondary }]} numberOfLines={2}>
                           {item.description}
                         </Text>
                       )}
                       {item.prix && item.prix > 0 && (
-                        <Text style={[styles.productPrice, { color: colors.primary, fontWeight: '700' }]}>
+                        <Text style={[styles.productPrice, { color: modernColors.primary, fontWeight: '700' }]}>
                           {item.prix.toLocaleString()} FCFA
                         </Text>
                       )}
@@ -347,27 +348,35 @@ const CreateFlashPromoScreen: React.FC = () => {
           )}
         </NativeCard>
 
-        <NativeInput
-          label="Titre de la promotion *"
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Ex: Réduction exceptionnelle -50%"
-          style={styles.input}
-        />
+        <View style={styles.inputWrapper}>
+          <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+            Titre de la promotion *
+          </Text>
+          <NativeInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Ex: Réduction exceptionnelle -50%"
+            style={styles.input}
+          />
+        </View>
 
-        <NativeInput
-          label="Description (optionnel)"
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Décrivez votre offre promotionnelle"
-          multiline
-          numberOfLines={3}
-          style={styles.input}
-        />
+        <View style={styles.inputWrapper}>
+          <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+            Description (optionnel)
+          </Text>
+          <NativeInput
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Décrivez votre offre promotionnelle"
+            multiline
+            numberOfLines={3}
+            style={styles.input}
+          />
+        </View>
 
         <NativeCard style={styles.card}>
-          <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>Type de réduction *</Text>
-          <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}>
+          <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Type de réduction *</Text>
+          <View style={[styles.pickerContainer, { backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border }]}>
             <Picker
               selectedValue={discountType}
               onValueChange={(value) => {
@@ -376,31 +385,35 @@ const CreateFlashPromoScreen: React.FC = () => {
                   setDiscountValue('');
                 }
               }}
-              style={{ color: colors.text, fontWeight: '600' }}
-              itemStyle={{ color: colors.text, fontWeight: '600' }}
+              style={{ color: modernColors.text, fontWeight: '600' }}
+              itemStyle={{ color: modernColors.text, fontWeight: '600' }}
             >
-              <Picker.Item label="Pourcentage (%)" value="percentage" color={colors.text} />
-              <Picker.Item label="Montant fixe (FCFA)" value="fixed" color={colors.text} />
-              <Picker.Item label="Gratuit" value="free" color={colors.text} />
+              <Picker.Item label="Pourcentage (%)" value="percentage" color={modernColors.text} />
+              <Picker.Item label="Montant fixe (FCFA)" value="fixed" color={modernColors.text} />
+              <Picker.Item label="Gratuit" value="free" color={modernColors.text} />
             </Picker>
           </View>
 
           {discountType !== 'free' && (
-            <NativeInput
-              label={discountType === 'percentage' ? 'Pourcentage (%) *' : 'Montant (FCFA) *'}
-              value={discountValue}
-              onChangeText={setDiscountValue}
-              placeholder={discountType === 'percentage' ? 'Ex: 50' : 'Ex: 5000'}
-              keyboardType="numeric"
-              style={styles.input}
-            />
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+                {discountType === 'percentage' ? 'Pourcentage (%) *' : 'Montant (FCFA) *'}
+              </Text>
+              <NativeInput
+                value={discountValue}
+                onChangeText={setDiscountValue}
+                placeholder={discountType === 'percentage' ? 'Ex: 50' : 'Ex: 5000'}
+                keyboardType="numeric"
+                style={styles.input}
+              />
+            </View>
           )}
         </NativeCard>
 
         {/* ✅ NOUVEAU: Disponibilité (online, live, both) */}
         <NativeCard style={styles.card}>
-          <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>Disponibilité *</Text>
-          <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}>
+          <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Disponibilité *</Text>
+          <View style={[styles.pickerContainer, { backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border }]}>
             <Picker
               selectedValue={availability}
               onValueChange={(value) => {
@@ -409,37 +422,45 @@ const CreateFlashPromoScreen: React.FC = () => {
                   setLiveSessionId('');
                 }
               }}
-              style={{ color: colors.text, fontWeight: '600' }}
-              itemStyle={{ color: colors.text, fontWeight: '600' }}
+              style={{ color: modernColors.text, fontWeight: '600' }}
+              itemStyle={{ color: modernColors.text, fontWeight: '600' }}
             >
-              <Picker.Item label="📱 En ligne uniquement" value="online" color={colors.text} />
-              <Picker.Item label="📺 Live uniquement" value="live" color={colors.text} />
-              <Picker.Item label="📱📺 En ligne et Live" value="both" color={colors.text} />
+              <Picker.Item label="📱 En ligne uniquement" value="online" color={modernColors.text} />
+              <Picker.Item label="📺 Live uniquement" value="live" color={modernColors.text} />
+              <Picker.Item label="📱📺 En ligne et Live" value="both" color={modernColors.text} />
             </Picker>
           </View>
           {(availability === 'live' || availability === 'both') && (
-            <NativeInput
-              label="ID Session Live (optionnel)"
-              value={liveSessionId}
-              onChangeText={setLiveSessionId}
-              placeholder="Ex: uuid-de-la-session-live"
-              style={styles.input}
-            />
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+                ID Session Live (optionnel)
+              </Text>
+              <NativeInput
+                value={liveSessionId}
+                onChangeText={setLiveSessionId}
+                placeholder="Ex: uuid-de-la-session-live"
+                style={styles.input}
+              />
+            </View>
           )}
         </NativeCard>
 
         {/* ✅ NOUVEAU: Limite de stock */}
-        <NativeInput
-          label="Limite de stock (optionnel)"
-          value={stockCap}
-          onChangeText={setStockCap}
-          placeholder="Ex: 50 (nombre d'unités disponibles)"
-          keyboardType="numeric"
-          style={styles.input}
-        />
+        <View style={styles.inputWrapper}>
+          <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+            Limite de stock (optionnel)
+          </Text>
+          <NativeInput
+            value={stockCap}
+            onChangeText={setStockCap}
+            placeholder="Ex: 50 (nombre d'unités disponibles)"
+            keyboardType="numeric"
+            style={styles.input}
+          />
+        </View>
 
         <NativeCard style={styles.card}>
-          <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>Date de début *</Text>
+          <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Date de début *</Text>
           <NativeButton
             title={formatDate(startsAt)}
             onPress={() => setShowStartPicker(true)}
@@ -463,7 +484,7 @@ const CreateFlashPromoScreen: React.FC = () => {
         </NativeCard>
 
         <NativeCard style={styles.card}>
-          <Text style={[styles.label, { color: colors.text, fontWeight: '700' }]}>Date de fin *</Text>
+          <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Date de fin *</Text>
           <NativeButton
             title={formatDate(endsAt)}
             onPress={() => setShowEndPicker(true)}
@@ -486,15 +507,19 @@ const CreateFlashPromoScreen: React.FC = () => {
           )}
         </NativeCard>
 
-        <NativeInput
-          label="Conditions (optionnel)"
-          value={conditions}
-          onChangeText={setConditions}
-          placeholder="Ex: Valable uniquement en magasin, minimum d'achat 10000 FCFA"
-          multiline
-          numberOfLines={2}
-          style={styles.input}
-        />
+        <View style={styles.inputWrapper}>
+          <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+            Conditions (optionnel)
+          </Text>
+          <NativeInput
+            value={conditions}
+            onChangeText={setConditions}
+            placeholder="Ex: Valable uniquement en magasin, minimum d'achat 10000 FCFA"
+            multiline
+            numberOfLines={2}
+            style={styles.input}
+          />
+        </View>
 
         <View style={styles.buttonContainer}>
           <NativeButton
@@ -514,7 +539,7 @@ const CreateFlashPromoScreen: React.FC = () => {
 
         {loading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={modernColors.primary} />
           </View>
         )}
       </View>
@@ -537,12 +562,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 8,
     letterSpacing: 0.5,
+    color: modernColors.text, // ✅ CORRIGÉ: Couleur de texte visible
   },
   subtitle: {
     fontSize: 15,
     marginBottom: 24,
     lineHeight: 22,
-    opacity: 0.9,
+    color: modernColors.textSecondary, // ✅ CORRIGÉ: Couleur de texte visible
   },
   card: {
     marginBottom: 16,
@@ -553,14 +579,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 10,
     letterSpacing: 0.3,
+    color: modernColors.text, // ✅ CORRIGÉ: Couleur de texte visible
   },
   value: {
     fontSize: 16,
     fontWeight: '600',
     marginTop: 4,
+    color: modernColors.text, // ✅ CORRIGÉ: Couleur de texte visible
+  },
+  inputWrapper: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 8,
+    letterSpacing: 0.3,
   },
   input: {
-    marginBottom: 16,
+    marginBottom: 0,
   },
   pickerContainer: {
     borderRadius: 10,
@@ -595,6 +632,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
     marginTop: 8,
+    color: modernColors.textSecondary, // ✅ CORRIGÉ: Couleur de texte visible
   },
   productItem: {
     padding: 14,
@@ -634,12 +672,14 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     flex: 1,
     letterSpacing: 0.2,
+    color: modernColors.text, // ✅ CORRIGÉ: Couleur de texte visible
   },
   productDescription: {
     fontSize: 13,
     marginLeft: 32,
     marginTop: 6,
     lineHeight: 18,
+    color: modernColors.textSecondary, // ✅ CORRIGÉ: Couleur de texte visible
   },
   productPrice: {
     fontSize: 15,
@@ -647,6 +687,7 @@ const styles = StyleSheet.create({
     marginLeft: 32,
     marginTop: 6,
     letterSpacing: 0.3,
+    color: modernColors.primary, // ✅ CORRIGÉ: Couleur de texte visible
   },
 });
 

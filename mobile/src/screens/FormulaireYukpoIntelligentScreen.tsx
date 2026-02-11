@@ -2418,47 +2418,64 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   }, []);
 
   // Gérer les changements de champs
-  // ✅ CORRECTION CRITIQUE: Utiliser debounce pour éviter les re-renders qui font sauter le curseur
+  // ✅ CORRECTION CRITIQUE: Pour les champs texte, ne pas mettre à jour valeursFormulaire pendant la saisie
+  // Cela évite les re-renders qui font sauter le curseur. La mise à jour se fait au blur.
   const handleFieldChange = React.useCallback((fieldName: string, value: any) => {
-    // Convertir automatiquement les prix en nombres
-    let processedValue = value;
-    if (fieldName === 'prix' && typeof value === 'string' && value.trim() !== '') {
-      const numericValue = parseFloat(value);
-      if (!isNaN(numericValue)) {
-        processedValue = numericValue;
+    // ✅ CORRECTION CRITIQUE: Pour TOUS les champs texte (y compris numériques),
+    // stocker seulement dans pendingValuesRef sans mettre à jour valeursFormulaire
+    // Cela évite les re-renders pendant la saisie qui causent les sauts de curseur
+    // La conversion en nombre pour 'prix' se fera au blur dans handleFieldBlur
+    const isTextInput = typeof value === 'string';
+    
+    if (isTextInput) {
+      // Pour les champs texte: stocker dans pendingValuesRef seulement (garder comme string)
+      // La mise à jour de valeursFormulaire se fera au blur via handleFieldBlur
+      // Cela inclut les champs numériques car l'utilisateur tape une string
+      pendingValuesRef.current[fieldName] = value;
+      return;
+    }
+
+    // Pour les autres champs (select, checkbox, etc. - valeurs non-string), mettre à jour immédiatement
+    setValeursFormulaire(prev => {
+      // ✅ Vérifier si la valeur a changé depuis le dernier rendu pour éviter les re-renders inutiles
+      if (prev[fieldName] === value) {
+        return prev;
       }
-    }
+      return {
+        ...prev,
+        [fieldName]: value
+      };
+    });
+    // Nettoyer la valeur temporaire
+    delete pendingValuesRef.current[fieldName];
+  }, []);
 
-    // ✅ NOUVEAU: Stocker la valeur temporairement pour l'affichage immédiat
-    pendingValuesRef.current[fieldName] = processedValue;
-
-    // ✅ NOUVEAU: Annuler le timeout précédent pour ce champ
-    if (debounceTimeoutsRef.current[fieldName]) {
-      clearTimeout(debounceTimeoutsRef.current[fieldName]);
-    }
-
-    // ✅ CORRECTION CRITIQUE: Réduire le debounce pour améliorer la fluidité
-    // StableTextInput gère déjà son propre debounce, donc on peut réduire ici
-    // Pour les champs texte simples, utiliser un délai de 100ms (réduit pour plus de fluidité)
-    // Pour les autres champs (select, checkbox, etc.), mettre à jour immédiatement
-    const isTextInput = typeof processedValue === 'string';
-    const debounceDelay = isTextInput ? 100 : 0; // ✅ RÉDUIT: De 300ms à 100ms pour plus de fluidité
-
-    debounceTimeoutsRef.current[fieldName] = setTimeout(() => {
+  // ✅ NOUVEAU: Handler pour le blur des champs texte - met à jour valeursFormulaire
+  const handleFieldBlur = React.useCallback((fieldName: string) => {
+    // Si une valeur temporaire existe, la sauvegarder dans valeursFormulaire
+    if (pendingValuesRef.current[fieldName] !== undefined) {
+      let value = pendingValuesRef.current[fieldName];
+      
+      // ✅ Convertir automatiquement les prix en nombres au blur
+      if (fieldName === 'prix' && typeof value === 'string' && value.trim() !== '') {
+        const numericValue = parseFloat(value);
+        if (!isNaN(numericValue)) {
+          value = numericValue;
+        }
+      }
+      
       setValeursFormulaire(prev => {
-        // ✅ Vérifier si la valeur a changé depuis le dernier rendu pour éviter les re-renders inutiles
-        if (prev[fieldName] === processedValue) {
+        if (prev[fieldName] === value) {
           return prev;
         }
         return {
-      ...prev,
-      [fieldName]: processedValue
+          ...prev,
+          [fieldName]: value
         };
       });
-      // Nettoyer la valeur temporaire après la mise à jour
+      // Nettoyer la valeur temporaire
       delete pendingValuesRef.current[fieldName];
-      delete debounceTimeoutsRef.current[fieldName];
-    }, debounceDelay);
+    }
   }, []);
 
   // Gérer les changements d'images produit
@@ -3316,6 +3333,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 handleFieldChange(field.name, text);
               }}
               onBlur={() => {
+                // ✅ CORRECTION CRITIQUE: Sauvegarder la valeur dans valeursFormulaire au blur
+                handleFieldBlur(field.name);
                 // ✅ CORRECTION CRITIQUE: Effacer l'erreur seulement lors du blur (quand l'utilisateur quitte le champ)
                 if (hasError) {
                   setFieldErrors(prev => {
@@ -3393,6 +3412,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // Cela évite les re-renders pendant la saisie qui causent les sauts de curseur
                 handleFieldChange(field.name, text);
               }}
+              onBlur={() => {
+                // ✅ CORRECTION CRITIQUE: Sauvegarder la valeur dans valeursFormulaire au blur
+                handleFieldBlur(field.name);
+              }}
               multiline={true}
               numberOfLines={linesMinimum}
               textAlignVertical="top"
@@ -3420,6 +3443,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           </View>
         );
       case 'number':
+        // ✅ CORRECTION CRITIQUE: Utiliser pendingValuesRef pour l'affichage pendant la saisie
+        const numberRawValue = pendingValuesRef.current[field.name] !== undefined 
+          ? pendingValuesRef.current[field.name] 
+          : valeursFormulaire[field.name];
+        const numberValue = numberRawValue !== undefined && numberRawValue !== null 
+          ? String(numberRawValue) 
+          : '';
+        
         // ✅ Cas spécial : Prix et Devise sur la même ligne
         if (field.name === 'prix') {
           return (
@@ -3431,8 +3462,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 <StableTextInput
                   key={`input-${field.name}`}
                   placeholder={field.placeholder}
-                  value={valeursFormulaire[field.name]?.toString() || ''}
+                  value={numberValue}
                   onChangeText={(text) => handleFieldChange(field.name, text)}
+                  onBlur={() => handleFieldBlur(field.name)}
                   keyboardType="numeric"
                   debounceMs={0}
                   style={styles.fieldInput}
@@ -3477,8 +3509,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <StableTextInput
               key={`input-${field.name}`}
               placeholder={field.placeholder}
-              value={valeursFormulaire[field.name]?.toString() || ''}
+              value={numberValue}
               onChangeText={(text) => handleFieldChange(field.name, text)}
+              onBlur={() => handleFieldBlur(field.name)}
               keyboardType="numeric"
               debounceMs={0}
               style={styles.fieldInput}
@@ -3535,7 +3568,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       default:
         return null;
     }
-  }, [valeursFormulaire, fieldErrors, isReadonly, handleFieldChange, updateProductImages, updateProductVideos, mediaFiles, primaryProductImage, setFieldErrors, setShowGPSModal, setGpsModalForField, setSelectedLocation, setShowProductDeliveryConfig, setProductDeliveryConfigData, getCurrencyFromVariant]);
+  }, [valeursFormulaire, fieldErrors, isReadonly, handleFieldChange, handleFieldBlur, updateProductImages, updateProductVideos, mediaFiles, primaryProductImage, setFieldErrors, setShowGPSModal, setGpsModalForField, setSelectedLocation, setShowProductDeliveryConfig, setProductDeliveryConfigData, getCurrencyFromVariant]);
 
   // ✅ NOUVEAU 2025-11-01: Fonction de gestion d'erreurs API améliorée (Objectif #10)
   const handleAPIError = (error: any, operation: string, retryFn?: () => void) => {

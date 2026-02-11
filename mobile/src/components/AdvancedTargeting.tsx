@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { LocationSelector, LocationObject } from './LocationSelector';
 
 interface TargetingOptions {
     ageRange: { min: number; max: number };
@@ -181,50 +182,55 @@ export const AdvancedTargeting: React.FC<AdvancedTargetingProps> = ({
                 </View>
             </View>
 
-            {/* ✅ NOUVEAU: Zones géographiques */}
+            {/* ✅ NOUVEAU: Zones géographiques avec autocomplete Google Places */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>📍 Zones géographiques</Text>
                 <Text style={styles.sectionHint}>
-                    Sélectionnez les zones spécifiques pour cibler votre publicité
+                    Recherchez et sélectionnez des lieux spécifiques pour cibler votre publicité (villes, quartiers, établissements)
                 </Text>
-                <View style={styles.tagsContainer}>
-                    {[
-                        'Douala', 'Yaoundé', 'Abidjan', 'Dakar', 'Bamako',
-                        'Ouagadougou', 'Niamey', 'Lomé', 'Cotonou', 'Kinshasa',
-                        'Brazzaville', 'Libreville', 'Bangui', 'N\'Djamena', 'Autre'
-                    ].map((location) => (
-                        <TouchableOpacity
-                            key={location}
-                            style={[
-                                styles.tag,
-                                targeting.locations.includes(location) && styles.tagActive,
-                            ]}
-                            onPress={() => {
-                                const newLocations = targeting.locations.includes(location)
-                                    ? targeting.locations.filter(l => l !== location)
-                                    : [...targeting.locations, location];
-                                onTargetingChange({ ...targeting, locations: newLocations });
-                            }}
-                        >
-                            <Text
-                                style={[
-                                    styles.tagText,
-                                    targeting.locations.includes(location) && styles.tagTextActive,
-                                ]}
-                            >
-                                {location}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                
+                {/* ✅ NOUVEAU: Champ de recherche avec autocomplete Google Places */}
+                <LocationSelector
+                    label="Rechercher un lieu"
+                    value=""
+                    onSelect={(location: LocationObject) => {
+                        const locationString = location.raw || location.place_name || '';
+                        if (locationString && !targeting.locations.includes(locationString)) {
+                            const newLocations = [...targeting.locations, locationString];
+                            onTargetingChange({ ...targeting, locations: newLocations });
+                        }
+                    }}
+                    placeholder="Ex: Douala, Yaoundé, Restaurant Le Gourmet..."
+                    scope="all"
+                    enrichWithBackend={true}
+                />
+
+                {/* ✅ Afficher les lieux sélectionnés avec possibilité de suppression */}
                 {targeting.locations.length > 0 && (
-                    <View style={styles.selectedLocations}>
+                    <View style={styles.selectedLocationsContainer}>
                         <Text style={styles.selectedLocationsLabel}>
-                            Zones sélectionnées ({targeting.locations.length}):
+                            Lieux sélectionnés ({targeting.locations.length}):
                         </Text>
-                        <Text style={styles.selectedLocationsText}>
-                            {targeting.locations.join(', ')}
-                        </Text>
+                        <View style={styles.selectedLocationsList}>
+                            {targeting.locations.map((location, index) => (
+                                <View key={`${location}-${index}`} style={styles.selectedLocationItem}>
+                                    <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                                    <Text style={styles.selectedLocationText} numberOfLines={1}>
+                                        {location}
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            const newLocations = targeting.locations.filter((l, i) => i !== index);
+                                            onTargetingChange({ ...targeting, locations: newLocations });
+                                        }}
+                                        style={styles.removeLocationButton}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    >
+                                        <SafeIcon name="x" size={14} color={modernColors.error} type="lucide" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </View>
                     </View>
                 )}
             </View>
@@ -339,22 +345,37 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         lineHeight: 16,
     },
-    selectedLocations: {
-        marginTop: 12,
+    selectedLocationsContainer: {
+        marginTop: 16,
+    },
+    selectedLocationsLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 12,
+    },
+    selectedLocationsList: {
+        gap: 8,
+    },
+    selectedLocationItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
         padding: 12,
         backgroundColor: modernColors.surfaceVariant,
         borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        gap: 8,
     },
-    selectedLocationsLabel: {
-        fontSize: 12,
-        fontWeight: '600',
+    selectedLocationText: {
+        flex: 1,
+        fontSize: 13,
         color: modernColors.text,
-        marginBottom: 4,
     },
-    selectedLocationsText: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        lineHeight: 18,
+    removeLocationButton: {
+        padding: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

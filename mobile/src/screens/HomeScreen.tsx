@@ -1040,7 +1040,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     darkBackgroundContainer: {
-        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc pour le corps de l'application
+        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc pur pour plus de gaieté
         marginHorizontal: 16,
         borderRadius: 16,
         padding: 12, // ✅ RÉDUIT: De 16 à 12 pour compacter davantage
@@ -1069,7 +1069,7 @@ const styles = StyleSheet.create({
         marginBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour équilibrer
     },
     promotionsMainButton: {
-        backgroundColor: modernColors.background, // ✅ CORRIGÉ: Mème couleur que les boutons des services spécialisés (#f8fafc)
+        backgroundColor: modernColors.background, // ✅ RÉTABLI: Couleur originale des boutons
         borderRadius: 10,
         padding: 10,
         borderWidth: 1,

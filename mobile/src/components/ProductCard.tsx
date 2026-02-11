@@ -31,7 +31,7 @@ import ServiceGalleryModal from './ServiceGalleryModal';
 import OrderDeliveryModal from './delivery/OrderDeliveryModal';
 import { productDeliveryService } from '../services/productDeliveryService';
 import SafeStorage from '../utils/safeStorage';
-import { generateProductShareMessage } from '../utils/productShareHelper';
+import { generateProductShareMessage, generateSmartShareLink } from '../utils/productShareHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -1273,14 +1273,15 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         serviceId,
       });
 
-      // ✅ CORRIGÉ 2026-02-10: Inclure le deep link dans l'URL pour une meilleure compatibilité
-      // Certaines applications (WhatsApp, etc.) utilisent l'URL pour ouvrir le lien
-      const deepLink = `yukpomnang://product/${productId}?serviceId=${serviceId}`;
+      // ✅ CORRIGÉ: Utiliser le lien intelligent (HTTPS) dans l'URL du Share
+      // Le lien HTTPS sera intercepté par l'app si installée (via intentFilters)
+      // Sinon, il ouvrira la page web. C'est un seul lien intelligent qui fonctionne partout.
+      const smartLink = generateSmartShareLink(productId, serviceId);
       
       const result = await Share.share({
         message: shareMessage,
         title: productName,
-        url: deepLink, // ✅ Ajouter le deep link comme URL pour une meilleure compatibilité
+        url: smartLink, // ✅ Utiliser le lien intelligent HTTPS qui sera intercepté par l'app si disponible
       });
 
       if (result.action === Share.sharedAction) {

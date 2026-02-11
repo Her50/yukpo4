@@ -49,17 +49,53 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
 
     setLoading(true);
     try {
+      // ✅ CORRECTION: Utiliser le bon format de paramètres pour l'API
       const response = await apiGet('/api/places/autocomplete', {
         params: {
-          query,
-          type: 'establishment', // Rechercher uniquement des établissements/businesses
+          query: query.trim(),
+          type: 'point', // ✅ CORRIGÉ: Utiliser 'point' qui correspond à 'establishment' dans le backend
         },
       });
 
-      if (response.success && response.data?.results) {
-        setAutocompleteResults(response.data.results);
-        setShowAutocomplete(true);
+      console.log('[GoogleBusinessModal] Réponse autocomplete:', response);
+
+      // ✅ CORRECTION: Le backend retourne { success: true, data: [...], results: [...] }
+      // apiCall retourne { success: true, data: { success: true, data: [...], results: [...] } }
+      if (response.success && response.data) {
+        const apiData = response.data as any;
+        
+        // ✅ CORRECTION: Vérifier d'abord apiData.results (format enrichi avec place_id)
+        if (apiData.results && Array.isArray(apiData.results) && apiData.results.length > 0) {
+          setAutocompleteResults(apiData.results);
+          setShowAutocomplete(true);
+        } 
+        // ✅ CORRECTION: Sinon vérifier apiData.data (format simple array de strings)
+        else if (apiData.data && Array.isArray(apiData.data) && apiData.data.length > 0) {
+          // Convertir en format enrichi
+          const enrichedResults: PlaceResult[] = apiData.data.map((desc: string) => ({
+            description: desc,
+            place_id: undefined,
+            types: undefined,
+          }));
+          setAutocompleteResults(enrichedResults);
+          setShowAutocomplete(true);
+        } 
+        // ✅ CORRECTION: Si apiData est directement un array (cas de compatibilité)
+        else if (Array.isArray(apiData) && apiData.length > 0) {
+          const enrichedResults: PlaceResult[] = apiData.map((desc: string) => ({
+            description: desc,
+            place_id: undefined,
+            types: undefined,
+          }));
+          setAutocompleteResults(enrichedResults);
+          setShowAutocomplete(true);
+        } else {
+          console.warn('[GoogleBusinessModal] Aucun résultat trouvé dans la réponse:', apiData);
+          setAutocompleteResults([]);
+          setShowAutocomplete(false);
+        }
       } else {
+        console.warn('[GoogleBusinessModal] Réponse non réussie ou vide:', response);
         setAutocompleteResults([]);
         setShowAutocomplete(false);
       }
@@ -139,22 +175,22 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
               </Text>
 
               <View style={styles.buttonContainer}>
-                <NativeButton
-                  variant="primary"
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonPrimary]}
                   onPress={() => setHasGoogleBusiness(true)}
-                  style={styles.button}
+                  activeOpacity={0.8}
                 >
                   <SafeIcon name="Check" size={20} color="white" />
                   <Text style={styles.buttonText}>Oui, j'ai un Google Business</Text>
-                </NativeButton>
+                </TouchableOpacity>
 
-                <NativeButton
-                  variant="secondary"
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonSecondary]}
                   onPress={handleNo}
-                  style={styles.button}
+                  activeOpacity={0.8}
                 >
                   <Text style={styles.buttonTextSecondary}>Non, continuer sans</Text>
-                </NativeButton>
+                </TouchableOpacity>
               </View>
             </View>
           ) : hasGoogleBusiness ? (
@@ -279,17 +315,32 @@ const styles = StyleSheet.create({
   },
   button: {
     width: '100%',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    minHeight: 48,
+  },
+  buttonPrimary: {
+    backgroundColor: modernColors.primary,
+  },
+  buttonSecondary: {
+    backgroundColor: modernColors.secondary || '#F0F0F0',
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
     marginLeft: 8,
+    textAlign: 'center',
   },
   buttonTextSecondary: {
     fontSize: 16,
     fontWeight: '600',
     color: modernColors.text,
+    textAlign: 'center',
   },
   searchContainer: {
     position: 'relative',

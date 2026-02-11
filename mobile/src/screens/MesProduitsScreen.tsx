@@ -1061,15 +1061,15 @@ const MesProduitsScreen: React.FC = () => {
                 serviceId: product.serviceId,
             });
 
-            // ✅ CORRIGÉ 2026-02-10: Utiliser le deep link direct pour une ouverture immédiate dans l'app
-            // Le deep link fonctionne directement sans nécessiter de vérification de domaine
-            const deepLink = `yukpomnang://product/${product.id}?serviceId=${product.serviceId}`;
+            // ✅ CORRIGÉ: Utiliser le lien intelligent (HTTPS) dans l'URL du Share
+            // Le lien HTTPS sera intercepté par l'app si installée (via intentFilters)
+            // Sinon, il ouvrira la page web. C'est un seul lien intelligent qui fonctionne partout.
             const smartLink = generateSmartShareLink(product.id, product.serviceId);
 
             const result = await Share.share({
                 message: shareMessage,
                 title: `Découvrez: ${product.nom}`,
-                url: deepLink, // ✅ Utiliser le deep link direct pour une meilleure compatibilité mobile
+                url: smartLink, // ✅ Utiliser le lien intelligent HTTPS qui sera intercepté par l'app si disponible
             });
 
             if (result.action === Share.sharedAction) {

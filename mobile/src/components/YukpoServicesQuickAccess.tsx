@@ -22,8 +22,8 @@ import SafeIcon from './SafeIcon';
 import { hapticPress } from '../utils/hapticFeedback';
 import { modernColors } from '../theme/modernTheme';
 
-// ✅ NOUVEAU: Fonction pour assombrir une couleur hexadécimale
-const darkenColor = (hex: string, percent: number = 30): string => {
+// ✅ NOUVEAU: Fonction pour rendre une couleur plus vive (augmenter la saturation)
+const brightenColor = (hex: string, percent: number = 20): string => {
     // Retirer le # si présent
     hex = hex.replace('#', '');
     
@@ -32,18 +32,53 @@ const darkenColor = (hex: string, percent: number = 30): string => {
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
     
-    // Assombrir en réduisant chaque composante
-    const darkenedR = Math.max(0, Math.floor(r * (1 - percent / 100)));
-    const darkenedG = Math.max(0, Math.floor(g * (1 - percent / 100)));
-    const darkenedB = Math.max(0, Math.floor(b * (1 - percent / 100)));
+    // Convertir RGB en HSL pour augmenter la saturation
+    const rNorm = r / 255;
+    const gNorm = g / 255;
+    const bNorm = b / 255;
+    
+    const max = Math.max(rNorm, gNorm, bNorm);
+    const min = Math.min(rNorm, gNorm, bNorm);
+    let h = 0, s = 0, l = (max + min) / 2;
+    
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        
+        switch (max) {
+            case rNorm: h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0)) / 6; break;
+            case gNorm: h = ((bNorm - rNorm) / d + 2) / 6; break;
+            case bNorm: h = ((rNorm - gNorm) / d + 4) / 6; break;
+        }
+    }
+    
+    // Augmenter la saturation
+    s = Math.min(1, s * (1 + percent / 100));
+    
+    // Convertir HSL en RGB
+    const hue2rgb = (p: number, q: number, t: number) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+    };
+    
+    let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    let p = 2 * l - q;
+    
+    const brightenedR = Math.round(hue2rgb(p, q, h + 1/3) * 255);
+    const brightenedG = Math.round(hue2rgb(p, q, h) * 255);
+    const brightenedB = Math.round(hue2rgb(p, q, h - 1/3) * 255);
     
     // Convertir en hex
     const toHex = (n: number) => {
-        const hex = n.toString(16);
+        const hex = Math.max(0, Math.min(255, n)).toString(16);
         return hex.length === 1 ? '0' + hex : hex;
     };
     
-    return `#${toHex(darkenedR)}${toHex(darkenedG)}${toHex(darkenedB)}`;
+    return `#${toHex(brightenedR)}${toHex(brightenedG)}${toHex(brightenedB)}`;
 };
 
 // Types
@@ -204,7 +239,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                 disabled={service.comingSoon}
                             >
                                 <View style={[styles.serviceMiniIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
-                                    <SafeIcon name={service.icon} size={24} color={darkenColor(service.gradient[0], 25)} />
+                                    <SafeIcon name={service.icon} size={24} color={brightenColor(service.gradient[0], 25)} />
                                     {service.comingSoon && (
                                         <View style={styles.badgeMini}>
                                             <Text style={styles.badgeMiniText}>Bientôt</Text>
@@ -236,7 +271,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                             >
                                 <View style={styles.categoryContent}>
                                     <View style={[styles.categoryIconContainer, { backgroundColor: `${category.gradient[0]}15` }]}>
-                                        <SafeIcon name={category.icon} size={30} color={darkenColor(category.gradient[0], 25)} />
+                                        <SafeIcon name={category.icon} size={30} color={brightenColor(category.gradient[0], 25)} />
                                     </View>
                                     <Text style={styles.categoryTitle} numberOfLines={2}>
                                         {category.title}
@@ -371,7 +406,7 @@ const styles = StyleSheet.create({
         minHeight: 70,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que l'en-tête et le pied de page (#f8fafc)
+        backgroundColor: modernColors.background, // ✅ RÉTABLI: Couleur originale des boutons
         borderRadius: 10,
     },
     categoryIconContainer: {
@@ -399,7 +434,7 @@ const styles = StyleSheet.create({
     },
     expandedContainer: {
         marginTop: 8,
-        backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que l'en-tête et le pied de page (#f8fafc)
+        backgroundColor: modernColors.background, // ✅ RÉTABLI: Couleur originale des boutons
         borderRadius: 8,
         padding: 8,
         borderWidth: 1,
@@ -578,7 +613,7 @@ const styles = StyleSheet.create({
         maxWidth: 75, // ✅ RÉDUIT: De 90 à 75
         paddingVertical: 6, // ✅ RÉDUIT: De 8 à 6
         paddingHorizontal: 8, // ✅ RÉDUIT: De 10 à 8
-        backgroundColor: modernColors.background, // ✅ CORRIGÉ: Même couleur que l'en-tête et le pied de page (#f8fafc)
+        backgroundColor: modernColors.background, // ✅ RÉTABLI: Couleur originale des boutons
         borderRadius: 8, // ✅ RÉDUIT: De 10 à 8
         borderWidth: 1,
         borderColor: '#E5E7EB',
