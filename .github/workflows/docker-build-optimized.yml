@@ -426,16 +426,24 @@ jobs:
             echo "✅ Service ECS existe"
           fi
 
-      - name: Create ECS Service (if not exists)
+      - name: Service ECS not found (warning only)
         if: steps.check-service.outputs.exists == 'false'
         run: |
-          echo "⚠️ Impossible de créer le service ECS automatiquement"
-          echo "ℹ️ Le service nécessite un Load Balancer qui n'est pas encore activé par AWS Support"
-          echo "📋 Actions requises:"
-          echo "   1. Attendre l'activation du Load Balancer par AWS Support"
-          echo "   2. Exécuter: cd infra/aws && terraform apply"
-          echo "   3. Le service sera créé automatiquement par Terraform"
-          exit 1
+          echo "⚠️ Service ECS n'existe pas encore" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ Le service nécessite un Load Balancer qui n'est pas encore activé par AWS Support" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📋 Actions requises:" >> $GITHUB_STEP_SUMMARY
+          echo "   1. Attendre l'activation du Load Balancer par AWS Support" >> $GITHUB_STEP_SUMMARY
+          echo "   2. Exécuter: \`cd infra/aws && terraform apply\`" >> $GITHUB_STEP_SUMMARY
+          echo "   3. Le service sera créé automatiquement par Terraform" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ L'image Docker a été buildée et poussée avec succès vers ECR" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Le déploiement ECS sera possible une fois le Load Balancer activé" >> $GITHUB_STEP_SUMMARY
+          echo ""
+          echo "⚠️ Service ECS n'existe pas encore (non bloquant)"
+          echo "ℹ️ L'image Docker a été buildée avec succès"
+          echo "ℹ️ Le déploiement ECS sera possible une fois le Load Balancer activé"
 
       - name: Update ECS Service
         if: steps.check-service.outputs.exists == 'true'

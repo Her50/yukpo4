@@ -1,5 +1,22 @@
 # ⚡ Pourquoi le Build Docker est si Rapide ?
 
+## ✅ Confirmation : Build Utilise le Cache
+
+D'après les logs GitHub Actions, **tous les layers sont marqués `CACHED`** :
+
+```
+#12 CACHED
+#13 CACHED
+#14 CACHED
+#15 CACHED
+#16 CACHED
+...
+#24 CACHED  (compilation Rust)
+#27 CACHED  (dépendances Rust)
+```
+
+Cela signifie que **le build n'a pas vraiment buildé**, il a simplement réutilisé tous les layers du cache GitHub Actions.
+
 ## 🔍 Explication
 
 ### Build Rapide vs Ancien Compte (15 minutes)
