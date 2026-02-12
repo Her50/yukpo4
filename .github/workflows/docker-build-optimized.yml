@@ -406,7 +406,39 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Check if ECS Service exists
+        id: check-service
+        run: |
+          echo "🔍 Vérification de l'existence du service ECS..."
+          SERVICE_EXISTS=$(aws ecs describe-services \
+            --cluster yukpo-cluster \
+            --services yukpo-backend-service \
+            --region ${{ env.AWS_REGION }} \
+            --query 'services[0].status' \
+            --output text 2>/dev/null || echo "MISSING")
+          
+          if [ "$SERVICE_EXISTS" = "MISSING" ] || [ "$SERVICE_EXISTS" = "None" ] || [ -z "$SERVICE_EXISTS" ]; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Service ECS n'existe pas encore"
+            echo "ℹ️ Le service doit être créé via Terraform (nécessite Load Balancer activé)"
+          else
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Service ECS existe"
+          fi
+
+      - name: Create ECS Service (if not exists)
+        if: steps.check-service.outputs.exists == 'false'
+        run: |
+          echo "⚠️ Impossible de créer le service ECS automatiquement"
+          echo "ℹ️ Le service nécessite un Load Balancer qui n'est pas encore activé par AWS Support"
+          echo "📋 Actions requises:"
+          echo "   1. Attendre l'activation du Load Balancer par AWS Support"
+          echo "   2. Exécuter: cd infra/aws && terraform apply"
+          echo "   3. Le service sera créé automatiquement par Terraform"
+          exit 1
+
       - name: Update ECS Service
+        if: steps.check-service.outputs.exists == 'true'
         run: |
           echo "🔄 Mise à jour du service ECS..."
           aws ecs update-service \
