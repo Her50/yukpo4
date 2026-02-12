@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Optional
 
 # Configuration
-SSM_PARAMETER_PATH = os.getenv("SSM_DATABASE_URL_PATH", "/yukpomnang/production/DATABASE_URL")
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+SSM_PARAMETER_PATH = os.getenv("SSM_DATABASE_URL_PATH", "/yukpo/production/DATABASE_URL")
+AWS_REGION = os.getenv("AWS_REGION", "eu-west-1")
 MIGRATIONS_DIR = Path(__file__).parent.parent / "backend" / "migrations"
 FAIL_ON_ERROR = os.getenv("FAIL_ON_MIGRATION_ERROR", "false").lower() == "true"
 MAX_RETRIES = 2  # Réduit de 3 à 2 pour VPC privé (détection plus rapide)

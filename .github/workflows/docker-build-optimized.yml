@@ -28,23 +28,25 @@ on:
         required: false
         default: 'false'
         type: boolean
-      push_to_hetzner:
-        description: 'Deploy to Hetzner'
-        required: false
-        default: 'false'
-        type: boolean
+      # push_to_hetzner:
+      #   description: 'Deploy to Hetzner'
+      #   required: false
+      #   default: 'false'
+      #   type: boolean
+      # ⚠️ DÉSACTIVÉ : Déploiement Hetzner temporairement désactivé (focus sur AWS)
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/yukpomnang-backend-optimized
-  AWS_REGION: us-east-1
-  AWS_ACCOUNT_ID: 846505724644
-  ECR_REPO_NAME: yukpomnang-backend
-  ECR_REPO_URI: 846505724644.dkr.ecr.us-east-1.amazonaws.com/yukpomnang-backend
-  SSM_DATABASE_URL_PATH: /yukpomnang/production/DATABASE_URL
-  HETZNER_HOST: 46.224.14.85
-  HETZNER_USER: root
-  HETZNER_DIR: /opt/yukpo
+  AWS_REGION: eu-west-1
+  AWS_ACCOUNT_ID: 108964700972
+  ECR_REPO_NAME: yukpo-backend
+  ECR_REPO_URI: 108964700972.dkr.ecr.eu-west-1.amazonaws.com/yukpo-backend
+  SSM_DATABASE_URL_PATH: /yukpo/production/DATABASE_URL
+  # ⚠️ DÉSACTIVÉ : Variables Hetzner temporairement désactivées (focus sur AWS)
+  # HETZNER_HOST: 46.224.14.85
+  # HETZNER_USER: root
+  # HETZNER_DIR: /opt/yukpo
 
 jobs:
   run-migrations:
@@ -408,8 +410,8 @@ jobs:
         run: |
           echo "🔄 Mise à jour du service ECS..."
           aws ecs update-service \
-            --cluster yukpomnang-cluster \
-            --service yukpomnang-backend-service \
+            --cluster yukpo-cluster \
+            --service yukpo-backend-service \
             --force-new-deployment \
             --region ${{ env.AWS_REGION }} \
             --query 'service.{ServiceName:serviceName,Status:status,DesiredCount:desiredCount,RunningCount:runningCount}' \
@@ -424,8 +426,8 @@ jobs:
         run: |
           echo "⏳ Attente de la stabilisation du déploiement..."
           aws ecs wait services-stable \
-            --cluster yukpomnang-cluster \
-            --services yukpomnang-backend-service \
+            --cluster yukpo-cluster \
+            --services yukpo-backend-service \
             --region ${{ env.AWS_REGION }}
           echo "✅ Déploiement terminé avec succès!"
 
@@ -434,125 +436,126 @@ jobs:
         run: |
           echo "## 🚀 AWS ECS Deployment - Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Cluster**: \`yukpomnang-cluster\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Service**: \`yukpomnang-backend-service\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cluster**: \`yukpo-cluster\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service**: \`yukpo-backend-service\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Region**: \`${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Image**: \`${{ env.ECR_REPO_URI }}:latest\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Nouveau déploiement déclenché avec l'image optimisée" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "💡 Surveillez le déploiement avec:" >> $GITHUB_STEP_SUMMARY
-          echo "   \`aws ecs describe-services --cluster yukpomnang-cluster --services yukpomnang-backend-service --region ${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "   \`aws ecs describe-services --cluster yukpo-cluster --services yukpo-backend-service --region ${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
 
-  deploy-to-hetzner:
-    name: Deploy to Hetzner
-    needs: build-and-push
-    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || (github.event_name == 'workflow_dispatch' && inputs.push_to_hetzner == 'true')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
+  # ⚠️ DÉSACTIVÉ : Déploiement Hetzner temporairement désactivé (focus sur AWS)
+  # deploy-to-hetzner:
+  #   name: Deploy to Hetzner
+  #   needs: build-and-push
+  #   if: false  # Désactivé : toujours false pour empêcher l'exécution
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+  #     - name: Setup SSH
+  #       uses: webfactory/ssh-agent@v0.9.0
+  #       with:
+  #         ssh-private-key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
 
-      - name: Add Hetzner to known hosts
-        run: |
-          ssh-keyscan -H ${{ env.HETZNER_HOST }} >> ~/.ssh/known_hosts
+  #     - name: Add Hetzner to known hosts
+  #       run: |
+  #         ssh-keyscan -H ${{ env.HETZNER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Test SSH connection
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} "echo '✅ SSH connection successful'"
+  #     - name: Test SSH connection
+  #       run: |
+  #         ssh -o StrictHostKeyChecking=no ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} "echo '✅ SSH connection successful'"
 
-      - name: Pull latest image from GHCR
-        run: |
-          echo "🔄 Pulling latest image from GitHub Container Registry..."
-          ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
-            cd ${{ env.HETZNER_DIR }}/backend
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || echo "⚠️ Image latest not found, trying optimized tag..."
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:optimized || echo "⚠️ Image optimized not found, trying main tag..."
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${{ github.sha }} || echo "⚠️ Image with SHA not found"
-            docker images | grep -E "(${{ env.IMAGE_NAME }})" | head -5
-          EOF
+  #     - name: Pull latest image from GHCR
+  #       run: |
+  #         echo "🔄 Pulling latest image from GitHub Container Registry..."
+  #         ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
+  #           cd ${{ env.HETZNER_DIR }}/backend
+  #           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+  #           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || echo "⚠️ Image latest not found, trying optimized tag..."
+  #           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:optimized || echo "⚠️ Image optimized not found, trying main tag..."
+  #           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${{ github.sha }} || echo "⚠️ Image with SHA not found"
+  #           docker images | grep -E "(${{ env.IMAGE_NAME }})" | head -5
+  #         EOF
 
-      - name: Update docker-compose on Hetzner
-        run: |
-          echo "🔄 Updating docker-compose.yml on Hetzner..."
-          scp -o StrictHostKeyChecking=no docker-compose.hetzner.yml ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }}:${{ env.HETZNER_DIR }}/docker-compose.hetzner.yml
-          ssh -o StrictHostKeyChecking=no ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} "cd ${{ env.HETZNER_DIR }} && echo '✅ docker-compose.hetzner.yml ready'"
+  #     - name: Update docker-compose on Hetzner
+  #       run: |
+  #         echo "🔄 Updating docker-compose.yml on Hetzner..."
+  #         scp -o StrictHostKeyChecking=no docker-compose.hetzner.yml ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }}:${{ env.HETZNER_DIR }}/docker-compose.hetzner.yml
+  #         ssh -o StrictHostKeyChecking=no ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} "cd ${{ env.HETZNER_DIR }} && echo '✅ docker-compose.hetzner.yml ready'"
 
-      - name: Deploy to Hetzner
-        run: |
-          echo "🚀 Deploying to Hetzner..."
-          ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
-            cd ${{ env.HETZNER_DIR }}
-            
-            # Charger les variables d'environnement si .env existe
-            if [ -f .env ]; then
-              set -a
-              source .env
-              set +a
-            fi
-            
-            # Arrêter les anciens conteneurs
-            echo "🛑 Stopping old containers..."
-            docker-compose -f docker-compose.hetzner.yml down || true
-            
-            # Pull les images à jour
-            echo "📥 Pulling latest images..."
-            docker-compose -f docker-compose.hetzner.yml pull backend || true
-            
-            # Démarrer les services
-            echo "🚀 Starting services..."
-            docker-compose -f docker-compose.hetzner.yml up -d
-            
-            # Attendre que les services soient prêts
-            echo "⏳ Waiting for services to be ready..."
-            sleep 10
-            
-            # Vérifier le statut
-            echo "📊 Service status:"
-            docker-compose -f docker-compose.hetzner.yml ps
-            
-            # Vérifier les logs
-            echo "📋 Recent logs:"
-            docker-compose -f docker-compose.hetzner.yml logs --tail=20 backend
-          EOF
+  #     - name: Deploy to Hetzner
+  #       run: |
+  #         echo "🚀 Deploying to Hetzner..."
+  #         ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
+  #           cd ${{ env.HETZNER_DIR }}
+  #           
+  #           # Charger les variables d'environnement si .env existe
+  #           if [ -f .env ]; then
+  #             set -a
+  #             source .env
+  #             set +a
+  #           fi
+  #           
+  #           # Arrêter les anciens conteneurs
+  #           echo "🛑 Stopping old containers..."
+  #           docker-compose -f docker-compose.hetzner.yml down || true
+  #           
+  #           # Pull les images à jour
+  #           echo "📥 Pulling latest images..."
+  #           docker-compose -f docker-compose.hetzner.yml pull backend || true
+  #           
+  #           # Démarrer les services
+  #           echo "🚀 Starting services..."
+  #           docker-compose -f docker-compose.hetzner.yml up -d
+  #           
+  #           # Attendre que les services soient prêts
+  #           echo "⏳ Waiting for services to be ready..."
+  #           sleep 10
+  #           
+  #           # Vérifier le statut
+  #           echo "📊 Service status:"
+  #           docker-compose -f docker-compose.hetzner.yml ps
+  #           
+  #           # Vérifier les logs
+  #           echo "📋 Recent logs:"
+  #           docker-compose -f docker-compose.hetzner.yml logs --tail=20 backend
+  #         EOF
 
-      - name: Verify deployment
-        run: |
-          echo "✅ Verifying deployment..."
-          ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
-            cd ${{ env.HETZNER_DIR }}
-            
-            # Vérifier que le backend répond
-            echo "🔍 Checking backend health..."
-            sleep 5
-            curl -f http://localhost:8080/api/health || echo "⚠️ Health check failed, but service might still be starting"
-            
-            # Vérifier les conteneurs
-            echo ""
-            echo "📊 Container status:"
-            docker ps --filter "name=yukpo" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-          EOF
+  #     - name: Verify deployment
+  #       run: |
+  #         echo "✅ Verifying deployment..."
+  #         ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
+  #           cd ${{ env.HETZNER_DIR }}
+  #           
+  #           # Vérifier que le backend répond
+  #           echo "🔍 Checking backend health..."
+  #           sleep 5
+  #           curl -f http://localhost:8080/api/health || echo "⚠️ Health check failed, but service might still be starting"
+  #           
+  #           # Vérifier les conteneurs
+  #           echo ""
+  #           echo "📊 Container status:"
+  #           docker ps --filter "name=yukpo" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+  #         EOF
 
-      - name: Deployment summary
-        if: always()
-        run: |
-          echo "## 🚀 Hetzner Deployment - Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Host**: \`${{ env.HETZNER_HOST }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Services**: Backend, PostgreSQL, Redis" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Déploiement Hetzner terminé avec succès" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "💡 Vérifier le déploiement avec:" >> $GITHUB_STEP_SUMMARY
-          echo "   \`ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} 'cd ${{ env.HETZNER_DIR }} && docker-compose -f docker-compose.hetzner.yml ps'\`" >> $GITHUB_STEP_SUMMARY
+  #     - name: Deployment summary
+  #       if: always()
+  #       run: |
+  #         echo "## 🚀 Hetzner Deployment - Summary" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "- **Host**: \`${{ env.HETZNER_HOST }}\`" >> $GITHUB_STEP_SUMMARY
+  #         echo "- **Image**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
+  #         echo "- **Services**: Backend, PostgreSQL, Redis" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "✅ Déploiement Hetzner terminé avec succès" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "💡 Vérifier le déploiement avec:" >> $GITHUB_STEP_SUMMARY
+  #         echo "   \`ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} 'cd ${{ env.HETZNER_DIR }} && docker-compose -f docker-compose.hetzner.yml ps'\`" >> $GITHUB_STEP_SUMMARY
 

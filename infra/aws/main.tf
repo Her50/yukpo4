@@ -433,6 +433,12 @@ resource "aws_iam_role" "ecs_task" {
   }
 }
 
+# Politique S3 pour le rôle ECS Task
+resource "aws_iam_role_policy_attachment" "ecs_task_s3" {
+  role       = aws_iam_role.ecs_task.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+
 # Secrets Manager pour les variables d'environnement
 resource "aws_secretsmanager_secret" "backend_secrets" {
   name        = "${var.project_name}/backend/secrets"
