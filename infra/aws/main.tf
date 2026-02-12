@@ -509,6 +509,7 @@ resource "aws_ecs_cluster" "main" {
 
 # Application Load Balancer
 resource "aws_lb" "main" {
+  count = var.enable_load_balancer ? 1 : 0
   name               = "${var.project_name}-alb"
   internal           = false
   load_balancer_type = "application"
@@ -524,6 +525,7 @@ resource "aws_lb" "main" {
 
 # Target Group
 resource "aws_lb_target_group" "backend" {
+  count       = var.enable_load_balancer ? 1 : 0
   name        = "${var.project_name}-backend-tg"
   port        = 8080
   protocol    = "HTTP"
@@ -550,13 +552,14 @@ resource "aws_lb_target_group" "backend" {
 
 # ALB Listener HTTP (redirige vers HTTPS si certificat disponible, sinon pointe vers le target group)
 resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
+  count             = var.enable_load_balancer ? 1 : 0
+  load_balancer_arn = aws_lb.main[0].arn
   port              = "80"
   protocol          = "HTTP"
 
   default_action {
     type             = var.acm_certificate_arn != "" ? "redirect" : "forward"
-    target_group_arn = var.acm_certificate_arn != "" ? null : aws_lb_target_group.backend.arn
+    target_group_arn = var.acm_certificate_arn != "" ? null : aws_lb_target_group.backend[0].arn
 
     dynamic "redirect" {
       for_each = var.acm_certificate_arn != "" ? [1] : []
@@ -571,17 +574,17 @@ resource "aws_lb_listener" "http" {
 
 # ALB Listener HTTPS (nécessite un certificat ACM)
 resource "aws_lb_listener" "https" {
-  count             = var.acm_certificate_arn != "" ? 1 : 0
-  load_balancer_arn = aws_lb.main.arn
+  count             = var.enable_load_balancer && var.acm_certificate_arn != "" ? 1 : 0
+  load_balancer_arn = aws_lb.main[0].arn
   port              = "443"
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   certificate_arn   = var.acm_certificate_arn
 
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
-  }
+    default_action {
+      type             = "forward"
+      target_group_arn = aws_lb_target_group.backend[0].arn
+    }
 }
 
 # ECS Task Definition
@@ -694,16 +697,18 @@ resource "aws_ecs_service" "backend" {
     assign_public_ip = !var.enable_nat_gateway
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.backend.arn
-    container_name   = "backend"
-    container_port   = 8080
+  dynamic "load_balancer" {
+    for_each = var.enable_load_balancer ? [1] : []
+    content {
+      target_group_arn = aws_lb_target_group.backend[0].arn
+      container_name   = "backend"
+      container_port   = 8080
+    }
   }
 
-  depends_on = [
-    aws_lb_listener.http,
-    aws_lb_listener.https
-  ]
+  # depends_on est conditionnel : seulement si Load Balancer activé
+  # Note: Terraform ne supporte pas depends_on conditionnel, donc on le laisse vide
+  # Le service fonctionnera sans Load Balancer
 
   tags = {
     Name = "${var.project_name}-backend-service"

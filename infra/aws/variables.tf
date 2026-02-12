@@ -169,6 +169,12 @@ variable "log_retention_days" {
   default     = 7
 }
 
+variable "enable_load_balancer" {
+  description = "Enable Load Balancer for ECS service (requires AWS Support activation for new accounts)"
+  type        = bool
+  default     = false  # Temporairement désactivé jusqu'à activation AWS Support
+}
+
 
 
 
