@@ -9,6 +9,7 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/docker-build-optimized.yml'
+      - 'infra/aws/**'  # Déclencher le build si infrastructure AWS change
   pull_request:
     branches:
       - main
