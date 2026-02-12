@@ -311,6 +311,54 @@ resource "aws_db_instance" "main" {
   }
 }
 
+# Script pour créer la base de données si elle n'existe pas
+# Note: Terraform devrait créer la base avec db_name, mais ce script assure qu'elle existe
+resource "null_resource" "create_database" {
+  depends_on = [aws_db_instance.main]
+
+  triggers = {
+    rds_endpoint = aws_db_instance.main.endpoint
+    db_name      = var.rds_database_name
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      # Attendre que RDS soit prêt
+      echo "Waiting for RDS to be ready..."
+      sleep 30
+      
+      # Vérifier si psql est disponible
+      if ! command -v psql &> /dev/null; then
+        echo "⚠️ psql not found, skipping database creation"
+        echo "   The database should be created automatically by Terraform via db_name parameter"
+        exit 0
+      fi
+      
+      # Construire l'URL de connexion
+      ADMIN_DB_URL="postgresql://${var.rds_username}:${var.rds_password}@${aws_db_instance.main.endpoint}/postgres"
+      
+      # Vérifier si la base existe déjà
+      DB_EXISTS=$(psql "$ADMIN_DB_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='${var.rds_database_name}'" 2>/dev/null | tr -d '[:space:]' || echo "0")
+      
+      if [ "$DB_EXISTS" != "1" ]; then
+        echo "Creating database '${var.rds_database_name}'..."
+        # Sur AWS RDS, seul l'utilisateur master peut créer des bases
+        # Si cela échoue, la base doit être créée manuellement via AWS Console
+        psql "$ADMIN_DB_URL" -c "CREATE DATABASE \"${var.rds_database_name}\";" 2>&1 || {
+          echo "⚠️ WARNING: Could not create database automatically"
+          echo "   This is normal if the RDS user doesn't have SUPERUSER privileges"
+          echo "   The database should be created automatically by Terraform via db_name parameter"
+          echo "   If it doesn't exist, create it manually via AWS RDS Query Editor"
+        }
+      else
+        echo "✅ Database '${var.rds_database_name}' already exists"
+      fi
+    EOT
+
+    interpreter = ["bash", "-c"]
+  }
+}
+
 # ElastiCache Subnet Group
 resource "aws_elasticache_subnet_group" "main" {
   name       = "${var.project_name}-redis-subnet-group"

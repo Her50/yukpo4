@@ -71,9 +71,35 @@ if [ -n "$DB_NAME" ] && [ "$DB_NAME" != "postgres" ]; then
             if psql "$ADMIN_DB_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\"" >/dev/null 2>&1; then
                 echo "✅ Base '$DB_NAME' créée avec succès"
             else
-                echo "❌ ERREUR: Impossible de créer la base '$DB_NAME' (permissions?)"
-                echo "   Admin URL utilisée: ${ADMIN_DB_URL:0:50}... (tronquée)"
-                exit 1
+                echo "⚠️ WARNING: Impossible de créer la base '$DB_NAME' automatiquement (permissions insuffisantes)"
+                echo "   Sur AWS RDS, l'utilisateur n'a pas les permissions SUPERUSER nécessaires"
+                echo ""
+                echo "🔄 Tentative de connexion à la base 'postgres' en attendant que la base soit créée..."
+                echo "   La base devrait être créée automatiquement par Terraform via le paramètre db_name"
+                echo "   Si elle n'existe toujours pas, créez-la manuellement via AWS RDS Query Editor"
+                echo ""
+                echo "   Command SQL: CREATE DATABASE \"${DB_NAME}\";"
+                echo ""
+                # Attendre un peu et réessayer (la base pourrait être en cours de création par Terraform)
+                echo "⏳ Attente de 30 secondes pour que la base soit créée..."
+                sleep 30
+                DB_EXISTS_RETRY=$(psql "$ADMIN_DB_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" 2>/dev/null | tr -d '[:space:]' || true)
+                if [ "$DB_EXISTS_RETRY" = "1" ]; then
+                    echo "✅ Base '$DB_NAME' détectée après attente"
+                else
+                    echo "❌ ERREUR CRITIQUE: La base '$DB_NAME' n'existe toujours pas"
+                    echo ""
+                    echo "📋 SOLUTION IMMÉDIATE:"
+                    echo "   1. Allez sur AWS Console → RDS → ${DB_NAME}-db"
+                    echo "   2. Ouvrez Query Editor"
+                    echo "   3. Exécutez: CREATE DATABASE \"${DB_NAME}\";"
+                    echo "   4. Redémarrez ce conteneur"
+                    echo ""
+                    echo "   Voir GUIDE_CREATION_DATABASE_AWS_RDS.md pour plus de détails"
+                    echo ""
+                    echo "   Admin URL: ${ADMIN_DB_URL:0:50}... (tronquée)"
+                    exit 1
+                fi
             fi
         else
             echo "✅ Base '$DB_NAME' existe déjà"
