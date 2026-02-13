@@ -23,6 +23,50 @@ use yukpomnang_backend::tasks;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // ✅ CRITIQUE: Logs IMMÉDIATS sur stderr AVANT toute initialisation
+    // Ces logs apparaîtront même si le logging n'est pas initialisé
+    eprintln!("[MAIN] 🚀 Application Rust démarre - Point d'entrée atteint");
+    eprintln!("[MAIN] 🔍 Vérification des variables d'environnement critiques...");
+
+    // Vérifier les variables critiques AVANT toute autre opération
+    let db_url_ok = std::env::var("DATABASE_URL").is_ok();
+    let mongo_url_ok = std::env::var("MONGODB_URL").is_ok();
+    let redis_url_ok = std::env::var("REDIS_URL").is_ok();
+    let jwt_secret_ok = std::env::var("JWT_SECRET").is_ok();
+
+    eprintln!(
+        "[MAIN] DATABASE_URL: {}",
+        if db_url_ok {
+            "✅ Présente"
+        } else {
+            "❌ MANQUANTE"
+        }
+    );
+    eprintln!(
+        "[MAIN] MONGODB_URL: {}",
+        if mongo_url_ok {
+            "✅ Présente"
+        } else {
+            "❌ MANQUANTE"
+        }
+    );
+    eprintln!(
+        "[MAIN] REDIS_URL: {}",
+        if redis_url_ok {
+            "✅ Présente"
+        } else {
+            "❌ MANQUANTE"
+        }
+    );
+    eprintln!(
+        "[MAIN] JWT_SECRET: {}",
+        if jwt_secret_ok {
+            "✅ Présente"
+        } else {
+            "❌ MANQUANTE"
+        }
+    );
+
     // Installer un panic hook pour capturer les panics et les logger proprement
     std::panic::set_hook(Box::new(|panic_info| {
         let location = panic_info
@@ -41,8 +85,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("🚨 PANIC: {} ({})", message, location);
     }));
 
+    eprintln!("[MAIN] 🔧 Initialisation dotenv...");
     dotenv().ok();
+    eprintln!("[MAIN] 🔧 Initialisation du logging...");
     yukpomnang_backend::init_logging();
+    eprintln!("[MAIN] ✅ Logging initialisé");
 
     // ✅ NOUVEAU 2026-01-29: Logs de diagnostic très tôt pour confirmer que le code s'exécute
     log::info!(
@@ -58,10 +105,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env::var("SQLX_OFFLINE").ok()
     );
 
+    eprintln!("[MAIN] 🔍 Récupération de DATABASE_URL...");
     let mut db_url = env::var("DATABASE_URL").map_err(|e| {
+        eprintln!(
+            "[MAIN] ❌ ERREUR CRITIQUE: DATABASE_URL manquante ou invalide: {}",
+            e
+        );
         log::error!("❌ DATABASE_URL manquante ou invalide: {}", e);
         e
     })?;
+    eprintln!(
+        "[MAIN] ✅ DATABASE_URL récupérée (longueur: {})",
+        db_url.len()
+    );
 
     // ✅ CORRIGÉ RACINE 2025-12-11: Ajouter sslmode=require pour Render PostgreSQL
     // Render PostgreSQL nécessite SSL/TLS pour toutes les connexions
@@ -91,6 +147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("⚠️ Impossible de créer le dossier temporaire des uploads: {err}");
     }
 
+    eprintln!("[MAIN] 🔌 Début de la connexion à PostgreSQL...");
     log::info!("🔌 Connexion à la base de données PostgreSQL...");
 
     // ✅ OPTIMISÉ 2026-01-04: Pool augmenté pour résoudre les warnings "time to acquire exceeded"
@@ -182,6 +239,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
             {
                 Ok(pool) => {
+                    eprintln!("[MAIN] ✅ Connexion PostgreSQL établie (tentative {}/3)", attempt);
                     log::info!("✅ Connexion PostgreSQL établie (tentative {}/3)", attempt);
                     pool_opt = Some(pool);
                     connected = true;
@@ -204,6 +262,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if !connected {
             let e = last_error.unwrap();
+            eprintln!("[MAIN] ❌ ERREUR CRITIQUE: Impossible de se connecter à PostgreSQL après 3 tentatives");
+            eprintln!("[MAIN] ❌ Erreur: {}", e);
+            eprintln!(
+                "[MAIN] ❌ URL utilisée: {}...",
+                db_url.chars().take(30).collect::<String>()
+            );
             log::error!(
                 "❌ Impossible de se connecter à PostgreSQL après 3 tentatives: {}",
                 e
@@ -224,6 +288,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         pool_opt.unwrap()
     };
 
+    eprintln!("[MAIN] ✅ Pool PostgreSQL créé avec succès");
     log::info!(
         "✅ Connexion PostgreSQL établie (pool: max={}, min={}, acquire_timeout={}s)",
         max_connections,
@@ -1560,13 +1625,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ NOUVEAU 2025-11-27: Démarrer le monitoring de santé du pool
     yukpomnang_backend::utils::db_monitor::start_db_health_monitor(pg_pool.clone()).await;
 
+    eprintln!("[MAIN] 🔌 Début de la connexion à MongoDB...");
     let mongo_url =
         env::var("MONGODB_URL").unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
+    eprintln!(
+        "[MAIN] MONGODB_URL: {}...",
+        mongo_url.chars().take(50).collect::<String>()
+    );
     log::info!("🔌 Connexion à MongoDB...");
     let mongo_client = MongoClient::with_uri_str(&mongo_url).await.map_err(|e| {
+        eprintln!(
+            "[MAIN] ❌ ERREUR CRITIQUE: Impossible de créer le client MongoDB: {}",
+            e
+        );
         log::error!("❌ Impossible de créer le client MongoDB: {}", e);
         e
     })?;
+    eprintln!("[MAIN] ✅ Client MongoDB créé avec succès");
     log::info!("✅ Client MongoDB initialisé");
 
     // Configuration Redis avec test de connexion
@@ -2336,8 +2411,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("✅ Serveur lance sur http://{}:{}", host, port);
     println!("✅ Serveur lance sur http://{}:{}", host, port);
 
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    serve(listener, app).await?;
+    eprintln!("[MAIN] 🔌 Début du bind sur {}:{}...", host, port);
+    let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| {
+        eprintln!(
+            "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} - {}",
+            host, port, e
+        );
+        e
+    })?;
+    eprintln!("[MAIN] ✅ Bind réussi, démarrage du serveur HTTP...");
+    eprintln!(
+        "[MAIN] 🚀 Serveur HTTP démarre sur http://{}:{}",
+        host, port
+    );
+    serve(listener, app).await.map_err(|e| {
+        eprintln!("[MAIN] ❌ ERREUR CRITIQUE: Le serveur HTTP a échoué: {}", e);
+        e
+    })?;
 
     Ok(())
 }
