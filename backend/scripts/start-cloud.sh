@@ -67,55 +67,51 @@ if [ -n "$DB_NAME" ] && [ "$DB_NAME" != "postgres" ]; then
     echo "🔍 Vérification de l'existence de la base PostgreSQL '$DB_NAME'..."
     ADMIN_DB_URL=$(echo "$DATABASE_URL" | sed -E 's#/(.*)$#/postgres#')
     if command -v psql >/dev/null 2>&1; then
-        # Améliorer la vérification avec meilleure gestion d'erreur
-        DB_EXISTS_OUTPUT=$(psql "$ADMIN_DB_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" 2>&1)
-        DB_EXISTS=$(echo "$DB_EXISTS_OUTPUT" | grep -v "ERROR" | tr -d '[:space:]' || echo "")
-        if [ "$DB_EXISTS" != "1" ]; then
-            # Afficher l'erreur si la requête a échoué
-            if echo "$DB_EXISTS_OUTPUT" | grep -q "ERROR"; then
-                echo "⚠️ Erreur lors de la vérification: $(echo "$DB_EXISTS_OUTPUT" | grep "ERROR")"
-                echo "   La base pourrait exister mais la vérification a échoué"
-                echo "   Continuons quand même - l'application tentera de se connecter directement"
-            fi
-            echo "⚠️ Base '$DB_NAME' inexistante, tentative de création..."
-            if psql "$ADMIN_DB_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\"" >/dev/null 2>&1; then
-                echo "✅ Base '$DB_NAME' créée avec succès"
-            else
-                echo "⚠️ WARNING: Impossible de créer la base '$DB_NAME' automatiquement (permissions insuffisantes)"
-                echo "   Sur AWS RDS, l'utilisateur n'a pas les permissions SUPERUSER nécessaires"
-                echo ""
-                echo "🔄 Tentative de connexion à la base 'postgres' en attendant que la base soit créée..."
-                echo "   La base devrait être créée automatiquement par Terraform via le paramètre db_name"
-                echo "   Si elle n'existe toujours pas, créez-la manuellement via AWS RDS Query Editor"
-                echo ""
-                echo "   Command SQL: CREATE DATABASE \"${DB_NAME}\";"
-                echo ""
-                # Attendre un peu et réessayer (la base pourrait être en cours de création par Terraform)
-                echo "⏳ Attente de 30 secondes pour que la base soit créée..."
-                sleep 30
-                DB_EXISTS_RETRY=$(psql "$ADMIN_DB_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" 2>/dev/null | tr -d '[:space:]' || true)
-                if [ "$DB_EXISTS_RETRY" = "1" ]; then
-                    echo "✅ Base '$DB_NAME' détectée après attente"
+        # ✅ AMÉLIORATION: Tester directement la connexion à la base au lieu de pg_database
+        # Cela évite les problèmes de permissions sur les vues système
+        echo "   Test de connexion directe à la base '$DB_NAME'..."
+        DB_CONNECT_TEST=$(psql "$DATABASE_URL" -c "SELECT 1;" 2>&1)
+        DB_CONNECT_SUCCESS=$?
+        
+        if [ $DB_CONNECT_SUCCESS -eq 0 ]; then
+            echo "✅ Base '$DB_NAME' existe et est accessible"
+        else
+            # Si la connexion échoue, vérifier si c'est une erreur de "base inexistante" ou autre
+            if echo "$DB_CONNECT_TEST" | grep -qi "database.*does not exist\|database.*not found\|FATAL.*database"; then
+                echo "⚠️ Base '$DB_NAME' inexistante, tentative de création..."
+                # Tenter de créer la base via la base 'postgres'
+                if psql "$ADMIN_DB_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\"" >/dev/null 2>&1; then
+                    echo "✅ Base '$DB_NAME' créée avec succès"
                 else
-                    echo "⚠️ WARNING: La base '$DB_NAME' n'a pas été détectée après vérification"
-                    echo "   Cela peut être dû à:"
-                    echo "   - Un problème de permissions pour lister les bases"
-                    echo "   - La base existe mais la vérification a échoué"
+                    echo "⚠️ WARNING: Impossible de créer la base '$DB_NAME' automatiquement (permissions insuffisantes)"
+                    echo "   Sur AWS RDS, l'utilisateur n'a pas les permissions SUPERUSER nécessaires"
+                    echo ""
+                    echo "   La base devrait être créée automatiquement par Terraform via le paramètre db_name"
+                    echo "   Si elle n'existe toujours pas, créez-la manuellement via AWS RDS Query Editor"
+                    echo ""
+                    echo "   Command SQL: CREATE DATABASE \"${DB_NAME}\";"
                     echo ""
                     echo "   Continuons quand même - l'application tentera de se connecter directement"
                     echo "   Si la base n'existe pas, l'application affichera une erreur de connexion claire"
-                    echo ""
-                    echo "   Si vous voyez une erreur de connexion, créez la base avec:"
-                    echo "   CREATE DATABASE \"${DB_NAME}\";"
-                    # Ne pas quitter - laisser l'application essayer de se connecter
                 fi
+            else
+                # Autre type d'erreur (permissions, réseau, etc.)
+                echo "⚠️ WARNING: Erreur lors de la vérification de la base '$DB_NAME':"
+                echo "   $(echo "$DB_CONNECT_TEST" | head -1)"
+                echo ""
+                echo "   Cela peut être dû à:"
+                echo "   - Un problème de permissions"
+                echo "   - Un problème de réseau"
+                echo "   - La base existe mais l'utilisateur n'a pas les permissions nécessaires"
+                echo ""
+                echo "   Continuons quand même - l'application tentera de se connecter directement"
+                echo "   Si la base n'existe pas, l'application affichera une erreur de connexion claire"
             fi
-        else
-            echo "✅ Base '$DB_NAME' existe déjà"
         fi
     else
         echo "⚠️ WARNING: psql non disponible, impossible de vérifier/créer la base '$DB_NAME'"
         echo "   (postgresql-client doit être installé dans l'image)"
+        echo "   Continuons quand même - l'application tentera de se connecter directement"
     fi
 fi
 # Réactiver set -e pour le reste du script

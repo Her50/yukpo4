@@ -512,6 +512,7 @@ resource "aws_secretsmanager_secret_version" "backend_secrets" {
     DATABASE_URL = "postgresql://${var.rds_username}:${var.rds_password}@${aws_db_instance.main.endpoint}/${var.rds_database_name}"
     REDIS_URL    = "redis://${aws_elasticache_replication_group.main.primary_endpoint_address}:6379"
     JWT_SECRET   = var.jwt_secret
+    MONGODB_URL  = var.mongodb_url != "" ? var.mongodb_url : "mongodb+srv://yukpomnang:DENQG9aru56Ixaqi@cluster1.arqkgsd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
     RUST_LOG     = var.rust_log_level
     PORT         = "8080"
     HOST         = "0.0.0.0"
@@ -690,6 +691,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "ENABLE_AUTO_MIGRATIONS"
         valueFrom = "${aws_secretsmanager_secret.backend_secrets.arn}:ENABLE_AUTO_MIGRATIONS::"
+      },
+      {
+        name      = "MONGODB_URL"
+        valueFrom = "${aws_secretsmanager_secret.backend_secrets.arn}:MONGODB_URL::"
       },
       {
         name      = "S3_BUCKET"

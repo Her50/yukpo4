@@ -139,6 +139,13 @@ variable "jwt_secret" {
   sensitive   = true
 }
 
+variable "mongodb_url" {
+  description = "MongoDB connection URL"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "rust_log_level" {
   description = "Rust log level"
   type        = string
