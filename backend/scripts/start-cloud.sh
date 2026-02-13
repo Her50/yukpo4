@@ -142,6 +142,8 @@ fi
 echo ""
 
 # Vérifier la connectivité Redis (AWS ElastiCache) - optionnel et non-bloquant
+# ✅ CRITIQUE: Désactiver set -e temporairement pour éviter que le script s'arrête si Redis échoue
+set +e
 if [ -n "$REDIS_URL" ]; then
     echo "🔍 Vérification de la connectivité Redis (AWS ElastiCache)..."
     # ✅ OPTIMISÉ: Réduire à 3 tentatives max (6 secondes) pour ne pas bloquer le démarrage
@@ -152,10 +154,11 @@ if [ -n "$REDIS_URL" ]; then
     
     # Vérifier si redis-cli est disponible
     if command -v redis-cli &> /dev/null; then
+        echo "   redis-cli disponible, test de connexion..."
         while [ $RETRY_COUNT -lt $MAX_REDIS_RETRIES ]; do
             # Certains providers (ex: Upstash) peuvent répondre avec un message d'erreur tout en
             # renvoyant un code de sortie inattendu: on valide explicitement "PONG".
-            REDIS_PING_OUTPUT=$(redis-cli -u "$REDIS_URL" ping 2>/dev/null || true)
+            REDIS_PING_OUTPUT=$(timeout 3 redis-cli -u "$REDIS_URL" ping 2>&1 || echo "TIMEOUT_OR_ERROR")
             if [ "$REDIS_PING_OUTPUT" = "PONG" ]; then
                 REDIS_AVAILABLE=true
                 break
@@ -178,6 +181,9 @@ if [ -n "$REDIS_URL" ]; then
 else
     echo "ℹ️ REDIS_URL non définie, l'application fonctionnera sans cache Redis"
 fi
+# ✅ CRITIQUE: Réactiver set -e après Redis
+set -e
+echo "✅ Vérification Redis terminée, continuation du script..."
 
 # Appliquer les migrations si nécessaire (optionnel, peut être géré par AWS ECS task séparée)
 if [ "$RUN_MIGRATIONS" = "true" ]; then
@@ -258,14 +264,23 @@ echo "🚀 Lancement de l'application backend..."
 echo "   Commande: ./yukpomnang_backend"
 echo "   Les logs [MAIN] devraient apparaître ci-dessous..."
 echo ""
+echo "🔍 Point de contrôle: Avant lancement de l'exécutable"
+echo "   DATABASE_URL: ${DATABASE_URL:0:50}..."
+echo "   REDIS_URL: ${REDIS_URL:+présent (${#REDIS_URL} caractères)}${REDIS_URL:-non défini}"
+echo "   MONGODB_URL: ${MONGODB_URL:+présent (${#MONGODB_URL} caractères)}${MONGODB_URL:-non défini}"
+echo "   JWT_SECRET: ${JWT_SECRET:+présent}${JWT_SECRET:-non défini}"
+echo ""
 
 # Utiliser exec pour que le processus principal soit le backend
 # Cela permet à AWS ECS de gérer correctement les signaux (SIGTERM, etc.)
 # Capturer les erreurs et les logger avant de quitter
 set +e
+echo "🔍 Point de contrôle: Lancement de ./yukpomnang_backend maintenant..."
 ./yukpomnang_backend 2>&1
 EXIT_CODE=$?
 set -e
+
+echo "🔍 Point de contrôle: L'exécutable a quitté avec le code $EXIT_CODE"
 
 if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ ERREUR: L'application backend a quitté avec le code $EXIT_CODE"
