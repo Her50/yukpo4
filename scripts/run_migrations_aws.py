@@ -26,7 +26,7 @@ CONNECTION_TIMEOUT = 30  # Timeout initial pour détecter rapidement les erreurs
 
 def get_database_url_from_ssm() -> str:
     """Récupère DATABASE_URL depuis AWS SSM Parameter Store"""
-    print(f"🔍 Récupération de DATABASE_URL depuis SSM: {SSM_PARAMETER_PATH}")
+    print(f"Recuperation de DATABASE_URL depuis SSM: {SSM_PARAMETER_PATH}")
     
     try:
         ssm_client = boto3.client('ssm', region_name=AWS_REGION)
@@ -35,17 +35,17 @@ def get_database_url_from_ssm() -> str:
             WithDecryption=True
         )
         database_url = response['Parameter']['Value']
-        print(f"✅ DATABASE_URL récupérée depuis SSM")
+        print(f"OK: DATABASE_URL recuperee depuis SSM")
         return database_url
     except Exception as e:
-        print(f"❌ Erreur lors de la récupération depuis SSM: {e}")
+        print(f"ERREUR lors de la recuperation depuis SSM: {e}")
         # Fallback: utiliser DATABASE_URL depuis l'environnement si disponible
         database_url = os.getenv("DATABASE_URL")
         if database_url:
-            print(f"⚠️ Utilisation de DATABASE_URL depuis l'environnement")
+            print(f"ATTENTION: Utilisation de DATABASE_URL depuis l'environnement")
             return database_url
         else:
-            print(f"❌ DATABASE_URL non disponible dans SSM ni dans l'environnement")
+            print(f"ERREUR: DATABASE_URL non disponible dans SSM ni dans l'environnement")
             sys.exit(1)
 
 
@@ -59,7 +59,7 @@ def check_sqlx_cli_installed() -> bool:
             check=True,
             timeout=10
         )
-        print(f"✅ sqlx-cli installé: {result.stdout.strip()}")
+        print(f"OK: sqlx-cli installe: {result.stdout.strip()}")
         return True
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return False
@@ -67,8 +67,8 @@ def check_sqlx_cli_installed() -> bool:
 
 def install_sqlx_cli():
     """Installe sqlx-cli via cargo"""
-    print("📦 Installation de sqlx-cli...")
-    print("⏳ Cela peut prendre quelques minutes...")
+    print("Installation de sqlx-cli...")
+    print("Cela peut prendre quelques minutes...")
     try:
         result = subprocess.run(
             ["cargo", "install", "sqlx-cli", "--no-default-features", "--features", "postgres"],
@@ -77,14 +77,14 @@ def install_sqlx_cli():
             text=True,
             timeout=600  # 10 minutes max
         )
-        print("✅ sqlx-cli installé avec succès")
+        print("OK: sqlx-cli installe avec succes")
         if result.stdout:
             print(f"Sortie: {result.stdout[:200]}...")
     except subprocess.TimeoutExpired:
-        print("❌ Timeout lors de l'installation de sqlx-cli (trop long)")
+        print("ERREUR: Timeout lors de l'installation de sqlx-cli (trop long)")
         sys.exit(1)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Erreur lors de l'installation de sqlx-cli: {e}")
+        print(f"ERREUR: Erreur lors de l'installation de sqlx-cli: {e}")
         if e.stderr:
             print(f"Erreur détaillée: {e.stderr}")
         sys.exit(1)
@@ -116,8 +116,8 @@ def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
     - Identifie uniquement les migrations non encore appliquées
     - Évite ainsi les doublons automatiquement
     """
-    print(f"🔍 Vérification de l'état des migrations... (tentative {retry_count + 1}/{MAX_RETRIES + 1})")
-    print("ℹ️ SQLx vérifie la table _sqlx_migrations pour éviter les doublons")
+    print(f"Verification de l'etat des migrations... (tentative {retry_count + 1}/{MAX_RETRIES + 1})")
+    print("INFO: SQLx verifie la table _sqlx_migrations pour eviter les doublons")
     
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
@@ -147,9 +147,9 @@ def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
         pending_count = sum(1 for line in lines if 'Pending' in line or 'pending' in line.lower())
         
         if applied_count > 0:
-            print(f"✅ {applied_count} migration(s) déjà appliquée(s) (ignorées)")
+            print(f"OK: {applied_count} migration(s) deja appliquee(s) (ignorees)")
         if pending_count > 0:
-            print(f"🔄 {pending_count} migration(s) en attente d'application")
+            print(f"EN ATTENTE: {pending_count} migration(s) en attente d'application")
         
         return {
             "has_pending": has_pending,
@@ -160,37 +160,37 @@ def check_migrations_status(database_url: str, retry_count: int = 0) -> dict:
         }
     except subprocess.TimeoutExpired:
         if retry_count == 0:
-            print("ℹ️ Timeout attendu: Base de données probablement dans un VPC privé")
+            print("INFO: Timeout attendu: Base de donnees probablement dans un VPC prive")
         else:
-            print("⚠️ Timeout lors de la vérification des migrations")
+            print("ATTENTION: Timeout lors de la verification des migrations")
         if retry_count < MAX_RETRIES:
-            print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
+            print(f"Nouvelle tentative dans {RETRY_DELAY} secondes...")
             time.sleep(RETRY_DELAY)
             return check_migrations_status(database_url, retry_count + 1)
-        print("ℹ️ Impossible de se connecter (comportement attendu pour VPC privé)")
+        print("INFO: Impossible de se connecter (comportement attendu pour VPC prive)")
         return {"has_pending": True, "output": "Timeout", "connection_ok": False}
     except subprocess.CalledProcessError as e:
         error_output = e.stderr if e.stderr else (e.stdout if e.stdout else str(e))
         
         # Vérifier si c'est une erreur de connexion
         if is_connection_error(error_output):
-            print(f"⚠️ Erreur de connexion détectée: {error_output[:200]}")
+            print(f"ATTENTION: Erreur de connexion detectee: {error_output[:200]}")
             if retry_count < MAX_RETRIES:
-                print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
+                print(f"Nouvelle tentative dans {RETRY_DELAY} secondes...")
                 time.sleep(RETRY_DELAY)
                 return check_migrations_status(database_url, retry_count + 1)
-            print("❌ Impossible de se connecter à la base de données après plusieurs tentatives")
-            print("ℹ️ La base de données est probablement dans un VPC privé et non accessible depuis GitHub Actions")
-            print("ℹ️ Les migrations seront exécutées automatiquement au démarrage de l'application ECS")
+            print("ERREUR: Impossible de se connecter a la base de donnees apres plusieurs tentatives")
+            print("INFO: La base de donnees est probablement dans un VPC prive et non accessible depuis GitHub Actions")
+            print("INFO: Les migrations seront executees automatiquement au demarrage de l'application ECS")
             return {"has_pending": False, "output": error_output, "connection_ok": False}
         
-        print(f"⚠️ Erreur lors de la vérification: {error_output[:200]}")
+        print(f"ATTENTION: Erreur lors de la verification: {error_output[:200]}")
         # Si la table _sqlx_migrations n'existe pas, on considère qu'il faut appliquer toutes les migrations
         if "relation \"_sqlx_migrations\" does not exist" in error_output.lower():
-            print("ℹ️ Table _sqlx_migrations n'existe pas, toutes les migrations seront appliquées")
+            print("INFO: Table _sqlx_migrations n'existe pas, toutes les migrations seront appliquees")
             return {"has_pending": True, "output": error_output, "connection_ok": True}
         # Si c'est une autre erreur, on essaie quand même d'appliquer les migrations
-        print("ℹ️ Tentative d'application des migrations malgré l'erreur de vérification")
+        print("INFO: Tentative d'application des migrations malgre l'erreur de verification")
         return {"has_pending": True, "output": error_output, "connection_ok": True}
 
 
@@ -202,7 +202,7 @@ def run_correction_migrations(database_url: str) -> bool:
     Utilise sqlx migrate run avec un fichier spécifique pour chaque migration de correction
     """
     print("=" * 80)
-    print("🔄 Exécution des migrations de correction AVANT sqlx migrate run")
+    print("Execution des migrations de correction AVANT sqlx migrate run")
     print("=" * 80)
     print()
     
@@ -218,10 +218,10 @@ def run_correction_migrations(database_url: str) -> bool:
     for migration_file in correction_migrations:
         migration_path = MIGRATIONS_DIR / migration_file
         if not migration_path.exists():
-            print(f"⚠️ Migration de correction non trouvée: {migration_file} (ignorée)")
+            print(f"ATTENTION: Migration de correction non trouvee: {migration_file} (ignoree)")
             continue
         
-        print(f"🔄 Exécution de la migration de correction: {migration_file}")
+        print(f"Execution de la migration de correction: {migration_file}")
         try:
             # Utiliser sqlx migrate run avec un fichier spécifique
             # Note: sqlx migrate run exécute toutes les migrations, donc on doit utiliser
@@ -245,7 +245,7 @@ def run_correction_migrations(database_url: str) -> bool:
                 )
                 
                 if result.returncode == 0:
-                    print(f"✅ Migration de correction {migration_file} appliquée avec succès")
+                    print(f"OK: Migration de correction {migration_file} appliquee avec succes")
                 else:
                     # Vérifier si l'erreur est "already exists" ou similaire (non bloquant)
                     error_output = (result.stderr + result.stdout).lower()
@@ -253,16 +253,16 @@ def run_correction_migrations(database_url: str) -> bool:
                         "already exists", "does not exist", "cannot be implemented",
                         "duplicate", "relation already exists", "already applied"
                     ]):
-                        print(f"⚠️ Migration de correction {migration_file} : erreurs attendues (déjà appliquée ou non bloquant)")
+                        print(f"ATTENTION: Migration de correction {migration_file} : erreurs attendues (deja appliquee ou non bloquant)")
                     else:
-                        print(f"⚠️ Migration de correction {migration_file} : erreurs non critiques")
+                        print(f"ATTENTION: Migration de correction {migration_file} : erreurs non critiques")
                         if result.stderr:
                             print(f"   Erreur: {result.stderr[:200]}...")
             else:
                 # Fallback: utiliser sqlx migrate run avec le fichier spécifique
                 # Note: sqlx migrate run ne supporte pas l'exécution d'un fichier spécifique
                 # Donc on doit lire le fichier et l'exécuter via sqlx query
-                print(f"⚠️ psql non disponible, utilisation de sqlx query...")
+                print(f"ATTENTION: psql non disponible, utilisation de sqlx query...")
                 with open(migration_path, 'r', encoding='utf-8') as f:
                     sql_content = f.read()
                 
@@ -291,15 +291,15 @@ def run_correction_migrations(database_url: str) -> bool:
                     except Exception:
                         pass  # Ignorer les erreurs individuelles
                 
-                print(f"⚠️ Migration de correction {migration_file} : exécutée partiellement (psql recommandé)")
+                print(f"ATTENTION: Migration de correction {migration_file} : executee partiellement (psql recommande)")
                 
         except subprocess.TimeoutExpired:
-            print(f"⚠️ Timeout lors de l'exécution de {migration_file} (ignoré)")
+            print(f"ATTENTION: Timeout lors de l'execution de {migration_file} (ignore)")
         except Exception as e:
-            print(f"⚠️ Erreur lors de l'exécution de {migration_file}: {e} (ignoré)")
+            print(f"ATTENTION: Erreur lors de l'execution de {migration_file}: {e} (ignore)")
     
     print()
-    print("✅ Migrations de correction exécutées")
+    print("OK: Migrations de correction executees")
     print()
     return True
 
@@ -311,7 +311,7 @@ def run_migrations(database_url: str, retry_count: int = 0) -> bool:
     SQLx est idempotent : il vérifie la table _sqlx_migrations avant d'appliquer chaque migration.
     Si une migration a déjà été appliquée (même checksum), elle est automatiquement ignorée.
     """
-    print(f"🚀 Exécution des migrations SQLx standard... (tentative {retry_count + 1}/{MAX_RETRIES + 1})")
+    print(f"Execution des migrations SQLx standard... (tentative {retry_count + 1}/{MAX_RETRIES + 1})")
     
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
@@ -329,42 +329,42 @@ def run_migrations(database_url: str, retry_count: int = 0) -> bool:
             check=True,
             timeout=timeout
         )
-        print("✅ Migrations SQLx standard exécutées avec succès")
+        print("OK: Migrations SQLx standard executees avec succes")
         if result.stdout:
             print(result.stdout)
         return True
     except subprocess.TimeoutExpired:
-        print("❌ Timeout lors de l'exécution des migrations (trop long)")
+        print("ERREUR: Timeout lors de l'execution des migrations (trop long)")
         if retry_count < MAX_RETRIES:
-            print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
+            print(f"Nouvelle tentative dans {RETRY_DELAY} secondes...")
             time.sleep(RETRY_DELAY)
             return run_migrations(database_url, retry_count + 1)
         return False
     except subprocess.CalledProcessError as e:
         error_output = e.stderr if e.stderr else (e.stdout if e.stdout else str(e))
-        print(f"❌ Erreur lors de l'exécution des migrations: {error_output[:300]}")
+        print(f"ERREUR: Erreur lors de l'execution des migrations: {error_output[:300]}")
         
         # Vérifier si c'est une erreur de connexion
         if is_connection_error(error_output):
-            print("⚠️ Erreur de connexion détectée")
+            print("ATTENTION: Erreur de connexion detectee")
             if retry_count < MAX_RETRIES:
-                print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
+                print(f"Nouvelle tentative dans {RETRY_DELAY} secondes...")
                 time.sleep(RETRY_DELAY)
                 return run_migrations(database_url, retry_count + 1)
-            print("❌ Impossible de se connecter à la base de données après plusieurs tentatives")
-            print("ℹ️ La base de données est probablement dans un VPC privé et non accessible depuis GitHub Actions")
-            print("ℹ️ Les migrations seront exécutées automatiquement au démarrage de l'application ECS")
+            print("ERREUR: Impossible de se connecter a la base de donnees apres plusieurs tentatives")
+            print("INFO: La base de donnees est probablement dans un VPC prive et non accessible depuis GitHub Actions")
+            print("INFO: Les migrations seront executees automatiquement au demarrage de l'application ECS")
             return False
         
         # Certaines erreurs peuvent être ignorées (migrations déjà appliquées, etc.)
         error_str = error_output.lower()
         if "already applied" in error_str or "duplicate" in error_str:
-            print("⚠️ Migration déjà appliquée, on continue...")
+            print("ATTENTION: Migration deja appliquee, on continue...")
             return True
         
         # Autres erreurs : retry si possible
         if retry_count < MAX_RETRIES:
-            print(f"⏳ Nouvelle tentative dans {RETRY_DELAY} secondes...")
+            print(f"Nouvelle tentative dans {RETRY_DELAY} secondes...")
             time.sleep(RETRY_DELAY)
             return run_migrations(database_url, retry_count + 1)
         
@@ -374,17 +374,17 @@ def run_migrations(database_url: str, retry_count: int = 0) -> bool:
 def main():
     """Fonction principale"""
     print("=" * 80)
-    print("🔄 Exécution des migrations SQLx sur AWS RDS")
+    print("Execution des migrations SQLx sur AWS RDS")
     print("=" * 80)
     print()
     
     # Vérifier que le dossier migrations existe
     if not MIGRATIONS_DIR.exists():
-        print(f"❌ Dossier migrations introuvable: {MIGRATIONS_DIR}")
+        print(f"ERREUR: Dossier migrations introuvable: {MIGRATIONS_DIR}")
         sys.exit(1)
     
-    print(f"📁 Dossier migrations: {MIGRATIONS_DIR}")
-    print(f"📊 Nombre de fichiers de migration: {len(list(MIGRATIONS_DIR.glob('*.sql')))}")
+    print(f"Dossier migrations: {MIGRATIONS_DIR}")
+    print(f"Nombre de fichiers de migration: {len(list(MIGRATIONS_DIR.glob('*.sql')))}")
     print()
     
     # Récupérer DATABASE_URL depuis SSM
@@ -393,7 +393,7 @@ def main():
     
     # Vérifier/installer sqlx-cli
     if not check_sqlx_cli_installed():
-        print("⚠️ sqlx-cli non trouvé, installation...")
+        print("ATTENTION: sqlx-cli non trouve, installation...")
         install_sqlx_cli()
     print()
     
@@ -407,62 +407,62 @@ def main():
         applied = status.get("applied_count", 0)
         pending = status.get("pending_count", 0)
         if applied > 0 or pending > 0:
-            print(f"📊 Résumé: {applied} appliquée(s), {pending} en attente")
+            print(f"Resume: {applied} appliquee(s), {pending} en attente")
             print()
     
     # Vérifier si la connexion fonctionne
     if not status.get("connection_ok", True):
         print("=" * 80)
-        print("ℹ️  COMPORTEMENT ATTENDU: Base de données non accessible depuis GitHub Actions")
+        print("INFO: COMPORTEMENT ATTENDU: Base de donnees non accessible depuis GitHub Actions")
         print("=" * 80)
         print()
-        print("📋 Explication:")
-        print("  La base de données RDS est dans un VPC privé pour la sécurité.")
-        print("  GitHub Actions s'exécute sur des runners publics et ne peut pas y accéder.")
-        print("  C'est un comportement normal et sécurisé.")
+        print("Explication:")
+        print("  La base de donnees RDS est dans un VPC prive pour la securite.")
+        print("  GitHub Actions s'execute sur des runners publics et ne peut pas y acceder.")
+        print("  C'est un comportement normal et securise.")
         print()
-        print("✅ Solution automatique:")
-        print("  • Les migrations seront exécutées automatiquement au démarrage de l'application ECS")
-        print("  • L'application ECS a accès à la base de données via le VPC")
+        print("Solution automatique:")
+        print("  • Les migrations seront executees automatiquement au demarrage de l'application ECS")
+        print("  • L'application ECS a acces a la base de donnees via le VPC")
         print("  • Le build Docker continuera normalement")
         print("  • Aucune action manuelle requise")
         print()
         
         if FAIL_ON_ERROR:
-            print("❌ FAIL_ON_MIGRATION_ERROR=true, arrêt du workflow")
+            print("ERREUR: FAIL_ON_MIGRATION_ERROR=true, arret du workflow")
             sys.exit(1)
         else:
-            print("ℹ️ FAIL_ON_MIGRATION_ERROR=false, continuation du workflow")
+            print("INFO: FAIL_ON_MIGRATION_ERROR=false, continuation du workflow")
             print("=" * 80)
-            print("✅ Migrations différées (seront exécutées au démarrage ECS)")
+            print("OK: Migrations differrees (seront executees au demarrage ECS)")
             print("=" * 80)
             sys.exit(0)
     
-    # ✅ NOUVEAU 2026-01-30: Exécuter les migrations de correction AVANT sqlx migrate run
+    # NOUVEAU 2026-01-30: Exécuter les migrations de correction AVANT sqlx migrate run
     # Cela garantit que les corrections sont en place avant que les autres migrations ne s'exécutent
-    print("🔄 Exécution des migrations de correction AVANT sqlx migrate run...")
+    print("Execution des migrations de correction AVANT sqlx migrate run...")
     run_correction_migrations(database_url)
     print()
     
     # Exécuter les migrations SQLx standard si nécessaire
     if status["has_pending"]:
-        print("🔄 Des migrations sont en attente, exécution...")
+        print("Des migrations sont en attente, execution...")
         success = run_migrations(database_url)
         if not success:
-            print("❌ Échec de l'exécution des migrations")
+            print("ERREUR: Echec de l'execution des migrations")
             if FAIL_ON_ERROR:
-                print("❌ FAIL_ON_MIGRATION_ERROR=true, arrêt du workflow")
+                print("ERREUR: FAIL_ON_MIGRATION_ERROR=true, arret du workflow")
                 sys.exit(1)
             else:
-                print("ℹ️ FAIL_ON_MIGRATION_ERROR=false, continuation du workflow")
-                print("ℹ️ Les migrations seront exécutées au démarrage de l'application ECS")
+                print("INFO: FAIL_ON_MIGRATION_ERROR=false, continuation du workflow")
+                print("INFO: Les migrations seront executees au demarrage de l'application ECS")
                 sys.exit(0)
     else:
-        print("✅ Toutes les migrations sont déjà appliquées")
+        print("OK: Toutes les migrations sont deja appliquees")
     
     print()
     print("=" * 80)
-    print("✅ Processus terminé avec succès")
+    print("OK: Processus termine avec succes")
     print("=" * 80)
 
 

@@ -60,13 +60,23 @@ echo "✅ Base de données AWS RDS accessible"
 # 🛠️ S'assurer que la base applicative existe
 # Si DATABASE_URL pointe vers une DB qui n'existe pas encore, l'app crashe (sqlx).
 # On essaie de créer la DB automatiquement en se connectant à la DB "postgres".
+# Désactiver set -e temporairement pour cette section (la vérification peut échouer sans être critique)
+set +e
 DB_NAME=$(echo "$DATABASE_URL" | sed -n 's#.*/\([^/?]*\).*#\1#p')
 if [ -n "$DB_NAME" ] && [ "$DB_NAME" != "postgres" ]; then
     echo "🔍 Vérification de l'existence de la base PostgreSQL '$DB_NAME'..."
     ADMIN_DB_URL=$(echo "$DATABASE_URL" | sed -E 's#/(.*)$#/postgres#')
     if command -v psql >/dev/null 2>&1; then
-        DB_EXISTS=$(psql "$ADMIN_DB_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" 2>/dev/null | tr -d '[:space:]' || true)
+        # Améliorer la vérification avec meilleure gestion d'erreur
+        DB_EXISTS_OUTPUT=$(psql "$ADMIN_DB_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" 2>&1)
+        DB_EXISTS=$(echo "$DB_EXISTS_OUTPUT" | grep -v "ERROR" | tr -d '[:space:]' || echo "")
         if [ "$DB_EXISTS" != "1" ]; then
+            # Afficher l'erreur si la requête a échoué
+            if echo "$DB_EXISTS_OUTPUT" | grep -q "ERROR"; then
+                echo "⚠️ Erreur lors de la vérification: $(echo "$DB_EXISTS_OUTPUT" | grep "ERROR")"
+                echo "   La base pourrait exister mais la vérification a échoué"
+                echo "   Continuons quand même - l'application tentera de se connecter directement"
+            fi
             echo "⚠️ Base '$DB_NAME' inexistante, tentative de création..."
             if psql "$ADMIN_DB_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\"" >/dev/null 2>&1; then
                 echo "✅ Base '$DB_NAME' créée avec succès"
@@ -87,18 +97,17 @@ if [ -n "$DB_NAME" ] && [ "$DB_NAME" != "postgres" ]; then
                 if [ "$DB_EXISTS_RETRY" = "1" ]; then
                     echo "✅ Base '$DB_NAME' détectée après attente"
                 else
-                    echo "❌ ERREUR CRITIQUE: La base '$DB_NAME' n'existe toujours pas"
+                    echo "⚠️ WARNING: La base '$DB_NAME' n'a pas été détectée après vérification"
+                    echo "   Cela peut être dû à:"
+                    echo "   - Un problème de permissions pour lister les bases"
+                    echo "   - La base existe mais la vérification a échoué"
                     echo ""
-                    echo "📋 SOLUTION IMMÉDIATE:"
-                    echo "   1. Allez sur AWS Console → RDS → ${DB_NAME}-db"
-                    echo "   2. Ouvrez Query Editor"
-                    echo "   3. Exécutez: CREATE DATABASE \"${DB_NAME}\";"
-                    echo "   4. Redémarrez ce conteneur"
+                    echo "   Continuons quand même - l'application tentera de se connecter directement"
+                    echo "   Si la base n'existe pas, l'application affichera une erreur de connexion claire"
                     echo ""
-                    echo "   Voir GUIDE_CREATION_DATABASE_AWS_RDS.md pour plus de détails"
-                    echo ""
-                    echo "   Admin URL: ${ADMIN_DB_URL:0:50}... (tronquée)"
-                    exit 1
+                    echo "   Si vous voyez une erreur de connexion, créez la base avec:"
+                    echo "   CREATE DATABASE \"${DB_NAME}\";"
+                    # Ne pas quitter - laisser l'application essayer de se connecter
                 fi
             fi
         else
@@ -109,6 +118,8 @@ if [ -n "$DB_NAME" ] && [ "$DB_NAME" != "postgres" ]; then
         echo "   (postgresql-client doit être installé dans l'image)"
     fi
 fi
+# Réactiver set -e pour le reste du script
+set -e
 
 # Vérifier la connectivité Redis (AWS ElastiCache) - optionnel et non-bloquant
 if [ -n "$REDIS_URL" ]; then

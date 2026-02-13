@@ -231,6 +231,15 @@ resource "aws_security_group" "rds" {
     security_groups = [aws_security_group.ecs.id]
   }
 
+  # Autoriser l'instance EC2 temporaire pour créer la base de données
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.temp_ec2.id]
+    description     = "Temporary access from EC2 instance for database creation"
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
