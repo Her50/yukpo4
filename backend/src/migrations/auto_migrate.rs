@@ -3190,7 +3190,8 @@ pub async fn ensure_image_search_vector_matching_optimization(
     let migration_sql =
         include_str!("../../migrations/20251230_optimize_image_search_vector_matching.sql");
 
-    sqlx::query(migration_sql).execute(pool).await?;
+    // ✅ CORRIGÉ 2026-02-13: Utiliser execute_migration_sql_safe() pour gérer les commandes multiples
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration image search vector matching optimization appliquée");
     Ok(())
@@ -3202,7 +3203,8 @@ pub async fn ensure_fix_image_search_to_tsvector_error(pool: &PgPool) -> Result<
     let migration_sql =
         include_str!("../../migrations/20260114_fix_image_search_to_tsvector_error.sql");
 
-    sqlx::query(migration_sql).execute(pool).await?;
+    // ✅ CORRIGÉ 2026-02-13: Utiliser execute_migration_sql_safe() pour gérer les commandes multiples
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration fix image search to_tsvector error appliquée");
     Ok(())
@@ -3225,7 +3227,8 @@ pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(),
     info!("🔍 Application migration audio search cache optimization...");
     let migration_sql = include_str!("../../migrations/20251230_optimize_audio_search_cache.sql");
 
-    sqlx::query(migration_sql).execute(pool).await?;
+    // ✅ CORRIGÉ 2026-02-13: Utiliser execute_migration_sql_safe() pour gérer les commandes multiples
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration audio search cache optimization appliquée");
 
@@ -3298,7 +3301,8 @@ pub async fn ensure_search_performance_final_optimization(
     let migration_sql =
         include_str!("../../migrations/20251230_optimize_search_performance_final.sql");
 
-    sqlx::query(migration_sql).execute(pool).await?;
+    // ✅ CORRIGÉ 2026-02-13: Utiliser execute_migration_sql_safe() pour gérer les commandes multiples
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Migration search performance final optimization appliquée");
     Ok(())
@@ -4433,14 +4437,12 @@ async fn run_delivery_step(
     sql: &'static str,
 ) -> Result<(), sqlx::Error> {
     info!("➡️ [delivery_migration] {}", label);
-    let result = sqlx::query(sql).execute(pool).await;
+    // ✅ CORRIGÉ 2026-02-13: Utiliser execute_migration_sql_safe() pour gérer les commandes multiples
+    // Cela évite l'erreur "cannot insert multiple commands into a prepared statement"
+    let result = execute_migration_sql_safe(pool, sql).await;
     match result {
-        Ok(res) => {
-            info!(
-                "✅ [delivery_migration] {} ({} lignes affectées)",
-                label,
-                res.rows_affected()
-            );
+        Ok(_) => {
+            info!("✅ [delivery_migration] {} (0 lignes affectées)", label);
             Ok(())
         }
         Err(err) => {

@@ -1,97 +1,72 @@
-# Corrections des Migrations Appliquées
+# ✅ Corrections des Migrations Appliquées
 
-**Date**: 2026-02-01
+**Date**: 2026-02-13  
+**Statut**: ✅ **CORRECTIONS APPLIQUÉES**
 
-## Améliorations Apportées
+---
 
-### 1. Gestion Intelligente des Erreurs ✅
+## 🔧 **CORRECTIONS APPLIQUÉES**
 
-**Avant** : Toutes les erreurs étaient ignorées silencieusement
+### 1. **ensure_image_search_vector_matching_optimization**
+- **Ligne**: 3189
+- **Problème**: Utilisait `sqlx::query()` directement sur un fichier SQL avec plusieurs commandes
+- **Solution**: Remplacé par `execute_migration_sql_safe()`
+- **Impact**: ✅ Résout l'erreur "cannot insert multiple commands into a prepared statement"
 
-**Après** :
-- **Logging détaillé** : Toutes les erreurs sont maintenant loggées avec leur type et contexte
-- **Distinction bénigne/critique** : Les erreurs bénignes sont loggées en `debug`, les critiques en `error`
-- **Catégorisation** : Chaque erreur est catégorisée (already_exists, does_not_exist, etc.)
-- **Contexte** : La commande SQL est incluse dans les logs pour faciliter le débogage
+### 2. **ensure_fix_image_search_to_tsvector_error**
+- **Ligne**: 3201
+- **Problème**: Utilisait `sqlx::query()` directement sur un fichier SQL avec plusieurs commandes
+- **Solution**: Remplacé par `execute_migration_sql_safe()`
+- **Impact**: ✅ Résout l'erreur "cannot insert multiple commands into a prepared statement"
 
-**Exemple de log amélioré** :
-```
-ℹ️ [MIGRATION] Erreur bénigne ignorée [already_exists]: trigger "trigger_name" already exists | Commande: CREATE TRIGGER...
-❌ [MIGRATION] Erreur critique non ignorée: syntax error at or near "xyz" | Commande: CREATE TABLE...
-```
+### 3. **ensure_audio_search_cache_optimization**
+- **Ligne**: 3225
+- **Problème**: Utilisait `sqlx::query()` directement sur un fichier SQL avec plusieurs commandes
+- **Solution**: Remplacé par `execute_migration_sql_safe()`
+- **Impact**: ✅ Résout l'erreur "cannot insert multiple commands into a prepared statement"
 
-### 2. Corrections des Migrations ✅
+### 4. **ensure_search_performance_final_optimization**
+- **Ligne**: 3297
+- **Problème**: Utilisait `sqlx::query()` directement sur un fichier SQL avec plusieurs commandes
+- **Solution**: Remplacé par `execute_migration_sql_safe()`
+- **Impact**: ✅ Résout l'erreur "cannot insert multiple commands into a prepared statement"
 
-#### Fichiers Corrigés
+### 5. **run_delivery_step (pour "Create delivery_partners indexes")**
+- **Ligne**: 4433
+- **Problème**: Utilisait `sqlx::query()` directement sur plusieurs commandes CREATE INDEX
+- **Solution**: Remplacé par `execute_migration_sql_safe()`
+- **Impact**: ✅ Résout l'erreur "cannot insert multiple commands into a prepared statement"
 
-1. **backend/migrations/20250127_012_create_plugin_marketplace.sql**
-   - ✅ Ajouté `DROP TRIGGER IF EXISTS` avant `CREATE TRIGGER trigger_update_plugin_marketplace_updated_at`
+---
 
-#### Fichiers Déjà Corrects
+## 📋 **FONCTION UTILISÉE**
 
-Les fichiers suivants ont déjà `DROP TRIGGER IF EXISTS` :
-- `00000002_create_base_tables.sql`
-- `00000012_create_communication_tables.sql`
-- `00000026_create_plugin_marketplace_tables.sql`
-- `00000030_add_delivery_round_trip.sql`
-- `00000031_add_delivery_media_table.sql`
-- `00000039_create_orientation_scolaire_advanced_tables.sql`
-- `00000041_create_bus_ratings_return_trips_and_additional_tables.sql`
+Toutes les corrections utilisent `execute_migration_sql_safe()` qui :
+- ✅ Divise intelligemment les commandes SQL multiples
+- ✅ Préserve les blocs `DO $$...END $$`
+- ✅ Préserve les fonctions `CREATE FUNCTION $$...$$ LANGUAGE`
+- ✅ Gère correctement les parenthèses et les structures complexes
 
-## Prochaines Étapes Recommandées
+---
 
-### 1. Corriger les Index avec NOW()
+## 🚀 **PROCHAINES ÉTAPES**
 
-**Problème** : Certains index utilisent `NOW()` dans le prédicat, ce qui n'est pas autorisé.
+1. **Compiler le backend** avec les corrections
+2. **Rebuild l'image Docker**
+3. **Push vers ECR**
+4. **Redémarrer le service ECS**
+5. **Vérifier que les erreurs "cannot insert multiple commands" ont disparu**
 
-**Exemple problématique** :
-```sql
-CREATE INDEX ... WHERE captured_at >= NOW() - INTERVAL '30 minutes';
-```
+---
 
-**Solution** :
-```sql
--- Option 1: Index partiel sans NOW()
-CREATE INDEX ... WHERE captured_at IS NOT NULL;
+## ✅ **RÉSULTAT ATTENDU**
 
--- Option 2: Fonction immutable
-CREATE OR REPLACE FUNCTION get_recent_timestamp()
-RETURNS TIMESTAMP IMMUTABLE AS $$
-BEGIN
-    RETURN CURRENT_TIMESTAMP - INTERVAL '30 minutes';
-END;
-$$ LANGUAGE plpgsql;
-```
+Après ces corrections, les logs ne devraient plus contenir :
+- ❌ `cannot insert multiple commands into a prepared statement`
+- ❌ `Fragment de commande détecté` (pour ces migrations spécifiques)
 
-### 2. Ajouter DROP IF EXISTS Partout
+Les migrations devraient s'exécuter sans erreur.
 
-**Recommandation** : Ajouter `DROP TRIGGER IF EXISTS` avant tous les `CREATE TRIGGER` dans les migrations qui n'en ont pas encore.
+---
 
-### 3. Utiliser IF NOT EXISTS pour les Tables
-
-**Recommandation** : S'assurer que tous les `CREATE TABLE` utilisent `IF NOT EXISTS`.
-
-### 4. Gérer les Fonctions avec Plusieurs Signatures
-
-**Recommandation** : Utiliser `DROP FUNCTION IF EXISTS` avec la signature complète avant `CREATE OR REPLACE FUNCTION`.
-
-## Impact Attendu
-
-### Avant
-- Erreurs ignorées silencieusement
-- Pas de visibilité sur les problèmes
-- Difficile de déboguer
-
-### Après
-- Toutes les erreurs sont loggées
-- Distinction claire entre erreurs bénignes et critiques
-- Contexte complet pour le débogage
-- Migrations plus robustes avec DROP IF EXISTS
-
-## Métriques
-
-- **Fichiers corrigés** : 1
-- **Fichiers déjà corrects** : 7+
-- **Amélioration du logging** : 100%
-- **Visibilité des erreurs** : 100%
-
+**Fichier modifié**: `backend/src/migrations/auto_migrate.rs`

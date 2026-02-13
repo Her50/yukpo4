@@ -31,6 +31,29 @@ resource "aws_iam_role_policy_attachment" "temp_ec2_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# Permission pour accéder à Secrets Manager
+# Note: backend_secrets est défini dans main.tf, on construit l'ARN manuellement
+data "aws_caller_identity" "current" {}
+
+resource "aws_iam_role_policy" "temp_ec2_secrets" {
+  name = "${var.project_name}-temp-ec2-secrets-policy"
+  role = aws_iam_role.temp_ec2_ssm.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}/backend/secrets-*"
+      }
+    ]
+  })
+}
+
 # Instance profile pour attacher le rôle à l'instance EC2
 resource "aws_iam_instance_profile" "temp_ec2_ssm" {
   name = "${var.project_name}-temp-ec2-ssm-profile"
