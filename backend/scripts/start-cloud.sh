@@ -233,11 +233,35 @@ echo "   DATABASE_URL: ${DATABASE_URL:0:30}... (présent)"
 echo "   REDIS_URL: ${REDIS_URL:+présent}${REDIS_URL:-non défini}"
 echo "   JWT_SECRET: ${JWT_SECRET:+présent}${JWT_SECRET:-non défini}"
 
+# ✅ NOUVEAU 2026-02-13: Logs de débogage avant le lancement
+echo "🔍 Vérification de l'exécutable avant lancement..."
+if [ ! -f "./yukpomnang_backend" ]; then
+    echo "❌ ERREUR: L'exécutable ./yukpomnang_backend n'existe pas!"
+    exit 1
+fi
+
+echo "✅ Exécutable trouvé"
+echo "   Taille: $(stat -f%z ./yukpomnang_backend 2>/dev/null || stat -c%s ./yukpomnang_backend 2>/dev/null || echo 'inconnue') bytes"
+echo "   Permissions: $(ls -l ./yukpomnang_backend | awk '{print $1}')"
+echo "   Type: $(file ./yukpomnang_backend 2>/dev/null || echo 'inconnu')"
+
+# Vérifier les dépendances si ldd est disponible
+if command -v ldd >/dev/null 2>&1; then
+    echo "   Dépendances système:"
+    ldd ./yukpomnang_backend 2>&1 | head -10 || echo "      (ldd a échoué ou exécutable statique)"
+fi
+
+echo ""
+echo "🚀 Lancement de l'application backend..."
+echo "   Commande: ./yukpomnang_backend"
+echo "   Les logs [MAIN] devraient apparaître ci-dessous..."
+echo ""
+
 # Utiliser exec pour que le processus principal soit le backend
 # Cela permet à AWS ECS de gérer correctement les signaux (SIGTERM, etc.)
 # Capturer les erreurs et les logger avant de quitter
 set +e
-./yukpomnang_backend
+./yukpomnang_backend 2>&1
 EXIT_CODE=$?
 set -e
 
