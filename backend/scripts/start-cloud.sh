@@ -20,7 +20,7 @@ export AWS_REGION=${AWS_REGION:-us-east-1}
 
 # Configuration du pool de connexions pour AWS RDS
 export DB_POOL_SIZE=${DB_POOL_SIZE:-100}
-export DB_POOL_MIN_SIZE=${DB_POOL_MIN_SIZE:-20}
+export DB_POOL_MIN_SIZE=${DB_POOL_MIN_SIZE:-5}  # ✅ Optimisé: Réduit de 20 à 5 pour démarrage plus rapide
 export DB_ACQUIRE_TIMEOUT_SECS=${DB_ACQUIRE_TIMEOUT_SECS:-30}
 
 # Vérifier la connectivité à la base de données (AWS RDS)
