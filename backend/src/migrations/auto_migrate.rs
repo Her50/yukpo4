@@ -913,6 +913,9 @@ pub async fn ensure_global_promo_tables(pool: &PgPool) -> Result<(), sqlx::Error
     .execute(pool)
     .await?;
 
+    // ✅ Vérifier et ajouter les colonnes manquantes pour global_promo_events
+    ensure_global_promo_events_columns(pool).await?;
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS global_promo_entries (
@@ -10039,6 +10042,47 @@ async fn ensure_social_publication_jobs_columns(pool: &PgPool) -> Result<(), sql
                 WHERE table_name = 'social_publication_jobs' AND column_name = 'platform'
             ) THEN
                 ALTER TABLE social_publication_jobs ADD COLUMN platform TEXT NOT NULL DEFAULT 'unknown';
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter attempt si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'social_publication_jobs' AND column_name = 'attempt'
+            ) THEN
+                ALTER TABLE social_publication_jobs ADD COLUMN attempt INTEGER NOT NULL DEFAULT 0;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// ✅ Vérifie et ajoute les colonnes manquantes pour global_promo_events
+async fn ensure_global_promo_events_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    // Ajouter status si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'global_promo_events' AND column_name = 'status'
+            ) THEN
+                ALTER TABLE global_promo_events
+                ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'draft'
+                CHECK (status IN ('draft', 'scheduled', 'live', 'archived'));
             END IF;
         END $$;
         "#,
