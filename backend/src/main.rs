@@ -2020,77 +2020,151 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ 2025-12-30: Créer les index MongoDB pour optimiser les requêtes /api/services/{id}/stats et /api/services/{id}/reviews
     // ✅ NOUVEAU 2026-01-02: Optimisation critique add_product_to_service_jsonb_v2
-    match yukpomnang_backend::migrations::auto_migrate::ensure_add_product_optimization(
-        &app_state.pg,
-    )
-    .await
-    {
-        Ok(_) => {
-            log::info!("✅ Optimisation add_product_to_service_jsonb_v2 appliquée");
-        }
-        Err(e) => {
-            log::warn!(
+    // ✅ OPTIMISÉ Cloud Run: Lancer en arrière-plan pour démarrage rapide
+    if is_cloud_run {
+        let pg_for_opt = app_state.pg.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            match yukpomnang_backend::migrations::auto_migrate::ensure_add_product_optimization(
+                &pg_for_opt,
+            )
+            .await
+            {
+                Ok(_) => log::info!("✅ Optimisation add_product_to_service_jsonb_v2 appliquée"),
+                Err(e) => log::warn!(
+                    "⚠️ Erreur optimisation add_product_to_service_jsonb_v2: {}",
+                    e
+                ),
+            }
+        });
+    } else {
+        match yukpomnang_backend::migrations::auto_migrate::ensure_add_product_optimization(
+            &app_state.pg,
+        )
+        .await
+        {
+            Ok(_) => log::info!("✅ Optimisation add_product_to_service_jsonb_v2 appliquée"),
+            Err(e) => log::warn!(
                 "⚠️ Erreur optimisation add_product_to_service_jsonb_v2: {}",
                 e
-            );
+            ),
         }
     }
 
     // ✅ NOUVEAU 2026-01-02: Création de la queue asynchrone pour création de produits
-    match yukpomnang_backend::migrations::auto_migrate::ensure_product_creation_queue(&app_state.pg)
+    // ✅ OPTIMISÉ Cloud Run: Lancer en arrière-plan
+    if is_cloud_run {
+        let pg_for_queue = app_state.pg.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            match yukpomnang_backend::migrations::auto_migrate::ensure_product_creation_queue(
+                &pg_for_queue,
+            )
+            .await
+            {
+                Ok(_) => log::info!("✅ Table product_creation_queue créée/appliquée"),
+                Err(e) => log::warn!("⚠️ Erreur création product_creation_queue: {}", e),
+            }
+        });
+    } else {
+        match yukpomnang_backend::migrations::auto_migrate::ensure_product_creation_queue(
+            &app_state.pg,
+        )
         .await
-    {
-        Ok(_) => {
-            log::info!("✅ Table product_creation_queue créée/appliquée");
-        }
-        Err(e) => {
-            log::warn!("⚠️ Erreur création product_creation_queue: {}", e);
+        {
+            Ok(_) => log::info!("✅ Table product_creation_queue créée/appliquée"),
+            Err(e) => log::warn!("⚠️ Erreur création product_creation_queue: {}", e),
         }
     }
 
     // ✅ NOUVEAU 2026-01-02: Création de la table de cache PostgreSQL
-    match yukpomnang_backend::migrations::auto_migrate::ensure_cache_table(&app_state.pg).await {
-        Ok(_) => {
-            log::info!("✅ Table cache_table créée/appliquée");
-        }
-        Err(e) => {
-            log::warn!("⚠️ Erreur création cache_table: {}", e);
+    // ✅ OPTIMISÉ Cloud Run: Lancer en arrière-plan
+    if is_cloud_run {
+        let pg_for_cache = app_state.pg.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            match yukpomnang_backend::migrations::auto_migrate::ensure_cache_table(&pg_for_cache)
+                .await
+            {
+                Ok(_) => log::info!("✅ Table cache_table créée/appliquée"),
+                Err(e) => log::warn!("⚠️ Erreur création cache_table: {}", e),
+            }
+        });
+    } else {
+        match yukpomnang_backend::migrations::auto_migrate::ensure_cache_table(&app_state.pg).await
+        {
+            Ok(_) => log::info!("✅ Table cache_table créée/appliquée"),
+            Err(e) => log::warn!("⚠️ Erreur création cache_table: {}", e),
         }
     }
 
     // ✅ NOUVEAU 2026-02-08: Création de la table navigation_saved_destinations pour destinations favorites
-    match yukpomnang_backend::migrations::auto_migrate::ensure_navigation_saved_destinations_table(
-        &app_state.pg,
-    )
-    .await
-    {
-        Ok(_) => {
-            log::info!("✅ Table navigation_saved_destinations créée/appliquée");
-        }
-        Err(e) => {
-            log::warn!("⚠️ Erreur création navigation_saved_destinations: {}", e);
+    // ✅ OPTIMISÉ Cloud Run: Lancer en arrière-plan
+    if is_cloud_run {
+        let pg_for_nav = app_state.pg.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            match yukpomnang_backend::migrations::auto_migrate::ensure_navigation_saved_destinations_table(&pg_for_nav).await {
+                Ok(_) => log::info!("✅ Table navigation_saved_destinations créée/appliquée"),
+                Err(e) => log::warn!("⚠️ Erreur création navigation_saved_destinations: {}", e),
+            }
+        });
+    } else {
+        match yukpomnang_backend::migrations::auto_migrate::ensure_navigation_saved_destinations_table(&app_state.pg).await {
+            Ok(_) => log::info!("✅ Table navigation_saved_destinations créée/appliquée"),
+            Err(e) => log::warn!("⚠️ Erreur création navigation_saved_destinations: {}", e),
         }
     }
 
     // ✅ NOUVEAU 2026-02-08: Création de la table navigation_trips pour navigation intelligente
-    match yukpomnang_backend::migrations::auto_migrate::ensure_navigation_trips_table(&app_state.pg)
+    // ✅ OPTIMISÉ Cloud Run: Lancer en arrière-plan
+    if is_cloud_run {
+        let pg_for_trips = app_state.pg.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            match yukpomnang_backend::migrations::auto_migrate::ensure_navigation_trips_table(
+                &pg_for_trips,
+            )
+            .await
+            {
+                Ok(_) => log::info!("✅ Table navigation_trips créée/appliquée"),
+                Err(e) => log::warn!("⚠️ Erreur création navigation_trips: {}", e),
+            }
+        });
+    } else {
+        match yukpomnang_backend::migrations::auto_migrate::ensure_navigation_trips_table(
+            &app_state.pg,
+        )
         .await
-    {
-        Ok(_) => {
-            log::info!("✅ Table navigation_trips créée/appliquée");
-        }
-        Err(e) => {
-            log::warn!("⚠️ Erreur création navigation_trips: {}", e);
+        {
+            Ok(_) => log::info!("✅ Table navigation_trips créée/appliquée"),
+            Err(e) => log::warn!("⚠️ Erreur création navigation_trips: {}", e),
         }
     }
 
-    match yukpomnang_backend::migrations::auto_migrate::ensure_mongodb_indexes(
-        app_state.mongo_history.clone(),
-    )
-    .await
-    {
-        Ok(_) => log::info!("✅ Index MongoDB créés avec succès"),
-        Err(e) => log::warn!("⚠️ Erreur création index MongoDB (non bloquant): {}", e),
+    // ✅ OPTIMISÉ Cloud Run: Index MongoDB en arrière-plan
+    if is_cloud_run {
+        let mongo_for_indexes = app_state.mongo_history.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            match yukpomnang_backend::migrations::auto_migrate::ensure_mongodb_indexes(
+                mongo_for_indexes,
+            )
+            .await
+            {
+                Ok(_) => log::info!("✅ Index MongoDB créés avec succès"),
+                Err(e) => log::warn!("⚠️ Erreur création index MongoDB (non bloquant): {}", e),
+            }
+        });
+    } else {
+        match yukpomnang_backend::migrations::auto_migrate::ensure_mongodb_indexes(
+            app_state.mongo_history.clone(),
+        )
+        .await
+        {
+            Ok(_) => log::info!("✅ Index MongoDB créés avec succès"),
+            Err(e) => log::warn!("⚠️ Erreur création index MongoDB (non bloquant): {}", e),
+        }
     }
 
     social_distribution_service::start_distribution_worker(app_state.clone());
