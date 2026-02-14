@@ -14,7 +14,8 @@ env:
   PROJECT_ID: yukpo-project
   SERVICE_NAME: yukpo-backend
   REGION: europe-west1
-  IMAGE_NAME: gcr.io/yukpo-project/yukpo-backend
+  ARTIFACT_REGISTRY_REPO: yukpo-backend
+  IMAGE_NAME: europe-west1-docker.pkg.dev/yukpo-project/yukpo-backend/yukpo-backend
 
 jobs:
   build-and-deploy:
@@ -37,8 +38,10 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker europe-west1-docker.pkg.dev
+          gcloud auth configure-docker gcr.io
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

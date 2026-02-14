@@ -47,6 +47,8 @@ env:
   GCP_PROJECT_ID: yukpo-project
   GCP_REGION: europe-west1
   GCP_SERVICE_NAME: yukpo-backend
+  GCP_ARTIFACT_REGISTRY_REPO: yukpo-backend
+  GCP_IMAGE_NAME: europe-west1-docker.pkg.dev/yukpo-project/yukpo-backend/yukpo-backend
 
 jobs:
   run-migrations:
@@ -408,8 +410,10 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker europe-west1-docker.pkg.dev
+          gcloud auth configure-docker gcr.io
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -418,7 +422,7 @@ jobs:
         id: meta-gcp
         uses: docker/metadata-action@v5
         with:
-          images: gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.GCP_IMAGE_NAME }}
           tags: |
             type=sha,prefix={{branch}}-
             type=raw,value=latest
@@ -440,7 +444,7 @@ jobs:
             backend/Dockerfile.cloud.optimized > Dockerfile.build
           echo "✅ Dockerfile.build created for GCP build"
 
-      - name: Build and push to GCR (from cache)
+      - name: Build and push to Artifact Registry (from cache)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -483,7 +487,7 @@ jobs:
         run: |
           echo "🔄 Deploying to Cloud Run..."
           gcloud run deploy ${{ env.GCP_SERVICE_NAME }} \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:latest \
+            --image ${{ env.GCP_IMAGE_NAME }}:latest \
             --platform managed \
             --region ${{ env.GCP_REGION }} \
             --allow-unauthenticated \
@@ -512,7 +516,7 @@ jobs:
         run: |
           echo "## 🚀 GCP Cloud Run Push & Deployment - Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **GCR Repository**: \`gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifact Registry**: \`${{ env.GCP_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Cloud Run Service**: \`${{ env.GCP_SERVICE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Region**: \`${{ env.GCP_REGION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: \`${{ steps.service-url.outputs.url }}\`" >> $GITHUB_STEP_SUMMARY
