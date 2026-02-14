@@ -7,21 +7,31 @@ export const ENVIRONMENT = {
     GOOGLE_MAPS_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ',
 
            // URL de l'API backend - Configurable via .env
-           // ✅ 2026-02-02: Mise à jour vers domaine personnalisé api.yukpomnang.com
-           // Par défaut: api.yukpomnang.com (domaine personnalisé)
+           // ✅ 2026-02-14: Migration vers GCP Cloud Run
+           // Backend GCP: https://yukpo-backend-yukpo-project.a.run.app
+           // ⚠️ AWS (ancien backend, commenté pour utilisation future):
+           // - https://api.yukpomnang.com (Cloudflare → AWS ECS)
+           // - https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com (AWS ALB direct)
            // Pour développement local: http://localhost:3000
            // Pour autre serveur: définir EXPO_PUBLIC_API_BASE_URL dans .env
-           API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.yukpomnang.com',
-           UPLOAD_BASE_URL: process.env.EXPO_PUBLIC_UPLOAD_BASE_URL || process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.yukpomnang.com',
+           API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpo-backend-yukpo-project.a.run.app',
+           // API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.yukpomnang.com',  // ⚠️ AWS (ancien)
+           UPLOAD_BASE_URL: process.env.EXPO_PUBLIC_UPLOAD_BASE_URL || 'http://34.54.117.97',  // Cloud CDN GCP
+           // UPLOAD_BASE_URL: process.env.EXPO_PUBLIC_UPLOAD_BASE_URL || 'https://cdn.yukpomnang.com',  // ⚠️ AWS CDN (ancien)
 
     // Environnement (development, production, staging)
     ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'production',
 
     // CDN Configuration
-    // ⚠️ Architecture : Cloudflare (CDN) lit depuis Wasabi (Storage)
-    // Cloudflare = Distribution optimale | Wasabi = Stockage source
-    CDN_CLOUDFLARE_URL: process.env.EXPO_PUBLIC_CDN_CLOUDFLARE_URL || 'https://cdn.yukpomnang.com',
-    WASABI_DIRECT_URL: process.env.EXPO_PUBLIC_WASABI_DIRECT_URL || 'https://yukpo-video-prod.s3.eu-central-1.wasabisys.com',
+    // ✅ 2026-02-14: Migration vers GCP Cloud CDN
+    // GCP Cloud CDN: http://34.54.117.97 (Load Balancer → Cloud Storage)
+    // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future):
+    // - Cloudflare CDN: https://cdn.yukpomnang.com (Cloudflare → Wasabi)
+    // - Wasabi Direct: https://yukpo-video-prod.s3.eu-central-1.wasabisys.com
+    CDN_GCP_URL: process.env.EXPO_PUBLIC_CDN_GCP_URL || 'http://34.54.117.97',
+    // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
+    // CDN_CLOUDFLARE_URL: process.env.EXPO_PUBLIC_CDN_CLOUDFLARE_URL || 'https://cdn.yukpomnang.com',
+    // WASABI_DIRECT_URL: process.env.EXPO_PUBLIC_WASABI_DIRECT_URL || 'https://yukpo-video-prod.s3.eu-central-1.wasabisys.com',
 
     // Configuration de traduction
     TRANSLATION: {

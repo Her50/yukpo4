@@ -3,26 +3,28 @@
   "buildCommand": "npm install && npm run build",
   "outputDirectory": "dist",
   "framework": null,
+  "_comment": "✅ 2026-02-14: Migration vers GCP Cloud Run - Backend: https://yukpo-backend-yukpo-project.a.run.app",
+  "_comment_aws": "⚠️ AWS (ancien backend, commenté pour utilisation future): https://api.yukpomnang.com",
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://api.yukpomnang.com/api/$1"
+      "destination": "https://yukpo-backend-yukpo-project.a.run.app/api/$1"
     },
     {
       "source": "/auth/(.*)",
-      "destination": "https://api.yukpomnang.com/auth/$1"
+      "destination": "https://yukpo-backend-yukpo-project.a.run.app/auth/$1"
     },
     {
       "source": "/services/(.*)",
-      "destination": "https://api.yukpomnang.com/services/$1"
+      "destination": "https://yukpo-backend-yukpo-project.a.run.app/services/$1"
     },
     {
       "source": "/ws/(.*)",
-      "destination": "wss://api.yukpomnang.com/ws/$1"
+      "destination": "wss://yukpo-backend-yukpo-project.a.run.app/ws/$1"
     },
     {
       "source": "/healthz",
-      "destination": "https://api.yukpomnang.com/healthz"
+      "destination": "https://yukpo-backend-yukpo-project.a.run.app/healthz"
     },
     {
       "source": "/(.*)",

@@ -7,79 +7,96 @@
   VITE_APP_ENV = "production"
   VITE_APP_DEBUG = "false"
 
+# ✅ 2026-02-14: Migration vers GCP Cloud Run
+# Backend GCP: https://yukpo-backend-yukpo-project.a.run.app
+# ⚠️ AWS (ancien backend, commenté pour utilisation future):
+# - https://api.yukpomnang.com (Cloudflare → AWS ECS)
+# - https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com (AWS ALB direct)
+
 [[redirects]]
   from = "/api/*"
-  to = "https://api.yukpomnang.com/api/:splat"
+  to = "https://yukpo-backend-yukpo-project.a.run.app/api/:splat"
+  # to = "https://api.yukpomnang.com/api/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/auth/*"
-  to = "https://api.yukpomnang.com/auth/:splat"
+  to = "https://yukpo-backend-yukpo-project.a.run.app/auth/:splat"
+  # to = "https://api.yukpomnang.com/auth/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/services/*"
-  to = "https://api.yukpomnang.com/services/:splat"
+  to = "https://yukpo-backend-yukpo-project.a.run.app/services/:splat"
+  # to = "https://api.yukpomnang.com/services/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/healthz"
-  to = "https://api.yukpomnang.com/healthz"
+  to = "https://yukpo-backend-yukpo-project.a.run.app/healthz"
+  # to = "https://api.yukpomnang.com/healthz"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/prestataire/*"
-  to = "https://api.yukpomnang.com/prestataire/:splat"
+  to = "https://yukpo-backend-yukpo-project.a.run.app/prestataire/:splat"
+  # to = "https://api.yukpomnang.com/prestataire/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/user/*"
-  to = "https://api.yukpomnang.com/user/:splat"
+  to = "https://yukpo-backend-yukpo-project.a.run.app/user/:splat"
+  # to = "https://api.yukpomnang.com/user/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/users/*"
-  to = "https://api.yukpomnang.com/users/:splat"
+  to = "https://yukpo-backend-yukpo-project.a.run.app/users/:splat"
+  # to = "https://api.yukpomnang.com/users/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/ia/*"
-  to = "https://api.yukpomnang.com/ia/:splat"
+  to = "https://yukpo-backend-yukpo-project.a.run.app/ia/:splat"
+  # to = "https://api.yukpomnang.com/ia/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/ws/*"
-  to = "wss://api.yukpomnang.com/ws/:splat"
+  to = "wss://yukpo-backend-yukpo-project.a.run.app/ws/:splat"
+  # to = "wss://api.yukpomnang.com/ws/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/fournitures/*"
-  to = "https://api.yukpomnang.com/fournitures/:splat"
+  to = "https://yukpo-backend-yukpo-project.a.run.app/fournitures/:splat"
+  # to = "https://api.yukpomnang.com/fournitures/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/echange/*"
-  to = "https://api.yukpomnang.com/echange/:splat"
+  to = "https://yukpo-backend-yukpo-project.a.run.app/echange/:splat"
+  # to = "https://api.yukpomnang.com/echange/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
