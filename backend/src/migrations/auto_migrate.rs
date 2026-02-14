@@ -12390,6 +12390,171 @@ fn normalize_sql_command(cmd: &str) -> String {
     trimmed.to_string()
 }
 
+/// ✅ AMÉLIORÉ 2026-02-14: Fonction helper pour détecter si une CREATE TABLE est complète
+/// Vérifie que ');' apparaît vraiment à la fin de la commande (pas dans une valeur par défaut, chaîne, etc.)
+fn is_create_table_complete(cmd: &str) -> bool {
+    let cmd_upper = cmd.to_uppercase();
+
+    // Doit contenir CREATE TABLE
+    if !cmd_upper.contains("CREATE TABLE") {
+        return false;
+    }
+
+    // Compter les parenthèses pour vérifier l'équilibre, en ignorant celles dans les chaînes
+    let mut depth = 0i32;
+    let mut has_opening_paren = false;
+    let mut in_string = false;
+    let mut string_char: Option<char> = None;
+    let chars: Vec<char> = cmd.chars().collect();
+
+    for i in 0..chars.len() {
+        let ch = chars[i];
+        let is_escaped = i > 0 && chars[i - 1] == '\\';
+
+        // Gérer les chaînes (simples et doubles quotes)
+        if !in_string {
+            if (ch == '\'' || ch == '"') && !is_escaped {
+                in_string = true;
+                string_char = Some(ch);
+            } else if ch == '(' {
+                depth += 1;
+                has_opening_paren = true;
+            } else if ch == ')' {
+                depth -= 1;
+            }
+        } else {
+            // Dans une chaîne, ignorer les parenthèses
+            if let Some(sc) = string_char {
+                if ch == sc && !is_escaped {
+                    in_string = false;
+                    string_char = None;
+                }
+            }
+        }
+    }
+
+    // Vérifier que les parenthèses sont équilibrées
+    let has_balanced_parens = depth == 0;
+
+    // Vérifier que ');' apparaît à la fin (après avoir fermé toutes les parenthèses)
+    // On cherche ');' qui n'est pas dans une chaîne
+    let mut found_closing = false;
+    let mut temp_depth = 0i32;
+    let mut temp_in_string = false;
+    let mut temp_string_char: Option<char> = None;
+
+    for i in 0..chars.len().saturating_sub(1) {
+        let ch = chars[i];
+        let next_ch = chars[i + 1];
+        let is_escaped = i > 0 && chars[i - 1] == '\\';
+
+        if !temp_in_string {
+            if (ch == '\'' || ch == '"') && !is_escaped {
+                temp_in_string = true;
+                temp_string_char = Some(ch);
+            } else if ch == '(' {
+                temp_depth += 1;
+            } else if ch == ')' {
+                temp_depth -= 1;
+                // Si on ferme la dernière parenthèse et que le prochain caractère est ';'
+                if temp_depth == 0 && next_ch == ';' {
+                    // Vérifier qu'il n'y a pas de caractères significatifs après
+                    let remaining = &cmd[i + 2..].trim();
+                    // Ignorer les commentaires et espaces
+                    if remaining.is_empty() || remaining.starts_with("--") {
+                        found_closing = true;
+                        break;
+                    }
+                }
+            }
+        } else {
+            if let Some(sc) = temp_string_char {
+                if ch == sc && !is_escaped {
+                    temp_in_string = false;
+                    temp_string_char = None;
+                }
+            }
+        }
+    }
+
+    // La commande est complète si :
+    // 1. Elle a une parenthèse ouvrante
+    // 2. Les parenthèses sont équilibrées
+    // 3. On a trouvé ');' à la fin
+    has_opening_paren && has_balanced_parens && found_closing
+}
+
+/// ✅ AMÉLIORÉ 2026-02-14: Fonction helper pour détecter si une CREATE INDEX est complète
+/// Vérifie qu'elle a "ON table_name" et se termine correctement
+fn is_create_index_complete(cmd: &str) -> bool {
+    let cmd_upper = cmd.to_uppercase();
+
+    if !cmd_upper.contains("CREATE INDEX") && !cmd_upper.contains("CREATE UNIQUE INDEX") {
+        return false;
+    }
+
+    // Doit avoir "ON table_name"
+    let has_on = cmd_upper.contains(" ON ");
+
+    // Si elle a un prédicat WHERE, vérifier qu'il est complet
+    if cmd_upper.contains(" WHERE ") {
+        // Compter les parenthèses dans le prédicat WHERE
+        let where_pos = cmd_upper.find(" WHERE ").unwrap_or(0);
+        let after_where = &cmd[where_pos..];
+        let mut depth = 0i32;
+        let mut in_string = false;
+        let mut string_char: Option<char> = None;
+
+        for ch in after_where.chars() {
+            if !in_string {
+                if ch == '\'' || ch == '"' {
+                    in_string = true;
+                    string_char = Some(ch);
+                } else if ch == '(' {
+                    depth += 1;
+                } else if ch == ')' {
+                    depth -= 1;
+                }
+            } else {
+                if let Some(sc) = string_char {
+                    if ch == sc {
+                        in_string = false;
+                        string_char = None;
+                    }
+                }
+            }
+        }
+
+        // Le prédicat WHERE doit avoir des parenthèses équilibrées
+        if depth != 0 {
+            return false;
+        }
+    }
+
+    // Doit se terminer par ';'
+    cmd.trim().ends_with(';') && has_on
+}
+
+/// ✅ AMÉLIORÉ 2026-02-14: Fonction helper pour détecter si une CREATE MATERIALIZED VIEW est complète
+fn is_create_materialized_view_complete(cmd: &str) -> bool {
+    let cmd_upper = cmd.to_uppercase();
+
+    if !cmd_upper.contains("CREATE MATERIALIZED VIEW") {
+        return false;
+    }
+
+    // Doit avoir "AS SELECT"
+    let has_as_select = cmd_upper.contains(" AS ") && cmd_upper.contains("SELECT");
+
+    // Doit se terminer par ';'
+    let ends_with_semicolon = cmd.trim().ends_with(';');
+
+    // Vérifier qu'il y a un GROUP BY si nécessaire (pour les agrégations)
+    // Note: On ne peut pas vraiment vérifier cela sans parser complètement, mais on peut vérifier la structure de base
+
+    has_as_select && ends_with_semicolon
+}
+
 /// ✅ AMÉLIORÉ 2026-02-01: Fonction helper pour exécuter des migrations SQL
 /// Divise les commandes correctement en préservant les blocs DO $$ et les fonctions
 /// Détecte les commandes multiples même sans ';' entre elles
@@ -12516,44 +12681,25 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
             let is_comment_on = cmd_upper.contains("COMMENT ON");
             let is_create_materialized_view = cmd_upper.contains("CREATE MATERIALIZED VIEW");
 
-            // ✅ AMÉLIORATION 2026-02-14: Si c'est une CREATE TABLE, vérifier qu'elle est complète AVANT de vérifier paren_depth
+            // ✅ AMÉLIORATION 2026-02-14: Si c'est une CREATE TABLE, utiliser la fonction helper améliorée
             // CRITIQUE: Les CREATE TABLE doivent se terminer par ');' même si c'est sur plusieurs lignes
             // CRITIQUE: Ne JAMAIS terminer une CREATE TABLE si elle n'a pas ');' même si paren_depth == 0
             if is_create_table {
-                // Vérifier si la commande complète contient ');' (peut être sur plusieurs lignes)
-                let has_table_closing = trimmed.contains(");") || cmd_upper.contains(");");
-
-                // Compter les parenthèses pour vérifier l'équilibre
-                let mut depth = 0i32;
-                let mut has_opening_paren = false;
-                for ch in cmd_upper.chars() {
-                    if ch == '(' {
-                        depth += 1;
-                        has_opening_paren = true;
-                    } else if ch == ')' {
-                        depth -= 1;
-                    }
-                }
-                let has_balanced_parens = depth == 0;
-
-                // ✅ CRITIQUE 2026-02-14: Ne terminer que si :
-                // 1. On a une parenthèse ouvrante (CREATE TABLE IF NOT EXISTS table_name (...))
-                // 2. On a ');' (fermeture complète)
-                // 3. Les parenthèses sont équilibrées
-                // 4. paren_depth == 0 (pas de parenthèse ouverte en cours)
-                if has_opening_paren && has_table_closing && has_balanced_parens && paren_depth == 0
-                {
+                // ✅ AMÉLIORATION 2026-02-14: Utiliser la fonction helper qui vérifie correctement
+                // que ');' est vraiment la fin de la commande (pas dans une valeur par défaut, chaîne, etc.)
+                if is_create_table_complete(&current) && paren_depth == 0 {
                     should_end_command = true;
                 } else {
                     // Si la CREATE TABLE n'est pas complète, NE PAS terminer même si on a un ';'
                     should_end_command = false;
                 }
             }
-            // Si c'est une CREATE INDEX, vérifier qu'elle a "ON table_name" avant de terminer
+            // ✅ AMÉLIORATION 2026-02-14: Si c'est une CREATE INDEX, utiliser la fonction helper améliorée
             else if is_create_index {
-                let has_index_on = cmd_upper.contains(" ON ");
-                if has_index_on {
+                if is_create_index_complete(&current) && paren_depth == 0 {
                     should_end_command = true;
+                } else {
+                    should_end_command = false;
                 }
             }
             // Si c'est un COMMENT ON, vérifier qu'il y a "IS" et une chaîne complète
@@ -12566,11 +12712,12 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                     should_end_command = true;
                 }
             }
-            // Si c'est une CREATE MATERIALIZED VIEW, vérifier qu'elle a "AS SELECT" avant de terminer
+            // ✅ AMÉLIORATION 2026-02-14: Si c'est une CREATE MATERIALIZED VIEW, utiliser la fonction helper
             else if is_create_materialized_view {
-                let has_materialized_as = cmd_upper.contains(" AS ");
-                if has_materialized_as {
+                if is_create_materialized_view_complete(&current) && paren_depth == 0 {
                     should_end_command = true;
+                } else {
+                    should_end_command = false;
                 }
             }
             // ✅ NOUVEAU: Si c'est une CREATE VIEW, vérifier qu'elle a "AS SELECT" et se termine par ';'
@@ -12647,20 +12794,6 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                     // ✅ CRITIQUE 2026-02-14: Ne pas terminer une CREATE TABLE si elle n'a pas de ');' final
                     // Les CREATE TABLE doivent se terminer par ');' même si c'est sur plusieurs lignes
                     let is_create_table = cmd_upper.contains("CREATE TABLE");
-                    let has_table_closing = cmd_upper.contains(");") || trimmed.contains(");");
-
-                    // ✅ AMÉLIORATION 2026-02-14: Vérifier que les parenthèses sont équilibrées ET qu'on a une parenthèse ouvrante
-                    let mut depth = 0i32;
-                    let mut has_opening_paren = false;
-                    for ch in cmd_upper.chars() {
-                        if ch == '(' {
-                            depth += 1;
-                            has_opening_paren = true;
-                        } else if ch == ')' {
-                            depth -= 1;
-                        }
-                    }
-                    let has_balanced_parens = depth == 0;
 
                     // ✅ AMÉLIORATION 2026-02-01: Détecter la fin des CREATE INDEX et COMMENT ON multi-lignes
                     let is_create_index = cmd_upper.contains("CREATE INDEX")
@@ -12669,11 +12802,8 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                     let is_create_materialized_view =
                         cmd_upper.contains("CREATE MATERIALIZED VIEW");
 
-                    // Pour CREATE INDEX, vérifier qu'il y a "ON table_name" et que ça se termine par ';'
-                    let has_index_on = is_create_index && cmd_upper.contains(" ON ");
-                    let index_complete = is_create_index
-                        && has_index_on
-                        && (trimmed.ends_with(';') || trimmed.ends_with(");"));
+                    // ✅ AMÉLIORATION 2026-02-14: Pour CREATE INDEX, utiliser la fonction helper améliorée
+                    let index_complete = is_create_index && is_create_index_complete(&current);
 
                     // Pour COMMENT ON, vérifier qu'il y a "IS" et que ça se termine par une chaîne complète
                     let has_comment_is = is_comment_on && cmd_upper.contains(" IS ");
@@ -12683,12 +12813,9 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                             || trimmed.ends_with("';")
                             || trimmed.ends_with("'::text"));
 
-                    // Pour CREATE MATERIALIZED VIEW, vérifier qu'il y a "AS SELECT" et que ça se termine par ';'
-                    let has_materialized_as =
-                        is_create_materialized_view && cmd_upper.contains(" AS ");
+                    // ✅ AMÉLIORATION 2026-02-14: Pour CREATE MATERIALIZED VIEW, utiliser la fonction helper
                     let materialized_complete = is_create_materialized_view
-                        && has_materialized_as
-                        && trimmed.ends_with(';');
+                        && is_create_materialized_view_complete(&current);
 
                     // ✅ NOUVEAU 2026-02-02: Pour CREATE VIEW, vérifier qu'elle a AS, FROM, et se termine par ';'
                     let is_create_view = cmd_upper.contains("CREATE VIEW");
@@ -12698,14 +12825,8 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                         && trimmed.ends_with(';');
 
                     // ✅ AMÉLIORATION 2026-02-14: Vérifier que la commande actuelle est complète
-                    // CRITIQUE: Pour CREATE TABLE, ne terminer QUE si :
-                    // 1. Elle a une parenthèse ouvrante (CREATE TABLE ... (...))
-                    // 2. Elle a ');' (fermeture complète)
-                    // 3. Les parenthèses sont équilibrées
-                    let table_complete = is_create_table
-                        && has_opening_paren
-                        && has_table_closing
-                        && has_balanced_parens;
+                    // CRITIQUE: Pour CREATE TABLE, utiliser la fonction helper améliorée
+                    let table_complete = is_create_table && is_create_table_complete(&current);
                     let other_command_complete = !is_create_table && trimmed.ends_with(';');
 
                     if other_command_complete
@@ -12758,22 +12879,9 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                 "COMMIT", "ROLLBACK",
             ];
             if valid_keywords.iter().any(|kw| cmd_upper.starts_with(kw)) {
-                // ✅ AMÉLIORATION 2026-02-14: Pour CREATE TABLE, vérifier qu'elle est complète
+                // ✅ AMÉLIORATION 2026-02-14: Pour CREATE TABLE, utiliser la fonction helper améliorée
                 if cmd_upper.contains("CREATE TABLE") {
-                    let has_table_closing = cmd_upper.contains(");");
-                    let mut depth = 0i32;
-                    let mut has_opening_paren = false;
-                    for ch in cmd_upper.chars() {
-                        if ch == '(' {
-                            depth += 1;
-                            has_opening_paren = true;
-                        } else if ch == ')' {
-                            depth -= 1;
-                        }
-                    }
-                    let has_balanced_parens = depth == 0;
-                    // ✅ CRITIQUE 2026-02-14: Si la table n'est pas complète (pas de ');' ou parenthèses non équilibrées), ne pas l'ajouter
-                    if !has_opening_paren || !has_table_closing || !has_balanced_parens {
+                    if !is_create_table_complete(cmd) {
                         warn!("⚠️ [MIGRATION] CREATE TABLE incomplète détectée (manque ');' ou parenthèses non équilibrées), ignorée");
                         warn!(
                             "   Preview: {}",
@@ -13067,15 +13175,32 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                                 }
                             );
                         } else if error_lower.contains("syntax error at end of input") {
-                            // ✅ NOUVEAU: Gérer les fragments de commandes (syntax error at end of input)
+                            // ✅ AMÉLIORATION 2026-02-14: Logger en error! au lieu de warn! pour les fragments de commandes
                             // Cela indique qu'une commande est incomplète, probablement coupée par le parser
-                            warn!(
-                                "⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): {} | Commande: {}",
+                            // CRITIQUE: Ces erreurs doivent être visibles dans les logs CloudWatch
+                            error!(
+                                "❌ [MIGRATION] Fragment de commande détecté (syntax error at end of input): {} | Commande (premiers 500 chars): {}",
                                 error_str,
-                                if trimmed_cmd.len() > 200 {
-                                    format!("{}...", &trimmed_cmd[..200])
+                                if trimmed_cmd.len() > 500 {
+                                    format!("{}...", &trimmed_cmd[..500])
                                 } else {
                                     trimmed_cmd.to_string()
+                                }
+                            );
+                            error!(
+                                "   📊 [MIGRATION] Contexte: Longueur commande: {} chars | Parenthèses équilibrées: {} | Type: {}",
+                                trimmed_cmd.len(),
+                                trimmed_cmd.matches('(').count() == trimmed_cmd.matches(')').count(),
+                                if trimmed_cmd.to_uppercase().contains("CREATE TABLE") {
+                                    "CREATE TABLE"
+                                } else if trimmed_cmd.to_uppercase().contains("CREATE INDEX") {
+                                    "CREATE INDEX"
+                                } else if trimmed_cmd.to_uppercase().contains("CREATE MATERIALIZED VIEW") {
+                                    "CREATE MATERIALIZED VIEW"
+                                } else if trimmed_cmd.to_uppercase().contains("COMMENT ON") {
+                                    "COMMENT ON"
+                                } else {
+                                    "AUTRE"
                                 }
                             );
                             // Ignorer les fragments - ils seront probablement corrigés dans une prochaine migration
