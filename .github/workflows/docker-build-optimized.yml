@@ -475,8 +475,7 @@ jobs:
                 "RUST_LOG": "info",
                 "ENVIRONMENT": "production",
                 "ALLOWED_ORIGINS": $allowed_origins,
-                "CLOUD_RUN": "true",
-                "PORT": "8080"
+                "CLOUD_RUN": "true"
               }' > env-vars.json
           else
             # Fallback: construire JSON manuellement avec échappement
@@ -489,8 +488,7 @@ jobs:
             "RUST_LOG": "info",
             "ENVIRONMENT": "production",
             "ALLOWED_ORIGINS": "https://api.yukpo.com,https://yukpo.com",
-            "CLOUD_RUN": "true",
-            "PORT": "8080"
+            "CLOUD_RUN": "true"
           }
           EOF
           fi
