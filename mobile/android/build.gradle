@@ -13,9 +13,6 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        // Repositories alternatifs en cas de problème réseau
-        maven { url 'https://repo1.maven.org/maven2' }
-        maven { url 'https://maven.aliyun.com/repository/public' } // Mirror chinois (backup)
     }
     dependencies {
         classpath 'com.google.gms:google-services:4.4.1'
@@ -26,16 +23,6 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
-
-// Définir compileSdkVersion dans rootProject.ext pour que les modules Expo puissent y accéder
-// via safeExtGet("compileSdkVersion", ...)
-ext {
-    compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
-    minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
-    targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
-    buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
-    kotlinVersion = findProperty('android.kotlinVersion') ?: '1.9.25'
-}
 
 allprojects {
     repositories {
@@ -51,8 +38,5 @@ allprojects {
         google()
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
-        // Repositories alternatifs en cas de problème réseau
-        maven { url 'https://repo1.maven.org/maven2' }
-        maven { url 'https://maven.aliyun.com/repository/public' } // Mirror chinois (backup)
     }
 }

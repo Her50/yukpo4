@@ -2718,6 +2718,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const nbModalites = currentValues.length;
       const nbCaracteristiques = Object.keys(currentSousCaracs).length;
 
+      // ✅ DEBUG CRITIQUE: Vérifier l'alignement des labels et valeurs pour les prestations
+      const alignmentStatus = productLabels && Object.keys(currentSousCaracs).length > 0 
+        ? (productLabels.length === Object.keys(currentSousCaracs).length 
+            ? '✅ Aligné' 
+            : `⚠️ Désaligné: ${productLabels.length} labels vs ${Object.keys(currentSousCaracs).length} clés`)
+        : 'N/A';
+      
+      // ✅ DEBUG: Vérifier que tous les labels dans productLabels existent dans sousCaracteristiques
+      const missingLabels = productLabels ? productLabels.filter(label => !currentSousCaracs.hasOwnProperty(label)) : [];
+      const extraKeys = Object.keys(currentSousCaracs).filter(key => productLabels && !productLabels.includes(key));
+      
+      if (missingLabels.length > 0 || extraKeys.length > 0 || alignmentStatus.includes('⚠️')) {
+        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ PROBLÈME D\'ALIGNEMENT DÉTECTÉ pour', field.name, {
+          productLabels,
+          sousCaracteristiquesKeys: Object.keys(currentSousCaracs),
+          missingLabels,
+          extraKeys,
+          alignmentStatus
+        });
+      }
+      
       console.log('[FormulaireYukpoIntelligentScreen] ✅ Rendu autocomplete pour:', field.name, {
         nbModalites,
         nbCaracteristiques,
@@ -2728,12 +2749,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         productLabelsLength: productLabels?.length || 0,
         sousCaracteristiquesKeys: Object.keys(currentSousCaracs || {}),
         sousCaracteristiquesKeysLength: Object.keys(currentSousCaracs || {}).length,
-        // ✅ DEBUG: Vérifier l'alignement
-        alignmentCheck: productLabels && Object.keys(currentSousCaracs).length > 0 
-          ? (productLabels.length === Object.keys(currentSousCaracs).length 
-              ? '✅ Aligné' 
-              : `⚠️ Désaligné: ${productLabels.length} labels vs ${Object.keys(currentSousCaracs).length} clés`)
-          : 'N/A'
+        alignmentStatus,
+        missingLabels: missingLabels.length > 0 ? missingLabels : 'aucun',
+        extraKeys: extraKeys.length > 0 ? extraKeys : 'aucune'
       });
 
       return (
@@ -2772,11 +2790,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
               // ✅ CORRECTION 2026-01-XX: Synchronisation automatique prix_variation <-> sous-caractéristiques
               // (comme dans AjouterProduitSimpleScreen pour garantir la cohérence)
+              // ✅ CORRECTION CRITIQUE: Préserver product_labels pour garantir l'alignement correct des labels et valeurs
               const updatedProduitsValue = {
                 type_donnee: 'autocomplete',
                 valeur: values,
                 separateur: safeSeparateur,
                 sous_caracteristiques: updatedSousCaracs || currentSousCaracs,
+                product_labels: productLabels || (fieldValue && typeof fieldValue === 'object' && 'product_labels' in fieldValue ? fieldValue.product_labels : undefined), // ✅ CRITIQUE: Préserver product_labels
                 identifiant_base: field.identifiantBase || field.name,
                 filtrable: field.filtrable !== false,
                 origine_champs: 'formulaire'
@@ -2791,6 +2811,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
               // Mettre à jour le champ produits
               handleFieldChange(field.name, updatedProduitsValue);
+              
+              // ✅ CORRECTION CRITIQUE: Préserver product_labels au niveau racine pour qu'il soit disponible lors de la sauvegarde
+              if (productLabels && productLabels.length > 0) {
+                handleFieldChange('product_labels', productLabels);
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ product_labels préservé au niveau racine:', productLabels);
+              }
 
               // ✅ NOUVEAU: Si des prix_variation sont détectés, les synchroniser automatiquement
               if (normalizedPriceVariant) {

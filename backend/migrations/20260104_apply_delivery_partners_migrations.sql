@@ -215,23 +215,46 @@ CREATE INDEX IF NOT EXISTS idx_courier_applications_partner ON courier_applicati
 ALTER TABLE courier_assets 
 ADD COLUMN IF NOT EXISTS vehicle_image_url TEXT;
 
--- 14. Ajouter la contrainte CHECK sur users.role pour inclure 'partenaire'
+-- 14. Ajouter la contrainte CHECK sur users.role pour inclure 'partenaire' et 'super_admin'
 DO $$
+DECLARE
+    constraint_def TEXT;
+    constraint_exists BOOLEAN;
 BEGIN
-    -- Supprimer l'ancienne contrainte si elle existe
-    IF EXISTS (
+    -- Vérifier si la contrainte existe déjà
+    SELECT EXISTS (
         SELECT 1 FROM pg_constraint 
         WHERE conname = 'users_role_check' 
         AND conrelid = 'users'::regclass
-    ) THEN
-        ALTER TABLE users DROP CONSTRAINT users_role_check;
-    END IF;
+    ) INTO constraint_exists;
     
-    -- Ajouter la nouvelle contrainte avec 'partenaire'
-    ALTER TABLE users ADD CONSTRAINT users_role_check 
-    CHECK (role IN ('user', 'admin', 'partenaire'));
+    IF constraint_exists THEN
+        -- Récupérer la définition actuelle de la contrainte
+        SELECT pg_get_constraintdef(oid) INTO constraint_def
+        FROM pg_constraint
+        WHERE conname = 'users_role_check' 
+        AND conrelid = 'users'::regclass;
+        
+        -- Si la contrainte ne contient pas 'super_admin', on la recrée
+        IF constraint_def NOT LIKE '%super_admin%' THEN
+            ALTER TABLE users DROP CONSTRAINT users_role_check;
+            ALTER TABLE users ADD CONSTRAINT users_role_check 
+            CHECK (role IN ('user', 'admin', 'super_admin', 'partenaire'));
+            RAISE NOTICE 'Contrainte users_role_check mise a jour avec super_admin';
+        ELSE
+            RAISE NOTICE 'Contrainte users_role_check deja a jour avec super_admin';
+        END IF;
+    ELSE
+        -- La contrainte n'existe pas, on la crée avec tous les rôles
+        ALTER TABLE users ADD CONSTRAINT users_role_check 
+        CHECK (role IN ('user', 'admin', 'super_admin', 'partenaire'));
+        RAISE NOTICE 'Contrainte users_role_check creee avec super_admin et partenaire';
+    END IF;
 EXCEPTION
-    WHEN duplicate_object THEN NULL;
+    WHEN duplicate_object THEN 
+        RAISE NOTICE 'Contrainte users_role_check deja presente';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Erreur lors de la mise a jour de la contrainte: %', SQLERRM;
 END
 $$;
 

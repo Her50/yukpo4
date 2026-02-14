@@ -967,28 +967,67 @@ const ResultatBesoinScreen: React.FC = () => {
                                 finalScore += 100; // Forte priorité pour affichage
                             }
 
-                            // ✅ CORRIGÉ 2026-02-10: Extraire les images et vidéos du produit/service
-                            // ✅ PRIORITÉ ABSOLUE: product.images/videos (déjà extraits dans transformedProduct depuis productFromAPI.images/videos OU productData.images/videos)
-                            // ✅ Le backend peut ajouter les images depuis la table media dans product_data.images avec URLs CDN complètes
-                            // ✅ CORRIGÉ: Utiliser product.product_data au lieu de productData (qui n'est pas dans ce scope)
-                            const productDataFromProduct = product.product_data || product;
+                            // ✅ CORRIGÉ 2026-02-10: Utiliser directement product.images/videos depuis transformedProduct
+                            // ✅ transformedProduct.images/videos sont déjà normalisés et corrects (extraits dans lignes 754-805)
+                            // ✅ Le backend enrichit product_data.images/videos avec URLs CDN complètes depuis la table media
+                            // ✅ PRIORITÉ ABSOLUE: product.images/videos (déjà normalisés dans transformedProduct)
+                            let productImages: string[] = Array.isArray(product.images) ? product.images : [];
+                            let productVideos: string[] = Array.isArray(product.videos) ? product.videos : [];
                             
-                            // ✅ CORRIGÉ 2026-02-10: PRIORITÉ ABSOLUE à product.images/videos car ils sont déjà extraits correctement dans transformedProduct
-                            // ✅ transformedProduct.images/videos contient déjà productFromAPI.images/videos OU productData.images/videos
-                            // ✅ Ne PAS écraser product.images/videos s'ils existent déjà (ils viennent de transformedProduct)
-                            const productImages = Array.isArray(product.images) && product.images.length > 0 ? product.images 
-                                : Array.isArray(productDataFromProduct?.images) && productDataFromProduct.images.length > 0 ? productDataFromProduct.images
-                                : Array.isArray(service?.images) ? service.images
-                                : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
-                                : Array.isArray(service?.data?.images) ? service.data.images
-                                : [];
+                            // ✅ CORRIGÉ: Si product.images/videos sont vides, essayer product_data comme fallback (mais normaliser)
+                            // ✅ Cela garantit que même si l'extraction initiale a échoué, on récupère les médias depuis product_data
+                            if (productImages.length === 0) {
+                                const productDataFromProduct = product.product_data || product;
+                                const fallbackImages = Array.isArray(productDataFromProduct?.images) 
+                                    ? productDataFromProduct.images 
+                                    : productDataFromProduct?.images 
+                                        ? [productDataFromProduct.images] 
+                                        : [];
+                                
+                                if (fallbackImages.length > 0) {
+                                    // ✅ Normaliser les fallbacks avec la même fonction que l'extraction initiale
+                                    productImages = normalizeMediaArray(fallbackImages);
+                                    console.log(`[ResultatBesoinScreen] ✅ Images récupérées depuis product_data (fallback):`, productImages.length);
+                                }
+                            }
                             
-                            const productVideos = Array.isArray(product.videos) && product.videos.length > 0 ? product.videos
-                                : Array.isArray(productDataFromProduct?.videos) && productDataFromProduct.videos.length > 0 ? productDataFromProduct.videos
-                                : Array.isArray(service?.videos) ? service.videos
-                                : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
-                                : Array.isArray(service?.data?.videos) ? service.data.videos
-                                : [];
+                            if (productVideos.length === 0) {
+                                const productDataFromProduct = product.product_data || product;
+                                const fallbackVideos = Array.isArray(productDataFromProduct?.videos) 
+                                    ? productDataFromProduct.videos 
+                                    : productDataFromProduct?.videos 
+                                        ? [productDataFromProduct.videos] 
+                                        : [];
+                                
+                                if (fallbackVideos.length > 0) {
+                                    // ✅ Normaliser les fallbacks avec la même fonction que l'extraction initiale
+                                    productVideos = normalizeMediaArray(fallbackVideos);
+                                    console.log(`[ResultatBesoinScreen] ✅ Vidéos récupérées depuis product_data (fallback):`, productVideos.length);
+                                }
+                            }
+                            
+                            // ✅ FALLBACK FINAL: Si toujours vides, essayer les médias du service (normalisés)
+                            if (productImages.length === 0) {
+                                const serviceImages = Array.isArray(service?.images) ? service.images
+                                    : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
+                                    : Array.isArray(service?.data?.images) ? service.data.images
+                                    : [];
+                                if (serviceImages.length > 0) {
+                                    productImages = normalizeMediaArray(serviceImages);
+                                    console.log(`[ResultatBesoinScreen] ✅ Images récupérées depuis service (fallback final):`, productImages.length);
+                                }
+                            }
+                            
+                            if (productVideos.length === 0) {
+                                const serviceVideos = Array.isArray(service?.videos) ? service.videos
+                                    : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
+                                    : Array.isArray(service?.data?.videos) ? service.data.videos
+                                    : [];
+                                if (serviceVideos.length > 0) {
+                                    productVideos = normalizeMediaArray(serviceVideos);
+                                    console.log(`[ResultatBesoinScreen] ✅ Vidéos récupérées depuis service (fallback final):`, productVideos.length);
+                                }
+                            }
                             
                             // ✅ DEBUG 2026-01-22: Log pour diagnostiquer les images depuis la table media
                             if (__DEV__ && (productImages.length > 0 || productVideos.length > 0)) {

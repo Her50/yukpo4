@@ -1,14 +1,4 @@
 pluginManagement {
-    // ✅ CRITIQUE: Ajouter des repositories pour les plugins Gradle
-    // Sans cela, Gradle essaie d'utiliser plugins.gradle.org qui peut être inaccessible
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal() // Repository par défaut pour les plugins
-        // Repositories alternatifs en cas de problème réseau
-        maven { url 'https://repo1.maven.org/maven2' }
-        maven { url 'https://maven.aliyun.com/repository/public' } // Mirror chinois (backup)
-    }
     includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().toString())
 }
 plugins { id("com.facebook.react.settings") }
@@ -33,44 +23,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 
 rootProject.name = 'Yukpo'
 
-// ✅ CRITIQUE: Définir compileSdkVersion et autres propriétés AVANT useExpoModules()
-// Les modules Expo (comme expo-barcode-scanner) ont besoin de ces valeurs lors de leur évaluation
-// On utilise beforeProject pour définir ces propriétés sur chaque projet AVANT son évaluation
-gradle.beforeProject { project ->
-    if (!project.hasProperty('ext')) {
-        project.ext = [:]
-    }
-    if (project.rootProject && !project.rootProject.hasProperty('ext')) {
-        project.rootProject.ext = [:]
-    }
-    
-    // Définir dans rootProject.ext (sera disponible pour tous les projets)
-    if (project.rootProject) {
-        project.rootProject.ext.compileSdkVersion = 35
-        project.rootProject.ext.minSdkVersion = 24
-        project.rootProject.ext.targetSdkVersion = 35
-        project.rootProject.ext.buildToolsVersion = '35.0.0'
-        project.rootProject.ext.kotlinVersion = '1.9.25'
-    }
-    
-    // Définir aussi dans project.ext pour les projets inclus via includeBuild
-    project.ext.compileSdkVersion = 35
-    project.ext.minSdkVersion = 24
-    project.ext.targetSdkVersion = 35
-    project.ext.buildToolsVersion = '35.0.0'
-    project.ext.kotlinVersion = '1.9.25'
-}
-
 dependencyResolutionManagement {
-  // ✅ Ajouter des repositories pour les dépendances
-  repositories {
-    google()
-    mavenCentral()
-    maven { url 'https://www.jitpack.io' }
-    // Repositories alternatifs en cas de problème réseau
-    maven { url 'https://repo1.maven.org/maven2' }
-    maven { url 'https://maven.aliyun.com/repository/public' } // Mirror chinois (backup)
-  }
   versionCatalogs {
     reactAndroidLibs {
       from(files(new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), "../gradle/libs.versions.toml")))

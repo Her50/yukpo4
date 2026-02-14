@@ -1481,9 +1481,17 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 if (formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object') {
                                     nouveauProduit.sous_caracteristiques = formValues.sous_caracteristiques;
                                     
-                                    // Garder aussi product_labels pour compatibilité (clés uniquement)
+                                    // ✅ CORRECTION CRITIQUE: Prioriser product_labels depuis formValues si disponible (ordre garanti)
+                                    // Sinon utiliser Object.keys() comme fallback (ordre non garanti)
                                     if (!nouveauProduit.product_labels) {
-                                        nouveauProduit.product_labels = Object.keys(formValues.sous_caracteristiques || {});
+                                        if (formValues.product_labels && Array.isArray(formValues.product_labels) && formValues.product_labels.length > 0) {
+                                            nouveauProduit.product_labels = formValues.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
+                                            console.log('[AjouterProduitSimple] ✅ product_labels préservé depuis formValues (ordre garanti):', nouveauProduit.product_labels);
+                                        } else {
+                                            // Fallback: utiliser Object.keys (ordre non garanti)
+                                            nouveauProduit.product_labels = Object.keys(formValues.sous_caracteristiques || {});
+                                            console.warn('[AjouterProduitSimple] ⚠️ Utilisation Object.keys() pour product_labels - ordre non garanti');
+                                        }
                                     }
                                 }
 
@@ -2240,6 +2248,42 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     handleFieldChange('produits', values);
                                     if (updatedSousCaracs) {
                                         handleFieldChange('sous_caracteristiques', updatedSousCaracs);
+                                    }
+                                    // ✅ CORRECTION CRITIQUE: Préserver product_labels pour garantir l'alignement correct des labels et valeurs
+                                    // Extraire productLabels depuis plusieurs emplacements possibles (même logique que dans productLabels prop)
+                                    const currentProductLabels = (() => {
+                                        // PRIORITÉ 1: formValues.product_labels
+                                        if (Array.isArray(formValues.product_labels) && formValues.product_labels.length > 0) {
+                                            return formValues.product_labels;
+                                        }
+                                        // PRIORITÉ 2: suggestionData.produits.product_labels (objet structuré)
+                                        if (suggestionData?.produits && typeof suggestionData.produits === 'object' && 'type_donnee' in suggestionData.produits) {
+                                            if (Array.isArray(suggestionData.produits.product_labels) && suggestionData.produits.product_labels.length > 0) {
+                                                return suggestionData.produits.product_labels;
+                                            }
+                                        }
+                                        // PRIORITÉ 3: suggestionData.produits.product_labels (direct)
+                                        if (Array.isArray(suggestionData?.produits?.product_labels) && suggestionData.produits.product_labels.length > 0) {
+                                            return suggestionData.produits.product_labels;
+                                        }
+                                        // PRIORITÉ 4: suggestionData.product_labels (niveau racine pour prestations)
+                                        if (Array.isArray(suggestionData?.product_labels) && suggestionData.product_labels.length > 0) {
+                                            return suggestionData.product_labels;
+                                        }
+                                        // PRIORITÉ 5: Extraire depuis sous_caracteristiques disponibles (fallback)
+                                        if (updatedSousCaracs && typeof updatedSousCaracs === 'object') {
+                                            return Object.keys(updatedSousCaracs);
+                                        }
+                                        const sousCaracsComplets = formValues.sous_caracteristiques || suggestionData?.produits?.sous_caracteristiques;
+                                        if (sousCaracsComplets && typeof sousCaracsComplets === 'object') {
+                                            return Object.keys(sousCaracsComplets);
+                                        }
+                                        return undefined;
+                                    })();
+                                    
+                                    if (currentProductLabels && currentProductLabels.length > 0) {
+                                        handleFieldChange('product_labels', currentProductLabels);
+                                        console.log('[AjouterProduitSimple] ✅ product_labels préservé lors de la modification:', currentProductLabels);
                                     }
                                 }}
                                 productVector={Array.isArray(formValues.product_vector) ? formValues.product_vector : undefined}
