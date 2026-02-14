@@ -173,40 +173,110 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ AMÉLIORÉ 2025-12-11: Configuration optimisée pour prévenir les erreurs TLS
     // ✅ CORRIGÉ RACINE 2025-12-11: Configuration robuste pour gérer les crashes PostgreSQL et fermetures brutales
     // ✅ CORRIGÉ RACINE 2025-12-11: Retry logic pour connexion initiale (gère les crashes PostgreSQL temporaires)
-    let pg_pool = {
+    // ✅ OPTIMISÉ 2026-02-14: Pour Cloud Run, utiliser connect_lazy pour démarrage rapide
+    let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
+    let pg_pool = if is_cloud_run {
+        // Pour Cloud Run: utiliser connect_lazy pour démarrage immédiat (connexion en arrière-plan)
+        eprintln!("[MAIN] 🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
+        log::info!("🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
+        PgPoolOptions::new()
+            .max_connections(max_connections)
+            .min_connections(min_connections)
+            .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
+            .idle_timeout(Some(std::time::Duration::from_secs(120)))
+            .max_lifetime(Some(std::time::Duration::from_secs(180)))
+            .test_before_acquire(true)
+            .after_release(|conn, _meta| {
+                Box::pin(async move {
+                    match sqlx::query("SELECT 1").execute(&mut *conn).await {
+                        Ok(_) => Ok(true),
+                        Err(e) => {
+                            let error_msg = e.to_string();
+                            if error_msg.contains("TLS")
+                                || error_msg.contains("close_notify")
+                                || error_msg.contains("Connection reset")
+                                || error_msg.contains("peer closed")
+                            {
+                                log::debug!(
+                                    "⚠️ Connexion invalide détectée après libération: {}",
+                                    error_msg
+                                );
+                                Ok(false)
+                            } else {
+                                Ok(true)
+                            }
+                        }
+                    }
+                })
+            })
+            .after_connect(|conn, _meta| {
+                Box::pin(async move {
+                    if let Err(e) =
+                        sqlx::query("SET statement_timeout = 0").execute(&mut *conn).await
+                    {
+                        let error_msg = e.to_string();
+                        if error_msg.contains("TLS")
+                            || error_msg.contains("close_notify")
+                            || error_msg.contains("Connection reset")
+                            || error_msg.contains("peer closed")
+                        {
+                            log::debug!(
+                                "⚠️ Configuration statement_timeout échouée: {}",
+                                error_msg
+                            );
+                        }
+                    }
+                    let _ = sqlx::query("SET idle_in_transaction_session_timeout = '180s'")
+                        .execute(&mut *conn)
+                        .await;
+                    Ok(())
+                })
+            })
+            .connect_lazy(&db_url)
+            .map_err(|e| {
+                eprintln!(
+                    "[MAIN] ❌ ERREUR: Impossible de créer le pool PostgreSQL (connect_lazy): {}",
+                    e
+                );
+                log::error!(
+                    "❌ Impossible de créer le pool PostgreSQL (connect_lazy): {}",
+                    e
+                );
+                e
+            })?
+    } else {
+        // Pour autres environnements: connexion bloquante avec retry
         let mut last_error = None;
         let mut connected = false;
         let mut pool_opt = None;
 
-        // Retry jusqu'à 3 fois avec backoff exponentiel
-        for attempt in 1..=3 {
+        let max_retries = 3;
+        for attempt in 1..=max_retries {
             match PgPoolOptions::new()
                 .max_connections(max_connections)
                 .min_connections(min_connections)
                 .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
-                .idle_timeout(Some(std::time::Duration::from_secs(120))) // ✅ OPTIMISÉ 2025-12-23: Réduit à 2 min pour libérer connexions plus vite
-                .max_lifetime(Some(std::time::Duration::from_secs(180))) // ✅ OPTIMISÉ 2025-12-23: Réduit à 3 min pour libérer connexions plus vite
-                .test_before_acquire(true) // ✅ CORRIGÉ 2025-12-16: Tester connexion avant acquisition pour éviter erreurs TLS
+                .idle_timeout(Some(std::time::Duration::from_secs(120)))
+                .max_lifetime(Some(std::time::Duration::from_secs(180)))
+                .test_before_acquire(true)
                 .after_release(|conn, _meta| {
-                    // ✅ CORRIGÉ 2025-12-16: Vérifier connexion après libération pour détecter erreurs TLS tôt
                     Box::pin(async move {
-                        // Tester la connexion pour détecter les erreurs TLS avant réutilisation
-                        // Retourner false si la connexion est invalide (sera fermée), true sinon
                         match sqlx::query("SELECT 1").execute(&mut *conn).await {
-                            Ok(_) => Ok(true), // Connexion valide
+                            Ok(_) => Ok(true),
                             Err(e) => {
                                 let error_msg = e.to_string();
-                                if error_msg.contains("TLS") 
+                                if error_msg.contains("TLS")
                                     || error_msg.contains("close_notify")
                                     || error_msg.contains("Connection reset")
-                                    || error_msg.contains("peer closed") {
+                                    || error_msg.contains("peer closed")
+                                {
                                     log::debug!(
-                                        "⚠️ Connexion invalide détectée après libération (sera fermée): {}",
+                                        "⚠️ Connexion invalide détectée après libération: {}",
                                         error_msg
                                     );
-                                    Ok(false) // Connexion invalide, sera fermée
+                                    Ok(false)
                                 } else {
-                                    Ok(true) // Autre erreur, on garde la connexion
+                                    Ok(true)
                                 }
                             }
                         }
@@ -214,21 +284,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 })
                 .after_connect(|conn, _meta| {
                     Box::pin(async move {
-                        if let Err(e) = sqlx::query("SET statement_timeout = 0")
-                            .execute(&mut *conn)
-                            .await {
+                        if let Err(e) =
+                            sqlx::query("SET statement_timeout = 0").execute(&mut *conn).await
+                        {
                             let error_msg = e.to_string();
-                            if error_msg.contains("TLS") 
+                            if error_msg.contains("TLS")
                                 || error_msg.contains("close_notify")
                                 || error_msg.contains("Connection reset")
-                                || error_msg.contains("peer closed") {
+                                || error_msg.contains("peer closed")
+                            {
                                 log::debug!(
-                                    "⚠️ Configuration statement_timeout échouée (connexion sera testée avant utilisation): {}",
+                                    "⚠️ Configuration statement_timeout échouée: {}",
                                     error_msg
                                 );
                             }
                         }
-                        // ✅ OPTIMISÉ 2026-01-14: Réduire idle_in_transaction_session_timeout pour éviter les connexions bloquées
                         let _ = sqlx::query("SET idle_in_transaction_session_timeout = '180s'")
                             .execute(&mut *conn)
                             .await;
@@ -239,19 +309,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
             {
                 Ok(pool) => {
-                    eprintln!("[MAIN] ✅ Connexion PostgreSQL établie (tentative {}/3)", attempt);
-                    log::info!("✅ Connexion PostgreSQL établie (tentative {}/3)", attempt);
+                    eprintln!(
+                        "[MAIN] ✅ Connexion PostgreSQL établie (tentative {}/{})",
+                        attempt, max_retries
+                    );
+                    log::info!(
+                        "✅ Connexion PostgreSQL établie (tentative {}/{})",
+                        attempt,
+                        max_retries
+                    );
                     pool_opt = Some(pool);
                     connected = true;
                     break;
                 }
                 Err(e) => {
                     last_error = Some(e);
-                    if attempt < 3 {
+                    if attempt < max_retries {
                         let delay_secs = 2_u64.pow(attempt); // 2s, 4s, 8s
                         log::warn!(
-                            "⚠️ Échec connexion PostgreSQL (tentative {}/3), retry dans {}s...",
+                            "⚠️ Échec connexion PostgreSQL (tentative {}/{}), retry dans {}s...",
                             attempt,
+                            max_retries,
                             delay_secs
                         );
                         tokio::time::sleep(std::time::Duration::from_secs(delay_secs)).await;
@@ -262,25 +340,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if !connected {
             let e = last_error.unwrap();
-            eprintln!("[MAIN] ❌ ERREUR CRITIQUE: Impossible de se connecter à PostgreSQL après 3 tentatives");
+            eprintln!("[MAIN] ❌ ERREUR CRITIQUE: Impossible de se connecter à PostgreSQL après {} tentatives", max_retries);
             eprintln!("[MAIN] ❌ Erreur: {}", e);
-            eprintln!(
-                "[MAIN] ❌ URL utilisée: {}...",
-                db_url.chars().take(30).collect::<String>()
-            );
             log::error!(
-                "❌ Impossible de se connecter à PostgreSQL après 3 tentatives: {}",
+                "❌ Impossible de se connecter à PostgreSQL après {} tentatives: {}",
+                max_retries,
                 e
-            );
-            log::error!(
-                "   URL utilisée: {}...",
-                db_url.chars().take(30).collect::<String>()
-            );
-            log::error!(
-                "   Configuration pool: max={}, min={}, acquire_timeout={}s",
-                max_connections,
-                min_connections,
-                acquire_timeout_secs
             );
             return Err(Box::new(e) as Box<dyn std::error::Error>);
         }
