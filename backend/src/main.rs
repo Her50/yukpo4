@@ -1756,7 +1756,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             use yukpomnang_backend::utils::redis_helper;
 
             // ✅ CORRIGÉ: Ajouter un timeout de 10 secondes pour éviter que l'application bloque indéfiniment
-            // get_redis_connection a maintenant un timeout de 3s par tentative (3 tentatives = max 9s)
+            // get_redis_connection a maintenant un timeout de 10s par tentative (3 tentatives = max 30s)
             // Ce timeout de 10s est une sécurité supplémentaire
             let (is_available, error_detail) = match timeout(
                 Duration::from_secs(10),

@@ -136,8 +136,9 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
 
               {/* ✅ CORRIGÉ: Utilisation de LocationSelector pour l'autocomplete Google Places */}
               <LocationSelector
-                value={selectedLocation}
-                onChange={(location: LocationObject) => {
+                value={selectedLocation || ''}
+                onSelect={(location: LocationObject) => {
+                  console.log('[GoogleBusinessModal] Lieu sélectionné:', location);
                   setSelectedLocation(location);
                   
                   // Si le lieu a un place_id, récupérer automatiquement les détails

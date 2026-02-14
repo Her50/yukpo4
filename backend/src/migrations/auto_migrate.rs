@@ -959,6 +959,9 @@ pub async fn ensure_global_promo_tables(pool: &PgPool) -> Result<(), sqlx::Error
     .execute(pool)
     .await?;
 
+    // ✅ Vérifier et ajouter les colonnes manquantes pour global_promo_entries
+    ensure_global_promo_entries_columns(pool).await?;
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS global_promo_products (
@@ -1042,6 +1045,9 @@ pub async fn ensure_live_flash_sales_tables(pool: &PgPool) -> Result<(), sqlx::E
     )
     .execute(pool)
     .await?;
+
+    // ✅ Vérifier et ajouter les colonnes manquantes pour live_flash_sales
+    ensure_live_flash_sales_columns(pool).await?;
 
     sqlx::query(
         r#"
@@ -9842,6 +9848,200 @@ pub async fn ensure_social_connectors_tables(pool: &PgPool) -> Result<(), sqlx::
         .await?;
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_social_publication_jobs_status ON social_publication_jobs(status, scheduled_for)",
+    )
+    .execute(pool)
+    .await?;
+
+    // ✅ Vérifier et ajouter les colonnes manquantes pour social_publication_jobs
+    ensure_social_publication_jobs_columns(pool).await?;
+
+    Ok(())
+}
+
+/// ✅ Vérifie et ajoute les colonnes manquantes pour global_promo_entries
+async fn ensure_global_promo_entries_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    // Renommer promo_event_id en event_id si nécessaire
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'global_promo_entries' AND column_name = 'promo_event_id'
+            ) AND NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'global_promo_entries' AND column_name = 'event_id'
+            ) THEN
+                ALTER TABLE global_promo_entries RENAME COLUMN promo_event_id TO event_id;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter event_id si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'global_promo_entries' AND column_name = 'event_id'
+            ) THEN
+                ALTER TABLE global_promo_entries ADD COLUMN event_id UUID REFERENCES global_promo_events(id) ON DELETE CASCADE;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter submitted_by_user_id si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'global_promo_entries' AND column_name = 'submitted_by_user_id'
+            ) THEN
+                ALTER TABLE global_promo_entries ADD COLUMN submitted_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// ✅ Vérifie et ajoute les colonnes manquantes pour live_flash_sales
+async fn ensure_live_flash_sales_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    // Ajouter metadata si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'live_flash_sales' AND column_name = 'metadata'
+            ) THEN
+                ALTER TABLE live_flash_sales ADD COLUMN metadata JSONB DEFAULT '{}'::JSONB;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter stock_target si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'live_flash_sales' AND column_name = 'stock_target'
+            ) THEN
+                ALTER TABLE live_flash_sales ADD COLUMN stock_target INTEGER NOT NULL DEFAULT 0 CHECK (stock_target >= 0);
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// ✅ Vérifie et ajoute les colonnes manquantes pour social_publication_jobs
+async fn ensure_social_publication_jobs_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    // Renommer job_status en status si nécessaire
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'social_publication_jobs' AND column_name = 'job_status'
+            ) AND NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'social_publication_jobs' AND column_name = 'status'
+            ) THEN
+                ALTER TABLE social_publication_jobs RENAME COLUMN job_status TO status;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter status si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'social_publication_jobs' AND column_name = 'status'
+            ) THEN
+                ALTER TABLE social_publication_jobs ADD COLUMN status TEXT NOT NULL DEFAULT 'queued';
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter payload si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'social_publication_jobs' AND column_name = 'payload'
+            ) THEN
+                ALTER TABLE social_publication_jobs ADD COLUMN payload JSONB NOT NULL DEFAULT '{}'::jsonb;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter media_id si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'social_publication_jobs' AND column_name = 'media_id'
+            ) THEN
+                ALTER TABLE social_publication_jobs ADD COLUMN media_id INTEGER REFERENCES media(id) ON DELETE CASCADE;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter platform si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'social_publication_jobs' AND column_name = 'platform'
+            ) THEN
+                ALTER TABLE social_publication_jobs ADD COLUMN platform TEXT NOT NULL DEFAULT 'unknown';
+            END IF;
+        END $$;
+        "#,
     )
     .execute(pool)
     .await?;

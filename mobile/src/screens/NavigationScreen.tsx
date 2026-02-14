@@ -543,10 +543,12 @@ const NavigationScreen: React.FC = () => {
                 <NativeCard style={styles.searchCard}>
                     <Text style={styles.label}>Votre destination</Text>
                     <LocationSelector
-                        value={selectedLocation}
-                        onChange={(location: LocationObject) => {
+                        value={selectedLocation ? selectedLocation : (destination || '')}
+                        onSelect={(location: LocationObject) => {
+                            console.log('[NavigationScreen] Lieu sélectionné:', location);
                             setSelectedLocation(location);
-                            setDestination(location.raw || location.place_name || '');
+                            const locationText = location.raw || location.place_name || '';
+                            setDestination(locationText);
                             
                             // Si le lieu a des coordonnées, les utiliser directement
                             if (location.latitude && location.longitude) {
@@ -554,9 +556,21 @@ const NavigationScreen: React.FC = () => {
                                     lat: location.latitude,
                                     lng: location.longitude
                                 });
+                                // ✅ Rechercher automatiquement les routes après sélection
+                                setTimeout(() => {
+                                    searchRoutes();
+                                }, 100);
                             } else {
                                 // Sinon, géocoder l'adresse
-                                geocodeDestination(location.raw || location.place_name || '');
+                                geocodeDestination(locationText).then((coords) => {
+                                    if (coords) {
+                                        setDestinationCoords(coords);
+                                        // ✅ Rechercher automatiquement les routes après géocodage
+                                        setTimeout(() => {
+                                            searchRoutes();
+                                        }, 100);
+                                    }
+                                });
                             }
                         }}
                         placeholder="Tapez une adresse, lieu, ou destination..."

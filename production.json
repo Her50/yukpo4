@@ -10,6 +10,6 @@
   "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
   "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
   "EXPO_PUBLIC_UPLOAD_BASE_URL": "https://api.yukpomnang.com",
-  "EXPO_PUBLIC_WASABI_DIRECT_URL": "https://yukpomnang-media-prod.s3.us-east-1.amazonaws.com",
+  "EXPO_PUBLIC_WASABI_DIRECT_URL": "https://yukpo-backend-media.s3.eu-west-1.amazonaws.com",
   "EXPO_PUBLIC_WS_URL": "wss://api.yukpomnang.com"
 }

@@ -652,14 +652,6 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         // ✅ CRITIQUE: Marquer qu'on est en train de sélectionner pour empêcher onBlur de fermer
         selectingOptionRef.current = true;
         
-        // ✅ Fermer immédiatement les suggestions pour feedback visuel
-        setIsFocused(false);
-        setQuery('');
-        // ✅ AMÉLIORÉ: Ne pas blur immédiatement pour éviter conflit avec le clic
-        setTimeout(() => {
-            inputRef.current?.blur();
-        }, 100);
-        
         // ✅ Parser composants du lieu
         const locationObj = parseLocationString(opt);
         const enrichedResult = optionsEnriched[index];
@@ -680,7 +672,15 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     place_id: enrichedResult?.place_id,
                 };
                 console.log('[LocationSelector] Appel onSelect avec:', finalLocation);
+                // ✅ CORRIGÉ: Mettre à jour query avec la valeur sélectionnée avant d'appeler onSelect
+                setQuery(display);
+                setIsFocused(false);
                 onSelect(finalLocation);
+                // ✅ AMÉLIORÉ: Blur après un court délai pour permettre la mise à jour
+                setTimeout(() => {
+                    inputRef.current?.blur();
+                    selectingOptionRef.current = false;
+                }, 150);
             } catch (error) {
                 console.error('[LocationSelector] Erreur enrichissement:', error);
                 // Fallback : retourner sans enrichissement
@@ -692,10 +692,16 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     place_id: enrichedResult?.place_id,
                 };
                 console.log('[LocationSelector] Fallback - Appel onSelect avec:', finalLocation);
+                // ✅ CORRIGÉ: Mettre à jour query avec la valeur sélectionnée
+                setQuery(display);
+                setIsFocused(false);
                 onSelect(finalLocation);
+                setTimeout(() => {
+                    inputRef.current?.blur();
+                    selectingOptionRef.current = false;
+                }, 150);
             } finally {
                 setEnriching(false);
-                selectingOptionRef.current = false;
             }
         } else {
             const display = formatLocationDisplay(locationObj);
@@ -706,8 +712,14 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 place_id: enrichedResult?.place_id,
             };
             console.log('[LocationSelector] Sans enrichissement - Appel onSelect avec:', finalLocation);
+            // ✅ CORRIGÉ: Mettre à jour query avec la valeur sélectionnée
+            setQuery(display);
+            setIsFocused(false);
             onSelect(finalLocation);
-            selectingOptionRef.current = false;
+            setTimeout(() => {
+                inputRef.current?.blur();
+                selectingOptionRef.current = false;
+            }, 150);
         }
     };
 
@@ -725,7 +737,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 <TextInput
                     ref={inputRef}
                     placeholder={defaultPlaceholder}
-                    value={isFocused ? query : displayValue}
+                    value={isFocused ? query : (displayValue || '')}
                     onChangeText={(text) => {
                         setQuery(text);
                         setIsFocused(true);

@@ -525,7 +525,7 @@ resource "aws_secretsmanager_secret_version" "backend_secrets" {
   secret_id = aws_secretsmanager_secret.backend_secrets.id
   secret_string = jsonencode({
     DATABASE_URL = "postgresql://${var.rds_username}:${var.rds_password}@${aws_db_instance.main.endpoint}/${var.rds_database_name}"
-    REDIS_URL    = "redis://${aws_elasticache_replication_group.main.primary_endpoint_address}:6379"
+    REDIS_URL    = "rediss://${aws_elasticache_replication_group.main.primary_endpoint_address}:6379/0"
     JWT_SECRET   = var.jwt_secret
     MONGODB_URL  = var.mongodb_url != "" ? var.mongodb_url : "mongodb+srv://yukpomnang:DENQG9aru56Ixaqi@cluster1.arqkgsd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
     RUST_LOG     = var.rust_log_level

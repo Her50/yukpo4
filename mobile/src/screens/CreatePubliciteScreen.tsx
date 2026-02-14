@@ -989,22 +989,24 @@ const CreatePubliciteScreen: React.FC = () => {
             <KeyboardAwareScrollView
                 ref={scrollViewRef}
                 style={styles.content}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: Platform.OS === 'android' ? 500 : 450 }]}
+                contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={true}
                 enableOnAndroid={true}
                 enableAutomaticScroll={true}
-                // ✅ CORRECTION CRITIQUE: Augmenter les valeurs pour éviter que le clavier masque les éléments
-                extraHeight={Platform.OS === 'android' ? 350 : 0}
-                extraScrollHeight={Platform.OS === 'ios' ? 300 : 0}
+                extraHeight={Platform.OS === 'android' ? 200 : 100}
+                extraScrollHeight={Platform.OS === 'ios' ? 100 : 0}
                 keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="none"
+                keyboardDismissMode="on-drag"
                 scrollEnabled={true}
-                bounces={true}
+                bounces={Platform.OS === 'ios'}
                 removeClippedSubviews={false}
-                nestedScrollEnabled={false}
-                enableResetScrollToCoords={false}
+                nestedScrollEnabled={true}
+                enableResetScrollToCoords={true}
                 keyboardOpeningTime={0}
                 alwaysBounceVertical={false}
+                // ✅ CORRECTION CRITIQUE: Propriétés pour garantir le scroll
+                scrollEventThrottle={16}
+                overScrollMode="always"
             >
                 {/* ✅ NOUVEAU: Section Templates */}
                 {!titre && !showTemplates && (
@@ -1557,11 +1559,12 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
+        // ✅ CORRIGÉ: S'assurer que le ScrollView peut scroller librement
     },
     scrollContent: {
         padding: 16,
-        paddingBottom: 200, // ✅ CORRIGÉ: Espace suffisant pour les boutons sticky en bas et tous les éléments
-        flexGrow: 1, // ✅ CORRIGÉ: Permet au contenu de s'étendre et d'être scrollable
+        paddingBottom: 250, // ✅ CORRIGÉ: Espace suffisant pour les boutons sticky en bas et tous les éléments
+        // ✅ CORRIGÉ: Supprimé flexGrow: 1 qui peut bloquer le scroll
     },
     infoCard: {
         padding: 16,

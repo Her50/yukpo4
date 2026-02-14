@@ -73,9 +73,10 @@ pub async fn get_redis_connection(
     use tokio::time::Duration as TokioDuration;
 
     for attempt in 1..=max_retries {
-        // Timeout de 3 secondes par tentative (3 tentatives * 3s = max 9s)
+        // Timeout de 10 secondes par tentative (3 tentatives * 10s = max 30s)
+        // Augmenté pour ElastiCache qui peut être plus lent à répondre
         match timeout(
-            TokioDuration::from_secs(3),
+            TokioDuration::from_secs(10),
             client.get_multiplexed_async_connection(),
         )
         .await
@@ -124,7 +125,7 @@ pub async fn get_redis_connection(
             Err(_) => {
                 // Timeout de la tentative de connexion
                 let timeout_msg = format!(
-                    "Connection timeout (3s) - tentative {}/{}",
+                    "Connection timeout (10s) - tentative {}/{}",
                     attempt, max_retries
                 );
                 last_error = Some(timeout_msg.clone());
