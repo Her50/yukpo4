@@ -687,10 +687,6 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "APP_ENV"
         value = var.environment
-      },
-      {
-        name  = "ENABLE_AUTO_MIGRATIONS"
-        value = "false"
       }
     ]
 

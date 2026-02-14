@@ -872,6 +872,7 @@ pub async fn ensure_live_streaming_tables(pool: &PgPool) -> Result<(), sqlx::Err
 
 pub async fn ensure_global_promo_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables globales de promotions...");
+    // ✅ 2026-02-14: Migrations SQL alignées avec code Rust pour éviter conflits de colonnes
 
     sqlx::query(r#"CREATE EXTENSION IF NOT EXISTS "uuid-ossp""#)
         .execute(pool)
