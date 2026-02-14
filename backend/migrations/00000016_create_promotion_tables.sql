@@ -2,21 +2,25 @@
 
 CREATE TABLE IF NOT EXISTS global_promo_events (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    theme TEXT NOT NULL,
+    display_name TEXT NOT NULL,
     description TEXT,
-    event_type VARCHAR(50) NOT NULL, -- 'black_friday', 'christmas', 'new_year', 'custom'
     starts_at TIMESTAMPTZ NOT NULL,
     ends_at TIMESTAMPTZ NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    banner_image_url TEXT,
-    metadata JSONB DEFAULT '{}'::jsonb,
+    recurrence_rule TEXT,
+    status VARCHAR(32) NOT NULL DEFAULT 'draft' CHECK (
+        status IN ('draft', 'scheduled', 'live', 'archived')
+    ),
+    config JSONB NOT NULL DEFAULT '{}'::JSONB,
+    created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (ends_at > starts_at)
 );
 
-CREATE INDEX IF NOT EXISTS idx_global_promo_events_active ON global_promo_events(is_active);
-CREATE INDEX IF NOT EXISTS idx_global_promo_events_dates ON global_promo_events(starts_at, ends_at);
-CREATE INDEX IF NOT EXISTS idx_global_promo_events_type ON global_promo_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_global_promo_events_status ON global_promo_events(status, starts_at);
+CREATE INDEX IF NOT EXISTS idx_global_promo_events_theme ON global_promo_events(theme);
 
 CREATE TABLE IF NOT EXISTS global_promo_entries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
