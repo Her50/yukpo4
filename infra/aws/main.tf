@@ -200,11 +200,26 @@ resource "aws_security_group" "ecs" {
   description = "Security group for ECS tasks"
   vpc_id      = aws_vpc.main.id
 
+  # ✅ 2026-02-13: Autoriser le trafic direct depuis Internet (pour accès sans Load Balancer)
+  # Permet d'accéder au backend directement via IP publique
   ingress {
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow direct access from Internet (for public IP access)"
+  }
+
+  # Autoriser le trafic depuis le Load Balancer (si activé)
+  dynamic "ingress" {
+    for_each = var.enable_load_balancer ? [1] : []
+    content {
+      from_port       = 8080
+      to_port         = 8080
+      protocol        = "tcp"
+      security_groups = [aws_security_group.alb.id]
+      description     = "Allow traffic from Application Load Balancer"
+    }
   }
 
   egress {
@@ -754,9 +769,11 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = aws_subnet.private[*].id
+    # ✅ 2026-02-13: Utiliser subnets publics pour accès direct (comme ancien compte)
+    # Permet d'accéder au backend sans Load Balancer
+    subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = !var.enable_nat_gateway
+    assign_public_ip = true  # ✅ Toujours activer IP publique pour accès direct
   }
 
   dynamic "load_balancer" {

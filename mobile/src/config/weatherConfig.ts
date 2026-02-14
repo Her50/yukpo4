@@ -2,7 +2,7 @@
 
 // URL de votre backend (ajustez selon votre configuration)
 // ✅ HARMONISÉ: Utiliser la même variable que eas.json
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com';
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.yukpomnang.com';
 
 // Fonction pour récupérer la clé API depuis le backend
 export const getWeatherApiKey = async (): Promise<string> => {

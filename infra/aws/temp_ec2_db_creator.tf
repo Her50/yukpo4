@@ -33,7 +33,7 @@ resource "aws_iam_role_policy_attachment" "temp_ec2_ssm" {
 
 # Permission pour accéder à Secrets Manager
 # Note: backend_secrets est défini dans main.tf, on construit l'ARN manuellement
-data "aws_caller_identity" "current" {}
+# data "aws_caller_identity" "current" {}  # ✅ Utilise celui de main.tf
 
 resource "aws_iam_role_policy" "temp_ec2_secrets" {
   name = "${var.project_name}-temp-ec2-secrets-policy"

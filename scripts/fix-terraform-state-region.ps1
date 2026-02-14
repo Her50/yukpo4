@@ -32,12 +32,12 @@ try {
     Write-Host "2. Import des ressources eu-west-1..." -ForegroundColor Yellow
     
     # Import du Load Balancer
-    $albArn = "arn:aws:elasticloadbalancing:eu-west-1:846505724644:loadbalancer/app/yukpomnang-alb/8de54f80025e48c6"
+    $albArn = "arn:aws:elasticloadbalancing:eu-west-1:108964700972:loadbalancer/app/yukpo-alb/8de54f80025e48c6"
     Write-Host "   Import aws_lb.main..." -ForegroundColor Gray
     terraform import aws_lb.main $albArn 2>&1 | Out-Null
     
     # Import du Cluster ECS
-    $ecsClusterArn = "arn:aws:ecs:eu-west-1:846505724644:cluster/yukpomnang-cluster"
+    $ecsClusterArn = "arn:aws:ecs:eu-west-1:108964700972:cluster/yukpo-cluster"
     Write-Host "   Import aws_ecs_cluster.main..." -ForegroundColor Gray
     terraform import aws_ecs_cluster.main $ecsClusterArn 2>&1 | Out-Null
     

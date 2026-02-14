@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$AWS_ACCOUNT_ID = "846505724644"
+$AWS_ACCOUNT_ID = "108964700972"
 $ECR_REPO_NAME = "yukpomnang-backend"
 $ECR_REPO_URI = "$AWS_ACCOUNT_ID.dkr.ecr.$Region.amazonaws.com/$ECR_REPO_NAME"
 

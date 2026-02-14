@@ -3,7 +3,7 @@
  * Envoie les événements au backend qui les expose via /metrics
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://yukpomnang.onrender.com';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.yukpomnang.com';
 
 /**
  * Tracker un événement de scroll sur un carrousel de produits

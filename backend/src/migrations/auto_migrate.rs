@@ -12218,11 +12218,30 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
             let is_comment_on = cmd_upper.contains("COMMENT ON");
             let is_create_materialized_view = cmd_upper.contains("CREATE MATERIALIZED VIEW");
 
-            // Si c'est une CREATE TABLE, vérifier qu'elle a ');' avant de terminer
+            // ✅ AMÉLIORATION 2026-02-13: Si c'est une CREATE TABLE, vérifier qu'elle a ');' avant de terminer
+            // CRITIQUE: Les CREATE TABLE doivent se terminer par ');' même si c'est sur plusieurs lignes
+            // CRITIQUE: Ne JAMAIS terminer une CREATE TABLE si elle n'a pas ');' même si paren_depth == 0
             if is_create_table {
+                // Vérifier si la commande complète contient ');' (peut être sur plusieurs lignes)
                 let has_table_closing = trimmed.contains(");") || cmd_upper.contains(");");
-                if has_table_closing {
+
+                // Compter les parenthèses pour vérifier l'équilibre
+                let mut depth = 0i32;
+                for ch in cmd_upper.chars() {
+                    if ch == '(' {
+                        depth += 1;
+                    } else if ch == ')' {
+                        depth -= 1;
+                    }
+                }
+                let has_balanced_parens = depth == 0;
+
+                // ✅ CRITIQUE: Ne terminer que si on a ');' ET que les parenthèses sont équilibrées
+                if has_table_closing && has_balanced_parens {
                     should_end_command = true;
+                } else {
+                    // Si la CREATE TABLE n'est pas complète, NE PAS terminer même si on a un ';'
+                    should_end_command = false;
                 }
             }
             // Si c'est une CREATE INDEX, vérifier qu'elle a "ON table_name" avant de terminer
@@ -12319,6 +12338,17 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                     let is_create_table = cmd_upper.contains("CREATE TABLE");
                     let has_table_closing = cmd_upper.contains(");") || trimmed.contains(");");
 
+                    // ✅ AMÉLIORATION 2026-02-13: Vérifier que les parenthèses sont équilibrées
+                    let mut depth = 0i32;
+                    for ch in cmd_upper.chars() {
+                        if ch == '(' {
+                            depth += 1;
+                        } else if ch == ')' {
+                            depth -= 1;
+                        }
+                    }
+                    let has_balanced_parens = depth == 0;
+
                     // ✅ AMÉLIORATION 2026-02-01: Détecter la fin des CREATE INDEX et COMMENT ON multi-lignes
                     let is_create_index = cmd_upper.contains("CREATE INDEX")
                         || cmd_upper.contains("CREATE UNIQUE INDEX");
@@ -12354,12 +12384,18 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                         && cmd_upper.contains(" FROM ")
                         && trimmed.ends_with(';');
 
-                    // Vérifier que la commande actuelle est complète
-                    if trimmed.ends_with(';')
+                    // ✅ AMÉLIORATION 2026-02-13: Vérifier que la commande actuelle est complète
+                    // CRITIQUE: Pour CREATE TABLE, ne terminer QUE si elle a ');' ET que les parenthèses sont équilibrées
+                    // Ne pas terminer une CREATE TABLE incomplète même si elle se termine par ';'
+                    let table_complete =
+                        is_create_table && has_table_closing && has_balanced_parens;
+                    let other_command_complete = !is_create_table && trimmed.ends_with(';');
+
+                    if other_command_complete
                         || (cmd_upper.contains("CREATE TRIGGER")
                             && cmd_upper.contains("ON ")
                             && cmd_upper.contains("EXECUTE FUNCTION"))
-                        || (is_create_table && has_table_closing)
+                        || table_complete
                         || view_complete
                         || index_complete
                         || comment_complete
@@ -12393,7 +12429,8 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
         i += 1;
     }
 
-    // Traiter la dernière commande si elle existe
+    // ✅ AMÉLIORATION 2026-02-13: Traiter la dernière commande si elle existe
+    // Vérifier que les CREATE TABLE sont complètes (ont ');' et parenthèses équilibrées)
     if !current.trim().is_empty() && !in_dollar_block && paren_depth == 0 {
         let cmd = current.trim();
         if !cmd.is_empty() && !cmd.starts_with("--") {
@@ -12404,7 +12441,34 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                 "COMMIT", "ROLLBACK",
             ];
             if valid_keywords.iter().any(|kw| cmd_upper.starts_with(kw)) {
-                commands.push(cmd.to_string());
+                // ✅ AMÉLIORATION 2026-02-13: Pour CREATE TABLE, vérifier qu'elle est complète
+                if cmd_upper.contains("CREATE TABLE") {
+                    let has_table_closing = cmd_upper.contains(");");
+                    let mut depth = 0i32;
+                    for ch in cmd_upper.chars() {
+                        if ch == '(' {
+                            depth += 1;
+                        } else if ch == ')' {
+                            depth -= 1;
+                        }
+                    }
+                    // Si la table n'est pas complète, ne pas l'ajouter (elle sera tronquée)
+                    if !has_table_closing || depth != 0 {
+                        warn!("⚠️ [MIGRATION] CREATE TABLE incomplète détectée (manque ');' ou parenthèses non équilibrées), ignorée");
+                        warn!(
+                            "   Preview: {}",
+                            if cmd.len() > 200 {
+                                format!("{}...", &cmd[..200])
+                            } else {
+                                cmd.to_string()
+                            }
+                        );
+                    } else {
+                        commands.push(cmd.to_string());
+                    }
+                } else {
+                    commands.push(cmd.to_string());
+                }
             }
         }
     }

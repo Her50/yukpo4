@@ -16,7 +16,7 @@ export PORT=${PORT:-8080}
 export HOST=${HOST:-0.0.0.0}
 export RUST_LOG=${RUST_LOG:-info}
 export APP_ENV=${APP_ENV:-production}
-export AWS_REGION=${AWS_REGION:-us-east-1}
+export AWS_REGION=${AWS_REGION:-eu-west-1}
 
 # Configuration du pool de connexions pour AWS RDS
 export DB_POOL_SIZE=${DB_POOL_SIZE:-100}

@@ -3,11 +3,11 @@
 
 $ErrorActionPreference = "Stop"
 
-$REGION = "us-east-1"
-$CLUSTER_NAME = "yukpomnang-cluster"
-$SERVICE_NAME = "yukpomnang-backend-service"
-$EXECUTION_ROLE_NAME = "yukpomnang-ecs-execution-role"
-$ACCOUNT_ID = "846505724644"
+$REGION = "eu-west-1"
+$CLUSTER_NAME = "yukpo-cluster"
+$SERVICE_NAME = "yukpo-backend-service"
+$EXECUTION_ROLE_NAME = "yukpo-ecs-execution-role"
+$ACCOUNT_ID = "108964700972"
 
 Write-Host "==================================================================================" -ForegroundColor Cyan
 Write-Host "🔧 Correction des permissions IAM et application des migrations" -ForegroundColor Cyan

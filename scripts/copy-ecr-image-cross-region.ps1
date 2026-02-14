@@ -6,7 +6,7 @@ param(
     [string]$TargetRegion = "us-east-1",
     [string]$RepositoryName = "yukpomnang-backend",
     [string]$ImageTag = "latest",
-    [string]$AccountId = "846505724644"
+    [string]$AccountId = "108964700972"
 )
 
 $SourceURI = "$AccountId.dkr.ecr.$SourceRegion.amazonaws.com/$RepositoryName"

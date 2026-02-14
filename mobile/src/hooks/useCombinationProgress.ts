@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://yukpomnang.onrender.com';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || process.env.REACT_APP_API_URL || 'https://api.yukpomnang.com';
 
 export interface CombinationProgress {
   status: 'in_progress' | 'completed' | 'error' | 'not_found';

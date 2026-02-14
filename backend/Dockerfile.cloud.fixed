@@ -162,7 +162,7 @@ ENV RUST_BACKTRACE=1
 ENV APP_ENV=production
 ENV PORT=8080
 ENV HOST=0.0.0.0
-ENV AWS_REGION=us-east-1
+ENV AWS_REGION=eu-west-1
 
 # Variables d'optimisation pour AWS ECS/Fargate
 ENV DB_POOL_SIZE=100

@@ -3,10 +3,10 @@
 
 $ErrorActionPreference = "Stop"
 
-$REGION = "us-east-1"
-$CLUSTER_NAME = "yukpomnang-cluster"
-$SERVICE_NAME = "yukpomnang-backend-service"
-$EXECUTION_ROLE_NAME = "yukpomnang-ecs-execution-role"
+$REGION = "eu-west-1"
+$CLUSTER_NAME = "yukpo-cluster"
+$SERVICE_NAME = "yukpo-backend-service"
+$EXECUTION_ROLE_NAME = "yukpo-ecs-execution-role"
 
 Write-Host "==================================================================================" -ForegroundColor Cyan
 Write-Host "Application des migrations de configuration de livraison" -ForegroundColor Cyan
@@ -42,7 +42,7 @@ try {
         "ssm:GetParameter",
         "ssm:GetParametersByPath"
       ],
-      "Resource": "arn:aws:ssm:us-east-1:846505724644:parameter/yukpomnang/production/*"
+      "Resource": "arn:aws:ssm:eu-west-1:108964700972:parameter/yukpo/production/*"
     }
   ]
 }
