@@ -76,26 +76,58 @@ jobs:
             SQLX_OFFLINE=true
             BUILDKIT_INLINE_CACHE=1
 
+      - name: Prepare Environment Variables
+        id: prepare-env
+        run: |
+          echo "Preparing environment variables from GitHub secrets..."
+          
+          # Créer un fichier JSON pour les variables d'environnement
+          if command -v jq &> /dev/null; then
+            echo '{}' | jq \
+              --arg db_url "${{ secrets.GCP_DATABASE_URL }}" \
+              '. + {
+                "DATABASE_URL": $db_url,
+                "ENABLE_AUTO_MIGRATIONS": "true",
+                "SQLX_OFFLINE": "true"
+              }' > env-vars.json
+          else
+            DB_URL_ESCAPED=$(echo "${{ secrets.GCP_DATABASE_URL }}" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+            cat > env-vars.json << EOF
+          {
+            "DATABASE_URL": "$DB_URL_ESCAPED",
+            "ENABLE_AUTO_MIGRATIONS": "true",
+            "SQLX_OFFLINE": "true"
+          }
+          EOF
+          fi
+          
+          # Ajouter toutes les variables avec prefixe GCP_ENV_
+          if command -v gh &> /dev/null; then
+            gh auth status || gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+            for secret in $(gh secret list --repo ${{ github.repository }} --json name -q '.[].name' | grep "^GCP_ENV_"); do
+              VAR_NAME=$(echo $secret | sed 's/^GCP_ENV_//')
+              VAR_VALUE=$(gh secret get $secret --repo ${{ github.repository }} 2>/dev/null || echo "")
+              if [ -n "$VAR_VALUE" ]; then
+                if command -v jq &> /dev/null; then
+                  jq --arg key "$VAR_NAME" --arg val "$VAR_VALUE" '. + {($key): $val}' env-vars.json > env-vars.tmp.json && mv env-vars.tmp.json env-vars.json
+                else
+                  VAR_VALUE_ESCAPED=$(echo "$VAR_VALUE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+                  sed -i "s/}$/,\"$VAR_NAME\":\"$VAR_VALUE_ESCAPED\"}/" env-vars.json
+                fi
+              fi
+            done
+          fi
+          
+          echo "env_file=env-vars.json" >> $GITHUB_OUTPUT
+
       - name: Deploy to Cloud Run
         run: |
-          # Construire la liste des variables d'environnement depuis les secrets GitHub
-          # Toutes les variables AWS ont ete migrees vers des secrets GitHub avec prefixe GCP_ENV_
-          ENV_VARS="DATABASE_URL=${{ secrets.GCP_DATABASE_URL }},ENABLE_AUTO_MIGRATIONS=true,SQLX_OFFLINE=true"
-          
-          # Ajouter toutes les variables d'environnement depuis les secrets GitHub
-          # Format: GCP_ENV_VARIABLE_NAME -> VARIABLE_NAME
-          for secret in $(gh secret list --repo ${{ github.repository }} --json name -q '.[].name' | grep "^GCP_ENV_"); do
-            VAR_NAME=$(echo $secret | sed 's/^GCP_ENV_//')
-            VAR_VALUE=$(gh secret get $secret --repo ${{ github.repository }})
-            ENV_VARS="$ENV_VARS,$VAR_NAME=$VAR_VALUE"
-          done
-          
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --platform managed \
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
-            --set-env-vars "$ENV_VARS" \
+            --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
             --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-db \
             --memory 512Mi \
             --cpu 1 \

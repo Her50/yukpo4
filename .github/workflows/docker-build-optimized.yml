@@ -461,7 +461,35 @@ jobs:
         id: prepare-env
         run: |
           echo "Preparing environment variables from GitHub secrets..."
-          ENV_VARS="DATABASE_URL=${{ secrets.GCP_DATABASE_URL }},ENABLE_AUTO_MIGRATIONS=true,SQLX_OFFLINE=true,RUST_LOG=info,ENVIRONMENT=production,ALLOWED_ORIGINS=https://api.yukpo.com,https://yukpo.com"
+          
+          # Créer un fichier JSON pour les variables d'environnement
+          # Utiliser jq si disponible, sinon construire manuellement
+          if command -v jq &> /dev/null; then
+            echo '{}' | jq \
+              --arg db_url "${{ secrets.GCP_DATABASE_URL }}" \
+              --arg allowed_origins "https://api.yukpo.com,https://yukpo.com" \
+              '. + {
+                "DATABASE_URL": $db_url,
+                "ENABLE_AUTO_MIGRATIONS": "true",
+                "SQLX_OFFLINE": "true",
+                "RUST_LOG": "info",
+                "ENVIRONMENT": "production",
+                "ALLOWED_ORIGINS": $allowed_origins
+              }' > env-vars.json
+          else
+            # Fallback: construire JSON manuellement avec échappement
+            DB_URL_ESCAPED=$(echo "${{ secrets.GCP_DATABASE_URL }}" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+            cat > env-vars.json << EOF
+          {
+            "DATABASE_URL": "$DB_URL_ESCAPED",
+            "ENABLE_AUTO_MIGRATIONS": "true",
+            "SQLX_OFFLINE": "true",
+            "RUST_LOG": "info",
+            "ENVIRONMENT": "production",
+            "ALLOWED_ORIGINS": "https://api.yukpo.com,https://yukpo.com"
+          }
+          EOF
+          fi
           
           # Ajouter toutes les variables avec prefixe GCP_ENV_
           if command -v gh &> /dev/null; then
@@ -470,16 +498,18 @@ jobs:
               VAR_NAME=$(echo $secret | sed 's/^GCP_ENV_//')
               VAR_VALUE=$(gh secret get $secret --repo ${{ github.repository }} 2>/dev/null || echo "")
               if [ -n "$VAR_VALUE" ]; then
-                # Echapper les caracteres speciaux
-                VAR_VALUE=$(echo "$VAR_VALUE" | sed 's/,/\\,/g' | sed 's/=/\\=/g')
-                ENV_VARS="$ENV_VARS,$VAR_NAME=$VAR_VALUE"
+                if command -v jq &> /dev/null; then
+                  jq --arg key "$VAR_NAME" --arg val "$VAR_VALUE" '. + {($key): $val}' env-vars.json > env-vars.tmp.json && mv env-vars.tmp.json env-vars.json
+                else
+                  # Fallback: échapper et ajouter avec sed
+                  VAR_VALUE_ESCAPED=$(echo "$VAR_VALUE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+                  sed -i "s/}$/,\"$VAR_NAME\":\"$VAR_VALUE_ESCAPED\"}/" env-vars.json
+                fi
               fi
             done
           fi
           
-          echo "env_vars<<EOF" >> $GITHUB_OUTPUT
-          echo "$ENV_VARS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "env_file=env-vars.json" >> $GITHUB_OUTPUT
 
       - name: Deploy to Cloud Run
         run: |
@@ -489,7 +519,7 @@ jobs:
             --platform managed \
             --region ${{ env.GCP_REGION }} \
             --allow-unauthenticated \
-            --set-env-vars "${{ steps.prepare-env.outputs.env_vars }}" \
+            --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
             --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:${{ secrets.GCP_DB_INSTANCE_CONNECTION_NAME }} \
             --memory 512Mi \
             --cpu 1 \
