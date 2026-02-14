@@ -392,18 +392,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Google Auth (OIDC)
+      - name: Google Auth (Service Account Key)
         id: auth
         uses: 'google-github-actions/auth@v2'
         with:
-          workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_ID }}/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider'
-          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v2'
